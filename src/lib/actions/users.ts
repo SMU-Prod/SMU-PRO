@@ -120,7 +120,7 @@ export async function adminGetUsers(page = 1, limit = 20, search = "", role = ""
     query = query.or(`nome.ilike.%${search}%,email.ilike.%${search}%`);
   }
   if (role) {
-    query = query.eq("role", role as string);
+    query = query.eq("role", role as NonNullable<typeof role>);
   }
   if (mit === "1") {
     query = query.eq("projeto_cultural", true);
