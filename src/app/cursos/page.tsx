@@ -5,6 +5,18 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getCategoryIcon, getCategoryLabel, getLevelLabel, formatMinutes, formatCurrency } from "@/lib/utils";
 import { Search, SlidersHorizontal } from "lucide-react";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Cursos — SMU PRO",
+  description: "Explore todos os cursos de sonorização, iluminação, DJ, VJ e produção de eventos da SMU PRO.",
+  openGraph: {
+    title: "Cursos — SMU PRO",
+    description: "Explore todos os cursos de sonorização, iluminação, DJ, VJ e produção de eventos da SMU PRO.",
+  },
+};
+
+export const revalidate = 3600; // ISR: revalida a cada 1 hora
 
 interface Props {
   searchParams: Promise<{ nivel?: string; categoria?: string; tipo?: string; search?: string }>;

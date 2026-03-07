@@ -14,29 +14,68 @@ const BASE_URL =
 
 const API_KEY = process.env.ASAAS_API_KEY!;
 
+const MAX_RETRIES = 3;
+const RETRY_BASE_MS = 1000;
+const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
+
 async function asaasRequest<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      "User-Agent": "smu-pro",
-      access_token: API_KEY,
-      ...options.headers,
-    },
-  });
+  let lastError: Error | null = null;
 
-  const data = await res.json();
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15_000);
 
-  if (!res.ok) {
-    const message =
-      (data?.errors?.[0]?.description ?? data?.message ?? "Erro na API Asaas");
-    throw new Error(message);
+      const res = await fetch(`${BASE_URL}${path}`, {
+        ...options,
+        signal: controller.signal,
+        headers: {
+          "Content-Type": "application/json",
+          "User-Agent": "smu-pro",
+          access_token: API_KEY,
+          ...options.headers,
+        },
+      });
+
+      clearTimeout(timeout);
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        // Retry em status transientes (429, 5xx)
+        if (RETRYABLE_STATUS.has(res.status) && attempt < MAX_RETRIES) {
+          const delay = RETRY_BASE_MS * Math.pow(2, attempt);
+          console.warn(`[Asaas] ${res.status} em ${path}, retry ${attempt + 1}/${MAX_RETRIES} em ${delay}ms`);
+          await new Promise((r) => setTimeout(r, delay));
+          continue;
+        }
+
+        const message =
+          data?.errors?.[0]?.description ?? data?.message ?? "Erro na API Asaas";
+        throw new Error(message);
+      }
+
+      return data as T;
+    } catch (err: any) {
+      lastError = err;
+
+      // Retry em erros de rede/timeout (não em erros de negócio)
+      const isNetworkError = err.name === "AbortError" || err.code === "ECONNRESET" || err.code === "ETIMEDOUT";
+      if (isNetworkError && attempt < MAX_RETRIES) {
+        const delay = RETRY_BASE_MS * Math.pow(2, attempt);
+        console.warn(`[Asaas] Network error em ${path}, retry ${attempt + 1}/${MAX_RETRIES} em ${delay}ms`);
+        await new Promise((r) => setTimeout(r, delay));
+        continue;
+      }
+
+      throw err;
+    }
   }
 
-  return data as T;
+  throw lastError ?? new Error("Erro inesperado na API Asaas");
 }
 
 // ============================================================

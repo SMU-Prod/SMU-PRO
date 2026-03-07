@@ -205,6 +205,7 @@ export async function GET(
     headers: {
       "Content-Type": "text/html; charset=utf-8",
       "Content-Disposition": `inline; filename="certificado-${codigo.substring(0, 8)}.html"`,
+      "Cache-Control": "public, max-age=31536000, immutable",
     },
   });
 }

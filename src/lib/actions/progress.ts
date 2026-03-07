@@ -104,10 +104,21 @@ export async function getUserProgress(courseId: string) {
   const userUuid = await resolveUserUUID(userId);
   if (!userUuid) return [];
 
+  // Busca apenas lessons do curso específico via join filter
+  const { data: lessons } = await admin
+    .from("lessons")
+    .select("id, module_id, modules!inner(course_id)")
+    .eq("modules.course_id", courseId);
+
+  if (!lessons || lessons.length === 0) return [];
+
+  const lessonIds = lessons.map((l) => l.id);
+
   const { data } = await admin
     .from("progress")
-    .select(`*, lessons(module_id, modules(course_id))`)
-    .eq("user_id", userUuid);
+    .select("*")
+    .eq("user_id", userUuid)
+    .in("lesson_id", lessonIds);
 
   return data ?? [];
 }

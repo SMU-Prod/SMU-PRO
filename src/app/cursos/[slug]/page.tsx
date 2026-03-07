@@ -11,6 +11,8 @@ import { CheckCircle, Clock, BookOpen, Award, Lock, Play, ChevronRight, ArrowLef
 import { EnrollButton } from "@/components/course/enroll-button";
 import type { Metadata } from "next";
 
+export const revalidate = 3600; // ISR: revalida a cada 1 hora
+
 interface Props {
   params: Promise<{ slug: string }>;
 }

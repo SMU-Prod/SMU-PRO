@@ -519,31 +519,58 @@ export async function adminDuplicateCourse(id: string) {
     .single();
   if (courseErr) throw courseErr;
 
-  // Clone modules and lessons
+  // Clone modules in batch
   const modules: any[] = (original.modules ?? []).sort((a: any, b: any) => a.ordem - b.ordem);
-  for (const mod of modules) {
-    const { data: newMod, error: modErr } = await supabase
-      .from("modules")
-      .insert({ course_id: newCourse.id, titulo: mod.titulo, descricao: mod.descricao, ordem: mod.ordem })
-      .select()
-      .single();
-    if (modErr) continue;
 
-    const lessons: any[] = (mod.lessons ?? []).sort((a: any, b: any) => a.ordem - b.ordem);
-    for (const lesson of lessons) {
-      await supabase.from("lessons").insert({
-        module_id: newMod.id,
-        titulo: lesson.titulo,
-        descricao: lesson.descricao,
-        tipo: lesson.tipo,
-        youtube_id: lesson.youtube_id,
-        pdf_path: lesson.pdf_path,
-        conteudo_rico: lesson.conteudo_rico,
-        duracao_min: lesson.duracao_min,
-        ordem: lesson.ordem,
-        tem_quiz: false,
-        preview_gratis: lesson.preview_gratis,
-      });
+  if (modules.length > 0) {
+    const moduleInserts = modules.map((mod: any) => ({
+      course_id: newCourse.id,
+      titulo: mod.titulo,
+      descricao: mod.descricao,
+      ordem: mod.ordem,
+    }));
+
+    const { data: newModules, error: modErr } = await supabase
+      .from("modules")
+      .insert(moduleInserts)
+      .select();
+
+    if (modErr) throw new Error(`Erro ao clonar módulos: ${modErr.message}`);
+
+    // Map original module order → new module id
+    const sortedNewModules = (newModules ?? []).sort((a: any, b: any) => a.ordem - b.ordem);
+
+    // Clone all lessons in batch
+    const lessonInserts: any[] = [];
+    for (let i = 0; i < modules.length; i++) {
+      const originalMod = modules[i];
+      const newMod = sortedNewModules[i];
+      if (!newMod) continue;
+
+      const lessons: any[] = (originalMod.lessons ?? []).sort((a: any, b: any) => a.ordem - b.ordem);
+      for (const lesson of lessons) {
+        lessonInserts.push({
+          module_id: newMod.id,
+          titulo: lesson.titulo,
+          descricao: lesson.descricao,
+          tipo: lesson.tipo,
+          youtube_id: lesson.youtube_id,
+          pdf_path: lesson.pdf_path,
+          conteudo_rico: lesson.conteudo_rico,
+          duracao_min: lesson.duracao_min,
+          ordem: lesson.ordem,
+          tem_quiz: false,
+          preview_gratis: lesson.preview_gratis,
+        });
+      }
+    }
+
+    if (lessonInserts.length > 0) {
+      const { error: lessonErr } = await supabase
+        .from("lessons")
+        .insert(lessonInserts);
+
+      if (lessonErr) throw new Error(`Erro ao clonar aulas: ${lessonErr.message}`);
     }
   }
 

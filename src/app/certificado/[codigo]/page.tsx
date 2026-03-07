@@ -6,6 +6,8 @@ import Link from "next/link";
 import QRCode from "qrcode";
 import type { Metadata } from "next";
 
+export const revalidate = 86400; // ISR: certificados são imutáveis, revalida 1x/dia
+
 interface Props {
   params: Promise<{ codigo: string }>;
 }
