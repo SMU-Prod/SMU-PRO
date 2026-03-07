@@ -45,16 +45,15 @@ export async function POST(req: Request) {
       const email = email_addresses[0]?.email_address;
       const nome = [first_name, last_name].filter(Boolean).join(" ") || email;
 
-      const userData: UserInsert = {
-        id: id,
+      const userData = {
         clerk_id: id,
         nome: nome || "Usuário",
         email: email || "",
         avatar_url: image_url || null,
         bio: null,
-        role: "trainee",
+        role: "trainee" as const,
         projeto_cultural: false,
-        nivel_atual: "trainee",
+        nivel_atual: "trainee" as const,
         telefone: null,
         cidade: null,
         estado: null,
@@ -62,19 +61,25 @@ export async function POST(req: Request) {
         ultimo_acesso: null,
       };
 
-      const { error } = await supabase.from("users").upsert(userData, { onConflict: "clerk_id" });
+      const { data: newUser, error } = await supabase
+        .from("users")
+        .upsert(userData, { onConflict: "clerk_id" })
+        .select("id")
+        .single();
       if (error) {
         console.error("Error creating user in Supabase:", error);
         return new Response("Error creating user", { status: 500 });
       }
 
       // Log de atividade
-      await supabase.from("activity_log").insert({
-        user_id: id,
-        tipo: "login",
-        descricao: "Novo usuário criado via Clerk",
-        metadata: { clerk_id: id },
-      });
+      if (newUser) {
+        await supabase.from("activity_log").insert({
+          user_id: newUser.id,
+          tipo: "login",
+          descricao: "Novo usuário criado via Clerk",
+          metadata: { clerk_id: id },
+        });
+      }
 
       // Email de boas-vindas (não bloqueia a resposta)
       if (email) {

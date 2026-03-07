@@ -24,7 +24,7 @@ export type User = {
   ativo: boolean; ultimo_acesso: string | null;
   created_at: string; updated_at: string;
 };
-export type UserInsert = Omit<User, "created_at" | "updated_at">;
+export type UserInsert = Omit<User, "id" | "created_at" | "updated_at"> & { id?: string };
 export type UserUpdate = Partial<Omit<User, "id" | "created_at">>;
 
 export type Course = {
