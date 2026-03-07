@@ -1,7 +1,7 @@
 "use server";
 
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { UserRole } from "@/types/database";
@@ -58,6 +58,7 @@ export async function getCurrentUser() {
     .limit(1);
 
   const data = rows?.[0] ?? null;
+  console.log("[getCurrentUser] clerk_id:", userId, "found:", !!data, "role:", data?.role, "email:", data?.email);
   if (data) return data;
 
   // User exists in Clerk but not in Supabase — create the record automatically
@@ -119,7 +120,7 @@ export async function adminGetUsers(page = 1, limit = 20, search = "", role = ""
     query = query.or(`nome.ilike.%${search}%,email.ilike.%${search}%`);
   }
   if (role) {
-    query = query.eq("role", role as any);
+    query = query.eq("role", role as string);
   }
   if (mit === "1") {
     query = query.eq("projeto_cultural", true);
