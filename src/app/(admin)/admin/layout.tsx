@@ -15,12 +15,16 @@ export default async function AdminLayout({
   if (!userId) redirect("/login");
 
   const user = await getCurrentUser();
+  console.log("[Admin Layout] userId:", userId, "user:", user?.email, "role:", user?.role);
   const isAdmin = user?.role === "admin";
   const isContentManager = user?.role === "content_manager";
-  if (!isAdmin && !isContentManager) redirect("/dashboard");
+  if (!isAdmin && !isContentManager) {
+    console.log("[Admin Layout] Redirecting to /dashboard — not admin/content_manager");
+    redirect("/dashboard");
+  }
 
   const { courses } = await adminGetAllCourses({ limit: 200 });
-  const courseList = (courses ?? []).map((c: any) => ({
+  const courseList = (courses ?? []).map((c: { id: string; titulo: string; nivel: string; ativo: boolean }) => ({
     id: c.id,
     titulo: c.titulo,
     nivel: c.nivel,
@@ -30,7 +34,7 @@ export default async function AdminLayout({
   return (
     <SidebarProvider>
       <div className="flex h-screen bg-gray-50">
-        <Sidebar role={user?.role as any} />
+        <Sidebar role={user?.role as "admin" | "content_manager"} />
         <main className="flex-1 lg:ml-64 overflow-y-auto min-w-0">
           {/* Command Palette — disponível em todas as páginas admin */}
           <div className="fixed top-3 left-1/2 -translate-x-1/2 z-40 hidden md:block">
