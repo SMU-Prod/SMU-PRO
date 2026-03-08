@@ -1,6 +1,12 @@
+"use client";
+
 import { SignIn } from "@clerk/nextjs";
+import { useTheme } from "@/components/theme-provider";
+import { getClerkAppearance } from "@/components/auth/clerk-theme";
 
 export default function LoginPage() {
+  const { theme } = useTheme();
+
   return (
     <div className="min-h-screen bg-surface-2 flex flex-col items-center justify-center px-4">
       {/* Background glow */}
@@ -17,36 +23,7 @@ export default function LoginPage() {
       </div>
 
       <SignIn
-        appearance={{
-          elements: {
-            rootBox: "w-full",
-            card: "bg-surface border border-border shadow-sm rounded-2xl",
-            headerTitle: "text-foreground font-bold",
-            headerSubtitle: "text-muted-light",
-            socialButtonsBlockButton: "border border-border bg-surface text-muted hover:bg-hover transition-colors",
-            socialButtonsBlockButtonText: "text-muted",
-            dividerLine: "bg-border",
-            dividerText: "text-muted-light",
-            formFieldLabel: "text-muted text-sm",
-            formFieldInput: "bg-surface border-border text-foreground placeholder:text-muted-light focus:border-[#F59E0B]",
-            formButtonPrimary: "bg-[#F59E0B] hover:bg-amber-600 text-white font-semibold",
-            footerActionLink: "text-[#F59E0B] hover:text-amber-400",
-            identityPreviewText: "text-muted",
-            identityPreviewEditButton: "text-[#F59E0B]",
-            formFieldSuccessText: "text-emerald-600",
-            formFieldErrorText: "text-red-500",
-            alertText: "text-red-500",
-          },
-          variables: {
-            colorPrimary: "#F59E0B",
-            colorBackground: "#141416",
-            colorText: "#f4f4f5",
-            colorTextSecondary: "#71717a",
-            colorInputBackground: "#141416",
-            colorInputText: "#f4f4f5",
-            borderRadius: "0.75rem",
-          },
-        }}
+        appearance={getClerkAppearance(theme)}
         forceRedirectUrl="/dashboard"
         signUpUrl="/cadastro"
       />
