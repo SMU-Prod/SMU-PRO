@@ -33,16 +33,20 @@ export default async function LessonPage({ params }: Props) {
     const hasAccess = !!enrollment || lesson.preview_gratis;
     const lessonData = hasAccess ? lesson : { ...lesson, youtube_id: null };
 
-    const [quizAttemptsResult, notesResult] = await Promise.all([
+    const [quizAttemptsResult, notesResult, quizResult] = await Promise.all([
       userUuid
         ? supabase.from("quiz_attempts").select("*").eq("user_id", userUuid).order("created_at", { ascending: false })
         : Promise.resolve({ data: [] }),
       userUuid
         ? supabase.from("notes").select("*").eq("user_id", userUuid).eq("lesson_id", lessonId).order("created_at", { ascending: false })
         : Promise.resolve({ data: [] }),
+      lessonData.tem_quiz
+        ? (supabase as any).from("quizzes").select("*, quiz_questions(*, quiz_options(*))").eq("lesson_id", lessonId).single()
+        : Promise.resolve({ data: null }),
     ]);
     const quizAttempts = quizAttemptsResult.data;
     const notes = notesResult.data;
+    const quizData = quizResult.data;
 
     return (
       <LessonPlayer
@@ -51,6 +55,7 @@ export default async function LessonPage({ params }: Props) {
         enrollment={enrollment}
         progressMap={progressMap}
         quizAttempts={quizAttempts ?? []}
+        quizData={quizData ?? null}
         notes={notes ?? []}
         userId={userId}
       />

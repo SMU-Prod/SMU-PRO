@@ -45,6 +45,7 @@ interface LessonPlayerProps {
   enrollment: Enrollment | null;
   progressMap: Record<string, ProgressType>;
   quizAttempts: QuizAttempt[];
+  quizData?: any;
   notes: Note[];
   userId: string;
 }
@@ -57,6 +58,7 @@ export function LessonPlayer({
   enrollment,
   progressMap,
   quizAttempts,
+  quizData,
   notes,
   userId,
 }: LessonPlayerProps) {
@@ -426,7 +428,7 @@ export function LessonPlayer({
               )}
               {activeTab === "materials" && <MaterialsTab lesson={lesson} />}
               {activeTab === "quiz" && (
-                <QuizTab lesson={lesson} quizAttempts={quizAttempts} userId={userId} />
+                <QuizTab lesson={lesson} quizAttempts={quizAttempts} quizData={quizData} userId={userId} />
               )}
               {activeTab === "notes" && (
                 <NotesTab lessonId={lesson.id} notes={notes} userId={userId} />

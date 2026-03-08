@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { submitQuizAttempt } from "@/lib/actions/quiz";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +15,7 @@ import {
 interface QuizTabProps {
   lesson: { id: string; tem_quiz: boolean; quizzes?: any[] };
   quizAttempts: QuizAttempt[];
+  quizData?: any;
   userId: string;
 }
 
@@ -40,14 +40,27 @@ function formatTime(seconds: number) {
   return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 }
 
-export function QuizTab({ lesson, quizAttempts, userId }: QuizTabProps) {
-  const [quiz, setQuiz] = useState<QuizWithQuestions | null>(null);
+export function QuizTab({ lesson, quizAttempts, quizData, userId }: QuizTabProps) {
+  const [quiz, setQuiz] = useState<QuizWithQuestions | null>(() => {
+    if (!quizData) return null;
+    return {
+      ...quizData,
+      quiz_questions: (quizData.quiz_questions ?? [])
+        .sort((a: any, b: any) => a.ordem - b.ordem)
+        .map((q: any) => ({
+          ...q,
+          tipo: q.tipo ?? "multiple_choice",
+          quiz_options: (q.quiz_options ?? []).sort((a: any, b: any) => a.ordem - b.ordem),
+        })),
+    };
+  });
   const [loading, setLoading] = useState(false);
   const [started, setStarted] = useState(false);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
   const [result, setResult] = useState<{ nota: number; aprovado: boolean } | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number>(0);
@@ -80,33 +93,6 @@ export function QuizTab({ lesson, quizAttempts, userId }: QuizTabProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quiz, started]);
 
-  // Carrega quiz
-  useEffect(() => {
-    if (!lesson.tem_quiz) return;
-    setLoading(true);
-    const supabase = createClient();
-    (supabase as any)
-      .from("quizzes")
-      .select(`*, quiz_questions(*, quiz_options(*))`)
-      .eq("lesson_id", lesson.id)
-      .single()
-      .then(({ data }: { data: any }) => {
-        if (data) {
-          const sorted = {
-            ...data,
-            quiz_questions: data.quiz_questions
-              .sort((a: any, b: any) => a.ordem - b.ordem)
-              .map((q: any) => ({
-                ...q,
-                tipo: q.tipo ?? "multiple_choice",
-                quiz_options: q.quiz_options.sort((a: any, b: any) => a.ordem - b.ordem),
-              })),
-          };
-          setQuiz(sorted);
-        }
-        setLoading(false);
-      });
-  }, [lesson.id, lesson.tem_quiz]);
 
   // Timer countdown
   useEffect(() => {
@@ -176,24 +162,34 @@ export function QuizTab({ lesson, quizAttempts, userId }: QuizTabProps) {
     return { nota, aprovado };
   };
 
+  const saveAttempt = async (nota: number, aprovado: boolean) => {
+    setSubmitError(null);
+    setSubmitting(true);
+    try {
+      await submitQuizAttempt(quiz.id, nota, aprovado, answers);
+      setResult({ nota, aprovado });
+      setSubmitted(true);
+    } catch (err: any) {
+      console.error("[Quiz] Erro ao salvar tentativa:", err);
+      setSubmitError(err.message || "Erro ao salvar tentativa. Tente novamente.");
+      // Still show result even if save failed, so user sees their score
+      setResult({ nota, aprovado });
+      setSubmitted(true);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleAutoSubmit = async () => {
     const { nota, aprovado } = calculateResult();
-    setSubmitting(true);
-    await submitQuizAttempt(quiz.id, nota, aprovado, answers);
-    setResult({ nota, aprovado });
-    setSubmitted(true);
-    setSubmitting(false);
+    await saveAttempt(nota, aprovado);
   };
 
   const handleSubmit = async () => {
     if (!canSubmit || submitting) return;
     if (timerRef.current) clearInterval(timerRef.current);
-    setSubmitting(true);
     const { nota, aprovado } = calculateResult();
-    await submitQuizAttempt(quiz.id, nota, aprovado, answers);
-    setResult({ nota, aprovado });
-    setSubmitted(true);
-    setSubmitting(false);
+    await saveAttempt(nota, aprovado);
   };
 
   const handleReset = () => {
@@ -211,6 +207,15 @@ export function QuizTab({ lesson, quizAttempts, userId }: QuizTabProps) {
 
     return (
       <div className="animate-fade-in space-y-5">
+        {submitError && (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600 flex items-center gap-2">
+            <AlertCircle size={16} className="shrink-0" />
+            <div>
+              <p className="font-medium">Erro ao salvar tentativa</p>
+              <p className="text-xs text-red-500 mt-0.5">{submitError}</p>
+            </div>
+          </div>
+        )}
         <div
           className={cn(
             "rounded-xl border p-6 text-center",

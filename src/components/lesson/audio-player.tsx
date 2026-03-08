@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Headphones, Pause, Play, Loader2, Volume2, RotateCcw } from "lucide-react";
+import { Headphones, Pause, Play, Loader2, Volume2, VolumeX, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface AudioPlayerProps {
@@ -16,6 +16,8 @@ export function AudioPlayer({ lessonId, conteudo }: AudioPlayerProps) {
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [speed, setSpeed] = useState(1);
+  const [volume, setVolume] = useState(1);
+  const [muted, setMuted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -103,6 +105,23 @@ export function AudioPlayer({ lessonId, conteudo }: AudioPlayerProps) {
     setProgress(0);
     audioRef.current.play();
     setPlaying(true);
+  }
+
+  function handleVolume(e: React.ChangeEvent<HTMLInputElement>) {
+    const v = parseFloat(e.target.value);
+    setVolume(v);
+    if (audioRef.current) {
+      audioRef.current.volume = v;
+      audioRef.current.muted = false;
+    }
+    setMuted(v === 0);
+  }
+
+  function toggleMute() {
+    if (!audioRef.current) return;
+    const next = !muted;
+    setMuted(next);
+    audioRef.current.muted = next;
   }
 
   function formatTime(s: number) {
@@ -202,7 +221,22 @@ export function AudioPlayer({ lessonId, conteudo }: AudioPlayerProps) {
           {speed}x
         </button>
 
-        <Volume2 size={14} className="text-muted-light shrink-0" />
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button onClick={toggleMute} className="p-1 rounded text-muted hover:text-foreground transition-colors" title={muted ? "Ativar som" : "Silenciar"}>
+            {muted || volume === 0 ? <VolumeX size={14} /> : <Volume2 size={14} />}
+          </button>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={muted ? 0 : volume}
+            onChange={handleVolume}
+            className="w-16 h-1 rounded-full appearance-none bg-surface-3 cursor-pointer
+              [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:w-2.5
+              [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-amber-500"
+          />
+        </div>
       </div>
 
       <div className="flex items-center gap-2">
