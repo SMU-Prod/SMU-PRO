@@ -29,6 +29,7 @@ const schema = z.object({
   descricao_curta: z.string().max(160).optional().nullable(),
   nivel: z.enum(["trainee", "junior", "pleno"]),
   categoria: z.enum(["som", "luz", "producao", "dj", "vj", "roadie", "marketing", "efeitos", "outros"]),
+  categorias: z.array(z.string()).default([]),
   tipo: z.enum(["free", "pago", "projeto_cultural"]),
   preco: z.preprocess((v) => (v === "" || v == null ? undefined : Number(v)), z.number().optional()),
   carga_horaria: z.preprocess((v) => (v === "" || v == null ? undefined : Number(v)), z.number().optional()),
@@ -104,7 +105,7 @@ export function CourseForm({ course }: { course?: Course }) {
           preco: course.preco ?? undefined,
           carga_horaria: course.carga_horaria ?? undefined,
         }
-      : { nivel: "trainee", categoria: "som", tipo: "free", ativo: false, destaque: false, ordem: 0 },
+      : { nivel: "trainee", categoria: "som", categorias: [], tipo: "free", ativo: false, destaque: false, ordem: 0 },
   });
 
   const { register, handleSubmit, setValue, watch, formState: { errors } } = form;
@@ -112,9 +113,25 @@ export function CourseForm({ course }: { course?: Course }) {
   const tipo = watch("tipo");
   const nivel = watch("nivel");
   const categoria = watch("categoria");
+  const categorias = watch("categorias") ?? [];
   const ativo = watch("ativo");
   const destaque = watch("destaque");
   const thumbnail_url = watch("thumbnail_url");
+
+  const allowMultiCategory = nivel === "trainee" || nivel === "junior";
+
+  const toggleCategoria = (val: string) => {
+    if (allowMultiCategory) {
+      const current = categorias as string[];
+      const next = current.includes(val) ? current.filter((c) => c !== val) : [...current, val];
+      setValue("categorias", next);
+      // Keep primary categoria in sync
+      if (next.length > 0) setValue("categoria", next[0] as any);
+    } else {
+      setValue("categoria", val as any);
+      setValue("categorias", [val]);
+    }
+  };
 
   const handleTituloChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     register("titulo").onChange(e);
@@ -125,11 +142,14 @@ export function CourseForm({ course }: { course?: Course }) {
     setLoading(true);
     setError("");
     try {
+      // Ensure categorias includes the primary categoria
+      const cats = data.categorias?.length ? data.categorias : [data.categoria];
+      const payload = { ...data, categorias: cats, categoria: (cats[0] ?? data.categoria) as any };
       if (isEditing) {
-        await adminUpdateCourse(course.id, data);
+        await adminUpdateCourse(course.id, payload);
         router.push(`/admin/cursos/${course.id}?tab=curriculo`);
       } else {
-        const created = await adminCreateCourse(data as any);
+        const created = await adminCreateCourse(payload as any);
         setCreatedCourseId((created as any).id);
         setStep(5);
       }
@@ -202,18 +222,18 @@ export function CourseForm({ course }: { course?: Course }) {
                     className={cn(
                       "flex h-9 w-9 items-center justify-center rounded-full border-2 transition-all text-sm font-bold",
                       done ? "border-amber-500 bg-amber-500 text-white cursor-pointer" :
-                      active ? "border-amber-500 bg-[#141416] text-amber-400" :
-                      "border-zinc-800 bg-[#141416] text-zinc-500"
+                      active ? "border-amber-500 bg-surface text-amber-400" :
+                      "border-border bg-surface text-muted-light"
                     )}
                   >
                     {done ? <Check size={15} /> : sid}
                   </button>
-                  <span className={cn("text-[10px] font-medium whitespace-nowrap", active ? "text-amber-400" : done ? "text-zinc-400" : "text-zinc-500")}>
+                  <span className={cn("text-[10px] font-medium whitespace-nowrap", active ? "text-amber-400" : done ? "text-muted" : "text-muted-light")}>
                     {label}
                   </span>
                 </div>
                 {i < 3 && (
-                  <div className={cn("flex-1 h-0.5 mx-2 mb-4", step > sid ? "bg-amber-500" : "bg-zinc-800")} />
+                  <div className={cn("flex-1 h-0.5 mx-2 mb-4", step > sid ? "bg-amber-500" : "bg-surface-3")} />
                 )}
               </div>
             );
@@ -239,7 +259,7 @@ export function CourseForm({ course }: { course?: Course }) {
               </Field>
               <Field label="Slug (URL) *">
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500">/cursos/</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-light">/cursos/</span>
                   <Input {...register("slug")} className="pl-16" placeholder="fundamentos-audio-ao-vivo" error={errors.slug?.message} />
                 </div>
               </Field>
@@ -252,26 +272,35 @@ export function CourseForm({ course }: { course?: Course }) {
                   {NIVEIS.map((n) => (
                     <button key={n.value} type="button" onClick={() => setValue("nivel", n.value)}
                       className={cn("rounded-xl border-2 p-3 text-left transition-all",
-                        nivel === n.value ? `${n.color} border-current` : "border-zinc-800 bg-[#141416] hover:border-zinc-700"
+                        nivel === n.value ? `${n.color} border-current` : "border-border bg-surface hover:border-border-strong"
                       )}>
                       <Badge variant={n.value as any} className="text-[10px] mb-1.5">{n.label}</Badge>
-                      <p className="text-xs text-zinc-500 leading-tight">{n.desc}</p>
+                      <p className="text-xs text-muted-light leading-tight">{n.desc}</p>
                     </button>
                   ))}
                 </div>
               </Field>
 
-              <Field label="Categoria *">
+              <Field label={allowMultiCategory ? "Categorias * (selecione várias)" : "Categoria *"}>
+                {allowMultiCategory && (
+                  <p className="text-xs text-muted-light mb-2">Cursos {nivel} podem ter múltiplas matérias. Clique para selecionar/deselecionar.</p>
+                )}
                 <div className="grid grid-cols-3 gap-2">
-                  {CATEGORIAS.map(([val, label]) => (
-                    <button key={val} type="button" onClick={() => setValue("categoria", val)}
-                      className={cn("flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-all",
-                        categoria === val ? "border-amber-500 bg-amber-500/10 text-amber-400" : "border-zinc-800 bg-[#141416] text-zinc-300 hover:border-amber-500/20"
-                      )}>
-                      <span>{getCategoryIcon(val)}</span>
-                      <span className="truncate text-xs">{label}</span>
-                    </button>
-                  ))}
+                  {CATEGORIAS.map(([val, label]) => {
+                    const isSelected = allowMultiCategory
+                      ? (categorias as string[]).includes(val)
+                      : categoria === val;
+                    return (
+                      <button key={val} type="button" onClick={() => toggleCategoria(val)}
+                        className={cn("flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-all",
+                          isSelected ? "border-amber-500 bg-amber-500/10 text-amber-400" : "border-border bg-surface text-muted hover:border-amber-500/20"
+                        )}>
+                        <span>{getCategoryIcon(val)}</span>
+                        <span className="truncate text-xs">{label}</span>
+                        {allowMultiCategory && isSelected && <Check size={12} className="ml-auto text-amber-400" />}
+                      </button>
+                    );
+                  })}
                 </div>
               </Field>
 
@@ -280,11 +309,11 @@ export function CourseForm({ course }: { course?: Course }) {
                   {TIPOS.map((t) => (
                     <button key={t.value} type="button" onClick={() => setValue("tipo", t.value)}
                       className={cn("rounded-xl border-2 p-3 text-left transition-all",
-                        tipo === t.value ? "border-amber-500 bg-amber-500/10" : "border-zinc-800 bg-[#141416] hover:border-zinc-700"
+                        tipo === t.value ? "border-amber-500 bg-amber-500/10" : "border-border bg-surface hover:border-border-strong"
                       )}>
                       <span className="text-xl">{t.icon}</span>
-                      <p className="text-sm font-medium text-zinc-100 mt-1">{t.label}</p>
-                      <p className="text-xs text-zinc-500 leading-tight mt-0.5">{t.desc}</p>
+                      <p className="text-sm font-medium text-foreground mt-1">{t.label}</p>
+                      <p className="text-xs text-muted-light leading-tight mt-0.5">{t.desc}</p>
                     </button>
                   ))}
                 </div>
@@ -314,10 +343,10 @@ export function CourseForm({ course }: { course?: Course }) {
             <div className="space-y-5">
               <Field label="Thumbnail do Curso">
                 {thumbnail_url ? (
-                  <div className="rounded-xl overflow-hidden border border-zinc-800 h-40 relative">
+                  <div className="rounded-xl overflow-hidden border border-border h-40 relative">
                     <img src={thumbnail_url} alt="" className="w-full h-full object-cover" />
                     <button type="button" onClick={() => setValue("thumbnail_url", "")}
-                      className="absolute top-2 right-2 h-7 w-7 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70">
+                      className="absolute top-2 right-2 h-7 w-7 flex items-center justify-center rounded-full bg-black/50 text-foreground hover:bg-black/70">
                       <Trash2 size={12} />
                     </button>
                   </div>
@@ -333,7 +362,7 @@ export function CourseForm({ course }: { course?: Course }) {
                       imagePreview
                       onUpload={(url) => setValue("thumbnail_url", url)}
                     />
-                    <p className="text-xs text-zinc-500 mt-1.5">Ou cole uma URL:</p>
+                    <p className="text-xs text-muted-light mt-1.5">Ou cole uma URL:</p>
                     <Input {...register("thumbnail_url")} placeholder="https://..." className="mt-1" />
                   </>
                 )}
@@ -343,7 +372,7 @@ export function CourseForm({ course }: { course?: Course }) {
                 <textarea
                   {...register("descricao")}
                   placeholder="Descreva o conteúdo, o que o aluno vai aprender, pré-requisitos..."
-                  className="w-full min-h-[140px] rounded-lg border border-zinc-800 bg-[#141416] px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-amber-500 resize-none"
+                  className="w-full min-h-[140px] rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground placeholder:text-muted-light focus:outline-none focus:border-amber-500 resize-none"
                 />
               </Field>
 
@@ -353,7 +382,7 @@ export function CourseForm({ course }: { course?: Course }) {
                 </Field>
                 <Field label="Carga Horária (min)">
                   <Input type="number" {...register("carga_horaria")} placeholder="120" />
-                  <p className="text-xs text-zinc-500 mt-1">Aparece no certificado</p>
+                  <p className="text-xs text-muted-light mt-1">Aparece no certificado</p>
                 </Field>
               </div>
             </div>
@@ -383,7 +412,7 @@ export function CourseForm({ course }: { course?: Course }) {
                 activeColor="bg-amber-400" activeBorder="border-amber-400" activeBg="bg-amber-50" />
               <Field label="Ordem de exibição">
                 <Input type="number" {...register("ordem")} placeholder="0" className="w-32" />
-                <p className="text-xs text-zinc-500 mt-1">Número menor = aparece primeiro.</p>
+                <p className="text-xs text-muted-light mt-1">Número menor = aparece primeiro.</p>
               </Field>
             </div>
             <div className="flex justify-between">
@@ -403,8 +432,8 @@ export function CourseForm({ course }: { course?: Course }) {
 
             <CoursePreviewCard watch={watch} />
 
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 space-y-2">
-              <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-3">Checklist</p>
+            <div className="rounded-xl border border-border bg-surface-2 p-4 space-y-2">
+              <p className="text-xs font-semibold text-muted-light uppercase tracking-wide mb-3">Checklist</p>
               {[
                 { label: "Título preenchido", ok: !!watch("titulo") },
                 { label: "Slug definido", ok: !!watch("slug") },
@@ -415,12 +444,12 @@ export function CourseForm({ course }: { course?: Course }) {
               ].map((item) => (
                 <div key={item.label} className="flex items-center gap-2 text-sm">
                   <div className={cn("h-4 w-4 rounded-full flex items-center justify-center shrink-0",
-                    item.ok ? "bg-emerald-500" : item.optional ? "bg-zinc-700" : "bg-amber-400"
+                    item.ok ? "bg-emerald-500" : item.optional ? "bg-surface-3" : "bg-amber-400"
                   )}>
-                    {item.ok && <Check size={10} className="text-white" />}
+                    {item.ok && <Check size={10} className="text-foreground" />}
                   </div>
-                  <span className={item.ok ? "text-zinc-300" : item.optional ? "text-zinc-500" : "text-amber-700"}>
-                    {item.label}{item.optional && <span className="text-zinc-500 ml-1">(opcional)</span>}
+                  <span className={item.ok ? "text-muted" : item.optional ? "text-muted-light" : "text-amber-700"}>
+                    {item.label}{item.optional && <span className="text-muted-light ml-1">(opcional)</span>}
                   </span>
                 </div>
               ))}
@@ -451,7 +480,7 @@ export function CourseForm({ course }: { course?: Course }) {
           {/* Success */}
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 flex items-start gap-4">
             <div className="h-10 w-10 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
-              <Check size={20} className="text-white" />
+              <Check size={20} className="text-foreground" />
             </div>
             <div>
               <p className="font-semibold text-emerald-800">Curso criado com sucesso!</p>
@@ -465,9 +494,9 @@ export function CourseForm({ course }: { course?: Course }) {
           {/* Modules */}
           <div className="space-y-3">
             {modules.map((mod, modIdx) => (
-              <div key={mod.id} className="rounded-xl border border-zinc-800 bg-[#141416] overflow-hidden">
+              <div key={mod.id} className="rounded-xl border border-border bg-surface overflow-hidden">
                 <div
-                  className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-zinc-800 transition-colors select-none group"
+                  className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-surface-3 transition-colors select-none group"
                   onClick={() =>
                     setModules((prev) =>
                       prev.map((m) => (m.id === mod.id ? { ...m, expanded: !m.expanded } : m))
@@ -477,24 +506,24 @@ export function CourseForm({ course }: { course?: Course }) {
                   <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/15 text-xs font-bold text-amber-400 shrink-0">
                     {modIdx + 1}
                   </div>
-                  <p className="flex-1 font-medium text-sm text-zinc-100">{mod.titulo}</p>
-                  <span className="text-xs text-zinc-500">{mod.lessons.length} aula{mod.lessons.length !== 1 ? "s" : ""}</span>
+                  <p className="flex-1 font-medium text-sm text-foreground">{mod.titulo}</p>
+                  <span className="text-xs text-muted-light">{mod.lessons.length} aula{mod.lessons.length !== 1 ? "s" : ""}</span>
                   <button
                     onClick={(e) => { e.stopPropagation(); setModules((p) => p.filter((m) => m.id !== mod.id)); }}
                     className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-500 transition-opacity p-1"
                   >
                     <Trash2 size={13} />
                   </button>
-                  <ChevronDown size={15} className={cn("text-zinc-500 transition-transform", mod.expanded && "rotate-180")} />
+                  <ChevronDown size={15} className={cn("text-muted-light transition-transform", mod.expanded && "rotate-180")} />
                 </div>
 
                 {mod.expanded && (
-                  <div className="border-t border-zinc-800/50">
+                  <div className="border-t border-border/50">
                     {mod.lessons.map((lesson, li) => (
-                      <div key={lesson.id} className="flex items-center gap-3 px-4 py-2.5 border-b border-zinc-800/50 group/l">
-                        <span className="text-xs text-zinc-500 w-4">{li + 1}</span>
+                      <div key={lesson.id} className="flex items-center gap-3 px-4 py-2.5 border-b border-border/50 group/l">
+                        <span className="text-xs text-muted-light w-4">{li + 1}</span>
                         <LessonTypeIconSmall tipo={lesson.tipo} />
-                        <p className="flex-1 text-sm text-zinc-100">{lesson.titulo}</p>
+                        <p className="flex-1 text-sm text-foreground">{lesson.titulo}</p>
                         <button
                           onClick={() =>
                             setModules((prev) =>
@@ -522,7 +551,7 @@ export function CourseForm({ course }: { course?: Course }) {
                 onChange={(e) => setNewModuleName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && addModule()}
                 placeholder="Nome do módulo... (Enter para adicionar)"
-                className="flex-1 h-10 rounded-xl border border-dashed border-zinc-700 bg-[#141416] px-4 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-amber-500 transition-colors"
+                className="flex-1 h-10 rounded-xl border border-dashed border-border-strong bg-surface px-4 text-sm text-foreground placeholder:text-muted-light focus:outline-none focus:border-amber-500 transition-colors"
               />
               <Button type="button" variant="secondary" size="sm" loading={savingStructure} onClick={addModule} disabled={!newModuleName.trim()}>
                 <Plus size={14} /> Módulo
@@ -531,15 +560,15 @@ export function CourseForm({ course }: { course?: Course }) {
           </div>
 
           {modules.length === 0 && (
-            <div className="text-center py-8 rounded-xl border border-dashed border-zinc-800">
-              <Layers size={28} className="text-zinc-700 mx-auto mb-2" />
-              <p className="text-sm text-zinc-500">Digite o nome de um módulo acima e pressione Enter.</p>
-              <p className="text-xs text-zinc-500 mt-1">Ex: "Fundamentos", "Técnicas Avançadas", "Avaliação Final"</p>
+            <div className="text-center py-8 rounded-xl border border-dashed border-border">
+              <Layers size={28} className="text-muted-light mx-auto mb-2" />
+              <p className="text-sm text-muted-light">Digite o nome de um módulo acima e pressione Enter.</p>
+              <p className="text-xs text-muted-light mt-1">Ex: "Fundamentos", "Técnicas Avançadas", "Avaliação Final"</p>
             </div>
           )}
 
-          <div className="flex items-center justify-between pt-2 border-t border-zinc-800/50">
-            <p className="text-sm text-zinc-500">
+          <div className="flex items-center justify-between pt-2 border-t border-border/50">
+            <p className="text-sm text-muted-light">
               {modules.length} módulo{modules.length !== 1 ? "s" : ""} · {modules.reduce((a, m) => a + m.lessons.length, 0)} aulas
             </p>
             <Button onClick={() => router.push(`/admin/cursos/${createdCourseId}?tab=curriculo`)}>
@@ -571,11 +600,11 @@ function AddLessonInline({
     setTitulo("");
   };
   return (
-    <div className="flex items-center gap-2 px-3 py-2 bg-zinc-900">
+    <div className="flex items-center gap-2 px-3 py-2 bg-surface-2">
       <select
         value={tipo}
         onChange={(e) => setTipo(e.target.value)}
-        className="h-7 rounded-lg border border-zinc-800 bg-[#141416] px-2 text-xs text-zinc-300 focus:outline-none"
+        className="h-7 rounded-lg border border-border bg-surface px-2 text-xs text-muted focus:outline-none"
       >
         {LESSON_TYPES.map((t) => (
           <option key={t.value} value={t.value}>{t.label}</option>
@@ -586,7 +615,7 @@ function AddLessonInline({
         onChange={(e) => setTitulo(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && submit()}
         placeholder="Nome da aula... (Enter)"
-        className="flex-1 h-7 rounded-lg border border-zinc-800 bg-[#141416] px-2 text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-amber-500"
+        className="flex-1 h-7 rounded-lg border border-border bg-surface px-2 text-xs text-foreground placeholder:text-muted-light focus:outline-none focus:border-amber-500"
       />
       <button
         onClick={submit}
@@ -619,16 +648,16 @@ function ToggleCard({ active, onToggle, activeIcon, inactiveIcon, title, desc, a
   return (
     <button type="button" onClick={onToggle}
       className={cn("w-full flex items-center gap-4 rounded-xl border-2 p-4 text-left transition-all",
-        active ? `${activeBorder} ${activeBg}` : "border-zinc-800 bg-[#141416]"
+        active ? `${activeBorder} ${activeBg}` : "border-border bg-surface"
       )}>
-      <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center shrink-0", active ? `${activeColor} text-white` : "bg-zinc-800 text-zinc-500")}>
+      <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center shrink-0", active ? `${activeColor} text-foreground` : "bg-surface-3 text-muted-light")}>
         {active ? activeIcon : inactiveIcon}
       </div>
       <div className="flex-1">
-        <p className="font-medium text-zinc-100">{title}</p>
-        <p className="text-sm text-zinc-500">{desc}</p>
+        <p className="font-medium text-foreground">{title}</p>
+        <p className="text-sm text-muted-light">{desc}</p>
       </div>
-      <div className={cn("h-5 w-9 rounded-full transition-colors relative", active ? activeColor : "bg-zinc-700")}>
+      <div className={cn("h-5 w-9 rounded-full transition-colors relative", active ? activeColor : "bg-surface-3")}>
         <div className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform", active ? "translate-x-4" : "translate-x-0.5")} />
       </div>
     </button>
@@ -649,8 +678,8 @@ function CoursePreviewCard({ watch }: { watch: any }) {
   const nivelLabels: Record<string, string> = { trainee: "Trainee", junior: "Junior", pleno: "Pleno" };
   const tipoLabel = tipo === "pago" ? (preco ? `R$ ${preco}` : "Pago") : tipo === "free" ? "Grátis" : "MIT";
   return (
-    <div className="rounded-2xl border border-zinc-800 overflow-hidden shadow-sm">
-      <div className="h-24 bg-gradient-to-br from-zinc-900 to-zinc-800 flex items-center justify-center text-4xl relative overflow-hidden">
+    <div className="rounded-2xl border border-border overflow-hidden shadow-sm">
+      <div className="h-24 bg-gradient-to-br from-surface-2 to-surface-3 flex items-center justify-center text-4xl relative overflow-hidden">
         {thumbnail_url
           ? <img src={thumbnail_url} alt="" className="w-full h-full object-cover absolute inset-0" onError={(e) => (e.currentTarget.style.display = "none")} />
           : <span>{getCategoryIcon(categoria)}</span>}
@@ -660,10 +689,10 @@ function CoursePreviewCard({ watch }: { watch: any }) {
       </div>
       <div className="p-4">
         <div className="flex items-start justify-between gap-2 mb-1">
-          <h3 className="font-semibold text-zinc-100 text-sm">{titulo || "Título do curso"}</h3>
+          <h3 className="font-semibold text-foreground text-sm">{titulo || "Título do curso"}</h3>
           <span className="text-xs font-medium text-amber-400 shrink-0">{tipoLabel}</span>
         </div>
-        <p className="text-xs text-zinc-500">{descricao_curta || "Descrição curta aparecerá aqui..."}</p>
+        <p className="text-xs text-muted-light">{descricao_curta || "Descrição curta aparecerá aqui..."}</p>
       </div>
     </div>
   );
@@ -674,7 +703,22 @@ function CoursePreviewCard({ watch }: { watch: any }) {
 function FlatForm({ form, loading, error, onSubmit, onCancel, handleTituloChange, setValue }: any) {
   const { register, watch, formState: { errors } } = form;
   const tipo = watch("tipo");
+  const nivel = watch("nivel");
+  const categorias = watch("categorias") ?? [];
   const thumbnail_url = watch("thumbnail_url");
+  const allowMultiCat = nivel === "trainee" || nivel === "junior";
+
+  const toggleCat = (val: string) => {
+    if (allowMultiCat) {
+      const current = categorias as string[];
+      const next = current.includes(val) ? current.filter((c: string) => c !== val) : [...current, val];
+      setValue("categorias", next);
+      if (next.length > 0) setValue("categoria", next[0]);
+    } else {
+      setValue("categoria", val);
+      setValue("categorias", [val]);
+    }
+  };
   return (
     <form onSubmit={onSubmit} className="space-y-6 max-w-2xl">
       {error && (
@@ -687,28 +731,41 @@ function FlatForm({ form, loading, error, onSubmit, onCancel, handleTituloChange
         <Field label="Slug (URL) *"><Input {...register("slug")} placeholder="fundamentos-audio-ao-vivo" error={errors.slug?.message} /></Field>
         <Field label="Descrição Curta"><Input {...register("descricao_curta")} placeholder="Até 160 caracteres" /></Field>
         <Field label="Descrição Completa">
-          <textarea {...register("descricao")} placeholder="Descreva o conteúdo do curso..." className="w-full min-h-[120px] rounded-lg border border-zinc-800 bg-[#141416] px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-amber-500 resize-none" />
+          <textarea {...register("descricao")} placeholder="Descreva o conteúdo do curso..." className="w-full min-h-[120px] rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground placeholder:text-muted-light focus:outline-none focus:border-amber-500 resize-none" />
         </Field>
       </Section>
 
       <Section title="Classificação">
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           <Field label="Nível *"><select {...register("nivel")} className={selectCls}><option value="trainee">Trainee</option><option value="junior">Junior</option><option value="pleno">Pleno</option></select></Field>
-          <Field label="Categoria *">
-            <select {...register("categoria")} className={selectCls}>
-              {CATEGORIAS.map(([val, label]) => (<option key={val} value={val}>{getCategoryIcon(val)} {label}</option>))}
-            </select>
-          </Field>
           <Field label="Tipo *"><select {...register("tipo")} className={selectCls}><option value="free">Gratuito</option><option value="pago">Pago</option><option value="projeto_cultural">MIT</option></select></Field>
         </div>
+        <Field label={allowMultiCat ? "Categorias * (selecione várias)" : "Categoria *"}>
+          {allowMultiCat && <p className="text-xs text-muted-light mb-2">Cursos {nivel} podem ter múltiplas matérias.</p>}
+          <div className="grid grid-cols-3 gap-2">
+            {CATEGORIAS.map(([val, label]) => {
+              const isSel = allowMultiCat ? (categorias as string[]).includes(val) : watch("categoria") === val;
+              return (
+                <button key={val} type="button" onClick={() => toggleCat(val)}
+                  className={cn("flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-all",
+                    isSel ? "border-amber-500 bg-amber-500/10 text-amber-400" : "border-border bg-surface text-muted hover:border-amber-500/20"
+                  )}>
+                  <span>{getCategoryIcon(val)}</span>
+                  <span className="truncate text-xs">{label}</span>
+                  {allowMultiCat && isSel && <Check size={12} className="ml-auto text-amber-400" />}
+                </button>
+              );
+            })}
+          </div>
+        </Field>
         {tipo === "pago" && <Field label="Preço (R$)"><Input type="number" step="0.01" {...register("preco")} placeholder="97.00" className="w-40" /></Field>}
       </Section>
 
       <Section title="Thumbnail">
         {thumbnail_url ? (
-          <div className="rounded-xl overflow-hidden border border-zinc-800 h-36 relative">
+          <div className="rounded-xl overflow-hidden border border-border h-36 relative">
             <img src={thumbnail_url} alt="" className="w-full h-full object-cover" />
-            <button type="button" onClick={() => setValue("thumbnail_url", "")} className="absolute top-2 right-2 h-7 w-7 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"><Trash2 size={12} /></button>
+            <button type="button" onClick={() => setValue("thumbnail_url", "")} className="absolute top-2 right-2 h-7 w-7 flex items-center justify-center rounded-full bg-black/50 text-foreground hover:bg-black/70"><Trash2 size={12} /></button>
           </div>
         ) : (
           <>
@@ -725,8 +782,8 @@ function FlatForm({ form, loading, error, onSubmit, onCancel, handleTituloChange
 
       <Section title="Configurações">
         <div className="flex flex-wrap gap-4">
-          <label className="flex items-center gap-2 cursor-pointer select-none"><input type="checkbox" {...register("ativo")} className="h-4 w-4 rounded border-zinc-700 accent-amber-500" /><span className="text-sm text-zinc-300">Publicado</span></label>
-          <label className="flex items-center gap-2 cursor-pointer select-none"><input type="checkbox" {...register("destaque")} className="h-4 w-4 rounded border-zinc-700 accent-amber-500" /><span className="text-sm text-zinc-300">Em destaque</span></label>
+          <label className="flex items-center gap-2 cursor-pointer select-none"><input type="checkbox" {...register("ativo")} className="h-4 w-4 rounded border-border-strong accent-amber-500" /><span className="text-sm text-muted">Publicado</span></label>
+          <label className="flex items-center gap-2 cursor-pointer select-none"><input type="checkbox" {...register("destaque")} className="h-4 w-4 rounded border-border-strong accent-amber-500" /><span className="text-sm text-muted">Em destaque</span></label>
         </div>
         <Field label="Ordem"><Input type="number" {...register("ordem")} placeholder="0" className="w-24" /></Field>
       </Section>
@@ -741,13 +798,13 @@ function FlatForm({ form, loading, error, onSubmit, onCancel, handleTituloChange
 
 // ── Helpers ───────────────────────────────────────────────────
 
-const selectCls = "w-full h-10 rounded-lg border border-zinc-800 bg-[#141416] px-3 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500";
+const selectCls = "w-full h-10 rounded-lg border border-border bg-surface px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-amber-500";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-zinc-800 bg-[#141416] overflow-hidden">
-      <div className="px-4 py-3 border-b border-zinc-800/50 bg-zinc-900">
-        <p className="text-sm font-semibold text-zinc-100">{title}</p>
+    <div className="rounded-xl border border-border bg-surface overflow-hidden">
+      <div className="px-4 py-3 border-b border-border/50 bg-surface-2">
+        <p className="text-sm font-semibold text-foreground">{title}</p>
       </div>
       <div className="p-4 space-y-4">{children}</div>
     </div>
@@ -757,7 +814,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-sm text-zinc-400 mb-1.5">{label}</label>
+      <label className="block text-sm text-muted mb-1.5">{label}</label>
       {children}
     </div>
   );
@@ -766,8 +823,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function StepHeader({ title, desc }: { title: string; desc: string }) {
   return (
     <div>
-      <h2 className="text-lg font-semibold text-zinc-100 mb-1">{title}</h2>
-      <p className="text-sm text-zinc-500">{desc}</p>
+      <h2 className="text-lg font-semibold text-foreground mb-1">{title}</h2>
+      <p className="text-sm text-muted-light">{desc}</p>
     </div>
   );
 }

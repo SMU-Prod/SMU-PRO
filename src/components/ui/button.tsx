@@ -4,18 +4,18 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0B] disabled:pointer-events-none disabled:opacity-50 cursor-pointer",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 cursor-pointer",
   {
     variants: {
       variant: {
         default:
           "bg-amber-500 text-black hover:bg-amber-400 active:scale-[0.98] shadow-md hover:shadow-[0_0_20px_rgba(245,158,11,0.3)]",
         secondary:
-          "bg-zinc-800 text-zinc-200 border border-zinc-700 hover:bg-zinc-700 hover:border-zinc-600",
+          "bg-surface-3 text-foreground border border-border-strong hover:bg-surface-3 hover:border-border-strong",
         ghost:
-          "text-zinc-400 hover:text-white hover:bg-zinc-800",
+          "text-muted hover:text-foreground hover:bg-hover",
         outline:
-          "border border-zinc-700 text-zinc-300 hover:border-amber-500 hover:text-amber-400",
+          "border border-border-strong text-muted hover:border-amber-500 hover:text-amber-400",
         destructive:
           "bg-red-950 border border-red-800 text-red-400 hover:bg-red-900",
         success:

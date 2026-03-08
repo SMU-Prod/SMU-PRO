@@ -115,22 +115,22 @@ export default async function AdminDashboardPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-zinc-800/50 bg-zinc-900">
-                        <th className="px-5 pb-3 pt-3 text-left text-xs text-zinc-500 font-medium">Curso</th>
-                        <th className="px-5 pb-3 pt-3 text-left text-xs text-zinc-500 font-medium">Nível</th>
-                        <th className="px-5 pb-3 pt-3 text-right text-xs text-zinc-500 font-medium">Alunos</th>
-                        <th className="px-5 pb-3 pt-3 text-right text-xs text-zinc-500 font-medium">Cert.</th>
-                        <th className="px-5 pb-3 pt-3 text-right text-xs text-zinc-500 font-medium">Progresso</th>
-                        <th className="px-5 pb-3 pt-3 text-center text-xs text-zinc-500 font-medium">Status</th>
+                      <tr className="border-b border-border/50 bg-surface-2">
+                        <th className="px-5 pb-3 pt-3 text-left text-xs text-muted-light font-medium">Curso</th>
+                        <th className="px-5 pb-3 pt-3 text-left text-xs text-muted-light font-medium">Nível</th>
+                        <th className="px-5 pb-3 pt-3 text-right text-xs text-muted-light font-medium">Alunos</th>
+                        <th className="px-5 pb-3 pt-3 text-right text-xs text-muted-light font-medium">Cert.</th>
+                        <th className="px-5 pb-3 pt-3 text-right text-xs text-muted-light font-medium">Progresso</th>
+                        <th className="px-5 pb-3 pt-3 text-center text-xs text-muted-light font-medium">Status</th>
                       </tr>
                     </thead>
                     <tbody>
                       {(courses ?? []).slice(0, 8).map((c: any) => (
-                        <tr key={c.id} className="border-b border-zinc-800/50 hover:bg-zinc-800 transition-colors">
+                        <tr key={c.id} className="border-b border-border/50 hover:bg-hover transition-colors">
                           <td className="px-5 py-3">
                             <div className="flex items-center gap-2">
                               <span className="text-base">{getCategoryIcon(c.categoria)}</span>
-                              <span className="text-zinc-100 font-medium truncate max-w-[160px]">{c.titulo}</span>
+                              <span className="text-foreground font-medium truncate max-w-[160px]">{c.titulo}</span>
                             </div>
                           </td>
                           <td className="px-5 py-3">
@@ -138,9 +138,9 @@ export default async function AdminDashboardPage() {
                               {getLevelLabel(c.nivel)}
                             </Badge>
                           </td>
-                          <td className="px-5 py-3 text-right text-zinc-400">{c.total_alunos}</td>
-                          <td className="px-5 py-3 text-right text-zinc-400">{c.total_certificados}</td>
-                          <td className="px-5 py-3 text-right text-zinc-400">
+                          <td className="px-5 py-3 text-right text-muted">{c.total_alunos}</td>
+                          <td className="px-5 py-3 text-right text-muted">{c.total_certificados}</td>
+                          <td className="px-5 py-3 text-right text-muted">
                             {c.progresso_medio ? `${c.progresso_medio}%` : "—"}
                           </td>
                           <td className="px-5 py-3 text-center">
@@ -168,18 +168,18 @@ export default async function AdminDashboardPage() {
                   {(recentActivity ?? []).map((log: any) => (
                     <div
                       key={log.id}
-                      className="flex items-start gap-3 px-5 py-3 border-b border-zinc-800/50 last:border-0"
+                      className="flex items-start gap-3 px-5 py-3 border-b border-border/50 last:border-0"
                     >
                       <div className={`h-7 w-7 rounded-full flex items-center justify-center shrink-0 text-xs ${getActivityColor(log.tipo)}`}>
                         {getActivityEmoji(log.tipo)}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs text-zinc-100 truncate">
+                        <p className="text-xs text-foreground truncate">
                           {log.users?.nome ?? "Sistema"}
                         </p>
-                        <p className="text-xs text-zinc-500 truncate">{log.descricao}</p>
+                        <p className="text-xs text-muted-light truncate">{log.descricao}</p>
                       </div>
-                      <span className="text-[10px] text-zinc-500 shrink-0">
+                      <span className="text-[10px] text-muted-light shrink-0">
                         {timeAgo(log.created_at)}
                       </span>
                     </div>
@@ -202,24 +202,24 @@ export default async function AdminDashboardPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-zinc-800/50 bg-zinc-900">
+                  <tr className="border-b border-border/50 bg-surface-2">
                     {["Aluno", "Email", "Role", "MIT", "Cadastro"].map((h) => (
-                      <th key={h} className="px-5 pb-3 pt-3 text-left text-xs text-zinc-500 font-medium">{h}</th>
+                      <th key={h} className="px-5 pb-3 pt-3 text-left text-xs text-muted-light font-medium">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {(recentUsers ?? []).map((u: any) => (
-                    <tr key={u.id} className="border-b border-zinc-800/50 hover:bg-zinc-800 transition-colors">
+                    <tr key={u.id} className="border-b border-border/50 hover:bg-hover transition-colors">
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-2">
                           <div className="h-7 w-7 rounded-full bg-gradient-to-br from-amber-500 to-amber-400 flex items-center justify-center text-xs text-white font-bold shrink-0">
                             {u.nome?.[0]?.toUpperCase()}
                           </div>
-                          <span className="text-zinc-100">{u.nome}</span>
+                          <span className="text-foreground">{u.nome}</span>
                         </div>
                       </td>
-                      <td className="px-5 py-3 text-zinc-500">{u.email}</td>
+                      <td className="px-5 py-3 text-muted-light">{u.email}</td>
                       <td className="px-5 py-3">
                         <Badge variant={u.role as any} className="text-[10px]">
                           {getLevelLabel(u.role)}
@@ -229,10 +229,10 @@ export default async function AdminDashboardPage() {
                         {u.projeto_cultural ? (
                           <Badge variant="mit" className="text-[10px]">MIT ✓</Badge>
                         ) : (
-                          <span className="text-zinc-500">—</span>
+                          <span className="text-muted-light">—</span>
                         )}
                       </td>
-                      <td className="px-5 py-3 text-zinc-500 text-xs">
+                      <td className="px-5 py-3 text-muted-light text-xs">
                         {new Date(u.created_at).toLocaleDateString("pt-BR")}
                       </td>
                     </tr>
@@ -261,10 +261,10 @@ function KpiCard({ icon, label, value, sub, bg, trend }: {
         <div className={`inline-flex h-10 w-10 items-center justify-center rounded-lg ${bg} mb-3`}>
           {icon}
         </div>
-        <p className="text-2xl font-bold text-zinc-100">{value}</p>
-        <p className="text-xs text-zinc-500 mt-0.5">{label}</p>
+        <p className="text-2xl font-bold text-foreground">{value}</p>
+        <p className="text-xs text-muted-light mt-0.5">{label}</p>
         {sub && (
-          <p className={`text-xs mt-1 ${trend === "up" ? "text-emerald-400" : "text-zinc-500"}`}>
+          <p className={`text-xs mt-1 ${trend === "up" ? "text-emerald-400" : "text-muted-light"}`}>
             {trend === "up" ? "↑ " : ""}{sub}
           </p>
         )}
@@ -282,7 +282,7 @@ function getActivityColor(tipo: string) {
     payment: "bg-emerald-500/15 text-emerald-400",
     role_change: "bg-red-500/15 text-red-400",
   };
-  return map[tipo] ?? "bg-zinc-800 text-zinc-500";
+  return map[tipo] ?? "bg-surface-3 text-muted-light";
 }
 
 function getActivityEmoji(tipo: string) {

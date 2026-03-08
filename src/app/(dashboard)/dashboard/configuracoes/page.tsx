@@ -22,14 +22,14 @@ export default async function ConfiguracoesPage() {
 
       <div className="p-6 max-w-2xl space-y-6">
         {/* Account info summary */}
-        <div className="rounded-2xl bg-[#141416] border border-zinc-800 p-5">
+        <div className="rounded-2xl bg-surface border border-border p-5">
           <div className="flex items-center gap-4">
             <div className="h-12 w-12 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
               <UserCircle size={24} className="text-amber-400" />
             </div>
             <div className="flex-1">
-              <p className="font-semibold text-zinc-100">{user.nome}</p>
-              <p className="text-sm text-zinc-500">{user.email}</p>
+              <p className="font-semibold text-foreground">{user.nome}</p>
+              <p className="text-sm text-muted-light">{user.email}</p>
             </div>
             <div className="flex items-center gap-2">
               <Badge variant={user.role as any}>{getLevelLabel(user.role)}</Badge>
@@ -41,21 +41,21 @@ export default async function ConfiguracoesPage() {
         {/* Seção: Conta */}
         <Section title="Conta" icon={<UserCircle size={16} className="text-amber-400" />}>
           <SettingItem
-            icon={<Mail size={16} className="text-zinc-500" />}
+            icon={<Mail size={16} className="text-muted-light" />}
             label="E-mail"
             description={user.email}
             action="Gerenciado pelo Clerk"
             disabled
           />
           <SettingItem
-            icon={<Lock size={16} className="text-zinc-500" />}
+            icon={<Lock size={16} className="text-muted-light" />}
             label="Senha"
             description="Altere sua senha de acesso"
             action="Alterar"
             href="https://accounts.clerk.dev/user/security"
           />
           <SettingItem
-            icon={<Smartphone size={16} className="text-zinc-500" />}
+            icon={<Smartphone size={16} className="text-muted-light" />}
             label="Autenticação em dois fatores"
             description="Adicione uma camada extra de segurança"
             action="Configurar"
@@ -156,12 +156,12 @@ function Section({ title, icon, children }: {
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl bg-[#141416] border border-zinc-800 overflow-hidden">
-      <div className="px-5 py-4 border-b border-zinc-800/50 flex items-center gap-2">
+    <div className="rounded-2xl bg-surface border border-border overflow-hidden">
+      <div className="px-5 py-4 border-b border-border/50 flex items-center gap-2">
         {icon}
-        <h3 className="font-semibold text-zinc-100 text-sm">{title}</h3>
+        <h3 className="font-semibold text-foreground text-sm">{title}</h3>
       </div>
-      <div className="divide-y divide-zinc-800/50">
+      <div className="divide-y divide-border/50">
         {children}
       </div>
     </div>
@@ -180,11 +180,11 @@ function SettingItem({ icon, label, description, action, href, disabled }: {
     <div className="flex items-center gap-4 px-5 py-4">
       <div className="shrink-0">{icon}</div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-zinc-100">{label}</p>
-        <p className="text-xs text-zinc-500 mt-0.5">{description}</p>
+        <p className="text-sm font-medium text-foreground">{label}</p>
+        <p className="text-xs text-muted-light mt-0.5">{description}</p>
       </div>
       {disabled ? (
-        <span className="text-xs text-zinc-500">{action}</span>
+        <span className="text-xs text-muted-light">{action}</span>
       ) : href ? (
         <a
           href={href}
@@ -208,8 +208,8 @@ function SettingItem({ icon, label, description, action, href, disabled }: {
 function SettingRow({ label, description }: { label: string; description: string }) {
   return (
     <div className="flex items-center justify-between px-5 py-4">
-      <p className="text-sm font-medium text-zinc-100">{label}</p>
-      <p className="text-sm text-zinc-500">{description}</p>
+      <p className="text-sm font-medium text-foreground">{label}</p>
+      <p className="text-sm text-muted-light">{description}</p>
     </div>
   );
 }
@@ -222,14 +222,14 @@ function ToggleItem({ label, description, defaultEnabled }: {
   return (
     <div className="flex items-center gap-4 px-5 py-4">
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-zinc-100">{label}</p>
-        <p className="text-xs text-zinc-500 mt-0.5">{description}</p>
+        <p className="text-sm font-medium text-foreground">{label}</p>
+        <p className="text-xs text-muted-light mt-0.5">{description}</p>
       </div>
       <div
         className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 transition-colors cursor-pointer ${
           defaultEnabled
             ? "bg-amber-500 border-amber-500"
-            : "bg-zinc-700 border-zinc-700"
+            : "bg-surface-3 border-border-strong"
         }`}
       >
         <span

@@ -89,14 +89,14 @@ export default async function DashboardPage() {
 
         {/* MIT Banner */}
         {user?.projeto_cultural && (
-          <div className="relative overflow-hidden rounded-xl border border-amber-200 bg-gradient-to-r from-amber-500/5 to-zinc-900 p-5">
+          <div className="relative overflow-hidden rounded-xl border border-amber-200 bg-gradient-to-r from-amber-500/5 to-surface-2 p-5">
             <div className="flex items-center gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100 text-2xl">
                 🏆
               </div>
               <div>
                 <p className="font-semibold text-amber-700">Aluno Projeto Cultural MIT</p>
-                <p className="text-sm text-zinc-500">
+                <p className="text-sm text-muted-light">
                   Você tem acesso gratuito e ilimitado a todos os cursos da plataforma.
                 </p>
               </div>
@@ -109,7 +109,7 @@ export default async function DashboardPage() {
         {inProgress.length > 0 && (
           <section>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-zinc-100">Continuar Estudando</h2>
+              <h2 className="font-semibold text-foreground">Continuar Estudando</h2>
               <Link href="/dashboard/cursos">
                 <Button variant="ghost" size="sm">
                   Ver todos <ChevronRight size={14} />
@@ -135,7 +135,7 @@ export default async function DashboardPage() {
         {certificates.length > 0 && (
           <section>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-zinc-100">Certificados Recentes</h2>
+              <h2 className="font-semibold text-foreground">Certificados Recentes</h2>
               <Link href="/dashboard/certificados">
                 <Button variant="ghost" size="sm">
                   Ver todos <ChevronRight size={14} />
@@ -151,8 +151,8 @@ export default async function DashboardPage() {
                       <div className="flex items-start gap-3">
                         <div className="text-2xl">{getCategoryIcon(course?.categoria)}</div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-zinc-100 truncate">{course?.titulo}</p>
-                          <p className="text-xs text-zinc-500 mt-0.5">
+                          <p className="text-sm font-medium text-foreground truncate">{course?.titulo}</p>
+                          <p className="text-xs text-muted-light mt-0.5">
                             {new Date(cert.emitido_em).toLocaleDateString("pt-BR")}
                           </p>
                         </div>
@@ -170,8 +170,8 @@ export default async function DashboardPage() {
         {enrollments.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <div className="text-6xl mb-4">🎵</div>
-            <h3 className="text-xl font-semibold text-zinc-100 mb-2">Comece sua jornada</h3>
-            <p className="text-zinc-500 mb-6 max-w-md">
+            <h3 className="text-xl font-semibold text-foreground mb-2">Comece sua jornada</h3>
+            <p className="text-muted-light mb-6 max-w-md">
               Explore nosso catálogo de cursos e inicie sua formação profissional no mercado de eventos.
             </p>
             <Link href="/cursos">
@@ -199,8 +199,8 @@ function StatCard({ icon, label, value, bg }: {
         <div className={`inline-flex h-10 w-10 items-center justify-center rounded-lg ${bg} mb-3`}>
           {icon}
         </div>
-        <p className="text-2xl font-bold text-zinc-100">{value}</p>
-        <p className="text-xs text-zinc-500 mt-0.5">{label}</p>
+        <p className="text-2xl font-bold text-foreground">{value}</p>
+        <p className="text-xs text-muted-light mt-0.5">{label}</p>
       </CardContent>
     </Card>
   );
@@ -211,7 +211,7 @@ function CourseCard({ course, progress }: { course: any; progress: number }) {
     <Link href={`/dashboard/cursos/${course.slug}`}>
       <Card className="overflow-hidden hover:border-amber-500/20 hover:shadow-md transition-all group cursor-pointer">
         {/* Thumbnail */}
-        <div className="relative h-36 bg-gradient-to-br from-zinc-800 to-zinc-700 overflow-hidden">
+        <div className="relative h-36 bg-gradient-to-br from-surface-3 to-surface-3 overflow-hidden">
           {course.thumbnail_url ? (
             <img
               src={course.thumbnail_url}
@@ -234,9 +234,9 @@ function CourseCard({ course, progress }: { course: any; progress: number }) {
           </div>
         </div>
         <CardContent className="p-4">
-          <h3 className="font-medium text-sm text-zinc-100 line-clamp-1">{course.titulo}</h3>
+          <h3 className="font-medium text-sm text-foreground line-clamp-1">{course.titulo}</h3>
           <div className="mt-3 space-y-1">
-            <div className="flex items-center justify-between text-xs text-zinc-500">
+            <div className="flex items-center justify-between text-xs text-muted-light">
               <span>{progress}% concluído</span>
               <span>{formatMinutes(course.carga_horaria ?? 0)}</span>
             </div>

@@ -30,8 +30,8 @@ export type UserUpdate = Partial<Omit<User, "id" | "created_at">>;
 export type Course = {
   id: string; titulo: string; slug: string;
   descricao: string | null; descricao_curta: string | null;
-  nivel: CourseLevel; categoria: CourseCategory; tipo: CourseType;
-  preco: number | null; carga_horaria: number | null;
+  nivel: CourseLevel; categoria: CourseCategory; categorias: string[];
+  tipo: CourseType; preco: number | null; carga_horaria: number | null;
   thumbnail_url: string | null; trailer_youtube_id: string | null;
   ativo: boolean; destaque: boolean; ordem: number;
   total_aulas: number; total_alunos: number; avaliacao_media: number;
@@ -40,7 +40,7 @@ export type Course = {
 export type CourseInsert = {
   titulo: string; slug: string; nivel: CourseLevel; categoria: CourseCategory; tipo: CourseType;
   descricao?: string | null; descricao_curta?: string | null;
-  preco?: number | null; carga_horaria?: number | null;
+  categorias?: string[]; preco?: number | null; carga_horaria?: number | null;
   thumbnail_url?: string | null; trailer_youtube_id?: string | null;
   ativo?: boolean; destaque?: boolean; ordem?: number; criado_por?: string | null;
 };

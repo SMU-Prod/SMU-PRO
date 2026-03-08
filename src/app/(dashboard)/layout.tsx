@@ -16,7 +16,7 @@ export default async function DashboardLayout({
 
   return (
     <SidebarProvider>
-      <div className="flex h-screen bg-[#0A0A0B]">
+      <div className="flex h-screen bg-background">
         <Sidebar role={user?.role ?? "trainee"} />
         <main className="flex-1 lg:ml-64 overflow-y-auto min-w-0">
           {children}

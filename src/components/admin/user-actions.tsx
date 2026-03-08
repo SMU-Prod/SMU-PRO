@@ -62,10 +62,10 @@ export function UserActions({ user, courses = [] }: UserActionsProps) {
           {enrollOpen && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setEnrollOpen(false)} />
-              <div className="absolute right-0 top-8 z-50 w-64 rounded-xl border border-zinc-800 bg-[#141416] shadow-xl p-2 space-y-0.5">
+              <div className="absolute right-0 top-8 z-50 w-64 rounded-xl border border-border bg-surface shadow-xl p-2 space-y-0.5">
                 <div className="flex items-center justify-between px-2 py-1.5 mb-1">
-                  <p className="text-xs font-semibold text-zinc-300">Matricular em curso</p>
-                  <button onClick={() => setEnrollOpen(false)} className="text-zinc-500 hover:text-zinc-400">
+                  <p className="text-xs font-semibold text-muted">Matricular em curso</p>
+                  <button onClick={() => setEnrollOpen(false)} className="text-muted-light hover:text-muted">
                     <X size={12} />
                   </button>
                 </div>
@@ -74,16 +74,16 @@ export function UserActions({ user, courses = [] }: UserActionsProps) {
                     key={c.id}
                     onClick={() => handleEnroll(c.id)}
                     disabled={enrolling === c.id}
-                    className="w-full text-left px-2 py-2 rounded-lg hover:bg-zinc-800 transition-colors flex items-center gap-2 text-xs"
+                    className="w-full text-left px-2 py-2 rounded-lg hover:bg-hover transition-colors flex items-center gap-2 text-xs"
                   >
                     {enrolling === c.id ? (
                       <span className="h-4 w-4 rounded-full border-2 border-amber-500 border-t-transparent animate-spin shrink-0" />
                     ) : (
-                      <span className="h-4 w-4 flex items-center justify-center shrink-0 text-zinc-500">
+                      <span className="h-4 w-4 flex items-center justify-center shrink-0 text-muted-light">
                         <BookPlus size={11} />
                       </span>
                     )}
-                    <span className="text-zinc-300 truncate">{c.titulo}</span>
+                    <span className="text-muted truncate">{c.titulo}</span>
                   </button>
                 ))}
               </div>
@@ -101,17 +101,17 @@ export function UserActions({ user, courses = [] }: UserActionsProps) {
         </DropdownMenu.Trigger>
         <DropdownMenu.Portal>
           <DropdownMenu.Content
-            className="z-50 min-w-[180px] rounded-xl border border-zinc-800 bg-[#141416] p-1.5 shadow-xl animate-fade-in"
+            className="z-50 min-w-[180px] rounded-xl border border-border bg-surface p-1.5 shadow-xl animate-fade-in"
             sideOffset={4}
             align="end"
           >
-            <DropdownMenu.Label className="px-3 py-1.5 text-[10px] text-zinc-500 uppercase tracking-widest font-semibold">
+            <DropdownMenu.Label className="px-3 py-1.5 text-[10px] text-muted-light uppercase tracking-widest font-semibold">
               Alterar Role
             </DropdownMenu.Label>
             {roles.map((r) => (
               <DropdownMenu.Item
                 key={r.value}
-                className="flex items-center justify-between gap-2 px-3 py-2 text-xs text-zinc-300 cursor-pointer rounded-lg hover:bg-amber-500/10 hover:text-amber-400 outline-none transition-colors"
+                className="flex items-center justify-between gap-2 px-3 py-2 text-xs text-muted cursor-pointer rounded-lg hover:bg-amber-500/10 hover:text-amber-400 outline-none transition-colors"
                 onClick={() => handleRoleChange(r.value)}
               >
                 <span className={user.role === r.value ? "text-amber-400 font-semibold" : ""}>
@@ -121,7 +121,7 @@ export function UserActions({ user, courses = [] }: UserActionsProps) {
               </DropdownMenu.Item>
             ))}
 
-            <DropdownMenu.Separator className="my-1.5 h-px bg-zinc-800" />
+            <DropdownMenu.Separator className="my-1.5 h-px bg-surface-3" />
 
             <DropdownMenu.Item
               className="flex items-center gap-2 px-3 py-2 text-xs cursor-pointer rounded-lg hover:bg-amber-50 outline-none transition-colors text-amber-600"

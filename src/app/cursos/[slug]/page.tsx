@@ -71,42 +71,44 @@ export default async function CourseDetailPage({ params }: Props) {
   const isFree = course.tipo === "free";
 
   return (
-    <div className="min-h-screen bg-zinc-900 text-zinc-100">
+    <div className="min-h-screen bg-surface-2 text-foreground">
       {/* Nav */}
-      <nav className="sticky top-0 z-50 border-b border-zinc-800 bg-[#141416]/90 backdrop-blur-md">
+      <nav className="sticky top-0 z-50 border-b border-border bg-surface/90 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-          <Link href="/cursos" className="flex items-center gap-2 text-zinc-500 hover:text-zinc-100 transition-colors text-sm">
+          <Link href="/cursos" className="flex items-center gap-2 text-muted-light hover:text-foreground transition-colors text-sm">
             <ArrowLeft size={16} />
             Voltar aos cursos
           </Link>
           <Link href="/" className="text-xl font-black tracking-tight">
             <span className="gradient-text">SMU</span>
-            <span className="text-zinc-500 text-sm font-normal ml-1">PRO</span>
+            <span className="text-muted-light text-sm font-normal ml-1">PRO</span>
           </Link>
           <div className="w-32" />
         </div>
       </nav>
 
       {/* Hero do curso */}
-      <div className="relative border-b border-zinc-800 bg-gradient-to-b from-zinc-900 to-[#141416]">
+      <div className="relative border-b border-border bg-gradient-to-b from-surface-2 to-surface">
         <div className="mx-auto max-w-7xl px-6 py-16 grid lg:grid-cols-3 gap-12">
           {/* Info principal */}
           <div className="lg:col-span-2">
             <div className="flex items-center gap-3 mb-4 flex-wrap">
               <span className="text-3xl">{getCategoryIcon(course.categoria)}</span>
               <Badge variant={course.nivel as any}>{getLevelLabel(course.nivel)}</Badge>
-              <Badge variant="secondary">{getCategoryLabel(course.categoria)}</Badge>
+              {(course.categorias?.length ? course.categorias : [course.categoria]).map((cat: string) => (
+                <Badge key={cat} variant="secondary">{getCategoryLabel(cat)}</Badge>
+              ))}
               {isFree && <Badge variant="free">Grátis</Badge>}
               {course.destaque && <Badge variant="warning">Em destaque</Badge>}
             </div>
 
-            <h1 className="text-4xl md:text-5xl font-black text-zinc-100 leading-tight mb-4">{course.titulo}</h1>
+            <h1 className="text-4xl md:text-5xl font-black text-foreground leading-tight mb-4">{course.titulo}</h1>
 
             {course.descricao_curta && (
-              <p className="text-lg text-zinc-400 mb-6 leading-relaxed">{course.descricao_curta}</p>
+              <p className="text-lg text-muted mb-6 leading-relaxed">{course.descricao_curta}</p>
             )}
 
-            <div className="flex flex-wrap gap-6 text-sm text-zinc-500">
+            <div className="flex flex-wrap gap-6 text-sm text-muted-light">
               <span className="flex items-center gap-1.5">
                 <BookOpen size={15} className="text-amber-400" />
                 {totalLessons} aulas
@@ -130,7 +132,7 @@ export default async function CourseDetailPage({ params }: Props) {
 
           {/* Card de compra */}
           <div className="lg:col-span-1">
-            <div className="rounded-2xl bg-[#141416] border border-zinc-800 shadow-sm p-6 sticky top-24">
+            <div className="rounded-2xl bg-surface border border-border shadow-sm p-6 sticky top-24">
               {/* Preview / thumbnail */}
               {course.trailer_youtube_id ? (
                 <div className="relative aspect-video rounded-xl overflow-hidden mb-5 bg-black">
@@ -147,8 +149,18 @@ export default async function CourseDetailPage({ params }: Props) {
                     </div>
                   </div>
                 </div>
+              ) : course.thumbnail_url ? (
+                <div className="relative aspect-video rounded-xl overflow-hidden mb-5">
+                  <Image
+                    src={course.thumbnail_url}
+                    alt={course.titulo}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, 400px"
+                  />
+                </div>
               ) : (
-                <div className="aspect-video rounded-xl bg-gradient-to-br from-zinc-900 to-zinc-800 mb-5 flex items-center justify-center text-6xl">
+                <div className="aspect-video rounded-xl bg-gradient-to-br from-surface-2 to-surface-3 mb-5 flex items-center justify-center text-6xl">
                   {getCategoryIcon(course.categoria)}
                 </div>
               )}
@@ -158,7 +170,7 @@ export default async function CourseDetailPage({ params }: Props) {
                 {isFree ? (
                   <div className="text-3xl font-black text-emerald-600">Grátis</div>
                 ) : (
-                  <div className="text-3xl font-black text-zinc-100">{formatCurrency(course.preco ?? 0)}</div>
+                  <div className="text-3xl font-black text-foreground">{formatCurrency(course.preco ?? 0)}</div>
                 )}
               </div>
 
@@ -180,7 +192,7 @@ export default async function CourseDetailPage({ params }: Props) {
                 </Link>
               )}
 
-              <div className="mt-4 space-y-2 text-sm text-zinc-500">
+              <div className="mt-4 space-y-2 text-sm text-muted-light">
                 <div className="flex items-center gap-2">
                   <CheckCircle size={14} className="text-emerald-500 shrink-0" />
                   Acesso vitalício após inscrição
@@ -205,33 +217,33 @@ export default async function CourseDetailPage({ params }: Props) {
           {/* Descrição completa */}
           {course.descricao && (
             <section>
-              <h2 className="text-2xl font-bold text-zinc-100 mb-4">Sobre o curso</h2>
-              <div className="text-zinc-400 leading-relaxed whitespace-pre-line">{course.descricao}</div>
+              <h2 className="text-2xl font-bold text-foreground mb-4">Sobre o curso</h2>
+              <div className="text-muted leading-relaxed whitespace-pre-line">{course.descricao}</div>
             </section>
           )}
 
           {/* Conteúdo programático */}
           <section>
-            <h2 className="text-2xl font-bold text-zinc-100 mb-6">Conteúdo do curso</h2>
+            <h2 className="text-2xl font-bold text-foreground mb-6">Conteúdo do curso</h2>
             <div className="space-y-3">
               {modules.map((mod: any, mIdx: number) => (
-                <div key={mod.id} className="rounded-xl bg-[#141416] border border-zinc-800 overflow-hidden">
-                  <div className="flex items-center justify-between px-5 py-4 bg-zinc-900">
-                    <h3 className="font-semibold text-sm text-zinc-100">
-                      <span className="text-zinc-500 mr-2">Módulo {mIdx + 1}</span>
+                <div key={mod.id} className="rounded-xl bg-surface border border-border overflow-hidden">
+                  <div className="flex items-center justify-between px-5 py-4 bg-surface-2">
+                    <h3 className="font-semibold text-sm text-foreground">
+                      <span className="text-muted-light mr-2">Módulo {mIdx + 1}</span>
                       {mod.titulo}
                     </h3>
-                    <span className="text-xs text-zinc-500">{mod.lessons?.length ?? 0} aulas</span>
+                    <span className="text-xs text-muted-light">{mod.lessons?.length ?? 0} aulas</span>
                   </div>
-                  <div className="border-t border-zinc-800/50">
+                  <div className="border-t border-border/50">
                     {(mod.lessons ?? []).map((lesson: any, lIdx: number) => (
-                      <div key={lesson.id} className="flex items-center gap-3 px-5 py-3 border-b border-zinc-800/50 last:border-0">
+                      <div key={lesson.id} className="flex items-center gap-3 px-5 py-3 border-b border-border/50 last:border-0">
                         {lesson.preview_gratis || isEnrolled ? (
                           <Play size={14} className="text-amber-400 shrink-0" />
                         ) : (
-                          <Lock size={14} className="text-zinc-600 shrink-0" />
+                          <Lock size={14} className="text-muted-light shrink-0" />
                         )}
-                        <span className="text-sm text-zinc-300 flex-1">
+                        <span className="text-sm text-muted flex-1">
                           {lIdx + 1}. {lesson.titulo}
                         </span>
                         <div className="flex items-center gap-2 shrink-0">
@@ -241,7 +253,7 @@ export default async function CourseDetailPage({ params }: Props) {
                           {lesson.preview_gratis && !isEnrolled && (
                             <span className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded-full">Grátis</span>
                           )}
-                          <span className="text-xs text-zinc-500">{lesson.duracao_min}min</span>
+                          <span className="text-xs text-muted-light">{lesson.duracao_min}min</span>
                         </div>
                       </div>
                     ))}
@@ -254,31 +266,33 @@ export default async function CourseDetailPage({ params }: Props) {
 
         {/* Sidebar info extra */}
         <aside className="lg:col-span-1">
-          <div className="rounded-2xl bg-[#141416] border border-zinc-800 p-6">
-            <h3 className="font-bold mb-4 text-sm text-zinc-500 uppercase tracking-widest">Detalhes do curso</h3>
+          <div className="rounded-2xl bg-surface border border-border p-6">
+            <h3 className="font-bold mb-4 text-sm text-muted-light uppercase tracking-widest">Detalhes do curso</h3>
             <dl className="space-y-3 text-sm">
               <div className="flex justify-between">
-                <dt className="text-zinc-500">Nível</dt>
-                <dd className="font-medium text-zinc-100">{getLevelLabel(course.nivel)}</dd>
+                <dt className="text-muted-light">Nível</dt>
+                <dd className="font-medium text-foreground">{getLevelLabel(course.nivel)}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-zinc-500">Categoria</dt>
-                <dd className="font-medium text-zinc-100">{getCategoryLabel(course.categoria)}</dd>
+                <dt className="text-muted-light">Categoria{(course.categorias?.length > 1) ? "s" : ""}</dt>
+                <dd className="font-medium text-foreground text-right">
+                  {(course.categorias?.length ? course.categorias : [course.categoria]).map((cat: string) => getCategoryLabel(cat)).join(", ")}
+                </dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-zinc-500">Total de aulas</dt>
-                <dd className="font-medium text-zinc-100">{totalLessons}</dd>
+                <dt className="text-muted-light">Total de aulas</dt>
+                <dd className="font-medium text-foreground">{totalLessons}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-zinc-500">Carga horária</dt>
-                <dd className="font-medium text-zinc-100">{formatMinutes(course.carga_horaria ?? 0)}</dd>
+                <dt className="text-muted-light">Carga horária</dt>
+                <dd className="font-medium text-foreground">{formatMinutes(course.carga_horaria ?? 0)}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-zinc-500">Alunos inscritos</dt>
-                <dd className="font-medium text-zinc-100">{course.total_alunos}</dd>
+                <dt className="text-muted-light">Alunos inscritos</dt>
+                <dd className="font-medium text-foreground">{course.total_alunos}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-zinc-500">Certificado</dt>
+                <dt className="text-muted-light">Certificado</dt>
                 <dd className="font-medium text-emerald-600">Incluso</dd>
               </div>
             </dl>

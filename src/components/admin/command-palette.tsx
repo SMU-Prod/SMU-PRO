@@ -23,7 +23,7 @@ const STATIC_COMMANDS: CommandItem[] = [
   { id: "usuarios", label: "Usuários", sublabel: "Gerenciar alunos", icon: Users, iconColor: "text-emerald-500", href: "/admin/usuarios", group: "Navegação" },
   { id: "certificados", label: "Certificados", sublabel: "Ver todos os certificados", icon: Award, iconColor: "text-amber-500", href: "/admin/certificados", group: "Navegação" },
   { id: "relatorios", label: "Relatórios", sublabel: "Analytics e dados", icon: FileText, iconColor: "text-red-500", href: "/admin/relatorios", group: "Navegação" },
-  { id: "configuracoes", label: "Configurações", sublabel: "Configurações da plataforma", icon: Settings, iconColor: "text-zinc-500", href: "/admin/configuracoes", group: "Navegação" },
+  { id: "configuracoes", label: "Configurações", sublabel: "Configurações da plataforma", icon: Settings, iconColor: "text-muted-light", href: "/admin/configuracoes", group: "Navegação" },
   // Ações rápidas
   { id: "novo-curso", label: "Criar Novo Curso", sublabel: "Abre o wizard de criação", icon: Plus, iconColor: "text-amber-400", href: "/admin/cursos/novo", group: "Ações Rápidas" },
 ];
@@ -121,12 +121,12 @@ export function CommandPalette({ courses = [] }: CommandPaletteProps) {
       {/* Trigger button */}
       <button
         onClick={() => setOpen(true)}
-        className="hidden md:flex items-center gap-2 h-8 px-3 rounded-lg border border-zinc-800 bg-[#141416] text-sm text-zinc-500 hover:border-amber-500/30 hover:text-zinc-400 transition-colors"
+        className="hidden md:flex items-center gap-2 h-8 px-3 rounded-lg border border-border bg-surface text-sm text-muted-light hover:border-amber-500/30 hover:text-muted transition-colors"
         title="Busca rápida (Ctrl+K)"
       >
         <Search size={13} />
         <span>Buscar...</span>
-        <div className="ml-2 flex items-center gap-0.5 text-[10px] text-zinc-600 font-mono">
+        <div className="ml-2 flex items-center gap-0.5 text-[10px] text-muted-light font-mono">
           <Command size={10} />
           <span>K</span>
         </div>
@@ -136,34 +136,34 @@ export function CommandPalette({ courses = [] }: CommandPaletteProps) {
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm animate-in fade-in-0" />
           <Dialog.Content
-            className="fixed left-1/2 top-[15%] z-50 w-full max-w-lg -translate-x-1/2 rounded-2xl bg-[#141416] shadow-2xl ring-1 ring-zinc-800 overflow-hidden animate-in fade-in-0 zoom-in-95"
+            className="fixed left-1/2 top-[15%] z-50 w-full max-w-lg -translate-x-1/2 rounded-2xl bg-surface shadow-2xl ring-1 ring-border overflow-hidden animate-in fade-in-0 zoom-in-95"
             onKeyDown={handleKeyDown}
           >
             <Dialog.Title className="sr-only">Command Palette</Dialog.Title>
 
             {/* Search input */}
-            <div className="flex items-center gap-3 border-b border-zinc-800/50 px-4 py-3">
-              <Search size={16} className="text-zinc-500 shrink-0" />
+            <div className="flex items-center gap-3 border-b border-border/50 px-4 py-3">
+              <Search size={16} className="text-muted-light shrink-0" />
               <input
                 ref={inputRef}
                 value={query}
                 onChange={(e) => { setQuery(e.target.value); setActiveIndex(0); }}
                 placeholder="Buscar páginas, cursos, ações..."
-                className="flex-1 text-sm text-zinc-100 placeholder:text-zinc-500 bg-transparent focus:outline-none"
+                className="flex-1 text-sm text-foreground placeholder:text-muted-light bg-transparent focus:outline-none"
               />
-              <kbd className="text-[10px] text-zinc-500 font-mono border border-zinc-800 rounded px-1.5 py-0.5">ESC</kbd>
+              <kbd className="text-[10px] text-muted-light font-mono border border-border rounded px-1.5 py-0.5">ESC</kbd>
             </div>
 
             {/* Results */}
             <div className="max-h-80 overflow-y-auto py-2">
               {filtered.length === 0 ? (
-                <div className="py-8 text-center text-sm text-zinc-500">
-                  Nenhum resultado para "<span className="text-zinc-300">{query}</span>"
+                <div className="py-8 text-center text-sm text-muted-light">
+                  Nenhum resultado para "<span className="text-muted">{query}</span>"
                 </div>
               ) : (
                 Object.entries(grouped).map(([group, items]) => (
                   <div key={group}>
-                    <p className="px-4 py-1.5 text-[10px] font-semibold text-zinc-500 uppercase tracking-wide">
+                    <p className="px-4 py-1.5 text-[10px] font-semibold text-muted-light uppercase tracking-wide">
                       {group}
                     </p>
                     {items.map((item) => {
@@ -175,17 +175,17 @@ export function CommandPalette({ courses = [] }: CommandPaletteProps) {
                           key={item.id}
                           className={cn(
                             "w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors",
-                            isActive ? "bg-amber-500/10" : "hover:bg-zinc-800"
+                            isActive ? "bg-amber-500/10" : "hover:bg-surface-3"
                           )}
                           onClick={() => navigate(item.href)}
                           onMouseEnter={() => setActiveIndex(flatFiltered.findIndex((f) => f.id === item.id))}
                         >
-                          <div className={cn("flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-800 shrink-0", isActive && "bg-amber-500/15")}>
-                            <Icon size={15} className={item.iconColor ?? "text-zinc-500"} />
+                          <div className={cn("flex h-8 w-8 items-center justify-center rounded-lg bg-surface-3 shrink-0", isActive && "bg-amber-500/15")}>
+                            <Icon size={15} className={item.iconColor ?? "text-muted-light"} />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-zinc-100 truncate">{item.label}</p>
-                            {item.sublabel && <p className="text-xs text-zinc-500 truncate">{item.sublabel}</p>}
+                            <p className="text-sm font-medium text-foreground truncate">{item.label}</p>
+                            {item.sublabel && <p className="text-xs text-muted-light truncate">{item.sublabel}</p>}
                           </div>
                           {isActive && <ArrowRight size={13} className="text-amber-400 shrink-0" />}
                         </button>
@@ -197,10 +197,10 @@ export function CommandPalette({ courses = [] }: CommandPaletteProps) {
             </div>
 
             {/* Footer hint */}
-            <div className="border-t border-zinc-800/50 px-4 py-2 flex items-center gap-4 text-[10px] text-zinc-500">
-              <span><kbd className="font-mono border border-zinc-800 rounded px-1">↑↓</kbd> navegar</span>
-              <span><kbd className="font-mono border border-zinc-800 rounded px-1">Enter</kbd> abrir</span>
-              <span><kbd className="font-mono border border-zinc-800 rounded px-1">Esc</kbd> fechar</span>
+            <div className="border-t border-border/50 px-4 py-2 flex items-center gap-4 text-[10px] text-muted-light">
+              <span><kbd className="font-mono border border-border rounded px-1">↑↓</kbd> navegar</span>
+              <span><kbd className="font-mono border border-border rounded px-1">Enter</kbd> abrir</span>
+              <span><kbd className="font-mono border border-border rounded px-1">Esc</kbd> fechar</span>
             </div>
           </Dialog.Content>
         </Dialog.Portal>

@@ -49,10 +49,10 @@ export default async function MeusCursosPage() {
 
       <div className="p-6">
         {list.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-32 text-center rounded-2xl bg-[#141416] border border-zinc-800">
+          <div className="flex flex-col items-center justify-center py-32 text-center rounded-2xl bg-surface border border-border">
             <div className="text-5xl mb-4">📚</div>
-            <h2 className="text-xl font-bold text-zinc-100 mb-2">Nenhum curso ainda</h2>
-            <p className="text-zinc-500 mb-6">Explore o catálogo e comece sua jornada profissional</p>
+            <h2 className="text-xl font-bold text-foreground mb-2">Nenhum curso ainda</h2>
+            <p className="text-muted-light mb-6">Explore o catálogo e comece sua jornada profissional</p>
             <Link href="/cursos">
               <Button className="gap-2">
                 Ver catálogo de cursos <ChevronRight size={16} />
@@ -63,7 +63,7 @@ export default async function MeusCursosPage() {
           <div className="space-y-10">
             {inProgress.length > 0 && (
               <section>
-                <h2 className="text-base font-bold text-zinc-100 mb-4 flex items-center gap-2">
+                <h2 className="text-base font-bold text-foreground mb-4 flex items-center gap-2">
                   <Play size={16} className="text-amber-400" />
                   Em andamento ({inProgress.length})
                 </h2>
@@ -73,7 +73,7 @@ export default async function MeusCursosPage() {
 
             {notStarted.length > 0 && (
               <section>
-                <h2 className="text-base font-bold text-zinc-100 mb-4 flex items-center gap-2">
+                <h2 className="text-base font-bold text-foreground mb-4 flex items-center gap-2">
                   <BookOpen size={16} className="text-blue-600" />
                   Não iniciados ({notStarted.length})
                 </h2>
@@ -83,7 +83,7 @@ export default async function MeusCursosPage() {
 
             {completed.length > 0 && (
               <section>
-                <h2 className="text-base font-bold text-zinc-100 mb-4 flex items-center gap-2">
+                <h2 className="text-base font-bold text-foreground mb-4 flex items-center gap-2">
                   <Trophy size={16} className="text-amber-500" />
                   Concluídos ({completed.length})
                 </h2>
@@ -105,19 +105,23 @@ function CourseGrid({ courses, showCertificate = false }: { courses: any[]; show
         if (!course) return null;
 
         return (
-          <div key={enrollment.id} className="rounded-2xl bg-[#141416] border border-zinc-800 overflow-hidden hover:border-amber-500/30 hover:shadow-md transition-all">
-            <div className="h-36 bg-gradient-to-br from-zinc-900 to-zinc-800 flex items-center justify-center text-5xl">
-              {getCategoryIcon(course.categoria)}
+          <div key={enrollment.id} className="rounded-2xl bg-surface border border-border overflow-hidden hover:border-amber-500/30 hover:shadow-md transition-all">
+            <div className="h-36 bg-gradient-to-br from-surface-2 to-surface-3 flex items-center justify-center text-5xl overflow-hidden">
+              {course.thumbnail_url ? (
+                <img src={course.thumbnail_url} alt={course.titulo} className="w-full h-full object-cover" />
+              ) : (
+                getCategoryIcon(course.categoria)
+              )}
             </div>
             <div className="p-5">
               <div className="flex items-center gap-2 mb-3">
                 <Badge variant={course.nivel as any}>{getLevelLabel(course.nivel)}</Badge>
               </div>
-              <h3 className="font-bold text-zinc-100 leading-tight mb-3 line-clamp-2">{course.titulo}</h3>
+              <h3 className="font-bold text-foreground leading-tight mb-3 line-clamp-2">{course.titulo}</h3>
 
               {/* Progress */}
               <div className="mb-4">
-                <div className="flex justify-between text-xs text-zinc-500 mb-1.5">
+                <div className="flex justify-between text-xs text-muted-light mb-1.5">
                   <span>Progresso</span>
                   <span>{enrollment.progresso}%</span>
                 </div>

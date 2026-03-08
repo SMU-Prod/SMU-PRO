@@ -4,6 +4,7 @@ import { Geist_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ptBR } from "@clerk/localizations";
 import { HighlightInit } from "@highlight-run/next/client";
+import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -65,9 +66,20 @@ export default function RootLayout({
         networkRecording={{ enabled: true, recordHeadersAndBody: true }}
       />
       <ClerkProvider localization={ptBR}>
-        <html lang="pt-BR" className={`${spaceGrotesk.variable} ${inter.variable} ${geistMono.variable}`}>
-          <body className="antialiased bg-[#0A0A0B] text-zinc-100">
-            {children}
+        <html lang="pt-BR" className={`${spaceGrotesk.variable} ${inter.variable} ${geistMono.variable}`} suppressHydrationWarning>
+          <head>
+            <script dangerouslySetInnerHTML={{ __html: `
+              try {
+                if (localStorage.getItem('smu-theme') === 'light') {
+                  document.documentElement.classList.add('light');
+                }
+              } catch(e) {}
+            ` }} />
+          </head>
+          <body className="antialiased bg-background text-foreground">
+            <ThemeProvider>
+              {children}
+            </ThemeProvider>
           </body>
         </html>
       </ClerkProvider>

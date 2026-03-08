@@ -66,7 +66,7 @@ export async function getCourses(filters?: { nivel?: string; categoria?: string;
     .order("ordem");
 
   if (filters?.nivel) query = query.eq("nivel", filters.nivel as any);
-  if (filters?.categoria) query = query.eq("categoria", filters.categoria as any);
+  if (filters?.categoria) query = query.or(`categoria.eq.${filters.categoria},categorias.cs.{${filters.categoria}}`);
   if (filters?.tipo) query = query.eq("tipo", filters.tipo as any);
   if (filters?.search) query = query.ilike("titulo", `%${filters.search}%`);
 

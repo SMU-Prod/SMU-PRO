@@ -15,7 +15,7 @@ const badgeVariants = cva(
         admin:     "bg-red-500/15 border-red-500/25 text-red-400",
         free:      "bg-emerald-500/15 border-emerald-500/25 text-emerald-400",
         pago:      "bg-amber-500/15 border-amber-500/25 text-amber-400",
-        secondary: "bg-zinc-800 border-zinc-700 text-zinc-400",
+        secondary: "bg-surface-3 border-border-strong text-muted",
         success:   "bg-emerald-500/15 border-emerald-500/25 text-emerald-400",
         warning:   "bg-amber-500/15 border-amber-500/25 text-amber-400",
         danger:    "bg-red-500/15 border-red-500/25 text-red-400",

@@ -6,6 +6,7 @@ import { UserButton, useUser } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { useSidebar } from "./sidebar-context";
+import { useTheme } from "@/components/theme-provider";
 import type { UserRole } from "@/types/database";
 import {
   LayoutDashboard,
@@ -19,6 +20,8 @@ import {
   FileText,
   Layers,
   X,
+  Sun,
+  Moon,
 } from "lucide-react";
 
 interface NavItem {
@@ -59,22 +62,23 @@ export function Sidebar({ role = "trainee" }: SidebarProps) {
   const pathname = usePathname();
   const { user } = useUser();
   const { open, close } = useSidebar();
+  const { theme, toggleTheme } = useTheme();
 
   const isAdmin = role === "admin";
   const isContentManager = role === "content_manager";
   const navItems = isAdmin ? adminNav : isContentManager ? contentManagerNav : studentNav;
 
   const SidebarContent = () => (
-    <aside className="flex h-full flex-col bg-[#141416]">
+    <aside className="flex h-full flex-col bg-surface">
       {/* Logo */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-border">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-amber-400 shadow-md">
             <span className="text-black font-bold text-sm">S</span>
           </div>
           <div>
-            <p className="font-bold text-white leading-none">SMU PRO</p>
-            <p className="text-[10px] text-zinc-500 mt-0.5">
+            <p className="font-bold text-foreground leading-none">SMU PRO</p>
+            <p className="text-[10px] text-muted-light mt-0.5">
               {isAdmin ? "Painel Admin" : isContentManager ? "Gestão de Conteúdo" : "Plataforma de Cursos"}
             </p>
           </div>
@@ -82,7 +86,7 @@ export function Sidebar({ role = "trainee" }: SidebarProps) {
         {/* Close button — mobile only */}
         <button
           onClick={close}
-          className="lg:hidden p-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
+          className="lg:hidden p-1.5 rounded-lg text-muted hover:text-foreground hover:bg-hover transition-colors"
         >
           <X size={18} />
         </button>
@@ -91,11 +95,11 @@ export function Sidebar({ role = "trainee" }: SidebarProps) {
       {/* Admin toggle */}
       {(role === "admin" || role === "content_manager") && (
         <div className="mx-3 mt-3">
-          <div className="flex rounded-lg overflow-hidden border border-zinc-700 bg-zinc-900">
+          <div className="flex rounded-lg overflow-hidden border border-border-strong bg-surface-2">
             <Link
               href="/dashboard"
               onClick={close}
-              className="flex-1 text-center py-1.5 text-xs text-zinc-500 hover:bg-zinc-800 transition-colors"
+              className="flex-1 text-center py-1.5 text-xs text-muted-light hover:bg-hover transition-colors"
             >
               Aluno
             </Link>
@@ -125,14 +129,14 @@ export function Sidebar({ role = "trainee" }: SidebarProps) {
                 "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-150 group",
                 active
                   ? "bg-amber-500/10 text-amber-400 font-medium"
-                  : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+                  : "text-muted hover:text-foreground hover:bg-hover"
               )}
             >
               <Icon
                 size={18}
                 className={cn(
                   "shrink-0",
-                  active ? "text-amber-400" : "text-zinc-500 group-hover:text-zinc-300"
+                  active ? "text-amber-400" : "text-muted-light group-hover:text-muted"
                 )}
               />
               <span className="flex-1">{item.label}</span>
@@ -150,7 +154,7 @@ export function Sidebar({ role = "trainee" }: SidebarProps) {
           <Link
             href="/admin"
             onClick={close}
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-zinc-500 hover:text-zinc-100 hover:bg-zinc-800 transition-all mt-2"
+            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-light hover:text-foreground hover:bg-hover transition-all mt-2"
           >
             <ShieldCheck size={18} className="text-red-400" />
             <span>Painel Admin</span>
@@ -159,7 +163,7 @@ export function Sidebar({ role = "trainee" }: SidebarProps) {
       </nav>
 
       {/* User */}
-      <div className="border-t border-zinc-800 p-4 flex items-center gap-3">
+      <div className="border-t border-border p-4 flex items-center gap-3">
         <UserButton
           appearance={{
             elements: { avatarBox: "h-8 w-8" },
@@ -167,12 +171,19 @@ export function Sidebar({ role = "trainee" }: SidebarProps) {
         />
         {user && (
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-zinc-100 truncate">{user.fullName}</p>
-            <p className="text-xs text-zinc-500 truncate">
+            <p className="text-sm font-medium text-foreground truncate">{user.fullName}</p>
+            <p className="text-xs text-muted-light truncate">
               {user.primaryEmailAddress?.emailAddress}
             </p>
           </div>
         )}
+        <button
+          onClick={toggleTheme}
+          className="p-2 rounded-lg text-muted hover:text-foreground hover:bg-hover transition-colors shrink-0"
+          title={theme === "dark" ? "Modo claro" : "Modo escuro"}
+        >
+          {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+        </button>
       </div>
     </aside>
   );
@@ -180,7 +191,7 @@ export function Sidebar({ role = "trainee" }: SidebarProps) {
   return (
     <>
       {/* Desktop sidebar — always visible ≥ lg */}
-      <div className="hidden lg:flex fixed left-0 top-0 z-40 h-screen w-64 flex-col border-r border-zinc-800">
+      <div className="hidden lg:flex fixed left-0 top-0 z-40 h-screen w-64 flex-col border-r border-border">
         <SidebarContent />
       </div>
 

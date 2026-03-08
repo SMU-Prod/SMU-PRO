@@ -100,25 +100,25 @@ export default async function AdminRelatoriosPage() {
 
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Receita por mês */}
-          <div className="rounded-2xl bg-[#141416] border border-zinc-800 p-6">
-            <h2 className="font-bold text-zinc-100 mb-6 flex items-center gap-2">
+          <div className="rounded-2xl bg-surface border border-border p-6">
+            <h2 className="font-bold text-foreground mb-6 flex items-center gap-2">
               <TrendingUp size={18} className="text-emerald-400" />
               Receita — últimos 6 meses
             </h2>
             {meses.length === 0 ? (
-              <p className="text-zinc-500 text-sm">Sem dados de receita ainda.</p>
+              <p className="text-muted-light text-sm">Sem dados de receita ainda.</p>
             ) : (
               <div className="space-y-3">
                 {meses.map((mes) => (
                   <div key={mes} className="flex items-center gap-3">
-                    <span className="w-16 text-xs text-zinc-500 shrink-0">{mes}</span>
-                    <div className="flex-1 h-6 bg-zinc-800 rounded-full overflow-hidden">
+                    <span className="w-16 text-xs text-muted-light shrink-0">{mes}</span>
+                    <div className="flex-1 h-6 bg-surface-3 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all"
                         style={{ width: `${(receitaPorMes[mes] / receitaMax) * 100}%` }}
                       />
                     </div>
-                    <span className="w-24 text-right text-xs font-semibold text-zinc-400 shrink-0">
+                    <span className="w-24 text-right text-xs font-semibold text-muted shrink-0">
                       {formatCurrency(receitaPorMes[mes])}
                     </span>
                   </div>
@@ -128,25 +128,25 @@ export default async function AdminRelatoriosPage() {
           </div>
 
           {/* Inscrições por mês */}
-          <div className="rounded-2xl bg-[#141416] border border-zinc-800 p-6">
-            <h2 className="font-bold text-zinc-100 mb-6 flex items-center gap-2">
+          <div className="rounded-2xl bg-surface border border-border p-6">
+            <h2 className="font-bold text-foreground mb-6 flex items-center gap-2">
               <BarChart3 size={18} className="text-amber-400" />
               Inscrições — últimos 6 meses
             </h2>
             {Object.keys(inscricoesPorMes).length === 0 ? (
-              <p className="text-zinc-500 text-sm">Sem dados de inscrições ainda.</p>
+              <p className="text-muted-light text-sm">Sem dados de inscrições ainda.</p>
             ) : (
               <div className="space-y-3">
                 {Object.entries(inscricoesPorMes).map(([mes, count]) => (
                   <div key={mes} className="flex items-center gap-3">
-                    <span className="w-16 text-xs text-zinc-500 shrink-0">{mes}</span>
-                    <div className="flex-1 h-6 bg-zinc-800 rounded-full overflow-hidden">
+                    <span className="w-16 text-xs text-muted-light shrink-0">{mes}</span>
+                    <div className="flex-1 h-6 bg-surface-3 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-gradient-to-r from-amber-500 to-amber-400 rounded-full transition-all"
                         style={{ width: `${(count / inscricoesMax) * 100}%` }}
                       />
                     </div>
-                    <span className="w-16 text-right text-xs font-semibold text-zinc-400 shrink-0">
+                    <span className="w-16 text-right text-xs font-semibold text-muted shrink-0">
                       {count} aluno{count !== 1 ? "s" : ""}
                     </span>
                   </div>
@@ -157,47 +157,47 @@ export default async function AdminRelatoriosPage() {
         </div>
 
         {/* Top cursos */}
-        <div className="rounded-2xl bg-[#141416] border border-zinc-800 overflow-hidden">
-          <div className="px-5 py-4 border-b border-zinc-800/50">
-            <h2 className="font-bold text-zinc-100 flex items-center gap-2">
+        <div className="rounded-2xl bg-surface border border-border overflow-hidden">
+          <div className="px-5 py-4 border-b border-border/50">
+            <h2 className="font-bold text-foreground flex items-center gap-2">
               <BookOpen size={18} className="text-amber-400" />
               Top 10 cursos por alunos
             </h2>
           </div>
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-zinc-800/50 bg-zinc-900">
-                <th className="px-5 py-3 text-left text-xs font-semibold text-zinc-500 uppercase tracking-wider">#</th>
-                <th className="px-5 py-3 text-left text-xs font-semibold text-zinc-500 uppercase tracking-wider">Curso</th>
-                <th className="px-5 py-3 text-left text-xs font-semibold text-zinc-500 uppercase tracking-wider">Nível</th>
-                <th className="px-5 py-3 text-right text-xs font-semibold text-zinc-500 uppercase tracking-wider">Alunos</th>
-                <th className="px-5 py-3 text-right text-xs font-semibold text-zinc-500 uppercase tracking-wider">Certificados</th>
-                <th className="px-5 py-3 text-right text-xs font-semibold text-zinc-500 uppercase tracking-wider">Progresso médio</th>
-                <th className="px-5 py-3 text-right text-xs font-semibold text-zinc-500 uppercase tracking-wider">Avaliação</th>
+              <tr className="border-b border-border/50 bg-surface-2">
+                <th className="px-5 py-3 text-left text-xs font-semibold text-muted-light uppercase tracking-wider">#</th>
+                <th className="px-5 py-3 text-left text-xs font-semibold text-muted-light uppercase tracking-wider">Curso</th>
+                <th className="px-5 py-3 text-left text-xs font-semibold text-muted-light uppercase tracking-wider">Nível</th>
+                <th className="px-5 py-3 text-right text-xs font-semibold text-muted-light uppercase tracking-wider">Alunos</th>
+                <th className="px-5 py-3 text-right text-xs font-semibold text-muted-light uppercase tracking-wider">Certificados</th>
+                <th className="px-5 py-3 text-right text-xs font-semibold text-muted-light uppercase tracking-wider">Progresso médio</th>
+                <th className="px-5 py-3 text-right text-xs font-semibold text-muted-light uppercase tracking-wider">Avaliação</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-800/50">
+            <tbody className="divide-y divide-border/50">
               {(topCursos ?? []).map((course: any, i: number) => (
-                <tr key={i} className="hover:bg-zinc-800 transition-colors">
-                  <td className="px-5 py-3 text-zinc-500 font-mono text-xs">{i + 1}</td>
-                  <td className="px-5 py-3 font-medium text-zinc-100">{course.titulo}</td>
+                <tr key={i} className="hover:bg-surface-3 transition-colors">
+                  <td className="px-5 py-3 text-muted-light font-mono text-xs">{i + 1}</td>
+                  <td className="px-5 py-3 font-medium text-foreground">{course.titulo}</td>
                   <td className="px-5 py-3">
-                    <span className="text-xs text-zinc-500">{getLevelLabel(course.nivel)}</span>
+                    <span className="text-xs text-muted-light">{getLevelLabel(course.nivel)}</span>
                   </td>
-                  <td className="px-5 py-3 text-right text-zinc-300">{course.total_alunos}</td>
-                  <td className="px-5 py-3 text-right text-zinc-300">{course.total_certificados}</td>
+                  <td className="px-5 py-3 text-right text-muted">{course.total_alunos}</td>
+                  <td className="px-5 py-3 text-right text-muted">{course.total_certificados}</td>
                   <td className="px-5 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <div className="w-16 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                      <div className="w-16 h-1.5 bg-surface-3 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-amber-500 rounded-full"
                           style={{ width: `${course.progresso_medio ?? 0}%` }}
                         />
                       </div>
-                      <span className="text-xs text-zinc-500">{Math.round(course.progresso_medio ?? 0)}%</span>
+                      <span className="text-xs text-muted-light">{Math.round(course.progresso_medio ?? 0)}%</span>
                     </div>
                   </td>
-                  <td className="px-5 py-3 text-right text-zinc-300">
+                  <td className="px-5 py-3 text-right text-muted">
                     {course.avaliacao_media > 0 ? `★ ${course.avaliacao_media.toFixed(1)}` : "—"}
                   </td>
                 </tr>
@@ -208,23 +208,23 @@ export default async function AdminRelatoriosPage() {
 
         {/* Distribuição por nível */}
         {Object.keys(nivelCount).length > 0 && (
-          <div className="rounded-2xl bg-[#141416] border border-zinc-800 p-6 max-w-sm">
-            <h2 className="font-bold text-zinc-100 mb-5 flex items-center gap-2">
+          <div className="rounded-2xl bg-surface border border-border p-6 max-w-sm">
+            <h2 className="font-bold text-foreground mb-5 flex items-center gap-2">
               <BarChart3 size={18} className="text-blue-400" />
               Cursos por nível
             </h2>
             <div className="space-y-3">
               {Object.entries(nivelCount).map(([nivel, count]) => (
                 <div key={nivel} className="flex items-center justify-between">
-                  <span className="text-sm text-zinc-400">{getLevelLabel(nivel)}</span>
+                  <span className="text-sm text-muted">{getLevelLabel(nivel)}</span>
                   <div className="flex items-center gap-3">
-                    <div className="w-24 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                    <div className="w-24 h-2 bg-surface-3 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-amber-500 rounded-full"
                         style={{ width: `${(count / Math.max(...Object.values(nivelCount))) * 100}%` }}
                       />
                     </div>
-                    <span className="text-sm font-bold text-zinc-100 w-4 text-right">{count}</span>
+                    <span className="text-sm font-bold text-foreground w-4 text-right">{count}</span>
                   </div>
                 </div>
               ))}
@@ -244,14 +244,14 @@ function KpiCard({ icon, label, value, isText = false, bg }: {
   bg: string;
 }) {
   return (
-    <div className="rounded-2xl bg-[#141416] border border-zinc-800 p-5">
+    <div className="rounded-2xl bg-surface border border-border p-5">
       <div className="flex items-center gap-3 mb-3">
         <div className={`h-9 w-9 rounded-xl ${bg} flex items-center justify-center`}>
           {icon}
         </div>
-        <span className="text-sm text-zinc-500">{label}</span>
+        <span className="text-sm text-muted-light">{label}</span>
       </div>
-      <div className="text-2xl font-black text-zinc-100">
+      <div className="text-2xl font-black text-foreground">
         {isText ? value : Number(value).toLocaleString("pt-BR")}
       </div>
     </div>

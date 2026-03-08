@@ -81,12 +81,12 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl bg-[#141416] border border-zinc-800 overflow-hidden">
-      <div className="px-5 py-4 border-b border-zinc-800/50 flex items-center gap-2">
+    <div className="rounded-2xl bg-surface border border-border overflow-hidden">
+      <div className="px-5 py-4 border-b border-border/50 flex items-center gap-2">
         {icon}
-        <h3 className="font-semibold text-zinc-100 text-sm">{title}</h3>
+        <h3 className="font-semibold text-foreground text-sm">{title}</h3>
       </div>
-      <div className="divide-y divide-zinc-800/50">{children}</div>
+      <div className="divide-y divide-border/50">{children}</div>
     </div>
   );
 }
@@ -94,8 +94,8 @@ function Section({
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between px-5 py-3.5">
-      <p className="text-sm text-zinc-400">{label}</p>
-      <p className="text-sm font-medium text-zinc-100">{value}</p>
+      <p className="text-sm text-muted">{label}</p>
+      <p className="text-sm font-medium text-foreground">{value}</p>
     </div>
   );
 }
@@ -103,8 +103,8 @@ function Row({ label, value }: { label: string; value: string }) {
 function InfoRow({ label, description }: { label: string; description: string }) {
   return (
     <div className="px-5 py-4">
-      <p className="text-sm font-medium text-zinc-100 mb-1">{label}</p>
-      <p className="text-xs text-zinc-500 leading-relaxed">{description}</p>
+      <p className="text-sm font-medium text-foreground mb-1">{label}</p>
+      <p className="text-xs text-muted-light leading-relaxed">{description}</p>
     </div>
   );
 }

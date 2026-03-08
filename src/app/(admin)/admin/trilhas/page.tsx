@@ -28,7 +28,7 @@ export default async function AdminTrilhasPage() {
             <p className="text-sm text-amber-400/80 mb-4">
               Execute o SQL abaixo no Supabase para criar as tabelas de trilhas:
             </p>
-            <pre className="text-left text-xs bg-zinc-900 border border-zinc-800 rounded-lg p-3 overflow-auto text-zinc-300 whitespace-pre-wrap">
+            <pre className="text-left text-xs bg-surface-2 border border-border rounded-lg p-3 overflow-auto text-muted whitespace-pre-wrap">
 {`CREATE TABLE IF NOT EXISTS collections (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   titulo TEXT NOT NULL,

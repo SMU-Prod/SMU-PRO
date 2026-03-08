@@ -53,10 +53,10 @@ export default async function AdminCourseDetailPage({ params, searchParams }: Pr
   return (
     <div className="animate-fade-in">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 px-6 pt-4 text-xs text-zinc-500">
-        <Link href="/admin/cursos" className="hover:text-zinc-300 transition-colors">Cursos</Link>
+      <div className="flex items-center gap-2 px-6 pt-4 text-xs text-muted-light">
+        <Link href="/admin/cursos" className="hover:text-muted transition-colors">Cursos</Link>
         <span>/</span>
-        <span className="text-zinc-300 font-medium truncate max-w-[200px]">{course.titulo}</span>
+        <span className="text-muted font-medium truncate max-w-[200px]">{course.titulo}</span>
       </div>
 
       {/* Header */}
@@ -64,12 +64,12 @@ export default async function AdminCourseDetailPage({ params, searchParams }: Pr
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-1">
             <span className="text-2xl">{getCategoryIcon(course.categoria)}</span>
-            <h1 className="text-xl font-bold text-zinc-100 truncate">{course.titulo}</h1>
+            <h1 className="text-xl font-bold text-foreground truncate">{course.titulo}</h1>
             <Badge variant={course.ativo ? "success" : "secondary"} className="text-[10px]">
               {course.ativo ? "Publicado" : "Rascunho"}
             </Badge>
           </div>
-          <div className="flex items-center gap-2 flex-wrap text-sm text-zinc-500">
+          <div className="flex items-center gap-2 flex-wrap text-sm text-muted-light">
             <Badge variant={course.nivel as any} className="text-[10px]">{getLevelLabel(course.nivel)}</Badge>
             <span>·</span>
             <span>{getCategoryLabel(course.categoria)}</span>
@@ -106,7 +106,7 @@ export default async function AdminCourseDetailPage({ params, searchParams }: Pr
       </div>
 
       {/* Tabs */}
-      <div className="px-6 border-b border-zinc-800">
+      <div className="px-6 border-b border-border">
         <div className="flex gap-0">
           {TABS.map((t) => {
             const Icon = t.icon;
@@ -118,7 +118,7 @@ export default async function AdminCourseDetailPage({ params, searchParams }: Pr
                 className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
                   active
                     ? "border-amber-500 text-amber-400"
-                    : "border-transparent text-zinc-500 hover:text-zinc-300"
+                    : "border-transparent text-muted-light hover:text-muted"
                 }`}
               >
                 <Icon size={14} />

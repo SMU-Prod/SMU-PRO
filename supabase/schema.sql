@@ -60,6 +60,7 @@ create table public.courses (
   descricao_curta text,
   nivel           course_level not null,
   categoria       course_category not null,
+  categorias      text[] not null default '{}',          -- categorias adicionais (multi-select)
   tipo            course_type not null default 'free',
   preco           numeric(10,2),
   carga_horaria   integer,                            -- em minutos
@@ -655,9 +656,22 @@ select
   (select count(*) from public.enrollments where created_at > now() - interval '30 days') as new_enrollments_30d;
 
 -- ============================================================
+-- AI EXPLANATIONS CACHE
+-- ============================================================
+create table if not exists public.ai_explanations (
+  id              uuid primary key default gen_random_uuid(),
+  lesson_id       uuid not null references public.lessons(id) on delete cascade,
+  explanation     text not null,
+  model           text not null default 'claude-haiku-4-5-20251001',
+  created_at      timestamptz not null default now(),
+  unique(lesson_id)
+);
+
+-- ============================================================
 -- STORAGE BUCKETS (executar no dashboard Supabase)
 -- ============================================================
 -- insert into storage.buckets (id, name, public) values ('course-thumbnails', 'course-thumbnails', true);
 -- insert into storage.buckets (id, name, public) values ('lesson-pdfs', 'lesson-pdfs', false);
 -- insert into storage.buckets (id, name, public) values ('certificates', 'certificates', false);
 -- insert into storage.buckets (id, name, public) values ('avatars', 'avatars', true);
+-- insert into storage.buckets (id, name, public) values ('lesson-audio', 'lesson-audio', false);

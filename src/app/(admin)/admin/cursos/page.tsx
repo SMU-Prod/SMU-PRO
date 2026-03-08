@@ -51,10 +51,10 @@ export default async function AdminCoursesPage({ searchParams }: Props) {
   return (
     <div className="animate-fade-in">
       {/* Header */}
-      <div className="sticky top-0 z-30 flex items-center gap-3 border-b border-zinc-800 bg-[#141416]/90 backdrop-blur-md px-4 sm:px-6 h-14 sm:h-16">
+      <div className="sticky top-0 z-30 flex items-center gap-3 border-b border-border bg-surface/90 backdrop-blur-md px-4 sm:px-6 h-14 sm:h-16">
         <div className="flex-1 min-w-0">
-          <h1 className="text-base sm:text-lg font-semibold text-zinc-100">Gerenciar Cursos</h1>
-          <p className="text-xs text-zinc-500 hidden sm:block">{total} cursos cadastrados</p>
+          <h1 className="text-base sm:text-lg font-semibold text-foreground">Gerenciar Cursos</h1>
+          <p className="text-xs text-muted-light hidden sm:block">{total} cursos cadastrados</p>
         </div>
         <Link href="/admin/cursos/novo">
           <Button size="sm"><Plus size={16} /> Novo Curso</Button>
@@ -70,11 +70,11 @@ export default async function AdminCoursesPage({ searchParams }: Props) {
             { label: "Total de alunos", value: totalAlunos, icon: <Users size={16} className="text-blue-400" />, bg: "bg-blue-500/10" },
             { label: "Certificados", value: totalCerts, icon: <Award size={16} className="text-amber-400" />, bg: "bg-amber-500/10" },
           ].map((s) => (
-            <div key={s.label} className="rounded-xl bg-[#141416] border border-zinc-800 px-4 py-3 flex items-center gap-3">
+            <div key={s.label} className="rounded-xl bg-surface border border-border px-4 py-3 flex items-center gap-3">
               <div className={`h-8 w-8 rounded-lg ${s.bg} flex items-center justify-center shrink-0`}>{s.icon}</div>
               <div>
-                <p className="text-xl font-bold text-zinc-100">{s.value}</p>
-                <p className="text-xs text-zinc-500">{s.label}</p>
+                <p className="text-xl font-bold text-foreground">{s.value}</p>
+                <p className="text-xs text-muted-light">{s.label}</p>
               </div>
             </div>
           ))}
@@ -83,12 +83,12 @@ export default async function AdminCoursesPage({ searchParams }: Props) {
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-3">
           <form method="get" action="/admin/cursos" className="relative flex-1">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-light" />
             <input
               name="q"
               defaultValue={q}
               placeholder="Buscar cursos..."
-              className="w-full h-9 rounded-lg border border-zinc-800 bg-[#141416] pl-8 pr-3 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-amber-500 transition-colors"
+              className="w-full h-9 rounded-lg border border-border bg-surface pl-8 pr-3 text-sm text-foreground placeholder:text-muted-light focus:outline-none focus:border-amber-500 transition-colors"
             />
             {nivel && <input type="hidden" name="nivel" value={nivel} />}
             {tipo && <input type="hidden" name="tipo" value={tipo} />}
@@ -101,7 +101,7 @@ export default async function AdminCoursesPage({ searchParams }: Props) {
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                   nivel === n.value || (!nivel && !n.value)
                     ? "bg-amber-500 text-white border-amber-500"
-                    : "bg-[#141416] text-zinc-400 border-zinc-800 hover:border-amber-500/30"
+                    : "bg-surface text-muted border-border hover:border-amber-500/30"
                 }`}>
                 {n.label}
               </Link>
@@ -111,7 +111,7 @@ export default async function AdminCoursesPage({ searchParams }: Props) {
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                   tipo === t.value
                     ? "bg-amber-500 text-white border-amber-500"
-                    : "bg-[#141416] text-zinc-400 border-zinc-800 hover:border-amber-500/30"
+                    : "bg-surface text-muted border-border hover:border-amber-500/30"
                 }`}>
                 {t.label}
               </Link>
@@ -121,10 +121,10 @@ export default async function AdminCoursesPage({ searchParams }: Props) {
 
         {/* Grid com bulk actions */}
         {filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 text-center rounded-2xl bg-[#141416] border border-zinc-800">
-            <Layers size={40} className="text-zinc-700 mb-3" />
-            <p className="text-zinc-100 font-medium mb-1">Nenhum curso encontrado</p>
-            <p className="text-sm text-zinc-500 mb-5">
+          <div className="flex flex-col items-center justify-center py-24 text-center rounded-2xl bg-surface border border-border">
+            <Layers size={40} className="text-muted-light mb-3" />
+            <p className="text-foreground font-medium mb-1">Nenhum curso encontrado</p>
+            <p className="text-sm text-muted-light mb-5">
               {q || nivel || tipo ? "Tente ajustar os filtros." : "Crie o primeiro curso da plataforma."}
             </p>
             <Link href="/admin/cursos/novo">
@@ -135,18 +135,18 @@ export default async function AdminCoursesPage({ searchParams }: Props) {
           <>
             <CourseBulkActions courses={filtered} />
             {totalPages > 1 && (
-              <div className="flex items-center justify-between text-sm text-zinc-500 pt-2">
+              <div className="flex items-center justify-between text-sm text-muted-light pt-2">
                 <span>Página {currentPage} de {totalPages} ({total} cursos)</span>
                 <div className="flex gap-2">
                   {currentPage > 1 && (
                     <Link href={makeHref({ page: String(currentPage - 1) })}
-                      className="px-3 py-1.5 rounded-lg bg-[#141416] border border-zinc-800 hover:bg-zinc-800 transition-colors text-zinc-300 text-xs">
+                      className="px-3 py-1.5 rounded-lg bg-surface border border-border hover:bg-hover transition-colors text-muted text-xs">
                       Anterior
                     </Link>
                   )}
                   {currentPage < totalPages && (
                     <Link href={makeHref({ page: String(currentPage + 1) })}
-                      className="px-3 py-1.5 rounded-lg bg-[#141416] border border-zinc-800 hover:bg-zinc-800 transition-colors text-zinc-300 text-xs">
+                      className="px-3 py-1.5 rounded-lg bg-surface border border-border hover:bg-hover transition-colors text-muted text-xs">
                       Próxima
                     </Link>
                   )}

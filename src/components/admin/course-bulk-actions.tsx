@@ -24,6 +24,7 @@ interface Course {
   total_alunos: number;
   total_certificados: number;
   progresso_medio?: number | null;
+  thumbnail_url?: string | null;
 }
 
 export function CourseBulkActions({ courses }: { courses: Course[] }) {
@@ -59,15 +60,15 @@ export function CourseBulkActions({ courses }: { courses: Course[] }) {
   return (
     <div className="space-y-3">
       {/* Bulk toolbar */}
-      <div className="flex items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-[#141416] px-4 py-2.5">
+      <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface px-4 py-2.5">
         <div className="flex items-center gap-3">
           <button
             onClick={allSelected ? clearAll : selectAll}
-            className="flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-100 transition-colors"
+            className="flex items-center gap-2 text-sm text-muted hover:text-foreground transition-colors"
           >
             {allSelected
               ? <CheckSquare size={16} className="text-amber-400" />
-              : <Square size={16} className="text-zinc-500" />}
+              : <Square size={16} className="text-muted-light" />}
             <span className="hidden sm:inline">
               {selected.size > 0 ? `${selected.size} selecionado${selected.size > 1 ? "s" : ""}` : "Selecionar todos"}
             </span>
@@ -78,8 +79,8 @@ export function CourseBulkActions({ courses }: { courses: Course[] }) {
 
           {selected.size > 0 && (
             <>
-              <div className="h-4 w-px bg-zinc-700" />
-              <button onClick={clearAll} className="text-zinc-500 hover:text-zinc-400 transition-colors">
+              <div className="h-4 w-px bg-surface-3" />
+              <button onClick={clearAll} className="text-muted-light hover:text-muted transition-colors">
                 <X size={14} />
               </button>
             </>
@@ -88,7 +89,7 @@ export function CourseBulkActions({ courses }: { courses: Course[] }) {
 
         {selected.size > 0 && (
           <div className="flex items-center gap-2">
-            <span className="text-xs text-zinc-500 hidden sm:inline">{selected.size} curso{selected.size > 1 ? "s" : ""}</span>
+            <span className="text-xs text-muted-light hidden sm:inline">{selected.size} curso{selected.size > 1 ? "s" : ""}</span>
             <Button
               size="sm"
               variant="secondary"
@@ -110,7 +111,7 @@ export function CourseBulkActions({ courses }: { courses: Course[] }) {
         )}
 
         {selected.size === 0 && (
-          <span className="text-xs text-zinc-500">{courses.length} curso{courses.length !== 1 ? "s" : ""}</span>
+          <span className="text-xs text-muted-light">{courses.length} curso{courses.length !== 1 ? "s" : ""}</span>
         )}
       </div>
 
@@ -175,13 +176,17 @@ function CourseAdminCard({
   return (
     <div
       className={cn(
-        "rounded-2xl bg-[#141416] border overflow-hidden hover:shadow-sm transition-all group",
-        selected ? "border-amber-500 ring-2 ring-amber-500/20" : "border-zinc-800 hover:border-amber-500/20"
+        "rounded-2xl bg-surface border overflow-hidden hover:shadow-sm transition-all group",
+        selected ? "border-amber-500 ring-2 ring-amber-500/20" : "border-border hover:border-amber-500/20"
       )}
     >
       {/* Thumbnail / Header */}
-      <div className="h-20 bg-gradient-to-br from-zinc-900 to-zinc-800 flex items-center justify-center text-4xl relative">
-        {getCategoryIcon(c.categoria)}
+      <div className="h-20 bg-gradient-to-br from-surface-2 to-surface-3 flex items-center justify-center text-4xl relative overflow-hidden">
+        {c.thumbnail_url ? (
+          <img src={c.thumbnail_url} alt={c.titulo} className="w-full h-full object-cover" />
+        ) : (
+          getCategoryIcon(c.categoria)
+        )}
 
         {/* Select checkbox */}
         <button
@@ -211,34 +216,34 @@ function CourseAdminCard({
       <div className="p-4 space-y-3">
         <div>
           <div className="flex items-start justify-between gap-2">
-            <h3 className="font-semibold text-zinc-100 text-sm leading-tight line-clamp-2">{c.titulo}</h3>
+            <h3 className="font-semibold text-foreground text-sm leading-tight line-clamp-2">{c.titulo}</h3>
             <Badge variant={c.tipo === "pago" ? "default" : "free"} className="text-[10px] shrink-0">
               {c.tipo === "pago" ? (c.preco ? formatCurrency(c.preco) : "Pago") : c.tipo === "free" ? "Grátis" : "MIT"}
             </Badge>
           </div>
-          <p className="text-xs text-zinc-500 mt-1">{getCategoryLabel(c.categoria)}</p>
+          <p className="text-xs text-muted-light mt-1">{getCategoryLabel(c.categoria)}</p>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-2 text-center">
-          <div className="bg-zinc-900 rounded-lg py-2">
-            <p className="text-sm font-bold text-zinc-100">{c.total_aulas}</p>
-            <p className="text-[10px] text-zinc-500">Aulas</p>
+          <div className="bg-surface-2 rounded-lg py-2">
+            <p className="text-sm font-bold text-foreground">{c.total_aulas}</p>
+            <p className="text-[10px] text-muted-light">Aulas</p>
           </div>
-          <div className="bg-zinc-900 rounded-lg py-2">
-            <p className="text-sm font-bold text-zinc-100">{c.total_alunos}</p>
-            <p className="text-[10px] text-zinc-500">Alunos</p>
+          <div className="bg-surface-2 rounded-lg py-2">
+            <p className="text-sm font-bold text-foreground">{c.total_alunos}</p>
+            <p className="text-[10px] text-muted-light">Alunos</p>
           </div>
-          <div className="bg-zinc-900 rounded-lg py-2">
+          <div className="bg-surface-2 rounded-lg py-2">
             <p className="text-sm font-bold text-amber-600">{c.total_certificados}</p>
-            <p className="text-[10px] text-zinc-500">Certs.</p>
+            <p className="text-[10px] text-muted-light">Certs.</p>
           </div>
         </div>
 
         {/* Progress */}
         {c.progresso_medio != null && (
           <div>
-            <div className="flex justify-between text-[10px] text-zinc-500 mb-1">
+            <div className="flex justify-between text-[10px] text-muted-light mb-1">
               <span>Progresso médio</span>
               <span>{c.progresso_medio}%</span>
             </div>
@@ -247,7 +252,7 @@ function CourseAdminCard({
         )}
 
         {/* Actions */}
-        <div className="flex items-center gap-2 pt-1 border-t border-zinc-800/50">
+        <div className="flex items-center gap-2 pt-1 border-t border-border/50">
           <CourseToggle id={c.id} ativo={c.ativo} />
           <Link href={`/admin/cursos/${c.id}`} className="flex-1">
             <Button variant="secondary" size="sm" className="w-full gap-1.5">

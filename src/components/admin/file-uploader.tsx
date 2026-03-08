@@ -99,7 +99,7 @@ export function FileUploader({
 
   if (uploaded && localUrl) {
     return (
-      <div className={cn("rounded-xl border border-zinc-800 overflow-hidden", className)}>
+      <div className={cn("rounded-xl border border-border overflow-hidden", className)}>
         {imagePreview && isImage ? (
           <div className="relative">
             <img
@@ -110,7 +110,7 @@ export function FileUploader({
             />
             <button
               onClick={handleRemove}
-              className="absolute top-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
+              className="absolute top-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-foreground hover:bg-black/70 transition-colors"
             >
               <X size={13} />
             </button>
@@ -119,7 +119,7 @@ export function FileUploader({
           <div className="flex items-center gap-3 px-4 py-3 bg-emerald-50">
             <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm text-zinc-100 truncate font-medium">Arquivo enviado</p>
+              <p className="text-sm text-foreground truncate font-medium">Arquivo enviado</p>
               <a
                 href={localUrl}
                 target="_blank"
@@ -131,7 +131,7 @@ export function FileUploader({
             </div>
             <button
               onClick={handleRemove}
-              className="text-zinc-500 hover:text-zinc-400 transition-colors shrink-0"
+              className="text-muted-light hover:text-muted transition-colors shrink-0"
             >
               <X size={14} />
             </button>
@@ -152,8 +152,8 @@ export function FileUploader({
           isDragActive
             ? "border-amber-500 bg-amber-500/10"
             : uploading
-            ? "border-zinc-800 bg-zinc-900 cursor-not-allowed"
-            : "border-zinc-800 bg-[#141416] hover:border-amber-500/30 hover:bg-amber-500/10/30"
+            ? "border-border bg-surface-2 cursor-not-allowed"
+            : "border-border bg-surface hover:border-amber-500/30 hover:bg-amber-500/10/30"
         )}
       >
         <input {...getInputProps()} />
@@ -163,17 +163,17 @@ export function FileUploader({
           ) : (
             <div className={cn(
               "h-10 w-10 rounded-xl flex items-center justify-center",
-              isDragActive ? "bg-amber-500 text-white" : "bg-zinc-800 text-zinc-500"
+              isDragActive ? "bg-amber-500 text-white" : "bg-surface-3 text-muted-light"
             )}>
               {isDragActive ? <Upload size={18} /> : <Icon size={18} />}
             </div>
           )}
           <div>
-            <p className="text-sm font-medium text-zinc-300">
+            <p className="text-sm font-medium text-muted">
               {uploading ? "Enviando..." : isDragActive ? "Solte aqui" : label}
             </p>
             {!uploading && (
-              <p className="text-xs text-zinc-500 mt-0.5">
+              <p className="text-xs text-muted-light mt-0.5">
                 {hint ?? `Máx. ${maxSizeMB}MB · ${Object.values(accept).flat().join(", ")}`}
               </p>
             )}

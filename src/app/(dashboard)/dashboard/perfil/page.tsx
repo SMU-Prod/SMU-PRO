@@ -25,7 +25,7 @@ export default async function PerfilPage() {
 
       <div className="p-6 max-w-2xl space-y-6">
         {/* Card de info */}
-        <div className="rounded-2xl bg-[#141416] border border-zinc-800 p-6">
+        <div className="rounded-2xl bg-surface border border-border p-6">
           <div className="flex items-start gap-5">
             {user.avatar_url ? (
               <img
@@ -39,12 +39,12 @@ export default async function PerfilPage() {
               </div>
             )}
             <div className="flex-1">
-              <h2 className="text-xl font-bold text-zinc-100">{user.nome}</h2>
-              <div className="flex items-center gap-2 mt-1 text-sm text-zinc-500">
+              <h2 className="text-xl font-bold text-foreground">{user.nome}</h2>
+              <div className="flex items-center gap-2 mt-1 text-sm text-muted-light">
                 <Mail size={13} />
                 {user.email}
               </div>
-              <div className="flex items-center gap-2 mt-0.5 text-sm text-zinc-500">
+              <div className="flex items-center gap-2 mt-0.5 text-sm text-muted-light">
                 <Calendar size={13} />
                 Membro desde {memberSince}
               </div>
@@ -64,8 +64,8 @@ export default async function PerfilPage() {
         </div>
 
         {/* Formulário de edição */}
-        <div className="rounded-2xl bg-[#141416] border border-zinc-800 p-6">
-          <h3 className="font-bold text-zinc-100 mb-6 flex items-center gap-2">
+        <div className="rounded-2xl bg-surface border border-border p-6">
+          <h3 className="font-bold text-foreground mb-6 flex items-center gap-2">
             <ShieldCheck size={18} className="text-amber-400" />
             Informações pessoais
           </h3>

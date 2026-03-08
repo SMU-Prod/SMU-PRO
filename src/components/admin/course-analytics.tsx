@@ -97,13 +97,13 @@ export async function CourseAnalytics({ courseId, totalLessons }: Props) {
 
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Funnel */}
-        <div className="rounded-2xl border border-zinc-800 bg-[#141416] p-5">
-          <h2 className="font-bold text-zinc-100 mb-4 flex items-center gap-2 text-sm">
+        <div className="rounded-2xl border border-border bg-surface p-5">
+          <h2 className="font-bold text-foreground mb-4 flex items-center gap-2 text-sm">
             <TrendingUp size={16} className="text-amber-400" />
             Funil de Conclusão
           </h2>
           {total === 0 ? (
-            <p className="text-zinc-500 text-sm">Nenhuma matrícula ainda.</p>
+            <p className="text-muted-light text-sm">Nenhuma matrícula ainda.</p>
           ) : (
             <div className="space-y-3">
               {[
@@ -113,45 +113,45 @@ export async function CourseAnalytics({ courseId, totalLessons }: Props) {
                 { label: "Certificados", count: certCount ?? 0, color: "bg-amber-500" },
               ].map((step) => (
                 <div key={step.label} className="flex items-center gap-3">
-                  <span className="w-24 text-xs text-zinc-500 shrink-0">{step.label}</span>
-                  <div className="flex-1 h-6 bg-zinc-800 rounded-full overflow-hidden">
+                  <span className="w-24 text-xs text-muted-light shrink-0">{step.label}</span>
+                  <div className="flex-1 h-6 bg-surface-3 rounded-full overflow-hidden">
                     <div
                       className={`h-full ${step.color} rounded-full transition-all`}
                       style={{ width: `${(step.count / total) * 100}%` }}
                     />
                   </div>
-                  <span className="w-16 text-right text-xs font-semibold text-zinc-300 shrink-0">
+                  <span className="w-16 text-right text-xs font-semibold text-muted shrink-0">
                     {step.count} ({Math.round((step.count / total) * 100)}%)
                   </span>
                 </div>
               ))}
             </div>
           )}
-          <div className="mt-4 pt-4 border-t border-zinc-800/50">
-            <p className="text-xs text-zinc-500">Progresso médio dos alunos: <strong className="text-zinc-100">{avgProgress}%</strong></p>
+          <div className="mt-4 pt-4 border-t border-border/50">
+            <p className="text-xs text-muted-light">Progresso médio dos alunos: <strong className="text-foreground">{avgProgress}%</strong></p>
           </div>
         </div>
 
         {/* Progress distribution */}
-        <div className="rounded-2xl border border-zinc-800 bg-[#141416] p-5">
-          <h2 className="font-bold text-zinc-100 mb-4 flex items-center gap-2 text-sm">
+        <div className="rounded-2xl border border-border bg-surface p-5">
+          <h2 className="font-bold text-foreground mb-4 flex items-center gap-2 text-sm">
             <BarChart3 size={16} className="text-blue-600" />
             Distribuição de Progresso
           </h2>
           {total === 0 ? (
-            <p className="text-zinc-500 text-sm">Nenhuma matrícula ainda.</p>
+            <p className="text-muted-light text-sm">Nenhuma matrícula ainda.</p>
           ) : (
             <div className="space-y-2">
               {distribution.map((d) => (
                 <div key={d.label} className="flex items-center gap-3">
-                  <span className="w-16 text-xs text-zinc-500 shrink-0 text-right">{d.label}</span>
-                  <div className="flex-1 h-5 bg-zinc-800 rounded-full overflow-hidden">
+                  <span className="w-16 text-xs text-muted-light shrink-0 text-right">{d.label}</span>
+                  <div className="flex-1 h-5 bg-surface-3 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-gradient-to-r from-amber-500 to-amber-400 rounded-full transition-all"
                       style={{ width: `${(d.count / maxBucket) * 100}%` }}
                     />
                   </div>
-                  <span className="w-8 text-right text-xs text-zinc-400 shrink-0">{d.count}</span>
+                  <span className="w-8 text-right text-xs text-muted shrink-0">{d.count}</span>
                 </div>
               ))}
             </div>
@@ -161,22 +161,22 @@ export async function CourseAnalytics({ courseId, totalLessons }: Props) {
 
       {/* Enrollments over time */}
       {weeks.length > 0 && (
-        <div className="rounded-2xl border border-zinc-800 bg-[#141416] p-5">
-          <h2 className="font-bold text-zinc-100 mb-4 flex items-center gap-2 text-sm">
+        <div className="rounded-2xl border border-border bg-surface p-5">
+          <h2 className="font-bold text-foreground mb-4 flex items-center gap-2 text-sm">
             <Users size={16} className="text-blue-600" />
             Matrículas — últimas 12 semanas
           </h2>
           <div className="space-y-2">
             {weeks.map((week) => (
               <div key={week} className="flex items-center gap-3">
-                <span className="w-20 text-xs text-zinc-500 shrink-0">{week}</span>
-                <div className="flex-1 h-5 bg-zinc-800 rounded-full overflow-hidden">
+                <span className="w-20 text-xs text-muted-light shrink-0">{week}</span>
+                <div className="flex-1 h-5 bg-surface-3 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-blue-500 rounded-full transition-all"
                     style={{ width: `${(enrollByWeek[week] / maxWeek) * 100}%` }}
                   />
                 </div>
-                <span className="w-8 text-right text-xs text-zinc-400 shrink-0">{enrollByWeek[week]}</span>
+                <span className="w-8 text-right text-xs text-muted shrink-0">{enrollByWeek[week]}</span>
               </div>
             ))}
           </div>
@@ -194,12 +194,12 @@ function KpiCard({ icon, label, value, bg, isText = false }: {
   isText?: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-[#141416] p-4">
+    <div className="rounded-2xl border border-border bg-surface p-4">
       <div className="flex items-center gap-2 mb-2">
         <div className={`h-8 w-8 rounded-xl ${bg} flex items-center justify-center`}>{icon}</div>
-        <span className="text-xs text-zinc-500">{label}</span>
+        <span className="text-xs text-muted-light">{label}</span>
       </div>
-      <div className="text-xl font-black text-zinc-100">
+      <div className="text-xl font-black text-foreground">
         {isText ? value : Number(value).toLocaleString("pt-BR")}
       </div>
     </div>

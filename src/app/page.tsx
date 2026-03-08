@@ -74,20 +74,20 @@ export default async function HomePage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0A0A0B] text-zinc-100">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Nav */}
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-zinc-800/50 bg-[#0A0A0B]/90 backdrop-blur-xl">
+      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/90 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
           <div className="flex items-center gap-3">
-            <span className="text-xl font-black tracking-tight text-white">
-              SMU<span className="text-zinc-500 text-sm font-normal ml-1">PRO</span>
+            <span className="text-xl font-black tracking-tight text-foreground">
+              SMU<span className="text-muted-light text-sm font-normal ml-1">PRO</span>
             </span>
             <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
               <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
               <span className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider">MIT</span>
             </div>
           </div>
-          <div className="hidden md:flex items-center gap-8 text-sm text-zinc-400">
+          <div className="hidden md:flex items-center gap-8 text-sm text-muted">
             <Link href="/cursos" className="hover:text-amber-400 transition-colors">Cursos</Link>
             <Link href="/#categorias" className="hover:text-amber-400 transition-colors">Categorias</Link>
             <Link href="/#sobre" className="hover:text-amber-400 transition-colors">Sobre</Link>
@@ -127,14 +127,14 @@ export default async function HomePage() {
           </span>
         </div>
 
-        <h1 className="max-w-5xl text-5xl md:text-7xl lg:text-8xl font-black leading-[0.9] tracking-tight text-white">
+        <h1 className="max-w-5xl text-5xl md:text-7xl lg:text-8xl font-black leading-[0.9] tracking-tight text-foreground">
           Sua carreira no{" "}
           <span className="text-amber-400">backstage</span>
           <br />
           começa aqui
         </h1>
 
-        <p className="mt-8 max-w-2xl text-lg text-zinc-400 leading-relaxed">
+        <p className="mt-8 max-w-2xl text-lg text-muted leading-relaxed">
           Cursos técnicos de sonorização, iluminação, DJ e VJ com profissionais em atividade.
           Certificados verificáveis. Trilha de carreira estruturada.
         </p>
@@ -153,11 +153,11 @@ export default async function HomePage() {
         </div>
 
         {/* Stats */}
-        <div className="mt-24 grid grid-cols-2 md:grid-cols-4 gap-0 w-full max-w-4xl border border-zinc-800 rounded-2xl overflow-hidden divide-x divide-zinc-800">
+        <div className="mt-24 grid grid-cols-2 md:grid-cols-4 gap-0 w-full max-w-4xl border border-border rounded-2xl overflow-hidden divide-x divide-border">
           {STATS.map((s) => (
-            <div key={s.label} className="p-6 text-center hover:bg-zinc-900/50 transition-colors">
+            <div key={s.label} className="p-6 text-center hover:bg-surface-2/50 transition-colors">
               <div className="text-3xl font-black text-amber-400 tabular-nums">{s.value}</div>
-              <div className="text-xs text-zinc-500 mt-2 uppercase tracking-wider">{s.label}</div>
+              <div className="text-xs text-muted-light mt-2 uppercase tracking-wider">{s.label}</div>
             </div>
           ))}
         </div>
@@ -165,14 +165,14 @@ export default async function HomePage() {
 
       {/* Cursos em destaque */}
       {featuredCourses.length > 0 && (
-        <section className="py-24 px-6 border-t border-zinc-800/50">
+        <section className="py-24 px-6 border-t border-border/50">
           <div className="mx-auto max-w-7xl">
             <div className="flex items-end justify-between mb-12">
               <div>
                 <p className="text-amber-400 text-sm font-semibold uppercase tracking-widest mb-2">Em destaque</p>
-                <h2 className="text-4xl font-black text-white">Cursos populares</h2>
+                <h2 className="text-4xl font-black text-foreground">Cursos populares</h2>
               </div>
-              <Link href="/cursos" className="text-sm text-zinc-500 hover:text-amber-400 transition-colors flex items-center gap-1">
+              <Link href="/cursos" className="text-sm text-muted-light hover:text-amber-400 transition-colors flex items-center gap-1">
                 Ver todos <ChevronRight size={14} />
               </Link>
             </div>
@@ -180,8 +180,8 @@ export default async function HomePage() {
             <div className="grid md:grid-cols-3 gap-6">
               {featuredCourses.map((course: any) => (
                 <Link key={course.id} href={`/cursos/${course.slug}`} className="group">
-                  <div className="rounded-2xl bg-[#141416] border border-zinc-800 overflow-hidden hover:border-amber-500/30 hover:shadow-[0_0_30px_rgba(245,158,11,0.05)] transition-all hover:-translate-y-1">
-                    <div className="h-44 bg-gradient-to-br from-zinc-900 to-zinc-800 flex items-center justify-center text-5xl relative overflow-hidden">
+                  <div className="rounded-2xl bg-surface border border-border overflow-hidden hover:border-amber-500/30 hover:shadow-[0_0_30px_rgba(245,158,11,0.05)] transition-all hover:-translate-y-1">
+                    <div className="h-44 bg-gradient-to-br from-surface-2 to-surface-3 flex items-center justify-center text-5xl relative overflow-hidden">
                       {course.thumbnail_url ? (
                         <img src={course.thumbnail_url} alt={course.titulo} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
                       ) : (
@@ -193,11 +193,11 @@ export default async function HomePage() {
                       </div>
                     </div>
                     <div className="p-5">
-                      <h3 className="font-bold text-lg text-white leading-tight mb-2 group-hover:text-amber-400 transition-colors">
+                      <h3 className="font-bold text-lg text-foreground leading-tight mb-2 group-hover:text-amber-400 transition-colors">
                         {course.titulo}
                       </h3>
-                      <p className="text-zinc-500 text-sm line-clamp-2 mb-4">{course.descricao_curta}</p>
-                      <div className="flex items-center justify-between text-xs text-zinc-600 pt-3 border-t border-zinc-800">
+                      <p className="text-muted-light text-sm line-clamp-2 mb-4">{course.descricao_curta}</p>
+                      <div className="flex items-center justify-between text-xs text-muted-light pt-3 border-t border-border">
                         <span>{course.total_aulas} aulas · {formatMinutes(course.carga_horaria ?? 0)}</span>
                         {course.preco && course.preco > 0 ? (
                           <span className="text-amber-400 font-semibold">{formatCurrency(course.preco)}</span>
@@ -215,21 +215,21 @@ export default async function HomePage() {
       )}
 
       {/* Categorias */}
-      <section id="categorias" className="py-24 px-6 border-t border-zinc-800/50">
+      <section id="categorias" className="py-24 px-6 border-t border-border/50">
         <div className="mx-auto max-w-7xl">
           <div className="text-center mb-16">
             <p className="text-amber-400 text-sm font-semibold uppercase tracking-widest mb-2">Áreas de formação</p>
-            <h2 className="text-4xl font-black text-white">O que você quer dominar?</h2>
+            <h2 className="text-4xl font-black text-foreground">O que você quer dominar?</h2>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {CATEGORIES.map((cat) => (
               <Link key={cat.key} href={`/cursos?categoria=${cat.key}`} className="group">
-                <div className="rounded-2xl p-6 bg-[#141416] border border-zinc-800 hover:border-amber-500/30 transition-all text-center">
+                <div className="rounded-2xl p-6 bg-surface border border-border hover:border-amber-500/30 transition-all text-center">
                   <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400 group-hover:bg-amber-500 group-hover:text-black transition-all">
                     {cat.icon}
                   </div>
-                  <h3 className="font-bold text-white mb-1">{cat.label}</h3>
-                  <p className="text-sm text-zinc-500">{cat.desc}</p>
+                  <h3 className="font-bold text-foreground mb-1">{cat.label}</h3>
+                  <p className="text-sm text-muted-light">{cat.desc}</p>
                 </div>
               </Link>
             ))}
@@ -238,23 +238,23 @@ export default async function HomePage() {
       </section>
 
       {/* Features */}
-      <section id="sobre" className="py-24 px-6 border-t border-zinc-800/50">
+      <section id="sobre" className="py-24 px-6 border-t border-border/50">
         <div className="mx-auto max-w-7xl">
           <div className="text-center mb-16">
             <p className="text-amber-400 text-sm font-semibold uppercase tracking-widest mb-2">Plataforma</p>
-            <h2 className="text-4xl font-black text-white">Feita para profissionais</h2>
-            <p className="mt-4 text-zinc-500 max-w-xl mx-auto">
+            <h2 className="text-4xl font-black text-foreground">Feita para profissionais</h2>
+            <p className="mt-4 text-muted-light max-w-xl mx-auto">
               Cada detalhe foi pensado para quem trabalha em palco e precisa de formação séria.
             </p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {FEATURES.map((f) => (
-              <div key={f.title} className="rounded-2xl p-6 bg-[#141416] border border-zinc-800 hover:border-amber-500/20 hover:shadow-[0_0_20px_rgba(245,158,11,0.03)] transition-all">
-                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-800 border border-zinc-700">
+              <div key={f.title} className="rounded-2xl p-6 bg-surface border border-border hover:border-amber-500/20 hover:shadow-[0_0_20px_rgba(245,158,11,0.03)] transition-all">
+                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-surface-3 border border-border-strong">
                   {f.icon}
                 </div>
-                <h3 className="font-bold text-white mb-2">{f.title}</h3>
-                <p className="text-sm text-zinc-500 leading-relaxed">{f.desc}</p>
+                <h3 className="font-bold text-foreground mb-2">{f.title}</h3>
+                <p className="text-sm text-muted-light leading-relaxed">{f.desc}</p>
               </div>
             ))}
           </div>
@@ -262,16 +262,16 @@ export default async function HomePage() {
       </section>
 
       {/* CTA final */}
-      <section className="py-32 px-6 border-t border-zinc-800/50 relative overflow-hidden">
+      <section className="py-32 px-6 border-t border-border/50 relative overflow-hidden">
         <div className="absolute inset-0 bg-[linear-gradient(rgba(245,158,11,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(245,158,11,0.02)_1px,transparent_1px)] bg-[size:32px_32px]" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[400px] w-[600px] rounded-full bg-amber-500/5 blur-[120px]" />
 
         <div className="mx-auto max-w-3xl text-center relative">
-          <h2 className="text-4xl md:text-6xl font-black text-white mb-6">
+          <h2 className="text-4xl md:text-6xl font-black text-foreground mb-6">
             Pronto para subir<br />
             <span className="text-amber-400">de nível</span>?
           </h2>
-          <p className="text-zinc-400 mb-10 text-lg max-w-xl mx-auto">
+          <p className="text-muted mb-10 text-lg max-w-xl mx-auto">
             Crie sua conta agora e acesse os cursos gratuitos do nível Trainee. Sem cartão de crédito.
           </p>
           <Link href="/cadastro">
@@ -280,7 +280,7 @@ export default async function HomePage() {
             </Button>
           </Link>
           {stats.totalUsers > 0 && (
-            <p className="text-xs text-zinc-600 mt-4">
+            <p className="text-xs text-muted-light mt-4">
               +{stats.totalUsers.toLocaleString("pt-BR")} profissionais já estudam na SMU PRO
             </p>
           )}
@@ -288,18 +288,18 @@ export default async function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-zinc-800 py-12 px-6">
-        <div className="mx-auto max-w-7xl flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-zinc-500">
+      <footer className="border-t border-border py-12 px-6">
+        <div className="mx-auto max-w-7xl flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-light">
           <div className="flex items-center gap-3">
-            <span className="font-bold text-white">SMU PRO</span>
-            <span className="text-zinc-600">—</span>
+            <span className="font-bold text-foreground">SMU PRO</span>
+            <span className="text-muted-light">—</span>
             <span>Escola Profissional de Eventos</span>
           </div>
           <div className="flex gap-6">
             <Link href="/cursos" className="hover:text-amber-400 transition-colors">Cursos</Link>
             <Link href="/certificado" className="hover:text-amber-400 transition-colors">Verificar certificado</Link>
           </div>
-          <span className="text-zinc-600">© {new Date().getFullYear()} SMU PRO</span>
+          <span className="text-muted-light">© {new Date().getFullYear()} SMU PRO</span>
         </div>
       </footer>
 
