@@ -37,7 +37,7 @@ import { cn, formatMinutes } from "@/lib/utils";
 import {
   Plus, ChevronDown, Edit2, Trash2, GripVertical,
   Video, FileText, HelpCircle, BookOpen, Save, X,
-  CheckCircle2, Circle, Settings2, ChevronRight, Copy,
+  CheckCircle2, Circle, Settings2, ChevronRight, Copy, Sparkles,
 } from "lucide-react";
 
 const moduleSchema = z.object({
@@ -528,6 +528,8 @@ function SortableLesson({ lesson, lessonIdx, editingLesson, quizLesson, lessonFo
       {quizLesson === lesson.id && (
         <QuizBuilder
           lessonId={lesson.id}
+          lessonTitulo={lesson.titulo}
+          lessonConteudo={lesson.conteudo_rico}
           onClose={onToggleQuiz}
           onQuizCreated={() => onLessonStateChange?.({ tem_quiz: true })}
           onQuizDeleted={() => onLessonStateChange?.({ tem_quiz: false })}
@@ -699,13 +701,14 @@ function LessonForm({ form, loading, onSubmit, onAutoSave, onCancel, label }: an
 
 // ── QuizBuilder ───────────────────────────────────────────────
 
-function QuizBuilder({ lessonId, onClose, onQuizCreated, onQuizDeleted }: { lessonId: string; onClose: () => void; onQuizCreated?: () => void; onQuizDeleted?: () => void }) {
+function QuizBuilder({ lessonId, lessonTitulo, lessonConteudo, onClose, onQuizCreated, onQuizDeleted }: { lessonId: string; lessonTitulo?: string; lessonConteudo?: string | null; onClose: () => void; onQuizCreated?: () => void; onQuizDeleted?: () => void }) {
   const [quiz, setQuiz] = useState<any>(null);
   const [loaded, setLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [addingQuestion, setAddingQuestion] = useState(false);
   const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null);
   const [editingSettings, setEditingSettings] = useState(false);
+  const [generatingAI, setGeneratingAI] = useState(false);
   const [settingsForm, setSettingsForm] = useState({ nivel_minimo_aprovacao: 70, tentativas_permitidas: 3, embaralhar_questoes: true, tempo_limite_min: null as number | null });
 
   useEffect(() => {
@@ -824,6 +827,55 @@ function QuizBuilder({ lessonId, onClose, onQuizCreated, onQuizDeleted }: { less
     }));
   };
 
+  const handleGenerateWithAI = async () => {
+    if (!lessonConteudo) return;
+    setGeneratingAI(true);
+    try {
+      const res = await fetch("/api/quiz/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ titulo: lessonTitulo, conteudo: lessonConteudo, numQuestions: 5 }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Erro ao gerar quiz");
+      }
+      const { questions } = await res.json();
+
+      // Save each generated question + options via existing server actions
+      const startOrder = quiz.quiz_questions?.length ?? 0;
+      for (let i = 0; i < questions.length; i++) {
+        const gen = questions[i];
+        const q = await adminCreateQuestion({
+          quiz_id: quiz.id,
+          texto: gen.texto,
+          tipo: "multiple_choice",
+          explicacao: gen.explicacao || null,
+          ordem: startOrder + i,
+          pontos: 1,
+        });
+        const savedOptions: any[] = [];
+        for (let j = 0; j < gen.opcoes.length; j++) {
+          const opt = await adminCreateOption({
+            question_id: q.id,
+            texto: gen.opcoes[j].texto,
+            correta: gen.opcoes[j].correta,
+            ordem: j,
+          });
+          savedOptions.push(opt);
+        }
+        setQuiz((prev: any) => ({
+          ...prev,
+          quiz_questions: [...(prev.quiz_questions ?? []), { ...q, quiz_options: savedOptions }],
+        }));
+      }
+    } catch (err: any) {
+      alert(err.message || "Erro ao gerar quiz com IA");
+    } finally {
+      setGeneratingAI(false);
+    }
+  };
+
   return (
     <div className="border-t border-amber-500/15 bg-amber-500/5 px-4 py-4">
       <div className="flex items-center justify-between mb-4">
@@ -940,12 +992,24 @@ function QuizBuilder({ lessonId, onClose, onQuizCreated, onQuizDeleted }: { less
           {addingQuestion ? (
             <AddQuestionForm onSave={handleAddQuestion} onCancel={() => setAddingQuestion(false)} loading={loading} />
           ) : (
-            <button
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-muted-light hover:text-amber-400 hover:bg-surface border border-dashed border-border hover:border-amber-500/30 rounded-lg transition-colors"
-              onClick={() => setAddingQuestion(true)}
-            >
-              <Plus size={13} /> Adicionar Questão
-            </button>
+            <div className="flex gap-2">
+              <button
+                className="flex-1 flex items-center gap-2 px-3 py-2 text-sm text-muted-light hover:text-amber-400 hover:bg-surface border border-dashed border-border hover:border-amber-500/30 rounded-lg transition-colors"
+                onClick={() => setAddingQuestion(true)}
+              >
+                <Plus size={13} /> Adicionar Questão
+              </button>
+              {lessonConteudo && (
+                <button
+                  className="flex items-center gap-2 px-3 py-2 text-sm text-amber-500 hover:text-amber-600 hover:bg-amber-50 border border-dashed border-amber-300 hover:border-amber-400 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={handleGenerateWithAI}
+                  disabled={generatingAI}
+                >
+                  <Sparkles size={13} className={generatingAI ? "animate-spin" : ""} />
+                  {generatingAI ? "Gerando..." : "Gerar com IA"}
+                </button>
+              )}
+            </div>
           )}
         </div>
       )}
