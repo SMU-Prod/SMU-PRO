@@ -69,9 +69,21 @@ export async function POST(req: Request) {
           ultimo_acesso: null,
         };
 
+        // Use insert (not upsert) to avoid overwriting role/other fields if user already exists
+        const { data: existing } = await supabase
+          .from("users")
+          .select("id")
+          .eq("clerk_id", id)
+          .limit(1);
+
+        if (existing && existing.length > 0) {
+          console.log("[Clerk Webhook] User already exists, skipping insert:", existing[0].id);
+          break;
+        }
+
         const { data: newUser, error } = await supabase
           .from("users")
-          .upsert(userData, { onConflict: "clerk_id" })
+          .insert(userData)
           .select("id")
           .single();
 
