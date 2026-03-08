@@ -277,24 +277,17 @@ export function LessonPlayer({
           </div>
         </div>
 
-        {/* Video — colapsável */}
-        <div className="relative bg-black w-full shrink-0 transition-all duration-300 ease-in-out overflow-hidden"
-          style={videoExpanded
-            ? { aspectRatio: "16/9", maxHeight: "52vh" }
-            : { height: 0 }
-          }
-        >
-          {youtubeId ? (
+        {/* Video — colapsável (só renderiza se tiver vídeo) */}
+        {youtubeId && (
+          <div className="relative bg-black w-full shrink-0 transition-all duration-300 ease-in-out overflow-hidden"
+            style={videoExpanded
+              ? { aspectRatio: "16/9", maxHeight: "52vh" }
+              : { height: 0 }
+            }
+          >
             <VideoPlayer youtubeId={youtubeId} lessonId={lesson.id} />
-          ) : (
-            <div className="flex items-center justify-center h-full text-gray-500">
-              <div className="text-center">
-                <PlayCircle size={48} className="mx-auto mb-3 opacity-30" />
-                <p className="text-sm">Sem vídeo para esta aula</p>
-              </div>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Miniatura do vídeo quando minimizado */}
         {!videoExpanded && youtubeId && (
