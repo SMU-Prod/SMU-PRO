@@ -189,3 +189,40 @@ export async function adminGetDashboardMetrics() {
   if (error) throw error;
   return data;
 }
+
+/**
+ * Public landing page stats — no auth required.
+ * Uses the admin client to bypass RLS and queries real data.
+ * Cached via ISR (revalidate in page.tsx).
+ */
+export async function getLandingPageStats() {
+  const supabase = createAdminClient();
+
+  const [usersRes, coursesRes, hoursRes, completionRes] = await Promise.all([
+    // Total active users
+    supabase.from("users").select("id", { count: "exact", head: true }).eq("ativo", true),
+    // Active courses
+    supabase.from("courses").select("id", { count: "exact", head: true }).eq("ativo", true),
+    // Total content hours (sum of carga_horaria in minutes from active courses)
+    supabase.from("courses").select("carga_horaria").eq("ativo", true),
+    // Completion rate: certificates issued / total enrollments
+    supabase.from("admin_dashboard_metrics").select("total_enrollments, total_certificates").single(),
+  ]);
+
+  const totalUsers = usersRes.count ?? 0;
+  const totalCourses = coursesRes.count ?? 0;
+
+  // Sum hours from course carga_horaria (stored in minutes)
+  const totalMinutes = (hoursRes.data ?? []).reduce(
+    (sum: number, c: { carga_horaria: number | null }) => sum + (c.carga_horaria ?? 0),
+    0
+  );
+  const totalHours = Math.floor(totalMinutes / 60);
+
+  // Completion rate
+  const enrollments = completionRes.data?.total_enrollments ?? 0;
+  const certificates = completionRes.data?.total_certificates ?? 0;
+  const completionRate = enrollments > 0 ? Math.round((certificates / enrollments) * 100) : 0;
+
+  return { totalUsers, totalCourses, totalHours, completionRate };
+}

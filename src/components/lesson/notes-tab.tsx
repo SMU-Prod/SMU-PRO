@@ -39,21 +39,21 @@ export function NotesTab({ lessonId, notes: initialNotes, userId }: NotesTabProp
   return (
     <div className="animate-fade-in space-y-4">
       {/* Nova anotação */}
-      <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+      <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
         <textarea
           value={newNote}
           onChange={(e) => setNewNote(e.target.value)}
           placeholder="Escreva sua anotação..."
           className={cn(
-            "w-full bg-transparent text-sm text-gray-900 placeholder:text-gray-400",
+            "w-full bg-transparent text-sm text-zinc-100 placeholder:text-zinc-500",
             "resize-none outline-none min-h-[80px]"
           )}
           onKeyDown={(e) => {
             if (e.key === "Enter" && e.ctrlKey) handleSave();
           }}
         />
-        <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200">
-          <span className="text-xs text-gray-400">Ctrl+Enter para salvar</span>
+        <div className="flex items-center justify-between mt-3 pt-3 border-t border-zinc-800">
+          <span className="text-xs text-zinc-500">Ctrl+Enter para salvar</span>
           <Button size="sm" onClick={handleSave} loading={saving} disabled={!newNote.trim()}>
             <Plus size={14} /> Salvar Nota
           </Button>
@@ -63,27 +63,27 @@ export function NotesTab({ lessonId, notes: initialNotes, userId }: NotesTabProp
       {/* Lista de notas */}
       {notes.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-10 text-center">
-          <StickyNote size={36} className="text-gray-200 mb-3" />
-          <p className="text-sm text-gray-400">Nenhuma anotação ainda.</p>
-          <p className="text-xs text-gray-400 mt-1">Suas notas ficam salvas para revisar depois.</p>
+          <StickyNote size={36} className="text-zinc-700 mb-3" />
+          <p className="text-sm text-zinc-500">Nenhuma anotação ainda.</p>
+          <p className="text-xs text-zinc-500 mt-1">Suas notas ficam salvas para revisar depois.</p>
         </div>
       ) : (
         <div className="space-y-3">
           {notes.map((note) => (
             <div
               key={note.id}
-              className="group rounded-xl border border-gray-200 bg-white p-4 hover:border-purple-200 transition-colors"
+              className="group rounded-xl border border-zinc-800 bg-[#141416] p-4 hover:border-amber-500/20 transition-colors"
             >
-              <p className="text-sm text-gray-800 whitespace-pre-wrap">{note.conteudo}</p>
+              <p className="text-sm text-zinc-200 whitespace-pre-wrap">{note.conteudo}</p>
               <div className="flex items-center justify-between mt-3">
-                <span className="text-xs text-gray-400">
+                <span className="text-xs text-zinc-500">
                   {new Date(note.created_at).toLocaleDateString("pt-BR", {
                     day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
                   })}
                 </span>
                 <button
                   onClick={() => handleDelete(note.id)}
-                  className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all"
+                  className="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-red-500 transition-all"
                 >
                   <Trash2 size={14} />
                 </button>

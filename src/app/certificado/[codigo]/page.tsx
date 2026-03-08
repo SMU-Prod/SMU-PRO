@@ -60,7 +60,7 @@ export default async function CertificatePage({ params }: Props) {
       {/* Header */}
       <div className="mb-8 text-center">
         <Link href="/" className="inline-flex items-center gap-2 mb-4">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#6C3CE1] to-[#C084FC]">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-amber-300">
             <span className="text-white font-bold text-sm">S</span>
           </div>
           <span className="font-bold text-[#E8E8F0]">SMU PRO</span>
@@ -75,8 +75,8 @@ export default async function CertificatePage({ params }: Props) {
       <div className="w-full max-w-2xl">
         <div className="relative overflow-hidden rounded-2xl border border-[#2A2A38] bg-[#111118] p-8">
           {/* Background decoration */}
-          <div className="absolute top-0 right-0 h-64 w-64 rounded-full bg-[#6C3CE1]/5 blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 left-0 h-48 w-48 rounded-full bg-[#C084FC]/5 blur-3xl pointer-events-none" />
+          <div className="absolute top-0 right-0 h-64 w-64 rounded-full bg-amber-500/5 blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 h-48 w-48 rounded-full bg-[#FBBF24]/5 blur-3xl pointer-events-none" />
 
           {/* Top row */}
           <div className="flex items-start justify-between mb-8">
@@ -91,7 +91,7 @@ export default async function CertificatePage({ params }: Props) {
                 <span className="text-xs text-amber-400 font-semibold">MIT</span>
               </div>
             ) : (
-              <Award size={48} className="text-[#6C3CE1] opacity-60" />
+              <Award size={48} className="text-amber-400 opacity-60" />
             )}
           </div>
 
@@ -100,7 +100,7 @@ export default async function CertificatePage({ params }: Props) {
             <p className="text-sm text-[#8888A8] mb-3">Certificamos que</p>
             <h1 className="text-3xl font-bold text-[#E8E8F0] mb-3">{user.nome}</h1>
             <p className="text-sm text-[#8888A8] mb-2">concluiu com êxito o curso</p>
-            <h2 className="text-xl font-semibold text-[#C084FC] mb-1">{course.titulo}</h2>
+            <h2 className="text-xl font-semibold text-[#FBBF24] mb-1">{course.titulo}</h2>
             <div className="flex items-center justify-center gap-2 mt-2">
               <span className="text-base">{getCategoryIcon(course.categoria)}</span>
               <span className="text-sm text-[#8888A8]">{getLevelLabel(course.nivel)}</span>
@@ -116,7 +116,7 @@ export default async function CertificatePage({ params }: Props) {
           {/* Stats row */}
           <div className="grid grid-cols-3 gap-4 mb-8">
             <div className="rounded-xl bg-[#16161F] p-3 text-center">
-              <Calendar size={16} className="mx-auto mb-1 text-[#6C3CE1]" />
+              <Calendar size={16} className="mx-auto mb-1 text-amber-400" />
               <p className="text-xs text-[#8888A8]">Emitido em</p>
               <p className="text-sm font-medium text-[#E8E8F0]">
                 {new Date(cert.emitido_em).toLocaleDateString("pt-BR", {
@@ -125,14 +125,14 @@ export default async function CertificatePage({ params }: Props) {
               </p>
             </div>
             <div className="rounded-xl bg-[#16161F] p-3 text-center">
-              <Clock size={16} className="mx-auto mb-1 text-[#6C3CE1]" />
+              <Clock size={16} className="mx-auto mb-1 text-amber-400" />
               <p className="text-xs text-[#8888A8]">Carga Horária</p>
               <p className="text-sm font-medium text-[#E8E8F0]">
                 {formatMinutes(cert.carga_horaria ?? course.carga_horaria ?? 0)}
               </p>
             </div>
             <div className="rounded-xl bg-[#16161F] p-3 text-center">
-              <User size={16} className="mx-auto mb-1 text-[#6C3CE1]" />
+              <User size={16} className="mx-auto mb-1 text-amber-400" />
               <p className="text-xs text-[#8888A8]">Nível</p>
               <p className="text-sm font-medium text-[#E8E8F0]">{getLevelLabel(course.nivel)}</p>
             </div>
@@ -152,7 +152,7 @@ export default async function CertificatePage({ params }: Props) {
             </div>
             <div className="text-right">
               <p className="text-[10px] text-[#8888A8]">Código de verificação</p>
-              <p className="text-[10px] font-mono text-[#6C3CE1] break-all max-w-[140px]">
+              <p className="text-[10px] font-mono text-amber-400 break-all max-w-[140px]">
                 {codigo.substring(0, 8)}...
               </p>
             </div>
@@ -163,13 +163,13 @@ export default async function CertificatePage({ params }: Props) {
         <div className="flex justify-center gap-3 mt-6">
           <a
             href={`/api/certificates/pdf/${codigo}`}
-            className="inline-flex items-center gap-2 rounded-lg bg-[#6C3CE1] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#5B30C5] transition-colors"
+            className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-amber-600 transition-colors"
           >
             <Award size={16} /> Baixar PDF
           </a>
           <button
             onClick={() => navigator.share?.({ url: verifyUrl, title: `Certificado - ${course.titulo}` })}
-            className="inline-flex items-center gap-2 rounded-lg border border-[#2A2A38] bg-[#111118] px-5 py-2.5 text-sm font-semibold text-[#E8E8F0] hover:border-[#6C3CE1]/40 transition-colors"
+            className="inline-flex items-center gap-2 rounded-lg border border-[#2A2A38] bg-[#111118] px-5 py-2.5 text-sm font-semibold text-[#E8E8F0] hover:border-amber-500/40 transition-colors"
           >
             Compartilhar
           </button>

@@ -22,13 +22,13 @@ export default async function AdminTrilhasPage() {
       <div className="animate-fade-in">
         <Header title="Trilhas de Aprendizado" subtitle="Agrupe cursos em trilhas sequenciais" />
         <div className="p-6">
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center max-w-lg mx-auto">
+          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-6 text-center max-w-lg mx-auto">
             <TrendingUp size={32} className="text-amber-400 mx-auto mb-3" />
-            <p className="font-semibold text-amber-900 mb-2">Tabela não encontrada</p>
-            <p className="text-sm text-amber-700 mb-4">
+            <p className="font-semibold text-amber-300 mb-2">Tabela não encontrada</p>
+            <p className="text-sm text-amber-400/80 mb-4">
               Execute o SQL abaixo no Supabase para criar as tabelas de trilhas:
             </p>
-            <pre className="text-left text-xs bg-white border border-amber-200 rounded-lg p-3 overflow-auto text-gray-800 whitespace-pre-wrap">
+            <pre className="text-left text-xs bg-zinc-900 border border-zinc-800 rounded-lg p-3 overflow-auto text-zinc-300 whitespace-pre-wrap">
 {`CREATE TABLE IF NOT EXISTS collections (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   titulo TEXT NOT NULL,

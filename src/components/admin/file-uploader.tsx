@@ -99,7 +99,7 @@ export function FileUploader({
 
   if (uploaded && localUrl) {
     return (
-      <div className={cn("rounded-xl border border-gray-200 overflow-hidden", className)}>
+      <div className={cn("rounded-xl border border-zinc-800 overflow-hidden", className)}>
         {imagePreview && isImage ? (
           <div className="relative">
             <img
@@ -119,19 +119,19 @@ export function FileUploader({
           <div className="flex items-center gap-3 px-4 py-3 bg-emerald-50">
             <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm text-gray-900 truncate font-medium">Arquivo enviado</p>
+              <p className="text-sm text-zinc-100 truncate font-medium">Arquivo enviado</p>
               <a
                 href={localUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-[#6C3CE1] hover:underline truncate block"
+                className="text-xs text-amber-400 hover:underline truncate block"
               >
                 {localUrl.split("/").pop()}
               </a>
             </div>
             <button
               onClick={handleRemove}
-              className="text-gray-400 hover:text-gray-600 transition-colors shrink-0"
+              className="text-zinc-500 hover:text-zinc-400 transition-colors shrink-0"
             >
               <X size={14} />
             </button>
@@ -150,30 +150,30 @@ export function FileUploader({
         className={cn(
           "relative rounded-xl border-2 border-dashed px-4 py-5 text-center cursor-pointer transition-all",
           isDragActive
-            ? "border-[#6C3CE1] bg-purple-50"
+            ? "border-amber-500 bg-amber-500/10"
             : uploading
-            ? "border-gray-200 bg-gray-50 cursor-not-allowed"
-            : "border-gray-200 bg-white hover:border-purple-300 hover:bg-purple-50/30"
+            ? "border-zinc-800 bg-zinc-900 cursor-not-allowed"
+            : "border-zinc-800 bg-[#141416] hover:border-amber-500/30 hover:bg-amber-500/10/30"
         )}
       >
         <input {...getInputProps()} />
         <div className="flex flex-col items-center gap-2">
           {uploading ? (
-            <Loader2 size={24} className="text-[#6C3CE1] animate-spin" />
+            <Loader2 size={24} className="text-amber-400 animate-spin" />
           ) : (
             <div className={cn(
               "h-10 w-10 rounded-xl flex items-center justify-center",
-              isDragActive ? "bg-[#6C3CE1] text-white" : "bg-gray-100 text-gray-400"
+              isDragActive ? "bg-amber-500 text-white" : "bg-zinc-800 text-zinc-500"
             )}>
               {isDragActive ? <Upload size={18} /> : <Icon size={18} />}
             </div>
           )}
           <div>
-            <p className="text-sm font-medium text-gray-700">
+            <p className="text-sm font-medium text-zinc-300">
               {uploading ? "Enviando..." : isDragActive ? "Solte aqui" : label}
             </p>
             {!uploading && (
-              <p className="text-xs text-gray-400 mt-0.5">
+              <p className="text-xs text-zinc-500 mt-0.5">
                 {hint ?? `Máx. ${maxSizeMB}MB · ${Object.values(accept).flat().join(", ")}`}
               </p>
             )}

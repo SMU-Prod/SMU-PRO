@@ -151,7 +151,7 @@ export function PaymentPageClient({
         {billingType === "PIX" && pixData && (
           <div className="rounded-2xl bg-white/5 border border-white/10 p-6">
             <div className="flex items-center gap-2 mb-6">
-              <QrCode size={20} className="text-smu-purple" />
+              <QrCode size={20} className="text-amber-400" />
               <h2 className="font-bold">Pague com PIX</h2>
               {polling && (
                 <span className="ml-auto flex items-center gap-1.5 text-xs text-white/30">
@@ -223,7 +223,7 @@ export function PaymentPageClient({
         {billingType === "BOLETO" && boletoData && (
           <div className="rounded-2xl bg-white/5 border border-white/10 p-6">
             <div className="flex items-center gap-2 mb-6">
-              <FileText size={20} className="text-smu-purple" />
+              <FileText size={20} className="text-amber-400" />
               <h2 className="font-bold">Boleto Bancário</h2>
             </div>
 

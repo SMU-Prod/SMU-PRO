@@ -35,7 +35,7 @@ function baseLayout(content: string): string {
           <tr>
             <td style="padding:0 0 32px 0;text-align:center;">
               <span style="font-size:24px;font-weight:900;color:#ffffff;letter-spacing:-1px;">
-                <span style="background:linear-gradient(135deg,#6C3CE1,#3B82F6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">SMU</span>
+                <span style="background:linear-gradient(135deg,#F59E0B,#FBBF24);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">SMU</span>
                 <span style="color:rgba(255,255,255,0.4);font-size:14px;font-weight:400;margin-left:4px;">PRO</span>
               </span>
             </td>
@@ -63,7 +63,7 @@ function baseLayout(content: string): string {
 
 function btn(text: string, url: string): string {
   return `
-<a href="${url}" style="display:inline-block;background:#6C3CE1;color:#ffffff;font-weight:700;font-size:14px;padding:14px 28px;border-radius:10px;text-decoration:none;margin:24px 0 8px 0;">
+<a href="${url}" style="display:inline-block;background:#F59E0B;color:#ffffff;font-weight:700;font-size:14px;padding:14px 28px;border-radius:10px;text-decoration:none;margin:24px 0 8px 0;">
   ${text}
 </a>`;
 }

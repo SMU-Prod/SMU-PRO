@@ -69,6 +69,7 @@ export async function CourseAnalytics({ courseId, totalLessons }: Props) {
     .from("enrollments")
     .select("created_at")
     .eq("course_id", courseId)
+     
     .gte("created_at", new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString())
     .order("created_at", { ascending: true });
 
@@ -89,68 +90,68 @@ export async function CourseAnalytics({ courseId, totalLessons }: Props) {
       {/* KPI row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <KpiCard icon={<Users size={18} className="text-blue-600" />} label="Matrículas" value={total} bg="bg-blue-50" />
-        <KpiCard icon={<TrendingUp size={18} className="text-[#6C3CE1]" />} label="Iniciaram" value={`${started} (${total > 0 ? Math.round(started / total * 100) : 0}%)`} bg="bg-purple-50" isText />
+        <KpiCard icon={<TrendingUp size={18} className="text-amber-400" />} label="Iniciaram" value={`${started} (${total > 0 ? Math.round(started / total * 100) : 0}%)`} bg="bg-amber-500/10" isText />
         <KpiCard icon={<BookOpen size={18} className="text-emerald-600" />} label="Concluíram" value={`${completed} (${total > 0 ? Math.round(completed / total * 100) : 0}%)`} bg="bg-emerald-50" isText />
         <KpiCard icon={<Award size={18} className="text-amber-600" />} label="Certificados" value={certCount ?? 0} bg="bg-amber-50" />
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Funnel */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-5">
-          <h2 className="font-bold text-gray-900 mb-4 flex items-center gap-2 text-sm">
-            <TrendingUp size={16} className="text-[#6C3CE1]" />
+        <div className="rounded-2xl border border-zinc-800 bg-[#141416] p-5">
+          <h2 className="font-bold text-zinc-100 mb-4 flex items-center gap-2 text-sm">
+            <TrendingUp size={16} className="text-amber-400" />
             Funil de Conclusão
           </h2>
           {total === 0 ? (
-            <p className="text-gray-400 text-sm">Nenhuma matrícula ainda.</p>
+            <p className="text-zinc-500 text-sm">Nenhuma matrícula ainda.</p>
           ) : (
             <div className="space-y-3">
               {[
                 { label: "Matrículas", count: total, color: "bg-blue-500" },
-                { label: "Iniciaram", count: started, color: "bg-purple-500" },
+                { label: "Iniciaram", count: started, color: "bg-amber-500/100" },
                 { label: "Concluíram", count: completed, color: "bg-emerald-500" },
                 { label: "Certificados", count: certCount ?? 0, color: "bg-amber-500" },
               ].map((step) => (
                 <div key={step.label} className="flex items-center gap-3">
-                  <span className="w-24 text-xs text-gray-500 shrink-0">{step.label}</span>
-                  <div className="flex-1 h-6 bg-gray-100 rounded-full overflow-hidden">
+                  <span className="w-24 text-xs text-zinc-500 shrink-0">{step.label}</span>
+                  <div className="flex-1 h-6 bg-zinc-800 rounded-full overflow-hidden">
                     <div
                       className={`h-full ${step.color} rounded-full transition-all`}
                       style={{ width: `${(step.count / total) * 100}%` }}
                     />
                   </div>
-                  <span className="w-16 text-right text-xs font-semibold text-gray-700 shrink-0">
+                  <span className="w-16 text-right text-xs font-semibold text-zinc-300 shrink-0">
                     {step.count} ({Math.round((step.count / total) * 100)}%)
                   </span>
                 </div>
               ))}
             </div>
           )}
-          <div className="mt-4 pt-4 border-t border-gray-100">
-            <p className="text-xs text-gray-500">Progresso médio dos alunos: <strong className="text-gray-900">{avgProgress}%</strong></p>
+          <div className="mt-4 pt-4 border-t border-zinc-800/50">
+            <p className="text-xs text-zinc-500">Progresso médio dos alunos: <strong className="text-zinc-100">{avgProgress}%</strong></p>
           </div>
         </div>
 
         {/* Progress distribution */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-5">
-          <h2 className="font-bold text-gray-900 mb-4 flex items-center gap-2 text-sm">
+        <div className="rounded-2xl border border-zinc-800 bg-[#141416] p-5">
+          <h2 className="font-bold text-zinc-100 mb-4 flex items-center gap-2 text-sm">
             <BarChart3 size={16} className="text-blue-600" />
             Distribuição de Progresso
           </h2>
           {total === 0 ? (
-            <p className="text-gray-400 text-sm">Nenhuma matrícula ainda.</p>
+            <p className="text-zinc-500 text-sm">Nenhuma matrícula ainda.</p>
           ) : (
             <div className="space-y-2">
               {distribution.map((d) => (
                 <div key={d.label} className="flex items-center gap-3">
-                  <span className="w-16 text-xs text-gray-500 shrink-0 text-right">{d.label}</span>
-                  <div className="flex-1 h-5 bg-gray-100 rounded-full overflow-hidden">
+                  <span className="w-16 text-xs text-zinc-500 shrink-0 text-right">{d.label}</span>
+                  <div className="flex-1 h-5 bg-zinc-800 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-gradient-to-r from-[#6C3CE1] to-[#8B5CF6] rounded-full transition-all"
+                      className="h-full bg-gradient-to-r from-amber-500 to-amber-400 rounded-full transition-all"
                       style={{ width: `${(d.count / maxBucket) * 100}%` }}
                     />
                   </div>
-                  <span className="w-8 text-right text-xs text-gray-600 shrink-0">{d.count}</span>
+                  <span className="w-8 text-right text-xs text-zinc-400 shrink-0">{d.count}</span>
                 </div>
               ))}
             </div>
@@ -160,22 +161,22 @@ export async function CourseAnalytics({ courseId, totalLessons }: Props) {
 
       {/* Enrollments over time */}
       {weeks.length > 0 && (
-        <div className="rounded-2xl border border-gray-200 bg-white p-5">
-          <h2 className="font-bold text-gray-900 mb-4 flex items-center gap-2 text-sm">
+        <div className="rounded-2xl border border-zinc-800 bg-[#141416] p-5">
+          <h2 className="font-bold text-zinc-100 mb-4 flex items-center gap-2 text-sm">
             <Users size={16} className="text-blue-600" />
             Matrículas — últimas 12 semanas
           </h2>
           <div className="space-y-2">
             {weeks.map((week) => (
               <div key={week} className="flex items-center gap-3">
-                <span className="w-20 text-xs text-gray-400 shrink-0">{week}</span>
-                <div className="flex-1 h-5 bg-gray-100 rounded-full overflow-hidden">
+                <span className="w-20 text-xs text-zinc-500 shrink-0">{week}</span>
+                <div className="flex-1 h-5 bg-zinc-800 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-blue-500 rounded-full transition-all"
                     style={{ width: `${(enrollByWeek[week] / maxWeek) * 100}%` }}
                   />
                 </div>
-                <span className="w-8 text-right text-xs text-gray-600 shrink-0">{enrollByWeek[week]}</span>
+                <span className="w-8 text-right text-xs text-zinc-400 shrink-0">{enrollByWeek[week]}</span>
               </div>
             ))}
           </div>
@@ -193,12 +194,12 @@ function KpiCard({ icon, label, value, bg, isText = false }: {
   isText?: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-4">
+    <div className="rounded-2xl border border-zinc-800 bg-[#141416] p-4">
       <div className="flex items-center gap-2 mb-2">
         <div className={`h-8 w-8 rounded-xl ${bg} flex items-center justify-center`}>{icon}</div>
-        <span className="text-xs text-gray-500">{label}</span>
+        <span className="text-xs text-zinc-500">{label}</span>
       </div>
-      <div className="text-xl font-black text-gray-900">
+      <div className="text-xl font-black text-zinc-100">
         {isText ? value : Number(value).toLocaleString("pt-BR")}
       </div>
     </div>

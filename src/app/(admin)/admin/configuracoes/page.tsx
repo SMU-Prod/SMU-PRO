@@ -15,7 +15,7 @@ export default async function AdminConfiguracoesPage() {
 
       <div className="p-6 max-w-3xl space-y-6">
         {/* Seção: Plataforma */}
-        <Section title="Plataforma" icon={<Settings size={16} className="text-[#6C3CE1]" />}>
+        <Section title="Plataforma" icon={<Settings size={16} className="text-amber-400" />}>
           <Row label="Nome da plataforma" value="SMU PRO" />
           <Row label="URL base" value="smu-pro.vercel.app" />
           <Row label="Versão" value="1.0.0" />
@@ -23,7 +23,7 @@ export default async function AdminConfiguracoesPage() {
         </Section>
 
         {/* Seção: Autenticação */}
-        <Section title="Autenticação" icon={<Key size={16} className="text-amber-600" />}>
+        <Section title="Autenticação" icon={<Key size={16} className="text-amber-400" />}>
           <Row label="Provedor" value="Clerk" />
           <Row label="Sessões simultâneas" value="Ilimitadas" />
           <InfoRow
@@ -33,21 +33,21 @@ export default async function AdminConfiguracoesPage() {
         </Section>
 
         {/* Seção: Banco de Dados */}
-        <Section title="Banco de Dados" icon={<Database size={16} className="text-blue-600" />}>
+        <Section title="Banco de Dados" icon={<Database size={16} className="text-blue-400" />}>
           <Row label="Provedor" value="Supabase (PostgreSQL)" />
           <Row label="RLS" value="Ativado" />
           <Row label="Criação automática de usuários" value="Via getCurrentUser() (upsert)" />
         </Section>
 
         {/* Seção: Segurança */}
-        <Section title="Segurança" icon={<Shield size={16} className="text-emerald-600" />}>
+        <Section title="Segurança" icon={<Shield size={16} className="text-emerald-400" />}>
           <Row label="Autenticação de dois fatores" value="Suportado (Clerk)" />
           <Row label="Proteção CSRF" value="Next.js nativo" />
           <Row label="Validação de roles" value="Middleware + Layout" />
         </Section>
 
         {/* Seção: Notificações */}
-        <Section title="Notificações" icon={<Bell size={16} className="text-orange-500" />}>
+        <Section title="Notificações" icon={<Bell size={16} className="text-orange-400" />}>
           <Row label="Provedor de e-mail" value="Não configurado" />
           <InfoRow
             label="Webhooks do Clerk"
@@ -56,11 +56,11 @@ export default async function AdminConfiguracoesPage() {
         </Section>
 
         {/* Aviso */}
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 flex gap-3">
-          <AlertTriangle size={18} className="text-amber-600 shrink-0 mt-0.5" />
+        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-5 flex gap-3">
+          <AlertTriangle size={18} className="text-amber-400 shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-semibold text-amber-800 mb-1">Configurações avançadas</p>
-            <p className="text-sm text-amber-700">
+            <p className="text-sm font-semibold text-amber-300 mb-1">Configurações avançadas</p>
+            <p className="text-sm text-amber-400/80">
               Alterações em variáveis de ambiente, chaves de API e configurações de banco de dados
               devem ser feitas diretamente nos painéis do Supabase, Clerk e Vercel.
             </p>
@@ -81,12 +81,12 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl bg-white border border-gray-200 overflow-hidden">
-      <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+    <div className="rounded-2xl bg-[#141416] border border-zinc-800 overflow-hidden">
+      <div className="px-5 py-4 border-b border-zinc-800/50 flex items-center gap-2">
         {icon}
-        <h3 className="font-semibold text-gray-900 text-sm">{title}</h3>
+        <h3 className="font-semibold text-zinc-100 text-sm">{title}</h3>
       </div>
-      <div className="divide-y divide-gray-100">{children}</div>
+      <div className="divide-y divide-zinc-800/50">{children}</div>
     </div>
   );
 }
@@ -94,8 +94,8 @@ function Section({
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between px-5 py-3.5">
-      <p className="text-sm text-gray-600">{label}</p>
-      <p className="text-sm font-medium text-gray-900">{value}</p>
+      <p className="text-sm text-zinc-400">{label}</p>
+      <p className="text-sm font-medium text-zinc-100">{value}</p>
     </div>
   );
 }
@@ -103,8 +103,8 @@ function Row({ label, value }: { label: string; value: string }) {
 function InfoRow({ label, description }: { label: string; description: string }) {
   return (
     <div className="px-5 py-4">
-      <p className="text-sm font-medium text-gray-900 mb-1">{label}</p>
-      <p className="text-xs text-gray-500 leading-relaxed">{description}</p>
+      <p className="text-sm font-medium text-zinc-100 mb-1">{label}</p>
+      <p className="text-xs text-zinc-500 leading-relaxed">{description}</p>
     </div>
   );
 }

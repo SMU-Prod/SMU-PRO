@@ -21,14 +21,14 @@ export function Header({ title, subtitle, role, className, actions }: HeaderProp
   return (
     <header
       className={cn(
-        "sticky top-0 z-30 flex items-center gap-3 border-b border-gray-200 bg-white/90 backdrop-blur-md px-4 sm:px-6 h-14 sm:h-16",
+        "sticky top-0 z-30 flex items-center gap-3 border-b border-zinc-800 bg-[#0A0A0B]/90 backdrop-blur-md px-4 sm:px-6 h-14 sm:h-16",
         className
       )}
     >
       {/* Hamburger — mobile only */}
       <button
         onClick={toggle}
-        className="lg:hidden p-2 -ml-1 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+        className="lg:hidden p-2 -ml-1 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors"
         aria-label="Abrir menu"
       >
         <Menu size={20} />
@@ -37,7 +37,7 @@ export function Header({ title, subtitle, role, className, actions }: HeaderProp
       {/* Title */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <h1 className="text-base sm:text-lg font-semibold text-gray-900 truncate">{title}</h1>
+          <h1 className="text-base sm:text-lg font-semibold text-zinc-100 truncate">{title}</h1>
           {role && (
             <Badge
               variant={
@@ -53,7 +53,7 @@ export function Header({ title, subtitle, role, className, actions }: HeaderProp
             </Badge>
           )}
         </div>
-        {subtitle && <p className="text-xs text-gray-500 mt-0.5 hidden sm:block">{subtitle}</p>}
+        {subtitle && <p className="text-xs text-zinc-500 mt-0.5 hidden sm:block">{subtitle}</p>}
       </div>
 
       {/* Actions */}
@@ -62,7 +62,7 @@ export function Header({ title, subtitle, role, className, actions }: HeaderProp
       {/* Notifications */}
       <Button variant="ghost" size="icon" className="relative shrink-0">
         <Bell size={18} />
-        <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-[#6C3CE1]" />
+        <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-amber-500" />
       </Button>
     </header>
   );

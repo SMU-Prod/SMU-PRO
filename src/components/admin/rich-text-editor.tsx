@@ -41,7 +41,7 @@ export function RichTextEditor({
         underline: false,
       }),
       Placeholder.configure({ placeholder }),
-      Link.configure({ openOnClick: false, HTMLAttributes: { class: "text-[#6C3CE1] underline cursor-pointer" } }),
+      Link.configure({ openOnClick: false, HTMLAttributes: { class: "text-amber-400 underline cursor-pointer" } }),
       Underline,
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       TextStyle,
@@ -52,8 +52,8 @@ export function RichTextEditor({
       attributes: {
         class: cn(
           "prose prose-sm max-w-none focus:outline-none px-4 py-3",
-          "prose-headings:text-gray-900 prose-p:text-gray-700 prose-strong:text-gray-900",
-          "prose-a:text-[#6C3CE1] prose-blockquote:border-l-[#6C3CE1] prose-blockquote:text-gray-600"
+          "prose-headings:text-zinc-100 prose-p:text-zinc-300 prose-strong:text-zinc-100",
+          "prose-a:text-amber-400 prose-blockquote:border-l-amber-500 prose-blockquote:text-zinc-400"
         ),
       },
     },
@@ -83,9 +83,9 @@ export function RichTextEditor({
   if (!editor) return null;
 
   return (
-    <div className={cn("rounded-xl border border-gray-200 bg-white overflow-hidden", className)}>
+    <div className={cn("rounded-xl border border-zinc-800 bg-[#141416] overflow-hidden", className)}>
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-0.5 border-b border-gray-100 bg-gray-50 px-2 py-1.5">
+      <div className="flex flex-wrap items-center gap-0.5 border-b border-zinc-800/50 bg-zinc-900 px-2 py-1.5">
         <ToolGroup>
           <ToolBtn active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()} title="Negrito"><Bold size={13} /></ToolBtn>
           <ToolBtn active={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleItalic().run()} title="Itálico"><Italic size={13} /></ToolBtn>
@@ -145,7 +145,7 @@ function ToolGroup({ children }: { children: React.ReactNode }) {
 }
 
 function Sep() {
-  return <div className="mx-1 h-4 w-px bg-gray-200" />;
+  return <div className="mx-1 h-4 w-px bg-zinc-700" />;
 }
 
 function ToolBtn({
@@ -165,7 +165,7 @@ function ToolBtn({
       title={title}
       className={cn(
         "flex h-7 w-7 items-center justify-center rounded transition-colors",
-        active ? "bg-[#6C3CE1] text-white" : "text-gray-500 hover:bg-gray-100 hover:text-gray-900",
+        active ? "bg-amber-500 text-white" : "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-100",
         disabled && "opacity-30 cursor-not-allowed"
       )}
     >

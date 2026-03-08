@@ -23,12 +23,12 @@ export default function CertificateVerifyPage() {
       {/* Header */}
       <div className="mb-10 text-center">
         <Link href="/" className="inline-flex items-center gap-2 mb-6">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#6C3CE1] to-[#C084FC]">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-amber-300">
             <span className="text-white font-bold text-sm">S</span>
           </div>
           <span className="font-bold text-[#E8E8F0]">SMU PRO</span>
         </Link>
-        <div className="flex items-center justify-center gap-2 text-[#6C3CE1] mb-4">
+        <div className="flex items-center justify-center gap-2 text-amber-400 mb-4">
           <Shield size={20} />
           <span className="text-sm font-semibold uppercase tracking-widest">Verificação de Certificado</span>
         </div>
@@ -42,8 +42,8 @@ export default function CertificateVerifyPage() {
       <div className="w-full max-w-md">
         <div className="rounded-2xl border border-[#2A2A38] bg-[#111118] p-8">
           <div className="flex justify-center mb-6">
-            <div className="h-16 w-16 rounded-2xl bg-[#6C3CE1]/20 border border-[#6C3CE1]/30 flex items-center justify-center">
-              <Award size={32} className="text-[#6C3CE1]" />
+            <div className="h-16 w-16 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center">
+              <Award size={32} className="text-amber-400" />
             </div>
           </div>
 
@@ -56,7 +56,7 @@ export default function CertificateVerifyPage() {
                 value={codigo}
                 onChange={(e) => setCodigo(e.target.value)}
                 placeholder="Ex: a1b2c3d4-e5f6-..."
-                className="bg-[#16161F] border-[#2A2A38] text-[#E8E8F0] placeholder:text-[#44445A] focus:border-[#6C3CE1] font-mono"
+                className="bg-[#16161F] border-[#2A2A38] text-[#E8E8F0] placeholder:text-[#44445A] focus:border-amber-500 font-mono"
                 autoFocus
               />
               <p className="text-xs text-[#44445A] mt-2">
@@ -72,7 +72,7 @@ export default function CertificateVerifyPage() {
 
         <p className="text-center text-[#44445A] text-xs mt-6">
           Certificados emitidos pela{" "}
-          <Link href="/" className="text-[#6C3CE1] hover:underline">SMU PRO</Link>{" "}
+          <Link href="/" className="text-amber-400 hover:underline">SMU PRO</Link>{" "}
           são verificáveis publicamente e possuem QR Code único.
         </p>
       </div>

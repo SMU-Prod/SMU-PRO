@@ -4,26 +4,26 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6C3CE1] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 cursor-pointer",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0B] disabled:pointer-events-none disabled:opacity-50 cursor-pointer",
   {
     variants: {
       variant: {
         default:
-          "bg-[#6C3CE1] text-white hover:bg-[#5B30C5] active:scale-[0.98] shadow-md hover:shadow-lg",
+          "bg-amber-500 text-black hover:bg-amber-400 active:scale-[0.98] shadow-md hover:shadow-[0_0_20px_rgba(245,158,11,0.3)]",
         secondary:
-          "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:border-gray-300",
+          "bg-zinc-800 text-zinc-200 border border-zinc-700 hover:bg-zinc-700 hover:border-zinc-600",
         ghost:
-          "text-gray-500 hover:text-gray-900 hover:bg-gray-100",
+          "text-zinc-400 hover:text-white hover:bg-zinc-800",
         outline:
-          "border border-[#6C3CE1] text-[#6C3CE1] hover:bg-[#6C3CE1] hover:text-white",
+          "border border-zinc-700 text-zinc-300 hover:border-amber-500 hover:text-amber-400",
         destructive:
-          "bg-red-50 border border-red-200 text-red-600 hover:bg-red-100",
+          "bg-red-950 border border-red-800 text-red-400 hover:bg-red-900",
         success:
-          "bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100",
+          "bg-emerald-950 border border-emerald-800 text-emerald-400 hover:bg-emerald-900",
         gold:
-          "bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100",
+          "bg-amber-950 border border-amber-800 text-amber-400 hover:bg-amber-900",
         link:
-          "text-[#6C3CE1] underline-offset-4 hover:underline p-0 h-auto",
+          "text-amber-500 underline-offset-4 hover:underline p-0 h-auto",
       },
       size: {
         sm:   "h-8 px-3 text-xs",

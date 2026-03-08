@@ -120,12 +120,12 @@ export function LessonPlayer({
   const CourseContentList = () => (
     <div className="flex flex-col">
       {/* Progress header */}
-      <div className="px-4 py-3 border-b border-gray-200 bg-white shrink-0">
+      <div className="px-4 py-3 border-b border-zinc-800 bg-[#141416] shrink-0">
         <div className="flex items-center gap-2 mb-1">
           <Progress value={courseProgress} className="flex-1 h-2" />
-          <span className="text-xs text-[#6C3CE1] font-semibold shrink-0">{courseProgress}%</span>
+          <span className="text-xs text-amber-400 font-semibold shrink-0">{courseProgress}%</span>
         </div>
-        <p className="text-xs text-gray-400">{completedLessons}/{totalLessons} aulas concluídas</p>
+        <p className="text-xs text-zinc-500">{completedLessons}/{totalLessons} aulas concluídas</p>
       </div>
       {/* Modules */}
       {course.modules?.map((mod: any, modIdx: number) => {
@@ -133,25 +133,25 @@ export function LessonPlayer({
         const modCompleted = mod.lessons?.filter((l: any) => progressMap[l.id]?.concluido).length ?? 0;
         const modTotal = mod.lessons?.length ?? 0;
         return (
-          <div key={mod.id} className="border-b border-gray-100">
+          <div key={mod.id} className="border-b border-zinc-800/50">
             <button
               onClick={() => toggleModule(mod.id)}
-              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left"
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-zinc-800 transition-colors text-left"
             >
-              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-500">
+              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-xs font-bold text-zinc-500">
                 {modIdx + 1}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-800 truncate">{mod.titulo}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{modCompleted}/{modTotal} aulas</p>
+                <p className="text-sm font-medium text-zinc-200 truncate">{mod.titulo}</p>
+                <p className="text-xs text-zinc-500 mt-0.5">{modCompleted}/{modTotal} aulas</p>
               </div>
               <ChevronDown
                 size={15}
-                className={cn("text-gray-400 transition-transform shrink-0", expanded && "rotate-180")}
+                className={cn("text-zinc-500 transition-transform shrink-0", expanded && "rotate-180")}
               />
             </button>
             {expanded && (
-              <div className="pb-1 bg-gray-50/50">
+              <div className="pb-1 bg-zinc-900/50">
                 {mod.lessons?.map((l: any) => {
                   const done = progressMap[l.id]?.concluido ?? false;
                   const isCurrent = l.id === lesson.id;
@@ -163,22 +163,22 @@ export function LessonPlayer({
                       className={cn(
                         "flex items-center gap-3 px-4 py-2.5 text-sm transition-all group",
                         isCurrent
-                          ? "bg-purple-50 border-l-2 border-[#6C3CE1]"
-                          : "hover:bg-gray-50 border-l-2 border-transparent",
+                          ? "bg-amber-500/10 border-l-2 border-amber-500"
+                          : "hover:bg-zinc-800 border-l-2 border-transparent",
                         locked && "opacity-50 cursor-not-allowed"
                       )}
                     >
                       <div className="shrink-0">
                         {done ? (
-                          <CheckCircle2 size={16} className="text-[#6C3CE1]" />
+                          <CheckCircle2 size={16} className="text-amber-400" />
                         ) : locked ? (
-                          <Lock size={14} className="text-gray-400" />
+                          <Lock size={14} className="text-zinc-500" />
                         ) : (
                           <Circle
                             size={16}
                             className={cn(
                               "transition-colors",
-                              isCurrent ? "text-[#6C3CE1]" : "text-gray-300 group-hover:text-gray-400"
+                              isCurrent ? "text-amber-400" : "text-zinc-600 group-hover:text-zinc-500"
                             )}
                           />
                         )}
@@ -187,14 +187,14 @@ export function LessonPlayer({
                         <p
                           className={cn(
                             "truncate text-xs leading-snug",
-                            isCurrent ? "text-[#6C3CE1] font-medium" : done ? "text-gray-400" : "text-gray-700"
+                            isCurrent ? "text-amber-400 font-medium" : done ? "text-zinc-500" : "text-zinc-300"
                           )}
                         >
                           {l.titulo}
                         </p>
-                        <p className="text-[10px] text-gray-400 mt-0.5">{formatMinutes(l.duracao_min)}</p>
+                        <p className="text-[10px] text-zinc-500 mt-0.5">{formatMinutes(l.duracao_min)}</p>
                       </div>
-                      {l.tem_quiz && <HelpCircle size={12} className="text-[#6C3CE1] shrink-0 opacity-70" />}
+                      {l.tem_quiz && <HelpCircle size={12} className="text-amber-400 shrink-0 opacity-70" />}
                     </Link>
                   );
                 })}
@@ -204,16 +204,16 @@ export function LessonPlayer({
         );
       })}
       {/* Instructor */}
-      <div className="px-4 py-3 border-t border-gray-200 bg-white mt-auto">
+      <div className="px-4 py-3 border-t border-zinc-800 bg-[#141416] mt-auto">
         <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#6C3CE1] to-[#8B5CF6] flex items-center justify-center text-white font-bold text-sm shrink-0">
+          <div className="h-9 w-9 rounded-full bg-gradient-to-br from-amber-500 to-amber-400 flex items-center justify-center text-white font-bold text-sm shrink-0">
             S
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-gray-900">SMU Escola</p>
+            <p className="text-sm font-semibold text-zinc-100">SMU Escola</p>
             <div className="flex items-center gap-1">
               <Star size={10} className="text-amber-400 fill-amber-400" />
-              <span className="text-xs text-gray-500">4.9 · Instrutor Oficial</span>
+              <span className="text-xs text-zinc-500">4.9 · Instrutor Oficial</span>
             </div>
           </div>
         </div>
@@ -222,22 +222,22 @@ export function LessonPlayer({
   );
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
+    <div className="flex h-screen overflow-hidden bg-zinc-900">
       {/* ── Main Content ── */}
       <div className="flex flex-col overflow-hidden w-full lg:w-[65%]">
         {/* Top Bar */}
-        <div className="flex items-center justify-between px-3 sm:px-5 py-2.5 border-b border-gray-200 bg-white shrink-0 gap-2">
-          <div className="flex items-center gap-1.5 text-sm text-gray-500 min-w-0">
-            <Link href="/dashboard/cursos" className="hover:text-gray-900 transition-colors shrink-0 hidden sm:block">
+        <div className="flex items-center justify-between px-3 sm:px-5 py-2.5 border-b border-zinc-800 bg-[#141416] shrink-0 gap-2">
+          <div className="flex items-center gap-1.5 text-sm text-zinc-500 min-w-0">
+            <Link href="/dashboard/cursos" className="hover:text-zinc-100 transition-colors shrink-0 hidden sm:block">
               Meus Cursos
             </Link>
-            <ChevronRight size={14} className="text-gray-300 shrink-0 hidden sm:block" />
-            <Link href={`/cursos/${course.slug}`} className="hover:text-gray-900 transition-colors shrink-0">
+            <ChevronRight size={14} className="text-zinc-600 shrink-0 hidden sm:block" />
+            <Link href={`/cursos/${course.slug}`} className="hover:text-zinc-100 transition-colors shrink-0">
               <ChevronLeft size={16} className="sm:hidden" />
               <span className="hidden sm:inline truncate max-w-[120px]">{course.titulo}</span>
             </Link>
-            <ChevronRight size={14} className="text-gray-300 shrink-0 hidden sm:block" />
-            <span className="text-gray-900 font-medium truncate max-w-[140px] sm:max-w-[200px] hidden sm:block">
+            <ChevronRight size={14} className="text-zinc-600 shrink-0 hidden sm:block" />
+            <span className="text-zinc-100 font-medium truncate max-w-[140px] sm:max-w-[200px] hidden sm:block">
               {lesson.titulo}
             </span>
           </div>
@@ -296,10 +296,10 @@ export function LessonPlayer({
 
         {/* Miniatura do vídeo quando minimizado */}
         {!videoExpanded && youtubeId && (
-          <div className="bg-gray-100 border-b border-gray-200 px-4 py-2 flex items-center gap-3 shrink-0">
+          <div className="bg-zinc-800 border-b border-zinc-800 px-4 py-2 flex items-center gap-3 shrink-0">
             <button
               onClick={() => setVideoExpanded(true)}
-              className="relative w-28 h-16 rounded-lg overflow-hidden bg-black group cursor-pointer shrink-0 border border-gray-300 hover:border-[#6C3CE1] transition-colors"
+              className="relative w-28 h-16 rounded-lg overflow-hidden bg-black group cursor-pointer shrink-0 border border-zinc-700 hover:border-amber-500 transition-colors"
             >
               <Image
                 src={`https://img.youtube.com/vi/${youtubeId}/mqdefault.jpg`}
@@ -313,12 +313,12 @@ export function LessonPlayer({
               </div>
             </button>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-gray-700 truncate">{lesson.titulo}</p>
-              <p className="text-[10px] text-gray-400">{formatMinutes(lesson.duracao_min)}</p>
+              <p className="text-xs font-medium text-zinc-300 truncate">{lesson.titulo}</p>
+              <p className="text-[10px] text-zinc-500">{formatMinutes(lesson.duracao_min)}</p>
             </div>
             <button
               onClick={() => setVideoExpanded(true)}
-              className="p-1.5 rounded-lg text-gray-400 hover:text-[#6C3CE1] hover:bg-purple-50 transition-colors shrink-0"
+              className="p-1.5 rounded-lg text-zinc-500 hover:text-amber-400 hover:bg-amber-500/10 transition-colors shrink-0"
               title="Expandir vídeo"
             >
               <Maximize2 size={16} />
@@ -328,10 +328,10 @@ export function LessonPlayer({
 
         {/* Botão minimizar/expandir vídeo */}
         {youtubeId && (
-          <div className="flex justify-end px-3 py-1 bg-white border-b border-gray-100 shrink-0">
+          <div className="flex justify-end px-3 py-1 bg-[#141416] border-b border-zinc-800/50 shrink-0">
             <button
               onClick={() => setVideoExpanded((v) => !v)}
-              className="flex items-center gap-1.5 text-[11px] text-gray-400 hover:text-[#6C3CE1] transition-colors py-0.5 px-2 rounded-md hover:bg-purple-50"
+              className="flex items-center gap-1.5 text-[11px] text-zinc-500 hover:text-amber-400 transition-colors py-0.5 px-2 rounded-md hover:bg-amber-500/10"
             >
               {videoExpanded ? (
                 <><Minimize2 size={12} /> Minimizar vídeo</>
@@ -343,7 +343,7 @@ export function LessonPlayer({
         )}
 
         {/* Lesson info + tabs */}
-        <div className="flex-1 overflow-y-auto bg-white border-t border-gray-200">
+        <div className="flex-1 overflow-y-auto bg-[#141416] border-t border-zinc-800">
           <div className="px-4 sm:px-6 py-4 sm:py-5">
             {/* Title + badges */}
             <div className="mb-4">
@@ -354,11 +354,11 @@ export function LessonPlayer({
                   {formatMinutes(lesson.duracao_min)}
                 </Badge>
               </div>
-              <h1 className="text-lg sm:text-xl font-bold text-gray-900">{lesson.titulo}</h1>
+              <h1 className="text-lg sm:text-xl font-bold text-zinc-100">{lesson.titulo}</h1>
             </div>
 
             {/* Tabs */}
-            <div className="border-b border-gray-200 mb-4 sm:mb-5 -mx-4 sm:-mx-6 px-4 sm:px-6">
+            <div className="border-b border-zinc-800 mb-4 sm:mb-5 -mx-4 sm:-mx-6 px-4 sm:px-6">
               <div className="flex gap-0 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 {tabs.map((tab) => {
                   if (!tab.mobileOnly) return null; // handled below
@@ -373,14 +373,14 @@ export function LessonPlayer({
                       className={cn(
                         "flex items-center gap-1.5 px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-medium transition-all border-b-2 -mb-px whitespace-nowrap",
                         activeTab === tab.id
-                          ? "text-[#6C3CE1] border-[#6C3CE1]"
-                          : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
+                          ? "text-amber-400 border-amber-500"
+                          : "text-zinc-500 border-transparent hover:text-zinc-300 hover:border-zinc-600"
                       )}
                     >
                       <Icon size={14} />
                       {tab.label}
                       {tab.id === "quiz" && lesson.tem_quiz && (
-                        <span className="ml-0.5 h-1.5 w-1.5 rounded-full bg-[#6C3CE1]" />
+                        <span className="ml-0.5 h-1.5 w-1.5 rounded-full bg-amber-500" />
                       )}
                     </button>
                   );
@@ -391,8 +391,8 @@ export function LessonPlayer({
                   className={cn(
                     "lg:hidden flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-all border-b-2 -mb-px whitespace-nowrap",
                     activeTab === "content"
-                      ? "text-[#6C3CE1] border-[#6C3CE1]"
-                      : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
+                      ? "text-amber-400 border-amber-500"
+                      : "text-zinc-500 border-transparent hover:text-zinc-300 hover:border-zinc-600"
                   )}
                 >
                   <List size={14} />
@@ -404,11 +404,11 @@ export function LessonPlayer({
             {/* Tab content */}
             <div className="animate-fade-in">
               {activeTab === "overview" && (
-                <div className="space-y-4 text-sm text-gray-600 leading-relaxed">
+                <div className="space-y-4 text-sm text-zinc-400 leading-relaxed">
                   {lesson.descricao ? (
                     <p>{lesson.descricao}</p>
                   ) : (
-                    <p className="text-gray-400">Sem descrição para esta aula.</p>
+                    <p className="text-zinc-500">Sem descrição para esta aula.</p>
                   )}
                   {lesson.conteudo_rico && (
                     <div
@@ -436,15 +436,15 @@ export function LessonPlayer({
       </div>
 
       {/* ── Right Sidebar — Course Content (35%) — desktop only ── */}
-      <aside className="hidden lg:flex border-l border-gray-200 bg-white flex-col overflow-hidden shrink-0 w-[35%]">
+      <aside className="hidden lg:flex border-l border-zinc-800 bg-[#141416] flex-col overflow-hidden shrink-0 w-[35%]">
         {/* Header */}
-        <div className="px-4 py-4 border-b border-gray-200 shrink-0">
-          <h3 className="font-semibold text-gray-900 text-sm mb-2">Conteúdo do Curso</h3>
+        <div className="px-4 py-4 border-b border-zinc-800 shrink-0">
+          <h3 className="font-semibold text-zinc-100 text-sm mb-2">Conteúdo do Curso</h3>
           <div className="flex items-center gap-2">
             <Progress value={courseProgress} className="flex-1 h-2" />
-            <span className="text-xs text-[#6C3CE1] font-semibold shrink-0">{courseProgress}%</span>
+            <span className="text-xs text-amber-400 font-semibold shrink-0">{courseProgress}%</span>
           </div>
-          <p className="text-xs text-gray-400 mt-1">{completedLessons}/{totalLessons} aulas concluídas</p>
+          <p className="text-xs text-zinc-500 mt-1">{completedLessons}/{totalLessons} aulas concluídas</p>
         </div>
         <div className="flex-1 overflow-y-auto">
           <CourseContentList />
@@ -460,8 +460,8 @@ function MaterialsTab({ lesson }: { lesson: any }) {
   if (!lesson.pdf_path) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <FileText size={40} className="text-gray-200 mb-3" />
-        <p className="text-gray-400 text-sm">Nenhum material disponível para esta aula.</p>
+        <FileText size={40} className="text-zinc-700 mb-3" />
+        <p className="text-zinc-500 text-sm">Nenhum material disponível para esta aula.</p>
       </div>
     );
   }
@@ -469,13 +469,13 @@ function MaterialsTab({ lesson }: { lesson: any }) {
   return (
     <div className="space-y-3">
       {/* Card do material */}
-      <div className="flex items-center gap-3 p-4 rounded-xl border border-gray-200 bg-gray-50">
+      <div className="flex items-center gap-3 p-4 rounded-xl border border-zinc-800 bg-zinc-900">
         <div className="h-10 w-10 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center shrink-0">
           <FileText size={18} className="text-red-500" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-gray-900">Material da Aula</p>
-          <p className="text-xs text-gray-500">PDF · Visualize ou baixe</p>
+          <p className="text-sm font-medium text-zinc-100">Material da Aula</p>
+          <p className="text-xs text-zinc-500">PDF · Visualize ou baixe</p>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <Button
@@ -497,7 +497,7 @@ function MaterialsTab({ lesson }: { lesson: any }) {
 
       {/* Visualizador de PDF inline */}
       {showPdf && (
-        <div className="rounded-xl border border-gray-200 overflow-hidden bg-gray-100 animate-fade-in">
+        <div className="rounded-xl border border-zinc-800 overflow-hidden bg-zinc-800 animate-fade-in">
           <iframe
             src={`${lesson.pdf_path}#toolbar=1&navpanes=0`}
             className="w-full border-0"

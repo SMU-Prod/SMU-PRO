@@ -69,13 +69,13 @@ export async function GET(
     .bg-glow-1 {
       position: absolute; top: -60px; right: -60px;
       width: 280px; height: 280px;
-      background: radial-gradient(circle, rgba(108,60,225,0.15), transparent 70%);
+      background: radial-gradient(circle, rgba(245,158,11,0.15), transparent 70%);
       border-radius: 50%;
     }
     .bg-glow-2 {
       position: absolute; bottom: -60px; left: -60px;
       width: 200px; height: 200px;
-      background: radial-gradient(circle, rgba(192,132,252,0.10), transparent 70%);
+      background: radial-gradient(circle, rgba(251,191,36,0.10), transparent 70%);
       border-radius: 50%;
     }
     .header {
@@ -84,7 +84,7 @@ export async function GET(
       justify-content: space-between;
       margin-bottom: 28px;
     }
-    .logo-area .brand { font-size: 22px; font-weight: 900; color: #6C3CE1; letter-spacing: -0.5px; }
+    .logo-area .brand { font-size: 22px; font-weight: 900; color: #F59E0B; letter-spacing: -0.5px; }
     .logo-area .sub { font-size: 10px; color: #8888A8; margin-top: 2px; letter-spacing: 1px; text-transform: uppercase; }
     .logo-area .label { font-size: 10px; color: #8888A8; margin-top: 8px; }
     .mit-badge {
@@ -107,7 +107,7 @@ export async function GET(
     .certifies-label { font-size: 11px; color: #8888A8; margin-bottom: 8px; }
     .student-name { font-size: 32px; font-weight: 800; color: #E8E8F0; margin-bottom: 8px; letter-spacing: -0.5px; }
     .concluded-label { font-size: 11px; color: #8888A8; margin-bottom: 6px; }
-    .course-title { font-size: 20px; font-weight: 700; color: #C084FC; margin-bottom: 4px; }
+    .course-title { font-size: 20px; font-weight: 700; color: #FBBF24; margin-bottom: 4px; }
     .course-meta { font-size: 11px; color: #8888A8; }
     .stats {
       display: flex;
@@ -139,7 +139,7 @@ export async function GET(
     .qr-label { font-size: 8px; color: #8888A8; }
     .code-area { text-align: right; }
     .code-label { font-size: 9px; color: #8888A8; }
-    .code-value { font-size: 9px; font-family: monospace; color: #6C3CE1; word-break: break-all; max-width: 130px; margin-top: 2px; }
+    .code-value { font-size: 9px; font-family: monospace; color: #F59E0B; word-break: break-all; max-width: 130px; margin-top: 2px; }
   </style>
 </head>
 <body>

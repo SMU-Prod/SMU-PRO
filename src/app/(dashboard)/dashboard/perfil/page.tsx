@@ -25,26 +25,26 @@ export default async function PerfilPage() {
 
       <div className="p-6 max-w-2xl space-y-6">
         {/* Card de info */}
-        <div className="rounded-2xl bg-white border border-gray-200 p-6">
+        <div className="rounded-2xl bg-[#141416] border border-zinc-800 p-6">
           <div className="flex items-start gap-5">
             {user.avatar_url ? (
               <img
                 src={user.avatar_url}
                 alt={user.nome}
-                className="h-16 w-16 rounded-full object-cover ring-2 ring-purple-200"
+                className="h-16 w-16 rounded-full object-cover ring-2 ring-amber-500/20"
               />
             ) : (
-              <div className="h-16 w-16 rounded-full bg-purple-50 border border-purple-100 flex items-center justify-center">
-                <UserCircle size={32} className="text-[#6C3CE1]" />
+              <div className="h-16 w-16 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                <UserCircle size={32} className="text-amber-400" />
               </div>
             )}
             <div className="flex-1">
-              <h2 className="text-xl font-bold text-gray-900">{user.nome}</h2>
-              <div className="flex items-center gap-2 mt-1 text-sm text-gray-500">
+              <h2 className="text-xl font-bold text-zinc-100">{user.nome}</h2>
+              <div className="flex items-center gap-2 mt-1 text-sm text-zinc-500">
                 <Mail size={13} />
                 {user.email}
               </div>
-              <div className="flex items-center gap-2 mt-0.5 text-sm text-gray-500">
+              <div className="flex items-center gap-2 mt-0.5 text-sm text-zinc-500">
                 <Calendar size={13} />
                 Membro desde {memberSince}
               </div>
@@ -64,9 +64,9 @@ export default async function PerfilPage() {
         </div>
 
         {/* Formulário de edição */}
-        <div className="rounded-2xl bg-white border border-gray-200 p-6">
-          <h3 className="font-bold text-gray-900 mb-6 flex items-center gap-2">
-            <ShieldCheck size={18} className="text-[#6C3CE1]" />
+        <div className="rounded-2xl bg-[#141416] border border-zinc-800 p-6">
+          <h3 className="font-bold text-zinc-100 mb-6 flex items-center gap-2">
+            <ShieldCheck size={18} className="text-amber-400" />
             Informações pessoais
           </h3>
           <ProfileForm user={user} />

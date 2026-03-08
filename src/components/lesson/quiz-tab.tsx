@@ -138,8 +138,8 @@ export function QuizTab({ lesson, quizAttempts, userId }: QuizTabProps) {
   if (!lesson.tem_quiz) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <HelpCircle size={40} className="text-gray-200 mb-3" />
-        <p className="text-gray-400 text-sm">Esta aula não possui quiz.</p>
+        <HelpCircle size={40} className="text-zinc-700 mb-3" />
+        <p className="text-zinc-500 text-sm">Esta aula não possui quiz.</p>
       </div>
     );
   }
@@ -224,10 +224,10 @@ export function QuizTab({ lesson, quizAttempts, userId }: QuizTabProps) {
           ) : (
             <AlertCircle size={48} className="mx-auto mb-3 text-red-500" />
           )}
-          <h3 className="text-xl font-bold text-gray-900 mb-1">
+          <h3 className="text-xl font-bold text-zinc-100 mb-1">
             {result.aprovado ? "Parabéns!" : "Tente novamente"}
           </h3>
-          <p className="text-gray-500 mb-4">
+          <p className="text-zinc-500 mb-4">
             {result.aprovado
               ? "Você foi aprovado no quiz desta aula."
               : `Você precisa de ${quiz.nivel_minimo_aprovacao}% para passar.`}
@@ -235,16 +235,16 @@ export function QuizTab({ lesson, quizAttempts, userId }: QuizTabProps) {
           <div className="flex items-center justify-center gap-6">
             <div>
               <p className="text-4xl font-bold gradient-text">{result.nota}%</p>
-              <p className="text-xs text-gray-500 mt-1">Sua nota</p>
+              <p className="text-xs text-zinc-500 mt-1">Sua nota</p>
             </div>
-            <div className="h-12 w-px bg-gray-200" />
+            <div className="h-12 w-px bg-zinc-800" />
             <div>
-              <p className="text-2xl font-bold text-gray-900">{quiz.nivel_minimo_aprovacao}%</p>
-              <p className="text-xs text-gray-500 mt-1">Nota mínima</p>
+              <p className="text-2xl font-bold text-zinc-100">{quiz.nivel_minimo_aprovacao}%</p>
+              <p className="text-xs text-zinc-500 mt-1">Nota mínima</p>
             </div>
           </div>
           {!result.aprovado && (
-            <p className="text-xs text-gray-400 mt-3">
+            <p className="text-xs text-zinc-500 mt-3">
               {canRetry
                 ? `Você tem mais ${remainingAttempts} tentativa${remainingAttempts > 1 ? "s" : ""}.`
                 : "Você esgotou todas as tentativas."}
@@ -254,7 +254,7 @@ export function QuizTab({ lesson, quizAttempts, userId }: QuizTabProps) {
 
         {/* Gabarito */}
         <div className="space-y-4">
-          <h4 className="font-semibold text-gray-900">Gabarito</h4>
+          <h4 className="font-semibold text-zinc-100">Gabarito</h4>
           {displayQuestions.map((q) => {
             const chosen = answers[q.id];
             const correct = q.quiz_options.find((o) => o.correta);
@@ -262,7 +262,7 @@ export function QuizTab({ lesson, quizAttempts, userId }: QuizTabProps) {
             const isTrueFalse = q.tipo === "true_false";
 
             return (
-              <div key={q.id} className="rounded-xl border border-gray-200 bg-white p-4">
+              <div key={q.id} className="rounded-xl border border-zinc-800 bg-[#141416] p-4">
                 <div className="flex items-start gap-3 mb-3">
                   {isRight ? (
                     <CheckCircle2 size={18} className="text-emerald-500 mt-0.5 shrink-0" />
@@ -273,7 +273,7 @@ export function QuizTab({ lesson, quizAttempts, userId }: QuizTabProps) {
                     {isTrueFalse && (
                       <Badge variant="secondary" className="text-[9px] px-1.5 py-0">V/F</Badge>
                     )}
-                    <p className="text-sm text-gray-900">{q.texto}</p>
+                    <p className="text-sm text-zinc-100">{q.texto}</p>
                   </div>
                 </div>
                 <div className="space-y-2 pl-6">
@@ -286,7 +286,7 @@ export function QuizTab({ lesson, quizAttempts, userId }: QuizTabProps) {
                           ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                           : chosen === opt.id
                           ? "border-red-200 bg-red-50 text-red-700"
-                          : "border-gray-200 text-gray-500"
+                          : "border-zinc-800 text-zinc-500"
                       )}
                     >
                       {opt.correta && <CheckCircle2 size={12} />}
@@ -296,7 +296,7 @@ export function QuizTab({ lesson, quizAttempts, userId }: QuizTabProps) {
                   ))}
                 </div>
                 {q.explicacao && (
-                  <p className="mt-3 text-xs text-gray-500 pl-6 italic">{q.explicacao}</p>
+                  <p className="mt-3 text-xs text-zinc-500 pl-6 italic">{q.explicacao}</p>
                 )}
               </div>
             );
@@ -316,27 +316,27 @@ export function QuizTab({ lesson, quizAttempts, userId }: QuizTabProps) {
   if (!started) {
     return (
       <div className="animate-fade-in">
-        <div className="rounded-xl border border-gray-200 bg-white p-6 text-center">
-          <HelpCircle size={40} className="mx-auto mb-3 text-[#6C3CE1]" />
-          <h3 className="font-bold text-gray-900 mb-1">{quiz.titulo}</h3>
-          <p className="text-sm text-gray-500 mb-5">{quiz.descricao}</p>
+        <div className="rounded-xl border border-zinc-800 bg-[#141416] p-6 text-center">
+          <HelpCircle size={40} className="mx-auto mb-3 text-amber-400" />
+          <h3 className="font-bold text-zinc-100 mb-1">{quiz.titulo}</h3>
+          <p className="text-sm text-zinc-500 mb-5">{quiz.descricao}</p>
           <div className="flex justify-center gap-6 mb-5 text-sm">
             <div className="text-center">
-              <p className="font-bold text-gray-900">{totalQuestions}</p>
-              <p className="text-xs text-gray-500">questões</p>
+              <p className="font-bold text-zinc-100">{totalQuestions}</p>
+              <p className="text-xs text-zinc-500">questões</p>
             </div>
             <div className="text-center">
-              <p className="font-bold text-gray-900">{quiz.nivel_minimo_aprovacao}%</p>
-              <p className="text-xs text-gray-500">para passar</p>
+              <p className="font-bold text-zinc-100">{quiz.nivel_minimo_aprovacao}%</p>
+              <p className="text-xs text-zinc-500">para passar</p>
             </div>
             <div className="text-center">
-              <p className="font-bold text-gray-900">{quiz.tentativas_permitidas}</p>
-              <p className="text-xs text-gray-500">tentativas</p>
+              <p className="font-bold text-zinc-100">{quiz.tentativas_permitidas}</p>
+              <p className="text-xs text-zinc-500">tentativas</p>
             </div>
             {quiz.tempo_limite_min && (
               <div className="text-center">
-                <p className="font-bold text-gray-900">{quiz.tempo_limite_min} min</p>
-                <p className="text-xs text-gray-500">tempo limite</p>
+                <p className="font-bold text-zinc-100">{quiz.tempo_limite_min} min</p>
+                <p className="text-xs text-zinc-500">tempo limite</p>
               </div>
             )}
           </div>
@@ -348,15 +348,15 @@ export function QuizTab({ lesson, quizAttempts, userId }: QuizTabProps) {
           )}
 
           {lessonAttempts.length > 0 && (
-            <p className="text-xs text-gray-400 mb-3">
+            <p className="text-xs text-zinc-500 mb-3">
               {lessonAttempts.length}/{quiz.tentativas_permitidas} tentativas usadas
             </p>
           )}
 
           {attemptsExhausted && !alreadyPassed ? (
             <div className="flex flex-col items-center gap-2 pt-2">
-              <Ban size={24} className="text-gray-300" />
-              <p className="text-sm text-gray-500">Tentativas esgotadas.</p>
+              <Ban size={24} className="text-zinc-600" />
+              <p className="text-sm text-zinc-500">Tentativas esgotadas.</p>
             </div>
           ) : alreadyPassed ? (
             <div className="flex flex-col items-center gap-2 pt-2">
@@ -378,7 +378,7 @@ export function QuizTab({ lesson, quizAttempts, userId }: QuizTabProps) {
     <div className="animate-fade-in space-y-5">
       {/* Header do quiz */}
       <div className="flex items-center justify-between">
-        <span className="text-sm text-gray-500">
+        <span className="text-sm text-zinc-500">
           {answeredCount}/{totalQuestions} respondidas
         </span>
         <div className="flex items-center gap-3">
@@ -386,7 +386,7 @@ export function QuizTab({ lesson, quizAttempts, userId }: QuizTabProps) {
             <span
               className={cn(
                 "flex items-center gap-1 text-sm font-mono font-semibold",
-                timeLeft <= 60 ? "text-red-500 animate-pulse" : "text-gray-700"
+                timeLeft <= 60 ? "text-red-500 animate-pulse" : "text-zinc-300"
               )}
             >
               <Clock size={14} />
@@ -402,13 +402,13 @@ export function QuizTab({ lesson, quizAttempts, userId }: QuizTabProps) {
         const isTrueFalse = q.tipo === "true_false";
 
         return (
-          <div key={q.id} className="rounded-xl border border-gray-200 bg-white p-5">
+          <div key={q.id} className="rounded-xl border border-zinc-800 bg-[#141416] p-5">
             <div className="flex items-center gap-2 mb-4">
               {isTrueFalse && (
                 <Badge variant="secondary" className="text-[9px] px-1.5 py-0">V/F</Badge>
               )}
-              <p className="text-sm font-medium text-gray-900">
-                <span className="text-gray-400 mr-2">{qIdx + 1}.</span>
+              <p className="text-sm font-medium text-zinc-100">
+                <span className="text-zinc-500 mr-2">{qIdx + 1}.</span>
                 {q.texto}
               </p>
             </div>
@@ -422,8 +422,8 @@ export function QuizTab({ lesson, quizAttempts, userId }: QuizTabProps) {
                     className={cn(
                       "w-full flex items-center gap-3 px-4 py-3 rounded-lg border text-sm text-left transition-all",
                       selected
-                        ? "border-[#6C3CE1] bg-purple-50 text-[#6C3CE1]"
-                        : "border-gray-200 text-gray-600 hover:border-purple-200 hover:text-gray-900",
+                        ? "border-amber-500 bg-amber-500/10 text-amber-400"
+                        : "border-zinc-800 text-zinc-400 hover:border-amber-500/20 hover:text-zinc-100",
                       isTrueFalse && "justify-center text-center font-medium"
                     )}
                   >
@@ -431,7 +431,7 @@ export function QuizTab({ lesson, quizAttempts, userId }: QuizTabProps) {
                       <div
                         className={cn(
                           "h-4 w-4 rounded-full border-2 shrink-0 transition-all",
-                          selected ? "border-[#6C3CE1] bg-[#6C3CE1]" : "border-gray-300"
+                          selected ? "border-amber-500 bg-amber-500" : "border-zinc-600"
                         )}
                       />
                     )}

@@ -41,9 +41,9 @@ const LEARNING_PATH: {
     level: "pleno",
     label: "Pleno",
     description: "Domínio avançado para gestão completa de eventos",
-    color: "text-purple-700",
-    bg: "bg-purple-50",
-    border: "border-purple-200",
+    color: "text-amber-400",
+    bg: "bg-amber-500/10",
+    border: "border-amber-500/20",
   },
 ];
 
@@ -102,35 +102,35 @@ export default async function TrilhaPage() {
       <div className="p-6 space-y-8">
         {/* Progress overview */}
         <div className="grid grid-cols-3 gap-4">
-          <div className="bg-white rounded-2xl border border-gray-200 p-5">
+          <div className="bg-[#141416] rounded-2xl border border-zinc-800 p-5">
             <div className="flex items-center gap-3 mb-3">
-              <div className="h-9 w-9 rounded-xl bg-purple-50 flex items-center justify-center">
-                <BookOpen size={18} className="text-[#6C3CE1]" />
+              <div className="h-9 w-9 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                <BookOpen size={18} className="text-amber-400" />
               </div>
-              <span className="text-sm text-gray-500">Matriculados</span>
+              <span className="text-sm text-zinc-500">Matriculados</span>
             </div>
-            <p className="text-2xl font-black text-gray-900">{totalEnrolled}</p>
-            <p className="text-xs text-gray-400 mt-0.5">de {totalCourses} disponíveis</p>
+            <p className="text-2xl font-black text-zinc-100">{totalEnrolled}</p>
+            <p className="text-xs text-zinc-500 mt-0.5">de {totalCourses} disponíveis</p>
           </div>
-          <div className="bg-white rounded-2xl border border-gray-200 p-5">
+          <div className="bg-[#141416] rounded-2xl border border-zinc-800 p-5">
             <div className="flex items-center gap-3 mb-3">
               <div className="h-9 w-9 rounded-xl bg-emerald-50 flex items-center justify-center">
                 <CheckCircle2 size={18} className="text-emerald-600" />
               </div>
-              <span className="text-sm text-gray-500">Concluídos</span>
+              <span className="text-sm text-zinc-500">Concluídos</span>
             </div>
-            <p className="text-2xl font-black text-gray-900">{totalCompleted}</p>
-            <p className="text-xs text-gray-400 mt-0.5">cursos finalizados</p>
+            <p className="text-2xl font-black text-zinc-100">{totalCompleted}</p>
+            <p className="text-xs text-zinc-500 mt-0.5">cursos finalizados</p>
           </div>
-          <div className="bg-white rounded-2xl border border-gray-200 p-5">
+          <div className="bg-[#141416] rounded-2xl border border-zinc-800 p-5">
             <div className="flex items-center gap-3 mb-3">
               <div className="h-9 w-9 rounded-xl bg-amber-50 flex items-center justify-center">
                 <Star size={18} className="text-amber-600" />
               </div>
-              <span className="text-sm text-gray-500">Nível Atual</span>
+              <span className="text-sm text-zinc-500">Nível Atual</span>
             </div>
-            <p className="text-2xl font-black text-gray-900 capitalize">{user?.role === "projeto_cultural" ? "MIT" : getLevelLabel(user?.role ?? "trainee")}</p>
-            <p className="text-xs text-gray-400 mt-0.5">na plataforma</p>
+            <p className="text-2xl font-black text-zinc-100 capitalize">{user?.role === "projeto_cultural" ? "MIT" : getLevelLabel(user?.role ?? "trainee")}</p>
+            <p className="text-xs text-zinc-500 mt-0.5">na plataforma</p>
           </div>
         </div>
 
@@ -155,28 +155,28 @@ export default async function TrilhaPage() {
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-1">
-                      <h2 className="font-bold text-gray-900">{levelInfo.label}</h2>
+                      <h2 className="font-bold text-zinc-100">{levelInfo.label}</h2>
                       <Badge variant={levelInfo.level as any}>{levelInfo.label}</Badge>
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-zinc-500">
                         {levelCompleted.length}/{levelCourses.length} concluídos
                       </span>
                     </div>
-                    <p className="text-sm text-gray-500">{levelInfo.description}</p>
+                    <p className="text-sm text-zinc-500">{levelInfo.description}</p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <Progress value={levelProgress} className="w-24 h-2" />
-                    <span className="text-sm font-semibold text-[#6C3CE1] w-10 text-right">{levelProgress}%</span>
+                    <span className="text-sm font-semibold text-amber-400 w-10 text-right">{levelProgress}%</span>
                   </div>
                 </div>
 
                 {/* Connector line */}
                 {idx < LEARNING_PATH.length - 1 && (
-                  <div className="ml-5 w-0.5 h-4 bg-gray-200 mb-4" />
+                  <div className="ml-5 w-0.5 h-4 bg-zinc-800 mb-4" />
                 )}
 
                 {/* Courses grid */}
                 {levelCourses.length === 0 ? (
-                  <div className="ml-14 p-4 rounded-xl bg-gray-50 border border-dashed border-gray-200 text-sm text-gray-400">
+                  <div className="ml-14 p-4 rounded-xl bg-[#0A0A0B] border border-dashed border-zinc-800 text-sm text-zinc-500">
                     Nenhum curso disponível neste nível ainda.
                   </div>
                 ) : (
@@ -190,12 +190,12 @@ export default async function TrilhaPage() {
                       return (
                         <div
                           key={course.id}
-                          className={`rounded-xl border bg-white p-4 transition-all ${
+                          className={`rounded-xl border bg-[#141416] p-4 transition-all ${
                             isDone
                               ? "border-emerald-200 bg-emerald-50/30"
                               : isEnrolled
-                              ? "border-purple-200 hover:shadow-sm"
-                              : "border-gray-200 hover:border-gray-300"
+                              ? "border-amber-500/20 hover:shadow-sm"
+                              : "border-zinc-800 hover:border-zinc-700"
                           }`}
                         >
                           <div className="flex items-start gap-3 mb-3">
@@ -203,11 +203,11 @@ export default async function TrilhaPage() {
                               {getCategoryIcon(course.categoria)}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold text-gray-900 line-clamp-2 leading-snug">
+                              <p className="text-sm font-semibold text-zinc-100 line-clamp-2 leading-snug">
                                 {course.titulo}
                               </p>
                               {course.carga_horaria && (
-                                <p className="text-xs text-gray-400 mt-1">
+                                <p className="text-xs text-zinc-500 mt-1">
                                   {formatMinutes(course.carga_horaria)}
                                 </p>
                               )}
@@ -216,9 +216,9 @@ export default async function TrilhaPage() {
                               {isDone ? (
                                 <CheckCircle2 size={18} className="text-emerald-500" />
                               ) : isEnrolled ? (
-                                <Circle size={18} className="text-[#6C3CE1]" />
+                                <Circle size={18} className="text-amber-400" />
                               ) : (
-                                <Lock size={16} className="text-gray-300" />
+                                <Lock size={16} className="text-zinc-600" />
                               )}
                             </div>
                           </div>
@@ -226,7 +226,7 @@ export default async function TrilhaPage() {
                           {isEnrolled && (
                             <div className="mb-3">
                               <Progress value={progress} className="h-1.5" />
-                              <p className="text-xs text-gray-400 mt-1">{progress}% concluído</p>
+                              <p className="text-xs text-zinc-500 mt-1">{progress}% concluído</p>
                             </div>
                           )}
 
@@ -256,14 +256,14 @@ export default async function TrilhaPage() {
         </div>
 
         {/* MIT Banner */}
-        <div className="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-purple-50 p-6">
+        <div className="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-500/5 to-zinc-900 p-6">
           <div className="flex items-center gap-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-amber-100 text-3xl shrink-0">
               🏆
             </div>
             <div className="flex-1">
-              <h3 className="font-bold text-gray-900 mb-1">Projeto Cultural MIT</h3>
-              <p className="text-sm text-gray-600">
+              <h3 className="font-bold text-zinc-100 mb-1">Projeto Cultural MIT</h3>
+              <p className="text-sm text-zinc-400">
                 Alunos selecionados para o Projeto Cultural MIT têm acesso gratuito e ilimitado a todos os cursos da plataforma, incluindo nível Pleno e conteúdo exclusivo.
               </p>
             </div>
@@ -271,7 +271,7 @@ export default async function TrilhaPage() {
               <Badge variant="mit" className="shrink-0 text-sm px-3 py-1">MIT Ativo</Badge>
             ) : (
               <div className="shrink-0 text-center">
-                <p className="text-xs text-gray-400 mb-2">Não é MIT ainda?</p>
+                <p className="text-xs text-zinc-500 mb-2">Não é MIT ainda?</p>
                 <Link href="/#sobre">
                   <Button variant="outline" size="sm">Saiba mais</Button>
                 </Link>

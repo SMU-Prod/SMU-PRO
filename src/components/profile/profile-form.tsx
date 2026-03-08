@@ -23,7 +23,7 @@ interface Props {
   user: User;
 }
 
-const inputClass = "w-full rounded-xl bg-white border border-gray-200 px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-[#6C3CE1] focus:ring-1 focus:ring-[#6C3CE1] transition-colors";
+const inputClass = "w-full rounded-xl bg-zinc-900 border border-zinc-700 px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors";
 
 export function ProfileForm({ user }: Props) {
   const [saved, setSaved] = useState(false);

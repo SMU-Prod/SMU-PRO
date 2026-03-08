@@ -140,7 +140,7 @@ export function CourseQualityScore({ course }: { course: any }) {
   return (
     <div className="space-y-4">
       {/* Score card */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-6">
+      <div className="rounded-2xl border border-zinc-800 bg-[#141416] p-6">
         <div className="flex items-center gap-6">
           {/* Circle progress */}
           <div className="relative shrink-0">
@@ -163,10 +163,10 @@ export function CourseQualityScore({ course }: { course: any }) {
           </div>
 
           <div className="flex-1">
-            <p className="font-semibold text-gray-900 text-lg">
+            <p className="font-semibold text-zinc-100 text-lg">
               {score >= 80 ? "Pronto para publicar! 🎉" : score >= 50 ? "Quase lá..." : "Precisa de atenção"}
             </p>
-            <p className="text-sm text-gray-500 mt-0.5">
+            <p className="text-sm text-zinc-500 mt-0.5">
               {checks.filter((c) => c.status === "ok").length}/{checks.length} critérios atendidos
             </p>
             <div className="flex items-center gap-2 mt-2 text-xs">
@@ -192,9 +192,9 @@ export function CourseQualityScore({ course }: { course: any }) {
         {/* Publish action */}
         {!course.ativo && (
           <div className={cn(
-            "mt-4 pt-4 border-t border-gray-100 flex items-center justify-between gap-3",
+            "mt-4 pt-4 border-t border-zinc-800/50 flex items-center justify-between gap-3",
           )}>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-zinc-500">
               {canPublish
                 ? "Curso pronto para publicação."
                 : "Corrija os erros antes de publicar."}
@@ -210,7 +210,7 @@ export function CourseQualityScore({ course }: { course: any }) {
           </div>
         )}
         {course.ativo && (
-          <div className="mt-4 pt-4 border-t border-gray-100 flex items-center gap-2 text-sm text-emerald-600">
+          <div className="mt-4 pt-4 border-t border-zinc-800/50 flex items-center gap-2 text-sm text-emerald-600">
             <Eye size={14} />
             <span>Curso publicado e visível para alunos</span>
           </div>
@@ -218,11 +218,11 @@ export function CourseQualityScore({ course }: { course: any }) {
       </div>
 
       {/* Checklist */}
-      <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
-        <div className="px-5 py-3 border-b border-gray-100 bg-gray-50">
-          <p className="text-sm font-semibold text-gray-900">Checklist de Qualidade</p>
+      <div className="rounded-2xl border border-zinc-800 bg-[#141416] overflow-hidden">
+        <div className="px-5 py-3 border-b border-zinc-800/50 bg-zinc-900">
+          <p className="text-sm font-semibold text-zinc-100">Checklist de Qualidade</p>
         </div>
-        <div className="divide-y divide-gray-100">
+        <div className="divide-y divide-zinc-800/50">
           {checks.map((item, i) => (
             <div key={i} className="flex items-start gap-3 px-5 py-3">
               <div className="mt-0.5 shrink-0">
@@ -231,11 +231,11 @@ export function CourseQualityScore({ course }: { course: any }) {
                 {item.status === "error" && <XCircle size={16} className="text-red-500" />}
               </div>
               <div className="flex-1 min-w-0">
-                <p className={cn("text-sm", item.status === "ok" ? "text-gray-700" : item.status === "warn" ? "text-amber-700" : "text-red-700")}>
+                <p className={cn("text-sm", item.status === "ok" ? "text-zinc-300" : item.status === "warn" ? "text-amber-700" : "text-red-700")}>
                   {item.label}
                 </p>
                 {item.detail && item.status !== "ok" && (
-                  <p className="text-xs text-gray-400 mt-0.5">{item.detail}</p>
+                  <p className="text-xs text-zinc-500 mt-0.5">{item.detail}</p>
                 )}
               </div>
             </div>
@@ -244,21 +244,21 @@ export function CourseQualityScore({ course }: { course: any }) {
       </div>
 
       {/* Quick links */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-4 space-y-2">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Ações Rápidas</p>
+      <div className="rounded-2xl border border-zinc-800 bg-[#141416] p-4 space-y-2">
+        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-3">Ações Rápidas</p>
         <Link
           href={`/admin/cursos/${course.id}`}
-          className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+          className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-900 transition-colors"
         >
           Editar currículo
-          <span className="text-gray-300">→</span>
+          <span className="text-zinc-500">→</span>
         </Link>
         <Link
           href={`/admin/cursos/${course.id}/editar`}
-          className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+          className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-900 transition-colors"
         >
           Editar informações
-          <span className="text-gray-300">→</span>
+          <span className="text-zinc-500">→</span>
         </Link>
       </div>
     </div>

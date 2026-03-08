@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { adminGetDashboardMetrics } from "@/lib/actions/users";
 import { adminGetAllCourses } from "@/lib/actions/courses";
 import { createAdminClient } from "@/lib/supabase/server";
@@ -41,62 +42,62 @@ export default async function AdminDashboardPage() {
         {/* KPI Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard
-            icon={<Users size={20} className="text-blue-600" />}
+            icon={<Users size={20} className="text-blue-400" />}
             label="Total de Alunos"
             value={metrics.total_users}
             sub={`+${metrics.new_users_30d} nos últimos 30 dias`}
-            bg="bg-blue-50"
+            bg="bg-blue-500/10"
             trend={metrics.new_users_30d > 0 ? "up" : "neutral"}
           />
           <KpiCard
-            icon={<UserCheck size={20} className="text-amber-600" />}
+            icon={<UserCheck size={20} className="text-amber-400" />}
             label="Alunos MIT"
             value={metrics.alunos_mit}
             sub="Projeto Cultural"
-            bg="bg-amber-50"
+            bg="bg-amber-500/10"
           />
           <KpiCard
-            icon={<BookOpen size={20} className="text-[#6C3CE1]" />}
+            icon={<BookOpen size={20} className="text-amber-400" />}
             label="Cursos Ativos"
             value={metrics.total_courses}
             sub={`${metrics.new_enrollments_30d} matrículas/mês`}
-            bg="bg-purple-50"
+            bg="bg-amber-500/10"
           />
           <KpiCard
-            icon={<Award size={20} className="text-emerald-600" />}
+            icon={<Award size={20} className="text-emerald-400" />}
             label="Certificados"
             value={metrics.total_certificates}
             sub="Total emitidos"
-            bg="bg-emerald-50"
+            bg="bg-emerald-500/10"
           />
           <KpiCard
-            icon={<DollarSign size={20} className="text-emerald-600" />}
+            icon={<DollarSign size={20} className="text-emerald-400" />}
             label="Receita Total"
             value={formatCurrency(metrics.receita_total)}
             sub="Pagamentos confirmados"
-            bg="bg-emerald-50"
+            bg="bg-emerald-500/10"
           />
           <KpiCard
-            icon={<TrendingUp size={20} className="text-purple-600" />}
+            icon={<TrendingUp size={20} className="text-amber-400" />}
             label="Matrículas Ativas"
             value={metrics.total_enrollments}
             sub="Status ativo"
-            bg="bg-purple-50"
+            bg="bg-amber-500/10"
           />
           <KpiCard
-            icon={<BarChart3 size={20} className="text-blue-600" />}
+            icon={<BarChart3 size={20} className="text-blue-400" />}
             label="Novas Matrículas"
             value={metrics.new_enrollments_30d}
             sub="Últimos 30 dias"
-            bg="bg-blue-50"
+            bg="bg-blue-500/10"
             trend={metrics.new_enrollments_30d > 0 ? "up" : "neutral"}
           />
           <KpiCard
-            icon={<Activity size={20} className="text-red-500" />}
+            icon={<Activity size={20} className="text-red-400" />}
             label="Usuários Novos"
             value={metrics.new_users_30d}
             sub="Últimos 30 dias"
-            bg="bg-red-50"
+            bg="bg-red-500/10"
           />
         </div>
 
@@ -106,30 +107,30 @@ export default async function AdminDashboardPage() {
             <Card>
               <CardHeader className="flex-row items-center justify-between">
                 <CardTitle className="text-base">Cursos</CardTitle>
-                <a href="/admin/cursos" className="text-xs text-[#6C3CE1] hover:underline">
+                <Link href="/admin/cursos" className="text-xs text-amber-400 hover:underline">
                   Gerenciar →
-                </a>
+                </Link>
               </CardHeader>
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-gray-100 bg-gray-50">
-                        <th className="px-5 pb-3 pt-3 text-left text-xs text-gray-400 font-medium">Curso</th>
-                        <th className="px-5 pb-3 pt-3 text-left text-xs text-gray-400 font-medium">Nível</th>
-                        <th className="px-5 pb-3 pt-3 text-right text-xs text-gray-400 font-medium">Alunos</th>
-                        <th className="px-5 pb-3 pt-3 text-right text-xs text-gray-400 font-medium">Cert.</th>
-                        <th className="px-5 pb-3 pt-3 text-right text-xs text-gray-400 font-medium">Progresso</th>
-                        <th className="px-5 pb-3 pt-3 text-center text-xs text-gray-400 font-medium">Status</th>
+                      <tr className="border-b border-zinc-800/50 bg-zinc-900">
+                        <th className="px-5 pb-3 pt-3 text-left text-xs text-zinc-500 font-medium">Curso</th>
+                        <th className="px-5 pb-3 pt-3 text-left text-xs text-zinc-500 font-medium">Nível</th>
+                        <th className="px-5 pb-3 pt-3 text-right text-xs text-zinc-500 font-medium">Alunos</th>
+                        <th className="px-5 pb-3 pt-3 text-right text-xs text-zinc-500 font-medium">Cert.</th>
+                        <th className="px-5 pb-3 pt-3 text-right text-xs text-zinc-500 font-medium">Progresso</th>
+                        <th className="px-5 pb-3 pt-3 text-center text-xs text-zinc-500 font-medium">Status</th>
                       </tr>
                     </thead>
                     <tbody>
                       {(courses ?? []).slice(0, 8).map((c: any) => (
-                        <tr key={c.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                        <tr key={c.id} className="border-b border-zinc-800/50 hover:bg-zinc-800 transition-colors">
                           <td className="px-5 py-3">
                             <div className="flex items-center gap-2">
                               <span className="text-base">{getCategoryIcon(c.categoria)}</span>
-                              <span className="text-gray-900 font-medium truncate max-w-[160px]">{c.titulo}</span>
+                              <span className="text-zinc-100 font-medium truncate max-w-[160px]">{c.titulo}</span>
                             </div>
                           </td>
                           <td className="px-5 py-3">
@@ -137,9 +138,9 @@ export default async function AdminDashboardPage() {
                               {getLevelLabel(c.nivel)}
                             </Badge>
                           </td>
-                          <td className="px-5 py-3 text-right text-gray-600">{c.total_alunos}</td>
-                          <td className="px-5 py-3 text-right text-gray-600">{c.total_certificados}</td>
-                          <td className="px-5 py-3 text-right text-gray-600">
+                          <td className="px-5 py-3 text-right text-zinc-400">{c.total_alunos}</td>
+                          <td className="px-5 py-3 text-right text-zinc-400">{c.total_certificados}</td>
+                          <td className="px-5 py-3 text-right text-zinc-400">
                             {c.progresso_medio ? `${c.progresso_medio}%` : "—"}
                           </td>
                           <td className="px-5 py-3 text-center">
@@ -167,18 +168,18 @@ export default async function AdminDashboardPage() {
                   {(recentActivity ?? []).map((log: any) => (
                     <div
                       key={log.id}
-                      className="flex items-start gap-3 px-5 py-3 border-b border-gray-100 last:border-0"
+                      className="flex items-start gap-3 px-5 py-3 border-b border-zinc-800/50 last:border-0"
                     >
                       <div className={`h-7 w-7 rounded-full flex items-center justify-center shrink-0 text-xs ${getActivityColor(log.tipo)}`}>
                         {getActivityEmoji(log.tipo)}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs text-gray-900 truncate">
+                        <p className="text-xs text-zinc-100 truncate">
                           {log.users?.nome ?? "Sistema"}
                         </p>
-                        <p className="text-xs text-gray-500 truncate">{log.descricao}</p>
+                        <p className="text-xs text-zinc-500 truncate">{log.descricao}</p>
                       </div>
-                      <span className="text-[10px] text-gray-400 shrink-0">
+                      <span className="text-[10px] text-zinc-500 shrink-0">
                         {timeAgo(log.created_at)}
                       </span>
                     </div>
@@ -193,7 +194,7 @@ export default async function AdminDashboardPage() {
         <Card>
           <CardHeader className="flex-row items-center justify-between">
             <CardTitle className="text-base">Alunos Recentes</CardTitle>
-            <a href="/admin/usuarios" className="text-xs text-[#6C3CE1] hover:underline">
+            <a href="/admin/usuarios" className="text-xs text-amber-400 hover:underline">
               Ver todos →
             </a>
           </CardHeader>
@@ -201,24 +202,24 @@ export default async function AdminDashboardPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-100 bg-gray-50">
+                  <tr className="border-b border-zinc-800/50 bg-zinc-900">
                     {["Aluno", "Email", "Role", "MIT", "Cadastro"].map((h) => (
-                      <th key={h} className="px-5 pb-3 pt-3 text-left text-xs text-gray-400 font-medium">{h}</th>
+                      <th key={h} className="px-5 pb-3 pt-3 text-left text-xs text-zinc-500 font-medium">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {(recentUsers ?? []).map((u: any) => (
-                    <tr key={u.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                    <tr key={u.id} className="border-b border-zinc-800/50 hover:bg-zinc-800 transition-colors">
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-2">
-                          <div className="h-7 w-7 rounded-full bg-gradient-to-br from-[#6C3CE1] to-[#8B5CF6] flex items-center justify-center text-xs text-white font-bold shrink-0">
+                          <div className="h-7 w-7 rounded-full bg-gradient-to-br from-amber-500 to-amber-400 flex items-center justify-center text-xs text-white font-bold shrink-0">
                             {u.nome?.[0]?.toUpperCase()}
                           </div>
-                          <span className="text-gray-900">{u.nome}</span>
+                          <span className="text-zinc-100">{u.nome}</span>
                         </div>
                       </td>
-                      <td className="px-5 py-3 text-gray-500">{u.email}</td>
+                      <td className="px-5 py-3 text-zinc-500">{u.email}</td>
                       <td className="px-5 py-3">
                         <Badge variant={u.role as any} className="text-[10px]">
                           {getLevelLabel(u.role)}
@@ -228,10 +229,10 @@ export default async function AdminDashboardPage() {
                         {u.projeto_cultural ? (
                           <Badge variant="mit" className="text-[10px]">MIT ✓</Badge>
                         ) : (
-                          <span className="text-gray-400">—</span>
+                          <span className="text-zinc-500">—</span>
                         )}
                       </td>
-                      <td className="px-5 py-3 text-gray-500 text-xs">
+                      <td className="px-5 py-3 text-zinc-500 text-xs">
                         {new Date(u.created_at).toLocaleDateString("pt-BR")}
                       </td>
                     </tr>
@@ -255,15 +256,15 @@ function KpiCard({ icon, label, value, sub, bg, trend }: {
   trend?: "up" | "down" | "neutral";
 }) {
   return (
-    <Card className="hover:border-purple-200 transition-colors">
+    <Card className="hover:border-amber-500/20 transition-colors">
       <CardContent className="p-4">
         <div className={`inline-flex h-10 w-10 items-center justify-center rounded-lg ${bg} mb-3`}>
           {icon}
         </div>
-        <p className="text-2xl font-bold text-gray-900">{value}</p>
-        <p className="text-xs text-gray-500 mt-0.5">{label}</p>
+        <p className="text-2xl font-bold text-zinc-100">{value}</p>
+        <p className="text-xs text-zinc-500 mt-0.5">{label}</p>
         {sub && (
-          <p className={`text-xs mt-1 ${trend === "up" ? "text-emerald-600" : "text-gray-400"}`}>
+          <p className={`text-xs mt-1 ${trend === "up" ? "text-emerald-400" : "text-zinc-500"}`}>
             {trend === "up" ? "↑ " : ""}{sub}
           </p>
         )}
@@ -274,14 +275,14 @@ function KpiCard({ icon, label, value, sub, bg, trend }: {
 
 function getActivityColor(tipo: string) {
   const map: Record<string, string> = {
-    enrollment: "bg-purple-100 text-purple-700",
-    lesson_complete: "bg-emerald-100 text-emerald-700",
-    certificate_issued: "bg-amber-100 text-amber-700",
-    login: "bg-blue-100 text-blue-700",
-    payment: "bg-emerald-100 text-emerald-700",
-    role_change: "bg-red-100 text-red-700",
+    enrollment: "bg-amber-500/15 text-amber-400",
+    lesson_complete: "bg-emerald-500/15 text-emerald-400",
+    certificate_issued: "bg-amber-500/15 text-amber-400",
+    login: "bg-blue-500/15 text-blue-400",
+    payment: "bg-emerald-500/15 text-emerald-400",
+    role_change: "bg-red-500/15 text-red-400",
   };
-  return map[tipo] ?? "bg-gray-100 text-gray-500";
+  return map[tipo] ?? "bg-zinc-800 text-zinc-500";
 }
 
 function getActivityEmoji(tipo: string) {

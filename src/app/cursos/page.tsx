@@ -62,13 +62,13 @@ export default async function CursosPage({ searchParams }: Props) {
   const activeFilters = [nivel, categoria, tipo, search].filter(Boolean).length;
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900">
+    <div className="min-h-screen bg-zinc-900 text-zinc-100">
       {/* Nav simples */}
-      <nav className="sticky top-0 z-50 border-b border-gray-200 bg-white/90 backdrop-blur-md">
+      <nav className="sticky top-0 z-50 border-b border-zinc-800 bg-[#141416]/90 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
           <Link href="/" className="text-xl font-black tracking-tight">
             <span className="gradient-text">SMU</span>
-            <span className="text-gray-400 text-sm font-normal ml-1">PRO</span>
+            <span className="text-zinc-500 text-sm font-normal ml-1">PRO</span>
           </Link>
           <div className="flex items-center gap-3">
             {isSignedIn ? (
@@ -91,8 +91,8 @@ export default async function CursosPage({ searchParams }: Props) {
 
       <div className="mx-auto max-w-7xl px-6 py-12">
         <div className="mb-10">
-          <h1 className="text-4xl font-black text-gray-900 mb-2">Todos os cursos</h1>
-          <p className="text-gray-500">
+          <h1 className="text-4xl font-black text-zinc-100 mb-2">Todos os cursos</h1>
+          <p className="text-zinc-500">
             {courses.length} {courses.length === 1 ? "curso encontrado" : "cursos encontrados"}
             {activeFilters > 0 && ` com ${activeFilters} filtro${activeFilters > 1 ? "s" : ""} aplicado${activeFilters > 1 ? "s" : ""}`}
           </p>
@@ -101,12 +101,12 @@ export default async function CursosPage({ searchParams }: Props) {
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar de filtros */}
           <aside className="w-full lg:w-64 shrink-0">
-            <div className="rounded-2xl bg-white border border-gray-200 p-5 space-y-6">
-              <div className="flex items-center gap-2 text-sm font-semibold text-gray-500 uppercase tracking-widest">
+            <div className="rounded-2xl bg-[#141416] border border-zinc-800 p-5 space-y-6">
+              <div className="flex items-center gap-2 text-sm font-semibold text-zinc-500 uppercase tracking-widest">
                 <SlidersHorizontal size={14} />
                 Filtros
                 {activeFilters > 0 && (
-                  <Link href="/cursos" className="ml-auto text-xs text-[#6C3CE1] hover:underline">
+                  <Link href="/cursos" className="ml-auto text-xs text-amber-400 hover:underline">
                     Limpar
                   </Link>
                 )}
@@ -114,12 +114,12 @@ export default async function CursosPage({ searchParams }: Props) {
 
               {/* Busca */}
               <form method="get" action="/cursos" className="relative">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
                 <input
                   name="search"
                   defaultValue={search}
                   placeholder="Buscar cursos..."
-                  className="w-full rounded-lg bg-white border border-gray-200 pl-8 pr-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-[#6C3CE1] transition-colors"
+                  className="w-full rounded-lg bg-[#141416] border border-zinc-800 pl-8 pr-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-amber-500 transition-colors"
                 />
                 {nivel && <input type="hidden" name="nivel" value={nivel} />}
                 {categoria && <input type="hidden" name="categoria" value={categoria} />}
@@ -129,7 +129,7 @@ export default async function CursosPage({ searchParams }: Props) {
 
               {/* Nível */}
               <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Nível</p>
+                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Nível</p>
                 <div className="space-y-1">
                   {NIVEIS.map((n) => {
                     const params = new URLSearchParams({ ...(categoria ? { categoria } : {}), ...(tipo ? { tipo } : {}), ...(search ? { search } : {}), ...(n.value ? { nivel: n.value } : {}) });
@@ -137,7 +137,7 @@ export default async function CursosPage({ searchParams }: Props) {
                       <Link
                         key={n.value}
                         href={`/cursos?${params}`}
-                        className={`block px-3 py-1.5 rounded-lg text-sm transition-colors ${nivel === n.value || (!nivel && !n.value) ? "bg-[#6C3CE1] text-white" : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"}`}
+                        className={`block px-3 py-1.5 rounded-lg text-sm transition-colors ${nivel === n.value || (!nivel && !n.value) ? "bg-amber-500 text-white" : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"}`}
                       >
                         {n.label}
                       </Link>
@@ -148,7 +148,7 @@ export default async function CursosPage({ searchParams }: Props) {
 
               {/* Categoria */}
               <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Categoria</p>
+                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Categoria</p>
                 <div className="space-y-1">
                   {CATEGORIAS.map((c) => {
                     const params = new URLSearchParams({ ...(nivel ? { nivel } : {}), ...(tipo ? { tipo } : {}), ...(search ? { search } : {}), ...(c.value ? { categoria: c.value } : {}) });
@@ -156,7 +156,7 @@ export default async function CursosPage({ searchParams }: Props) {
                       <Link
                         key={c.value}
                         href={`/cursos?${params}`}
-                        className={`block px-3 py-1.5 rounded-lg text-sm transition-colors ${categoria === c.value || (!categoria && !c.value) ? "bg-[#6C3CE1] text-white" : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"}`}
+                        className={`block px-3 py-1.5 rounded-lg text-sm transition-colors ${categoria === c.value || (!categoria && !c.value) ? "bg-amber-500 text-white" : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"}`}
                       >
                         {c.value && <span className="mr-1.5">{getCategoryIcon(c.value)}</span>}
                         {c.label}
@@ -168,7 +168,7 @@ export default async function CursosPage({ searchParams }: Props) {
 
               {/* Tipo */}
               <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Tipo</p>
+                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Tipo</p>
                 <div className="space-y-1">
                   {TIPOS.map((t) => {
                     const params = new URLSearchParams({ ...(nivel ? { nivel } : {}), ...(categoria ? { categoria } : {}), ...(search ? { search } : {}), ...(t.value ? { tipo: t.value } : {}) });
@@ -176,7 +176,7 @@ export default async function CursosPage({ searchParams }: Props) {
                       <Link
                         key={t.value}
                         href={`/cursos?${params}`}
-                        className={`block px-3 py-1.5 rounded-lg text-sm transition-colors ${tipo === t.value || (!tipo && !t.value) ? "bg-[#6C3CE1] text-white" : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"}`}
+                        className={`block px-3 py-1.5 rounded-lg text-sm transition-colors ${tipo === t.value || (!tipo && !t.value) ? "bg-amber-500 text-white" : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"}`}
                       >
                         {t.label}
                       </Link>
@@ -192,17 +192,17 @@ export default async function CursosPage({ searchParams }: Props) {
             {courses.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 text-center">
                 <div className="text-5xl mb-4">🔍</div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">Nenhum curso encontrado</h3>
-                <p className="text-gray-500 mb-6">Tente ajustar os filtros ou{" "}
-                  <Link href="/cursos" className="text-[#6C3CE1] hover:underline">ver todos os cursos</Link>
+                <h3 className="text-xl font-bold text-zinc-100 mb-2">Nenhum curso encontrado</h3>
+                <p className="text-zinc-500 mb-6">Tente ajustar os filtros ou{" "}
+                  <Link href="/cursos" className="text-amber-400 hover:underline">ver todos os cursos</Link>
                 </p>
               </div>
             ) : (
               <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-5">
                 {courses.map((course: any) => (
                   <Link key={course.id} href={`/cursos/${course.slug}`} className="group">
-                    <div className="h-full rounded-2xl bg-white border border-gray-200 overflow-hidden hover:border-purple-300 hover:shadow-md transition-all hover:-translate-y-1 flex flex-col">
-                      <div className="h-40 bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center text-5xl shrink-0">
+                    <div className="h-full rounded-2xl bg-[#141416] border border-zinc-800 overflow-hidden hover:border-amber-500/30 hover:shadow-md transition-all hover:-translate-y-1 flex flex-col">
+                      <div className="h-40 bg-gradient-to-br from-zinc-900 to-zinc-800 flex items-center justify-center text-5xl shrink-0">
                         {getCategoryIcon(course.categoria)}
                       </div>
                       <div className="p-5 flex flex-col flex-1">
@@ -211,14 +211,14 @@ export default async function CursosPage({ searchParams }: Props) {
                           <Badge variant="secondary" className="text-xs">{getCategoryLabel(course.categoria)}</Badge>
                           {course.tipo === "free" && <Badge variant="free">Grátis</Badge>}
                         </div>
-                        <h3 className="font-bold text-base text-gray-900 leading-tight mb-2 group-hover:text-[#6C3CE1] transition-colors">
+                        <h3 className="font-bold text-base text-zinc-100 leading-tight mb-2 group-hover:text-amber-400 transition-colors">
                           {course.titulo}
                         </h3>
-                        <p className="text-gray-500 text-sm line-clamp-2 mb-auto">{course.descricao_curta}</p>
-                        <div className="flex items-center justify-between text-xs text-gray-400 pt-4 mt-4 border-t border-gray-100">
+                        <p className="text-zinc-500 text-sm line-clamp-2 mb-auto">{course.descricao_curta}</p>
+                        <div className="flex items-center justify-between text-xs text-zinc-500 pt-4 mt-4 border-t border-zinc-800/50">
                           <span>{course.total_aulas} aulas · {formatMinutes(course.carga_horaria ?? 0)}</span>
                           {course.preco && course.preco > 0 ? (
-                            <span className="text-gray-900 font-bold text-sm">{formatCurrency(course.preco)}</span>
+                            <span className="text-zinc-100 font-bold text-sm">{formatCurrency(course.preco)}</span>
                           ) : (
                             <span className="text-emerald-600 font-bold">Grátis</span>
                           )}

@@ -65,16 +65,16 @@ export function Sidebar({ role = "trainee" }: SidebarProps) {
   const navItems = isAdmin ? adminNav : isContentManager ? contentManagerNav : studentNav;
 
   const SidebarContent = () => (
-    <aside className="flex h-full flex-col bg-white">
+    <aside className="flex h-full flex-col bg-[#141416]">
       {/* Logo */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#6C3CE1] to-[#8B5CF6] shadow-md">
-            <span className="text-white font-bold text-sm">S</span>
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-amber-400 shadow-md">
+            <span className="text-black font-bold text-sm">S</span>
           </div>
           <div>
-            <p className="font-bold text-gray-900 leading-none">SMU PRO</p>
-            <p className="text-[10px] text-gray-400 mt-0.5">
+            <p className="font-bold text-white leading-none">SMU PRO</p>
+            <p className="text-[10px] text-zinc-500 mt-0.5">
               {isAdmin ? "Painel Admin" : isContentManager ? "Gestão de Conteúdo" : "Plataforma de Cursos"}
             </p>
           </div>
@@ -82,7 +82,7 @@ export function Sidebar({ role = "trainee" }: SidebarProps) {
         {/* Close button — mobile only */}
         <button
           onClick={close}
-          className="lg:hidden p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+          className="lg:hidden p-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
         >
           <X size={18} />
         </button>
@@ -91,15 +91,15 @@ export function Sidebar({ role = "trainee" }: SidebarProps) {
       {/* Admin toggle */}
       {(role === "admin" || role === "content_manager") && (
         <div className="mx-3 mt-3">
-          <div className="flex rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+          <div className="flex rounded-lg overflow-hidden border border-zinc-700 bg-zinc-900">
             <Link
               href="/dashboard"
               onClick={close}
-              className="flex-1 text-center py-1.5 text-xs text-gray-500 hover:bg-gray-100 transition-colors"
+              className="flex-1 text-center py-1.5 text-xs text-zinc-500 hover:bg-zinc-800 transition-colors"
             >
               Aluno
             </Link>
-            <div className="flex-1 text-center py-1.5 text-xs bg-[#6C3CE1] text-white font-semibold rounded-md mx-0.5">
+            <div className="flex-1 text-center py-1.5 text-xs bg-amber-500 text-black font-semibold rounded-md mx-0.5">
               Admin
             </div>
           </div>
@@ -124,15 +124,15 @@ export function Sidebar({ role = "trainee" }: SidebarProps) {
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-150 group",
                 active
-                  ? "bg-purple-50 text-[#6C3CE1] font-medium"
-                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                  ? "bg-amber-500/10 text-amber-400 font-medium"
+                  : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
               )}
             >
               <Icon
                 size={18}
                 className={cn(
                   "shrink-0",
-                  active ? "text-[#6C3CE1]" : "text-gray-400 group-hover:text-gray-600"
+                  active ? "text-amber-400" : "text-zinc-500 group-hover:text-zinc-300"
                 )}
               />
               <span className="flex-1">{item.label}</span>
@@ -150,16 +150,16 @@ export function Sidebar({ role = "trainee" }: SidebarProps) {
           <Link
             href="/admin"
             onClick={close}
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition-all mt-2"
+            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-zinc-500 hover:text-zinc-100 hover:bg-zinc-800 transition-all mt-2"
           >
-            <ShieldCheck size={18} className="text-red-500" />
+            <ShieldCheck size={18} className="text-red-400" />
             <span>Painel Admin</span>
           </Link>
         )}
       </nav>
 
       {/* User */}
-      <div className="border-t border-gray-200 p-4 flex items-center gap-3">
+      <div className="border-t border-zinc-800 p-4 flex items-center gap-3">
         <UserButton
           appearance={{
             elements: { avatarBox: "h-8 w-8" },
@@ -167,8 +167,8 @@ export function Sidebar({ role = "trainee" }: SidebarProps) {
         />
         {user && (
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">{user.fullName}</p>
-            <p className="text-xs text-gray-400 truncate">
+            <p className="text-sm font-medium text-zinc-100 truncate">{user.fullName}</p>
+            <p className="text-xs text-zinc-500 truncate">
               {user.primaryEmailAddress?.emailAddress}
             </p>
           </div>
@@ -180,7 +180,7 @@ export function Sidebar({ role = "trainee" }: SidebarProps) {
   return (
     <>
       {/* Desktop sidebar — always visible ≥ lg */}
-      <div className="hidden lg:flex fixed left-0 top-0 z-40 h-screen w-64 flex-col border-r border-gray-200">
+      <div className="hidden lg:flex fixed left-0 top-0 z-40 h-screen w-64 flex-col border-r border-zinc-800">
         <SidebarContent />
       </div>
 
@@ -192,7 +192,7 @@ export function Sidebar({ role = "trainee" }: SidebarProps) {
           aria-hidden="true"
         >
           {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
           {/* Drawer */}
           <div
             className="absolute left-0 top-0 h-full w-72 shadow-2xl"

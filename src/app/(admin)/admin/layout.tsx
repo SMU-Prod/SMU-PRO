@@ -33,7 +33,7 @@ export default async function AdminLayout({
 
   return (
     <SidebarProvider>
-      <div className="flex h-screen bg-gray-50">
+      <div className="flex h-screen bg-[#0A0A0B]">
         <Sidebar role={user?.role as "admin" | "content_manager"} />
         <main className="flex-1 lg:ml-64 overflow-y-auto min-w-0">
           {/* Command Palette — disponível em todas as páginas admin */}

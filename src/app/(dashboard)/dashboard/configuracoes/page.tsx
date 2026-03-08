@@ -22,14 +22,14 @@ export default async function ConfiguracoesPage() {
 
       <div className="p-6 max-w-2xl space-y-6">
         {/* Account info summary */}
-        <div className="rounded-2xl bg-white border border-gray-200 p-5">
+        <div className="rounded-2xl bg-[#141416] border border-zinc-800 p-5">
           <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-full bg-purple-50 border border-purple-100 flex items-center justify-center">
-              <UserCircle size={24} className="text-[#6C3CE1]" />
+            <div className="h-12 w-12 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+              <UserCircle size={24} className="text-amber-400" />
             </div>
             <div className="flex-1">
-              <p className="font-semibold text-gray-900">{user.nome}</p>
-              <p className="text-sm text-gray-500">{user.email}</p>
+              <p className="font-semibold text-zinc-100">{user.nome}</p>
+              <p className="text-sm text-zinc-500">{user.email}</p>
             </div>
             <div className="flex items-center gap-2">
               <Badge variant={user.role as any}>{getLevelLabel(user.role)}</Badge>
@@ -39,23 +39,23 @@ export default async function ConfiguracoesPage() {
         </div>
 
         {/* Seção: Conta */}
-        <Section title="Conta" icon={<UserCircle size={16} className="text-[#6C3CE1]" />}>
+        <Section title="Conta" icon={<UserCircle size={16} className="text-amber-400" />}>
           <SettingItem
-            icon={<Mail size={16} className="text-gray-400" />}
+            icon={<Mail size={16} className="text-zinc-500" />}
             label="E-mail"
             description={user.email}
             action="Gerenciado pelo Clerk"
             disabled
           />
           <SettingItem
-            icon={<Lock size={16} className="text-gray-400" />}
+            icon={<Lock size={16} className="text-zinc-500" />}
             label="Senha"
             description="Altere sua senha de acesso"
             action="Alterar"
             href="https://accounts.clerk.dev/user/security"
           />
           <SettingItem
-            icon={<Smartphone size={16} className="text-gray-400" />}
+            icon={<Smartphone size={16} className="text-zinc-500" />}
             label="Autenticação em dois fatores"
             description="Adicione uma camada extra de segurança"
             action="Configurar"
@@ -117,11 +117,11 @@ export default async function ConfiguracoesPage() {
         {user.projeto_cultural && (
           <Section title="Plano MIT" icon={<CreditCard size={16} className="text-amber-600" />}>
             <div className="px-4 py-4">
-              <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200">
+              <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
                 <span className="text-2xl">🏆</span>
                 <div>
-                  <p className="font-semibold text-amber-800">Projeto Cultural MIT — Ativo</p>
-                  <p className="text-sm text-amber-600">
+                  <p className="font-semibold text-amber-400">Projeto Cultural MIT — Ativo</p>
+                  <p className="text-sm text-amber-500/80">
                     Você tem acesso gratuito e ilimitado a todos os cursos da plataforma.
                   </p>
                 </div>
@@ -156,12 +156,12 @@ function Section({ title, icon, children }: {
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl bg-white border border-gray-200 overflow-hidden">
-      <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+    <div className="rounded-2xl bg-[#141416] border border-zinc-800 overflow-hidden">
+      <div className="px-5 py-4 border-b border-zinc-800/50 flex items-center gap-2">
         {icon}
-        <h3 className="font-semibold text-gray-900 text-sm">{title}</h3>
+        <h3 className="font-semibold text-zinc-100 text-sm">{title}</h3>
       </div>
-      <div className="divide-y divide-gray-100">
+      <div className="divide-y divide-zinc-800/50">
         {children}
       </div>
     </div>
@@ -180,23 +180,23 @@ function SettingItem({ icon, label, description, action, href, disabled }: {
     <div className="flex items-center gap-4 px-5 py-4">
       <div className="shrink-0">{icon}</div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-900">{label}</p>
-        <p className="text-xs text-gray-500 mt-0.5">{description}</p>
+        <p className="text-sm font-medium text-zinc-100">{label}</p>
+        <p className="text-xs text-zinc-500 mt-0.5">{description}</p>
       </div>
       {disabled ? (
-        <span className="text-xs text-gray-400">{action}</span>
+        <span className="text-xs text-zinc-500">{action}</span>
       ) : href ? (
         <a
           href={href}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-1 text-xs font-medium text-[#6C3CE1] hover:underline"
+          className="flex items-center gap-1 text-xs font-medium text-amber-400 hover:underline"
         >
           {action}
           <ChevronRight size={12} />
         </a>
       ) : (
-        <button className="flex items-center gap-1 text-xs font-medium text-[#6C3CE1] hover:underline">
+        <button className="flex items-center gap-1 text-xs font-medium text-amber-400 hover:underline">
           {action}
           <ChevronRight size={12} />
         </button>
@@ -208,8 +208,8 @@ function SettingItem({ icon, label, description, action, href, disabled }: {
 function SettingRow({ label, description }: { label: string; description: string }) {
   return (
     <div className="flex items-center justify-between px-5 py-4">
-      <p className="text-sm font-medium text-gray-900">{label}</p>
-      <p className="text-sm text-gray-500">{description}</p>
+      <p className="text-sm font-medium text-zinc-100">{label}</p>
+      <p className="text-sm text-zinc-500">{description}</p>
     </div>
   );
 }
@@ -222,14 +222,14 @@ function ToggleItem({ label, description, defaultEnabled }: {
   return (
     <div className="flex items-center gap-4 px-5 py-4">
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-900">{label}</p>
-        <p className="text-xs text-gray-500 mt-0.5">{description}</p>
+        <p className="text-sm font-medium text-zinc-100">{label}</p>
+        <p className="text-xs text-zinc-500 mt-0.5">{description}</p>
       </div>
       <div
         className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 transition-colors cursor-pointer ${
           defaultEnabled
-            ? "bg-[#6C3CE1] border-[#6C3CE1]"
-            : "bg-gray-200 border-gray-200"
+            ? "bg-amber-500 border-amber-500"
+            : "bg-zinc-700 border-zinc-700"
         }`}
       >
         <span
