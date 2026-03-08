@@ -1,16 +1,41 @@
 /**
  * Edge TTS — Microsoft's free neural text-to-speech via WebSocket.
- * Reimplemented to avoid the edge-tts npm package (ships raw .ts files
- * incompatible with Turbopack).
+ * Uses Sec-MS-GEC DRM token authentication (required since late 2024).
+ * Ported from Python edge-tts: https://github.com/rany2/edge-tts
  */
 import { WebSocket } from "ws";
+import { createHash, randomBytes } from "crypto";
 
+const TRUSTED_CLIENT_TOKEN = "6A5AA1D4EAFF4E9FB37E23D68491D6F4";
 const BASE_URL = "speech.platform.bing.com/consumer/speech/synthesize/readaloud";
-const TOKEN = "6A5AA1D4EAFF4E9FB37E23D68491D6F4";
-const WS_URL = `wss://${BASE_URL}/edge/v1?TrustedClientToken=${TOKEN}`;
+const CHROMIUM_FULL_VERSION = "143.0.3650.75";
+const SEC_MS_GEC_VERSION = `1-${CHROMIUM_FULL_VERSION}`;
+const WSS_URL = `wss://${BASE_URL}/edge/v1?TrustedClientToken=${TRUSTED_CLIENT_TOKEN}`;
 
-function uuid() {
-  return crypto.randomUUID().replaceAll("-", "");
+// Windows epoch offset: seconds between 1601-01-01 and 1970-01-01
+const WIN_EPOCH = 11644473600;
+const S_TO_NS = 1e9;
+
+function generateSecMsGec(): string {
+  // Current time in seconds (Unix)
+  let ticks = Math.floor(Date.now() / 1000);
+  // Convert to Windows file time epoch
+  ticks += WIN_EPOCH;
+  // Round down to nearest 5 minutes
+  ticks -= ticks % 300;
+  // Convert to 100-nanosecond intervals (Windows file time format)
+  const fileTime = ticks * (S_TO_NS / 100);
+  // Hash with trusted client token
+  const strToHash = `${fileTime.toFixed(0)}${TRUSTED_CLIENT_TOKEN}`;
+  return createHash("sha256").update(strToHash, "ascii").digest("hex").toUpperCase();
+}
+
+function generateMuid(): string {
+  return randomBytes(16).toString("hex").toUpperCase();
+}
+
+function connectId(): string {
+  return randomBytes(16).toString("hex").replaceAll("-", "");
 }
 
 function escapeXml(text: string): string {
@@ -38,13 +63,17 @@ export function tts(text: string, options: TtsOptions = {}): Promise<Buffer> {
   } = options;
 
   return new Promise<Buffer>((resolve, reject) => {
-    const connectionId = uuid();
-    const ws = new WebSocket(`${WS_URL}&ConnectionId=${connectionId}`, {
+    const connId = connectId();
+    const secToken = generateSecMsGec();
+    const muid = generateMuid();
+    const wsUrl = `${WSS_URL}&ConnectionId=${connId}&Sec-MS-GEC=${secToken}&Sec-MS-GEC-Version=${SEC_MS_GEC_VERSION}`;
+
+    const ws = new WebSocket(wsUrl, {
       host: "speech.platform.bing.com",
       origin: "chrome-extension://jdiccldimpdaibmpdkjnbmckianbfold",
       headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0",
+        "User-Agent": `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${CHROMIUM_FULL_VERSION} Safari/537.36 Edg/${CHROMIUM_FULL_VERSION}`,
+        "Cookie": `muid=${muid};`,
       },
     });
 
@@ -103,7 +132,7 @@ export function tts(text: string, options: TtsOptions = {}): Promise<Buffer> {
 
         const escapedText = escapeXml(text);
         const ssml =
-          `X-RequestId:${uuid()}\r\nContent-Type:application/ssml+xml\r\n` +
+          `X-RequestId:${connectId()}\r\nContent-Type:application/ssml+xml\r\n` +
           `X-Timestamp:${new Date().toISOString()}Z\r\nPath:ssml\r\n\r\n` +
           `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='pt-BR'>` +
           `<voice name='${voice}'><prosody pitch='${pitch}' rate='${rate}' volume='${volume}'>` +
