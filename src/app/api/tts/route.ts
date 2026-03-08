@@ -147,7 +147,8 @@ function prepareTtsText(text: string): string {
   t = t.replace(/\bRDM\b/g, " R D M ");
   t = t.replace(/\bsACN\b/g, " s A C N ");
   t = t.replace(/\bArt-?Net\b/gi, " art nét ");
-  t = t.replace(/\bLED\b/g, " L E D ");
+  t = t.replace(/\bLEDs\b/gi, " lédis ");
+  t = t.replace(/\bLED\b/g, " lédi ");
   t = t.replace(/\bRGB\b/g, " R G B ");
   t = t.replace(/\bRGBW\b/g, " R G B W ");
   t = t.replace(/\bRGBA\b/g, " R G B A ");
