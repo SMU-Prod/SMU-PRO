@@ -229,6 +229,34 @@ export async function getBoletoIdentificationField(
   return asaasRequest(`/payments/${paymentId}/identificationField`);
 }
 
+/**
+ * Solicita reembolso total de uma cobrança
+ * Docs: https://docs.asaas.com/reference/estornar-cobranca
+ */
+export async function refundPayment(paymentId: string): Promise<AsaasPayment> {
+  return asaasRequest<AsaasPayment>(`/payments/${paymentId}/refund`, {
+    method: "POST",
+  });
+}
+
+/**
+ * Lista cobranças do Asaas com filtros opcionais
+ */
+export async function listPayments(params?: {
+  offset?: number;
+  limit?: number;
+  status?: AsaasPaymentStatus;
+  externalReference?: string;
+}): Promise<{ data: AsaasPayment[]; totalCount: number }> {
+  const searchParams = new URLSearchParams();
+  if (params?.offset) searchParams.set("offset", String(params.offset));
+  if (params?.limit) searchParams.set("limit", String(params.limit));
+  if (params?.status) searchParams.set("status", params.status);
+  if (params?.externalReference) searchParams.set("externalReference", params.externalReference);
+  const qs = searchParams.toString();
+  return asaasRequest(`/payments${qs ? `?${qs}` : ""}`);
+}
+
 // ============================================================
 // Webhooks (criação programática, opcional)
 // ============================================================

@@ -153,7 +153,7 @@ export async function GET(
         <div class="sub">Escola de Música e Eventos</div>
         <div class="label">Certificado de Conclusão</div>
       </div>
-      ${cert.projeto_cultural ? `<div class="mit-badge">🏆 MIT — Projeto Cultural</div>` : ""}
+      ${cert.projeto_cultural ? `<div class="mit-badge">★ MIT — Projeto Cultural</div>` : ""}
     </div>
 
     <div class="body">

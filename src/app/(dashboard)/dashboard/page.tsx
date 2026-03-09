@@ -7,8 +7,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { formatMinutes, getLevelLabel, getCategoryIcon } from "@/lib/utils";
-import { BookOpen, Award, Clock, TrendingUp, Play, ChevronRight } from "lucide-react";
+import { formatMinutes, getLevelLabel } from "@/lib/utils";
+import { BookOpen, Award, Clock, TrendingUp, Play, ChevronRight, Trophy, Music } from "lucide-react";
+import { CategoryIcon } from "@/components/ui/category-icon";
 import Link from "next/link";
 
 export default async function DashboardPage() {
@@ -91,8 +92,8 @@ export default async function DashboardPage() {
         {user?.projeto_cultural && (
           <div className="relative overflow-hidden rounded-xl border border-amber-200 bg-gradient-to-r from-amber-500/5 to-surface-2 p-5">
             <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100 text-2xl">
-                🏆
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100">
+                <Trophy size={24} className="text-amber-400" />
               </div>
               <div>
                 <p className="font-semibold text-amber-700">Aluno Projeto Cultural MIT</p>
@@ -149,7 +150,7 @@ export default async function DashboardPage() {
                   <Card key={cert.id} className="hover:border-amber-500/30 transition-colors">
                     <CardContent className="p-4">
                       <div className="flex items-start gap-3">
-                        <div className="text-2xl">{getCategoryIcon(course?.categoria)}</div>
+                        <div className="text-2xl"><CategoryIcon category={course?.categoria} size={24} /></div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-foreground truncate">{course?.titulo}</p>
                           <p className="text-xs text-muted-light mt-0.5">
@@ -169,7 +170,7 @@ export default async function DashboardPage() {
         {/* Explorar cursos */}
         {enrollments.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="text-6xl mb-4">🎵</div>
+            <div className="mb-4"><Music size={48} className="text-muted-light" /></div>
             <h3 className="text-xl font-semibold text-foreground mb-2">Comece sua jornada</h3>
             <p className="text-muted-light mb-6 max-w-md">
               Explore nosso catálogo de cursos e inicie sua formação profissional no mercado de eventos.
@@ -220,7 +221,7 @@ function CourseCard({ course, progress }: { course: any; progress: number }) {
             />
           ) : (
             <div className="flex items-center justify-center h-full text-4xl">
-              {getCategoryIcon(course.categoria)}
+              <CategoryIcon category={course.categoria} size={36} />
             </div>
           )}
           <div className="absolute top-2 right-2">

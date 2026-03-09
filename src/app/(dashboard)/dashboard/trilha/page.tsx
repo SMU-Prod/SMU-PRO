@@ -6,10 +6,11 @@ import { Header } from "@/components/layout/header";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { getLevelLabel, getCategoryIcon, formatMinutes } from "@/lib/utils";
+import { getLevelLabel, formatMinutes } from "@/lib/utils";
+import { CategoryIcon } from "@/components/ui/category-icon";
 import {
   CheckCircle2, Circle, Lock, Play, Award, TrendingUp,
-  BookOpen, ChevronRight, Star,
+  BookOpen, ChevronRight, Star, Trophy,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -201,8 +202,8 @@ export default async function TrilhaPage() {
                           }`}
                         >
                           <div className="flex items-start gap-3 mb-3">
-                            <div className="text-2xl shrink-0 mt-0.5">
-                              {getCategoryIcon(course.categoria)}
+                            <div className="shrink-0 mt-0.5">
+                              <CategoryIcon category={course.categoria} size={24} />
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-semibold text-foreground line-clamp-2 leading-snug">
@@ -261,8 +262,8 @@ export default async function TrilhaPage() {
         <div className="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-500/5 to-surface-2 p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
             <div className="flex items-center gap-3 sm:gap-4">
-              <div className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-xl bg-amber-100 text-2xl sm:text-3xl shrink-0">
-                🏆
+              <div className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-xl bg-amber-100 shrink-0">
+                <Trophy size={28} className="text-amber-400" />
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="font-bold text-foreground mb-1">Projeto Cultural MIT</h3>

@@ -2,7 +2,8 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { getLevelLabel, getCategoryIcon, formatMinutes, getCategoryLabel } from "@/lib/utils";
+import { getLevelLabel, formatMinutes, getCategoryLabel } from "@/lib/utils";
+import { CategoryIcon } from "@/components/ui/category-icon";
 import { CourseContentManager } from "@/components/admin/course-content-manager";
 import { CourseQualityScore } from "@/components/admin/course-quality-score";
 import { CourseForm } from "@/components/admin/course-form";
@@ -63,7 +64,7 @@ export default async function AdminCourseDetailPage({ params, searchParams }: Pr
       <div className="px-6 pt-3 pb-4 flex flex-col sm:flex-row sm:items-start gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-1">
-            <span className="text-2xl">{getCategoryIcon(course.categoria)}</span>
+            <CategoryIcon category={course.categoria} size={24} />
             <h1 className="text-xl font-bold text-foreground truncate">{course.titulo}</h1>
             <Badge variant={course.ativo ? "success" : "secondary"} className="text-[10px]">
               {course.ativo ? "Publicado" : "Rascunho"}

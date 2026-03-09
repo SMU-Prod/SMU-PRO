@@ -9,7 +9,8 @@ import {
   adminCreateCourse, adminUpdateCourse,
   adminCreateModule, adminCreateLesson,
 } from "@/lib/actions/courses";
-import { slugify, getCategoryIcon } from "@/lib/utils";
+import { slugify } from "@/lib/utils";
+import { CategoryIcon } from "@/components/ui/category-icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +19,7 @@ import { cn } from "@/lib/utils";
 import {
   Check, ChevronRight, Info, Settings, Eye, EyeOff, Star,
   AlertCircle, Layers, Plus, Video, FileText, BookOpen,
-  HelpCircle, Trash2, ChevronDown, Rocket,
+  HelpCircle, Trash2, ChevronDown, Rocket, Gift, CreditCard, GraduationCap, Sparkles,
 } from "lucide-react";
 import type { Course } from "@/types/database";
 
@@ -55,9 +56,9 @@ const NIVEIS = [
 ] as const;
 
 const TIPOS = [
-  { value: "free", label: "Gratuito", desc: "Acesso livre para todos os alunos", icon: "🆓" },
-  { value: "pago", label: "Pago", desc: "Requer pagamento para acesso", icon: "💳" },
-  { value: "projeto_cultural", label: "MIT", desc: "Exclusivo para Projeto Cultural", icon: "🎓" },
+  { value: "free", label: "Gratuito", desc: "Acesso livre para todos os alunos", icon: Gift },
+  { value: "pago", label: "Pago", desc: "Requer pagamento para acesso", icon: CreditCard },
+  { value: "projeto_cultural", label: "MIT", desc: "Exclusivo para Projeto Cultural", icon: GraduationCap },
 ] as const;
 
 const LESSON_TYPES = [
@@ -295,7 +296,7 @@ export function CourseForm({ course }: { course?: Course }) {
                         className={cn("flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-all",
                           isSelected ? "border-amber-500 bg-amber-500/10 text-amber-400" : "border-border bg-surface text-muted hover:border-amber-500/20"
                         )}>
-                        <span>{getCategoryIcon(val)}</span>
+                        <CategoryIcon category={val} size={14} />
                         <span className="truncate text-xs">{label}</span>
                         {allowMultiCategory && isSelected && <Check size={12} className="ml-auto text-amber-400" />}
                       </button>
@@ -311,7 +312,7 @@ export function CourseForm({ course }: { course?: Course }) {
                       className={cn("rounded-xl border-2 p-3 text-left transition-all",
                         tipo === t.value ? "border-amber-500 bg-amber-500/10" : "border-border bg-surface hover:border-border-strong"
                       )}>
-                      <span className="text-xl">{t.icon}</span>
+                      <t.icon size={20} className="text-muted-light" />
                       <p className="text-sm font-medium text-foreground mt-1">{t.label}</p>
                       <p className="text-xs text-muted-light leading-tight mt-0.5">{t.desc}</p>
                     </button>
@@ -456,7 +457,7 @@ export function CourseForm({ course }: { course?: Course }) {
             </div>
 
             <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">
-              ✨ Após criar, você será levado para a <strong>Etapa 5</strong> onde adiciona módulos e aulas diretamente.
+              <Sparkles size={14} className="inline shrink-0 text-blue-600 mr-1" /> Após criar, você será levado para a <strong>Etapa 5</strong> onde adiciona módulos e aulas diretamente.
             </div>
 
             <div className="flex justify-between gap-3">
@@ -682,7 +683,7 @@ function CoursePreviewCard({ watch }: { watch: any }) {
       <div className="h-24 bg-gradient-to-br from-surface-2 to-surface-3 flex items-center justify-center text-4xl relative overflow-hidden">
         {thumbnail_url
           ? <img src={thumbnail_url} alt="" className="w-full h-full object-cover absolute inset-0" onError={(e) => (e.currentTarget.style.display = "none")} />
-          : <span>{getCategoryIcon(categoria)}</span>}
+          : <CategoryIcon category={categoria} size={32} />}
         <div className="absolute top-2 right-2">
           <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-medium", nivelColors[nivel])}>{nivelLabels[nivel]}</span>
         </div>
@@ -750,7 +751,7 @@ function FlatForm({ form, loading, error, onSubmit, onCancel, handleTituloChange
                   className={cn("flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-all",
                     isSel ? "border-amber-500 bg-amber-500/10 text-amber-400" : "border-border bg-surface text-muted hover:border-amber-500/20"
                   )}>
-                  <span>{getCategoryIcon(val)}</span>
+                  <CategoryIcon category={val} size={14} />
                   <span className="truncate text-xs">{label}</span>
                   {allowMultiCat && isSel && <Check size={12} className="ml-auto text-amber-400" />}
                 </button>

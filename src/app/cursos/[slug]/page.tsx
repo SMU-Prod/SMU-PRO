@@ -6,7 +6,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { getCategoryIcon, getLevelLabel, getCategoryLabel, formatMinutes, formatCurrency } from "@/lib/utils";
+import { getLevelLabel, getCategoryLabel, formatMinutes, formatCurrency } from "@/lib/utils";
+import { CategoryIcon } from "@/components/ui/category-icon";
 import { CheckCircle, Clock, BookOpen, Award, Lock, Play, ChevronRight, ArrowLeft, Star } from "lucide-react";
 import { EnrollButton } from "@/components/course/enroll-button";
 import type { Metadata } from "next";
@@ -93,7 +94,7 @@ export default async function CourseDetailPage({ params }: Props) {
           {/* Info principal */}
           <div className="lg:col-span-2">
             <div className="flex items-center gap-3 mb-4 flex-wrap">
-              <span className="text-3xl">{getCategoryIcon(course.categoria)}</span>
+              <CategoryIcon category={course.categoria} size={30} />
               <Badge variant={course.nivel as any}>{getLevelLabel(course.nivel)}</Badge>
               {(course.categorias?.length ? course.categorias : [course.categoria]).map((cat: string) => (
                 <Badge key={cat} variant="secondary">{getCategoryLabel(cat)}</Badge>
@@ -161,7 +162,7 @@ export default async function CourseDetailPage({ params }: Props) {
                 </div>
               ) : (
                 <div className="aspect-video rounded-xl bg-gradient-to-br from-surface-2 to-surface-3 mb-5 flex items-center justify-center text-6xl">
-                  {getCategoryIcon(course.categoria)}
+                  <CategoryIcon category={course.categoria} size={48} />
                 </div>
               )}
 

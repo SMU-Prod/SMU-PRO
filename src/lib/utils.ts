@@ -69,17 +69,3 @@ export function getCategoryLabel(cat: string) {
   return map[cat] ?? cat;
 }
 
-export function getCategoryIcon(cat: string) {
-  const map: Record<string, string> = {
-    som: "🔊",
-    luz: "💡",
-    producao: "🎬",
-    dj: "🎛",
-    vj: "🎥",
-    roadie: "🔧",
-    marketing: "📢",
-    efeitos: "⚡",
-    outros: "🎵",
-  };
-  return map[cat] ?? "🎵";
-}

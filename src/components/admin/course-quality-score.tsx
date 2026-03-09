@@ -164,7 +164,7 @@ export function CourseQualityScore({ course }: { course: any }) {
 
           <div className="flex-1">
             <p className="font-semibold text-foreground text-lg">
-              {score >= 80 ? "Pronto para publicar! 🎉" : score >= 50 ? "Quase lá..." : "Precisa de atenção"}
+              {score >= 80 ? "Pronto para publicar!" : score >= 50 ? "Quase lá..." : "Precisa de atenção"}
             </p>
             <p className="text-sm text-muted-light mt-0.5">
               {checks.filter((c) => c.status === "ok").length}/{checks.length} critérios atendidos

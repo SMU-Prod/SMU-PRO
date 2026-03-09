@@ -6,7 +6,8 @@ import { adminToggleCourse, adminDuplicateCourse, adminDeleteCourse } from "@/li
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { getCategoryIcon, getCategoryLabel, getLevelLabel, formatCurrency } from "@/lib/utils";
+import { getCategoryLabel, getLevelLabel, formatCurrency } from "@/lib/utils";
+import { CategoryIcon } from "@/components/ui/category-icon";
 import { Edit, Layers, EyeOff, CheckSquare, Square, X, Zap, Copy, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { CourseToggle } from "@/components/admin/course-toggle";
@@ -185,7 +186,7 @@ function CourseAdminCard({
         {c.thumbnail_url ? (
           <img src={c.thumbnail_url} alt={c.titulo} className="w-full h-full object-cover" />
         ) : (
-          getCategoryIcon(c.categoria)
+          <CategoryIcon category={c.categoria} size={32} />
         )}
 
         {/* Select checkbox */}

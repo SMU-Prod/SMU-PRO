@@ -23,6 +23,7 @@ import {
   X,
   Sun,
   Moon,
+  CreditCard,
 } from "lucide-react";
 
 interface NavItem {
@@ -37,6 +38,7 @@ const studentNav: NavItem[] = [
   { label: "Meus Cursos", href: "/dashboard/cursos", icon: BookOpen },
   { label: "Trilha de Aprendizado", href: "/dashboard/trilha", icon: TrendingUp },
   { label: "Certificados", href: "/dashboard/certificados", icon: Award },
+  { label: "Pagamentos", href: "/dashboard/pagamentos", icon: CreditCard },
   { label: "Configurações", href: "/dashboard/configuracoes", icon: Settings },
 ];
 
@@ -46,6 +48,7 @@ const adminNav: NavItem[] = [
   { label: "Trilhas", href: "/admin/trilhas", icon: TrendingUp },
   { label: "Usuários", href: "/admin/usuarios", icon: Users },
   { label: "Certificados", href: "/admin/certificados", icon: Award },
+  { label: "Pagamentos", href: "/admin/pagamentos", icon: CreditCard },
   { label: "Relatórios", href: "/admin/relatorios", icon: FileText },
   { label: "Configurações", href: "/admin/configuracoes", icon: Settings },
 ];

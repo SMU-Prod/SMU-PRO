@@ -1,7 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
-import { getLevelLabel, getCategoryIcon, formatMinutes } from "@/lib/utils";
-import { Award, CheckCircle2, Calendar, Clock, User } from "lucide-react";
+import { getLevelLabel, formatMinutes } from "@/lib/utils";
+import { CategoryIcon } from "@/components/ui/category-icon";
+import { Award, CheckCircle2, Calendar, Clock, User, Trophy } from "lucide-react";
 import Link from "next/link";
 import QRCode from "qrcode";
 import type { Metadata } from "next";
@@ -87,7 +88,7 @@ export default async function CertificatePage({ params }: Props) {
             </div>
             {cert.projeto_cultural ? (
               <div className="flex flex-col items-center gap-1">
-                <div className="h-12 w-12 rounded-full bg-amber-500/20 flex items-center justify-center text-2xl">🏆</div>
+                <div className="h-12 w-12 rounded-full bg-amber-500/20 flex items-center justify-center"><Trophy size={24} className="text-amber-400" /></div>
                 <span className="text-xs text-amber-400 font-semibold">MIT</span>
               </div>
             ) : (
@@ -102,7 +103,7 @@ export default async function CertificatePage({ params }: Props) {
             <p className="text-sm text-muted-light mb-2">concluiu com êxito o curso</p>
             <h2 className="text-xl font-semibold text-[#FBBF24] mb-1">{course.titulo}</h2>
             <div className="flex items-center justify-center gap-2 mt-2">
-              <span className="text-base">{getCategoryIcon(course.categoria)}</span>
+              <CategoryIcon category={course.categoria} size={16} />
               <span className="text-sm text-muted-light">{getLevelLabel(course.nivel)}</span>
               {cert.nota_final && (
                 <>

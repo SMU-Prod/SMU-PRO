@@ -4,7 +4,8 @@ import { getCourses } from "@/lib/actions/courses";
 import { getLandingPageStats } from "@/lib/actions/users";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { getCategoryIcon, getCategoryLabel, getLevelLabel, formatMinutes, formatCurrency } from "@/lib/utils";
+import { getCategoryLabel, getLevelLabel, formatMinutes, formatCurrency } from "@/lib/utils";
+import { CategoryIcon } from "@/components/ui/category-icon";
 import { Zap, Award, Users, PlayCircle, ChevronRight, Star, Shield, Mic, Lightbulb, Music, Film } from "lucide-react";
 
 export const revalidate = 3600; // revalidate stats every hour
@@ -79,9 +80,10 @@ export default async function HomePage() {
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/90 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
           <div className="flex items-center gap-3">
-            <span className="text-xl font-black tracking-tight text-foreground">
-              SMU<span className="text-muted-light text-sm font-normal ml-1">PRO</span>
-            </span>
+            <div className="text-center">
+              <p className="text-2xl leading-none gradient-text" style={{ fontFamily: "var(--font-instrument-serif), serif" }}>SMU</p>
+              <p className="text-[5.5px] font-medium tracking-[0.15em] text-muted-light leading-none mt-0.5" style={{ fontFamily: "var(--font-orbitron), sans-serif" }}>PRODUÇÕES</p>
+            </div>
             <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
               <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
               <span className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider">MIT</span>
@@ -185,7 +187,7 @@ export default async function HomePage() {
                       {course.thumbnail_url ? (
                         <img src={course.thumbnail_url} alt={course.titulo} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
                       ) : (
-                        <span className="opacity-50">{getCategoryIcon(course.categoria)}</span>
+                        <span className="opacity-50"><CategoryIcon category={course.categoria} size={40} /></span>
                       )}
                       <div className="absolute top-3 left-3 flex gap-1.5">
                         <Badge variant={course.nivel as any}>{getLevelLabel(course.nivel)}</Badge>
@@ -291,7 +293,10 @@ export default async function HomePage() {
       <footer className="border-t border-border py-12 px-6">
         <div className="mx-auto max-w-7xl flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-light">
           <div className="flex items-center gap-3">
-            <span className="font-bold text-foreground">SMU PRO</span>
+            <div className="text-center">
+              <p className="text-lg leading-none gradient-text" style={{ fontFamily: "var(--font-instrument-serif), serif" }}>SMU</p>
+              <p className="text-[4.5px] font-medium tracking-[0.12em] text-muted-light leading-none mt-0.5" style={{ fontFamily: "var(--font-orbitron), sans-serif" }}>PRODUÇÕES</p>
+            </div>
             <span className="text-muted-light">—</span>
             <span>Escola Profissional de Eventos</span>
           </div>

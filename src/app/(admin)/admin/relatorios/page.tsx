@@ -60,6 +60,42 @@ export default async function AdminRelatoriosPage() {
     inscricoesPorMes[mes] = (inscricoesPorMes[mes] ?? 0) + 1;
   }
 
+  // Payment method breakdown
+  const { data: paymentMethods } = await supabase
+    .from("enrollments")
+    .select("payment_provider, valor_pago, tipo_acesso")
+    .eq("status", "ativo")
+    .not("valor_pago", "is", null);
+
+  const methodStats: Record<string, { count: number; total: number }> = {};
+  for (const p of paymentMethods ?? []) {
+    const key = p.payment_provider ?? "manual";
+    if (!methodStats[key]) methodStats[key] = { count: 0, total: 0 };
+    methodStats[key].count++;
+    methodStats[key].total += p.valor_pago ?? 0;
+  }
+
+  // Conversion rate
+  const { count: totalEnrollments } = await supabase
+    .from("enrollments")
+    .select("*", { count: "exact", head: true });
+
+  const { count: paidEnrollments } = await supabase
+    .from("enrollments")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "ativo")
+    .eq("tipo_acesso", "pago");
+
+  const conversionRate = totalEnrollments && totalEnrollments > 0
+    ? ((paidEnrollments ?? 0) / totalEnrollments * 100).toFixed(1)
+    : "0.0";
+
+  // Free vs paid distribution
+  const { count: freeEnrollments } = await supabase
+    .from("enrollments")
+    .select("*", { count: "exact", head: true })
+    .eq("tipo_acesso", "free");
+
   const meses = Object.keys(receitaPorMes);
   const receitaMax = Math.max(...Object.values(receitaPorMes), 1);
   const inscricoesMax = Math.max(...Object.values(inscricoesPorMes), 1);
@@ -252,6 +288,79 @@ export default async function AdminRelatoriosPage() {
             </div>
           </div>
         )}
+
+        {/* Billing Analytics */}
+        <div className="grid lg:grid-cols-2 gap-6">
+          {/* Payment Method Breakdown */}
+          <div className="rounded-2xl bg-surface border border-border p-4 sm:p-6">
+            <h2 className="font-bold text-foreground mb-5 flex items-center gap-2">
+              <DollarSign size={18} className="text-emerald-400" />
+              Receita por método de pagamento
+            </h2>
+            {Object.keys(methodStats).length === 0 ? (
+              <p className="text-muted-light text-sm">Sem dados de pagamento ainda.</p>
+            ) : (
+              <div className="space-y-3">
+                {Object.entries(methodStats).map(([method, stats]) => {
+                  const maxTotal = Math.max(...Object.values(methodStats).map(s => s.total), 1);
+                  return (
+                    <div key={method} className="flex items-center gap-3">
+                      <span className="w-16 text-xs text-muted-light shrink-0 capitalize">{method}</span>
+                      <div className="flex-1 h-6 bg-surface-3 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all"
+                          style={{ width: `${(stats.total / maxTotal) * 100}%` }}
+                        />
+                      </div>
+                      <span className="w-28 text-right text-xs font-semibold text-muted shrink-0">
+                        {formatCurrency(stats.total)} ({stats.count})
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Conversion & Distribution */}
+          <div className="rounded-2xl bg-surface border border-border p-4 sm:p-6">
+            <h2 className="font-bold text-foreground mb-5 flex items-center gap-2">
+              <TrendingUp size={18} className="text-blue-400" />
+              Taxas e distribuição
+            </h2>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Taxa de conversão</p>
+                  <p className="text-xs text-muted-light">Matrículas pagas / total</p>
+                </div>
+                <span className="text-2xl font-black text-foreground">{conversionRate}%</span>
+              </div>
+              <div className="h-px bg-border/50" />
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Matrículas gratuitas</p>
+                  <p className="text-xs text-muted-light">Cursos free + projeto cultural</p>
+                </div>
+                <span className="text-lg font-bold text-foreground">{freeEnrollments ?? 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Matrículas pagas</p>
+                  <p className="text-xs text-muted-light">Via PIX, boleto ou cartão</p>
+                </div>
+                <span className="text-lg font-bold text-foreground">{paidEnrollments ?? 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Total de matrículas</p>
+                  <p className="text-xs text-muted-light">Todas as matrículas</p>
+                </div>
+                <span className="text-lg font-bold text-foreground">{totalEnrollments ?? 0}</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -3,8 +3,9 @@ import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { getCategoryIcon, getCategoryLabel, getLevelLabel, formatMinutes, formatCurrency } from "@/lib/utils";
+import { getCategoryLabel, getLevelLabel, formatMinutes, formatCurrency } from "@/lib/utils";
 import { Search, SlidersHorizontal } from "lucide-react";
+import { CategoryIcon } from "@/components/ui/category-icon";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -158,7 +159,7 @@ export default async function CursosPage({ searchParams }: Props) {
                         href={`/cursos?${params}`}
                         className={`block px-3 py-1.5 rounded-lg text-sm transition-colors ${categoria === c.value || (!categoria && !c.value) ? "bg-amber-500 text-white" : "text-muted hover:text-foreground hover:bg-hover"}`}
                       >
-                        {c.value && <span className="mr-1.5">{getCategoryIcon(c.value)}</span>}
+                        {c.value && <span className="mr-1.5 inline-flex"><CategoryIcon category={c.value} size={14} /></span>}
                         {c.label}
                       </Link>
                     );
@@ -191,7 +192,7 @@ export default async function CursosPage({ searchParams }: Props) {
           <main className="flex-1">
             {courses.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 text-center">
-                <div className="text-5xl mb-4">🔍</div>
+                <div className="mb-4"><Search size={48} className="text-muted-light mx-auto" /></div>
                 <h3 className="text-xl font-bold text-foreground mb-2">Nenhum curso encontrado</h3>
                 <p className="text-muted-light mb-6">Tente ajustar os filtros ou{" "}
                   <Link href="/cursos" className="text-amber-400 hover:underline">ver todos os cursos</Link>
@@ -206,7 +207,7 @@ export default async function CursosPage({ searchParams }: Props) {
                         {course.thumbnail_url ? (
                           <img src={course.thumbnail_url} alt={course.titulo} className="w-full h-full object-cover" />
                         ) : (
-                          getCategoryIcon(course.categoria)
+                          <CategoryIcon category={course.categoria} size={40} />
                         )}
                       </div>
                       <div className="p-5 flex flex-col flex-1">

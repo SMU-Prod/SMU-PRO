@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import { CheckCircle, Loader2, Play, QrCode, FileText, ChevronDown } from "lucide-react";
+import { CheckCircle, Loader2, Play, QrCode, FileText, ChevronDown, CreditCard } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 interface Course {
@@ -19,7 +19,7 @@ interface Props {
   userId: string;
 }
 
-type BillingType = "PIX" | "BOLETO";
+type BillingType = "PIX" | "BOLETO" | "CREDIT_CARD";
 
 export function EnrollButton({ course, userId }: Props) {
   const [loading, setLoading] = useState(false);
@@ -128,6 +128,23 @@ export function EnrollButton({ course, userId }: Props) {
             <div>
               <div className="font-semibold text-sm text-foreground">Boleto Bancário</div>
               <div className="text-xs text-muted-light">Prazo de até 3 dias úteis</div>
+            </div>
+            {loading ? (
+              <Loader2 size={16} className="ml-auto animate-spin text-muted-light" />
+            ) : (
+              <span className="ml-auto font-bold text-sm text-foreground">{formatCurrency(course.preco ?? 0)}</span>
+            )}
+          </button>
+
+          <button
+            onClick={() => handlePaidEnroll("CREDIT_CARD")}
+            disabled={loading}
+            className="w-full flex items-center gap-3 rounded-xl bg-purple-500/10 border border-purple-500/20 px-4 py-3 text-left hover:bg-purple-500/15 transition-colors disabled:opacity-50"
+          >
+            <CreditCard size={20} className="text-purple-400 shrink-0" />
+            <div>
+              <div className="font-semibold text-sm text-foreground">Cartão de Crédito</div>
+              <div className="text-xs text-muted-light">Acesso liberado imediatamente</div>
             </div>
             {loading ? (
               <Loader2 size={16} className="ml-auto animate-spin text-muted-light" />

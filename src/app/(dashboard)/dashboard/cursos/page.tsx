@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Header } from "@/components/layout/header";
-import { getCategoryIcon, getLevelLabel, formatMinutes } from "@/lib/utils";
+import { getLevelLabel, formatMinutes } from "@/lib/utils";
+import { CategoryIcon } from "@/components/ui/category-icon";
 import { BookOpen, Play, Trophy, ChevronRight, Plus } from "lucide-react";
 
 export default async function MeusCursosPage() {
@@ -50,7 +51,7 @@ export default async function MeusCursosPage() {
       <div className="p-4 sm:p-6">
         {list.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-32 text-center rounded-2xl bg-surface border border-border">
-            <div className="text-5xl mb-4">📚</div>
+            <div className="mb-4"><BookOpen size={48} className="text-muted-light" /></div>
             <h2 className="text-xl font-bold text-foreground mb-2">Nenhum curso ainda</h2>
             <p className="text-muted-light mb-6">Explore o catálogo e comece sua jornada profissional</p>
             <Link href="/cursos">
@@ -110,7 +111,7 @@ function CourseGrid({ courses, showCertificate = false }: { courses: any[]; show
               {course.thumbnail_url ? (
                 <img src={course.thumbnail_url} alt={course.titulo} className="w-full h-full object-cover" />
               ) : (
-                getCategoryIcon(course.categoria)
+                <CategoryIcon category={course.categoria} size={40} />
               )}
             </div>
             <div className="p-5">

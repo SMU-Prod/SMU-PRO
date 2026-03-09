@@ -7,7 +7,7 @@ import { getLevelLabel } from "@/lib/utils";
 import { NotificationPreferencesForm } from "@/components/settings/notification-preferences";
 import {
   Bell, Shield, Globe, CreditCard, Trash2, UserCircle,
-  Mail, Lock, Smartphone, ChevronRight,
+  Mail, Lock, Smartphone, ChevronRight, Trophy,
 } from "lucide-react";
 
 export default async function ConfiguracoesPage() {
@@ -100,7 +100,7 @@ export default async function ConfiguracoesPage() {
           <Section title="Plano MIT" icon={<CreditCard size={16} className="text-amber-600" />}>
             <div className="px-4 py-4">
               <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
-                <span className="text-2xl">🏆</span>
+                <Trophy size={24} className="text-amber-400" />
                 <div>
                   <p className="font-semibold text-amber-400">Projeto Cultural MIT — Ativo</p>
                   <p className="text-sm text-amber-500/80">

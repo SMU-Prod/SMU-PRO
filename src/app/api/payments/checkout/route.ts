@@ -36,8 +36,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "courseId obrigatório" }, { status: 400 });
   }
 
-  if (!["PIX", "BOLETO"].includes(billingType)) {
-    return NextResponse.json({ error: "billingType inválido. Utilize PIX ou BOLETO" }, { status: 400 });
+  if (!["PIX", "BOLETO", "CREDIT_CARD"].includes(billingType)) {
+    return NextResponse.json({ error: "billingType inválido. Utilize PIX, BOLETO ou CREDIT_CARD" }, { status: 400 });
   }
 
   const supabase = createAdminClient();

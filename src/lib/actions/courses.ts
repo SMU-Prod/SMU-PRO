@@ -143,9 +143,15 @@ export async function getCourseWithProgress(slug: string) {
       })),
   };
 
+  // Check expires_at — treat expired enrollment as inactive
+  let enrollment = enrollmentResult.data;
+  if (enrollment && enrollment.expires_at && new Date(enrollment.expires_at) < new Date()) {
+    enrollment = null;
+  }
+
   return {
     course: sorted,
-    enrollment: enrollmentResult.data,
+    enrollment,
     progressMap: Object.fromEntries(
       (progressResult.data ?? []).map((p: Progress) => [p.lesson_id, p])
     ) as Record<string, Progress>,

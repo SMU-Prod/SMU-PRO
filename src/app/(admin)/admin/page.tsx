@@ -5,10 +5,13 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { Header } from "@/components/layout/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { formatCurrency, getCategoryIcon, getLevelLabel } from "@/lib/utils";
+import { formatCurrency, getLevelLabel } from "@/lib/utils";
+import { CategoryIcon } from "@/components/ui/category-icon";
 import {
   Users, BookOpen, Award, DollarSign, TrendingUp,
   UserCheck, BarChart3, Activity,
+  CheckCircle, Trophy, User, CreditCard, KeyRound, Target, ClipboardList,
+  type LucideIcon,
 } from "lucide-react";
 
 export default async function AdminDashboardPage() {
@@ -118,7 +121,7 @@ export default async function AdminDashboardPage() {
                     <div key={c.id} className="px-4 py-3 space-y-2">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-base shrink-0">{getCategoryIcon(c.categoria)}</span>
+                          <span className="shrink-0"><CategoryIcon category={c.categoria} size={16} /></span>
                           <span className="text-foreground font-medium truncate">{c.titulo}</span>
                         </div>
                         <Badge variant={c.ativo ? "success" : "secondary"} className="text-[10px] shrink-0">
@@ -152,7 +155,7 @@ export default async function AdminDashboardPage() {
                         <tr key={c.id} className="border-b border-border/50 hover:bg-hover transition-colors">
                           <td className="px-5 py-3">
                             <div className="flex items-center gap-2">
-                              <span className="text-base">{getCategoryIcon(c.categoria)}</span>
+                              <CategoryIcon category={c.categoria} size={16} />
                               <span className="text-foreground font-medium truncate max-w-[160px]">{c.titulo}</span>
                             </div>
                           </td>
@@ -328,11 +331,18 @@ function getActivityColor(tipo: string) {
 }
 
 function getActivityEmoji(tipo: string) {
-  const map: Record<string, string> = {
-    enrollment: "📚", lesson_complete: "✅", certificate_issued: "🏆",
-    login: "👤", payment: "💳", role_change: "🔑", quiz_pass: "🎯",
+  const map: Record<string, LucideIcon> = {
+    enrollment: BookOpen,
+    lesson_complete: CheckCircle,
+    certificate_issued: Trophy,
+    login: User,
+    payment: CreditCard,
+    role_change: KeyRound,
+    quiz_pass: Target,
+    quiz_fail: Target,
   };
-  return map[tipo] ?? "📋";
+  const Icon = map[tipo] ?? ClipboardList;
+  return <Icon size={14} className="text-muted-light" />;
 }
 
 function timeAgo(date: string) {

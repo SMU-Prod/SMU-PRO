@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatMinutes, formatCurrency, slugify, getLevelLabel, getCategoryLabel, getCategoryIcon } from "./utils";
+import { formatMinutes, formatCurrency, slugify, getLevelLabel, getCategoryLabel } from "./utils";
 
 describe("formatMinutes", () => {
   it("formats minutes under 60", () => {
@@ -70,14 +70,3 @@ describe("getCategoryLabel", () => {
   });
 });
 
-describe("getCategoryIcon", () => {
-  it("returns correct icons", () => {
-    expect(getCategoryIcon("som")).toBe("🔊");
-    expect(getCategoryIcon("luz")).toBe("💡");
-    expect(getCategoryIcon("dj")).toBe("🎛");
-  });
-
-  it("returns default icon for unknown categories", () => {
-    expect(getCategoryIcon("xyz")).toBe("🎵");
-  });
-});
