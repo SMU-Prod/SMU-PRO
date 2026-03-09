@@ -3,6 +3,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { sendCourseCompletionEmail } from "@/lib/email";
+import { createNotification } from "@/lib/actions/notifications";
 import { revalidatePath } from "next/cache";
 
 async function resolveUserUUID(clerkId: string): Promise<string | null> {
@@ -72,6 +73,15 @@ export async function markLessonComplete(lessonId: string, courseSlug: string) {
             courseSlug,
           }).catch((err) => console.error("[Email] Erro ao enviar conclusão:", err));
         }
+
+        // In-app notification
+        createNotification({
+          userUuid,
+          tipo: "certificate",
+          titulo: `Parabéns! Você concluiu "${course.titulo}"`,
+          mensagem: "Seu certificado já está disponível para download.",
+          link: "/dashboard/certificados",
+        }).catch((err) => console.error("[Notification] Erro:", err));
       }
     }
   } catch (e) {

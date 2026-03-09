@@ -1,11 +1,12 @@
 "use client";
 
-import { Bell, Menu, Sun, Moon } from "lucide-react";
+import { Menu, Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "./sidebar-context";
 import { useTheme } from "@/components/theme-provider";
+import { NotificationDropdown } from "./notification-dropdown";
 import type { UserRole } from "@/types/database";
 
 interface HeaderProps {
@@ -30,10 +31,10 @@ export function Header({ title, subtitle, role, className, actions }: HeaderProp
       {/* Hamburger — mobile only */}
       <button
         onClick={toggle}
-        className="lg:hidden p-2 -ml-1 rounded-lg text-muted hover:text-foreground hover:bg-hover transition-colors"
+        className="lg:hidden p-2.5 -ml-1 rounded-lg text-muted hover:text-foreground hover:bg-hover transition-colors"
         aria-label="Abrir menu"
       >
-        <Menu size={20} />
+        <Menu size={22} />
       </button>
 
       {/* Title */}
@@ -73,10 +74,7 @@ export function Header({ title, subtitle, role, className, actions }: HeaderProp
       </Button>
 
       {/* Notifications */}
-      <Button variant="ghost" size="icon" className="relative shrink-0">
-        <Bell size={18} />
-        <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-amber-500" />
-      </Button>
+      <NotificationDropdown />
     </header>
   );
 }

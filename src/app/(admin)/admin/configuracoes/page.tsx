@@ -13,7 +13,7 @@ export default async function AdminConfiguracoesPage() {
         subtitle="Parâmetros gerais da plataforma SMU PRO"
       />
 
-      <div className="p-6 max-w-3xl space-y-6">
+      <div className="p-4 sm:p-6 max-w-3xl space-y-6">
         {/* Seção: Plataforma */}
         <Section title="Plataforma" icon={<Settings size={16} className="text-amber-400" />}>
           <Row label="Nome da plataforma" value="SMU PRO" />
@@ -82,7 +82,7 @@ function Section({
 }) {
   return (
     <div className="rounded-2xl bg-surface border border-border overflow-hidden">
-      <div className="px-5 py-4 border-b border-border/50 flex items-center gap-2">
+      <div className="px-4 sm:px-5 py-4 border-b border-border/50 flex items-center gap-2">
         {icon}
         <h3 className="font-semibold text-foreground text-sm">{title}</h3>
       </div>
@@ -93,7 +93,7 @@ function Section({
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between px-5 py-3.5">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 px-4 sm:px-5 py-3">
       <p className="text-sm text-muted">{label}</p>
       <p className="text-sm font-medium text-foreground">{value}</p>
     </div>
@@ -102,7 +102,7 @@ function Row({ label, value }: { label: string; value: string }) {
 
 function InfoRow({ label, description }: { label: string; description: string }) {
   return (
-    <div className="px-5 py-4">
+    <div className="px-4 sm:px-5 py-3 sm:py-4">
       <p className="text-sm font-medium text-foreground mb-1">{label}</p>
       <p className="text-xs text-muted-light leading-relaxed">{description}</p>
     </div>

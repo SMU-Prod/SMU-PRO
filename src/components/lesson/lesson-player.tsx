@@ -236,9 +236,9 @@ export function LessonPlayer({
               Meus Cursos
             </Link>
             <ChevronRight size={14} className="text-muted-light shrink-0 hidden sm:block" />
-            <Link href={`/cursos/${course.slug}`} className="hover:text-foreground transition-colors shrink-0">
+            <Link href={`/cursos/${course.slug}`} className="hover:text-foreground transition-colors shrink-0 flex items-center gap-1">
               <ChevronLeft size={16} className="sm:hidden" />
-              <span className="hidden sm:inline truncate max-w-[120px]">{course.titulo}</span>
+              <span className="truncate max-w-[100px] sm:max-w-[120px] text-xs sm:text-sm">{course.titulo}</span>
             </Link>
             <ChevronRight size={14} className="text-muted-light shrink-0 hidden sm:block" />
             <span className="text-foreground font-medium truncate max-w-[140px] sm:max-w-[200px] hidden sm:block">
@@ -283,7 +283,7 @@ export function LessonPlayer({
         {youtubeId && (
           <div className="relative bg-black w-full shrink-0 transition-all duration-300 ease-in-out overflow-hidden"
             style={videoExpanded
-              ? { aspectRatio: "16/9", maxHeight: "52vh" }
+              ? { aspectRatio: "16/9", maxHeight: "40vh" }
               : { height: 0 }
             }
           >

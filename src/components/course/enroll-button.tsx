@@ -100,39 +100,39 @@ export function EnrollButton({ course, userId }: Props) {
     <div className="space-y-2">
       {showMethods ? (
         <>
-          <p className="text-center text-sm text-gray-500 mb-3">Escolha a forma de pagamento:</p>
+          <p className="text-center text-sm text-muted mb-3">Escolha a forma de pagamento:</p>
 
           <button
             onClick={() => handlePaidEnroll("PIX")}
             disabled={loading}
-            className="w-full flex items-center gap-3 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-left hover:bg-emerald-100 transition-colors disabled:opacity-50"
+            className="w-full flex items-center gap-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-4 py-3 text-left hover:bg-emerald-500/15 transition-colors disabled:opacity-50"
           >
-            <QrCode size={20} className="text-emerald-600 shrink-0" />
+            <QrCode size={20} className="text-emerald-400 shrink-0" />
             <div>
-              <div className="font-semibold text-sm text-gray-900">PIX</div>
-              <div className="text-xs text-gray-500">Confirmação instantânea</div>
+              <div className="font-semibold text-sm text-foreground">PIX</div>
+              <div className="text-xs text-muted-light">Confirmação instantânea</div>
             </div>
             {loading ? (
-              <Loader2 size={16} className="ml-auto animate-spin text-gray-400" />
+              <Loader2 size={16} className="ml-auto animate-spin text-muted-light" />
             ) : (
-              <span className="ml-auto font-bold text-sm text-gray-900">{formatCurrency(course.preco ?? 0)}</span>
+              <span className="ml-auto font-bold text-sm text-foreground">{formatCurrency(course.preco ?? 0)}</span>
             )}
           </button>
 
           <button
             onClick={() => handlePaidEnroll("BOLETO")}
             disabled={loading}
-            className="w-full flex items-center gap-3 rounded-xl bg-blue-50 border border-blue-200 px-4 py-3 text-left hover:bg-blue-100 transition-colors disabled:opacity-50"
+            className="w-full flex items-center gap-3 rounded-xl bg-blue-500/10 border border-blue-500/20 px-4 py-3 text-left hover:bg-blue-500/15 transition-colors disabled:opacity-50"
           >
-            <FileText size={20} className="text-blue-600 shrink-0" />
+            <FileText size={20} className="text-blue-400 shrink-0" />
             <div>
-              <div className="font-semibold text-sm text-gray-900">Boleto Bancário</div>
-              <div className="text-xs text-gray-500">Prazo de até 3 dias úteis</div>
+              <div className="font-semibold text-sm text-foreground">Boleto Bancário</div>
+              <div className="text-xs text-muted-light">Prazo de até 3 dias úteis</div>
             </div>
             {loading ? (
-              <Loader2 size={16} className="ml-auto animate-spin text-gray-400" />
+              <Loader2 size={16} className="ml-auto animate-spin text-muted-light" />
             ) : (
-              <span className="ml-auto font-bold text-sm text-gray-900">{formatCurrency(course.preco ?? 0)}</span>
+              <span className="ml-auto font-bold text-sm text-foreground">{formatCurrency(course.preco ?? 0)}</span>
             )}
           </button>
 

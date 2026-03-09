@@ -26,11 +26,11 @@ const buttonVariants = cva(
           "text-amber-500 underline-offset-4 hover:underline p-0 h-auto",
       },
       size: {
-        sm:   "h-8 px-3 text-xs",
-        default: "h-10 px-4",
+        sm:   "h-9 sm:h-8 px-3 text-xs",
+        default: "h-11 sm:h-10 px-4",
         lg:   "h-12 px-6 text-base",
         xl:   "h-14 px-8 text-lg",
-        icon: "h-9 w-9 p-0",
+        icon: "h-10 w-10 sm:h-9 sm:w-9 p-0",
       },
     },
     defaultVariants: {

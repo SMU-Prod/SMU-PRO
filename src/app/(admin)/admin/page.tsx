@@ -38,7 +38,7 @@ export default async function AdminDashboardPage() {
         role="admin"
       />
 
-      <div className="p-6 space-y-8">
+      <div className="p-4 sm:p-6 space-y-6 sm:space-y-8">
         {/* KPI Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard
@@ -112,7 +112,30 @@ export default async function AdminDashboardPage() {
                 </Link>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="overflow-x-auto">
+                {/* Mobile: card layout */}
+                <div className="sm:hidden divide-y divide-border/50">
+                  {(courses ?? []).slice(0, 8).map((c: any) => (
+                    <div key={c.id} className="px-4 py-3 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-base shrink-0">{getCategoryIcon(c.categoria)}</span>
+                          <span className="text-foreground font-medium truncate">{c.titulo}</span>
+                        </div>
+                        <Badge variant={c.ativo ? "success" : "secondary"} className="text-[10px] shrink-0">
+                          {c.ativo ? "Ativo" : "Rascunho"}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-muted-light">
+                        <Badge variant={c.nivel as any} className="text-[10px]">{getLevelLabel(c.nivel)}</Badge>
+                        <span>{c.total_alunos} alunos</span>
+                        <span>{c.total_certificados} cert.</span>
+                        <span>{c.progresso_medio ? `${c.progresso_medio}%` : "—"}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {/* Desktop: table layout */}
+                <div className="hidden sm:block overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border/50 bg-surface-2">
@@ -199,7 +222,26 @@ export default async function AdminDashboardPage() {
             </a>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
+            {/* Mobile: card layout */}
+            <div className="sm:hidden divide-y divide-border/50">
+              {(recentUsers ?? []).map((u: any) => (
+                <div key={u.id} className="px-4 py-3 flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-full bg-gradient-to-br from-amber-500 to-amber-400 flex items-center justify-center text-xs text-white font-bold shrink-0">
+                    {u.nome?.[0]?.toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-foreground font-medium truncate">{u.nome}</p>
+                    <p className="text-xs text-muted-light truncate">{u.email}</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Badge variant={u.role as any} className="text-[10px]">{getLevelLabel(u.role)}</Badge>
+                    {u.projeto_cultural && <Badge variant="mit" className="text-[10px]">MIT</Badge>}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Desktop: table layout */}
+            <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border/50 bg-surface-2">

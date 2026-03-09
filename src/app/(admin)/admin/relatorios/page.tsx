@@ -68,7 +68,7 @@ export default async function AdminRelatoriosPage() {
     <div className="animate-fade-in">
       <Header title="Relatórios" subtitle="Visão analítica da plataforma" />
 
-      <div className="p-6 space-y-8">
+      <div className="p-4 sm:p-6 space-y-6 sm:space-y-8">
         {/* KPIs */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard
@@ -100,7 +100,7 @@ export default async function AdminRelatoriosPage() {
 
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Receita por mês */}
-          <div className="rounded-2xl bg-surface border border-border p-6">
+          <div className="rounded-2xl bg-surface border border-border p-4 sm:p-6">
             <h2 className="font-bold text-foreground mb-6 flex items-center gap-2">
               <TrendingUp size={18} className="text-emerald-400" />
               Receita — últimos 6 meses
@@ -128,7 +128,7 @@ export default async function AdminRelatoriosPage() {
           </div>
 
           {/* Inscrições por mês */}
-          <div className="rounded-2xl bg-surface border border-border p-6">
+          <div className="rounded-2xl bg-surface border border-border p-4 sm:p-6">
             <h2 className="font-bold text-foreground mb-6 flex items-center gap-2">
               <BarChart3 size={18} className="text-amber-400" />
               Inscrições — últimos 6 meses
@@ -158,57 +158,78 @@ export default async function AdminRelatoriosPage() {
 
         {/* Top cursos */}
         <div className="rounded-2xl bg-surface border border-border overflow-hidden">
-          <div className="px-5 py-4 border-b border-border/50">
+          <div className="px-4 sm:px-5 py-4 border-b border-border/50">
             <h2 className="font-bold text-foreground flex items-center gap-2">
               <BookOpen size={18} className="text-amber-400" />
               Top 10 cursos por alunos
             </h2>
           </div>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border/50 bg-surface-2">
-                <th className="px-5 py-3 text-left text-xs font-semibold text-muted-light uppercase tracking-wider">#</th>
-                <th className="px-5 py-3 text-left text-xs font-semibold text-muted-light uppercase tracking-wider">Curso</th>
-                <th className="px-5 py-3 text-left text-xs font-semibold text-muted-light uppercase tracking-wider">Nível</th>
-                <th className="px-5 py-3 text-right text-xs font-semibold text-muted-light uppercase tracking-wider">Alunos</th>
-                <th className="px-5 py-3 text-right text-xs font-semibold text-muted-light uppercase tracking-wider">Certificados</th>
-                <th className="px-5 py-3 text-right text-xs font-semibold text-muted-light uppercase tracking-wider">Progresso médio</th>
-                <th className="px-5 py-3 text-right text-xs font-semibold text-muted-light uppercase tracking-wider">Avaliação</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/50">
-              {(topCursos ?? []).map((course: any, i: number) => (
-                <tr key={i} className="hover:bg-surface-3 transition-colors">
-                  <td className="px-5 py-3 text-muted-light font-mono text-xs">{i + 1}</td>
-                  <td className="px-5 py-3 font-medium text-foreground">{course.titulo}</td>
-                  <td className="px-5 py-3">
-                    <span className="text-xs text-muted-light">{getLevelLabel(course.nivel)}</span>
-                  </td>
-                  <td className="px-5 py-3 text-right text-muted">{course.total_alunos}</td>
-                  <td className="px-5 py-3 text-right text-muted">{course.total_certificados}</td>
-                  <td className="px-5 py-3 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <div className="w-16 h-1.5 bg-surface-3 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-amber-500 rounded-full"
-                          style={{ width: `${course.progresso_medio ?? 0}%` }}
-                        />
-                      </div>
-                      <span className="text-xs text-muted-light">{Math.round(course.progresso_medio ?? 0)}%</span>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3 text-right text-muted">
-                    {course.avaliacao_media > 0 ? `★ ${course.avaliacao_media.toFixed(1)}` : "—"}
-                  </td>
+          {/* Mobile: card layout */}
+          <div className="md:hidden divide-y divide-border/50">
+            {(topCursos ?? []).map((course: any, i: number) => (
+              <div key={i} className="px-4 py-3 space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-light font-mono shrink-0">#{i + 1}</span>
+                  <p className="text-sm font-medium text-foreground truncate">{course.titulo}</p>
+                </div>
+                <div className="flex items-center gap-3 text-xs text-muted-light flex-wrap">
+                  <span>{getLevelLabel(course.nivel)}</span>
+                  <span>{course.total_alunos} alunos</span>
+                  <span>{course.total_certificados} cert.</span>
+                  <span>{Math.round(course.progresso_medio ?? 0)}%</span>
+                  {course.avaliacao_media > 0 && <span>★ {course.avaliacao_media.toFixed(1)}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* Desktop: table layout */}
+          <div className="hidden md:block">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border/50 bg-surface-2">
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-muted-light uppercase tracking-wider">#</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-muted-light uppercase tracking-wider">Curso</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-muted-light uppercase tracking-wider">Nível</th>
+                  <th className="px-5 py-3 text-right text-xs font-semibold text-muted-light uppercase tracking-wider">Alunos</th>
+                  <th className="px-5 py-3 text-right text-xs font-semibold text-muted-light uppercase tracking-wider hidden lg:table-cell">Certificados</th>
+                  <th className="px-5 py-3 text-right text-xs font-semibold text-muted-light uppercase tracking-wider">Progresso</th>
+                  <th className="px-5 py-3 text-right text-xs font-semibold text-muted-light uppercase tracking-wider hidden lg:table-cell">Avaliação</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-border/50">
+                {(topCursos ?? []).map((course: any, i: number) => (
+                  <tr key={i} className="hover:bg-surface-3 transition-colors">
+                    <td className="px-5 py-3 text-muted-light font-mono text-xs">{i + 1}</td>
+                    <td className="px-5 py-3 font-medium text-foreground">{course.titulo}</td>
+                    <td className="px-5 py-3">
+                      <span className="text-xs text-muted-light">{getLevelLabel(course.nivel)}</span>
+                    </td>
+                    <td className="px-5 py-3 text-right text-muted">{course.total_alunos}</td>
+                    <td className="px-5 py-3 text-right text-muted hidden lg:table-cell">{course.total_certificados}</td>
+                    <td className="px-5 py-3 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <div className="w-16 h-1.5 bg-surface-3 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-amber-500 rounded-full"
+                            style={{ width: `${course.progresso_medio ?? 0}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-muted-light">{Math.round(course.progresso_medio ?? 0)}%</span>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3 text-right text-muted hidden lg:table-cell">
+                      {course.avaliacao_media > 0 ? `★ ${course.avaliacao_media.toFixed(1)}` : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {/* Distribuição por nível */}
         {Object.keys(nivelCount).length > 0 && (
-          <div className="rounded-2xl bg-surface border border-border p-6 max-w-sm">
+          <div className="rounded-2xl bg-surface border border-border p-4 sm:p-6 max-w-sm">
             <h2 className="font-bold text-foreground mb-5 flex items-center gap-2">
               <BarChart3 size={18} className="text-blue-400" />
               Cursos por nível

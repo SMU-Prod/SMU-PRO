@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { sendEnrollmentEmail } from "@/lib/email";
+import { createNotification } from "@/lib/actions/notifications";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
@@ -78,6 +79,15 @@ export async function POST(req: Request) {
       courseSlug: courseSlugData.slug,
     }).catch((err) => console.error("[Email] Erro ao enviar matrícula:", err));
   }
+
+  // In-app notification
+  createNotification({
+    userUuid,
+    tipo: "enrollment",
+    titulo: `Matrícula confirmada: ${course.titulo}`,
+    mensagem: "Você já pode começar a assistir as aulas. Bons estudos!",
+    link: courseSlugData ? `/cursos/${courseSlugData.slug}` : "/dashboard/cursos",
+  }).catch((err) => console.error("[Notification] Erro:", err));
 
   return NextResponse.json({ enrollment });
 }

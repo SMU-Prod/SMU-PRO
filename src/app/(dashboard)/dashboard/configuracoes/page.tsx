@@ -20,7 +20,7 @@ export default async function ConfiguracoesPage() {
     <div className="animate-fade-in">
       <Header title="Configurações" subtitle="Preferências e configurações da sua conta" />
 
-      <div className="p-6 max-w-2xl space-y-6">
+      <div className="p-4 sm:p-6 max-w-2xl space-y-6">
         {/* Account info summary */}
         <div className="rounded-2xl bg-surface border border-border p-5">
           <div className="flex items-center gap-4">
@@ -134,12 +134,12 @@ export default async function ConfiguracoesPage() {
         {/* Zona de perigo */}
         <Section title="Zona de Risco" icon={<Trash2 size={16} className="text-red-500" />}>
           <div className="px-4 py-4">
-            <div className="p-4 rounded-xl border border-red-200 bg-red-50">
-              <h4 className="font-semibold text-red-800 mb-1">Excluir conta</h4>
-              <p className="text-sm text-red-600 mb-3">
+            <div className="p-4 rounded-xl border border-red-500/20 bg-red-500/10">
+              <h4 className="font-semibold text-red-400 mb-1">Excluir conta</h4>
+              <p className="text-sm text-red-400/80 mb-3">
                 Esta ação é permanente e irá remover todos os seus dados, progresso e certificados.
               </p>
-              <button className="text-sm font-semibold text-red-600 hover:text-red-700 transition-colors">
+              <button className="text-sm font-semibold text-red-400 hover:text-red-300 transition-colors">
                 Solicitar exclusão de conta →
               </button>
             </div>

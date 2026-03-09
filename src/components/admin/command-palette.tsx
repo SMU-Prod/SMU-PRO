@@ -136,7 +136,7 @@ export function CommandPalette({ courses = [] }: CommandPaletteProps) {
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm animate-in fade-in-0" />
           <Dialog.Content
-            className="fixed left-1/2 top-[15%] z-50 w-full max-w-lg -translate-x-1/2 rounded-2xl bg-surface shadow-2xl ring-1 ring-border overflow-hidden animate-in fade-in-0 zoom-in-95"
+            className="fixed left-1/2 top-[15%] z-50 w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 rounded-2xl bg-surface shadow-2xl ring-1 ring-border overflow-hidden animate-in fade-in-0 zoom-in-95"
             onKeyDown={handleKeyDown}
           >
             <Dialog.Title className="sr-only">Command Palette</Dialog.Title>

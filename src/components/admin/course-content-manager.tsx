@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useId } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -73,6 +73,7 @@ export function CourseContentManager({ course }: { course: any }) {
   const lessonForm = useForm({ resolver: zodResolver(lessonSchema) });
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+  const dndId = useId();
 
   const toggleModule = (id: string) =>
     setExpandedModules((p) => ({ ...p, [id]: !p[id] }));
@@ -253,7 +254,7 @@ export function CourseContentManager({ course }: { course: any }) {
       )}
 
       {/* Modules list with drag-drop */}
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleModuleDragEnd}>
+      <DndContext id={`${dndId}-modules`} sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleModuleDragEnd}>
         <SortableContext items={modules.map((m) => m.id)} strategy={verticalListSortingStrategy}>
           {modules.map((mod, modIdx) => (
             <SortableModule
@@ -319,6 +320,7 @@ export function CourseContentManager({ course }: { course: any }) {
 
 function SortableModule({ mod, modIdx, expanded, editingModule, addingLesson, editingLesson, quizLesson, moduleForm, lessonForm, loading, sensors, onToggle, onEditModule, onCancelEditModule, onUpdateModule, onDeleteModule, onCreateLesson, onUpdateLesson, onAutoSaveLesson, onUpdateLessonState, onDeleteLesson, onDuplicateLesson, onMoveLesson, allModules, onStartAddLesson, onCancelAddLesson, onStartEditLesson, onCancelEditLesson, onToggleQuiz, onLessonDragEnd }: any) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: mod.id });
+  const lessonDndId = useId();
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -380,7 +382,7 @@ function SortableModule({ mod, modIdx, expanded, editingModule, addingLesson, ed
         {/* Lessons */}
         {expanded && (
           <div className="border-t border-border/50">
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onLessonDragEnd}>
+            <DndContext id={lessonDndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={onLessonDragEnd}>
               <SortableContext items={(mod.lessons ?? []).map((l: any) => l.id)} strategy={verticalListSortingStrategy}>
                 {(mod.lessons ?? []).map((lesson: any, lessonIdx: number) => (
                   <SortableLesson

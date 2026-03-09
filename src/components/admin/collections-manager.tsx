@@ -169,8 +169,8 @@ export function CollectionsManager({
                       className="h-7 text-xs flex-1"
                       autoFocus
                     />
-                    <Button size="icon" className="h-7 w-7" loading={loading} onClick={() => handleUpdate(col.id)}><Save size={11} /></Button>
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditing(null)}><X size={11} /></Button>
+                    <Button size="icon" className="h-9 w-9 sm:h-7 sm:w-7" loading={loading} onClick={() => handleUpdate(col.id)}><Save size={11} /></Button>
+                    <Button size="icon" variant="ghost" className="h-9 w-9 sm:h-7 sm:w-7" onClick={() => setEditing(null)}><X size={11} /></Button>
                   </div>
                 ) : (
                   <>
@@ -184,14 +184,14 @@ export function CollectionsManager({
                   {col.ativo ? "Ativa" : "Rascunho"}
                 </Badge>
                 <span className="text-xs text-muted-light">{coursesInCol.length} cursos</span>
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" title={col.ativo ? "Desativar" : "Ativar"} onClick={() => handleToggleActive(col)}>
+                <div className="md:opacity-0 md:group-hover:opacity-100 transition-opacity flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                  <Button variant="ghost" size="icon" className="h-9 w-9 sm:h-7 sm:w-7" title={col.ativo ? "Desativar" : "Ativar"} onClick={() => handleToggleActive(col)}>
                     {col.ativo ? <EyeOff size={12} /> : <Eye size={12} />}
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditing(col.id); setEditForm({ titulo: col.titulo, descricao: col.descricao ?? "" }); }}>
+                  <Button variant="ghost" size="icon" className="h-9 w-9 sm:h-7 sm:w-7" onClick={() => { setEditing(col.id); setEditForm({ titulo: col.titulo, descricao: col.descricao ?? "" }); }}>
                     <Edit2 size={12} />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-red-400 hover:text-red-500" onClick={() => handleDelete(col.id)}>
+                  <Button variant="ghost" size="icon" className="h-9 w-9 sm:h-7 sm:w-7 text-red-400 hover:text-red-500" onClick={() => handleDelete(col.id)}>
                     <Trash2 size={12} />
                   </Button>
                 </div>
@@ -229,7 +229,7 @@ export function CollectionsManager({
                 {addingCourse === col.id ? (
                   <div className="px-5 py-3 flex items-center gap-2">
                     <select
-                      className="flex-1 h-8 rounded-lg border border-border bg-surface px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      className="flex-1 h-10 sm:h-8 rounded-lg border border-border bg-surface px-2 text-sm sm:text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-amber-500"
                       defaultValue=""
                       onChange={(e) => { if (e.target.value) handleAddCourse(col.id, e.target.value); }}
                     >
@@ -238,7 +238,7 @@ export function CollectionsManager({
                         <option key={c.id} value={c.id}>{c.titulo}</option>
                       ))}
                     </select>
-                    <Button size="sm" variant="ghost" className="h-8" onClick={() => setAddingCourse(null)}><X size={12} /></Button>
+                    <Button size="sm" variant="ghost" className="h-10 sm:h-8" onClick={() => setAddingCourse(null)}><X size={14} /></Button>
                   </div>
                 ) : (
                   <button

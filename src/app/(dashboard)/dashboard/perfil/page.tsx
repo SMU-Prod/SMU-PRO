@@ -23,10 +23,10 @@ export default async function PerfilPage() {
     <div className="animate-fade-in">
       <Header title="Meu Perfil" subtitle="Gerencie suas informações pessoais" />
 
-      <div className="p-6 max-w-2xl space-y-6">
+      <div className="p-4 sm:p-6 max-w-2xl space-y-6">
         {/* Card de info */}
-        <div className="rounded-2xl bg-surface border border-border p-6">
-          <div className="flex items-start gap-5">
+        <div className="rounded-2xl bg-surface border border-border p-4 sm:p-6">
+          <div className="flex items-start gap-4 sm:gap-5">
             {user.avatar_url ? (
               <img
                 src={user.avatar_url}
@@ -64,7 +64,7 @@ export default async function PerfilPage() {
         </div>
 
         {/* Formulário de edição */}
-        <div className="rounded-2xl bg-surface border border-border p-6">
+        <div className="rounded-2xl bg-surface border border-border p-4 sm:p-6">
           <h3 className="font-bold text-foreground mb-6 flex items-center gap-2">
             <ShieldCheck size={18} className="text-amber-400" />
             Informações pessoais

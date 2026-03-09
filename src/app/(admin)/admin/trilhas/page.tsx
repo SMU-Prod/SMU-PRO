@@ -21,7 +21,7 @@ export default async function AdminTrilhasPage() {
     return (
       <div className="animate-fade-in">
         <Header title="Trilhas de Aprendizado" subtitle="Agrupe cursos em trilhas sequenciais" />
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-6 text-center max-w-lg mx-auto">
             <TrendingUp size={32} className="text-amber-400 mx-auto mb-3" />
             <p className="font-semibold text-amber-300 mb-2">Tabela não encontrada</p>
@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS collection_courses (
         title="Trilhas de Aprendizado"
         subtitle={`${collections.length} trilha${collections.length !== 1 ? "s" : ""} cadastrada${collections.length !== 1 ? "s" : ""}`}
       />
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <CollectionsManager collections={collections} allCourses={courses} />
       </div>
     </div>

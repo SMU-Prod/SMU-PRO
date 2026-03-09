@@ -46,14 +46,14 @@ export function UserActions({ user, courses = [] }: UserActionsProps) {
   ];
 
   return (
-    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+    <div className="flex items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
       {/* Enroll button */}
       {courses.length > 0 && (
         <div className="relative">
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 px-2 text-xs gap-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+            className="h-9 sm:h-7 px-2 text-xs gap-1 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
             onClick={() => setEnrollOpen((v) => !v)}
             disabled={loading}
           >
@@ -62,7 +62,7 @@ export function UserActions({ user, courses = [] }: UserActionsProps) {
           {enrollOpen && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setEnrollOpen(false)} />
-              <div className="absolute right-0 top-8 z-50 w-64 rounded-xl border border-border bg-surface shadow-xl p-2 space-y-0.5">
+              <div className="absolute right-0 top-8 z-50 w-64 max-w-[90vw] rounded-xl border border-border bg-surface shadow-xl p-2 space-y-0.5">
                 <div className="flex items-center justify-between px-2 py-1.5 mb-1">
                   <p className="text-xs font-semibold text-muted">Matricular em curso</p>
                   <button onClick={() => setEnrollOpen(false)} className="text-muted-light hover:text-muted">
@@ -95,7 +95,7 @@ export function UserActions({ user, courses = [] }: UserActionsProps) {
       {/* Role + MIT dropdown */}
       <DropdownMenu.Root>
         <DropdownMenu.Trigger asChild>
-          <Button variant="ghost" size="sm" disabled={loading} className="h-7 px-2 text-xs gap-1">
+          <Button variant="ghost" size="sm" disabled={loading} className="h-9 sm:h-7 px-2 text-xs gap-1">
             Ações <ChevronDown size={11} />
           </Button>
         </DropdownMenu.Trigger>
@@ -124,7 +124,7 @@ export function UserActions({ user, courses = [] }: UserActionsProps) {
             <DropdownMenu.Separator className="my-1.5 h-px bg-surface-3" />
 
             <DropdownMenu.Item
-              className="flex items-center gap-2 px-3 py-2 text-xs cursor-pointer rounded-lg hover:bg-amber-50 outline-none transition-colors text-amber-600"
+              className="flex items-center gap-2 px-3 py-2 text-xs cursor-pointer rounded-lg hover:bg-amber-500/10 outline-none transition-colors text-amber-400"
               onClick={handleMITToggle}
             >
               <UserCheck size={13} />

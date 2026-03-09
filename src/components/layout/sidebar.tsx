@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { UserButton, useUser } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
@@ -58,37 +59,38 @@ interface SidebarProps {
   role?: UserRole;
 }
 
-export function Sidebar({ role = "trainee" }: SidebarProps) {
-  const pathname = usePathname();
-  const { user } = useUser();
-  const { open, close } = useSidebar();
-  const { theme, toggleTheme } = useTheme();
-
-  const isAdmin = role === "admin";
-  const isContentManager = role === "content_manager";
-  const navItems = isAdmin ? adminNav : isContentManager ? contentManagerNav : studentNav;
-
-  const SidebarContent = () => (
+function SidebarContent({ role, isAdmin, isContentManager, navItems, pathname, user, open, close, theme, toggleTheme }: {
+  role: UserRole;
+  isAdmin: boolean;
+  isContentManager: boolean;
+  navItems: NavItem[];
+  pathname: string;
+  user: any;
+  open: boolean;
+  close: () => void;
+  theme: "dark" | "light";
+  toggleTheme: () => void;
+}) {
+  return (
     <aside className="flex h-full flex-col bg-surface">
       {/* Logo */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-amber-400 shadow-md">
-            <span className="text-black font-bold text-sm">S</span>
+        <div className="flex items-center gap-2.5">
+          <div className="shrink-0 text-center">
+            <p className="text-2xl leading-none gradient-text" style={{ fontFamily: "var(--font-instrument-serif), serif" }}>SMU</p>
+            <p className="text-[5.5px] font-medium tracking-[0.15em] text-muted-light leading-none mt-0.5" style={{ fontFamily: "var(--font-orbitron), sans-serif" }}>PRODUÇÕES</p>
           </div>
-          <div>
-            <p className="font-bold text-foreground leading-none">SMU PRO</p>
-            <p className="text-[10px] text-muted-light mt-0.5">
-              {isAdmin ? "Painel Admin" : isContentManager ? "Gestão de Conteúdo" : "Plataforma de Cursos"}
-            </p>
-          </div>
+          <div className="h-8 w-px bg-border" />
+          <p className="text-[10px] text-muted-light leading-tight">
+            {isAdmin ? "Painel Admin" : isContentManager ? "Gestão de Conteúdo" : "Plataforma de Cursos"}
+          </p>
         </div>
         {/* Close button — mobile only */}
         <button
           onClick={close}
-          className="lg:hidden p-1.5 rounded-lg text-muted hover:text-foreground hover:bg-hover transition-colors"
+          className="lg:hidden p-2.5 rounded-lg text-muted hover:text-foreground hover:bg-hover transition-colors"
         >
-          <X size={18} />
+          <X size={20} />
         </button>
       </div>
 
@@ -187,12 +189,25 @@ export function Sidebar({ role = "trainee" }: SidebarProps) {
       </div>
     </aside>
   );
+}
+
+export function Sidebar({ role = "trainee" }: SidebarProps) {
+  const pathname = usePathname();
+  const { user } = useUser();
+  const { open, close } = useSidebar();
+  const { theme, toggleTheme } = useTheme();
+
+  const isAdmin = role === "admin";
+  const isContentManager = role === "content_manager";
+  const navItems = isAdmin ? adminNav : isContentManager ? contentManagerNav : studentNav;
+
+  const contentProps = { role, isAdmin, isContentManager, navItems, pathname, user, open, close, theme, toggleTheme };
 
   return (
     <>
       {/* Desktop sidebar — always visible ≥ lg */}
       <div className="hidden lg:flex fixed left-0 top-0 z-40 h-screen w-64 flex-col border-r border-border">
-        <SidebarContent />
+        <SidebarContent {...contentProps} />
       </div>
 
       {/* Mobile overlay */}
@@ -206,10 +221,10 @@ export function Sidebar({ role = "trainee" }: SidebarProps) {
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
           {/* Drawer */}
           <div
-            className="absolute left-0 top-0 h-full w-72 shadow-2xl"
+            className="absolute left-0 top-0 h-full w-[85vw] max-w-72 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <SidebarContent />
+            <SidebarContent {...contentProps} />
           </div>
         </div>
       )}

@@ -99,9 +99,9 @@ export default async function TrilhaPage() {
         role={user?.role}
       />
 
-      <div className="p-6 space-y-8">
+      <div className="p-4 sm:p-6 space-y-6 sm:space-y-8">
         {/* Progress overview */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-surface rounded-2xl border border-border p-5">
             <div className="flex items-center gap-3 mb-3">
               <div className="h-9 w-9 rounded-xl bg-amber-500/10 flex items-center justify-center">
@@ -149,21 +149,23 @@ export default async function TrilhaPage() {
             return (
               <div key={levelInfo.level}>
                 {/* Level header */}
-                <div className="flex items-center gap-4 mb-4">
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-xl border ${levelInfo.border} ${levelInfo.bg}`}>
-                    <span className={`font-black text-sm ${levelInfo.color}`}>{idx + 1}</span>
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-1">
-                      <h2 className="font-bold text-foreground">{levelInfo.label}</h2>
-                      <Badge variant={levelInfo.level as any}>{levelInfo.label}</Badge>
-                      <span className="text-xs text-muted-light">
-                        {levelCompleted.length}/{levelCourses.length} concluídos
-                      </span>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-4">
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <div className={`flex h-10 w-10 items-center justify-center rounded-xl border shrink-0 ${levelInfo.border} ${levelInfo.bg}`}>
+                      <span className={`font-black text-sm ${levelInfo.color}`}>{idx + 1}</span>
                     </div>
-                    <p className="text-sm text-muted-light">{levelInfo.description}</p>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 sm:gap-3 mb-1 flex-wrap">
+                        <h2 className="font-bold text-foreground">{levelInfo.label}</h2>
+                        <Badge variant={levelInfo.level as any}>{levelInfo.label}</Badge>
+                        <span className="text-xs text-muted-light">
+                          {levelCompleted.length}/{levelCourses.length} concluídos
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-light hidden sm:block">{levelInfo.description}</p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0 ml-13 sm:ml-0">
                     <Progress value={levelProgress} className="w-24 h-2" />
                     <span className="text-sm font-semibold text-amber-400 w-10 text-right">{levelProgress}%</span>
                   </div>
@@ -176,11 +178,11 @@ export default async function TrilhaPage() {
 
                 {/* Courses grid */}
                 {levelCourses.length === 0 ? (
-                  <div className="ml-14 p-4 rounded-xl bg-background border border-dashed border-border text-sm text-muted-light">
+                  <div className="ml-0 sm:ml-14 p-4 rounded-xl bg-background border border-dashed border-border text-sm text-muted-light">
                     Nenhum curso disponível neste nível ainda.
                   </div>
                 ) : (
-                  <div className="ml-14 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="ml-0 sm:ml-14 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {levelCourses.map((course) => {
                       const enrollment = enrollMap.get(course.id);
                       const progress = enrollment?.progresso ?? 0;
@@ -256,22 +258,23 @@ export default async function TrilhaPage() {
         </div>
 
         {/* MIT Banner */}
-        <div className="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-500/5 to-surface-2 p-6">
-          <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-amber-100 text-3xl shrink-0">
-              🏆
-            </div>
-            <div className="flex-1">
-              <h3 className="font-bold text-foreground mb-1">Projeto Cultural MIT</h3>
-              <p className="text-sm text-muted">
-                Alunos selecionados para o Projeto Cultural MIT têm acesso gratuito e ilimitado a todos os cursos da plataforma, incluindo nível Pleno e conteúdo exclusivo.
-              </p>
+        <div className="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-500/5 to-surface-2 p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-xl bg-amber-100 text-2xl sm:text-3xl shrink-0">
+                🏆
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-foreground mb-1">Projeto Cultural MIT</h3>
+                <p className="text-xs sm:text-sm text-muted">
+                  Alunos selecionados têm acesso gratuito e ilimitado a todos os cursos, incluindo nível Pleno.
+                </p>
+              </div>
             </div>
             {user?.projeto_cultural ? (
               <Badge variant="mit" className="shrink-0 text-sm px-3 py-1">MIT Ativo</Badge>
             ) : (
-              <div className="shrink-0 text-center">
-                <p className="text-xs text-muted-light mb-2">Não é MIT ainda?</p>
+              <div className="shrink-0">
                 <Link href="/#sobre">
                   <Button variant="outline" size="sm">Saiba mais</Button>
                 </Link>

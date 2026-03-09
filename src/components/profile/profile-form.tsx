@@ -58,25 +58,25 @@ export function ProfileForm({ user }: Props) {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       <div className="grid sm:grid-cols-2 gap-5">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Nome completo</label>
+          <label className="block text-sm font-medium text-muted mb-1.5">Nome completo</label>
           <input {...register("nome")} className={inputClass} placeholder="Seu nome" />
           {errors.nome && <p className="text-red-500 text-xs mt-1">{errors.nome.message}</p>}
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Telefone</label>
+          <label className="block text-sm font-medium text-muted mb-1.5">Telefone</label>
           <input {...register("telefone")} className={inputClass} placeholder="(11) 99999-9999" />
         </div>
       </div>
 
       <div className="grid sm:grid-cols-2 gap-5">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Cidade</label>
+          <label className="block text-sm font-medium text-muted mb-1.5">Cidade</label>
           <input {...register("cidade")} className={inputClass} placeholder="São Paulo" />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Estado (sigla)</label>
+          <label className="block text-sm font-medium text-muted mb-1.5">Estado (sigla)</label>
           <input
             {...register("estado")}
             maxLength={2}
@@ -88,7 +88,7 @@ export function ProfileForm({ user }: Props) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">Bio</label>
+        <label className="block text-sm font-medium text-muted mb-1.5">Bio</label>
         <textarea
           {...register("bio")}
           rows={4}

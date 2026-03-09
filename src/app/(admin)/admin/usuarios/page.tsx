@@ -129,7 +129,54 @@ export default async function AdminUsersPage({ searchParams }: Props) {
         {/* Table */}
         <Card>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
+            {/* Mobile: card layout */}
+            <div className="md:hidden divide-y divide-border/50">
+              {users.map((u) => (
+                <div key={u.id} className="px-4 py-3 space-y-2">
+                  <div className="flex items-center gap-3">
+                    <div className="relative shrink-0">
+                      {u.avatar_url ? (
+                        <Image src={u.avatar_url} alt={u.nome} width={36} height={36} className="h-9 w-9 rounded-full object-cover" />
+                      ) : (
+                        <div className="h-9 w-9 rounded-full bg-gradient-to-br from-amber-500 to-amber-400 flex items-center justify-center text-white text-xs font-bold">
+                          {u.nome?.[0]?.toUpperCase()}
+                        </div>
+                      )}
+                      {u.ativo && (
+                        <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-400 border-2 border-surface" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-foreground font-medium truncate">{u.nome}</p>
+                      <p className="text-xs text-muted-light truncate">{u.email}</p>
+                    </div>
+                    <UserActions user={u} courses={courses ?? []} />
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap pl-12">
+                    <Badge
+                      variant={
+                        u.role === "admin" ? "admin" :
+                        u.role === "projeto_cultural" ? "mit" :
+                        u.role === "pleno" ? "pleno" :
+                        u.role === "junior" ? "junior" : "trainee"
+                      }
+                      className="text-[10px]"
+                    >
+                      {getLevelLabel(u.role)}
+                    </Badge>
+                    {u.projeto_cultural && <Badge variant="mit" className="text-[10px]">MIT</Badge>}
+                    <Badge variant={u.ativo ? "success" : "danger"} className="text-[10px]">
+                      {u.ativo ? "Ativo" : "Inativo"}
+                    </Badge>
+                    <span className="text-[10px] text-muted-light">
+                      {new Date(u.created_at).toLocaleDateString("pt-BR")}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Desktop: table layout */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border/50 bg-surface-2">
@@ -206,15 +253,15 @@ export default async function AdminUsersPage({ searchParams }: Props) {
                   ))}
                 </tbody>
               </table>
-
-              {users.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <Users size={40} className="text-muted-light mb-3" />
-                  <p className="text-foreground font-medium">Nenhum usuário encontrado</p>
-                  <p className="text-sm text-muted-light mt-1">Tente ajustar os filtros de busca.</p>
-                </div>
-              )}
             </div>
+
+            {users.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <Users size={40} className="text-muted-light mb-3" />
+                <p className="text-foreground font-medium">Nenhum usuário encontrado</p>
+                <p className="text-sm text-muted-light mt-1">Tente ajustar os filtros de busca.</p>
+              </div>
+            )}
 
             {/* Pagination */}
             {totalPages > 1 && (

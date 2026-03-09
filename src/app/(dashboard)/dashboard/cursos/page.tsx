@@ -47,7 +47,7 @@ export default async function MeusCursosPage() {
         }
       />
 
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         {list.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-32 text-center rounded-2xl bg-surface border border-border">
             <div className="text-5xl mb-4">📚</div>

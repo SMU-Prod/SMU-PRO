@@ -130,7 +130,7 @@ export default async function AdminCourseDetailPage({ params, searchParams }: Pr
       </div>
 
       {/* Tab content */}
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         {tab === "curriculo" && (
           <CourseContentManager course={sortedCourse} />
         )}

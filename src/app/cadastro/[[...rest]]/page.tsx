@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { SignUp } from "@clerk/nextjs";
 import { useTheme } from "@/components/theme-provider";
 import { getClerkAppearance } from "@/components/auth/clerk-theme";
@@ -14,12 +15,17 @@ export default function CadastroPage() {
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 h-[500px] w-[500px] rounded-full bg-amber-500/20 blur-[120px]" />
       </div>
 
-      <div className="mb-8 text-center">
-        <a href="/" className="text-2xl font-black tracking-tight">
-          <span className="gradient-text">SMU</span>
-          <span className="text-muted-light text-base font-normal ml-1">PRO</span>
+      <div className="mb-8 text-center flex flex-col items-center">
+        <a href="/">
+          <Image
+            src="/logo.jpg"
+            alt="SMU PRO"
+            width={64}
+            height={64}
+            className="h-16 w-16 rounded-2xl object-cover shadow-lg"
+          />
         </a>
-        <p className="mt-2 text-muted-light text-sm">Crie sua conta profissional</p>
+        <p className="mt-3 text-muted-light text-sm">Crie sua conta profissional</p>
       </div>
 
       <SignUp

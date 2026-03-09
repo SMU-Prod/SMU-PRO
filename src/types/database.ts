@@ -13,6 +13,7 @@ export type PaymentProvider = "mercado_pago" | "stripe" | "manual" | "asaas";
 export type ContentType = "video" | "pdf" | "texto" | "quiz" | "misto";
 export type QuestionType = "multiple_choice" | "true_false";
 export type ActivityType = "enrollment" | "lesson_complete" | "quiz_pass" | "quiz_fail" | "certificate_issued" | "login" | "payment" | "role_change";
+export type NotificationType = "course_update" | "certificate" | "enrollment" | "quiz_result" | "system" | "welcome";
 
 // ── Row types ──────────────────────────────────────────────
 
@@ -168,6 +169,18 @@ export type ActivityLogInsert = {
   descricao?: string | null; metadata?: Record<string, unknown> | null; ip_address?: string | null;
 };
 
+export type Notification = {
+  id: string; user_id: string; tipo: NotificationType;
+  titulo: string; mensagem: string | null;
+  link: string | null; lida: boolean;
+  created_at: string;
+};
+export type NotificationInsert = {
+  user_id: string; tipo: NotificationType; titulo: string;
+  mensagem?: string | null; link?: string | null; lida?: boolean;
+};
+export type NotificationUpdate = Partial<Pick<Notification, "lida">>;
+
 export type Setting = {
   key: string; value: unknown; descricao: string | null; updated_at: string;
 };
@@ -205,6 +218,7 @@ export type Database = {
       notes: { Row: Note; Insert: NoteInsert; Update: NoteUpdate; Relationships: [] };
       certificates: { Row: Certificate; Insert: CertificateInsert; Update: never; Relationships: [] };
       course_ratings: { Row: CourseRating; Insert: CourseRatingInsert; Update: CourseRatingUpdate; Relationships: [] };
+      notifications: { Row: Notification; Insert: NotificationInsert; Update: NotificationUpdate; Relationships: [] };
       activity_log: { Row: ActivityLog; Insert: ActivityLogInsert; Update: never; Relationships: [] };
       settings: { Row: Setting; Insert: SettingInsert; Update: SettingUpdate; Relationships: [] };
     };
@@ -222,6 +236,7 @@ export type Database = {
       user_role: UserRole; course_level: CourseLevel; course_category: CourseCategory;
       course_type: CourseType; access_type: AccessType; enrollment_status: EnrollmentStatus;
       payment_provider: PaymentProvider; content_type: ContentType; activity_type: ActivityType;
+      notification_type: NotificationType;
     };
     CompositeTypes: Record<never, never>;
   };

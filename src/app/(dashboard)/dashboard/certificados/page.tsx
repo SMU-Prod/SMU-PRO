@@ -32,7 +32,7 @@ export default async function CertificadosPage() {
         subtitle={`${certificates.length} certificado${certificates.length !== 1 ? "s" : ""} emitido${certificates.length !== 1 ? "s" : ""}`}
       />
 
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         {certificates.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-32 text-center rounded-2xl bg-surface border border-border">
             <Award size={56} className="text-muted-light mb-4" />

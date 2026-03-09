@@ -221,8 +221,8 @@ export function AudioPlayer({ lessonId, conteudo }: AudioPlayerProps) {
           {speed}x
         </button>
 
-        <div className="flex items-center gap-1.5 shrink-0">
-          <button onClick={toggleMute} className="p-1 rounded text-muted hover:text-foreground transition-colors" title={muted ? "Ativar som" : "Silenciar"}>
+        <div className="hidden sm:flex items-center gap-1.5 shrink-0">
+          <button onClick={toggleMute} className="p-1.5 rounded text-muted hover:text-foreground transition-colors" title={muted ? "Ativar som" : "Silenciar"}>
             {muted || volume === 0 ? <VolumeX size={14} /> : <Volume2 size={14} />}
           </button>
           <input
