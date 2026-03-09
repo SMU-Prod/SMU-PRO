@@ -4,6 +4,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { createNotification } from "@/lib/actions/notifications";
 import type { UserRole } from "@/types/database";
 
 async function assertAdmin() {
@@ -144,6 +145,18 @@ export async function adminUpdateUserRole(userId: string, role: UserRole) {
       descricao: `Role alterado para ${role}`,
       metadata: { new_role: role },
     });
+
+    const roleLabels: Record<string, string> = {
+      admin: "Administrador", content_manager: "Gestor de Conteúdo",
+      projeto_cultural: "Projeto Cultural MIT", pleno: "Pleno", junior: "Junior", trainee: "Trainee",
+    };
+    createNotification({
+      userUuid: userRow.id,
+      tipo: "role_change",
+      titulo: `Seu nível foi atualizado para ${roleLabels[role] ?? role}`,
+      mensagem: "Suas permissões e acessos foram atualizados.",
+      link: "/dashboard",
+    }).catch(() => {});
   }
 
   revalidatePath("/admin/usuarios");
@@ -176,6 +189,19 @@ export async function adminEnrollUserManually(clerkId: string, courseId: string)
     { onConflict: "user_id,course_id" }
   );
   if (error) throw error;
+
+  // Notify user about manual enrollment
+  const { data: course } = await supabase.from("courses").select("titulo, slug").eq("id", courseId).single();
+  if (course) {
+    createNotification({
+      userUuid: userRow.id,
+      tipo: "enrollment",
+      titulo: `Acesso liberado: ${course.titulo}`,
+      mensagem: "Um administrador liberou seu acesso a este curso. Bons estudos!",
+      link: `/cursos/${course.slug}`,
+    }).catch(() => {});
+  }
+
   revalidatePath("/admin/usuarios");
 }
 

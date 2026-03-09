@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { sendCertificateEmail } from "@/lib/email";
+import { createNotification } from "@/lib/actions/notifications";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
@@ -127,6 +128,15 @@ export async function POST(req: Request) {
       codigoVerificacao: cert.codigo_verificacao,
     }).catch((err) => console.error("[Email] Erro ao enviar certificado:", err));
   }
+
+  // In-app notification
+  createNotification({
+    userUuid,
+    tipo: "certificate",
+    titulo: `Certificado emitido: ${course.titulo}`,
+    mensagem: `Nota final: ${cert.nota_final}%. Código: ${cert.codigo_verificacao}`,
+    link: `/certificado/${cert.codigo_verificacao}`,
+  }).catch(() => {});
 
   return NextResponse.json({ certificate: cert });
 }

@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Bell, Check, CheckCheck, BookOpen, Award, UserPlus, Info, Sparkles } from "lucide-react";
+import {
+  Bell, CheckCheck, BookOpen, Award, UserPlus, Info, Sparkles,
+  CreditCard, ShieldCheck, Megaphone, Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -9,6 +12,7 @@ import {
   getUnreadCount,
   markAsRead,
   markAllAsRead,
+  deleteNotification,
 } from "@/lib/actions/notifications";
 import type { Notification, NotificationType } from "@/types/database";
 
@@ -19,6 +23,21 @@ const iconMap: Record<NotificationType, React.ElementType> = {
   quiz_result: Sparkles,
   system: Info,
   welcome: Sparkles,
+  payment: CreditCard,
+  role_change: ShieldCheck,
+  admin: Megaphone,
+};
+
+const colorMap: Record<NotificationType, string> = {
+  course_update: "text-blue-400",
+  certificate: "text-amber-400",
+  enrollment: "text-emerald-400",
+  quiz_result: "text-purple-400",
+  system: "text-muted-light",
+  welcome: "text-amber-400",
+  payment: "text-emerald-400",
+  role_change: "text-red-400",
+  admin: "text-amber-400",
 };
 
 function timeAgo(dateStr: string): string {
@@ -40,7 +59,6 @@ export function NotificationDropdown() {
   const [loading, setLoading] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  // Poll unread count every 30s
   const fetchUnread = useCallback(async () => {
     try {
       const count = await getUnreadCount();
@@ -50,6 +68,7 @@ export function NotificationDropdown() {
     }
   }, []);
 
+  // Poll unread count every 30s
   useEffect(() => {
     fetchUnread();
     const interval = setInterval(fetchUnread, 30000);
@@ -67,12 +86,21 @@ export function NotificationDropdown() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [open]);
 
+  // Close on Escape
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    if (open) document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [open]);
+
   async function handleOpen() {
     setOpen((v) => !v);
     if (!open) {
       setLoading(true);
       try {
-        const data = await getNotifications(20);
+        const data = await getNotifications(30);
         setNotifications(data);
       } catch {
         // silent
@@ -83,22 +111,31 @@ export function NotificationDropdown() {
   }
 
   async function handleMarkRead(n: Notification) {
-    if (n.lida) {
-      if (n.link) window.location.href = n.link;
-      return;
+    if (!n.lida) {
+      await markAsRead(n.id);
+      setNotifications((prev) =>
+        prev.map((item) => (item.id === n.id ? { ...item, lida: true } : item))
+      );
+      setUnreadCount((c) => Math.max(0, c - 1));
     }
-    await markAsRead(n.id);
-    setNotifications((prev) =>
-      prev.map((item) => (item.id === n.id ? { ...item, lida: true } : item))
-    );
-    setUnreadCount((c) => Math.max(0, c - 1));
-    if (n.link) window.location.href = n.link;
+    if (n.link) {
+      setOpen(false);
+      window.location.href = n.link;
+    }
   }
 
   async function handleMarkAll() {
     await markAllAsRead();
     setNotifications((prev) => prev.map((n) => ({ ...n, lida: true })));
     setUnreadCount(0);
+  }
+
+  async function handleDelete(e: React.MouseEvent, id: string) {
+    e.stopPropagation();
+    const wasUnread = notifications.find((n) => n.id === id && !n.lida);
+    await deleteNotification(id);
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    if (wasUnread) setUnreadCount((c) => Math.max(0, c - 1));
   }
 
   return (
@@ -112,7 +149,7 @@ export function NotificationDropdown() {
       >
         <Bell size={18} />
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-black">
+          <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-black animate-pulse">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
@@ -129,41 +166,43 @@ export function NotificationDropdown() {
                 className="flex items-center gap-1 text-xs text-amber-400 hover:text-amber-300 transition-colors"
               >
                 <CheckCheck size={14} />
-                Marcar todas como lidas
+                Marcar todas
               </button>
             )}
           </div>
 
           {/* List */}
-          <div className="max-h-80 overflow-y-auto">
+          <div className="max-h-[400px] overflow-y-auto overscroll-contain">
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <div className="h-5 w-5 rounded-full border-2 border-amber-500 border-t-transparent animate-spin" />
               </div>
             ) : notifications.length === 0 ? (
-              <div className="py-8 text-center">
-                <Bell size={24} className="mx-auto text-muted-light mb-2" />
+              <div className="py-10 text-center">
+                <Bell size={28} className="mx-auto text-muted-light/50 mb-2" />
                 <p className="text-sm text-muted-light">Nenhuma notificação</p>
+                <p className="text-xs text-muted-light/60 mt-1">Você está em dia!</p>
               </div>
             ) : (
               notifications.map((n) => {
                 const Icon = iconMap[n.tipo] || Info;
+                const iconColor = !n.lida ? (colorMap[n.tipo] || "text-amber-400") : "text-muted-light";
                 return (
                   <button
                     key={n.id}
                     onClick={() => handleMarkRead(n)}
                     className={cn(
-                      "w-full flex items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-hover",
+                      "w-full flex items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-hover group",
                       !n.lida && "bg-amber-500/5"
                     )}
                   >
                     <div
                       className={cn(
                         "mt-0.5 shrink-0 h-8 w-8 rounded-full flex items-center justify-center",
-                        !n.lida ? "bg-amber-500/10 text-amber-400" : "bg-surface-2 text-muted-light"
+                        !n.lida ? "bg-surface-2" : "bg-surface-2/50"
                       )}
                     >
-                      <Icon size={16} />
+                      <Icon size={15} className={iconColor} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p
@@ -177,11 +216,20 @@ export function NotificationDropdown() {
                       {n.mensagem && (
                         <p className="text-xs text-muted-light mt-0.5 line-clamp-2">{n.mensagem}</p>
                       )}
-                      <p className="text-[10px] text-muted-light mt-1">{timeAgo(n.created_at)}</p>
+                      <p className="text-[10px] text-muted-light/70 mt-1">{timeAgo(n.created_at)}</p>
                     </div>
-                    {!n.lida && (
-                      <div className="mt-2 shrink-0 h-2 w-2 rounded-full bg-amber-500" />
-                    )}
+                    <div className="flex flex-col items-center gap-1 shrink-0">
+                      {!n.lida && (
+                        <div className="h-2 w-2 rounded-full bg-amber-500" />
+                      )}
+                      <button
+                        onClick={(e) => handleDelete(e, n.id)}
+                        className="p-1 rounded opacity-0 group-hover:opacity-100 text-muted-light hover:text-red-400 transition-all"
+                        title="Remover"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
                   </button>
                 );
               })
@@ -190,15 +238,15 @@ export function NotificationDropdown() {
 
           {/* Footer */}
           {notifications.length > 0 && (
-            <div className="border-t border-border px-4 py-2">
+            <div className="border-t border-border px-4 py-2.5">
               <button
                 onClick={() => {
                   setOpen(false);
                   window.location.href = "/dashboard/configuracoes";
                 }}
-                className="w-full text-center text-xs text-muted-light hover:text-foreground transition-colors py-1"
+                className="w-full text-center text-xs text-muted-light hover:text-foreground transition-colors"
               >
-                Gerenciar preferências
+                Gerenciar preferências de notificação
               </button>
             </div>
           )}

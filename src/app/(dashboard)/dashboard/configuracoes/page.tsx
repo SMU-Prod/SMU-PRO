@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/actions/users";
 import { Header } from "@/components/layout/header";
 import { Badge } from "@/components/ui/badge";
 import { getLevelLabel } from "@/lib/utils";
+import { NotificationPreferencesForm } from "@/components/settings/notification-preferences";
 import {
   Bell, Shield, Globe, CreditCard, Trash2, UserCircle,
   Mail, Lock, Smartphone, ChevronRight,
@@ -64,27 +65,8 @@ export default async function ConfiguracoesPage() {
         </Section>
 
         {/* Seção: Notificações */}
-        <Section title="Notificações" icon={<Bell size={16} className="text-amber-600" />}>
-          <ToggleItem
-            label="E-mails de atualizações de cursos"
-            description="Receba alertas quando novos conteúdos forem adicionados"
-            defaultEnabled
-          />
-          <ToggleItem
-            label="Lembretes de estudo"
-            description="Notificações semanais para manter seu progresso"
-            defaultEnabled
-          />
-          <ToggleItem
-            label="Novos certificados disponíveis"
-            description="Aviso quando você completar um curso"
-            defaultEnabled
-          />
-          <ToggleItem
-            label="Promoções e novidades"
-            description="Ofertas especiais e novos cursos"
-            defaultEnabled={false}
-          />
+        <Section title="Notificações" icon={<Bell size={16} className="text-amber-400" />}>
+          <NotificationPreferencesForm />
         </Section>
 
         {/* Seção: Privacidade */}

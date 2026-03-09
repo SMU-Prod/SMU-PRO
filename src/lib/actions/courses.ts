@@ -242,7 +242,24 @@ export async function adminDeleteCourse(id: string) {
 
 export async function adminToggleCourse(id: string, ativo: boolean) {
   await assertAdminOnly();
-  return adminUpdateCourse(id, { ativo });
+  const result = await adminUpdateCourse(id, { ativo });
+
+  // When publishing, notify enrolled students
+  if (ativo) {
+    const { notifyCourseStudents } = await import("@/lib/actions/notifications");
+    const supabase = createAdminClient();
+    const { data: course } = await supabase.from("courses").select("titulo, slug").eq("id", id).single();
+    if (course) {
+      notifyCourseStudents({
+        courseId: id,
+        titulo: `Curso disponível: ${course.titulo}`,
+        mensagem: "O curso foi atualizado e está disponível para acesso.",
+        link: `/cursos/${course.slug}`,
+      }).catch(() => {});
+    }
+  }
+
+  return result;
 }
 
 // ============================================================

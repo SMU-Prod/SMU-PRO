@@ -2,6 +2,7 @@ import { timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { sendPaymentConfirmedEmail } from "@/lib/email";
+import { createNotification, notifyAdmins } from "@/lib/actions/notifications";
 import type { AsaasWebhookPayload } from "@/lib/asaas";
 
 /**
@@ -152,6 +153,23 @@ export async function POST(req: Request) {
           }).catch((err) => console.error("[Email] Erro ao enviar confirmação:", err));
         }
 
+        // In-app notifications
+        if (courseData) {
+          createNotification({
+            userUuid: enrollment.user_id,
+            tipo: "payment",
+            titulo: `Pagamento confirmado: ${courseData.titulo}`,
+            mensagem: "Seu acesso ao curso foi liberado. Bons estudos!",
+            link: `/cursos/${courseData.slug}`,
+          }).catch(() => {});
+
+          notifyAdmins({
+            titulo: `Nova venda: ${courseData.titulo}`,
+            mensagem: `${userData?.nome ?? "Aluno"} — R$ ${payment.value?.toFixed(2)} via ${payment.billingType}`,
+            link: "/admin",
+          }).catch(() => {});
+        }
+
         console.log(`[Asaas Webhook] Enrollment ativado: ${enrollmentId}`);
         break;
       }
@@ -174,6 +192,16 @@ export async function POST(req: Request) {
           descricao: `Reembolso processado via ${payment.billingType}`,
           metadata: { event, payment_id: payment.id, enrollment_id: payment.externalReference },
         });
+
+        if (refundEnrollment?.user_id) {
+          createNotification({
+            userUuid: refundEnrollment.user_id,
+            tipo: "payment",
+            titulo: "Reembolso processado",
+            mensagem: "Seu pagamento foi reembolsado e o acesso ao curso foi cancelado.",
+            link: "/dashboard/cursos",
+          }).catch(() => {});
+        }
 
         console.log(`[Asaas Webhook] Enrollment cancelado por reembolso: ${payment.externalReference}`);
         break;

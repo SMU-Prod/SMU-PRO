@@ -2,6 +2,7 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { createAdminClient } from "@/lib/supabase/server";
+import { createNotification } from "@/lib/actions/notifications";
 
 export async function submitQuizAttempt(
   quizId: string,
@@ -22,7 +23,7 @@ export async function submitQuizAttempt(
   // Verificar se o usuário tem acesso ao curso do quiz (enrollment ativo)
   const { data: quiz } = await supabase
     .from("quizzes")
-    .select("lesson_id, lessons(module_id, modules(course_id))")
+    .select("lesson_id, lessons(titulo, module_id, modules(course_id))")
     .eq("id", quizId)
     .single();
   if (!quiz) throw new Error("Quiz não encontrado");
@@ -59,4 +60,22 @@ export async function submitQuizAttempt(
   });
 
   if (error) throw new Error(error.message);
+
+  // Quiz result notification
+  const quizTitle = (quiz as any).lessons?.titulo ?? "Quiz";
+  if (aprovado) {
+    createNotification({
+      userUuid: userRow.id,
+      tipo: "quiz_result",
+      titulo: `Aprovado no quiz: ${quizTitle}`,
+      mensagem: `Você acertou ${nota}% das questões. Parabéns!`,
+    }).catch(() => {});
+  } else {
+    createNotification({
+      userUuid: userRow.id,
+      tipo: "quiz_result",
+      titulo: `Tente novamente: ${quizTitle}`,
+      mensagem: `Você acertou ${nota}%. Revise o conteúdo e tente novamente!`,
+    }).catch(() => {});
+  }
 }

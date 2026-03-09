@@ -13,7 +13,7 @@ export type PaymentProvider = "mercado_pago" | "stripe" | "manual" | "asaas";
 export type ContentType = "video" | "pdf" | "texto" | "quiz" | "misto";
 export type QuestionType = "multiple_choice" | "true_false";
 export type ActivityType = "enrollment" | "lesson_complete" | "quiz_pass" | "quiz_fail" | "certificate_issued" | "login" | "payment" | "role_change";
-export type NotificationType = "course_update" | "certificate" | "enrollment" | "quiz_result" | "system" | "welcome";
+export type NotificationType = "course_update" | "certificate" | "enrollment" | "quiz_result" | "system" | "welcome" | "payment" | "role_change" | "admin";
 
 // ── Row types ──────────────────────────────────────────────
 
@@ -181,6 +181,35 @@ export type NotificationInsert = {
 };
 export type NotificationUpdate = Partial<Pick<Notification, "lida">>;
 
+export type NotificationPreferences = {
+  id: string; user_id: string;
+  email_course_updates: boolean;
+  email_certificates: boolean;
+  email_payments: boolean;
+  email_promotions: boolean;
+  inapp_course_updates: boolean;
+  inapp_certificates: boolean;
+  inapp_quiz_results: boolean;
+  inapp_payments: boolean;
+  inapp_system: boolean;
+  study_reminders: boolean;
+  created_at: string; updated_at: string;
+};
+export type NotificationPreferencesInsert = {
+  user_id: string;
+  email_course_updates?: boolean;
+  email_certificates?: boolean;
+  email_payments?: boolean;
+  email_promotions?: boolean;
+  inapp_course_updates?: boolean;
+  inapp_certificates?: boolean;
+  inapp_quiz_results?: boolean;
+  inapp_payments?: boolean;
+  inapp_system?: boolean;
+  study_reminders?: boolean;
+};
+export type NotificationPreferencesUpdate = Partial<Omit<NotificationPreferences, "id" | "user_id" | "created_at">>;
+
 export type Setting = {
   key: string; value: unknown; descricao: string | null; updated_at: string;
 };
@@ -219,6 +248,7 @@ export type Database = {
       certificates: { Row: Certificate; Insert: CertificateInsert; Update: never; Relationships: [] };
       course_ratings: { Row: CourseRating; Insert: CourseRatingInsert; Update: CourseRatingUpdate; Relationships: [] };
       notifications: { Row: Notification; Insert: NotificationInsert; Update: NotificationUpdate; Relationships: [] };
+      notification_preferences: { Row: NotificationPreferences; Insert: NotificationPreferencesInsert; Update: NotificationPreferencesUpdate; Relationships: [] };
       activity_log: { Row: ActivityLog; Insert: ActivityLogInsert; Update: never; Relationships: [] };
       settings: { Row: Setting; Insert: SettingInsert; Update: SettingUpdate; Relationships: [] };
     };
