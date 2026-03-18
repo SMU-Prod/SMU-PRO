@@ -9,8 +9,14 @@ import { updateUserProfile } from "@/lib/actions/users";
 import { CheckCircle, Loader2 } from "lucide-react";
 import type { User } from "@/types/database";
 
+const cpfRegex = /^\d{3}\.\d{3}\.\d{3}-\d{2}$/;
+
 const schema = z.object({
   nome: z.string().min(2, "Nome deve ter ao menos 2 caracteres"),
+  cpf: z.string().optional().refine(
+    (val) => !val || cpfRegex.test(val) || /^\d{11}$/.test(val),
+    { message: "CPF inválido (use 000.000.000-00)" }
+  ),
   bio: z.string().max(500, "Bio deve ter no máximo 500 caracteres").optional(),
   telefone: z.string().optional(),
   cidade: z.string().optional(),
@@ -36,6 +42,7 @@ export function ProfileForm({ user }: Props) {
     resolver: zodResolver(schema) as any,
     defaultValues: {
       nome: user.nome ?? "",
+      cpf: user.cpf ?? "",
       bio: user.bio ?? "",
       telefone: user.telefone ?? "",
       cidade: user.cidade ?? "",
@@ -63,6 +70,15 @@ export function ProfileForm({ user }: Props) {
           {errors.nome && <p className="text-red-500 text-xs mt-1">{errors.nome.message}</p>}
         </div>
 
+        <div>
+          <label className="block text-sm font-medium text-muted mb-1.5">CPF</label>
+          <input {...register("cpf")} className={inputClass} placeholder="000.000.000-00" maxLength={14} />
+          {errors.cpf && <p className="text-red-500 text-xs mt-1">{errors.cpf.message}</p>}
+          <p className="text-xs text-muted-light mt-1">Necessário para pagamentos via PIX/Boleto</p>
+        </div>
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-5">
         <div>
           <label className="block text-sm font-medium text-muted mb-1.5">Telefone</label>
           <input {...register("telefone")} className={inputClass} placeholder="(11) 99999-9999" />

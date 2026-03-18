@@ -93,6 +93,7 @@ export async function updateUserProfile(input: {
   telefone?: string;
   cidade?: string;
   estado?: string;
+  cpf?: string;
 }) {
   const { userId } = await auth();
   if (!userId) throw new Error("Não autenticado");

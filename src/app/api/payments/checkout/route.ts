@@ -43,9 +43,23 @@ export async function POST(req: Request) {
   const supabase = createAdminClient();
 
   // Resolver UUID do usuário (enrollments.user_id é uuid FK para users.id)
-  const { data: userRow } = await supabase.from("users").select("id, nome, email").eq("clerk_id", userId).single();
+  const { data: userRow } = await supabase.from("users").select("id, nome, email, cpf").eq("clerk_id", userId).single();
   if (!userRow) return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
   const userUuid = userRow.id;
+
+  // CPF pode vir do body (modal de checkout) ou do perfil do usuário
+  const cpf = (body.cpf as string)?.replace(/\D/g, "") || userRow.cpf?.replace(/\D/g, "") || null;
+  if (!cpf || cpf.length !== 11) {
+    return NextResponse.json(
+      { error: "CPF é obrigatório para pagamento. Informe seu CPF para continuar.", needsCpf: true },
+      { status: 422 }
+    );
+  }
+
+  // Salvar CPF no perfil se veio pelo checkout e o perfil não tinha
+  if (!userRow.cpf && cpf) {
+    await supabase.from("users").update({ cpf }).eq("id", userUuid);
+  }
 
   // 1. Verificar se já está inscrito (ativo)
   const { data: existingEnrollment } = await supabase
@@ -74,10 +88,11 @@ export async function POST(req: Request) {
   }
 
   try {
-    // 4. Criar/buscar cliente no Asaas
+    // 4. Criar/buscar cliente no Asaas (CPF obrigatório)
     const asaasCustomer = await createOrGetCustomer({
       name: userRow.nome,
       email: userRow.email,
+      cpfCnpj: cpf,
       externalReference: userId,
     });
 

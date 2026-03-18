@@ -22,10 +22,11 @@ export type User = {
   avatar_url: string | null; bio: string | null; role: UserRole;
   projeto_cultural: boolean; nivel_atual: CourseLevel;
   telefone: string | null; cidade: string | null; estado: string | null;
+  cpf: string | null;
   ativo: boolean; ultimo_acesso: string | null;
   created_at: string; updated_at: string;
 };
-export type UserInsert = Omit<User, "id" | "created_at" | "updated_at"> & { id?: string };
+export type UserInsert = Omit<User, "id" | "created_at" | "updated_at" | "cpf"> & { id?: string; cpf?: string | null };
 export type UserUpdate = Partial<Omit<User, "id" | "created_at">>;
 
 export type Course = {
