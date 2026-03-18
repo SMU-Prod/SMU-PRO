@@ -419,8 +419,8 @@ export function LessonPlayer({
                     <div
                       className="prose-light max-w-none"
                       dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(lesson.conteudo_rico, {
-                        ADD_ATTR: ["style", "class", "target", "rel"],
-                        ADD_TAGS: ["mark", "sup", "sub", "img", "table", "thead", "tbody", "tr", "td", "th", "colgroup", "col"],
+                        ADD_ATTR: ["style", "class", "target", "rel", "data-width", "data-alignment", "alt"],
+                        ADD_TAGS: ["mark", "sup", "sub", "img", "table", "thead", "tbody", "tr", "td", "th", "colgroup", "col", "figure", "figcaption"],
                       }) }}
                     />
                   )}
