@@ -49,6 +49,7 @@ export async function POST(req: Request) {
 
   // CPF pode vir do body (modal de checkout) ou do perfil do usuário
   const cpf = (body.cpf as string)?.replace(/\D/g, "") || userRow.cpf?.replace(/\D/g, "") || null;
+  console.log("[Checkout] CPF body:", body.cpf, "| CPF perfil:", userRow.cpf, "| CPF final:", cpf);
   if (!cpf || cpf.length !== 11) {
     return NextResponse.json(
       { error: "CPF é obrigatório para pagamento. Informe seu CPF para continuar.", needsCpf: true },
