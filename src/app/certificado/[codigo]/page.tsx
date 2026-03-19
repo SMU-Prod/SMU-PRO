@@ -4,6 +4,7 @@ import { getLevelLabel, formatMinutes } from "@/lib/utils";
 import { CategoryIcon } from "@/components/ui/category-icon";
 import { Award, CheckCircle2, Calendar, Clock, User, Trophy } from "lucide-react";
 import Link from "next/link";
+import { ShareButton } from "@/components/certificate/share-button";
 import QRCode from "qrcode";
 import type { Metadata } from "next";
 
@@ -168,12 +169,7 @@ export default async function CertificatePage({ params }: Props) {
           >
             <Award size={16} /> Baixar PDF
           </a>
-          <button
-            onClick={() => navigator.share?.({ url: verifyUrl, title: `Certificado - ${course.titulo}` })}
-            className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-5 py-2.5 text-sm font-semibold text-foreground hover:border-amber-500/40 transition-colors"
-          >
-            Compartilhar
-          </button>
+          <ShareButton url={verifyUrl} title={`Certificado - ${course.titulo}`} />
         </div>
       </div>
     </div>
