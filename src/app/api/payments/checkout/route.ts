@@ -136,7 +136,8 @@ export async function POST(req: Request) {
     }
 
     // 6. Criar cobrança no Asaas
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    // Nota: não usamos callback.successUrl porque o Asaas exige que o domínio
+    // esteja cadastrado na conta. O redirecionamento é feito pelo nosso frontend.
     const payment = await createPayment({
       customer: asaasCustomer.id,
       billingType,
@@ -144,7 +145,6 @@ export async function POST(req: Request) {
       dueDate: getDueDate(3),
       description: `SMU PRO — ${course.titulo}`,
       externalReference: enrollmentId,
-      callbackSuccessUrl: `${baseUrl}/pagamento/sucesso`,
     });
 
     // 7. Salvar payment_id no enrollment
