@@ -157,24 +157,17 @@ export async function createOrGetCustomer(
       const existing = search.data[0];
       console.log("[Asaas] Cliente encontrado:", existing.id, "cpfCnpj:", existing.cpfCnpj ?? "VAZIO");
 
-      // Sempre atualizar o CPF quando temos um e o cadastro não tem ou é diferente
-      if (input.cpfCnpj) {
-        console.log("[Asaas] Atualizando CPF do cliente:", existing.id, "→", input.cpfCnpj);
+      // Atualizar CPF via PUT somente se o cliente não tem e nós temos
+      if (input.cpfCnpj && !existing.cpfCnpj) {
+        console.log("[Asaas] Atualizando CPF do cliente via PUT:", existing.id);
         try {
           const updated = await asaasRequest<AsaasCustomer>(`/customers/${existing.id}`, {
-            method: "POST",
-            body: JSON.stringify({
-              name: input.name || existing.name,
-              email: input.email || existing.email,
-              cpfCnpj: input.cpfCnpj,
-            }),
+            method: "PUT",
+            body: JSON.stringify({ cpfCnpj: input.cpfCnpj }),
           });
           return updated;
         } catch (updateErr: any) {
           console.error("[Asaas] Erro ao atualizar CPF:", updateErr?.message);
-          // Se falhar a atualização, retorna o cliente existente mesmo assim
-          // (a cobrança vai falhar se CPF é obrigatório, mas pelo menos temos log)
-          return existing;
         }
       }
       return existing;
@@ -182,7 +175,6 @@ export async function createOrGetCustomer(
   }
 
   console.log("[Asaas] Criando novo cliente com CPF:", input.cpfCnpj);
-  // Cria novo cliente
   return asaasRequest<AsaasCustomer>("/customers", {
     method: "POST",
     body: JSON.stringify({
