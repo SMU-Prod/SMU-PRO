@@ -154,7 +154,16 @@ export async function createOrGetCustomer(
       `/customers?externalReference=${input.externalReference}`
     );
     if (search.data?.length > 0) {
-      return search.data[0];
+      const existing = search.data[0];
+      // Se o cliente existe mas não tem CPF e agora temos, atualiza
+      if (!existing.cpfCnpj && input.cpfCnpj) {
+        const updated = await asaasRequest<AsaasCustomer>(`/customers/${existing.id}`, {
+          method: "PUT",
+          body: JSON.stringify({ cpfCnpj: input.cpfCnpj }),
+        });
+        return updated;
+      }
+      return existing;
     }
   }
 
