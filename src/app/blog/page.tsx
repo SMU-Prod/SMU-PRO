@@ -186,7 +186,7 @@ function PostCard({ post, featured = false }: { post: any; featured?: boolean })
     <Link href={`/blog/${post.slug}`} className="group">
       <article className="rounded-2xl bg-surface border border-border overflow-hidden hover:border-amber-500/30 hover:shadow-md transition-all h-full flex flex-col">
         {/* Thumbnail */}
-        <div className={`bg-gradient-to-br from-surface-2 to-surface-3 flex items-center justify-center overflow-hidden ${featured ? "h-48" : "h-36"}`}>
+        <div className={`relative bg-gradient-to-br from-surface-2 to-surface-3 flex items-center justify-center overflow-hidden ${featured ? "h-48" : "h-36"}`}>
           {post.thumbnail_url ? (
             <Image src={post.thumbnail_url} alt={post.titulo} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
           ) : (

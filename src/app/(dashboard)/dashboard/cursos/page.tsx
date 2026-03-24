@@ -108,7 +108,7 @@ function CourseGrid({ courses, showCertificate = false }: { courses: any[]; show
 
         return (
           <div key={enrollment.id} className="rounded-2xl bg-surface border border-border overflow-hidden hover:border-amber-500/30 hover:shadow-md transition-all">
-            <div className="h-36 bg-gradient-to-br from-surface-2 to-surface-3 flex items-center justify-center text-5xl overflow-hidden">
+            <div className="relative h-36 bg-gradient-to-br from-surface-2 to-surface-3 flex items-center justify-center text-5xl overflow-hidden">
               {course.thumbnail_url ? (
                 <Image src={course.thumbnail_url} alt={course.titulo} fill className="object-cover" />
               ) : (

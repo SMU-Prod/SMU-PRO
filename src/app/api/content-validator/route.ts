@@ -73,6 +73,28 @@ const OFFICIAL_SOURCES: Record<string, string[]> = {
     "ABNT NBR 16901 - Fogos de artifício",
     "NFPA 1126 - Use of Pyrotechnics Before a Proximate Audience",
   ],
+  vj: [
+    "ANSI/AVIXA Standards para AV",
+    "SMPTE - Society of Motion Picture and Television Engineers",
+    "Manual técnico de painéis LED (Absen, ROE Visual)",
+  ],
+  roadie: [
+    "ANSI E1.2 - Entertainment Technology Standards (Rigging)",
+    "ABNT NBR 16880 - Estruturas temporárias",
+    "NR-35 - Trabalho em Altura",
+    "NR-11 - Transporte, movimentação e armazenagem de materiais",
+    "PLASA Rigging Standards",
+  ],
+  marketing: [
+    "Philip Kotler - Marketing de Eventos",
+    "ABEOC - Associação Brasileira de Empresas de Eventos",
+    "ABRAFESTA - Normas e Boas Práticas",
+  ],
+  outros: [
+    "Event Safety Guide (Purple Guide)",
+    "ABNT NBR 16880",
+    "NR-01 - Gerenciamento de Riscos",
+  ],
 };
 
 const CONTENT_QUALITY_CHECKS = [
@@ -193,15 +215,87 @@ export async function POST(req: Request) {
   const sourceCategory = isNR ? "nr" : categoria;
   const sources = OFFICIAL_SOURCES[sourceCategory] ?? OFFICIAL_SOURCES["producao"] ?? [];
 
-  // General suggestions based on category
-  if (categoria === "som" && !plainText.includes("db") && !plainText.includes("decib")) {
-    suggestions.push("Em aulas de som, inclua referências a níveis de pressão sonora (dB SPL) e limites da NR-15");
+  // ── Professor MBA: Validações especializadas por área ──
+
+  // SOM
+  if (categoria === "som") {
+    if (!plainText.includes("db") && !plainText.includes("decib")) suggestions.push("Inclua referências a níveis de pressão sonora (dB SPL) e limites da NR-15");
+    if (!plainText.includes("impedância") && !plainText.includes("impedance") && !plainText.includes("ohm")) suggestions.push("Explique o conceito de impedância — essencial para técnicos de som");
+    if (!plainText.includes("frequência") && !plainText.includes("hz") && !plainText.includes("hertz")) suggestions.push("Aborde a faixa de frequências audíveis (20Hz-20kHz) e sua aplicação prática");
+    if (!plainText.includes("equaliz") && !plainText.includes("eq")) suggestions.push("Inclua conceitos de equalização — ferramenta fundamental do operador de som");
+    if (!plainText.includes("microfone") && !plainText.includes("mic")) suggestions.push("Aborde tipos de microfones (dinâmico, condensador, ribbon) e seus usos em eventos");
+    if (!plainText.includes("feedback") && !plainText.includes("microfonia")) suggestions.push("Explique prevenção de feedback/microfonia — problema mais comum em eventos ao vivo");
+    if (!plainText.includes("delay") && !plainText.includes("atraso")) suggestions.push("Aborde conceitos de delay/alinhamento temporal — crucial para sistemas PA distribuídos");
+    const somSources = ["Yamaha Sound Reinforcement Handbook", "Audio Engineering Society (AES)", "Bob McCarthy - Sound Systems: Design and Optimization"];
+    sources.push(...somSources.filter(s => !sources.includes(s)));
   }
-  if (categoria === "luz" && !plainText.includes("dmx") && !plainText.includes("lux")) {
-    suggestions.push("Em aulas de iluminação, inclua referências ao protocolo DMX512 e níveis de iluminância");
+
+  // LUZ
+  if (categoria === "luz") {
+    if (!plainText.includes("dmx") && !plainText.includes("lux")) suggestions.push("Inclua referências ao protocolo DMX512 e níveis de iluminância (lux)");
+    if (!plainText.includes("temperatura de cor") && !plainText.includes("kelvin")) suggestions.push("Aborde temperatura de cor (2700K-6500K) e seu impacto visual em eventos");
+    if (!plainText.includes("moving") && !plainText.includes("refletor") && !plainText.includes("par")) suggestions.push("Descreva os tipos de refletores: PAR, moving head, wash, spot, beam");
+    if (!plainText.includes("console") && !plainText.includes("mesa de luz")) suggestions.push("Inclua conceitos de programação em consoles de luz (cues, presets, timecodes)");
+    if (!plainText.includes("gel") && !plainText.includes("filtro") && !plainText.includes("gobo")) suggestions.push("Aborde uso de filtros (gobos, gels) para efeitos visuais");
+    const luzSources = ["PLASA Technical Standards", "ETC Source Four Technical Manual", "ANSI E1.11 DMX512"];
+    sources.push(...luzSources.filter(s => !sources.includes(s)));
   }
-  if (isNR && !plainText.includes("multa") && !plainText.includes("penalidade")) {
-    suggestions.push("Em aulas de NR, mencione as penalidades por descumprimento (NR-28 - Fiscalização e Penalidades)");
+
+  // DJ
+  if (categoria === "dj") {
+    if (!plainText.includes("bpm") && !plainText.includes("batida")) suggestions.push("Aborde conceitos de BPM e sincronização de batidas (beatmatching)");
+    if (!plainText.includes("equalizador") && !plainText.includes("eq") && !plainText.includes("mixer")) suggestions.push("Explique uso do mixer e equalização durante a performance");
+    if (!plainText.includes("ecad") && !plainText.includes("direito autoral")) suggestions.push("Inclua informações sobre ECAD e direitos autorais em eventos (Lei 9.610/98)");
+    if (!plainText.includes("setlist") && !plainText.includes("playlist")) suggestions.push("Aborde técnicas de construção de setlist para diferentes tipos de eventos");
+  }
+
+  // VJ
+  if (categoria === "vj") {
+    if (!plainText.includes("resolução") && !plainText.includes("pixel")) suggestions.push("Aborde resoluções de vídeo (HD, FHD, 4K) e mapeamento de pixels");
+    if (!plainText.includes("mapping") && !plainText.includes("mapeamento")) suggestions.push("Inclua conceitos de video mapping — técnica essencial para VJs em eventos");
+    if (!plainText.includes("led") && !plainText.includes("painel")) suggestions.push("Descreva tipos de painéis LED e suas especificações (pitch, brilho, refresh rate)");
+  }
+
+  // PRODUÇÃO
+  if (categoria === "producao") {
+    if (!plainText.includes("rider") && !plainText.includes("ficha técnica")) suggestions.push("Aborde leitura e criação de riders técnicos — documento essencial para produtores");
+    if (!plainText.includes("cronograma") && !plainText.includes("timeline")) suggestions.push("Inclua conceitos de cronograma de produção (load-in, montagem, passagem, evento, desmontagem)");
+    if (!plainText.includes("orçamento") && !plainText.includes("custo")) suggestions.push("Aborde gestão financeira de eventos: orçamento, controle de custos, margem");
+    if (!plainText.includes("alvará") && !plainText.includes("bombeiro") && !plainText.includes("AVCB")) suggestions.push("Inclua documentação obrigatória: alvarás, AVCB, ART, seguro");
+  }
+
+  // EFEITOS
+  if (categoria === "efeitos") {
+    if (!plainText.includes("pirotecnia") && !plainText.includes("fogos")) suggestions.push("Aborde tipos de pirotecnia: indoor (gerbs, flames) vs outdoor (morteiros)");
+    if (!plainText.includes("CO₂") && !plainText.includes("co2") && !plainText.includes("cryo")) suggestions.push("Inclua efeitos de CO₂/cryo: riscos de asfixia, crioqueimadura e distâncias de segurança");
+    if (!plainText.includes("blaster") && !plainText.includes("CR") && !plainText.includes("exército")) suggestions.push("Mencione exigência de blaster habilitado com CR do Exército para pirotecnia");
+  }
+
+  // ROADIE
+  if (categoria === "roadie") {
+    if (!plainText.includes("rigging") && !plainText.includes("içamento")) suggestions.push("Aborde técnicas de rigging e içamento de equipamentos");
+    if (!plainText.includes("carga") && !plainText.includes("peso") && !plainText.includes("WLL")) suggestions.push("Inclua conceitos de Working Load Limit (WLL) e fator de segurança para estruturas");
+    if (!plainText.includes("case") && !plainText.includes("transporte")) suggestions.push("Aborde logística de transporte e acondicionamento de equipamentos");
+  }
+
+  // NR (qualquer curso NR)
+  if (isNR) {
+    if (!plainText.includes("multa") && !plainText.includes("penalidade")) suggestions.push("Mencione as penalidades por descumprimento (NR-28 - Fiscalização e Penalidades)");
+    if (!plainText.includes("PGR") && !plainText.includes("gerenciamento de risco")) suggestions.push("Conecte com o PGR (Programa de Gerenciamento de Riscos) — NR-01");
+    if (!plainText.includes("EPI") && !plainText.includes("equipamento de proteção")) suggestions.push("Liste os EPIs obrigatórios para a atividade regulamentada");
+    if (!plainText.includes("treinamento") && !plainText.includes("capacitação") && !plainText.includes("reciclagem")) suggestions.push("Aborde carga horária de capacitação e periodicidade de reciclagem");
+    if (!plainText.includes("responsabilidade") && !plainText.includes("empregador") && !plainText.includes("trabalhador")) suggestions.push("Detalhe as responsabilidades: do empregador, do trabalhador e do responsável técnico");
+  }
+
+  // ── Verificações pedagógicas (aplicam a todos) ──
+  if (!plainText.includes("exemplo") && !plainText.includes("na prática") && !plainText.includes("caso real")) {
+    suggestions.push("Inclua pelo menos um exemplo prático ou estudo de caso real do mercado de eventos");
+  }
+  if (!plainText.includes("resumo") && !plainText.includes("conclusão") && !plainText.includes("pontos-chave") && wordCount > 500) {
+    suggestions.push("Adicione um resumo/pontos-chave no final da aula para fixação do conteúdo");
+  }
+  if (!plainText.includes("referência") && !plainText.includes("bibliografia") && !plainText.includes("fonte") && !plainText.includes("leitura")) {
+    suggestions.push("Inclua referências bibliográficas ou sugestões de leitura complementar");
   }
 
   const result: ValidationResult = {

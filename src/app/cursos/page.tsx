@@ -204,7 +204,7 @@ export default async function CursosPage({ searchParams }: Props) {
                 {courses.map((course: any) => (
                   <Link key={course.id} href={`/cursos/${course.slug}`} className="group">
                     <div className="h-full rounded-2xl bg-surface border border-border overflow-hidden hover:border-amber-500/30 hover:shadow-md transition-all hover:-translate-y-1 flex flex-col">
-                      <div className="h-40 bg-gradient-to-br from-surface-2 to-surface-3 flex items-center justify-center text-5xl shrink-0 overflow-hidden">
+                      <div className="relative h-40 bg-gradient-to-br from-surface-2 to-surface-3 flex items-center justify-center text-5xl shrink-0 overflow-hidden">
                         {course.thumbnail_url ? (
                           <Image src={course.thumbnail_url} alt={course.titulo} fill className="object-cover" />
                         ) : (
