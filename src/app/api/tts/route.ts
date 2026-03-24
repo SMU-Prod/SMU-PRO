@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { tts } from "@/lib/edge-tts";
+import { rateLimit } from "@/lib/rate-limit";
 
 function stripHtml(html: string): string {
   return html
@@ -612,6 +613,11 @@ export async function POST(req: NextRequest) {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+  }
+
+  const { success } = await rateLimit(`ai:${userId}`, 10, 60000);
+  if (!success) {
+    return NextResponse.json({ error: "Muitas requisições. Aguarde 1 minuto." }, { status: 429 });
   }
 
   const { lessonId, text } = await req.json();

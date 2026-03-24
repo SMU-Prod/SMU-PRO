@@ -295,6 +295,23 @@ export async function adminDeleteModule(id: string) {
   await supabase.from("modules").delete().eq("id", id);
 }
 
+/**
+ * Move módulo para dentro de outro (torna sub-módulo) ou promove a raiz.
+ * parent_id = null → módulo raiz
+ * parent_id = UUID → sub-módulo do parent
+ */
+export async function adminMoveModule(id: string, parentId: string | null, courseId?: string) {
+  await assertAdmin();
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("modules")
+    .update({ parent_id: parentId })
+    .eq("id", id);
+  if (error) throw error;
+  if (courseId) revalidatePath(`/admin/cursos/${courseId}`);
+  revalidatePath("/cursos");
+}
+
 // ============================================================
 // AULAS
 // ============================================================

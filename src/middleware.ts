@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 const isPublicRoute = createRouteMatcher([
   "/",
   "/cursos(.*)",
+  "/blog(.*)",
   "/login(.*)",
   "/cadastro(.*)",
   "/certificado(.*)",
@@ -27,10 +28,6 @@ export default clerkMiddleware(async (auth, req) => {
     url.pathname = "/login";
     url.searchParams.set("redirect_url", req.nextUrl.pathname);
     return NextResponse.redirect(url);
-  }
-
-  if (isAdminRoute(req)) {
-    console.log("[Middleware] /admin access by userId:", userId);
   }
 
   return NextResponse.next();

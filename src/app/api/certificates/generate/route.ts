@@ -31,13 +31,16 @@ export async function POST(req: Request) {
   }
 
   // Verificar progresso: 100% das aulas concluídas
-  const { data: course } = await (supabase as any)
+  const { data: course, error: courseError } = await (supabase as any)
     .from("courses")
     .select(`*, modules(*, lessons(*))`)
     .eq("id", courseId)
     .single();
 
-  if (!course) return NextResponse.json({ error: "Curso não encontrado" }, { status: 404 });
+  if (courseError || !course) {
+    console.error("[Certificate] Erro ao buscar curso:", courseError?.message);
+    return NextResponse.json({ error: "Curso não encontrado" }, { status: 404 });
+  }
 
   const allLessons = (course.modules ?? []).flatMap((m: any) => m.lessons ?? []);
   const { data: progress } = await supabase

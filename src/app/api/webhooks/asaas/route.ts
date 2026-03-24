@@ -179,12 +179,14 @@ export async function POST(req: Request) {
       case "PAYMENT_PARTIALLY_REFUNDED": {
         if (!payment?.externalReference) break;
 
+        // Só cancela enrollment que está ativo ou pendente (evita atualizar expirados/cancelados)
         const { data: refundEnrollment } = await supabase
           .from("enrollments")
           .update({ status: "cancelado" })
           .eq("id", payment.externalReference)
+          .in("status", ["ativo", "pendente"])
           .select("user_id")
-          .single();
+          .maybeSingle();
 
         await supabase.from("activity_log").insert({
           user_id: refundEnrollment?.user_id ?? null,

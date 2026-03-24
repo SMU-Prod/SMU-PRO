@@ -46,6 +46,7 @@ const adminNav: NavItem[] = [
   { label: "Visão Geral", href: "/admin", icon: BarChart3 },
   { label: "Cursos", href: "/admin/cursos", icon: Layers },
   { label: "Trilhas", href: "/admin/trilhas", icon: TrendingUp },
+  { label: "Blog", href: "/admin/blog", icon: BookOpen },
   { label: "Usuários", href: "/admin/usuarios", icon: Users },
   { label: "Certificados", href: "/admin/certificados", icon: Award },
   { label: "Pagamentos", href: "/admin/pagamentos", icon: CreditCard },

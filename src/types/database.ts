@@ -49,11 +49,11 @@ export type CourseInsert = {
 export type CourseUpdate = Partial<Omit<Course, "id" | "created_at">>;
 
 export type Module = {
-  id: string; course_id: string; titulo: string;
-  descricao: string | null; ordem: number;
+  id: string; course_id: string; parent_id: string | null;
+  titulo: string; descricao: string | null; ordem: number;
   created_at: string; updated_at: string;
 };
-export type ModuleInsert = { course_id: string; titulo: string; descricao?: string | null; ordem?: number };
+export type ModuleInsert = { course_id: string; titulo: string; descricao?: string | null; ordem?: number; parent_id?: string | null };
 export type ModuleUpdate = Partial<Omit<Module, "id" | "created_at">>;
 
 export type Lesson = {
@@ -211,6 +211,24 @@ export type NotificationPreferencesInsert = {
 };
 export type NotificationPreferencesUpdate = Partial<Omit<NotificationPreferences, "id" | "user_id" | "created_at">>;
 
+export type AnimationQuality = "standard" | "premium";
+export type AnimationStatus = "pending" | "generating" | "ready" | "error";
+
+export type AiAnimation = {
+  id: string; lesson_id: string;
+  tipo: AnimationQuality; status: AnimationStatus;
+  roteiro: Record<string, unknown> | null;
+  urls: Record<string, string>[] | null;
+  model: string | null; custo_usd: number | null;
+  created_at: string; updated_at: string;
+};
+export type AiAnimationInsert = {
+  lesson_id: string; tipo?: AnimationQuality; status?: AnimationStatus;
+  roteiro?: Record<string, unknown> | null; urls?: Record<string, string>[] | null;
+  model?: string | null; custo_usd?: number | null;
+};
+export type AiAnimationUpdate = Partial<Omit<AiAnimation, "id" | "created_at">>;
+
 export type Setting = {
   key: string; value: unknown; descricao: string | null; updated_at: string;
 };
@@ -252,6 +270,7 @@ export type Database = {
       notification_preferences: { Row: NotificationPreferences; Insert: NotificationPreferencesInsert; Update: NotificationPreferencesUpdate; Relationships: [] };
       activity_log: { Row: ActivityLog; Insert: ActivityLogInsert; Update: never; Relationships: [] };
       settings: { Row: Setting; Insert: SettingInsert; Update: SettingUpdate; Relationships: [] };
+      ai_animations: { Row: AiAnimation; Insert: AiAnimationInsert; Update: AiAnimationUpdate; Relationships: [] };
     };
     Views: {
       admin_course_stats: { Row: AdminCourseStat; Relationships: [] };
@@ -272,6 +291,47 @@ export type Database = {
     CompositeTypes: Record<never, never>;
   };
 };
+
+// ── Composite types (joins) ────────────────────────────────
+
+// ── AI Tables ──
+export type AiAnimation2 = {
+  id: string;
+  lesson_id: string;
+  tipo: string;
+  status: "generating" | "ready" | "error";
+  roteiro: any;
+  urls: any[];
+  model: string | null;
+  custo_usd: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AiExplanation = {
+  id: string;
+  lesson_id: string;
+  tipo: string;
+  explanation: string | null;
+  content: string | null;
+  model: string;
+  created_at: string;
+};
+
+export type AiMemory = {
+  id: string;
+  categoria: string;
+  tipo: string;
+  chave: string;
+  conteudo: string;
+  contexto: Record<string, any>;
+  vezes_usado: number;
+  score: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type NotificationType2 = NotificationType;
 
 // ── Composite types (joins) ────────────────────────────────
 

@@ -188,11 +188,14 @@ export function NotificationDropdown() {
                 const Icon = iconMap[n.tipo] || Info;
                 const iconColor = !n.lida ? (colorMap[n.tipo] || "text-amber-400") : "text-muted-light";
                 return (
-                  <button
+                  <div
                     key={n.id}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => handleMarkRead(n)}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleMarkRead(n); }}
                     className={cn(
-                      "w-full flex items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-hover group",
+                      "w-full flex items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-hover group cursor-pointer",
                       !n.lida && "bg-amber-500/5"
                     )}
                   >
@@ -223,14 +226,14 @@ export function NotificationDropdown() {
                         <div className="h-2 w-2 rounded-full bg-amber-500" />
                       )}
                       <button
-                        onClick={(e) => handleDelete(e, n.id)}
+                        onClick={(e) => { e.stopPropagation(); handleDelete(e, n.id); }}
                         className="p-1 rounded opacity-0 group-hover:opacity-100 text-muted-light hover:text-red-400 transition-all"
                         title="Remover"
                       >
                         <Trash2 size={12} />
                       </button>
                     </div>
-                  </button>
+                  </div>
                 );
               })
             )}

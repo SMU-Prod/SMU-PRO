@@ -20,7 +20,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
-  adminCreateModule, adminUpdateModule, adminDeleteModule,
+  adminCreateModule, adminUpdateModule, adminDeleteModule, adminMoveModule,
   adminCreateLesson, adminUpdateLesson, adminDeleteLesson, adminDuplicateLesson,
   adminReorderModules, adminReorderLessons,
   adminGetQuizByLesson, adminCreateQuiz, adminUpdateQuiz, adminDeleteQuiz,
@@ -29,6 +29,7 @@ import {
 } from "@/lib/actions/courses";
 import { FileUploader } from "@/components/admin/file-uploader";
 import { RichTextEditor } from "@/components/admin/rich-text-editor";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,6 +39,7 @@ import {
   Plus, ChevronDown, Edit2, Trash2, GripVertical,
   Video, FileText, HelpCircle, BookOpen, Save, X,
   CheckCircle2, Circle, Settings2, ChevronRight, Copy, Sparkles,
+  FolderTree, ArrowUp, CornerDownRight,
 } from "lucide-react";
 
 const moduleSchema = z.object({
@@ -64,10 +66,22 @@ export function CourseContentManager({ course }: { course: any }) {
   const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({});
   const [editingModule, setEditingModule] = useState<string | null>(null);
   const [addingModule, setAddingModule] = useState(false);
+  const [addingSubmodule, setAddingSubmodule] = useState<string | null>(null); // parent module id
   const [addingLesson, setAddingLesson] = useState<string | null>(null);
   const [editingLesson, setEditingLesson] = useState<string | null>(null);
   const [quizLesson, setQuizLesson] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // ── Derived: separate root modules from submodules ──
+  const rootModules = modules.filter((m) => !m.parent_id).sort((a, b) => a.ordem - b.ordem);
+  const childrenMap = new Map<string, any[]>();
+  for (const m of modules) {
+    if (m.parent_id) {
+      const list = childrenMap.get(m.parent_id) ?? [];
+      list.push(m);
+      childrenMap.set(m.parent_id, list.sort((a, b) => a.ordem - b.ordem));
+    }
+  }
 
   const moduleForm = useForm({ resolver: zodResolver(moduleSchema) });
   const lessonForm = useForm({ resolver: zodResolver(lessonSchema) });
@@ -78,14 +92,35 @@ export function CourseContentManager({ course }: { course: any }) {
   const toggleModule = (id: string) =>
     setExpandedModules((p) => ({ ...p, [id]: !p[id] }));
 
-  // ── CREATE MODULE
+  // ── CREATE MODULE (root)
   const handleCreateModule = async (data: any) => {
     setLoading(true);
     try {
-      const mod = await adminCreateModule({ ...data, course_id: course.id });
+      const mod = await adminCreateModule({ ...data, course_id: course.id, parent_id: null });
       setModules((prev) => [...prev, { ...mod, lessons: [] }]);
       setAddingModule(false);
       moduleForm.reset();
+    } finally { setLoading(false); }
+  };
+
+  // ── CREATE SUB-MODULE
+  const handleCreateSubmodule = async (parentId: string, data: any) => {
+    setLoading(true);
+    try {
+      const siblings = modules.filter((m) => m.parent_id === parentId);
+      const sub = await adminCreateModule({ ...data, course_id: course.id, parent_id: parentId, ordem: siblings.length });
+      setModules((prev) => [...prev, { ...sub, lessons: [] }]);
+      setAddingSubmodule(null);
+      moduleForm.reset();
+    } finally { setLoading(false); }
+  };
+
+  // ── MOVE MODULE (change parent or promote to root)
+  const handleMoveModuleToParent = async (moduleId: string, newParentId: string | null) => {
+    setLoading(true);
+    try {
+      await adminMoveModule(moduleId, newParentId, course.id);
+      setModules((prev) => prev.map((m) => m.id === moduleId ? { ...m, parent_id: newParentId } : m));
     } finally { setLoading(false); }
   };
 
@@ -106,14 +141,37 @@ export function CourseContentManager({ course }: { course: any }) {
     setModules((prev) => prev.filter((m) => m.id !== id));
   };
 
-  // ── REORDER MODULES (drag-drop)
+  // ── REORDER ROOT MODULES (drag-drop)
   const handleModuleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    const oldIndex = modules.findIndex((m) => m.id === active.id);
-    const newIndex = modules.findIndex((m) => m.id === over.id);
-    const reordered = arrayMove(modules, oldIndex, newIndex).map((m, i) => ({ ...m, ordem: i }));
-    setModules(reordered);
+    const oldIndex = rootModules.findIndex((m) => m.id === active.id);
+    const newIndex = rootModules.findIndex((m) => m.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const reorderedRoots = arrayMove(rootModules, oldIndex, newIndex).map((m, i) => ({ ...m, ordem: i }));
+    // Update full modules state
+    setModules((prev) => {
+      const children = prev.filter((m) => m.parent_id);
+      return [...reorderedRoots, ...children];
+    });
+    await adminReorderModules(reorderedRoots.map((m) => ({ id: m.id, ordem: m.ordem })), course.id);
+  };
+
+  // ── REORDER SUB-MODULES within parent (drag-drop)
+  const handleSubmoduleDragEnd = async (parentId: string, event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const children = childrenMap.get(parentId) ?? [];
+    const oldIndex = children.findIndex((m) => m.id === active.id);
+    const newIndex = children.findIndex((m) => m.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const reordered = arrayMove(children, oldIndex, newIndex).map((m, i) => ({ ...m, ordem: i }));
+    setModules((prev) =>
+      prev.map((m) => {
+        const updated = reordered.find((r) => r.id === m.id);
+        return updated ? { ...m, ordem: updated.ordem } : m;
+      })
+    );
     await adminReorderModules(reordered.map((m) => ({ id: m.id, ordem: m.ordem })), course.id);
   };
 
@@ -218,18 +276,20 @@ export function CourseContentManager({ course }: { course: any }) {
   };
 
   const totalLessons = modules.reduce((a, m) => a + (m.lessons?.length ?? 0), 0);
+  const totalSubmodules = modules.filter((m) => m.parent_id).length;
 
   return (
     <div className="space-y-4">
       {/* Header stats */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4 text-sm text-muted-light">
-          <span>{modules.length} módulos</span>
+          <span>{rootModules.length} módulos</span>
+          {totalSubmodules > 0 && <><span>·</span><span>{totalSubmodules} sub-módulos</span></>}
           <span>·</span>
           <span>{totalLessons} aulas</span>
           <span className="text-[11px] text-muted-light hidden sm:inline">Arraste pelo ⠿ para reordenar</span>
         </div>
-        <Button size="sm" onClick={() => { setAddingModule(true); moduleForm.reset({ ordem: modules.length }); }}>
+        <Button size="sm" onClick={() => { setAddingModule(true); moduleForm.reset({ ordem: rootModules.length }); }}>
           <Plus size={15} /> Novo Módulo
         </Button>
       </div>
@@ -255,12 +315,13 @@ export function CourseContentManager({ course }: { course: any }) {
 
       {/* Modules list with drag-drop */}
       <DndContext id={`${dndId}-modules`} sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleModuleDragEnd}>
-        <SortableContext items={modules.map((m) => m.id)} strategy={verticalListSortingStrategy}>
-          {modules.map((mod, modIdx) => (
+        <SortableContext items={rootModules.map((m) => m.id)} strategy={verticalListSortingStrategy}>
+          {rootModules.map((mod, modIdx) => (
             <SortableModule
               key={mod.id}
               mod={mod}
               modIdx={modIdx}
+              submodules={childrenMap.get(mod.id) ?? []}
               expanded={!!expandedModules[mod.id]}
               editingModule={editingModule}
               addingLesson={addingLesson}
@@ -275,28 +336,40 @@ export function CourseContentManager({ course }: { course: any }) {
               onCancelEditModule={() => setEditingModule(null)}
               onUpdateModule={(d: any) => handleUpdateModule(mod.id, d)}
               onDeleteModule={() => handleDeleteModule(mod.id)}
-              onCreateLesson={(d: any) => handleCreateLesson(mod.id, d)}
-              onUpdateLesson={(lessonId: string, d: any) => handleUpdateLesson(lessonId, mod.id, d)}
-              onAutoSaveLesson={(lessonId: string, d: any) => handleAutoSaveLesson(lessonId, mod.id, d)}
-              onUpdateLessonState={(lessonId: string, updates: any) => {
+              onCreateLesson={(d: any, targetModuleId?: string) => handleCreateLesson(targetModuleId ?? mod.id, d)}
+              onUpdateLesson={(lessonId: string, d: any, targetModuleId?: string) => handleUpdateLesson(lessonId, targetModuleId ?? mod.id, d)}
+              onAutoSaveLesson={(lessonId: string, d: any, targetModuleId?: string) => handleAutoSaveLesson(lessonId, targetModuleId ?? mod.id, d)}
+              onUpdateLessonState={(lessonId: string, updates: any, targetModuleId?: string) => {
+                const modId = targetModuleId ?? mod.id;
                 setModules((prev) =>
                   prev.map((m) =>
-                    m.id === mod.id
+                    m.id === modId
                       ? { ...m, lessons: m.lessons.map((l: any) => (l.id === lessonId ? { ...l, ...updates } : l)) }
                       : m
                   )
                 );
               }}
-              onDeleteLesson={(lessonId: string) => handleDeleteLesson(lessonId, mod.id)}
-              onDuplicateLesson={(lessonId: string) => handleDuplicateLesson(lessonId, mod.id)}
-              onMoveLesson={(lessonId: string, toModuleId: string) => handleMoveLesson(lessonId, mod.id, toModuleId)}
+              onDeleteLesson={(lessonId: string, targetModuleId?: string) => handleDeleteLesson(lessonId, targetModuleId ?? mod.id)}
+              onDuplicateLesson={(lessonId: string, targetModuleId?: string) => handleDuplicateLesson(lessonId, targetModuleId ?? mod.id)}
+              onMoveLesson={(lessonId: string, toModuleId: string, fromModuleId?: string) => handleMoveLesson(lessonId, fromModuleId ?? mod.id, toModuleId)}
               allModules={modules}
-              onStartAddLesson={() => { lessonForm.reset({ tipo: "video", duracao_min: 0, ordem: mod.lessons?.length ?? 0 }); setAddingLesson(mod.id); setEditingLesson(null); }}
+              onStartAddLesson={(targetModuleId?: string) => { const id = targetModuleId ?? mod.id; const targetMod = modules.find((m) => m.id === id); lessonForm.reset({ tipo: "video", duracao_min: 0, ordem: targetMod?.lessons?.length ?? 0 }); setAddingLesson(id); setEditingLesson(null); }}
               onCancelAddLesson={() => setAddingLesson(null)}
               onStartEditLesson={(lesson: any) => { setEditingLesson(lesson.id); lessonForm.reset(lesson); setAddingLesson(null); setQuizLesson(null); }}
               onCancelEditLesson={() => setEditingLesson(null)}
               onToggleQuiz={(lessonId: string) => { setQuizLesson(quizLesson === lessonId ? null : lessonId); setEditingLesson(null); }}
               onLessonDragEnd={(e: DragEndEvent) => handleLessonDragEnd(mod.id, e)}
+              courseCategoria={course.categoria}
+              // ── Sub-module props ──
+              addingSubmodule={addingSubmodule}
+              onStartAddSubmodule={() => { moduleForm.reset({ titulo: "", descricao: "" }); setAddingSubmodule(mod.id); }}
+              onCancelAddSubmodule={() => setAddingSubmodule(null)}
+              onCreateSubmodule={(d: any) => handleCreateSubmodule(mod.id, d)}
+              onMoveModuleToParent={handleMoveModuleToParent}
+              onSubmoduleDragEnd={(e: DragEndEvent) => handleSubmoduleDragEnd(mod.id, e)}
+              expandedModules={expandedModules}
+              onToggleSubmodule={(id: string) => setExpandedModules((p) => ({ ...p, [id]: !p[id] }))}
+              rootModules={rootModules}
             />
           ))}
         </SortableContext>
@@ -318,7 +391,7 @@ export function CourseContentManager({ course }: { course: any }) {
 
 // ── SortableModule ────────────────────────────────────────────
 
-function SortableModule({ mod, modIdx, expanded, editingModule, addingLesson, editingLesson, quizLesson, moduleForm, lessonForm, loading, sensors, onToggle, onEditModule, onCancelEditModule, onUpdateModule, onDeleteModule, onCreateLesson, onUpdateLesson, onAutoSaveLesson, onUpdateLessonState, onDeleteLesson, onDuplicateLesson, onMoveLesson, allModules, onStartAddLesson, onCancelAddLesson, onStartEditLesson, onCancelEditLesson, onToggleQuiz, onLessonDragEnd }: any) {
+function SortableModule({ mod, modIdx, submodules = [], expanded, editingModule, addingLesson, editingLesson, quizLesson, moduleForm, lessonForm, loading, sensors, onToggle, onEditModule, onCancelEditModule, onUpdateModule, onDeleteModule, onCreateLesson, onUpdateLesson, onAutoSaveLesson, onUpdateLessonState, onDeleteLesson, onDuplicateLesson, onMoveLesson, allModules, onStartAddLesson, onCancelAddLesson, onStartEditLesson, onCancelEditLesson, onToggleQuiz, onLessonDragEnd, courseCategoria, addingSubmodule, onStartAddSubmodule, onCancelAddSubmodule, onCreateSubmodule, onMoveModuleToParent, onSubmoduleDragEnd, expandedModules, onToggleSubmodule, rootModules }: any) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: mod.id });
   const lessonDndId = useId();
 
@@ -364,7 +437,10 @@ function SortableModule({ mod, modIdx, expanded, editingModule, addingLesson, ed
             ) : (
               <p className="font-medium text-sm text-foreground truncate">{mod.titulo}</p>
             )}
-            <p className="text-xs text-muted-light">{mod.lessons?.length ?? 0} aulas</p>
+            <p className="text-xs text-muted-light">
+              {submodules.length > 0 && <>{submodules.length} sub-módulo{submodules.length !== 1 ? "s" : ""} · </>}
+              {mod.lessons?.length ?? 0} aulas
+            </p>
           </div>
 
           <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
@@ -379,9 +455,90 @@ function SortableModule({ mod, modIdx, expanded, editingModule, addingLesson, ed
           <ChevronDown size={16} className={cn("text-muted-light transition-transform shrink-0", expanded && "rotate-180")} />
         </div>
 
-        {/* Lessons */}
+        {/* Sub-modules + Lessons */}
         {expanded && (
           <div className="border-t border-border/50">
+
+            {/* ── Sub-modules section ── */}
+            {(submodules.length > 0 || addingSubmodule === mod.id) && (
+              <div className="bg-surface-2/30">
+                <DndContext id={`${lessonDndId}-subs`} sensors={sensors} collisionDetection={closestCenter} onDragEnd={onSubmoduleDragEnd}>
+                  <SortableContext items={submodules.map((s: any) => s.id)} strategy={verticalListSortingStrategy}>
+                    {submodules.map((sub: any, subIdx: number) => {
+                      const subExpanded = !!expandedModules?.[sub.id];
+                      return (
+                        <SortableSubmodule
+                          key={sub.id}
+                          sub={sub}
+                          subIdx={subIdx}
+                          expanded={subExpanded}
+                          onToggle={() => onToggleSubmodule(sub.id)}
+                          editingModule={editingModule}
+                          moduleForm={moduleForm}
+                          loading={loading}
+                          sensors={sensors}
+                          onEditModule={() => { /* reuse parent's edit state */ }}
+                          onDeleteModule={() => onDeleteModule(sub.id)}
+                          onUpdateModule={(d: any) => onUpdateModule(d)}
+                          onCancelEditModule={onCancelEditModule}
+                          onPromoteToRoot={() => onMoveModuleToParent(sub.id, null)}
+                          onMoveToModule={(targetParentId: string) => onMoveModuleToParent(sub.id, targetParentId)}
+                          rootModules={rootModules}
+                          currentParentId={mod.id}
+                          // Pass lesson management through for sub-module's lessons
+                          addingLesson={addingLesson}
+                          editingLesson={editingLesson}
+                          quizLesson={quizLesson}
+                          lessonForm={lessonForm}
+                          onCreateLesson={(d: any) => onCreateLesson(d)}
+                          onUpdateLesson={onUpdateLesson}
+                          onAutoSaveLesson={onAutoSaveLesson}
+                          onUpdateLessonState={onUpdateLessonState}
+                          onDeleteLesson={onDeleteLesson}
+                          onDuplicateLesson={onDuplicateLesson}
+                          onMoveLesson={onMoveLesson}
+                          allModules={allModules}
+                          onStartAddLesson={onStartAddLesson}
+                          onCancelAddLesson={onCancelAddLesson}
+                          onStartEditLesson={onStartEditLesson}
+                          onCancelEditLesson={onCancelEditLesson}
+                          onToggleQuiz={onToggleQuiz}
+                          courseCategoria={courseCategoria}
+                        />
+                      );
+                    })}
+                  </SortableContext>
+                </DndContext>
+
+                {/* Add sub-module form */}
+                {addingSubmodule === mod.id && (
+                  <div className="px-4 py-3 ml-6 border-l-2 border-amber-500/20">
+                    <form onSubmit={moduleForm.handleSubmit(onCreateSubmodule)} className="space-y-2">
+                      <p className="text-xs font-semibold text-muted-light flex items-center gap-1.5">
+                        <CornerDownRight size={12} /> Novo Sub-módulo
+                      </p>
+                      <Input {...moduleForm.register("titulo")} placeholder="Título do sub-módulo" className="h-8 text-xs" autoFocus />
+                      <div className="flex gap-2">
+                        <Button type="submit" size="sm" loading={loading} className="h-7 text-xs"><Save size={12} /> Criar</Button>
+                        <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={onCancelAddSubmodule}><X size={12} /> Cancelar</Button>
+                      </div>
+                    </form>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Add sub-module button (when not already adding) ── */}
+            {addingSubmodule !== mod.id && (
+              <button
+                className="w-full flex items-center gap-2 px-4 py-2 text-xs text-muted-light hover:text-amber-400 hover:bg-amber-500/5 transition-colors border-b border-border/30"
+                onClick={onStartAddSubmodule}
+              >
+                <FolderTree size={13} /> Adicionar Sub-módulo
+              </button>
+            )}
+
+            {/* ── Lessons of this root module ── */}
             <DndContext id={lessonDndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={onLessonDragEnd}>
               <SortableContext items={(mod.lessons ?? []).map((l: any) => l.id)} strategy={verticalListSortingStrategy}>
                 {(mod.lessons ?? []).map((lesson: any, lessonIdx: number) => (
@@ -404,6 +561,7 @@ function SortableModule({ mod, modIdx, expanded, editingModule, addingLesson, ed
                     allModules={allModules}
                     currentModuleId={mod.id}
                     onLessonStateChange={(updates: any) => onUpdateLessonState(lesson.id, updates)}
+                    courseCategoria={courseCategoria}
                   />
                 ))}
               </SortableContext>
@@ -417,11 +575,12 @@ function SortableModule({ mod, modIdx, expanded, editingModule, addingLesson, ed
                 onSubmit={onCreateLesson}
                 onCancel={onCancelAddLesson}
                 label="Criar Aula"
+                categoria={courseCategoria}
               />
             ) : (
               <button
                 className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-muted-light hover:text-amber-400 hover:bg-amber-500/5 transition-colors"
-                onClick={onStartAddLesson}
+                onClick={() => onStartAddLesson()}
               >
                 <Plus size={14} /> Adicionar Aula
               </button>
@@ -433,9 +592,144 @@ function SortableModule({ mod, modIdx, expanded, editingModule, addingLesson, ed
   );
 }
 
+// ── SortableSubmodule ─────────────────────────────────────────
+
+function SortableSubmodule({ sub, subIdx, expanded, onToggle, editingModule, moduleForm, loading, sensors, onDeleteModule, onPromoteToRoot, onMoveToModule, rootModules, currentParentId, addingLesson, editingLesson, quizLesson, lessonForm, onCreateLesson, onUpdateLesson, onAutoSaveLesson, onUpdateLessonState, onDeleteLesson, onDuplicateLesson, onMoveLesson, allModules, onStartAddLesson, onCancelAddLesson, onStartEditLesson, onCancelEditLesson, onToggleQuiz, courseCategoria }: any) {
+  const [showMoveMenu, setShowMoveMenu] = useState(false);
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: sub.id });
+  const subDndId = useId();
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const lessons = sub.lessons ?? [];
+
+  return (
+    <div ref={setNodeRef} style={style} className="ml-6 border-l-2 border-amber-500/10">
+      {/* Sub-module header */}
+      <div
+        className="flex items-center gap-2.5 px-3 py-2.5 cursor-pointer hover:bg-surface-3/50 transition-colors select-none group"
+        onClick={onToggle}
+      >
+        <div
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing p-0.5 rounded text-muted-light hover:text-muted transition-colors shrink-0"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <GripVertical size={14} />
+        </div>
+
+        <CornerDownRight size={13} className="text-amber-400/50 shrink-0" />
+
+        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-amber-500/10 text-[10px] font-bold text-amber-400 shrink-0">
+          {subIdx + 1}
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <p className="font-medium text-xs text-foreground truncate">{sub.titulo}</p>
+          <p className="text-[10px] text-muted-light">{lessons.length} aulas</p>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+          {/* Promote to root */}
+          <Button variant="ghost" size="icon" className="h-6 w-6" title="Promover a módulo raiz" onClick={onPromoteToRoot}>
+            <ArrowUp size={11} />
+          </Button>
+
+          {/* Move to another parent */}
+          {rootModules.length > 1 && (
+            <div className="relative">
+              <Button variant="ghost" size="icon" className="h-6 w-6" title="Mover para outro módulo" onClick={() => setShowMoveMenu((p) => !p)}>
+                <ChevronRight size={11} />
+              </Button>
+              {showMoveMenu && (
+                <div className="absolute right-0 top-7 z-50 w-44 rounded-lg border border-border bg-surface shadow-lg py-1">
+                  <p className="px-3 py-1 text-[10px] text-muted-light uppercase tracking-wide font-semibold">Mover para</p>
+                  {rootModules.filter((m: any) => m.id !== currentParentId).map((m: any) => (
+                    <button
+                      key={m.id}
+                      className="w-full text-left px-3 py-1.5 text-xs text-muted hover:bg-surface-3 transition-colors truncate"
+                      onClick={() => { onMoveToModule(m.id); setShowMoveMenu(false); }}
+                    >
+                      {m.titulo}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <Button variant="ghost" size="icon" className="h-6 w-6 text-red-400 hover:text-red-500" onClick={() => onDeleteModule(sub.id)}>
+            <Trash2 size={11} />
+          </Button>
+        </div>
+
+        <ChevronDown size={14} className={cn("text-muted-light transition-transform shrink-0", expanded && "rotate-180")} />
+      </div>
+
+      {/* Sub-module lessons (expanded) */}
+      {expanded && (
+        <div className="border-t border-border/30 ml-3">
+          <DndContext id={subDndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={() => {}}>
+            <SortableContext items={lessons.map((l: any) => l.id)} strategy={verticalListSortingStrategy}>
+              {lessons.map((lesson: any, idx: number) => (
+                <SortableLesson
+                  key={lesson.id}
+                  lesson={lesson}
+                  lessonIdx={idx}
+                  editingLesson={editingLesson}
+                  quizLesson={quizLesson}
+                  lessonForm={lessonForm}
+                  loading={loading}
+                  onStartEdit={() => onStartEditLesson(lesson)}
+                  onCancelEdit={onCancelEditLesson}
+                  onUpdate={(d: any) => onUpdateLesson(lesson.id, d, sub.id)}
+                  onAutoSave={(d: any) => onAutoSaveLesson(lesson.id, d, sub.id)}
+                  onDelete={() => onDeleteLesson(lesson.id, sub.id)}
+                  onDuplicate={() => onDuplicateLesson(lesson.id, sub.id)}
+                  onToggleQuiz={() => onToggleQuiz(lesson.id)}
+                  onMoveToModule={(toModuleId: string) => onMoveLesson(lesson.id, toModuleId, sub.id)}
+                  allModules={allModules}
+                  currentModuleId={sub.id}
+                  onLessonStateChange={(updates: any) => onUpdateLessonState(lesson.id, updates, sub.id)}
+                  courseCategoria={courseCategoria}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
+
+          {/* Add lesson to sub-module */}
+          {addingLesson === sub.id ? (
+            <LessonForm
+              form={lessonForm}
+              loading={loading}
+              onSubmit={(d: any) => onCreateLesson(d, sub.id)}
+              onCancel={onCancelAddLesson}
+              label="Criar Aula"
+              categoria={courseCategoria}
+            />
+          ) : (
+            <button
+              className="w-full flex items-center gap-2 px-4 py-2 text-xs text-muted-light hover:text-amber-400 hover:bg-amber-500/5 transition-colors"
+              onClick={() => onStartAddLesson(sub.id)}
+            >
+              <Plus size={12} /> Adicionar Aula
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── SortableLesson ────────────────────────────────────────────
 
-function SortableLesson({ lesson, lessonIdx, editingLesson, quizLesson, lessonForm, loading, onStartEdit, onCancelEdit, onUpdate, onAutoSave, onDelete, onDuplicate, onToggleQuiz, onLessonStateChange, onMoveToModule, allModules, currentModuleId }: any) {
+function SortableLesson({ lesson, lessonIdx, editingLesson, quizLesson, lessonForm, loading, onStartEdit, onCancelEdit, onUpdate, onAutoSave, onDelete, onDuplicate, onToggleQuiz, onLessonStateChange, onMoveToModule, allModules, currentModuleId, courseCategoria }: any) {
   const [showMoveMenu, setShowMoveMenu] = useState(false);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: lesson.id });
 
@@ -524,6 +818,8 @@ function SortableLesson({ lesson, lessonIdx, editingLesson, quizLesson, lessonFo
           onAutoSave={onAutoSave}
           onCancel={onCancelEdit}
           label="Salvar Alterações"
+          lessonId={lesson.id}
+          categoria={courseCategoria}
         />
       )}
 
@@ -557,7 +853,7 @@ function LessonTypeIcon({ tipo }: { tipo: string }) {
 
 // ── LessonForm ────────────────────────────────────────────────
 
-function LessonForm({ form, loading, onSubmit, onAutoSave, onCancel, label }: any) {
+function LessonForm({ form, loading, onSubmit, onAutoSave, onCancel, label, lessonId, categoria }: any) {
   const tipo = form.watch("tipo");
   const pdfPath = form.watch("pdf_path");
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

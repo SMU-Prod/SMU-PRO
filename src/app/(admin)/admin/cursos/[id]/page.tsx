@@ -8,7 +8,8 @@ import { CourseContentManager } from "@/components/admin/course-content-manager"
 import { CourseQualityScore } from "@/components/admin/course-quality-score";
 import { CourseForm } from "@/components/admin/course-form";
 import { CourseAnalytics } from "@/components/admin/course-analytics";
-import { Edit, ArrowLeft, Layers, Info, ShieldCheck, BarChart3, Eye } from "lucide-react";
+import { CourseStudentPreview } from "@/components/admin/course-student-preview";
+import { Edit, ArrowLeft, Layers, Info, ShieldCheck, BarChart3, Eye, Monitor } from "lucide-react";
 import Link from "next/link";
 
 interface Props {
@@ -19,6 +20,7 @@ interface Props {
 const TABS = [
   { id: "curriculo", label: "Currículo", icon: Layers },
   { id: "informacoes", label: "Informações", icon: Info },
+  { id: "preview", label: "Preview Aluno", icon: Monitor },
   { id: "qualidade", label: "Qualidade", icon: ShieldCheck },
   { id: "analytics", label: "Analytics", icon: BarChart3 },
 ];
@@ -93,9 +95,9 @@ export default async function AdminCourseDetailPage({ params, searchParams }: Pr
               <ArrowLeft size={15} /> Voltar
             </Button>
           </Link>
-          <Link href={`/cursos/${course.slug}`} target="_blank">
-            <Button variant="ghost" size="sm" title="Ver como aluno">
-              <Eye size={15} /> Preview
+          <Link href={`/admin/cursos/${id}?tab=preview`}>
+            <Button variant="ghost" size="sm" title="Ver como o aluno visualiza">
+              <Monitor size={15} /> Preview
             </Button>
           </Link>
           <Link href={`/admin/cursos/${id}/editar`}>
@@ -138,6 +140,10 @@ export default async function AdminCourseDetailPage({ params, searchParams }: Pr
 
         {tab === "informacoes" && (
           <CourseForm course={course} />
+        )}
+
+        {tab === "preview" && (
+          <CourseStudentPreview course={sortedCourse} />
         )}
 
         {tab === "qualidade" && (

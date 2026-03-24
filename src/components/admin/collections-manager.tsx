@@ -13,8 +13,11 @@ import { Badge } from "@/components/ui/badge";
 import { cn, slugify, getLevelLabel } from "@/lib/utils";
 import {
   Plus, Edit2, Trash2, ChevronDown, Save, X,
-  TrendingUp, BookOpen, Eye, EyeOff, Loader2,
+  TrendingUp, BookOpen, Eye, EyeOff, Loader2, Monitor,
+  Play, Lock, CheckCircle2, Circle, Trophy, ChevronRight,
 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { CategoryIcon } from "@/components/ui/category-icon";
 
 interface Course { id: string; titulo: string; nivel: string; ativo: boolean }
 
@@ -32,6 +35,7 @@ export function CollectionsManager({
   const [editing, setEditing] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [addingCourse, setAddingCourse] = useState<string | null>(null);
+  const [previewId, setPreviewId] = useState<string | null>(null);
 
   const [newForm, setNewForm] = useState({ titulo: "", descricao: "", slug: "" });
   const [editForm, setEditForm] = useState({ titulo: "", descricao: "" });
@@ -185,6 +189,9 @@ export function CollectionsManager({
                 </Badge>
                 <span className="text-xs text-muted-light">{coursesInCol.length} cursos</span>
                 <div className="md:opacity-0 md:group-hover:opacity-100 transition-opacity flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                  <Button variant="ghost" size="icon" className="h-9 w-9 sm:h-7 sm:w-7" title="Preview do aluno" onClick={() => setPreviewId(previewId === col.id ? null : col.id)}>
+                    <Monitor size={12} />
+                  </Button>
                   <Button variant="ghost" size="icon" className="h-9 w-9 sm:h-7 sm:w-7" title={col.ativo ? "Desativar" : "Ativar"} onClick={() => handleToggleActive(col)}>
                     {col.ativo ? <EyeOff size={12} /> : <Eye size={12} />}
                   </Button>
@@ -198,6 +205,59 @@ export function CollectionsManager({
                 <ChevronDown size={15} className={cn("text-muted-light transition-transform", expanded[col.id] && "rotate-180")} />
               </div>
             </div>
+
+            {/* Student preview panel */}
+            {previewId === col.id && (
+              <div className="border-t border-amber-500/20 bg-amber-500/5 p-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <Monitor size={14} className="text-amber-400" />
+                  <span className="text-xs font-semibold text-amber-400 uppercase tracking-wider">Preview — Visão do Aluno</span>
+                </div>
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {coursesInCol.map((cc: any, i: number) => {
+                    const course = cc.courses ?? allCourses.find((c: any) => c.id === cc.course_id);
+                    if (!course) return null;
+                    // Simula 3 estados: em andamento, não iniciado, concluído
+                    const mockProgress = i === 0 ? 45 : i === coursesInCol.length - 1 ? 100 : 0;
+                    const isEnrolled = mockProgress > 0;
+                    const isDone = mockProgress === 100;
+                    return (
+                      <div
+                        key={cc.course_id}
+                        className={cn(
+                          "rounded-xl border bg-surface p-4 transition-all",
+                          isDone ? "border-emerald-200 bg-emerald-50/30" : isEnrolled ? "border-amber-500/20" : "border-border"
+                        )}
+                      >
+                        <div className="flex items-start gap-3 mb-3">
+                          <div className="shrink-0 mt-0.5">
+                            <CategoryIcon category={course.categoria ?? "outros"} size={24} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-foreground line-clamp-2 leading-snug">{course.titulo}</p>
+                          </div>
+                          <div className="shrink-0">
+                            {isDone ? <CheckCircle2 size={18} className="text-emerald-500" /> : isEnrolled ? <Circle size={18} className="text-amber-400" /> : <Lock size={16} className="text-muted-light" />}
+                          </div>
+                        </div>
+                        {isEnrolled && (
+                          <div className="mb-3">
+                            <Progress value={mockProgress} className="h-1.5" />
+                            <p className="text-xs text-muted-light mt-1">{mockProgress}% concluído</p>
+                          </div>
+                        )}
+                        <Button variant={isDone ? "success" : isEnrolled ? "default" : "secondary"} size="sm" className="w-full gap-1.5 pointer-events-none">
+                          {isDone ? <><Trophy size={13} /> Ver certificado</> : isEnrolled ? <><Play size={13} /> Continuar</> : <><ChevronRight size={13} /> Ver curso</>}
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+                {coursesInCol.length === 0 && (
+                  <p className="text-sm text-muted-light text-center py-4">Adicione cursos à trilha para ver o preview.</p>
+                )}
+              </div>
+            )}
 
             {/* Courses list */}
             {expanded[col.id] && (

@@ -99,7 +99,7 @@ export function AiExplainer({ lessonId, titulo, conteudo }: AiExplainerProps) {
           {loading ? "Analisando conteúdo..." : "Explicação IA"}
         </Button>
         <span className="text-xs text-muted-light">
-          IA destrincha o conteúdo com dicas práticas do mercado
+          Masterclass IA: casos reais, curiosidades técnicas e dicas de campo
         </span>
         {error && <span className="text-xs text-red-400">{error}</span>}
       </div>
@@ -118,7 +118,7 @@ export function AiExplainer({ lessonId, titulo, conteudo }: AiExplainerProps) {
           <Sparkles size={14} className="text-amber-500" />
           <span className="text-sm font-medium text-foreground">Explicação IA</span>
           <span className="text-[10px] text-muted-light px-1.5 py-0.5 rounded-full bg-surface-3">
-            Claude
+            GPT-4.1
           </span>
         </div>
         {expanded ? <ChevronUp size={14} className="text-muted" /> : <ChevronDown size={14} className="text-muted" />}

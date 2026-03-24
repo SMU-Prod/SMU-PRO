@@ -71,8 +71,68 @@ export default async function CourseDetailPage({ params }: Props) {
   const isEnrolled = enrollment?.status === "ativo";
   const isFree = course.tipo === "free";
 
+  // ── Schema.org JSON-LD ─────────────────────────────────────────
+  const courseSchema = {
+    "@context": "https://schema.org",
+    "@type": "Course",
+    name: course.titulo,
+    description: course.descricao_curta || course.descricao?.slice(0, 300) || "",
+    url: `https://smuproducoes.com/cursos/${course.slug}`,
+    provider: {
+      "@type": "Organization",
+      name: "SMU PRO",
+      url: "https://smuproducoes.com",
+      logo: "https://smuproducoes.com/icon-512.png",
+    },
+    ...(course.thumbnail_url && { image: course.thumbnail_url }),
+    educationalLevel: getLevelLabel(course.nivel),
+    inLanguage: "pt-BR",
+    isAccessibleForFree: isFree,
+    numberOfCredits: totalLessons,
+    ...(course.carga_horaria && {
+      timeRequired: `PT${course.carga_horaria}M`,
+      hasCourseInstance: {
+        "@type": "CourseInstance",
+        courseMode: "online",
+        courseWorkload: `PT${course.carga_horaria}M`,
+      },
+    }),
+    ...(!isFree && course.preco && {
+      offers: {
+        "@type": "Offer",
+        price: course.preco,
+        priceCurrency: "BRL",
+        availability: "https://schema.org/InStock",
+        url: `https://smuproducoes.com/cursos/${course.slug}`,
+      },
+    }),
+    about: {
+      "@type": "Thing",
+      name: getCategoryLabel(course.categoria),
+    },
+    syllabusSections: modules.map((m: any) => ({
+      "@type": "Syllabus",
+      name: m.titulo,
+      numberOfLessons: m.lessons?.length ?? 0,
+    })),
+  };
+
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: "https://smuproducoes.com" },
+      { "@type": "ListItem", position: 2, name: "Cursos", item: "https://smuproducoes.com/cursos" },
+      { "@type": "ListItem", position: 3, name: course.titulo, item: `https://smuproducoes.com/cursos/${course.slug}` },
+    ],
+  };
+
   return (
     <div className="min-h-screen bg-surface-2 text-foreground">
+      {/* Structured Data */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(courseSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
+
       {/* Nav */}
       <nav className="sticky top-0 z-50 border-b border-border bg-surface/90 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">

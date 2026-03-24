@@ -11,6 +11,7 @@ import { CategoryIcon } from "@/components/ui/category-icon";
 import { Edit, Layers, EyeOff, CheckSquare, Square, X, Zap, Copy, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { CourseToggle } from "@/components/admin/course-toggle";
+import { StudentPreviewButton } from "@/components/admin/student-card-preview";
 import { cn } from "@/lib/utils";
 
 interface Course {
@@ -260,6 +261,7 @@ function CourseAdminCard({
               <Layers size={13} /> Módulos
             </Button>
           </Link>
+          <StudentPreviewButton course={c} />
           <Link href={`/admin/cursos/${c.id}?tab=informacoes`}>
             <Button variant="ghost" size="icon" className="h-8 w-8" title="Editar informações">
               <Edit size={14} />
