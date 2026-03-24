@@ -25,6 +25,7 @@ import {
   Moon,
   CreditCard,
   PenTool,
+  Handshake,
 } from "lucide-react";
 
 interface NavItem {
@@ -51,6 +52,7 @@ const adminNav: NavItem[] = [
   { label: "Usuários", href: "/admin/usuarios", icon: Users },
   { label: "Certificados", href: "/admin/certificados", icon: Award },
   { label: "Instrutores", href: "/admin/instrutores", icon: PenTool },
+  { label: "Parceiros", href: "/admin/parceiros", icon: Handshake },
   { label: "Pagamentos", href: "/admin/pagamentos", icon: CreditCard },
   { label: "Relatórios", href: "/admin/relatorios", icon: FileText },
   { label: "Configurações", href: "/admin/configuracoes", icon: Settings },

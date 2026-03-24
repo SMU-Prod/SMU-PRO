@@ -7,7 +7,9 @@ import {
   getPixQrCode,
   getDueDate,
   type AsaasBillingType,
+  type AsaasSplitItem,
 } from "@/lib/asaas";
+import { getCourseSplitConfig, registerCommission } from "@/lib/actions/partners";
 
 /**
  * POST /api/payments/checkout
@@ -134,9 +136,18 @@ export async function POST(req: Request) {
       enrollmentId = newEnrollment!.id;
     }
 
-    // 6. Criar cobrança no Asaas
-    // Nota: não usamos callback.successUrl porque o Asaas exige que o domínio
-    // esteja cadastrado na conta. O redirecionamento é feito pelo nosso frontend.
+    // 6. Verificar se o curso tem parceiro com split configurado
+    const splitConfig = await getCourseSplitConfig(courseId);
+    const splitItems: AsaasSplitItem[] = [];
+    if (splitConfig?.walletId) {
+      splitItems.push({
+        walletId: splitConfig.walletId,
+        percentualValue: splitConfig.comissaoPercentual,
+      });
+      console.log(`[Split] Parceiro ${splitConfig.partnerName}: ${splitConfig.comissaoPercentual}% → wallet ${splitConfig.walletId}`);
+    }
+
+    // 7. Criar cobrança no Asaas (com split se houver parceiro)
     const payment = await createPayment({
       customer: asaasCustomer.id,
       billingType,
@@ -144,9 +155,25 @@ export async function POST(req: Request) {
       dueDate: getDueDate(3),
       description: `SMU PRO — ${course.titulo}`,
       externalReference: enrollmentId,
+      split: splitItems,
     });
 
-    // 7. Salvar payment_id no enrollment
+    // 8. Registrar comissão se houver split
+    if (splitConfig) {
+      const taxaEstimada = course.preco * 0.035; // ~3.5% Asaas
+      const valorLiquido = course.preco - taxaEstimada;
+      registerCommission({
+        partnerId: splitConfig.partnerId,
+        enrollmentId,
+        courseId,
+        valorVenda: course.preco,
+        valorLiquido,
+        comissaoPercentual: splitConfig.comissaoPercentual,
+        tipoIndicacao: "organico",
+      }).catch((err) => console.error("[Commission] Erro:", err));
+    }
+
+    // 9. Salvar payment_id no enrollment
     await supabase
       .from("enrollments")
       .update({
@@ -155,13 +182,13 @@ export async function POST(req: Request) {
       })
       .eq("id", enrollmentId);
 
-    // 8. Para PIX: buscar QR code
+    // 10. Para PIX: buscar QR code
     let pixQrCode: { encodedImage: string; payload: string; expirationDate: string } | null = null;
     if (billingType === "PIX") {
       pixQrCode = await getPixQrCode(payment.id);
     }
 
-    // 9. Log de atividade
+    // 11. Log de atividade
     await supabase.from("activity_log").insert({
       user_id: userUuid,
       tipo: "payment",

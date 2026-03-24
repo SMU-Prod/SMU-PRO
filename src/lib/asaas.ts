@@ -191,6 +191,12 @@ export async function createOrGetCustomer(
 // Cobranças
 // ============================================================
 
+export interface AsaasSplitItem {
+  walletId: string;
+  percentualValue?: number; // até 4 casas decimais
+  fixedValue?: number; // até 2 casas decimais
+}
+
 interface CreatePaymentInput {
   customer: string; // Asaas customer ID
   billingType: AsaasBillingType;
@@ -200,6 +206,7 @@ interface CreatePaymentInput {
   externalReference?: string; // nosso enrollment_id
   callbackSuccessUrl?: string;
   callbackAutoRedirect?: boolean;
+  split?: AsaasSplitItem[]; // Split de pagamento para parceiros
 }
 
 export async function createPayment(
@@ -220,6 +227,7 @@ export async function createPayment(
             autoRedirect: input.callbackAutoRedirect ?? false,
           }
         : undefined,
+      split: input.split?.length ? input.split : undefined,
     }),
   });
 }
