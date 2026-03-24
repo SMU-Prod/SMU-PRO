@@ -254,8 +254,18 @@ create table public.certificates (
   nota_final          integer,                         -- média das quizzes
   carga_horaria       integer,                         -- snapshot
   projeto_cultural    boolean not null default false,  -- selo MIT
-  unique(user_id, course_id)
+  metadata            jsonb default null               -- NR per-lesson: { lesson_id, lesson_titulo, tipo: "nr_aula" }
 );
+
+-- Regular certs: one per user+course (excludes NR per-lesson)
+create unique index idx_certificates_unique_regular
+  on public.certificates (user_id, course_id)
+  where (metadata is null or metadata->>'tipo' is distinct from 'nr_aula');
+
+-- NR per-lesson certs: one per user+course+lesson
+create unique index idx_certificates_unique_nr_lesson
+  on public.certificates (user_id, course_id, (metadata->>'lesson_id'))
+  where (metadata->>'tipo' = 'nr_aula');
 
 create index idx_certificates_codigo on public.certificates(codigo_verificacao);
 create index idx_certificates_user_id on public.certificates(user_id);
@@ -431,10 +441,15 @@ begin
       ) into v_all_quizzes_passed;
 
       if v_all_quizzes_passed then
+        -- Only insert if no regular certificate already exists for this user+course
         insert into public.certificates (user_id, course_id, projeto_cultural)
         select new.user_id, v_course_id, u.projeto_cultural
         from public.users u where u.id = new.user_id
-        on conflict (user_id, course_id) do nothing;
+          and not exists (
+            select 1 from public.certificates c
+            where c.user_id = new.user_id and c.course_id = v_course_id
+              and (c.metadata is null or c.metadata->>'tipo' is distinct from 'nr_aula')
+          );
       end if;
     end if;
 

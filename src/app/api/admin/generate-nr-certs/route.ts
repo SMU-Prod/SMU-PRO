@@ -19,24 +19,26 @@ export async function POST() {
   const { data: user } = await supabase.from("users").select("role").eq("clerk_id", userId).single();
   if (user?.role !== "admin") return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
 
-  // Find all NR courses
-  const { data: nrCourses } = await supabase
+  // Find all NR courses — match "NR" in title or "norma(s) regulament..."
+  const { data: allCourses } = await supabase
     .from("courses")
-    .select("id, titulo")
-    .like("titulo", "%NR%");
+    .select("id, titulo");
 
-  if (!nrCourses?.length) return NextResponse.json({ generated: 0, message: "Nenhum curso NR encontrado" });
+  const nrCourses = (allCourses ?? []).filter((c: any) =>
+    /\bNR\b/i.test(c.titulo) || /norma.{0,5}regulament/i.test(c.titulo)
+  );
+
+  if (!nrCourses.length) return NextResponse.json({ generated: 0, message: "Nenhum curso NR encontrado" });
 
   let totalGenerated = 0;
   const errors: string[] = [];
 
   for (const course of nrCourses) {
-    if (!/NR[- ]?\d+/i.test(course.titulo)) continue;
 
-    // Get all lessons for this NR course
+    // Get all lessons for this NR course (including quiz info)
     const { data: modules } = await (supabase as any)
       .from("modules")
-      .select("id, lessons(id, titulo, duracao_min)")
+      .select("id, lessons(id, titulo, duracao_min, tem_quiz, quizzes(id))")
       .eq("course_id", course.id);
 
     const allLessons = (modules ?? []).flatMap((m: any) => m.lessons ?? []);
@@ -65,6 +67,33 @@ export async function POST() {
 
       const completedIds = new Set((progress ?? []).map((p: any) => p.lesson_id));
 
+      // Get this user's passed quiz attempts to verify quiz completion
+      const quizIds = allLessons
+        .filter((l: any) => l.tem_quiz && l.quizzes?.length > 0)
+        .flatMap((l: any) => l.quizzes.map((q: any) => q.id));
+
+      let passedQuizIds = new Set<string>();
+      if (quizIds.length > 0) {
+        const { data: passedAttempts } = await supabase
+          .from("quiz_attempts")
+          .select("quiz_id")
+          .eq("user_id", userUuid)
+          .eq("aprovado", true)
+          .in("quiz_id", quizIds);
+        passedQuizIds = new Set((passedAttempts ?? []).map((a: any) => a.quiz_id));
+      }
+
+      // Build map of lesson_id → quiz passed
+      const lessonQuizPassed = new Map<string, boolean>();
+      for (const lesson of allLessons) {
+        if (!lesson.tem_quiz || !lesson.quizzes?.length) {
+          lessonQuizPassed.set(lesson.id, true); // No quiz = auto-passed
+        } else {
+          const quizPassed = lesson.quizzes.some((q: any) => passedQuizIds.has(q.id));
+          lessonQuizPassed.set(lesson.id, quizPassed);
+        }
+      }
+
       // Get existing certificates for this user+course
       const { data: existingCerts } = await supabase
         .from("certificates")
@@ -79,9 +108,11 @@ export async function POST() {
       );
 
       // Generate certificate for each completed lesson that doesn't have one
+      // AND where the quiz (if any) has been passed
       for (const lesson of allLessons) {
         if (!completedIds.has(lesson.id)) continue;
         if (existingLessonIds.has(lesson.id)) continue;
+        if (!lessonQuizPassed.get(lesson.id)) continue; // Quiz not passed yet
 
         try {
           const { error: insertErr } = await (supabase as any)
@@ -95,8 +126,11 @@ export async function POST() {
               metadata: { lesson_id: lesson.id, lesson_titulo: lesson.titulo, tipo: "nr_aula" },
             });
 
-          if (insertErr && insertErr.code !== "23505") {
-            errors.push(`${userInfo?.nome}: ${lesson.titulo} - ${insertErr.message}`);
+          if (insertErr) {
+            if (insertErr.code !== "23505") {
+              errors.push(`${userInfo?.nome}: ${lesson.titulo} - ${insertErr.message}`);
+            }
+            // 23505 = duplicate, skip silently (don't count as generated)
           } else {
             totalGenerated++;
           }

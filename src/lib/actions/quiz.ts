@@ -3,6 +3,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { createNotification } from "@/lib/actions/notifications";
+import { generateNRCertForLesson } from "@/lib/actions/progress";
 
 export async function submitQuizAttempt(
   quizId: string,
@@ -21,9 +22,9 @@ export async function submitQuizAttempt(
   if (nota < 0 || nota > 100) throw new Error("Nota inválida");
 
   // Verificar se o usuário tem acesso ao curso do quiz (enrollment ativo)
-  const { data: quiz } = await supabase
+  const { data: quiz } = await (supabase as any)
     .from("quizzes")
-    .select("lesson_id, lessons(titulo, module_id, modules(course_id))")
+    .select("lesson_id, lessons(titulo, duracao_min, module_id, modules!inner(course_id, courses!inner(titulo)))")
     .eq("id", quizId)
     .single();
   if (!quiz) throw new Error("Quiz não encontrado");
@@ -73,6 +74,41 @@ export async function submitQuizAttempt(
       titulo: `Aprovado no quiz: ${quizTitle}`,
       mensagem: `Você acertou ${nota}% das questões. Parabéns!`,
     }).catch((err) => console.error("[Quiz Passed Notification Error]", err));
+
+    // ── NR per-lesson certificate: generate cert when quiz is passed AND lesson is already complete ──
+    try {
+      const lessonId = quiz.lesson_id;
+      const lessonInfo = (quiz as any).lessons;
+      const courseInfo = lessonInfo?.modules;
+      const courseTitulo = courseInfo?.courses?.titulo ?? "";
+      const isNR = /\bNR\b/i.test(courseTitulo) || /norma.{0,5}regulament/i.test(courseTitulo);
+
+      if (isNR && lessonId && courseInfo?.course_id) {
+        // Check if the lesson is already marked as complete
+        const { data: progressRow } = await supabase
+          .from("progress")
+          .select("concluido")
+          .eq("user_id", userRow.id)
+          .eq("lesson_id", lessonId)
+          .eq("concluido", true)
+          .maybeSingle();
+
+        if (progressRow) {
+          // Lesson is complete AND quiz is passed → generate NR cert
+          await generateNRCertForLesson(
+            supabase,
+            userRow.id,
+            courseInfo.course_id,
+            lessonId,
+            { titulo: lessonInfo.titulo, duracao_min: lessonInfo.duracao_min },
+            courseTitulo,
+            userId,
+          );
+        }
+      }
+    } catch (e) {
+      console.error("[Quiz → NR cert] Error:", e);
+    }
   } else {
     createNotification({
       userUuid: userRow.id,

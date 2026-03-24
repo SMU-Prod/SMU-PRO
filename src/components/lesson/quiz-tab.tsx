@@ -208,11 +208,11 @@ export function QuizTab({ lesson, quizAttempts, quizData, userId }: QuizTabProps
     return (
       <div className="animate-fade-in space-y-5">
         {submitError && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600 flex items-center gap-2">
+          <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-400 flex items-center gap-2">
             <AlertCircle size={16} className="shrink-0" />
             <div>
               <p className="font-medium">Erro ao salvar tentativa</p>
-              <p className="text-xs text-red-500 mt-0.5">{submitError}</p>
+              <p className="text-xs text-red-400/80 mt-0.5">{submitError}</p>
             </div>
           </div>
         )}
@@ -220,8 +220,8 @@ export function QuizTab({ lesson, quizAttempts, quizData, userId }: QuizTabProps
           className={cn(
             "rounded-xl border p-6 text-center",
             result.aprovado
-              ? "border-emerald-200 bg-emerald-50"
-              : "border-red-200 bg-red-50"
+              ? "border-emerald-500/20 bg-emerald-500/10"
+              : "border-red-500/20 bg-red-500/10"
           )}
         >
           {result.aprovado ? (
@@ -288,9 +288,9 @@ export function QuizTab({ lesson, quizAttempts, quizData, userId }: QuizTabProps
                       className={cn(
                         "flex items-center gap-2 text-xs px-3 py-2 rounded-lg border",
                         opt.correta
-                          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                          ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
                           : chosen === opt.id
-                          ? "border-red-200 bg-red-50 text-red-700"
+                          ? "border-red-500/20 bg-red-500/10 text-red-400"
                           : "border-border text-muted-light"
                       )}
                     >
