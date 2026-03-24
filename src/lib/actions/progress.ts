@@ -2,7 +2,7 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { createAdminClient } from "@/lib/supabase/server";
-import { sendCourseCompletionEmail } from "@/lib/email";
+import { sendCourseCompletionEmail, sendCertificateEmail } from "@/lib/email";
 import { createNotification } from "@/lib/actions/notifications";
 import { revalidatePath } from "next/cache";
 
@@ -62,6 +62,11 @@ export async function markLessonComplete(lessonId: string, courseSlug: string) {
           .eq("user_id", userUuid)
           .eq("course_id", course.id);
 
+        // Auto-generate certificate
+        await autoGenerateCertificate(admin, userUuid, course.id, allLessonIds, userId).catch(
+          (err) => console.error("[Certificate] Auto-generate failed:", err)
+        );
+
         // Send completion email (fire-and-forget)
         const { data: user } = await admin
           .from("users").select("email, nome").eq("clerk_id", userId).single();
@@ -104,6 +109,114 @@ export async function updateWatchTime(lessonId: string, seconds: number) {
     { user_id: userUuid, lesson_id: lessonId, tempo_assistido: seconds },
     { onConflict: "user_id,lesson_id" }
   );
+}
+
+/**
+ * Auto-generate certificate when a course is 100% complete.
+ * Replicates the logic from /api/certificates/generate but runs server-side.
+ */
+async function autoGenerateCertificate(
+  admin: ReturnType<typeof createAdminClient>,
+  userUuid: string,
+  courseId: string,
+  allLessonIds: string[],
+  clerkId: string,
+) {
+  // Check if certificate already exists
+  const { data: existing } = await admin
+    .from("certificates")
+    .select("id")
+    .eq("user_id", userUuid)
+    .eq("course_id", courseId)
+    .single();
+
+  if (existing) return; // Already has certificate
+
+  // Get course details
+  const { data: course } = await admin
+    .from("courses")
+    .select("titulo, carga_horaria")
+    .eq("id", courseId)
+    .single();
+
+  // Get user details
+  const { data: userRow } = await admin
+    .from("users")
+    .select("email, nome, projeto_cultural")
+    .eq("clerk_id", clerkId)
+    .single();
+
+  if (!userRow || !course) return;
+
+  // Calculate average quiz grade for this course
+  const { data: lessons } = await admin
+    .from("lessons")
+    .select("id, tem_quiz")
+    .in("id", allLessonIds);
+
+  const quizLessonIds = (lessons ?? []).filter((l) => l.tem_quiz).map((l) => l.id);
+  let notaMedia = 100;
+
+  if (quizLessonIds.length > 0) {
+    const { data: quizzes } = await admin
+      .from("quizzes")
+      .select("id")
+      .in("lesson_id", quizLessonIds);
+
+    if (quizzes?.length) {
+      const { data: attempts } = await admin
+        .from("quiz_attempts")
+        .select("nota")
+        .eq("user_id", userUuid)
+        .eq("aprovado", true)
+        .in("quiz_id", quizzes.map((q) => q.id));
+
+      if (attempts?.length) {
+        notaMedia = Math.round(
+          attempts.reduce((acc, b) => acc + b.nota, 0) / attempts.length
+        );
+      }
+    }
+  }
+
+  // Create certificate
+  const { data: cert, error } = await admin
+    .from("certificates")
+    .insert({
+      user_id: userUuid,
+      course_id: courseId,
+      nota_final: notaMedia,
+      carga_horaria: course.carga_horaria,
+      projeto_cultural: userRow.projeto_cultural ?? false,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    // ON CONFLICT = already exists
+    if (error.code === "23505") return;
+    throw error;
+  }
+
+  // Log activity
+  await admin.from("activity_log").insert({
+    user_id: userUuid,
+    tipo: "certificate_issued" as any,
+    descricao: `Certificado emitido automaticamente para ${course.titulo}`,
+    metadata: { certificate_id: cert.id, course_id: courseId },
+  });
+
+  // Send certificate email
+  if (userRow.email && cert) {
+    sendCertificateEmail({
+      to: userRow.email,
+      nome: userRow.nome,
+      courseTitulo: course.titulo,
+      notaFinal: cert.nota_final,
+      cargaHoraria: cert.carga_horaria,
+      codigoVerificacao: cert.codigo_verificacao,
+    }).catch((err) => console.error("[Email] Erro ao enviar certificado:", err));
+  }
 }
 
 export async function getUserProgress(courseId: string) {

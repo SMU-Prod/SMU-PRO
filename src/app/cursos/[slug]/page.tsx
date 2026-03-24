@@ -65,9 +65,18 @@ export default async function CourseDetailPage({ params }: Props) {
     }
   }
 
-  const modules = course.modules ?? [];
+  const allModules = course.modules ?? [];
+  const modules = allModules.filter((m: any) => !m.parent_id);
+  const childModsMap = new Map<string, any[]>();
+  for (const m of allModules) {
+    if (m.parent_id) {
+      const list = childModsMap.get(m.parent_id) ?? [];
+      list.push(m);
+      childModsMap.set(m.parent_id, list.sort((a: any, b: any) => a.ordem - b.ordem));
+    }
+  }
 
-  const totalLessons = modules.reduce((acc: number, m: any) => acc + (m.lessons?.length ?? 0), 0);
+  const totalLessons = allModules.reduce((acc: number, m: any) => acc + (m.lessons?.length ?? 0), 0);
   const isEnrolled = enrollment?.status === "ativo";
   const isFree = course.tipo === "free";
 
@@ -287,40 +296,77 @@ export default async function CourseDetailPage({ params }: Props) {
           <section>
             <h2 className="text-2xl font-bold text-foreground mb-6">Conteúdo do curso</h2>
             <div className="space-y-3">
-              {modules.map((mod: any, mIdx: number) => (
-                <div key={mod.id} className="rounded-xl bg-surface border border-border overflow-hidden">
-                  <div className="flex items-center justify-between px-5 py-4 bg-surface-2">
-                    <h3 className="font-semibold text-sm text-foreground">
-                      <span className="text-muted-light mr-2">Módulo {mIdx + 1}</span>
-                      {mod.titulo}
-                    </h3>
-                    <span className="text-xs text-muted-light">{mod.lessons?.length ?? 0} aulas</span>
-                  </div>
-                  <div className="border-t border-border/50">
-                    {(mod.lessons ?? []).map((lesson: any, lIdx: number) => (
-                      <div key={lesson.id} className="flex items-center gap-3 px-5 py-3 border-b border-border/50 last:border-0">
-                        {lesson.preview_gratis || isEnrolled ? (
-                          <Play size={14} className="text-amber-400 shrink-0" />
-                        ) : (
-                          <Lock size={14} className="text-muted-light shrink-0" />
-                        )}
-                        <span className="text-sm text-muted flex-1">
-                          {lIdx + 1}. {lesson.titulo}
-                        </span>
-                        <div className="flex items-center gap-2 shrink-0">
-                          {lesson.tem_quiz && (
-                            <span className="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/15 px-2 py-0.5 rounded-full">Quiz</span>
+              {modules.map((mod: any, mIdx: number) => {
+                const children = childModsMap.get(mod.id) ?? [];
+                const modTotalLessons = (mod.lessons?.length ?? 0) + children.reduce((a: number, c: any) => a + (c.lessons?.length ?? 0), 0);
+                return (
+                  <div key={mod.id} className="rounded-xl bg-surface border border-border overflow-hidden">
+                    <div className="flex items-center justify-between px-5 py-4 bg-surface-2">
+                      <h3 className="font-semibold text-sm text-foreground">
+                        <span className="text-muted-light mr-2">Módulo {mIdx + 1}</span>
+                        {mod.titulo}
+                      </h3>
+                      <span className="text-xs text-muted-light">{modTotalLessons} aulas</span>
+                    </div>
+                    <div className="border-t border-border/50">
+                      {/* Root module's own lessons */}
+                      {(mod.lessons ?? []).map((lesson: any, lIdx: number) => (
+                        <div key={lesson.id} className="flex items-center gap-3 px-5 py-3 border-b border-border/50 last:border-0">
+                          {lesson.preview_gratis || isEnrolled ? (
+                            <Play size={14} className="text-amber-400 shrink-0" />
+                          ) : (
+                            <Lock size={14} className="text-muted-light shrink-0" />
                           )}
-                          {lesson.preview_gratis && !isEnrolled && (
-                            <span className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded-full">Grátis</span>
-                          )}
-                          <span className="text-xs text-muted-light">{lesson.duracao_min}min</span>
+                          <span className="text-sm text-muted flex-1">
+                            {lIdx + 1}. {lesson.titulo}
+                          </span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {lesson.tem_quiz && (
+                              <span className="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/15 px-2 py-0.5 rounded-full">Quiz</span>
+                            )}
+                            {lesson.preview_gratis && !isEnrolled && (
+                              <span className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded-full">Grátis</span>
+                            )}
+                            <span className="text-xs text-muted-light">{lesson.duracao_min}min</span>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+
+                      {/* Submodules with their lessons */}
+                      {children.map((sub: any) => (
+                        <div key={sub.id}>
+                          <div className="flex items-center gap-2 px-5 py-2.5 bg-surface-2/50 border-b border-border/50">
+                            <ChevronRight size={12} className="text-amber-400/50 shrink-0" />
+                            <span className="text-xs font-semibold text-foreground">{sub.titulo}</span>
+                            <span className="text-[10px] text-muted-light ml-auto">{sub.lessons?.length ?? 0} aulas</span>
+                          </div>
+                          {(sub.lessons ?? []).map((lesson: any, lIdx: number) => (
+                            <div key={lesson.id} className="flex items-center gap-3 px-7 py-3 border-b border-border/50 last:border-0">
+                              {lesson.preview_gratis || isEnrolled ? (
+                                <Play size={14} className="text-amber-400 shrink-0" />
+                              ) : (
+                                <Lock size={14} className="text-muted-light shrink-0" />
+                              )}
+                              <span className="text-sm text-muted flex-1">
+                                {lIdx + 1}. {lesson.titulo}
+                              </span>
+                              <div className="flex items-center gap-2 shrink-0">
+                                {lesson.tem_quiz && (
+                                  <span className="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/15 px-2 py-0.5 rounded-full">Quiz</span>
+                                )}
+                                {lesson.preview_gratis && !isEnrolled && (
+                                  <span className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded-full">Grátis</span>
+                                )}
+                                <span className="text-xs text-muted-light">{lesson.duracao_min}min</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </section>
         </div>

@@ -9,12 +9,14 @@ import { cn, formatMinutes, getLevelLabel } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { markLessonComplete } from "@/lib/actions/progress";
 import { VideoPlayer } from "./video-player";
 import { QuizTab } from "./quiz-tab";
 import { NotesTab } from "./notes-tab";
 import { AudioPlayer } from "./audio-player";
-import { AiExplainer } from "./ai-explainer";
+import { AnimationPlayer } from "./animation-player";
+import { RichContentViewer } from "./rich-content-viewer";
 import type { Enrollment, Progress as ProgressType, QuizAttempt, Note } from "@/types/database";
 import {
   CheckCircle2, Circle, ChevronDown, ChevronRight, ChevronUp,
@@ -48,6 +50,7 @@ interface LessonPlayerProps {
   quizData?: any;
   notes: Note[];
   userId: string;
+  userRole?: string | null;
 }
 
 type Tab = "overview" | "materials" | "quiz" | "notes" | "content";
@@ -61,6 +64,7 @@ export function LessonPlayer({
   quizData,
   notes,
   userId,
+  userRole,
 }: LessonPlayerProps) {
   const router = useRouter();
   const youtubeId = lesson.youtube_id ? extractYoutubeId(lesson.youtube_id) : null;
@@ -70,7 +74,13 @@ export function LessonPlayer({
       const initial: Record<string, boolean> = {};
       for (const mod of course.modules ?? []) {
         const hasCurrentLesson = mod.lessons?.some((l: any) => l.id === lesson.id);
-        initial[mod.id] = hasCurrentLesson;
+        if (hasCurrentLesson) {
+          initial[mod.id] = true;
+          // If this is a submodule, also expand its parent
+          if (mod.parent_id) {
+            initial[mod.parent_id] = true;
+          }
+        }
       }
       return initial;
     }
@@ -81,7 +91,8 @@ export function LessonPlayer({
     progressMap[lesson.id]?.concluido ?? false
   );
 
-  const hasAccess = !!enrollment || lesson.preview_gratis;
+  const isAdmin = userRole === "admin";
+  const hasAccess = isAdmin || !!enrollment || lesson.preview_gratis;
 
   const totalLessons =
     course.modules?.reduce((acc: number, mod: any) => acc + (mod.lessons?.length ?? 0), 0) ?? 0;
@@ -121,6 +132,78 @@ export function LessonPlayer({
     { id: "content", label: "Conteúdo", icon: List, mobileOnly: true },
   ];
 
+  // ── Build hierarchical module structure ──
+  const allModules: any[] = course.modules ?? [];
+  const rootMods = allModules.filter((m: any) => !m.parent_id).sort((a: any, b: any) => a.ordem - b.ordem);
+  const childModsMap = new Map<string, any[]>();
+  for (const m of allModules) {
+    if (m.parent_id) {
+      const list = childModsMap.get(m.parent_id) ?? [];
+      list.push(m);
+      childModsMap.set(m.parent_id, list.sort((a: any, b: any) => a.ordem - b.ordem));
+    }
+  }
+
+  // Count total lessons including submodule lessons for a root module
+  const countModuleLessons = (mod: any): { total: number; completed: number } => {
+    let total = mod.lessons?.length ?? 0;
+    let completed = mod.lessons?.filter((l: any) => progressMap[l.id]?.concluido).length ?? 0;
+    const children = childModsMap.get(mod.id) ?? [];
+    for (const child of children) {
+      total += child.lessons?.length ?? 0;
+      completed += child.lessons?.filter((l: any) => progressMap[l.id]?.concluido).length ?? 0;
+    }
+    return { total, completed };
+  };
+
+  const LessonItem = ({ l, indent = false }: { l: any; indent?: boolean }) => {
+    const done = progressMap[l.id]?.concluido ?? false;
+    const isCurrent = l.id === lesson.id;
+    const locked = !hasAccess && !l.preview_gratis;
+    return (
+      <Link
+        key={l.id}
+        href={locked ? "#" : `/dashboard/cursos/${course.slug}/aulas/${l.id}`}
+        className={cn(
+          "flex items-center gap-3 py-2.5 text-sm transition-all group",
+          indent ? "px-6" : "px-4",
+          isCurrent
+            ? "bg-amber-500/10 border-l-2 border-amber-500"
+            : "hover:bg-hover border-l-2 border-transparent",
+          locked && "opacity-50 cursor-not-allowed"
+        )}
+      >
+        <div className="shrink-0">
+          {done ? (
+            <CheckCircle2 size={16} className="text-amber-400" />
+          ) : locked ? (
+            <Lock size={14} className="text-muted-light" />
+          ) : (
+            <Circle
+              size={16}
+              className={cn(
+                "transition-colors",
+                isCurrent ? "text-amber-400" : "text-muted-light group-hover:text-muted-light"
+              )}
+            />
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p
+            className={cn(
+              "truncate text-xs leading-snug",
+              isCurrent ? "text-amber-400 font-medium" : done ? "text-muted-light" : "text-muted"
+            )}
+          >
+            {l.titulo}
+          </p>
+          <p className="text-[10px] text-muted-light mt-0.5">{formatMinutes(l.duracao_min)}</p>
+        </div>
+        {l.tem_quiz && <HelpCircle size={12} className="text-amber-400 shrink-0 opacity-70" />}
+      </Link>
+    );
+  };
+
   const CourseContentList = () => (
     <div className="flex flex-col">
       {/* Progress header */}
@@ -131,11 +214,11 @@ export function LessonPlayer({
         </div>
         <p className="text-xs text-muted-light">{completedLessons}/{totalLessons} aulas concluídas</p>
       </div>
-      {/* Modules */}
-      {course.modules?.map((mod: any, modIdx: number) => {
+      {/* Modules (only root modules, with submodules nested inside) */}
+      {rootMods.map((mod: any, modIdx: number) => {
         const expanded = expandedModules[mod.id] ?? false;
-        const modCompleted = mod.lessons?.filter((l: any) => progressMap[l.id]?.concluido).length ?? 0;
-        const modTotal = mod.lessons?.length ?? 0;
+        const { total: modTotal, completed: modCompleted } = countModuleLessons(mod);
+        const children = childModsMap.get(mod.id) ?? [];
         return (
           <div key={mod.id} className="border-b border-border/50">
             <button
@@ -156,50 +239,40 @@ export function LessonPlayer({
             </button>
             {expanded && (
               <div className="pb-1 bg-surface-2/50">
-                {mod.lessons?.map((l: any) => {
-                  const done = progressMap[l.id]?.concluido ?? false;
-                  const isCurrent = l.id === lesson.id;
-                  const locked = !hasAccess && !l.preview_gratis;
+                {/* Root module's own lessons (direct, no submodule) */}
+                {(mod.lessons ?? []).map((l: any) => (
+                  <LessonItem key={l.id} l={l} />
+                ))}
+
+                {/* Sub-modules with their lessons */}
+                {children.map((sub: any) => {
+                  const subExpanded = expandedModules[sub.id] ?? false;
+                  const subCompleted = sub.lessons?.filter((l: any) => progressMap[l.id]?.concluido).length ?? 0;
+                  const subTotal = sub.lessons?.length ?? 0;
                   return (
-                    <Link
-                      key={l.id}
-                      href={locked ? "#" : `/dashboard/cursos/${course.slug}/aulas/${l.id}`}
-                      className={cn(
-                        "flex items-center gap-3 px-4 py-2.5 text-sm transition-all group",
-                        isCurrent
-                          ? "bg-amber-500/10 border-l-2 border-amber-500"
-                          : "hover:bg-hover border-l-2 border-transparent",
-                        locked && "opacity-50 cursor-not-allowed"
+                    <div key={sub.id} className="border-t border-border/30">
+                      <button
+                        onClick={() => toggleModule(sub.id)}
+                        className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-hover transition-colors text-left"
+                      >
+                        <ChevronRight size={12} className="text-amber-400/50 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-foreground truncate">{sub.titulo}</p>
+                          <p className="text-[10px] text-muted-light">{subCompleted}/{subTotal} aulas</p>
+                        </div>
+                        <ChevronDown
+                          size={13}
+                          className={cn("text-muted-light transition-transform shrink-0", subExpanded && "rotate-180")}
+                        />
+                      </button>
+                      {subExpanded && (
+                        <div className="bg-surface-2/80">
+                          {(sub.lessons ?? []).map((l: any) => (
+                            <LessonItem key={l.id} l={l} indent />
+                          ))}
+                        </div>
                       )}
-                    >
-                      <div className="shrink-0">
-                        {done ? (
-                          <CheckCircle2 size={16} className="text-amber-400" />
-                        ) : locked ? (
-                          <Lock size={14} className="text-muted-light" />
-                        ) : (
-                          <Circle
-                            size={16}
-                            className={cn(
-                              "transition-colors",
-                              isCurrent ? "text-amber-400" : "text-muted-light group-hover:text-muted-light"
-                            )}
-                          />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p
-                          className={cn(
-                            "truncate text-xs leading-snug",
-                            isCurrent ? "text-amber-400 font-medium" : done ? "text-muted-light" : "text-muted"
-                          )}
-                        >
-                          {l.titulo}
-                        </p>
-                        <p className="text-[10px] text-muted-light mt-0.5">{formatMinutes(l.duracao_min)}</p>
-                      </div>
-                      {l.tem_quiz && <HelpCircle size={12} className="text-amber-400 shrink-0 opacity-70" />}
-                    </Link>
+                    </div>
                   );
                 })}
               </div>
@@ -210,11 +283,10 @@ export function LessonPlayer({
       {/* Instructor */}
       <div className="px-4 py-3 border-t border-border bg-surface mt-auto">
         <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-full bg-gradient-to-br from-amber-500 to-amber-400 flex items-center justify-center text-white font-bold text-sm shrink-0">
-            S
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.jpg" alt="SMU" className="h-9 w-9 rounded-full object-cover shrink-0" />
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-foreground">SMU Escola</p>
+            <p className="text-sm font-semibold text-foreground">SMU Produções</p>
             <div className="flex items-center gap-1">
               <Star size={10} className="text-amber-400 fill-amber-400" />
               <span className="text-xs text-muted-light">4.9 · Instrutor Oficial</span>
@@ -402,11 +474,19 @@ export function LessonPlayer({
             <div className="animate-fade-in">
               {activeTab === "overview" && (
                 <div className="space-y-4 text-sm text-muted leading-relaxed">
-                  {/* Audio Player + AI Explainer */}
+                  {/* Audio Player + Interactive Content */}
                   {lesson.conteudo_rico && (
                     <div className="space-y-3">
                       <AudioPlayer lessonId={lesson.id} conteudo={lesson.conteudo_rico} />
-                      <AiExplainer lessonId={lesson.id} titulo={lesson.titulo} conteudo={lesson.conteudo_rico} />
+                      <ErrorBoundary>
+                        <AnimationPlayer
+                          lessonId={lesson.id}
+                          titulo={lesson.titulo}
+                          conteudo={lesson.conteudo_rico}
+                          categoria={course.categoria ?? "outros"}
+                          isAdmin={isAdmin}
+                        />
+                      </ErrorBoundary>
                     </div>
                   )}
 
@@ -416,13 +496,15 @@ export function LessonPlayer({
                     <p className="text-muted-light">Sem descrição para esta aula.</p>
                   )}
                   {lesson.conteudo_rico && (
-                    <div
-                      className="prose-light max-w-none"
-                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(lesson.conteudo_rico, {
-                        ADD_ATTR: ["style", "class", "target", "rel", "data-width", "data-alignment", "alt"],
-                        ADD_TAGS: ["mark", "sup", "sub", "img", "table", "thead", "tbody", "tr", "td", "th", "colgroup", "col", "figure", "figcaption"],
-                      }) }}
-                    />
+                    <ErrorBoundary>
+                      <RichContentViewer
+                        html={lesson.conteudo_rico}
+                        lessonId={lesson.id}
+                        titulo={lesson.titulo}
+                        categoria={course.categoria ?? "outros"}
+                        isAdmin={isAdmin}
+                      />
+                    </ErrorBoundary>
                   )}
                 </div>
               )}

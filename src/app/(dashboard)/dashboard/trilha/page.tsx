@@ -57,8 +57,8 @@ export default async function TrilhaPage() {
   const { data: userRow } = await supabase.from("users").select("id").eq("clerk_id", userId).single();
   const userUuid = userRow?.id;
 
-  // Buscar cursos ativos e matrículas do usuário
-  const [{ data: allCourses }, enrollmentsResult] = await Promise.all([
+  // Buscar cursos ativos, matrículas e certificados do usuário
+  const [{ data: allCourses }, enrollmentsResult, certificatesResult] = await Promise.all([
     supabase
       .from("courses")
       .select("id, titulo, slug, nivel, categoria, carga_horaria, thumbnail_url")
@@ -72,8 +72,18 @@ export default async function TrilhaPage() {
           .eq("user_id", userUuid)
           .eq("status", "ativo")
       : Promise.resolve({ data: [] }),
+    userUuid
+      ? supabase
+          .from("certificates")
+          .select("course_id, codigo_verificacao")
+          .eq("user_id", userUuid)
+      : Promise.resolve({ data: [] }),
   ]);
   const enrollments = enrollmentsResult.data;
+  const certificates = certificatesResult.data ?? [];
+  const certMap = new Map(
+    certificates.map((c: any) => [c.course_id, c.codigo_verificacao])
+  );
 
   const courses = allCourses ?? [];
   const enrollMap = new Map(
@@ -233,21 +243,33 @@ export default async function TrilhaPage() {
                             </div>
                           )}
 
-                          <Link href={isEnrolled ? `/dashboard/cursos/${course.slug}` : `/cursos/${course.slug}`}>
-                            <Button
-                              variant={isDone ? "success" : isEnrolled ? "default" : "secondary"}
-                              size="sm"
-                              className="w-full gap-1.5"
-                            >
-                              {isDone ? (
-                                <><Award size={13} /> Ver certificado</>
-                              ) : isEnrolled ? (
-                                <><Play size={13} /> Continuar</>
-                              ) : (
-                                <><ChevronRight size={13} /> Ver curso</>
-                              )}
-                            </Button>
-                          </Link>
+                          {isDone && certMap.has(course.id) ? (
+                            <Link href={`/certificado/${certMap.get(course.id)}`}>
+                              <Button
+                                variant="success"
+                                size="sm"
+                                className="w-full gap-1.5"
+                              >
+                                <Award size={13} /> Ver certificado
+                              </Button>
+                            </Link>
+                          ) : (
+                            <Link href={isEnrolled ? `/dashboard/cursos/${course.slug}` : `/cursos/${course.slug}`}>
+                              <Button
+                                variant={isDone ? "secondary" : isEnrolled ? "default" : "secondary"}
+                                size="sm"
+                                className="w-full gap-1.5"
+                              >
+                                {isDone ? (
+                                  <><Award size={13} /> Gerar certificado</>
+                                ) : isEnrolled ? (
+                                  <><Play size={13} /> Continuar</>
+                                ) : (
+                                  <><ChevronRight size={13} /> Ver curso</>
+                                )}
+                              </Button>
+                            </Link>
+                          )}
                         </div>
                       );
                     })}

@@ -335,7 +335,7 @@ export function CourseContentManager({ course }: { course: any }) {
               onEditModule={() => { setEditingModule(mod.id); moduleForm.setValue("titulo", mod.titulo); }}
               onCancelEditModule={() => setEditingModule(null)}
               onUpdateModule={(d: any) => handleUpdateModule(mod.id, d)}
-              onDeleteModule={() => handleDeleteModule(mod.id)}
+              onDeleteModule={(targetId?: string) => handleDeleteModule(targetId ?? mod.id)}
               onCreateLesson={(d: any, targetModuleId?: string) => handleCreateLesson(targetModuleId ?? mod.id, d)}
               onUpdateLesson={(lessonId: string, d: any, targetModuleId?: string) => handleUpdateLesson(lessonId, targetModuleId ?? mod.id, d)}
               onAutoSaveLesson={(lessonId: string, d: any, targetModuleId?: string) => handleAutoSaveLesson(lessonId, targetModuleId ?? mod.id, d)}

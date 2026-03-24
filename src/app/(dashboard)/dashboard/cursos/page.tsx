@@ -134,7 +134,7 @@ function CourseGrid({ courses, showCertificate = false }: { courses: any[]; show
                   {enrollment.progresso === 0 ? (
                     <><Play size={14} /> Começar</>
                   ) : enrollment.progresso === 100 ? (
-                    <><Trophy size={14} /> Ver certificado</>
+                    <><Trophy size={14} /> Ver curso</>
                   ) : (
                     <><Play size={14} /> Continuar</>
                   )}

@@ -84,8 +84,9 @@ export default async function CertificatePage({ params }: Props) {
           <div className="flex items-start justify-between mb-8">
             <div>
               <p className="text-xs text-muted-light uppercase tracking-widest mb-1">Certificado de Conclusão</p>
-              <p className="text-2xl font-bold gradient-text">SMU PRO</p>
-              <p className="text-xs text-muted-light mt-1">Escola de Música e Eventos</p>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.jpg" alt="SMU Produções" className="h-12 rounded-md mb-1" />
+              <p className="text-xs text-muted-light mt-1">Escola Profissional de Eventos</p>
             </div>
             {cert.projeto_cultural ? (
               <div className="flex flex-col items-center gap-1">
@@ -144,8 +145,10 @@ export default async function CertificatePage({ params }: Props) {
           <div className="flex items-end justify-between border-t border-border pt-6">
             <div>
               <div className="h-px w-40 bg-border mb-2" />
-              <p className="text-xs text-muted-light">Assinatura SMU</p>
-              <p className="text-xs text-muted-light">Escola de Música e Eventos</p>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.jpg" alt="SMU" className="h-8 rounded mb-1" />
+              <p className="text-xs text-muted-light">SMU Produções</p>
+              <p className="text-xs text-muted-light">Escola Profissional de Eventos</p>
             </div>
             <div className="flex flex-col items-center gap-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
