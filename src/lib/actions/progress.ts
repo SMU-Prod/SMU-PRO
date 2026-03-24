@@ -32,6 +32,62 @@ export async function markLessonComplete(lessonId: string, courseSlug: string) {
 
   if (error) throw error;
 
+  // ── NR per-lesson certificate: if course is NR, generate certificate for each completed lesson ──
+  try {
+    const { data: lessonData } = await (admin as any)
+      .from("lessons")
+      .select("id, titulo, duracao_min, tem_quiz, module_id, modules!inner(course_id, courses!inner(titulo, slug, categoria))")
+      .eq("id", lessonId)
+      .single();
+
+    if (lessonData) {
+      const courseTitulo = lessonData.modules?.courses?.titulo ?? "";
+      const isNR = /NR[- ]?\d+/i.test(courseTitulo);
+
+      if (isNR) {
+        // Check if NR per-lesson certificate already exists (using lesson_id in metadata)
+        const { data: existingNRCert } = await admin
+          .from("certificates")
+          .select("id")
+          .eq("user_id", userUuid)
+          .eq("course_id", lessonData.modules.course_id)
+          .contains("metadata", { lesson_id: lessonId })
+          .maybeSingle();
+
+        if (!existingNRCert) {
+          const { data: userRow } = await admin
+            .from("users")
+            .select("email, nome, projeto_cultural")
+            .eq("clerk_id", userId)
+            .single();
+
+          if (userRow) {
+            const { error: certErr } = await admin.from("certificates").insert({
+              user_id: userUuid,
+              course_id: lessonData.modules.course_id,
+              nota_final: 100,
+              carga_horaria: lessonData.duracao_min ?? 0,
+              projeto_cultural: userRow.projeto_cultural ?? false,
+              metadata: { lesson_id: lessonId, lesson_titulo: lessonData.titulo, tipo: "nr_aula" },
+            });
+            if (certErr && certErr.code !== "23505") {
+              console.error("[NR Cert] Error:", certErr);
+            } else if (!certErr) {
+              await admin.from("activity_log").insert({
+                user_id: userUuid,
+                tipo: "certificate_issued" as any,
+                descricao: `Certificado NR emitido: ${lessonData.titulo}`,
+                metadata: { lesson_id: lessonId, course_id: lessonData.modules.course_id },
+              });
+            }
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.error("[NR per-lesson cert] Error:", e);
+  }
+
   // Check if course is now 100% complete — fire completion email once
   try {
     const { data: course } = await (admin as any)

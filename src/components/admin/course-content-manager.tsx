@@ -39,8 +39,9 @@ import {
   Plus, ChevronDown, Edit2, Trash2, GripVertical,
   Video, FileText, HelpCircle, BookOpen, Save, X,
   CheckCircle2, Circle, Settings2, ChevronRight, Copy, Sparkles,
-  FolderTree, ArrowUp, CornerDownRight,
+  FolderTree, ArrowUp, CornerDownRight, ClipboardPaste, AlertTriangle,
 } from "lucide-react";
+import { parseQuizText } from "@/lib/quiz-parser";
 
 const moduleSchema = z.object({
   titulo: z.string().min(2),
@@ -1007,6 +1008,10 @@ function QuizBuilder({ lessonId, lessonTitulo, lessonConteudo, onClose, onQuizCr
   const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null);
   const [editingSettings, setEditingSettings] = useState(false);
   const [generatingAI, setGeneratingAI] = useState(false);
+  const [showPasteModal, setShowPasteModal] = useState(false);
+  const [pasteText, setPasteText] = useState("");
+  const [pasteErrors, setPasteErrors] = useState<string[]>([]);
+  const [importingPaste, setImportingPaste] = useState(false);
   const [settingsForm, setSettingsForm] = useState({ nivel_minimo_aprovacao: 70, tentativas_permitidas: 3, embaralhar_questoes: true, tempo_limite_min: null as number | null });
 
   useEffect(() => {
@@ -1174,6 +1179,67 @@ function QuizBuilder({ lessonId, lessonTitulo, lessonConteudo, onClose, onQuizCr
     }
   };
 
+  const handleImportFromPaste = async () => {
+    if (!pasteText.trim()) return;
+    setPasteErrors([]);
+    const result = parseQuizText(pasteText);
+
+    if (result.errors.length > 0 && result.questions.length === 0) {
+      setPasteErrors(result.errors);
+      return;
+    }
+
+    setImportingPaste(true);
+    try {
+      // Update quiz settings if approval minimum was found
+      if (result.aprovacao_minima && quiz) {
+        await adminUpdateQuiz(quiz.id, { nivel_minimo_aprovacao: result.aprovacao_minima });
+        setQuiz((prev: any) => ({ ...prev, nivel_minimo_aprovacao: result.aprovacao_minima }));
+        setSettingsForm((p) => ({ ...p, nivel_minimo_aprovacao: result.aprovacao_minima! }));
+      }
+
+      // Import each question with options
+      const startOrder = quiz.quiz_questions?.length ?? 0;
+      for (let i = 0; i < result.questions.length; i++) {
+        const pq = result.questions[i];
+        const q = await adminCreateQuestion({
+          quiz_id: quiz.id,
+          texto: pq.texto,
+          tipo: pq.tipo,
+          explicacao: pq.explicacao,
+          ordem: startOrder + i,
+          pontos: 1,
+        });
+        const savedOptions: any[] = [];
+        for (let j = 0; j < pq.opcoes.length; j++) {
+          const opt = await adminCreateOption({
+            question_id: q.id,
+            texto: pq.opcoes[j].texto,
+            correta: pq.opcoes[j].correta,
+            ordem: j,
+          });
+          savedOptions.push(opt);
+        }
+        setQuiz((prev: any) => ({
+          ...prev,
+          quiz_questions: [...(prev.quiz_questions ?? []), { ...q, quiz_options: savedOptions }],
+        }));
+      }
+
+      // Show warnings if any
+      if (result.errors.length > 0) {
+        setPasteErrors(result.errors);
+      } else {
+        setShowPasteModal(false);
+        setPasteText("");
+      }
+    } catch (err: any) {
+      setPasteErrors([`Erro ao importar: ${err.message || "Erro desconhecido"}`]);
+    } finally {
+      setImportingPaste(false);
+    }
+  };
+
   return (
     <div className="border-t border-amber-500/15 bg-amber-500/5 px-4 py-4">
       <div className="flex items-center justify-between mb-4">
@@ -1287,15 +1353,71 @@ function QuizBuilder({ lessonId, lessonTitulo, lessonConteudo, onClose, onQuizCr
             />
           ))}
 
+          {/* ── Paste Quiz Modal ── */}
+          {showPasteModal && (
+            <div className="bg-surface rounded-lg border border-amber-500/20 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                  <ClipboardPaste size={13} className="text-amber-400" /> Colar Quiz Completo
+                </p>
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setShowPasteModal(false); setPasteErrors([]); }}><X size={12} /></Button>
+              </div>
+              <p className="text-[10px] text-muted-light">
+                Cole o texto do quiz com perguntas numeradas (1, 2, 3...), alternativas com letras (a, b, c, d)
+                e gabarito no final. O sistema detecta automaticamente as respostas corretas.
+              </p>
+              <textarea
+                value={pasteText}
+                onChange={(e) => setPasteText(e.target.value)}
+                placeholder={"1. Qual a capital do Brasil?\n   a) São Paulo\n   b) Brasília\n   c) Rio de Janeiro\n   d) Salvador\n\nGABARITO\n1 B"}
+                className="w-full h-48 text-xs font-mono bg-background border border-border rounded-lg p-3 focus:outline-none focus:border-amber-500 resize-y"
+                autoFocus
+              />
+              {pasteErrors.length > 0 && (
+                <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-2.5 space-y-1">
+                  {pasteErrors.map((err, i) => (
+                    <p key={i} className="text-[10px] text-red-400 flex items-start gap-1.5">
+                      <AlertTriangle size={10} className="shrink-0 mt-0.5" /> {err}
+                    </p>
+                  ))}
+                </div>
+              )}
+              {pasteText.trim() && (() => {
+                const preview = parseQuizText(pasteText);
+                return preview.questions.length > 0 ? (
+                  <p className="text-[10px] text-emerald-500">
+                    {preview.questions.length} questões detectadas
+                    {preview.aprovacao_minima ? ` · Aprovação: ${preview.aprovacao_minima}%` : ""}
+                    {preview.errors.length > 0 ? ` · ${preview.errors.length} avisos` : " · Tudo OK"}
+                  </p>
+                ) : null;
+              })()}
+              <div className="flex gap-2">
+                <Button size="sm" onClick={handleImportFromPaste} loading={importingPaste} disabled={!pasteText.trim()}>
+                  <ClipboardPaste size={11} /> Importar {parseQuizText(pasteText).questions.length} questões
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => { setShowPasteModal(false); setPasteText(""); setPasteErrors([]); }}>
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          )}
+
           {addingQuestion ? (
             <AddQuestionForm onSave={handleAddQuestion} onCancel={() => setAddingQuestion(false)} loading={loading} />
-          ) : (
-            <div className="flex gap-2">
+          ) : !showPasteModal && (
+            <div className="flex gap-2 flex-wrap">
               <button
                 className="flex-1 flex items-center gap-2 px-3 py-2 text-sm text-muted-light hover:text-amber-400 hover:bg-surface border border-dashed border-border hover:border-amber-500/30 rounded-lg transition-colors"
                 onClick={() => setAddingQuestion(true)}
               >
                 <Plus size={13} /> Adicionar Questão
+              </button>
+              <button
+                className="flex items-center gap-2 px-3 py-2 text-sm text-blue-500 hover:text-blue-600 hover:bg-blue-50 border border-dashed border-blue-300 hover:border-blue-400 rounded-lg transition-colors"
+                onClick={() => { setShowPasteModal(true); setPasteText(""); setPasteErrors([]); }}
+              >
+                <ClipboardPaste size={13} /> Colar Quiz
               </button>
               {lessonConteudo && (
                 <button

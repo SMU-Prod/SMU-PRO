@@ -146,11 +146,13 @@ export type Certificate = {
   codigo_verificacao: string; pdf_path: string | null;
   emitido_em: string; nota_final: number | null;
   carga_horaria: number | null; projeto_cultural: boolean;
+  metadata: Record<string, any> | null;
 };
 export type CertificateInsert = {
   user_id: string; course_id: string;
   pdf_path?: string | null; nota_final?: number | null;
   carga_horaria?: number | null; projeto_cultural?: boolean;
+  metadata?: Record<string, any> | null;
 };
 
 export type CourseRating = {
