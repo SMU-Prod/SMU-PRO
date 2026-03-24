@@ -216,12 +216,14 @@ export function RichContentViewer({ html, lessonId, titulo, categoria, isAdmin =
   // Aluno vê refinado se existir, senão original
   const activeHtml = refinedHtml || html;
 
+  // Sanitize HTML but preserve all inline styles (including colors chosen in the editor).
+  // Color cleanup happens ONLY at paste time in the RichTextEditor (transformPastedHTML),
+  // not here — otherwise editor-chosen colors would be stripped.
   const sanitized = useMemo(() => {
-    const clean = DOMPurify.sanitize(activeHtml, {
+    return DOMPurify.sanitize(activeHtml, {
       ADD_ATTR: ["style", "class", "target", "rel", "data-width", "data-alignment", "alt"],
       ADD_TAGS: ["mark", "sup", "sub", "img", "table", "thead", "tbody", "tr", "td", "th", "colgroup", "col", "figure", "figcaption"],
     });
-    return neutralizeGenericColors(clean);
   }, [activeHtml]);
 
   const sections = useMemo(() => parseIntoSections(sanitized), [sanitized]);
