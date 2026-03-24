@@ -42,6 +42,7 @@ import {
   FolderTree, ArrowUp, CornerDownRight, ClipboardPaste, AlertTriangle,
 } from "lucide-react";
 import { parseQuizText } from "@/lib/quiz-parser";
+import { ContentValidatorButton } from "@/components/admin/content-validator-button";
 
 const moduleSchema = z.object({
   titulo: z.string().min(2),
@@ -988,9 +989,10 @@ function LessonForm({ form, loading, onSubmit, onAutoSave, onCancel, label, less
         </label>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <Button type="submit" size="sm" loading={loading}><Save size={13} /> {label}</Button>
         <Button type="button" variant="ghost" size="sm" onClick={onCancel}><X size={13} /> Cancelar</Button>
+        {lessonId && <ContentValidatorButton lessonId={lessonId} courseCategoria={categoria} />}
         {autoSaving && <span className="text-xs text-muted-light ml-auto animate-pulse">Salvando...</span>}
         {autoSaved && !autoSaving && <span className="text-xs text-emerald-600 ml-auto">✓ Salvo automaticamente</span>}
       </div>
