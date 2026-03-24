@@ -166,8 +166,8 @@ export default async function AdminCertificadosPage({ searchParams }: Props) {
 
         {/* Paginação */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between text-sm text-muted-light">
-            <span>Página {page} de {totalPages} ({total} total)</span>
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-sm text-muted-light">
+            <span className="text-xs sm:text-sm">Página {page} de {totalPages} ({total} total)</span>
             <div className="flex gap-2">
               {page > 1 && (
                 <Link

@@ -70,7 +70,7 @@ export default async function ConfiguracoesPage() {
         </Section>
 
         {/* Seção: Privacidade */}
-        <Section title="Privacidade e Segurança" icon={<Shield size={16} className="text-emerald-600" />}>
+        <Section title="Privacidade e Segurança" icon={<Shield size={16} className="text-emerald-400" />}>
           <ToggleItem
             label="Exibir meu perfil publicamente"
             description="Outros alunos podem ver seu progresso e conquistas"
@@ -84,7 +84,7 @@ export default async function ConfiguracoesPage() {
         </Section>
 
         {/* Seção: Preferências */}
-        <Section title="Preferências" icon={<Globe size={16} className="text-blue-600" />}>
+        <Section title="Preferências" icon={<Globe size={16} className="text-blue-400" />}>
           <SettingRow
             label="Idioma"
             description="Português (Brasil)"
@@ -97,7 +97,7 @@ export default async function ConfiguracoesPage() {
 
         {/* Seção: Assinatura */}
         {user.projeto_cultural && (
-          <Section title="Plano MIT" icon={<CreditCard size={16} className="text-amber-600" />}>
+          <Section title="Plano MIT" icon={<CreditCard size={16} className="text-amber-400" />}>
             <div className="px-4 py-4">
               <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
                 <Trophy size={24} className="text-amber-400" />

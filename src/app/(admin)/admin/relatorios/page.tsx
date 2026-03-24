@@ -106,7 +106,7 @@ export default async function AdminRelatoriosPage() {
 
       <div className="p-4 sm:p-6 space-y-6 sm:space-y-8">
         {/* KPIs */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
           <KpiCard
             icon={<Users size={20} className="text-blue-400" />}
             label="Total de usuários"
@@ -134,7 +134,7 @@ export default async function AdminRelatoriosPage() {
           />
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-2 gap-4 sm:gap-6">
           {/* Receita por mês */}
           <div className="rounded-2xl bg-surface border border-border p-4 sm:p-6">
             <h2 className="font-bold text-foreground mb-6 flex items-center gap-2">
@@ -147,14 +147,14 @@ export default async function AdminRelatoriosPage() {
               <div className="space-y-3">
                 {meses.map((mes) => (
                   <div key={mes} className="flex items-center gap-3">
-                    <span className="w-16 text-xs text-muted-light shrink-0">{mes}</span>
-                    <div className="flex-1 h-6 bg-surface-3 rounded-full overflow-hidden">
+                    <span className="w-12 sm:w-16 text-[10px] sm:text-xs text-muted-light shrink-0">{mes}</span>
+                    <div className="flex-1 h-5 sm:h-6 bg-surface-3 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all"
                         style={{ width: `${(receitaPorMes[mes] / receitaMax) * 100}%` }}
                       />
                     </div>
-                    <span className="w-24 text-right text-xs font-semibold text-muted shrink-0">
+                    <span className="w-18 sm:w-24 text-right text-[10px] sm:text-xs font-semibold text-muted shrink-0">
                       {formatCurrency(receitaPorMes[mes])}
                     </span>
                   </div>
@@ -174,15 +174,15 @@ export default async function AdminRelatoriosPage() {
             ) : (
               <div className="space-y-3">
                 {Object.entries(inscricoesPorMes).map(([mes, count]) => (
-                  <div key={mes} className="flex items-center gap-3">
-                    <span className="w-16 text-xs text-muted-light shrink-0">{mes}</span>
-                    <div className="flex-1 h-6 bg-surface-3 rounded-full overflow-hidden">
+                  <div key={mes} className="flex items-center gap-2 sm:gap-3">
+                    <span className="w-12 sm:w-16 text-[10px] sm:text-xs text-muted-light shrink-0">{mes}</span>
+                    <div className="flex-1 h-5 sm:h-6 bg-surface-3 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-gradient-to-r from-amber-500 to-amber-400 rounded-full transition-all"
                         style={{ width: `${(count / inscricoesMax) * 100}%` }}
                       />
                     </div>
-                    <span className="w-16 text-right text-xs font-semibold text-muted shrink-0">
+                    <span className="w-14 sm:w-16 text-right text-[10px] sm:text-xs font-semibold text-muted shrink-0">
                       {count} aluno{count !== 1 ? "s" : ""}
                     </span>
                   </div>
@@ -290,7 +290,7 @@ export default async function AdminRelatoriosPage() {
         )}
 
         {/* Billing Analytics */}
-        <div className="grid lg:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-2 gap-4 sm:gap-6">
           {/* Payment Method Breakdown */}
           <div className="rounded-2xl bg-surface border border-border p-4 sm:p-6">
             <h2 className="font-bold text-foreground mb-5 flex items-center gap-2">
@@ -304,15 +304,15 @@ export default async function AdminRelatoriosPage() {
                 {Object.entries(methodStats).map(([method, stats]) => {
                   const maxTotal = Math.max(...Object.values(methodStats).map(s => s.total), 1);
                   return (
-                    <div key={method} className="flex items-center gap-3">
-                      <span className="w-16 text-xs text-muted-light shrink-0 capitalize">{method}</span>
-                      <div className="flex-1 h-6 bg-surface-3 rounded-full overflow-hidden">
+                    <div key={method} className="flex items-center gap-2 sm:gap-3">
+                      <span className="w-12 sm:w-16 text-[10px] sm:text-xs text-muted-light shrink-0 capitalize">{method}</span>
+                      <div className="flex-1 h-5 sm:h-6 bg-surface-3 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all"
                           style={{ width: `${(stats.total / maxTotal) * 100}%` }}
                         />
                       </div>
-                      <span className="w-28 text-right text-xs font-semibold text-muted shrink-0">
+                      <span className="w-20 sm:w-28 text-right text-[10px] sm:text-xs font-semibold text-muted shrink-0">
                         {formatCurrency(stats.total)} ({stats.count})
                       </span>
                     </div>
@@ -374,14 +374,14 @@ function KpiCard({ icon, label, value, isText = false, bg }: {
   bg: string;
 }) {
   return (
-    <div className="rounded-2xl bg-surface border border-border p-5">
-      <div className="flex items-center gap-3 mb-3">
-        <div className={`h-9 w-9 rounded-xl ${bg} flex items-center justify-center`}>
+    <div className="rounded-2xl bg-surface border border-border p-3 sm:p-5">
+      <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+        <div className={`h-8 w-8 sm:h-9 sm:w-9 rounded-xl ${bg} flex items-center justify-center shrink-0`}>
           {icon}
         </div>
-        <span className="text-sm text-muted-light">{label}</span>
+        <span className="text-xs sm:text-sm text-muted-light truncate">{label}</span>
       </div>
-      <div className="text-2xl font-black text-foreground">
+      <div className="text-xl sm:text-2xl font-black text-foreground">
         {isText ? value : Number(value).toLocaleString("pt-BR")}
       </div>
     </div>

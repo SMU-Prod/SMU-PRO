@@ -104,24 +104,27 @@ export default async function DashboardPage() {
         {/* MIT Banner */}
         {user?.projeto_cultural && (
           <div className="relative overflow-hidden rounded-xl border border-amber-200 bg-gradient-to-r from-amber-500/5 to-surface-2 p-5">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100">
-                <Trophy size={24} className="text-amber-400" />
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl bg-amber-500/15 shrink-0">
+                  <Trophy size={20} className="text-amber-400 sm:hidden" />
+                  <Trophy size={24} className="text-amber-400 hidden sm:block" />
+                </div>
+                <div>
+                  <p className="font-semibold text-amber-400 text-sm sm:text-base">Aluno Projeto Cultural MIT</p>
+                  <p className="text-xs sm:text-sm text-muted-light">
+                    Acesso gratuito e ilimitado a todos os cursos da plataforma.
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="font-semibold text-amber-700">Aluno Projeto Cultural MIT</p>
-                <p className="text-sm text-muted-light">
-                  Acesso gratuito e ilimitado a todos os cursos da plataforma.
-                </p>
-              </div>
-              <Badge variant="mit" className="ml-auto">MIT</Badge>
+              <Badge variant="mit" className="sm:ml-auto shrink-0">MIT</Badge>
             </div>
           </div>
         )}
 
         {/* Study Streak + Stats Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="lg:col-span-2 lg:row-span-2">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="col-span-2 lg:col-span-2 lg:row-span-2">
             <StudyStreak streakDays={streakDays} />
           </div>
           <StatCard
@@ -131,28 +134,28 @@ export default async function DashboardPage() {
             bg="bg-amber-500/10"
           />
           <StatCard
-            icon={<CheckCircle2 size={20} className="text-emerald-600" />}
+            icon={<CheckCircle2 size={20} className="text-emerald-400" />}
             label="Concluídos"
             value={totalCompleted}
-            bg="bg-emerald-50"
+            bg="bg-emerald-500/10"
           />
           <StatCard
-            icon={<Award size={20} className="text-amber-600" />}
+            icon={<Award size={20} className="text-amber-400" />}
             label="Certificados"
             value={certificates.length}
-            bg="bg-amber-50"
+            bg="bg-amber-500/10"
           />
           <StatCard
-            icon={<Clock size={20} className="text-blue-600" />}
+            icon={<Clock size={20} className="text-blue-400" />}
             label="Horas Estudadas"
             value={formatMinutes(horasEstudadas)}
-            bg="bg-blue-50"
+            bg="bg-blue-500/10"
           />
         </div>
 
         {/* Progresso Geral + Resumo Rápido */}
         {totalCursos > 0 && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Progresso Geral */}
             <Card className="lg:col-span-2">
               <CardContent className="p-5">
@@ -168,16 +171,16 @@ export default async function DashboardPage() {
                     </div>
                     <Progress value={progressoGeral} className="h-3" />
                   </div>
-                  <div className="grid grid-cols-3 gap-3 pt-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
                     <div className="text-center p-3 rounded-lg bg-amber-500/5 border border-amber-500/10">
                       <p className="text-lg font-bold text-foreground">{inProgress.length}</p>
                       <p className="text-xs text-muted-light">Em andamento</p>
                     </div>
-                    <div className="text-center p-3 rounded-lg bg-blue-50 border border-blue-100">
+                    <div className="text-center p-3 rounded-lg bg-blue-500/5 border border-blue-500/10">
                       <p className="text-lg font-bold text-foreground">{notStarted.length}</p>
                       <p className="text-xs text-muted-light">Não iniciados</p>
                     </div>
-                    <div className="text-center p-3 rounded-lg bg-emerald-50 border border-emerald-100">
+                    <div className="text-center p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/10">
                       <p className="text-lg font-bold text-foreground">{totalCompleted}</p>
                       <p className="text-xs text-muted-light">Finalizados</p>
                     </div>
@@ -205,8 +208,8 @@ export default async function DashboardPage() {
                   </Link>
                   <Link href="/dashboard/trilha" className="block">
                     <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-surface-2 transition-colors group">
-                      <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center">
-                        <TrendingUp size={14} className="text-emerald-600" />
+                      <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                        <TrendingUp size={14} className="text-emerald-400" />
                       </div>
                       <span className="text-sm text-foreground flex-1">Trilha de Aprendizado</span>
                       <ChevronRight size={14} className="text-muted-light group-hover:text-amber-400 transition-colors" />
@@ -214,8 +217,8 @@ export default async function DashboardPage() {
                   </Link>
                   <Link href="/dashboard/certificados" className="block">
                     <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-surface-2 transition-colors group">
-                      <div className="h-8 w-8 rounded-lg bg-amber-50 flex items-center justify-center">
-                        <Award size={14} className="text-amber-600" />
+                      <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                        <Award size={14} className="text-amber-400" />
                       </div>
                       <span className="text-sm text-foreground flex-1">Certificados</span>
                       <ChevronRight size={14} className="text-muted-light group-hover:text-amber-400 transition-colors" />
@@ -223,8 +226,8 @@ export default async function DashboardPage() {
                   </Link>
                   <Link href="/cursos" className="block">
                     <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-surface-2 transition-colors group">
-                      <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center">
-                        <GraduationCap size={14} className="text-blue-600" />
+                      <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                        <GraduationCap size={14} className="text-blue-400" />
                       </div>
                       <span className="text-sm text-foreground flex-1">Explorar Catálogo</span>
                       <ChevronRight size={14} className="text-muted-light group-hover:text-amber-400 transition-colors" />
@@ -333,7 +336,7 @@ export default async function DashboardPage() {
                               {new Date(cert.emitido_em).toLocaleDateString("pt-BR")}
                             </p>
                             {cert.nota_final && (
-                              <p className="text-xs text-emerald-600 mt-0.5 font-medium">Nota: {cert.nota_final}/100</p>
+                              <p className="text-xs text-emerald-400 mt-0.5 font-medium">Nota: {cert.nota_final}/100</p>
                             )}
                           </div>
                         </div>
@@ -375,12 +378,12 @@ function StatCard({ icon, label, value, bg }: {
 }) {
   return (
     <Card className="hover:border-amber-500/20 transition-colors">
-      <CardContent className="p-4">
-        <div className={`inline-flex h-10 w-10 items-center justify-center rounded-lg ${bg} mb-3`}>
+      <CardContent className="p-3 sm:p-4">
+        <div className={`inline-flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg ${bg} mb-2 sm:mb-3`}>
           {icon}
         </div>
-        <p className="text-2xl font-bold text-foreground">{value}</p>
-        <p className="text-xs text-muted-light mt-0.5">{label}</p>
+        <p className="text-xl sm:text-2xl font-bold text-foreground">{value}</p>
+        <p className="text-[10px] sm:text-xs text-muted-light mt-0.5">{label}</p>
       </CardContent>
     </Card>
   );

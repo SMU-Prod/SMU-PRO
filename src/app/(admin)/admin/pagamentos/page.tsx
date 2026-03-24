@@ -38,7 +38,7 @@ export default async function AdminPagamentosPage() {
 
       <div className="p-4 sm:p-6 space-y-6">
         {/* KPIs */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
           <KpiCard icon={<DollarSign size={20} className="text-emerald-400" />} label="Receita confirmada" value={formatCurrency(totalRevenue)} bg="bg-emerald-500/10" />
           <KpiCard icon={<Clock size={20} className="text-amber-400" />} label="Pendentes" value={String(pendingCount)} bg="bg-amber-500/10" />
           <KpiCard icon={<CheckCircle size={20} className="text-blue-400" />} label="Matrículas pagas ativas" value={String(activeCount)} bg="bg-blue-500/10" />
@@ -123,12 +123,12 @@ export default async function AdminPagamentosPage() {
 
 function KpiCard({ icon, label, value, bg }: { icon: React.ReactNode; label: string; value: string; bg: string }) {
   return (
-    <div className="rounded-2xl bg-surface border border-border p-5">
-      <div className="flex items-center gap-3 mb-3">
-        <div className={`h-9 w-9 rounded-xl ${bg} flex items-center justify-center`}>{icon}</div>
-        <span className="text-sm text-muted-light">{label}</span>
+    <div className="rounded-2xl bg-surface border border-border p-3 sm:p-5">
+      <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+        <div className={`h-8 w-8 sm:h-9 sm:w-9 rounded-xl ${bg} flex items-center justify-center shrink-0`}>{icon}</div>
+        <span className="text-xs sm:text-sm text-muted-light truncate">{label}</span>
       </div>
-      <div className="text-2xl font-black text-foreground">{value}</div>
+      <div className="text-xl sm:text-2xl font-black text-foreground">{value}</div>
     </div>
   );
 }

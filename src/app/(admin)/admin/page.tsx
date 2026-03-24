@@ -43,7 +43,7 @@ export default async function AdminDashboardPage() {
 
       <div className="p-4 sm:p-6 space-y-6 sm:space-y-8">
         {/* KPI Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
           <KpiCard
             icon={<Users size={20} className="text-blue-400" />}
             label="Total de Alunos"
@@ -104,7 +104,7 @@ export default async function AdminDashboardPage() {
           />
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
           {/* Cursos */}
           <div className="xl:col-span-2">
             <Card>
@@ -156,7 +156,7 @@ export default async function AdminDashboardPage() {
                           <td className="px-5 py-3">
                             <div className="flex items-center gap-2">
                               <CategoryIcon category={c.categoria} size={16} />
-                              <span className="text-foreground font-medium truncate max-w-[160px]">{c.titulo}</span>
+                              <span className="text-foreground font-medium truncate max-w-[120px] sm:max-w-[160px] lg:max-w-[200px]">{c.titulo}</span>
                             </div>
                           </td>
                           <td className="px-5 py-3">
@@ -302,14 +302,14 @@ function KpiCard({ icon, label, value, sub, bg, trend }: {
 }) {
   return (
     <Card className="hover:border-amber-500/20 transition-colors">
-      <CardContent className="p-4">
-        <div className={`inline-flex h-10 w-10 items-center justify-center rounded-lg ${bg} mb-3`}>
+      <CardContent className="p-3 sm:p-4">
+        <div className={`inline-flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg ${bg} mb-2 sm:mb-3`}>
           {icon}
         </div>
-        <p className="text-2xl font-bold text-foreground">{value}</p>
-        <p className="text-xs text-muted-light mt-0.5">{label}</p>
+        <p className="text-xl sm:text-2xl font-bold text-foreground">{value}</p>
+        <p className="text-[10px] sm:text-xs text-muted-light mt-0.5">{label}</p>
         {sub && (
-          <p className={`text-xs mt-1 ${trend === "up" ? "text-emerald-400" : "text-muted-light"}`}>
+          <p className={`text-[10px] sm:text-xs mt-1 ${trend === "up" ? "text-emerald-400" : "text-muted-light"}`}>
             {trend === "up" ? "↑ " : ""}{sub}
           </p>
         )}

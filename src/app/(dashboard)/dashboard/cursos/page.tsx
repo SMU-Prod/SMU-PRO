@@ -76,7 +76,7 @@ export default async function MeusCursosPage() {
             {notStarted.length > 0 && (
               <section>
                 <h2 className="text-base font-bold text-foreground mb-4 flex items-center gap-2">
-                  <BookOpen size={16} className="text-blue-600" />
+                  <BookOpen size={16} className="text-blue-400" />
                   Não iniciados ({notStarted.length})
                 </h2>
                 <CourseGrid courses={notStarted} />

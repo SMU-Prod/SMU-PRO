@@ -68,15 +68,17 @@ export default async function PagamentosPage() {
           {rows.map((row: any) => {
             const style = STATUS_STYLES[row.status] ?? STATUS_STYLES.pendente;
             return (
-              <div key={row.id} className="px-5 py-4 flex items-center gap-4">
+              <div key={row.id} className="px-3 sm:px-5 py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground truncate">{row.courses?.titulo ?? "Curso removido"}</p>
                   <p className="text-xs text-muted-light mt-0.5">
                     {new Date(row.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}
                   </p>
                 </div>
-                <span className="font-semibold text-sm text-foreground shrink-0">{formatCurrency(row.valor_pago ?? 0)}</span>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full border shrink-0 ${style.className}`}>{style.label}</span>
+                <div className="flex items-center gap-2 sm:gap-4">
+                  <span className="font-semibold text-sm text-foreground shrink-0">{formatCurrency(row.valor_pago ?? 0)}</span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full border shrink-0 ${style.className}`}>{style.label}</span>
+                </div>
               </div>
             );
           })}

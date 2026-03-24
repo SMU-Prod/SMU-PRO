@@ -110,7 +110,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
         </div>
 
         {/* Stats row */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
             { label: "Total", value: total, color: "text-foreground" },
             { label: "MIT", value: users.filter((u) => u.projeto_cultural).length, color: "text-amber-600" },
@@ -208,7 +208,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
                             )}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-foreground font-medium truncate max-w-[140px]">{u.nome}</p>
+                            <p className="text-foreground font-medium truncate max-w-[100px] lg:max-w-[180px]">{u.nome}</p>
                             {u.ultimo_acesso && (
                               <p className="text-[10px] text-muted-light">
                                 Último acesso: {new Date(u.ultimo_acesso).toLocaleDateString("pt-BR")}
@@ -265,7 +265,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between px-5 py-3 border-t border-border/50 bg-surface-2">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-3 sm:px-5 py-3 border-t border-border/50 bg-surface-2">
                 <p className="text-xs text-muted-light">
                   Página {currentPage} de {totalPages} · {total} usuários
                 </p>

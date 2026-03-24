@@ -65,7 +65,7 @@ export default async function CertificadosPage() {
                       <Award size={24} className="text-amber-400" />
                     </div>
                     {cert.projeto_cultural && (
-                      <span className="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full font-semibold">
+                      <span className="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full font-semibold">
                         MIT
                       </span>
                     )}

@@ -26,17 +26,17 @@ const LEARNING_PATH: {
     level: "trainee",
     label: "Trainee",
     description: "Fundamentos para quem está começando no mercado de eventos",
-    color: "text-blue-700",
-    bg: "bg-blue-50",
-    border: "border-blue-200",
+    color: "text-blue-400",
+    bg: "bg-blue-500/10",
+    border: "border-blue-500/20",
   },
   {
     level: "junior",
     label: "Junior",
     description: "Habilidades intermediárias para coordenadores em crescimento",
-    color: "text-emerald-700",
-    bg: "bg-emerald-50",
-    border: "border-emerald-200",
+    color: "text-emerald-400",
+    bg: "bg-emerald-500/10",
+    border: "border-emerald-500/20",
   },
   {
     level: "pleno",
@@ -125,8 +125,8 @@ export default async function TrilhaPage() {
           </div>
           <div className="bg-surface rounded-2xl border border-border p-5">
             <div className="flex items-center gap-3 mb-3">
-              <div className="h-9 w-9 rounded-xl bg-emerald-50 flex items-center justify-center">
-                <CheckCircle2 size={18} className="text-emerald-600" />
+              <div className="h-9 w-9 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                <CheckCircle2 size={18} className="text-emerald-400" />
               </div>
               <span className="text-sm text-muted-light">Concluídos</span>
             </div>
@@ -135,8 +135,8 @@ export default async function TrilhaPage() {
           </div>
           <div className="bg-surface rounded-2xl border border-border p-5">
             <div className="flex items-center gap-3 mb-3">
-              <div className="h-9 w-9 rounded-xl bg-amber-50 flex items-center justify-center">
-                <Star size={18} className="text-amber-600" />
+              <div className="h-9 w-9 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                <Star size={18} className="text-amber-400" />
               </div>
               <span className="text-sm text-muted-light">Nível Atual</span>
             </div>
@@ -176,7 +176,7 @@ export default async function TrilhaPage() {
                       <p className="text-sm text-muted-light hidden sm:block">{levelInfo.description}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0 ml-13 sm:ml-0">
+                  <div className="flex items-center gap-2 shrink-0 ml-[3.25rem] sm:ml-0">
                     <Progress value={levelProgress} className="w-24 h-2" />
                     <span className="text-sm font-semibold text-amber-400 w-10 text-right">{levelProgress}%</span>
                   </div>
@@ -205,7 +205,7 @@ export default async function TrilhaPage() {
                           key={course.id}
                           className={`rounded-xl border bg-surface p-4 transition-all ${
                             isDone
-                              ? "border-emerald-200 bg-emerald-50/30"
+                              ? "border-emerald-500/20 bg-emerald-500/5"
                               : isEnrolled
                               ? "border-amber-500/20 hover:shadow-sm"
                               : "border-border hover:border-border-strong"
@@ -284,7 +284,7 @@ export default async function TrilhaPage() {
         <div className="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-500/5 to-surface-2 p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
             <div className="flex items-center gap-3 sm:gap-4">
-              <div className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-xl bg-amber-100 shrink-0">
+              <div className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-xl bg-amber-500/15 shrink-0">
                 <Trophy size={28} className="text-amber-400" />
               </div>
               <div className="flex-1 min-w-0">

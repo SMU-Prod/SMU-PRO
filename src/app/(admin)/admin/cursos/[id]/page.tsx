@@ -56,23 +56,23 @@ export default async function AdminCourseDetailPage({ params, searchParams }: Pr
   return (
     <div className="animate-fade-in">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 px-6 pt-4 text-xs text-muted-light">
-        <Link href="/admin/cursos" className="hover:text-muted transition-colors">Cursos</Link>
+      <div className="flex items-center gap-2 px-4 sm:px-6 pt-4 text-xs text-muted-light">
+        <Link href="/admin/cursos" className="hover:text-muted transition-colors shrink-0">Cursos</Link>
         <span>/</span>
-        <span className="text-muted font-medium truncate max-w-[200px]">{course.titulo}</span>
+        <span className="text-muted font-medium truncate">{course.titulo}</span>
       </div>
 
       {/* Header */}
-      <div className="px-6 pt-3 pb-4 flex flex-col sm:flex-row sm:items-start gap-4">
+      <div className="px-4 sm:px-6 pt-3 pb-4 flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-1">
             <CategoryIcon category={course.categoria} size={24} />
-            <h1 className="text-xl font-bold text-foreground truncate">{course.titulo}</h1>
+            <h1 className="text-lg sm:text-xl font-bold text-foreground truncate">{course.titulo}</h1>
             <Badge variant={course.ativo ? "success" : "secondary"} className="text-[10px]">
               {course.ativo ? "Publicado" : "Rascunho"}
             </Badge>
           </div>
-          <div className="flex items-center gap-2 flex-wrap text-sm text-muted-light">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap text-xs sm:text-sm text-muted-light">
             <Badge variant={course.nivel as any} className="text-[10px]">{getLevelLabel(course.nivel)}</Badge>
             <span>·</span>
             <span>{getCategoryLabel(course.categoria)}</span>
@@ -92,43 +92,45 @@ export default async function AdminCourseDetailPage({ params, searchParams }: Pr
         <div className="flex items-center gap-2 shrink-0">
           <Link href="/admin/cursos">
             <Button variant="ghost" size="sm">
-              <ArrowLeft size={15} /> Voltar
+              <ArrowLeft size={15} /> <span className="hidden sm:inline">Voltar</span>
             </Button>
           </Link>
           <Link href={`/admin/cursos/${id}?tab=preview`}>
             <Button variant="ghost" size="sm" title="Ver como o aluno visualiza">
-              <Monitor size={15} /> Preview
+              <Monitor size={15} /> <span className="hidden sm:inline">Preview</span>
             </Button>
           </Link>
           <Link href={`/admin/cursos/${id}/editar`}>
             <Button variant="secondary" size="sm">
-              <Edit size={15} /> Editar
+              <Edit size={15} /> <span className="hidden sm:inline">Editar</span>
             </Button>
           </Link>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="px-6 border-b border-border">
-        <div className="flex gap-0">
-          {TABS.map((t) => {
-            const Icon = t.icon;
-            const active = tab === t.id;
-            return (
-              <Link
-                key={t.id}
-                href={`/admin/cursos/${id}?tab=${t.id}`}
-                className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-                  active
-                    ? "border-amber-500 text-amber-400"
-                    : "border-transparent text-muted-light hover:text-muted"
-                }`}
-              >
-                <Icon size={14} />
-                {t.label}
-              </Link>
-            );
-          })}
+      {/* Tabs — scroll horizontal no mobile */}
+      <div className="border-b border-border">
+        <div className="overflow-x-auto scrollbar-hide">
+          <div className="flex gap-0 px-4 sm:px-6 min-w-max">
+            {TABS.map((t) => {
+              const Icon = t.icon;
+              const active = tab === t.id;
+              return (
+                <Link
+                  key={t.id}
+                  href={`/admin/cursos/${id}?tab=${t.id}`}
+                  className={`flex items-center gap-1.5 px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                    active
+                      ? "border-amber-500 text-amber-400"
+                      : "border-transparent text-muted-light hover:text-muted"
+                  }`}
+                >
+                  <Icon size={14} />
+                  {t.label}
+                </Link>
+              );
+            })}
+          </div>
         </div>
       </div>
 
