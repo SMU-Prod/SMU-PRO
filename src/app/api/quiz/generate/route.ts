@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
+import { rateLimit } from "@/lib/rate-limit";
 import OpenAI from "openai";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
@@ -27,6 +28,11 @@ export async function POST(req: NextRequest) {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+  }
+
+  const { success } = await rateLimit(`quiz:${userId}`, 10, 60000);
+  if (!success) {
+    return NextResponse.json({ error: "Muitas requisições. Aguarde 1 minuto." }, { status: 429 });
   }
 
   if (!process.env.OPENAI_API_KEY) {

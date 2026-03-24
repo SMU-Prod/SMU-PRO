@@ -69,6 +69,7 @@ export function Header({ title, subtitle, role, className, actions }: HeaderProp
         className="shrink-0"
         onClick={toggleTheme}
         title={theme === "dark" ? "Modo claro" : "Modo escuro"}
+        aria-label={theme === "dark" ? "Ativar modo claro" : "Ativar modo escuro"}
       >
         {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
       </Button>

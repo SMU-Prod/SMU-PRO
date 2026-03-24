@@ -165,7 +165,7 @@ export default async function CertificatePage({ params }: Props) {
         </div>
 
         {/* Actions */}
-        <div className="flex justify-center gap-3 mt-6">
+        <div className="flex flex-wrap justify-center gap-3 mt-6">
           <a
             href={`/api/certificates/pdf/${codigo}`}
             className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-amber-600 transition-colors"

@@ -1,6 +1,7 @@
 import { getPostBySlug, getRelatedPosts } from "@/lib/actions/blog";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Clock, ArrowLeft, ChevronRight, BookOpen, Calendar, Eye } from "lucide-react";
@@ -144,8 +145,8 @@ export default async function BlogPostPage({ params }: Props) {
 
         {/* Thumbnail */}
         {post.thumbnail_url && (
-          <div className="rounded-2xl overflow-hidden border border-border mb-10">
-            <img src={post.thumbnail_url} alt={post.titulo} className="w-full aspect-video object-cover" />
+          <div className="rounded-2xl overflow-hidden border border-border mb-10 relative aspect-video">
+            <Image src={post.thumbnail_url} alt={post.titulo} fill className="object-cover" />
           </div>
         )}
 
@@ -193,9 +194,9 @@ export default async function BlogPostPage({ params }: Props) {
             {related.map((r: any) => (
               <Link key={r.id} href={`/blog/${r.slug}`} className="group">
                 <div className="rounded-2xl bg-surface border border-border overflow-hidden hover:border-amber-500/30 transition-all">
-                  <div className="h-32 bg-gradient-to-br from-surface-2 to-surface-3 flex items-center justify-center overflow-hidden">
+                  <div className="h-32 bg-gradient-to-br from-surface-2 to-surface-3 flex items-center justify-center overflow-hidden relative">
                     {r.thumbnail_url ? (
-                      <img src={r.thumbnail_url} alt={r.titulo} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                      <Image src={r.thumbnail_url} alt={r.titulo} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
                     ) : (
                       <BookOpen size={24} className="text-muted-light" />
                     )}

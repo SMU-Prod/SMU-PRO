@@ -1,12 +1,15 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import Image from "next/image";
 import { getCurrentUser } from "@/lib/actions/users";
+import { getStudyStreak } from "@/lib/actions/streak";
 import { createAdminClient } from "@/lib/supabase/server";
 import { Header } from "@/components/layout/header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
+import { StudyStreak } from "@/components/dashboard/study-streak";
 import { formatMinutes, getLevelLabel } from "@/lib/utils";
 import { CategoryIcon } from "@/components/ui/category-icon";
 import {
@@ -24,6 +27,8 @@ export default async function DashboardPage() {
   const supabase = createAdminClient();
   const { data: userRow } = await supabase.from("users").select("id").eq("clerk_id", userId).single();
   const userUuid = userRow?.id;
+
+  const streakDays = await getStudyStreak();
 
   const [enrollmentsResult, certificatesResult, recentActivityResult, allEnrollmentsResult] = await Promise.all([
     userUuid
@@ -114,8 +119,11 @@ export default async function DashboardPage() {
           </div>
         )}
 
-        {/* Stats Cards */}
+        {/* Study Streak + Stats Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="lg:col-span-2 lg:row-span-2">
+            <StudyStreak streakDays={streakDays} />
+          </div>
           <StatCard
             icon={<BookOpen size={20} className="text-amber-400" />}
             label="Cursos Matriculados"
@@ -384,10 +392,11 @@ function CourseCard({ course, progress }: { course: any; progress: number }) {
       <Card className="overflow-hidden hover:border-amber-500/20 hover:shadow-md transition-all group cursor-pointer">
         <div className="relative h-36 bg-gradient-to-br from-surface-3 to-surface-3 overflow-hidden">
           {course.thumbnail_url ? (
-            <img
+            <Image
               src={course.thumbnail_url}
               alt={course.titulo}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              fill
+              className="object-cover group-hover:scale-105 transition-transform duration-300"
             />
           ) : (
             <div className="flex items-center justify-center h-full text-4xl">

@@ -56,7 +56,7 @@ export async function POST(
       titulo: "Reembolso processado",
       mensagem: `Seu pagamento de R$ ${(enrollment.valor_pago ?? 0).toFixed(2)} será estornado.`,
       link: "/dashboard/cursos",
-    }).catch(() => {});
+    }).catch((err) => console.error("[Refund Notification Error]", err));
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

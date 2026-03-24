@@ -16,7 +16,7 @@ export function VideoPlayer({ youtubeId, lessonId }: VideoPlayerProps) {
   useEffect(() => {
     intervalRef.current = setInterval(() => {
       watchTimeRef.current += 60;
-      updateWatchTime(lessonId, watchTimeRef.current).catch(() => {});
+      updateWatchTime(lessonId, watchTimeRef.current).catch((err) => console.error("[VideoPlayer Watch Time Error]", err));
     }, 60_000);
 
     return () => {

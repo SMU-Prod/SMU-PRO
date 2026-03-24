@@ -9,10 +9,11 @@ const Progress = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof ProgressPrimitive.Root> & {
     indicatorClassName?: string;
   }
->(({ className, value, indicatorClassName, ...props }, ref) => (
+>(({ className, value, indicatorClassName, "aria-label": ariaLabel, ...props }, ref) => (
   <ProgressPrimitive.Root
     ref={ref}
     className={cn("relative h-2 w-full overflow-hidden rounded-full bg-surface-3", className)}
+    aria-label={ariaLabel || "Progresso"}
     {...props}
   >
     <ProgressPrimitive.Indicator

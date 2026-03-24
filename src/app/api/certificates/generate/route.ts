@@ -2,11 +2,15 @@ import { auth } from "@clerk/nextjs/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { sendCertificateEmail } from "@/lib/email";
 import { createNotification } from "@/lib/actions/notifications";
+import { rateLimit } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+
+  const { success } = await rateLimit(`cert:${userId}`, 5, 60000);
+  if (!success) return NextResponse.json({ error: "Muitas requisições. Aguarde 1 minuto." }, { status: 429 });
 
   const { courseId } = await req.json();
   if (!courseId) return NextResponse.json({ error: "courseId obrigatório" }, { status: 400 });
@@ -139,7 +143,7 @@ export async function POST(req: Request) {
     titulo: `Certificado emitido: ${course.titulo}`,
     mensagem: `Nota final: ${cert.nota_final}%. Código: ${cert.codigo_verificacao}`,
     link: `/certificado/${cert.codigo_verificacao}`,
-  }).catch(() => {});
+  }).catch((err) => console.error("[Certificate Notification Error]", err));
 
   return NextResponse.json({ certificate: cert });
 }

@@ -261,7 +261,7 @@ export async function adminToggleCourse(id: string, ativo: boolean) {
         titulo: `Curso disponível: ${course.titulo}`,
         mensagem: "O curso foi atualizado e está disponível para acesso.",
         link: `/cursos/${course.slug}`,
-      }).catch(() => {});
+      }).catch((err) => console.error("[Notify Course Students Error]", err));
     }
   }
 

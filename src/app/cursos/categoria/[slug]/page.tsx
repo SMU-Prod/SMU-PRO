@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CategoryIcon } from "@/components/ui/category-icon";
@@ -177,7 +178,7 @@ export default async function CategoryPage({ params }: Props) {
                 <div className="rounded-2xl bg-surface border border-border overflow-hidden hover:border-amber-500/30 hover:shadow-md transition-all h-full flex flex-col">
                   <div className="h-40 bg-gradient-to-br from-surface-2 to-surface-3 flex items-center justify-center overflow-hidden relative">
                     {c.thumbnail_url ? (
-                      <img src={c.thumbnail_url} alt={c.titulo} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                      <Image src={c.thumbnail_url} alt={c.titulo} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
                     ) : (
                       <CategoryIcon category={c.categoria} size={40} className="text-muted-light" />
                     )}

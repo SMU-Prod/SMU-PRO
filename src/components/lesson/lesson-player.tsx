@@ -94,12 +94,12 @@ export function LessonPlayer({
   const isAdmin = userRole === "admin";
   const hasAccess = isAdmin || !!enrollment || lesson.preview_gratis;
 
-  const totalLessons =
-    course.modules?.reduce((acc: number, mod: any) => acc + (mod.lessons?.length ?? 0), 0) ?? 0;
-  const completedLessons = Object.values(progressMap).filter((p) => p.concluido).length;
-  const courseProgress = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
-
+  // ── Flatten all lessons from all modules (root + submodules) ──
   const allLessons = course.modules?.flatMap((m: any) => m.lessons ?? []) ?? [];
+  const totalLessons = allLessons.length;
+  // Only count completed lessons that belong to THIS course (not other courses)
+  const completedLessons = allLessons.filter((l: any) => progressMap[l.id]?.concluido).length;
+  const courseProgress = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
   const currentIndex = allLessons.findIndex((l: any) => l.id === lesson.id);
   const nextLesson = allLessons[currentIndex + 1];
   const prevLesson = allLessons[currentIndex - 1];
@@ -526,7 +526,7 @@ export function LessonPlayer({
       </div>
 
       {/* ── Right Sidebar — Course Content (35%) — desktop only ── */}
-      <aside className="hidden lg:flex border-l border-border bg-surface flex-col overflow-hidden shrink-0 w-[35%]">
+      <aside className="hidden lg:flex border-l border-border bg-surface flex-col overflow-hidden shrink-0 w-[35%]" aria-label="Lista de aulas">
         {/* Header */}
         <div className="px-4 py-4 border-b border-border shrink-0">
           <h3 className="font-semibold text-foreground text-sm mb-2">Conteúdo do Curso</h3>

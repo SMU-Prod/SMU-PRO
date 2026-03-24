@@ -72,13 +72,13 @@ export async function submitQuizAttempt(
       tipo: "quiz_result",
       titulo: `Aprovado no quiz: ${quizTitle}`,
       mensagem: `Você acertou ${nota}% das questões. Parabéns!`,
-    }).catch(() => {});
+    }).catch((err) => console.error("[Quiz Passed Notification Error]", err));
   } else {
     createNotification({
       userUuid: userRow.id,
       tipo: "quiz_result",
       titulo: `Tente novamente: ${quizTitle}`,
       mensagem: `Você acertou ${nota}%. Revise o conteúdo e tente novamente!`,
-    }).catch(() => {});
+    }).catch((err) => console.error("[Quiz Failed Notification Error]", err));
   }
 }

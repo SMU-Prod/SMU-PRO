@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { auth } from "@clerk/nextjs/server";
 import { getCourses } from "@/lib/actions/courses";
 import { getLandingPageStats } from "@/lib/actions/users";
@@ -185,7 +186,7 @@ export default async function HomePage() {
                   <div className="rounded-2xl bg-surface border border-border overflow-hidden hover:border-amber-500/30 hover:shadow-[0_0_30px_rgba(245,158,11,0.05)] transition-all hover:-translate-y-1">
                     <div className="h-44 bg-gradient-to-br from-surface-2 to-surface-3 flex items-center justify-center text-5xl relative overflow-hidden">
                       {course.thumbnail_url ? (
-                        <img src={course.thumbnail_url} alt={course.titulo} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                        <Image src={course.thumbnail_url} alt={course.titulo} fill className="object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
                       ) : (
                         <span className="opacity-50"><CategoryIcon category={course.categoria} size={40} /></span>
                       )}

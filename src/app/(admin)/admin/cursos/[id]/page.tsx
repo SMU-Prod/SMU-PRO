@@ -1,16 +1,18 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
+import dynamic from "next/dynamic";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getLevelLabel, formatMinutes, getCategoryLabel } from "@/lib/utils";
 import { CategoryIcon } from "@/components/ui/category-icon";
-import { CourseContentManager } from "@/components/admin/course-content-manager";
 import { CourseQualityScore } from "@/components/admin/course-quality-score";
 import { CourseForm } from "@/components/admin/course-form";
 import { CourseAnalytics } from "@/components/admin/course-analytics";
 import { CourseStudentPreview } from "@/components/admin/course-student-preview";
 import { Edit, ArrowLeft, Layers, Info, ShieldCheck, BarChart3, Eye, Monitor } from "lucide-react";
 import Link from "next/link";
+
+const CourseContentManager = dynamic(() => import("@/components/admin/course-content-manager").then(m => ({ default: m.CourseContentManager })), { ssr: false, loading: () => <div className="flex items-center justify-center h-64"><div className="text-center"><p className="text-muted-light mb-2">Carregando editor...</p></div></div> });
 
 interface Props {
   params: Promise<{ id: string }>;

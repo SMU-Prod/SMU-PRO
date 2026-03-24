@@ -1,6 +1,8 @@
 import { adminGetAllPosts } from "@/lib/actions/blog";
+import dynamic from "next/dynamic";
 import { Header } from "@/components/layout/header";
-import { BlogManager } from "@/components/admin/blog-manager";
+
+const BlogManager = dynamic(() => import("@/components/admin/blog-manager").then(m => ({ default: m.BlogManager })), { ssr: false, loading: () => <div className="flex items-center justify-center h-64"><div className="text-center"><p className="text-muted-light mb-2">Carregando gerenciador...</p></div></div> });
 
 export default async function AdminBlogPage() {
   let posts: any[] = [];

@@ -1,5 +1,6 @@
 import { getPublishedPosts, getFeaturedPosts } from "@/lib/actions/blog";
 import Link from "next/link";
+import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Clock, ChevronRight, ArrowLeft, BookOpen } from "lucide-react";
@@ -187,7 +188,7 @@ function PostCard({ post, featured = false }: { post: any; featured?: boolean })
         {/* Thumbnail */}
         <div className={`bg-gradient-to-br from-surface-2 to-surface-3 flex items-center justify-center overflow-hidden ${featured ? "h-48" : "h-36"}`}>
           {post.thumbnail_url ? (
-            <img src={post.thumbnail_url} alt={post.titulo} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+            <Image src={post.thumbnail_url} alt={post.titulo} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
           ) : (
             <BookOpen size={32} className="text-muted-light" />
           )}

@@ -15,11 +15,15 @@ export default async function AdminLayout({
   if (!userId) redirect("/login");
 
   const user = await getCurrentUser();
-  console.log("[Admin Layout] userId:", userId, "user:", user?.email, "role:", user?.role);
+  if (process.env.NODE_ENV === 'development') {
+    console.log("[Admin Layout] userId:", userId, "user:", user?.email, "role:", user?.role);
+  }
   const isAdmin = user?.role === "admin";
   const isContentManager = user?.role === "content_manager";
   if (!isAdmin && !isContentManager) {
-    console.log("[Admin Layout] Redirecting to /dashboard — not admin/content_manager");
+    if (process.env.NODE_ENV === 'development') {
+      console.log("[Admin Layout] Redirecting to /dashboard — not admin/content_manager");
+    }
     redirect("/dashboard");
   }
 

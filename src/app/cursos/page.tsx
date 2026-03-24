@@ -1,6 +1,7 @@
 import { getCourses } from "@/lib/actions/courses";
 import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
+import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getCategoryLabel, getLevelLabel, formatMinutes, formatCurrency } from "@/lib/utils";
@@ -205,7 +206,7 @@ export default async function CursosPage({ searchParams }: Props) {
                     <div className="h-full rounded-2xl bg-surface border border-border overflow-hidden hover:border-amber-500/30 hover:shadow-md transition-all hover:-translate-y-1 flex flex-col">
                       <div className="h-40 bg-gradient-to-br from-surface-2 to-surface-3 flex items-center justify-center text-5xl shrink-0 overflow-hidden">
                         {course.thumbnail_url ? (
-                          <img src={course.thumbnail_url} alt={course.titulo} className="w-full h-full object-cover" />
+                          <Image src={course.thumbnail_url} alt={course.titulo} fill className="object-cover" />
                         ) : (
                           <CategoryIcon category={course.categoria} size={40} />
                         )}

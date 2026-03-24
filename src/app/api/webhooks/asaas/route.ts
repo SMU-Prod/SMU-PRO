@@ -161,13 +161,13 @@ export async function POST(req: Request) {
             titulo: `Pagamento confirmado: ${courseData.titulo}`,
             mensagem: "Seu acesso ao curso foi liberado. Bons estudos!",
             link: `/cursos/${courseData.slug}`,
-          }).catch(() => {});
+          }).catch((err) => console.error("[Asaas Webhook Notification Error]", err));
 
           notifyAdmins({
             titulo: `Nova venda: ${courseData.titulo}`,
             mensagem: `${userData?.nome ?? "Aluno"} — R$ ${payment.value?.toFixed(2)} via ${payment.billingType}`,
             link: "/admin",
-          }).catch(() => {});
+          }).catch((err) => console.error("[Asaas Admin Notification Error]", err));
         }
 
         console.log(`[Asaas Webhook] Enrollment ativado: ${enrollmentId}`);
@@ -202,7 +202,7 @@ export async function POST(req: Request) {
             titulo: "Reembolso processado",
             mensagem: "Seu pagamento foi reembolsado e o acesso ao curso foi cancelado.",
             link: "/dashboard/cursos",
-          }).catch(() => {});
+          }).catch((err) => console.error("[Asaas Refund Notification Error]", err));
         }
 
         console.log(`[Asaas Webhook] Enrollment cancelado por reembolso: ${payment.externalReference}`);

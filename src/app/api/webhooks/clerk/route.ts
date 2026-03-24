@@ -127,7 +127,7 @@ export async function POST(req: Request) {
             titulo: `Novo aluno: ${nome || "Usuário"}`,
             mensagem: email ?? undefined,
             link: "/admin/usuarios",
-          }).catch(() => {});
+          }).catch((err) => console.error("[Clerk Webhook Admin Notification Error]", err));
         }
 
         break;
