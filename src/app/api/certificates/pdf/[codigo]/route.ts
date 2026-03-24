@@ -243,13 +243,10 @@ function generateGeneralCertificate({ cert, user, course, qrDataUrl, codigo, emi
 
     <div class="content">
       <div class="header">
-        <img src="${LOGO_BASE64}" alt="SMU Producoes" style="height: 54px; border-radius: 6px;" />
-        <div style="text-align: center; flex: 1;">
-          <div class="brand-sub">Escola Profissional de Eventos</div>
-          <div class="divider"></div>
-          <div class="cert-type">Certificado de Conclusao</div>
-        </div>
-        <div style="width: 54px;"></div>
+        <img src="${LOGO_BASE64}" alt="SMU Producoes" style="height: 50px; border-radius: 6px; display: block; margin: 0 auto 6px;" />
+        <div class="brand-sub">Escola Profissional de Eventos</div>
+        <div class="divider"></div>
+        <div class="cert-type">Certificado de Conclusao</div>
       </div>
 
       <div class="body">
@@ -427,7 +424,7 @@ function generateNRCertificate({ cert, user, course, nrKey, qrDataUrl, codigo, e
 
     <div class="content">
       <div class="header">
-        <img src="${LOGO_BASE64}" alt="SMU Producoes" style="height: 48px; border-radius: 4px; margin-bottom: 4px;" />
+        <img src="${LOGO_BASE64}" alt="SMU Producoes" style="height: 48px; border-radius: 4px; display: block; margin: 0 auto 4px;" />
         <div class="brand-sub">Escola Profissional de Eventos</div>
         <div class="divider"></div>
         <div class="cert-type">Certificado de Capacitacao</div>

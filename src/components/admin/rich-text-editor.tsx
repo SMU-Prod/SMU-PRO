@@ -314,6 +314,34 @@ export function RichTextEditor({
         }
         return false;
       },
+      // Strip generic black/white/gray inline colors from pasted content
+      // so they follow the dark/light theme. Keeps semantic colors intact.
+      transformPastedHTML(html) {
+        try {
+          const doc = new DOMParser().parseFromString(`<div>${html}</div>`, "text/html");
+          const container = doc.body.firstElementChild;
+          if (!container) return html;
+          const els = container.querySelectorAll("[style]");
+          for (const el of Array.from(els)) {
+            const s = (el as HTMLElement).style;
+            if (s.color) {
+              const c = s.color;
+              // Strip blacks, whites, and grays
+              if (/^(#[0-3]|#f[0-9a-f]{2}f|#e[0-9a-f]{2}e|rgb\s*\(\s*[0-2]\d{0,2}\s*,\s*[0-2]\d{0,2}\s*,\s*[0-2]\d{0,2}|rgb\s*\(\s*2[3-5]\d|black|white|gr[ae]y)/i.test(c) ||
+                  /^#([0-9a-f])\1{5}$/i.test(c) || /^#([0-9a-f])\1{2}$/i.test(c)) {
+                s.removeProperty("color");
+              }
+            }
+            if (s.backgroundColor) {
+              const bg = s.backgroundColor;
+              if (/white|#fff|rgb\s*\(\s*255|black|#000|rgb\s*\(\s*0\s*,\s*0/i.test(bg)) {
+                s.removeProperty("background-color");
+              }
+            }
+          }
+          return container.innerHTML;
+        } catch { return html; }
+      },
       handleDrop(view, event) {
         const files = event.dataTransfer?.files;
         if (!files?.length) return false;

@@ -109,6 +109,73 @@ function parseIntoSections(html: string): Section[] {
   return sections;
 }
 
+/**
+ * Remove hardcoded black/white/gray font colors from pasted HTML
+ * so they follow the dark/light theme. Preserves intentional semantic colors.
+ */
+function neutralizeGenericColors(html: string): string {
+  if (typeof DOMParser === "undefined") return html;
+  const doc = new DOMParser().parseFromString(`<div>${html}</div>`, "text/html");
+  const container = doc.body.firstElementChild;
+  if (!container) return html;
+
+  // Semantic colors we want to keep (hue-based)
+  const isSemanticColor = (r: number, g: number, b: number): boolean => {
+    // If all channels are similar → grayscale → strip it
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const saturation = max === 0 ? 0 : (max - min) / max;
+    // Low saturation = grayscale/near-white/near-black
+    return saturation > 0.25 && max > 30 && min < 230;
+  };
+
+  const parseColor = (color: string): [number, number, number] | null => {
+    // rgb(r, g, b)
+    const rgbMatch = color.match(/rgb\s*\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/);
+    if (rgbMatch) return [+rgbMatch[1], +rgbMatch[2], +rgbMatch[3]];
+    // #RRGGBB or #RGB
+    const hexMatch = color.match(/#([0-9a-f]{3,8})/i);
+    if (hexMatch) {
+      let hex = hexMatch[1];
+      if (hex.length === 3) hex = hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
+      return [parseInt(hex.slice(0,2),16), parseInt(hex.slice(2,4),16), parseInt(hex.slice(4,6),16)];
+    }
+    // Named colors
+    if (color.includes("black")) return [0, 0, 0];
+    if (color.includes("white")) return [255, 255, 255];
+    if (color.includes("gray") || color.includes("grey")) return [128, 128, 128];
+    return null;
+  };
+
+  const els = container.querySelectorAll("[style]");
+  for (const el of Array.from(els)) {
+    const style = (el as HTMLElement).style;
+
+    // Handle color
+    if (style.color) {
+      const rgb = parseColor(style.color);
+      if (rgb && !isSemanticColor(...rgb)) {
+        style.removeProperty("color");
+      }
+    }
+
+    // Handle background-color (remove white/black backgrounds)
+    if (style.backgroundColor) {
+      const rgb = parseColor(style.backgroundColor);
+      if (rgb && !isSemanticColor(...rgb)) {
+        style.removeProperty("background-color");
+      }
+    }
+
+    // If style is now empty, remove the attribute
+    if (!(el as HTMLElement).getAttribute("style")?.trim()) {
+      el.removeAttribute("style");
+    }
+  }
+
+  return container.innerHTML;
+}
+
 export function RichContentViewer({ html, lessonId, titulo, categoria, isAdmin = false }: RichContentViewerProps) {
   const [refinedHtml, setRefinedHtml] = useState<string | null>(null);
   const [refining, setRefining] = useState(false);
@@ -149,10 +216,13 @@ export function RichContentViewer({ html, lessonId, titulo, categoria, isAdmin =
   // Aluno vê refinado se existir, senão original
   const activeHtml = refinedHtml || html;
 
-  const sanitized = DOMPurify.sanitize(activeHtml, {
-    ADD_ATTR: ["style", "class", "target", "rel", "data-width", "data-alignment", "alt"],
-    ADD_TAGS: ["mark", "sup", "sub", "img", "table", "thead", "tbody", "tr", "td", "th", "colgroup", "col", "figure", "figcaption"],
-  });
+  const sanitized = useMemo(() => {
+    const clean = DOMPurify.sanitize(activeHtml, {
+      ADD_ATTR: ["style", "class", "target", "rel", "data-width", "data-alignment", "alt"],
+      ADD_TAGS: ["mark", "sup", "sub", "img", "table", "thead", "tbody", "tr", "td", "th", "colgroup", "col", "figure", "figcaption"],
+    });
+    return neutralizeGenericColors(clean);
+  }, [activeHtml]);
 
   const sections = useMemo(() => parseIntoSections(sanitized), [sanitized]);
 
