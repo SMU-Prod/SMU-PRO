@@ -73,12 +73,21 @@ export default async function CertificadosPage() {
 
                   {/* Info */}
                   <div>
-                    <h3 className="font-bold text-foreground leading-tight mb-1">{course?.titulo ?? "Curso"}</h3>
+                    <h3 className="font-bold text-foreground leading-tight mb-1">
+                      {cert.metadata?.lesson_titulo
+                        ? `${course?.titulo ?? "NR"} — ${cert.metadata.lesson_titulo}`
+                        : course?.titulo ?? "Curso"}
+                    </h3>
+                    {cert.metadata?.tipo === "nr_aula" && (
+                      <span className="inline-block text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded-full font-semibold mb-1">
+                        Certificado por Aula
+                      </span>
+                    )}
                     <div className="flex flex-col gap-1 text-sm text-muted-light">
                       {cert.nota_final != null && (
                         <span>Nota final: <strong className="text-foreground">{cert.nota_final}/100</strong></span>
                       )}
-                      {cert.carga_horaria && (
+                      {cert.carga_horaria != null && cert.carga_horaria > 0 && (
                         <span>Carga horária: <strong className="text-foreground">{formatMinutes(cert.carga_horaria)}</strong></span>
                       )}
                       <span className="flex items-center gap-1.5 mt-1">
