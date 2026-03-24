@@ -22,20 +22,31 @@ export async function POST(req: Request) {
     .single();
 
   if (!course) return NextResponse.json({ error: "Curso não encontrado" }, { status: 404 });
-  if (course.tipo !== "free") {
+
+  // Verificar se o usuário é MIT (projeto cultural) — MIT pode se matricular grátis em qualquer curso
+  const { data: userCheck } = await supabase
+    .from("users")
+    .select("projeto_cultural")
+    .eq("clerk_id", userId)
+    .single();
+  const isMITUser = userCheck?.projeto_cultural === true;
+
+  if (course.tipo !== "free" && !isMITUser) {
     return NextResponse.json({ error: "Este curso não é gratuito" }, { status: 400 });
   }
 
   // Resolver UUID do usuário (enrollments.user_id é uuid FK para users.id)
   const { data: userRow } = await supabase
     .from("users")
-    .select("id")
+    .select("id, projeto_cultural")
     .eq("clerk_id", userId)
     .single();
 
   if (!userRow) return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
 
   const userUuid = userRow.id;
+  const isMIT = userRow.projeto_cultural === true;
+  const tipoAcesso = isMIT ? "projeto_cultural" as const : "free" as const;
 
   // Upsert enrollment
   const { data: enrollment, error } = await supabase
@@ -44,7 +55,7 @@ export async function POST(req: Request) {
       {
         user_id: userUuid,
         course_id: courseId,
-        tipo_acesso: "free",
+        tipo_acesso: tipoAcesso,
         status: "ativo",
       },
       { onConflict: "user_id,course_id" }

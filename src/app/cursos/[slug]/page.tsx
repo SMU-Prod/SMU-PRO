@@ -50,11 +50,13 @@ export default async function CourseDetailPage({ params }: Props) {
 
   const { userId } = await auth();
   let enrollment: any = null;
+  let isMIT = false;
 
   if (userId) {
     const supabase = createAdminClient();
-    const { data: userRow } = await supabase.from("users").select("id").eq("clerk_id", userId).single();
+    const { data: userRow } = await supabase.from("users").select("id, projeto_cultural").eq("clerk_id", userId).single();
     if (userRow) {
+      isMIT = userRow.projeto_cultural === true;
       const { data } = await supabase
         .from("enrollments")
         .select("*")
@@ -253,7 +255,7 @@ export default async function CourseDetailPage({ params }: Props) {
                   </Button>
                 </Link>
               ) : userId ? (
-                <EnrollButton course={course} userId={userId} />
+                <EnrollButton course={course} userId={userId} isMIT={isMIT} />
               ) : (
                 <Link href={`/login?redirect_url=/cursos/${course.slug}`} className="block">
                   <Button size="lg" className="w-full gap-2">

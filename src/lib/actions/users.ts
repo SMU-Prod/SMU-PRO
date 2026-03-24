@@ -171,6 +171,50 @@ export async function adminToggleMIT(userId: string, projeto_cultural: boolean) 
     .from("users")
     .update({ projeto_cultural, role: newRole })
     .eq("clerk_id", userId);
+
+  // Se ativando MIT → matricular automaticamente em TODOS os cursos ativos
+  if (projeto_cultural) {
+    const { data: userRow } = await supabase
+      .from("users")
+      .select("id, nome")
+      .eq("clerk_id", userId)
+      .single();
+
+    if (userRow) {
+      const { data: allCourses } = await supabase
+        .from("courses")
+        .select("id, titulo, slug")
+        .eq("ativo", true);
+
+      const enrollErrors: string[] = [];
+      for (const course of allCourses ?? []) {
+        const { error } = await supabase.from("enrollments").upsert(
+          {
+            user_id: userRow.id,
+            course_id: course.id,
+            tipo_acesso: "projeto_cultural",
+            status: "ativo",
+          },
+          { onConflict: "user_id,course_id" }
+        );
+        if (error) enrollErrors.push(`${course.titulo}: ${error.message}`);
+      }
+
+      // Notificar o aluno
+      createNotification({
+        userUuid: userRow.id,
+        tipo: "enrollment",
+        titulo: "Bem-vindo ao Projeto MIT!",
+        mensagem: `Seu acesso foi liberado a ${(allCourses ?? []).length} cursos gratuitamente. Bons estudos!`,
+        link: "/dashboard",
+      }).catch(() => {});
+
+      if (enrollErrors.length > 0) {
+        console.error("[MIT] Erros ao matricular:", enrollErrors);
+      }
+    }
+  }
+
   revalidatePath("/admin/usuarios");
 }
 

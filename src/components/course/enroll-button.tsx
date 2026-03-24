@@ -17,11 +17,12 @@ interface Course {
 interface Props {
   course: Course;
   userId: string;
+  isMIT?: boolean;
 }
 
 type BillingType = "PIX" | "BOLETO" | "CREDIT_CARD";
 
-export function EnrollButton({ course, userId }: Props) {
+export function EnrollButton({ course, userId, isMIT = false }: Props) {
   const [loading, setLoading] = useState(false);
   const [enrolled, setEnrolled] = useState(false);
   const [showMethods, setShowMethods] = useState(false);
@@ -31,7 +32,8 @@ export function EnrollButton({ course, userId }: Props) {
   const [pendingBillingType, setPendingBillingType] = useState<BillingType | null>(null);
   const router = useRouter();
 
-  const isFree = course.tipo === "free";
+  // MIT (projeto cultural) tem acesso gratuito a todos os cursos
+  const isFree = course.tipo === "free" || isMIT;
 
   // Format CPF as user types: 000.000.000-00
   function handleCpfChange(value: string) {
@@ -136,7 +138,7 @@ export function EnrollButton({ course, userId }: Props) {
         disabled={loading}
       >
         {loading ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} />}
-        {loading ? "Processando..." : "Inscrever-se grátis"}
+        {loading ? "Processando..." : isMIT ? "Inscrever-se — Projeto MIT" : "Inscrever-se grátis"}
       </Button>
     );
   }
