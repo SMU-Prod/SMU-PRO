@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Header } from "@/components/layout/header";
 import { formatMinutes } from "@/lib/utils";
 import { Award, ExternalLink, Download, QrCode, Calendar } from "lucide-react";
+import { SignCertificateButton } from "@/components/certificate/sign-certificate-button";
 
 export default async function CertificadosPage() {
   const { userId } = await auth();
@@ -18,7 +19,7 @@ export default async function CertificadosPage() {
   const { data: certs } = userUuid
     ? await (supabase as any)
         .from("certificates")
-        .select(`*, courses(titulo, categoria, nivel)`)
+        .select(`*, courses(titulo, categoria, nivel), certificate_signatures(tipo)`)
         .eq("user_id", userUuid)
         .order("emitido_em", { ascending: false })
     : { data: [] };
@@ -103,20 +104,28 @@ export default async function CertificadosPage() {
                     <QrCode size={14} className="shrink-0 ml-2 text-muted-light" />
                   </div>
 
-                  {/* Actions */}
-                  <div className="flex gap-2 mt-auto">
-                    <Link href={`/certificado/${cert.codigo_verificacao}`} target="_blank" className="flex-1">
-                      <Button variant="outline" size="sm" className="w-full gap-1.5">
-                        <ExternalLink size={13} />
-                        Ver
-                      </Button>
-                    </Link>
-                    <Link href={`/api/certificates/pdf/${cert.codigo_verificacao}`} className="flex-1">
-                      <Button variant="secondary" size="sm" className="w-full gap-1.5">
-                        <Download size={13} />
-                        PDF
-                      </Button>
-                    </Link>
+                  {/* Sign + Actions */}
+                  <div className="flex items-center gap-2 mt-auto">
+                    <SignCertificateButton
+                      certificateId={cert.id}
+                      alreadySigned={!!(cert.certificate_signatures as any[])?.some(
+                        (s: any) => s.tipo === "trabalhador"
+                      )}
+                    />
+                    <div className="flex gap-2 flex-1">
+                      <Link href={`/certificado/${cert.codigo_verificacao}`} target="_blank" className="flex-1">
+                        <Button variant="outline" size="sm" className="w-full gap-1.5">
+                          <ExternalLink size={13} />
+                          Ver
+                        </Button>
+                      </Link>
+                      <Link href={`/api/certificates/pdf/${cert.codigo_verificacao}`} className="flex-1">
+                        <Button variant="secondary" size="sm" className="w-full gap-1.5">
+                          <Download size={13} />
+                          PDF
+                        </Button>
+                      </Link>
+                    </div>
                   </div>
                 </div>
               );

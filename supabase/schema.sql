@@ -683,6 +683,55 @@ create table if not exists public.ai_explanations (
 );
 
 -- ============================================================
+-- TABELA: instructors
+-- Instrutores e responsáveis técnicos que assinam certificados NR
+-- ============================================================
+create table public.instructors (
+  id              uuid primary key default gen_random_uuid(),
+  nome            text not null,
+  qualificacao    text,                          -- ex: "Eng. Segurança do Trabalho"
+  formacao        text,                          -- ex: "Engenharia Civil"
+  registro        text,                          -- ex: "CREA-SP 123456"
+  tipo            text not null default 'instrutor' check (tipo in ('instrutor', 'responsavel_tecnico')),
+  assinatura_img  text,                          -- base64 PNG da assinatura digital
+  ativo           boolean not null default true,
+  created_at      timestamptz not null default now()
+);
+
+-- ============================================================
+-- TABELA: course_instructors
+-- Vínculo de instrutor/responsável técnico a cursos (ou aulas NR)
+-- ============================================================
+create table public.course_instructors (
+  id              uuid primary key default gen_random_uuid(),
+  course_id       uuid not null references public.courses(id) on delete cascade,
+  lesson_id       uuid references public.lessons(id) on delete cascade,  -- null = aplica ao curso todo
+  instructor_id   uuid not null references public.instructors(id) on delete cascade,
+  tipo            text not null check (tipo in ('instrutor', 'responsavel_tecnico')),
+  created_at      timestamptz not null default now(),
+  unique(course_id, lesson_id, tipo)  -- um instrutor e um resp. técnico por curso/aula
+);
+
+create index idx_course_instructors_course on public.course_instructors(course_id);
+create index idx_course_instructors_lesson on public.course_instructors(lesson_id);
+
+-- ============================================================
+-- TABELA: certificate_signatures
+-- Assinaturas digitais coletadas para cada certificado
+-- ============================================================
+create table public.certificate_signatures (
+  id              uuid primary key default gen_random_uuid(),
+  certificate_id  uuid not null references public.certificates(id) on delete cascade,
+  tipo            text not null check (tipo in ('trabalhador', 'instrutor', 'responsavel_tecnico')),
+  assinatura_img  text not null,                -- base64 PNG da assinatura
+  nome_assinante  text,
+  assinado_em     timestamptz not null default now(),
+  unique(certificate_id, tipo)                  -- uma assinatura de cada tipo por certificado
+);
+
+create index idx_cert_signatures_cert on public.certificate_signatures(certificate_id);
+
+-- ============================================================
 -- STORAGE BUCKETS (executar no dashboard Supabase)
 -- ============================================================
 -- insert into storage.buckets (id, name, public) values ('course-thumbnails', 'course-thumbnails', true);

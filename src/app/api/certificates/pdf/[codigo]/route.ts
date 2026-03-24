@@ -361,6 +361,37 @@ export async function GET(
     return NextResponse.json({ error: "Certificado nao encontrado" }, { status: 404 });
   }
 
+  // Load digital signatures for this certificate
+  const { data: signatures } = await (supabase as any)
+    .from("certificate_signatures")
+    .select("tipo, assinatura_img, nome_assinante")
+    .eq("certificate_id", cert.id);
+
+  const sigMap: Record<string, { img: string; nome: string }> = {};
+  for (const s of signatures ?? []) {
+    sigMap[s.tipo] = { img: s.assinatura_img, nome: s.nome_assinante ?? "" };
+  }
+
+  // If no instructor/resp signatures saved on cert, try to load from course_instructors
+  if (!sigMap["instrutor"] || !sigMap["responsavel_tecnico"]) {
+    const lessonId = cert.metadata?.lesson_id;
+    const { data: courseInstructors } = await (supabase as any)
+      .from("course_instructors")
+      .select("tipo, lesson_id, instructors(nome, qualificacao, formacao, registro, assinatura_img)")
+      .eq("course_id", cert.course_id);
+
+    for (const ci of courseInstructors ?? []) {
+      const inst = ci.instructors as any;
+      if (!inst?.assinatura_img) continue;
+      // Prefer lesson-specific, fallback to course-level
+      const isLessonMatch = ci.lesson_id === lessonId;
+      const isCourseLevel = !ci.lesson_id;
+      if ((isLessonMatch || isCourseLevel) && !sigMap[ci.tipo]) {
+        sigMap[ci.tipo] = { img: inst.assinatura_img, nome: inst.nome };
+      }
+    }
+  }
+
   const user = cert.users as any;
   const course = cert.courses as any;
   const verifyUrl = `${process.env.NEXT_PUBLIC_APP_URL}/certificado/${codigo}`;
@@ -380,8 +411,8 @@ export async function GET(
   const isNR = !!nrResult;
 
   const html = isNR
-    ? generateNRCertificate({ cert, user, course, nrData: nrResult!.data, qrDataUrl, codigo, emitidoEm, emitidoShort, cargaHoraria })
-    : generateGeneralCertificate({ cert, user, course, qrDataUrl, codigo, emitidoEm, cargaHoraria, nivel });
+    ? generateNRCertificate({ cert, user, course, nrData: nrResult!.data, qrDataUrl, codigo, emitidoEm, emitidoShort, cargaHoraria, sigMap })
+    : generateGeneralCertificate({ cert, user, course, qrDataUrl, codigo, emitidoEm, cargaHoraria, nivel, sigMap });
 
   return new NextResponse(html, {
     headers: {
@@ -395,7 +426,7 @@ export async function GET(
 // ══════════════════════════════════════════════════
 // CERTIFICADO GERAL (cursos normais)
 // ══════════════════════════════════════════════════
-function generateGeneralCertificate({ cert, user, course, qrDataUrl, codigo, emitidoEm, cargaHoraria, nivel }: any) {
+function generateGeneralCertificate({ cert, user, course, qrDataUrl, codigo, emitidoEm, cargaHoraria, nivel, sigMap }: any) {
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -494,6 +525,7 @@ function generateGeneralCertificate({ cert, user, course, qrDataUrl, codigo, emi
     .sig-line { width: 150px; height: 1px; background: #1a365d; margin-bottom: 4px; }
     .sig-name { font-size: 10px; font-weight: 600; color: #1a365d; }
     .sig-role { font-size: 8px; color: #6b7280; }
+    .sig-img-general { height: 32px; object-fit: contain; display: block; margin: 0 auto 4px; }
     .qr-block { display: flex; flex-direction: column; align-items: center; gap: 3px; }
     .qr-block img { width: 64px; height: 64px; border-radius: 4px; }
     .qr-text { font-size: 7px; color: #9ca3af; }
@@ -564,11 +596,21 @@ function generateGeneralCertificate({ cert, user, course, qrDataUrl, codigo, emi
 
       <div class="footer">
         <div class="sig-block">
-          <img src="${LOGO_BASE64}" alt="SMU" style="height: 32px; border-radius: 4px; margin-bottom: 6px;" />
+          ${sigMap?.instrutor?.img
+            ? `<img src="${sigMap.instrutor.img}" class="sig-img-general" alt="Instrutor" />`
+            : `<img src="${LOGO_BASE64}" alt="SMU" style="height: 32px; border-radius: 4px; margin-bottom: 6px;" />`
+          }
           <div class="sig-line"></div>
-          <div class="sig-name">SMU Producoes</div>
-          <div class="sig-role">Escola Profissional de Eventos</div>
+          <div class="sig-name">${sigMap?.instrutor?.nome || "SMU Producoes"}</div>
+          <div class="sig-role">${sigMap?.instrutor?.nome ? "Instrutor" : "Escola Profissional de Eventos"}</div>
         </div>
+        ${sigMap?.trabalhador?.img ? `
+        <div class="sig-block">
+          <img src="${sigMap.trabalhador.img}" class="sig-img-general" alt="Aluno" />
+          <div class="sig-line"></div>
+          <div class="sig-name">${formatCertName(user?.nome)}</div>
+          <div class="sig-role">Aluno</div>
+        </div>` : ""}
         <div class="qr-block">
           <img src="${qrDataUrl}" alt="QR Code" />
           <div class="qr-text">Verificar autenticidade</div>
@@ -589,7 +631,7 @@ function generateGeneralCertificate({ cert, user, course, qrDataUrl, codigo, emi
 // CERTIFICADO NR (Normas Regulamentadoras)
 // Layout fiel ao modelo oficial de capacitacao
 // ══════════════════════════════════════════════════
-function generateNRCertificate({ cert, user, course, nrData, qrDataUrl, codigo, emitidoEm, emitidoShort, cargaHoraria }: any) {
+function generateNRCertificate({ cert, user, course, nrData, qrDataUrl, codigo, emitidoEm, emitidoShort, cargaHoraria, sigMap }: any) {
   const nr = nrData;
 
   // Calculate validade end date (2 years from issuance)
@@ -726,6 +768,10 @@ function generateNRCertificate({ cert, user, course, nrData, qrDataUrl, codigo, 
     .sig-trabalhador-label {
       font-size: 9.5px; font-weight: 700; color: #1a365d;
     }
+    .sig-img {
+      height: 40px; object-fit: contain; display: block;
+      margin: 0 auto 2px;
+    }
 
     /* ── Bottom bar ── */
     .bottom-bar {
@@ -788,26 +834,44 @@ function generateNRCertificate({ cert, user, course, nrData, qrDataUrl, codigo, 
 
       <!-- Signatures -->
       <div class="sig-section">
-        <!-- Instrutor + Qualificacao -->
+        <!-- Instrutor -->
         <div class="sig-row-top">
           <div class="sig-instructor-line" style="flex:1;">
             <span class="sig-instructor-label">Instrutor:</span>
-            <span class="sig-underline"></span>
+            ${sigMap?.instrutor?.img
+              ? `<img src="${sigMap.instrutor.img}" class="sig-img" alt="Assinatura Instrutor" style="height:36px; margin:0 8px;" />`
+              : `<span class="sig-underline"></span>`
+            }
           </div>
           <div style="display:flex; align-items:flex-end; margin-left:16px;">
             <span class="sig-qual-label">Qualifica&ccedil;&atilde;o:</span>
-            <span class="sig-underline" style="width:100px; border-bottom:1px solid #333; margin-left:6px;"></span>
+            ${sigMap?.instrutor?.nome
+              ? `<span style="font-size:9px; color:#333; margin-left:6px;">${sigMap.instrutor.nome}</span>`
+              : `<span class="sig-underline" style="width:100px; border-bottom:1px solid #333; margin-left:6px;"></span>`
+            }
           </div>
         </div>
 
         <!-- Responsavel Tecnico -->
         <div class="sig-responsavel">
+          ${sigMap?.responsavel_tecnico?.img
+            ? `<img src="${sigMap.responsavel_tecnico.img}" class="sig-img" alt="Assinatura RT" />`
+            : ""
+          }
           <div class="sig-responsavel-title">Respons&aacute;vel T&eacute;cnico pelo Treinamento</div>
-          <div class="sig-responsavel-fields">[Nome] &mdash; [Forma&ccedil;&atilde;o] &mdash; [Registro Profissional]</div>
+          <div class="sig-responsavel-fields">${
+            sigMap?.responsavel_tecnico?.nome
+              ? sigMap.responsavel_tecnico.nome
+              : "[Nome] &mdash; [Forma&ccedil;&atilde;o] &mdash; [Registro Profissional]"
+          }</div>
         </div>
 
         <!-- Assinatura do Trabalhador -->
         <div class="sig-trabalhador">
+          ${sigMap?.trabalhador?.img
+            ? `<img src="${sigMap.trabalhador.img}" class="sig-img" alt="Assinatura Trabalhador" />`
+            : ""
+          }
           <div class="sig-trabalhador-label">Assinatura do Trabalhador</div>
         </div>
       </div>
