@@ -1,0 +1,832 @@
+openapi: 3.1.0
+info:
+  title: SMU PRO — API Reference
+  description: |
+    API da plataforma SMU PRO — Escola Profissional de Eventos.
+
+    **Autenticação**: Todas as rotas (exceto webhooks e health) requerem autenticação via Clerk.
+    O token JWT é enviado automaticamente pelo middleware do Next.js via cookies de sessão.
+
+    **Rate Limiting**: Endpoints de IA e certificados possuem rate limiting por usuário.
+
+    **Autorização**: Rotas `/api/admin/*` requerem role `admin` ou `content_manager`.
+  version: 1.0.0
+  contact:
+    name: SMU PRO
+    url: https://smupro.com.br
+
+servers:
+  - url: https://smupro.com.br/api
+    description: Produção
+  - url: http://localhost:3000/api
+    description: Desenvolvimento
+
+tags:
+  - name: Health
+    description: Status da aplicação
+  - name: Payments
+    description: Checkout e status de pagamentos (Asaas)
+  - name: Enrollments
+    description: Matrículas em cursos
+  - name: Certificates
+    description: Geração e download de certificados
+  - name: AI
+    description: Funcionalidades de inteligência artificial
+  - name: Quiz
+    description: Geração automática de quizzes
+  - name: TTS
+    description: Text-to-Speech para aulas
+  - name: Admin
+    description: Operações administrativas (requer role admin)
+  - name: Webhooks
+    description: Endpoints de webhook (Clerk, Asaas)
+
+paths:
+  # ═══════════════════════════════════════════════
+  # HEALTH
+  # ═══════════════════════════════════════════════
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      description: Verifica status da aplicação e conexão com banco de dados.
+      security: []
+      responses:
+        "200":
+          description: Todos os serviços saudáveis
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [healthy, degraded]
+                  timestamp:
+                    type: string
+                    format: date-time
+                  checks:
+                    type: object
+                    properties:
+                      app:
+                        type: string
+                        enum: [ok, error]
+                      database:
+                        type: string
+                        enum: [ok, error]
+        "503":
+          description: Serviço degradado (banco indisponível)
+
+  # ═══════════════════════════════════════════════
+  # PAYMENTS
+  # ═══════════════════════════════════════════════
+  /payments/checkout:
+    post:
+      tags: [Payments]
+      summary: Criar cobrança para matrícula
+      description: |
+        Cria enrollment pendente e gera cobrança no Asaas.
+        Para PIX retorna QR code; para BOLETO retorna URL do boleto.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [courseId]
+              properties:
+                courseId:
+                  type: string
+                  format: uuid
+                  description: ID do curso
+                billingType:
+                  type: string
+                  enum: [PIX, BOLETO, CREDIT_CARD]
+                  default: PIX
+      responses:
+        "200":
+          description: Cobrança criada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  enrollmentId:
+                    type: string
+                    format: uuid
+                  paymentId:
+                    type: string
+                    description: ID do pagamento no Asaas
+                  billingType:
+                    type: string
+                  value:
+                    type: number
+                  dueDate:
+                    type: string
+                  pixQrCode:
+                    type: object
+                    description: Presente apenas para PIX
+                    properties:
+                      encodedImage:
+                        type: string
+                        description: QR Code em base64
+                      payload:
+                        type: string
+                        description: Copia e cola PIX
+                  bankSlipUrl:
+                    type: string
+                    description: URL do boleto (apenas BOLETO)
+        "400":
+          description: courseId ausente ou billingType inválido
+        "401":
+          description: Não autenticado
+        "404":
+          description: Curso não encontrado
+        "409":
+          description: Já matriculado neste curso
+
+  /payments/status/{paymentId}:
+    get:
+      tags: [Payments]
+      summary: Consultar status do pagamento
+      description: Polling de status usado pela página de pagamento para detectar confirmação.
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID do pagamento no Asaas
+      responses:
+        "200":
+          description: Status atual do pagamento
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [PENDING, RECEIVED, CONFIRMED, OVERDUE, REFUNDED]
+                  confirmed:
+                    type: boolean
+                    description: true se RECEIVED ou CONFIRMED
+        "401":
+          description: Não autenticado
+        "403":
+          description: Pagamento não pertence ao usuário
+
+  # ═══════════════════════════════════════════════
+  # ENROLLMENTS
+  # ═══════════════════════════════════════════════
+  /enrollments/free:
+    post:
+      tags: [Enrollments]
+      summary: Matricular em curso gratuito
+      description: Cria matrícula imediata (status ativo) em curso do tipo "free".
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [courseId]
+              properties:
+                courseId:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          description: Matrícula criada ou já existente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  enrollment:
+                    type: object
+                  alreadyEnrolled:
+                    type: boolean
+        "400":
+          description: Curso não é gratuito
+        "401":
+          description: Não autenticado
+        "404":
+          description: Curso não encontrado
+
+  # ═══════════════════════════════════════════════
+  # CERTIFICATES
+  # ═══════════════════════════════════════════════
+  /certificates/generate:
+    post:
+      tags: [Certificates]
+      summary: Gerar certificado de conclusão
+      description: |
+        Gera certificado quando o aluno conclui 100% das aulas.
+        Verifica progresso, calcula nota média dos quizzes, e envia email + notificação.
+        Rate limit: 5 requisições por minuto.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [courseId]
+              properties:
+                courseId:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          description: Certificado gerado (ou já existente)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  certificate:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      codigo:
+                        type: string
+                        description: Código único de verificação
+                      nota_final:
+                        type: number
+                      emitido_em:
+                        type: string
+                        format: date-time
+        "400":
+          description: Progresso incompleto
+        "401":
+          description: Não autenticado
+        "429":
+          description: Rate limit excedido
+
+  /certificates/pdf/{codigo}:
+    get:
+      tags: [Certificates]
+      summary: Gerar PDF do certificado
+      description: |
+        Retorna HTML print-ready do certificado para impressão/download.
+        Dois templates: NR (portrait, formal, com conteúdo programático) e Geral (landscape).
+        Inclui assinaturas digitais (instrutor, responsável técnico, trabalhador) quando disponíveis.
+        Inclui QR code de verificação.
+      parameters:
+        - name: codigo
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Código único do certificado
+      security: []
+      responses:
+        "200":
+          description: HTML do certificado
+          content:
+            text/html:
+              schema:
+                type: string
+        "404":
+          description: Certificado não encontrado
+
+  # ═══════════════════════════════════════════════
+  # AI
+  # ═══════════════════════════════════════════════
+  /ai-explain:
+    post:
+      tags: [AI]
+      summary: Explicação IA de conteúdo da aula
+      description: |
+        Usa GPT-4o-mini para gerar explicação didática do conteúdo da aula.
+        Resultado é cacheado na tabela ai_explanations.
+        Rate limit: 10 requisições por minuto.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [lessonId, titulo, conteudo]
+              properties:
+                lessonId:
+                  type: string
+                  format: uuid
+                titulo:
+                  type: string
+                conteudo:
+                  type: string
+                  description: HTML do conteúdo da aula
+      responses:
+        "200":
+          description: Explicação gerada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  explanation:
+                    type: string
+                    description: HTML da explicação didática
+                  cached:
+                    type: boolean
+        "401":
+          description: Não autenticado
+        "429":
+          description: Rate limit excedido
+        "500":
+          description: OPENAI_API_KEY não configurada
+
+  /ai-refine:
+    post:
+      tags: [AI]
+      summary: Refinamento IA do conteúdo da aula
+      description: |
+        A IA analisa o conteúdo como professor técnico especialista e retorna
+        versão refinada com seções didáticas organizadas. Cache em ai_explanations.
+        Rate limit: 5 requisições por minuto.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [lessonId, conteudo]
+              properties:
+                lessonId:
+                  type: string
+                  format: uuid
+                titulo:
+                  type: string
+                conteudo:
+                  type: string
+                categoria:
+                  type: string
+      responses:
+        "200":
+          description: Conteúdo refinado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  content:
+                    type: string
+                    description: HTML refinado
+                  cached:
+                    type: boolean
+        "401":
+          description: Não autenticado
+        "429":
+          description: Rate limit excedido
+
+  /animation/generate:
+    post:
+      tags: [AI]
+      summary: Gerar simulação interativa da aula
+      description: |
+        Pipeline híbrido GPT-4o-mini → gpt-image-1-mini → Edge TTS.
+        Gera widgets React interativos + imagens didáticas + narração em áudio.
+        Custo estimado: ~$0.065/aula. Rate limit: 3 requisições por minuto.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [lessonId, titulo, conteudo]
+              properties:
+                lessonId:
+                  type: string
+                  format: uuid
+                titulo:
+                  type: string
+                conteudo:
+                  type: string
+                categoria:
+                  type: string
+                  enum: [som, luz, video, rigging, palco, producao, seguranca, dj, vj, roadie, marketing, efeitos, geral]
+      responses:
+        "200":
+          description: Simulação gerada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  slides:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        tipo:
+                          type: string
+                        titulo:
+                          type: string
+                        conteudo:
+                          type: string
+                        imagem_url:
+                          type: string
+                        audio_url:
+                          type: string
+                  cached:
+                    type: boolean
+        "401":
+          description: Não autenticado
+        "429":
+          description: Rate limit excedido
+
+  # ═══════════════════════════════════════════════
+  # QUIZ
+  # ═══════════════════════════════════════════════
+  /quiz/generate:
+    post:
+      tags: [Quiz]
+      summary: Gerar quiz automaticamente com IA
+      description: |
+        Usa GPT-4o-mini para gerar perguntas de múltipla escolha baseadas
+        no conteúdo da aula. Rate limit: 10 requisições por minuto.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [lessonId, titulo, conteudo]
+              properties:
+                lessonId:
+                  type: string
+                  format: uuid
+                titulo:
+                  type: string
+                conteudo:
+                  type: string
+                  description: HTML do conteúdo
+                quantidade:
+                  type: integer
+                  default: 5
+                  description: Número de questões (3-10)
+                dificuldade:
+                  type: string
+                  enum: [facil, medio, dificil]
+                  default: medio
+      responses:
+        "200":
+          description: Quiz gerado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  questions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        texto:
+                          type: string
+                        explicacao:
+                          type: string
+                        opcoes:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              texto:
+                                type: string
+                              correta:
+                                type: boolean
+        "401":
+          description: Não autenticado
+        "429":
+          description: Rate limit excedido
+
+  # ═══════════════════════════════════════════════
+  # TTS
+  # ═══════════════════════════════════════════════
+  /tts:
+    post:
+      tags: [TTS]
+      summary: Converter texto da aula em áudio
+      description: |
+        Usa Edge TTS para gerar narração em pt-BR do conteúdo da aula.
+        Pré-processa termos técnicos de eventos para melhor pronúncia.
+        Cache em ai_explanations. Rate limit: 5 requisições por minuto.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [lessonId, conteudo]
+              properties:
+                lessonId:
+                  type: string
+                  format: uuid
+                conteudo:
+                  type: string
+                  description: HTML do conteúdo
+                voice:
+                  type: string
+                  default: pt-BR-AntonioNeural
+                  description: Voz do Edge TTS
+      responses:
+        "200":
+          description: Áudio gerado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  audio_url:
+                    type: string
+                    description: Data URL base64 do áudio MP3
+                  cached:
+                    type: boolean
+        "401":
+          description: Não autenticado
+        "429":
+          description: Rate limit excedido
+
+  # ═══════════════════════════════════════════════
+  # CONTENT VALIDATOR
+  # ═══════════════════════════════════════════════
+  /content-validator:
+    post:
+      tags: [Admin]
+      summary: Validar conteúdo da aula contra fontes oficiais
+      description: |
+        Analisa conteúdo da aula e sugere melhorias baseadas em normas técnicas
+        (AES, ABNT, NRs) e boas práticas do setor de eventos.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [lessonId]
+              properties:
+                lessonId:
+                  type: string
+                  format: uuid
+                courseCategoria:
+                  type: string
+      responses:
+        "200":
+          description: Resultado da validação
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  score:
+                    type: integer
+                    minimum: 0
+                    maximum: 100
+                  issues:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        tipo:
+                          type: string
+                          enum: [desatualizado, incompleto, impreciso, formatacao, acessibilidade]
+                        severidade:
+                          type: string
+                          enum: [alta, media, baixa]
+                        descricao:
+                          type: string
+                        sugestao:
+                          type: string
+                  suggestions:
+                    type: array
+                    items:
+                      type: string
+                  sources:
+                    type: array
+                    items:
+                      type: string
+        "401":
+          description: Não autenticado
+
+  # ═══════════════════════════════════════════════
+  # ADMIN
+  # ═══════════════════════════════════════════════
+  /admin/generate-nr-certs:
+    post:
+      tags: [Admin]
+      summary: Gerar certificados NR retroativos
+      description: |
+        Gera certificados NR por aula para todos os alunos que completaram
+        aulas NR mas ainda não receberam certificado. Executar uma vez após deploy.
+        Requer role admin.
+      responses:
+        "200":
+          description: Certificados gerados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  generated:
+                    type: integer
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                  message:
+                    type: string
+        "401":
+          description: Não autenticado
+        "403":
+          description: Sem permissão (não é admin)
+
+  /admin/clear-animations:
+    delete:
+      tags: [Admin]
+      summary: Limpar cache de simulações interativas
+      description: Remove todas as simulações (ai_animations) e conteúdos refinados do banco.
+      responses:
+        "200":
+          description: Cache limpo
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted:
+                    type: integer
+        "401":
+          description: Não autenticado
+        "403":
+          description: Sem permissão
+
+  /admin/payments/{id}/refund:
+    post:
+      tags: [Admin]
+      summary: Estornar pagamento
+      description: |
+        Estorna pagamento no Asaas e cancela a matrícula do aluno.
+        Envia notificação ao aluno sobre o cancelamento.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID da matrícula (enrollment)
+      responses:
+        "200":
+          description: Estorno realizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        "400":
+          description: Sem pagamento associado
+        "401":
+          description: Não autenticado
+        "403":
+          description: Sem permissão
+        "404":
+          description: Matrícula não encontrada
+        "409":
+          description: Já cancelada
+
+  /admin/run-migration:
+    post:
+      tags: [Admin]
+      summary: Verificar estado do banco de dados
+      description: Testa se tabelas e colunas existem e limpa caches stale.
+      responses:
+        "200":
+          description: Resultados dos testes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: string
+        "401":
+          description: Não autenticado
+        "403":
+          description: Sem permissão
+
+  # ═══════════════════════════════════════════════
+  # WEBHOOKS
+  # ═══════════════════════════════════════════════
+  /webhooks/clerk:
+    post:
+      tags: [Webhooks]
+      summary: Webhook do Clerk (sincronização de usuários)
+      description: |
+        Recebe eventos do Clerk (user.created, user.updated, user.deleted).
+        Sincroniza dados do usuário com tabela `users` do Supabase.
+        Envia email de boas-vindas e notifica admins sobre novos cadastros.
+        Verificação via Svix (assinatura HMAC).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Evento processado
+        "400":
+          description: Headers Svix ausentes ou assinatura inválida
+        "500":
+          description: CLERK_WEBHOOK_SECRET não configurado
+
+  /webhooks/asaas:
+    post:
+      tags: [Webhooks]
+      summary: Webhook do Asaas (confirmação de pagamento)
+      description: |
+        Recebe eventos de pagamento do Asaas.
+        Eventos tratados: PAYMENT_RECEIVED, PAYMENT_CONFIRMED (ativa matrícula),
+        PAYMENT_REFUNDED (cancela), PAYMENT_OVERDUE (expira).
+        Verificação via timing-safe comparison do header asaas-access-token.
+        Deduplicação via tabela webhook_log.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Evento processado
+        "401":
+          description: Token do webhook inválido
+        "500":
+          description: ASAAS_WEBHOOK_TOKEN não configurado
+
+# ═══════════════════════════════════════════════
+# SERVER ACTIONS (não são REST, mas documentadas para referência)
+# ═══════════════════════════════════════════════
+# As server actions abaixo são chamadas diretamente pelo frontend via React Server Actions.
+# Não possuem URL REST — são invocadas como funções TypeScript.
+#
+# ┌─────────────────────┬───────────────────────────────────────────────────────┐
+# │ Arquivo             │ Funções                                               │
+# ├─────────────────────┼───────────────────────────────────────────────────────┤
+# │ blog.ts             │ getPublishedPosts, getFeaturedPosts, getPostBySlug,   │
+# │                     │ getRelatedPosts, adminGetAllPosts, adminCreatePost,   │
+# │                     │ adminUpdatePost, adminDeletePost,                     │
+# │                     │ adminTogglePostPublish                                │
+# ├─────────────────────┼───────────────────────────────────────────────────────┤
+# │ collections.ts      │ getCollections, getCollectionById,                    │
+# │                     │ adminCreateCollection, adminUpdateCollection,         │
+# │                     │ adminDeleteCollection, adminAddCourseToCollection,    │
+# │                     │ adminRemoveCourseFromCollection                       │
+# ├─────────────────────┼───────────────────────────────────────────────────────┤
+# │ courses.ts          │ getCourses, getCourseById, getCourseBySlug,          │
+# │                     │ adminCreateCourse, adminUpdateCourse,                 │
+# │                     │ adminDeleteCourse, adminToggleCourseStatus,           │
+# │                     │ adminBulkPublish, adminBulkUnpublish                  │
+# ├─────────────────────┼───────────────────────────────────────────────────────┤
+# │ notes.ts            │ getUserNotes, createNote, updateNote, deleteNote      │
+# ├─────────────────────┼───────────────────────────────────────────────────────┤
+# │ notifications.ts    │ getNotifications, markAsRead, markAllAsRead,          │
+# │                     │ createNotification, notifyAdmins                      │
+# ├─────────────────────┼───────────────────────────────────────────────────────┤
+# │ progress.ts         │ markLessonComplete, getLessonProgress,                │
+# │                     │ getCourseProgress                                     │
+# ├─────────────────────┼───────────────────────────────────────────────────────┤
+# │ quiz.ts             │ getQuiz, submitQuizAttempt, getQuizAttempts           │
+# ├─────────────────────┼───────────────────────────────────────────────────────┤
+# │ signatures.ts       │ listInstructors, createInstructor, updateInstructor,  │
+# │                     │ deleteInstructor, assignInstructor,                   │
+# │                     │ removeInstructorAssignment, listCourseInstructors,    │
+# │                     │ signCertificate, adminSignCertificate,                │
+# │                     │ getCertificateSignatures                              │
+# ├─────────────────────┼───────────────────────────────────────────────────────┤
+# │ streak.ts           │ getStreak, updateStreak                               │
+# ├─────────────────────┼───────────────────────────────────────────────────────┤
+# │ users.ts            │ getUser, updateProfile, adminGetUsers,                │
+# │                     │ adminUpdateUserRole, adminToggleUserStatus            │
+# └─────────────────────┴───────────────────────────────────────────────────────┘
+
+components:
+  securitySchemes:
+    ClerkAuth:
+      type: http
+      scheme: bearer
+      description: JWT token gerenciado pelo Clerk (enviado automaticamente via cookies)
+
+security:
+  - ClerkAuth: []
