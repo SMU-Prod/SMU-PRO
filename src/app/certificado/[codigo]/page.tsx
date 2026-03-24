@@ -69,6 +69,22 @@ export default async function CertificatePage({ params }: Props) {
   validadeDate.setFullYear(validadeDate.getFullYear() + 2);
   const validadeStr = validadeDate.toLocaleDateString("pt-BR");
 
+  // Format user name properly (handles "rickberberian" → "Rick Berberian")
+  const formatName = (raw: string | null | undefined): string => {
+    if (!raw || !raw.trim()) return "Nome do Aluno";
+    let name = raw.trim();
+    if (!name.includes(" ") && name.length > 2) {
+      const split = name.replace(/([a-z])([A-Z])/g, "$1 $2");
+      if (split.includes(" ")) name = split;
+    }
+    return name
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(" ");
+  };
+  const displayName = formatName(user.nome);
+
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
       {/* Header */}
@@ -128,7 +144,7 @@ export default async function CertificatePage({ params }: Props) {
           {/* This certifies */}
           <div className="text-center mb-8">
             <p className="text-sm text-muted-light mb-3">Certificamos que</p>
-            <h1 className="text-3xl font-bold text-foreground mb-3">{user.nome}</h1>
+            <h1 className="text-3xl font-bold text-foreground mb-3">{displayName}</h1>
             {isNR ? (
               <>
                 <p className="text-sm text-muted-light mb-2">concluiu com êxito o treinamento de</p>

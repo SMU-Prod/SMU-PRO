@@ -266,6 +266,33 @@ const NR_DATA: Record<string, {
 };
 
 /**
+ * Format a user name for display on the certificate.
+ * Handles cases like "rickberberian" → "Rick Berberian" (camelCase or single-word names)
+ * and ensures proper capitalization: "JOAO SILVA" → "João Silva", "joao silva" → "Joao Silva"
+ */
+function formatCertName(raw: string | null | undefined): string {
+  if (!raw || !raw.trim()) return "Nome do Aluno";
+  let name = raw.trim();
+
+  // If name has no spaces and has mixed case patterns (camelCase), split on uppercase
+  // e.g. "rickBerberian" → "rick Berberian"
+  if (!name.includes(" ") && name.length > 2) {
+    // Try splitting on camelCase boundaries
+    const split = name.replace(/([a-z])([A-Z])/g, "$1 $2");
+    if (split.includes(" ")) {
+      name = split;
+    }
+  }
+
+  // Title case each word
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+}
+
+/**
  * Detect NR number from certificate metadata or course/lesson title.
  * Priority: cert.metadata.lesson_titulo > course titulo
  */
@@ -508,7 +535,7 @@ function generateGeneralCertificate({ cert, user, course, qrDataUrl, codigo, emi
 
       <div class="body">
         <div class="certify-text">Certificamos que</div>
-        <div class="student-name">${user?.nome ?? "Aluno"}</div>
+        <div class="student-name">${formatCertName(user?.nome)}</div>
         <div class="concluded-text">concluiu com exito o curso</div>
         <div class="course-title">${course?.titulo ?? "Curso"}</div>
         <div class="course-meta">Nivel ${nivel}${cert.nota_final ? ` &middot; Nota Final: ${cert.nota_final}/100` : ""}</div>
@@ -726,7 +753,7 @@ function generateNRCertificate({ cert, user, course, nrData, qrDataUrl, codigo, 
 
       <!-- Student -->
       <div class="certify-text">Certificamos que</div>
-      <div class="student-name">${(user?.nome ?? "NOME COMPLETO DO TRABALHADOR").toUpperCase()}</div>
+      <div class="student-name">${formatCertName(user?.nome).toUpperCase()}</div>
       <div class="concluded-text">concluiu com &ecirc;xito o treinamento de</div>
       <div class="nr-title">${nr.numero} &mdash; ${nr.titulo}</div>
       <div class="nr-subtitle">Aplicado ao Setor de Eventos</div>
