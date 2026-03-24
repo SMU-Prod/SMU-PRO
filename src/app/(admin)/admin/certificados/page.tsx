@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatMinutes } from "@/lib/utils";
 import { Award, ExternalLink, Search } from "lucide-react";
 import Link from "next/link";
+import { GenerateNRCertsButton } from "@/components/admin/generate-nr-certs-button";
 
 interface Props {
   searchParams: Promise<{ search?: string; page?: string }>;
@@ -38,6 +39,7 @@ export default async function AdminCertificadosPage({ searchParams }: Props) {
       <Header
         title="Certificados"
         subtitle={`${total} certificados emitidos`}
+        actions={<GenerateNRCertsButton />}
       />
 
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
