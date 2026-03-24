@@ -14,7 +14,7 @@ export async function submitQuizAttempt(
   if (!userId) throw new Error("Não autenticado");
 
   const supabase = createAdminClient();
-  const { data: userRow } = await supabase.from("users").select("id").eq("clerk_id", userId).single();
+  const { data: userRow } = await supabase.from("users").select("id, role").eq("clerk_id", userId).single();
   if (!userRow) throw new Error("Usuário não encontrado");
 
   // Validar nota
@@ -38,15 +38,18 @@ export async function submitQuizAttempt(
       .eq("status", "ativo")
       .maybeSingle();
 
-    // Também permite se o curso é free
+    // Admin tem acesso total; pleno precisa de enrollment manual; cursos free são liberados
     if (!enrollment) {
-      const { data: course } = await supabase
-        .from("courses")
-        .select("tipo")
-        .eq("id", courseId)
-        .single();
-      if (course?.tipo !== "free") {
-        throw new Error("Acesso negado: você não está matriculado neste curso");
+      const isAdmin = userRow.role === "admin";
+      if (!isAdmin) {
+        const { data: course } = await supabase
+          .from("courses")
+          .select("tipo")
+          .eq("id", courseId)
+          .single();
+        if (course?.tipo !== "free") {
+          throw new Error("Acesso negado: você não está matriculado neste curso");
+        }
       }
     }
   }

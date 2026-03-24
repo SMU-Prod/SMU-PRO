@@ -17,8 +17,9 @@ export default async function LessonPage({ params }: Props) {
     const { course, enrollment, progressMap } = await getCourseWithProgress(slug);
 
     const supabase = createAdminClient();
-    const { data: userRow } = await supabase.from("users").select("id").eq("clerk_id", userId).single();
+    const { data: userRow } = await supabase.from("users").select("id, role").eq("clerk_id", userId).single();
     const userUuid = userRow?.id;
+    const userRole = userRow?.role as string | null;
 
     const { data: lesson } = await (supabase as any)
       .from("lessons")
@@ -29,8 +30,9 @@ export default async function LessonPage({ params }: Props) {
     if (!lesson) notFound();
 
     // Gate de acesso ao vídeo no servidor: remove youtube_id do payload
-    // para usuários sem matrícula (exceto aulas com preview_gratis)
-    const hasAccess = !!enrollment || lesson.preview_gratis;
+    // Admin tem acesso total; demais dependem de enrollment ou preview
+    const isAdmin = userRole === "admin";
+    const hasAccess = isAdmin || !!enrollment || lesson.preview_gratis;
     const lessonData = hasAccess ? lesson : { ...lesson, youtube_id: null };
 
     const [quizAttemptsResult, notesResult, quizResult] = await Promise.all([
@@ -58,6 +60,7 @@ export default async function LessonPage({ params }: Props) {
         quizData={quizData ?? null}
         notes={notes ?? []}
         userId={userId}
+        userRole={userRole}
       />
     );
   } catch {

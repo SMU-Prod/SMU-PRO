@@ -1,0 +1,1593 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMU PRO — Animation Engine Prototype</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface-1: #12121a;
+    --surface-2: #1a1a26;
+    --surface-3: #242436;
+    --border: #2a2a3e;
+    --amber: #f59e0b;
+    --amber-dim: #b45309;
+    --amber-glow: rgba(245, 158, 11, 0.15);
+    --text: #e8e8f0;
+    --text-dim: #8888a0;
+    --blue: #3b82f6;
+    --green: #22c55e;
+    --purple: #a855f7;
+    --red: #ef4444;
+    --cyan: #06b6d4;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Layout ────────────────────────────── */
+  .app {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+
+  .header {
+    text-align: center;
+    padding: 40px 0 32px;
+  }
+  .header h1 {
+    font-size: 28px;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--amber), #fbbf24);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .header p { color: var(--text-dim); margin-top: 8px; font-size: 14px; }
+
+  .pipeline {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin: 32px 0;
+    flex-wrap: wrap;
+  }
+  .pipeline-step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 12px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.4s;
+  }
+  .pipeline-step.active {
+    border-color: var(--amber);
+    background: var(--amber-glow);
+    color: var(--amber);
+    box-shadow: 0 0 20px var(--amber-glow);
+  }
+  .pipeline-step.done {
+    border-color: var(--green);
+    color: var(--green);
+  }
+  .pipeline-arrow { color: var(--text-dim); font-size: 18px; }
+
+  .columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-top: 24px;
+  }
+
+  .panel {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .panel-header {
+    padding: 16px 20px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .panel-header .icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+  }
+  .panel-body { padding: 20px; }
+
+  /* ── Content Input ─────────────────────── */
+  .course-content {
+    font-size: 13px;
+    line-height: 1.8;
+    color: var(--text-dim);
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 8px;
+  }
+  .course-content h3 {
+    color: var(--text);
+    font-size: 15px;
+    font-weight: 600;
+    margin: 16px 0 8px;
+  }
+  .course-content h3:first-child { margin-top: 0; }
+  .course-content strong { color: var(--amber); font-weight: 600; }
+  .course-content ul { padding-left: 20px; margin: 8px 0; }
+  .course-content li { margin: 4px 0; }
+
+  /* ── Script Output ─────────────────────── */
+  .script-output {
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 8px;
+  }
+  .scene-card {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    transition: all 0.3s;
+    cursor: pointer;
+  }
+  .scene-card:hover, .scene-card.active {
+    border-color: var(--amber);
+    box-shadow: 0 0 16px var(--amber-glow);
+  }
+  .scene-card.active { background: rgba(245,158,11,0.05); }
+  .scene-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .scene-number {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--amber);
+    background: rgba(245,158,11,0.12);
+    padding: 3px 10px;
+    border-radius: 6px;
+  }
+  .scene-type {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: var(--surface-3);
+    color: var(--text-dim);
+  }
+  .scene-title {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 6px;
+  }
+  .scene-narration {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.6;
+    margin-bottom: 10px;
+    font-style: italic;
+  }
+  .scene-visuals {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .visual-tag {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+  .visual-tag.element { background: rgba(59,130,246,0.15); color: var(--blue); }
+  .visual-tag.animation { background: rgba(168,85,247,0.15); color: var(--purple); }
+  .visual-tag.transition { background: rgba(6,182,212,0.15); color: var(--cyan); }
+  .visual-tag.timing { background: rgba(34,197,94,0.15); color: var(--green); }
+
+  /* ── Animation Canvas ──────────────────── */
+  .animation-area {
+    grid-column: 1 / -1;
+  }
+  .canvas-wrapper {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: #08080e;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .canvas-wrapper canvas {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* ── Controls ──────────────────────────── */
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .btn {
+    padding: 10px 24px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+  }
+  .btn-primary {
+    background: var(--amber);
+    color: #000;
+  }
+  .btn-primary:hover { background: #fbbf24; transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn-secondary {
+    background: var(--surface-3);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { background: var(--surface-2); border-color: var(--text-dim); }
+
+  .progress-bar {
+    flex: 1;
+    height: 4px;
+    background: var(--surface-3);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--amber);
+    transition: width 0.1s linear;
+    border-radius: 2px;
+  }
+  .time-display {
+    font-size: 12px;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+    min-width: 50px;
+    text-align: right;
+  }
+  .scene-indicator {
+    font-size: 11px;
+    color: var(--amber);
+    font-weight: 600;
+    min-width: 100px;
+  }
+
+  /* ── Loading State ─────────────────────── */
+  .generating {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    text-align: center;
+  }
+  .generating .spinner {
+    width: 40px; height: 40px;
+    border: 3px solid var(--surface-3);
+    border-top-color: var(--amber);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-bottom: 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .generating .label { font-size: 14px; font-weight: 500; color: var(--amber); }
+  .generating .sublabel { font-size: 12px; color: var(--text-dim); margin-top: 6px; }
+
+  /* ── AI Analysis Panel ─────────────────── */
+  .ai-analysis {
+    grid-column: 1 / -1;
+    margin-bottom: 0;
+  }
+  .analysis-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  .analysis-card {
+    background: var(--surface-2);
+    border-radius: 10px;
+    padding: 14px;
+    border: 1px solid var(--border);
+  }
+  .analysis-card .label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+  .analysis-card .value {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--amber);
+  }
+  .analysis-card .detail {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+
+  /* ── Scrollbar ─────────────────────────── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border); }
+
+  /* ── Responsive ────────────────────────── */
+  @media (max-width: 900px) {
+    .columns { grid-template-columns: 1fr; }
+    .analysis-grid { grid-template-columns: repeat(2, 1fr); }
+    .animation-area { grid-column: 1; }
+    .ai-analysis { grid-column: 1; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <h1>🎬 SMU PRO — Animation Engine</h1>
+    <p>Protótipo: Conteúdo do Curso → IA Analisa → Roteiro Detalhado → Animação Didática</p>
+  </div>
+
+  <!-- Pipeline Steps -->
+  <div class="pipeline">
+    <div class="pipeline-step" id="step-1">📝 Conteúdo da Aula</div>
+    <div class="pipeline-arrow">→</div>
+    <div class="pipeline-step" id="step-2">🧠 IA Analisa</div>
+    <div class="pipeline-arrow">→</div>
+    <div class="pipeline-step" id="step-3">🎬 Roteiro Gerado</div>
+    <div class="pipeline-arrow">→</div>
+    <div class="pipeline-step" id="step-4">✨ Animação Renderizada</div>
+  </div>
+
+  <!-- Columns: Content + Script -->
+  <div class="columns">
+
+    <!-- Left: Course Content -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="icon" style="background:rgba(59,130,246,0.15);color:var(--blue)">📚</div>
+        Conteúdo Original da Aula
+        <span style="margin-left:auto;font-size:11px;color:var(--text-dim)">Aula: Frequências e Equalização</span>
+      </div>
+      <div class="panel-body">
+        <div class="course-content" id="courseContent">
+          <h3>Introdução às Frequências Sonoras</h3>
+          <p>O som é uma onda mecânica que se propaga pelo ar através de compressões e rarefações. Cada som possui uma <strong>frequência</strong> medida em Hertz (Hz), que determina se ele soa grave ou agudo.</p>
+
+          <h3>O Espectro de Frequências</h3>
+          <p>O ouvido humano percebe sons entre <strong>20 Hz e 20.000 Hz (20 kHz)</strong>. No mundo dos eventos, trabalhamos com faixas específicas:</p>
+          <ul>
+            <li><strong>Sub-graves (20-60 Hz):</strong> São as frequências que você sente no peito. Essenciais em shows de música eletrônica e festivais. Produzidas por subwoofers de alta potência (18" ou 21").</li>
+            <li><strong>Graves (60-250 Hz):</strong> Corpo e peso do som. O bumbo da bateria (kick) vive entre 60-100 Hz. Baixo elétrico entre 80-250 Hz.</li>
+            <li><strong>Médios-graves (250-500 Hz):</strong> Região que dá "calor" ao som, mas em excesso causa sensação de som "embolado" ou "enlameado".</li>
+            <li><strong>Médios (500-2000 Hz):</strong> Faixa da voz humana e da maioria dos instrumentos acústicos. Fundamental para inteligibilidade em palestras e eventos corporativos.</li>
+            <li><strong>Médios-agudos (2-5 kHz):</strong> Presença e definição. A frequência de 3 kHz é onde o ouvido humano é mais sensível — cuidado com feedback!</li>
+            <li><strong>Agudos (5-20 kHz):</strong> Brilho, ar e detalhes. Pratos da bateria, harmônicos dos instrumentos e sibilância da voz.</li>
+          </ul>
+
+          <h3>Equalização na Prática</h3>
+          <p>O equalizador (EQ) é a ferramenta principal para moldar o som em eventos. Tipos mais comuns:</p>
+          <ul>
+            <li><strong>EQ Paramétrico:</strong> Controle total — frequência, ganho e largura (Q). Presente em mesas profissionais como Yamaha CL/QL, DiGiCo SD, Allen & Heath dLive.</li>
+            <li><strong>EQ Gráfico:</strong> Faders fixos em frequências pré-determinadas (tipicamente 31 bandas). Usado no sistema PA para correção de sala.</li>
+            <li><strong>EQ Shelving:</strong> Atua em tudo acima ou abaixo de uma frequência. Útil para "abrir" ou "fechar" o brilho geral.</li>
+          </ul>
+
+          <h3>Dicas Práticas para Eventos</h3>
+          <p>Em ambientes ao vivo, aplique o princípio do <strong>"corte antes de reforço"</strong> — é melhor remover frequências problemáticas do que adicionar o que está faltando. Isso mantém o sinal mais limpo e reduz risco de feedback. Use um analisador RTA durante a passagem de som para identificar ressonâncias da sala.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Generated Script -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="icon" style="background:rgba(245,158,11,0.15);color:var(--amber)">🎬</div>
+        Roteiro Gerado pela IA
+        <span style="margin-left:auto;font-size:11px;color:var(--text-dim)" id="sceneCount"></span>
+      </div>
+      <div class="panel-body">
+        <div class="script-output" id="scriptOutput">
+          <div class="generating" id="initialState">
+            <div style="font-size:36px;margin-bottom:16px">🎬</div>
+            <div class="label">Clique em "Gerar Animação" para ver o roteiro</div>
+            <div class="sublabel">A IA vai analisar o conteúdo e criar um roteiro detalhado</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Analysis -->
+    <div class="panel ai-analysis" id="analysisPanel" style="display:none">
+      <div class="panel-header">
+        <div class="icon" style="background:rgba(168,85,247,0.15);color:var(--purple)">🧠</div>
+        Análise da IA sobre o Conteúdo
+      </div>
+      <div class="panel-body">
+        <div class="analysis-grid" id="analysisGrid"></div>
+      </div>
+    </div>
+
+    <!-- Animation Canvas -->
+    <div class="panel animation-area" id="animationPanel" style="display:none">
+      <div class="panel-header">
+        <div class="icon" style="background:rgba(34,197,94,0.15);color:var(--green)">✨</div>
+        Animação Renderizada
+        <span style="margin-left:auto;font-size:11px;color:var(--text-dim)" id="currentSceneLabel"></span>
+      </div>
+      <div class="panel-body">
+        <div class="canvas-wrapper">
+          <canvas id="animCanvas"></canvas>
+        </div>
+        <div class="controls">
+          <button class="btn btn-primary" id="playBtn" onclick="togglePlayback()">▶ Play</button>
+          <button class="btn btn-secondary" onclick="resetAnimation()">⟲ Reset</button>
+          <div class="scene-indicator" id="sceneIndicator">Cena 1/10</div>
+          <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+          <div class="time-display" id="timeDisplay">0:00</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Generate Button -->
+  <div style="text-align:center; margin: 32px 0">
+    <button class="btn btn-primary" id="generateBtn" onclick="startGeneration()" style="font-size:15px;padding:14px 40px">
+      🧠 Gerar Animação com IA
+    </button>
+  </div>
+
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// SMU PRO — Animation Engine Prototype
+// Demonstrates: Content → AI Analysis → Detailed Script → Rendered Animation
+// ══════════════════════════════════════════════════════════════
+
+// ── The detailed animation script that the AI would generate ──
+const ANIMATION_SCRIPT = {
+  metadata: {
+    titulo: "Frequências e Equalização para Eventos",
+    categoria: "som",
+    nivel: "trainee",
+    duracao_total: 65,
+    total_cenas: 10,
+    estilo_visual: "motion_graphics_tech",
+    paleta_cores: ["#f59e0b", "#3b82f6", "#22c55e", "#a855f7", "#ef4444"],
+  },
+  analise_ia: {
+    conceitos_chave: 7,
+    elementos_visuais_identificados: 14,
+    analogias_sugeridas: 5,
+    nivel_complexidade: "intermediário",
+    abordagem: "Visual + comparativa com exemplos práticos do mercado de eventos",
+    pontos_fortes: "Conteúdo rico em dados numéricos — ideal para visualizações animadas de frequência e espectro",
+    tipo_narrativa: "Progressiva: conceito básico → espectro → ferramenta → prática",
+  },
+  cenas: [
+    {
+      numero: 1,
+      tipo: "abertura",
+      duracao: 5,
+      titulo: "Frequências e Equalização",
+      subtitulo: "Domine o espectro sonoro nos seus eventos",
+      narracao: "Bem-vindo! Nesta aula, vamos entender como o som funciona e como usar o equalizador para ter um áudio perfeito em qualquer evento.",
+      elementos_visuais: [
+        { tipo: "texto_titulo", conteudo: "Frequências e Equalização", animacao: "typewriter", delay: 0.5 },
+        { tipo: "texto_subtitulo", conteudo: "Domine o espectro sonoro", animacao: "fade_in_up", delay: 1.5 },
+        { tipo: "icone_decorativo", conteudo: "ondas_sonoras", animacao: "pulse_loop", delay: 0 },
+        { tipo: "particulas", conteudo: "audio_particles", animacao: "float_ambient", delay: 0 },
+      ],
+      transicao_saida: "zoom_through",
+      background: "gradient_dark_blue",
+      musica: "intro_tech_beat",
+    },
+    {
+      numero: 2,
+      tipo: "conceito_fundamental",
+      duracao: 7,
+      titulo: "O que é Som?",
+      narracao: "O som é uma onda mecânica — compressões e rarefações do ar que nosso ouvido capta. Imagine jogar uma pedra na água: as ondulações que se formam são parecidas com o comportamento do som.",
+      elementos_visuais: [
+        { tipo: "animacao_onda", conteudo: "sine_wave_propagation", animacao: "draw_progressive", parametros: { frequencia: 2, amplitude: 40, velocidade: 1.5 }, delay: 0 },
+        { tipo: "moleculas_ar", conteudo: "air_compression_visual", animacao: "compress_expand_loop", delay: 1 },
+        { tipo: "analogia_visual", conteudo: "pedra_agua_ripple", animacao: "ripple_expand", delay: 3 },
+        { tipo: "label_explicativo", conteudo: "Compressão → Rarefação", animacao: "fade_in", delay: 2 },
+        { tipo: "seta_indicadora", conteudo: "propagation_direction", animacao: "slide_right", delay: 1.5 },
+      ],
+      transicao_saida: "morph_to_spectrum",
+      destaque_tecnico: "Onda mecânica = precisa de meio (ar) para se propagar",
+    },
+    {
+      numero: 3,
+      tipo: "dados_visuais",
+      duracao: 8,
+      titulo: "O Espectro de Frequências",
+      narracao: "O ouvido humano escuta de 20 Hz até 20 mil Hz. Vamos percorrer cada faixa e entender o papel de cada uma nos eventos ao vivo.",
+      elementos_visuais: [
+        { tipo: "espectro_animado", conteudo: "frequency_spectrum_bar", animacao: "build_left_to_right", parametros: {
+          faixas: [
+            { nome: "Sub-graves", range: "20-60 Hz", cor: "#ef4444", icone: "chest_vibration" },
+            { nome: "Graves", range: "60-250 Hz", cor: "#f59e0b", icone: "kick_drum" },
+            { nome: "Médios-graves", range: "250-500 Hz", cor: "#22c55e", icone: "warmth" },
+            { nome: "Médios", range: "500-2k Hz", cor: "#3b82f6", icone: "voice" },
+            { nome: "Médios-agudos", range: "2-5 kHz", cor: "#a855f7", icone: "presence" },
+            { nome: "Agudos", range: "5-20 kHz", cor: "#06b6d4", icone: "sparkle" },
+          ]
+        }, delay: 0 },
+        { tipo: "ouvido_humano", conteudo: "ear_diagram", animacao: "fade_in_scale", delay: 0.5 },
+        { tipo: "range_highlight", conteudo: "20Hz ←→ 20kHz", animacao: "expand_center", delay: 1 },
+      ],
+      transicao_saida: "slide_down",
+      interatividade: "hover_faixa_mostra_exemplo_audio",
+    },
+    {
+      numero: 4,
+      tipo: "detalhe_com_exemplo",
+      duracao: 7,
+      titulo: "Sub-graves: O que você SENTE",
+      narracao: "De 20 a 60 Hz, essas frequências você não apenas ouve — você sente no peito! Em festivais de eletrônica, os subwoofers de 18 e 21 polegadas são os responsáveis por essa pancada.",
+      elementos_visuais: [
+        { tipo: "onda_grave", conteudo: "low_freq_wave", animacao: "slow_oscillation", parametros: { frequencia: 0.3, amplitude: 80 }, delay: 0 },
+        { tipo: "silhueta_pessoa", conteudo: "body_vibration_highlight", animacao: "pulse_chest_area", delay: 1 },
+        { tipo: "subwoofer_3d", conteudo: "speaker_cone_movement", animacao: "pump_in_out", delay: 0.5 },
+        { tipo: "contexto_real", conteudo: "Festival Stage", animacao: "slide_in_photo_reference", delay: 3 },
+        { tipo: "medidor_frequencia", conteudo: "20-60 Hz", animacao: "fill_gauge", delay: 1.5 },
+        { tipo: "texto_destaque", conteudo: "Sub de 18\" ou 21\"", animacao: "pop_in", delay: 4 },
+      ],
+      transicao_saida: "frequency_morph_up",
+    },
+    {
+      numero: 5,
+      tipo: "detalhe_com_exemplo",
+      duracao: 6,
+      titulo: "Graves e Médios: O Corpo do Som",
+      narracao: "O bumbo da bateria vive entre 60 e 100 Hz, o baixo vai até 250 Hz. Já os médios, de 500 a 2000 Hz, são onde mora a voz humana — fundamental para inteligibilidade em palestras e corporativos.",
+      elementos_visuais: [
+        { tipo: "instrumento_animado", conteudo: "kick_drum_hit", animacao: "impact_ripple", parametros: { frequencia_central: 80 }, delay: 0 },
+        { tipo: "instrumento_animado", conteudo: "bass_guitar_pluck", animacao: "string_vibration", parametros: { frequencia_central: 150 }, delay: 1.5 },
+        { tipo: "forma_onda_voz", conteudo: "voice_waveform", animacao: "speech_pattern", delay: 3 },
+        { tipo: "icone_contexto", conteudo: "microfone_palestra", animacao: "fade_in", delay: 3.5 },
+        { tipo: "comparacao_visual", conteudo: "show_vs_corporativo", animacao: "split_screen", delay: 4 },
+      ],
+      transicao_saida: "dissolve",
+    },
+    {
+      numero: 6,
+      tipo: "alerta_pratico",
+      duracao: 5,
+      titulo: "⚠️ Zona de Perigo: 3 kHz",
+      narracao: "Atenção! Em 3 kHz o ouvido humano é hipersensível. É aqui que o feedback mais acontece. Cuidado redobrado ao equalizar esta faixa durante passagem de som!",
+      elementos_visuais: [
+        { tipo: "curva_sensibilidade", conteudo: "fletcher_munson_curve", animacao: "draw_curve_highlight_peak", parametros: { pico: 3000 }, delay: 0 },
+        { tipo: "alerta_visual", conteudo: "warning_pulse", animacao: "flash_red_amber", delay: 1 },
+        { tipo: "feedback_simulacao", conteudo: "mic_speaker_loop", animacao: "circular_arrow_glow", delay: 2 },
+        { tipo: "dica_texto", conteudo: "Cuidado com feedback em 3 kHz!", animacao: "shake_attention", delay: 2.5 },
+      ],
+      transicao_saida: "wipe_diagonal",
+      enfase: "alerta",
+    },
+    {
+      numero: 7,
+      tipo: "ferramenta",
+      duracao: 8,
+      titulo: "O Equalizador: Sua Ferramenta Principal",
+      narracao: "O EQ é como um bisturi sonoro. Temos três tipos principais: o paramétrico, que dá controle total de frequência, ganho e largura; o gráfico, com faders fixos para corrigir a sala; e o shelving, para ajustes gerais de brilho e peso.",
+      elementos_visuais: [
+        { tipo: "eq_parametrico", conteudo: "parametric_eq_ui", animacao: "build_knobs_one_by_one", parametros: { freq: 1000, gain: -6, q: 1.4 }, delay: 0 },
+        { tipo: "eq_grafico", conteudo: "graphic_eq_31band", animacao: "faders_wave_pattern", delay: 2.5 },
+        { tipo: "eq_shelving", conteudo: "shelf_eq_curve", animacao: "tilt_curve", delay: 5 },
+        { tipo: "label_equipamento", conteudo: "Yamaha CL · DiGiCo SD · dLive", animacao: "scroll_horizontal", delay: 1 },
+        { tipo: "cursor_interativo", conteudo: "drag_eq_point", animacao: "demo_drag_curve", delay: 1.5 },
+      ],
+      transicao_saida: "eq_curve_morph",
+    },
+    {
+      numero: 8,
+      tipo: "regra_ouro",
+      duracao: 6,
+      titulo: "Regra de Ouro: Corte > Reforço",
+      narracao: "A regra mais importante da equalização ao vivo: é sempre melhor CORTAR frequências problemáticas do que REFORÇAR o que está faltando. Isso mantém o sinal limpo e previne feedback.",
+      elementos_visuais: [
+        { tipo: "eq_curve_comparacao", conteudo: "boost_vs_cut", animacao: "side_by_side_morph", parametros: {
+          errado: { label: "❌ Boosting +12dB", cor: "#ef4444", curva: "boost" },
+          certo: { label: "✅ Cutting -6dB", cor: "#22c55e", curva: "cut" },
+        }, delay: 0 },
+        { tipo: "medidor_sinal", conteudo: "signal_meter", animacao: "clean_vs_clipping", delay: 2 },
+        { tipo: "texto_regra", conteudo: "\"Corte antes de reforço\"", animacao: "engrave_gold", delay: 3.5 },
+      ],
+      transicao_saida: "golden_flash",
+      destaque_tecnico: "Princípio subtrativo mantém headroom e reduz risco de feedback",
+    },
+    {
+      numero: 9,
+      tipo: "aplicacao_pratica",
+      duracao: 7,
+      titulo: "Na Prática: Passagem de Som",
+      narracao: "Durante a passagem de som, use um analisador RTA para enxergar as ressonâncias da sala. Identifique os picos, aplique cortes cirúrgicos no EQ gráfico, e depois ajuste canal por canal no paramétrico.",
+      elementos_visuais: [
+        { tipo: "rta_animado", conteudo: "real_time_analyzer", animacao: "live_spectrum_bars", parametros: { bandas: 31, velocidade: "realtime" }, delay: 0 },
+        { tipo: "sala_evento", conteudo: "venue_cross_section", animacao: "sound_reflection_paths", delay: 1 },
+        { tipo: "pico_ressonancia", conteudo: "resonance_peak_highlight", animacao: "pulse_red_then_cut", delay: 3 },
+        { tipo: "workflow_steps", conteudo: ["1. RTA ligado", "2. Pink noise", "3. Identificar picos", "4. Cortar no gráfico", "5. Refinar por canal"], animacao: "checklist_sequential", delay: 2 },
+      ],
+      transicao_saida: "fade_to_recap",
+    },
+    {
+      numero: 10,
+      tipo: "encerramento",
+      duracao: 6,
+      titulo: "Resumo da Aula",
+      narracao: "Hoje você aprendeu sobre o espectro de frequências, as faixas essenciais para eventos, os tipos de equalizador e a regra de ouro do corte antes do reforço. Na próxima aula, vamos colocar tudo em prática com uma simulação de passagem de som!",
+      elementos_visuais: [
+        { tipo: "recap_cards", conteudo: [
+          "🔊 Espectro: 20 Hz a 20 kHz",
+          "📊 6 faixas de frequência",
+          "🎛️ EQ: Paramétrico, Gráfico, Shelving",
+          "✂️ Regra: Corte > Reforço",
+          "📈 Ferramenta: Analisador RTA"
+        ], animacao: "flip_cards_sequential", delay: 0 },
+        { tipo: "cta_proxima_aula", conteudo: "Próxima: Simulação de Passagem de Som →", animacao: "slide_in_right", delay: 4 },
+        { tipo: "logo", conteudo: "SMU PRO", animacao: "fade_in_glow", delay: 5 },
+      ],
+      transicao_saida: "fade_out",
+      background: "gradient_amber_dark",
+    },
+  ],
+};
+
+// ── State ──
+let isPlaying = false;
+let currentScene = 0;
+let animationTime = 0;
+let lastTimestamp = 0;
+let animationFrame = null;
+let canvas, ctx;
+let generated = false;
+
+// ── Canvas Setup ──
+function setupCanvas() {
+  canvas = document.getElementById('animCanvas');
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width * 2;
+  canvas.height = rect.height * 2;
+  ctx = canvas.getContext('2d');
+  ctx.scale(2, 2);
+  canvas.style.width = rect.width + 'px';
+  canvas.style.height = rect.height + 'px';
+}
+
+// ── Generation Flow ──
+async function startGeneration() {
+  if (generated) { togglePlayback(); return; }
+  const btn = document.getElementById('generateBtn');
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Gerando...';
+
+  // Step 1: Content
+  setStep(1);
+  await delay(800);
+
+  // Step 2: AI Analyzing
+  setStep(2);
+  document.getElementById('scriptOutput').innerHTML = `
+    <div class="generating">
+      <div class="spinner"></div>
+      <div class="label">IA analisando conteúdo...</div>
+      <div class="sublabel">Identificando conceitos, analogias e elementos visuais</div>
+    </div>
+  `;
+  await delay(2000);
+
+  // Show AI Analysis
+  showAnalysis();
+  await delay(1500);
+
+  // Step 3: Script
+  setStep(3);
+  document.getElementById('scriptOutput').innerHTML = `
+    <div class="generating">
+      <div class="spinner"></div>
+      <div class="label">Gerando roteiro detalhado...</div>
+      <div class="sublabel">Criando 10 cenas com elementos visuais e narrações</div>
+    </div>
+  `;
+  await delay(1500);
+
+  // Render script cards one by one
+  renderScriptCards();
+  await delay(2000);
+
+  // Step 4: Animation
+  setStep(4);
+  document.getElementById('animationPanel').style.display = '';
+  setupCanvas();
+  renderScene(0);
+
+  btn.disabled = false;
+  btn.innerHTML = '▶ Assistir Animação';
+  generated = true;
+}
+
+function setStep(n) {
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById(`step-${i}`);
+    el.classList.remove('active', 'done');
+    if (i < n) el.classList.add('done');
+    if (i === n) el.classList.add('active');
+  }
+}
+
+function showAnalysis() {
+  const panel = document.getElementById('analysisPanel');
+  panel.style.display = '';
+  const a = ANIMATION_SCRIPT.analise_ia;
+  document.getElementById('analysisGrid').innerHTML = `
+    <div class="analysis-card">
+      <div class="label">Conceitos Identificados</div>
+      <div class="value">${a.conceitos_chave}</div>
+      <div class="detail">Frequência, espectro, EQ paramétrico, gráfico, shelving, feedback, RTA</div>
+    </div>
+    <div class="analysis-card">
+      <div class="label">Elementos Visuais</div>
+      <div class="value">${a.elementos_visuais_identificados}</div>
+      <div class="detail">Ondas, espectros, instrumentos, equipamentos, diagramas, comparações</div>
+    </div>
+    <div class="analysis-card">
+      <div class="label">Analogias Criadas</div>
+      <div class="value">${a.analogias_sugeridas}</div>
+      <div class="detail">Pedra na água, bisturi sonoro, faixas como cores, boost vs cut visual</div>
+    </div>
+    <div class="analysis-card">
+      <div class="label">Tipo de Narrativa</div>
+      <div class="value" style="font-size:14px">Progressiva</div>
+      <div class="detail">${a.tipo_narrativa}</div>
+    </div>
+  `;
+}
+
+function renderScriptCards() {
+  const container = document.getElementById('scriptOutput');
+  container.innerHTML = '';
+  document.getElementById('sceneCount').textContent = `${ANIMATION_SCRIPT.cenas.length} cenas · ${ANIMATION_SCRIPT.metadata.duracao_total}s`;
+
+  ANIMATION_SCRIPT.cenas.forEach((cena, i) => {
+    const card = document.createElement('div');
+    card.className = 'scene-card' + (i === 0 ? ' active' : '');
+    card.id = `scene-card-${i}`;
+    card.onclick = () => { goToScene(i); };
+
+    const visTags = cena.elementos_visuais.map(v => {
+      let cls = 'element';
+      if (v.animacao) cls = 'animation';
+      if (v.tipo.includes('transicao')) cls = 'transition';
+      return `<span class="visual-tag ${cls}">${v.tipo}: ${v.animacao}</span>`;
+    }).join('');
+
+    card.innerHTML = `
+      <div class="scene-header">
+        <span class="scene-number">CENA ${cena.numero}</span>
+        <span class="scene-type">${cena.tipo}</span>
+        <span style="font-size:11px;color:var(--text-dim);margin-left:auto">${cena.duracao}s</span>
+      </div>
+      <div class="scene-title">${cena.titulo}</div>
+      <div class="scene-narration">"${cena.narracao}"</div>
+      <div class="scene-visuals">${visTags}</div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+// ── Animation Renderer ──
+function renderScene(sceneIdx) {
+  if (!ctx) return;
+  const cena = ANIMATION_SCRIPT.cenas[sceneIdx];
+  const w = canvas.width / 2;
+  const h = canvas.height / 2;
+  const t = animationTime;
+
+  // Clear
+  ctx.clearRect(0, 0, w, h);
+
+  // Background
+  const bgGrad = ctx.createLinearGradient(0, 0, w, h);
+  switch(cena.tipo) {
+    case 'abertura':
+      bgGrad.addColorStop(0, '#0a0a1a'); bgGrad.addColorStop(1, '#0f1a3d');
+      break;
+    case 'alerta_pratico':
+      bgGrad.addColorStop(0, '#1a0a0a'); bgGrad.addColorStop(1, '#2d0f0f');
+      break;
+    case 'regra_ouro':
+      bgGrad.addColorStop(0, '#0a1a0a'); bgGrad.addColorStop(1, '#0f2d0f');
+      break;
+    case 'encerramento':
+      bgGrad.addColorStop(0, '#1a150a'); bgGrad.addColorStop(1, '#2d1f0f');
+      break;
+    default:
+      bgGrad.addColorStop(0, '#0a0a12'); bgGrad.addColorStop(1, '#0f0f1f');
+  }
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, w, h);
+
+  // Grid pattern
+  ctx.strokeStyle = 'rgba(255,255,255,0.02)';
+  ctx.lineWidth = 0.5;
+  for (let x = 0; x < w; x += 40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
+  for (let y = 0; y < h; y += 40) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
+
+  // Scene-specific rendering
+  switch(cena.tipo) {
+    case 'abertura': renderAbertura(cena, w, h, t); break;
+    case 'conceito_fundamental': renderConceito(cena, w, h, t); break;
+    case 'dados_visuais': renderEspectro(cena, w, h, t); break;
+    case 'detalhe_com_exemplo': renderDetalhe(cena, w, h, t); break;
+    case 'alerta_pratico': renderAlerta(cena, w, h, t); break;
+    case 'ferramenta': renderFerramenta(cena, w, h, t); break;
+    case 'regra_ouro': renderRegra(cena, w, h, t); break;
+    case 'aplicacao_pratica': renderPratica(cena, w, h, t); break;
+    case 'encerramento': renderEncerramento(cena, w, h, t); break;
+  }
+
+  // Scene badge
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  roundRect(ctx, 12, 12, 90, 26, 6); ctx.fill();
+  ctx.fillStyle = '#f59e0b';
+  ctx.font = '600 11px Inter';
+  ctx.fillText(`CENA ${cena.numero}/${ANIMATION_SCRIPT.cenas.length}`, 22, 29);
+
+  // Progress dots
+  const dotY = h - 18;
+  const totalDots = ANIMATION_SCRIPT.cenas.length;
+  const dotStart = w/2 - (totalDots * 10);
+  for (let i = 0; i < totalDots; i++) {
+    ctx.beginPath();
+    ctx.arc(dotStart + i * 20, dotY, i === sceneIdx ? 4 : 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = i === sceneIdx ? '#f59e0b' : i < sceneIdx ? 'rgba(245,158,11,0.4)' : 'rgba(255,255,255,0.15)';
+    ctx.fill();
+  }
+}
+
+function renderAbertura(cena, w, h, t) {
+  // Floating particles
+  for (let i = 0; i < 30; i++) {
+    const x = (i * 47 + t * 20) % w;
+    const y = h/2 + Math.sin(t * 0.5 + i) * 100;
+    const size = 1 + Math.sin(t + i * 0.5) * 1;
+    ctx.beginPath();
+    ctx.arc(x, y, size, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(245,158,11,${0.1 + Math.sin(t + i) * 0.1})`;
+    ctx.fill();
+  }
+
+  // Animated wave behind title
+  ctx.beginPath();
+  ctx.strokeStyle = 'rgba(245,158,11,0.15)';
+  ctx.lineWidth = 2;
+  for (let x = 0; x < w; x += 2) {
+    const y = h/2 + Math.sin(x * 0.01 + t * 2) * 30 + Math.sin(x * 0.02 + t) * 20;
+    x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+
+  // Title
+  const titleAlpha = Math.min(1, t / 1);
+  ctx.fillStyle = `rgba(245,158,11,${titleAlpha})`;
+  ctx.font = '800 32px Inter';
+  ctx.textAlign = 'center';
+  const titleText = cena.titulo;
+  const charCount = Math.floor(Math.min(titleText.length, t * 15));
+  ctx.fillText(titleText.substring(0, charCount), w/2, h/2 - 10);
+
+  // Subtitle
+  if (t > 1.5) {
+    const subAlpha = Math.min(1, (t - 1.5) / 0.5);
+    const subY = h/2 + 25 + Math.max(0, (1 - subAlpha) * 20);
+    ctx.fillStyle = `rgba(255,255,255,${subAlpha * 0.5})`;
+    ctx.font = '400 16px Inter';
+    ctx.fillText(cena.subtitulo, w/2, subY);
+  }
+
+  // SMU PRO badge
+  if (t > 2.5) {
+    ctx.fillStyle = 'rgba(245,158,11,0.15)';
+    roundRect(ctx, w/2 - 50, h/2 + 50, 100, 28, 6); ctx.fill();
+    ctx.fillStyle = '#f59e0b';
+    ctx.font = '700 12px Inter';
+    ctx.fillText('SMU PRO', w/2, h/2 + 68);
+  }
+  ctx.textAlign = 'start';
+}
+
+function renderConceito(cena, w, h, t) {
+  // Sound wave propagation
+  ctx.beginPath();
+  ctx.strokeStyle = '#3b82f6';
+  ctx.lineWidth = 2.5;
+  const waveLen = Math.min(w * 0.8, t * 120);
+  for (let x = w*0.1; x < w*0.1 + waveLen; x += 2) {
+    const localX = x - w*0.1;
+    const fade = 1 - localX / (w * 0.8);
+    const y = h * 0.35 + Math.sin(localX * 0.04 + t * 3) * 35 * fade;
+    x === w*0.1 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+
+  // Compression/rarefaction labels
+  if (t > 1) {
+    ctx.font = '500 11px Inter';
+    ctx.fillStyle = 'rgba(59,130,246,0.7)';
+    ctx.textAlign = 'center';
+    for (let i = 0; i < 4; i++) {
+      const cx = w * 0.2 + i * w * 0.18;
+      const label = i % 2 === 0 ? 'Compressão' : 'Rarefação';
+      ctx.fillText(label, cx, h * 0.35 + 55);
+    }
+    ctx.textAlign = 'start';
+  }
+
+  // Air molecules
+  if (t > 1) {
+    for (let row = 0; row < 4; row++) {
+      for (let col = 0; col < 15; col++) {
+        const baseX = w * 0.1 + col * (w * 0.055);
+        const baseY = h * 0.6 + row * 22;
+        const compression = Math.sin(col * 0.5 - t * 3) * 8;
+        const x = baseX + compression;
+        const size = 3 + Math.sin(col * 0.5 - t * 3) * 1.5;
+        ctx.beginPath();
+        ctx.arc(x, baseY, size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(100,149,237,${0.3 + Math.sin(col * 0.5 - t * 3) * 0.2})`;
+        ctx.fill();
+      }
+    }
+  }
+
+  // Title
+  ctx.fillStyle = '#fff';
+  ctx.font = '700 20px Inter';
+  ctx.fillText(cena.titulo, w * 0.1, h * 0.15);
+
+  // Narration excerpt
+  if (t > 2) {
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.font = '400 12px Inter';
+    wrapText(ctx, cena.narracao.substring(0, 80) + '...', w * 0.1, h * 0.88, w * 0.8, 18);
+  }
+}
+
+function renderEspectro(cena, w, h, t) {
+  const faixas = cena.elementos_visuais[0].parametros.faixas;
+  const barW = (w * 0.75) / faixas.length;
+  const startX = w * 0.12;
+  const maxH = h * 0.5;
+
+  ctx.fillStyle = '#fff';
+  ctx.font = '700 20px Inter';
+  ctx.fillText(cena.titulo, startX, h * 0.1);
+
+  faixas.forEach((f, i) => {
+    const barDelay = i * 0.4;
+    const progress = Math.min(1, Math.max(0, (t - barDelay) / 0.8));
+    const ease = 1 - Math.pow(1 - progress, 3);
+
+    const x = startX + i * barW + 4;
+    const barHeight = (maxH * (0.4 + i * 0.1)) * ease;
+    const y = h * 0.7 - barHeight;
+
+    // Bar
+    const grad = ctx.createLinearGradient(x, y, x, h * 0.7);
+    grad.addColorStop(0, f.cor);
+    grad.addColorStop(1, f.cor + '33');
+    ctx.fillStyle = grad;
+    roundRect(ctx, x, y, barW - 8, barHeight, 4);
+    ctx.fill();
+
+    // Animated top glow
+    if (progress >= 1) {
+      ctx.fillStyle = f.cor + '66';
+      ctx.beginPath();
+      ctx.arc(x + (barW-8)/2, y, 8 + Math.sin(t * 3 + i) * 3, 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    // Labels
+    if (progress > 0.5) {
+      ctx.fillStyle = '#fff';
+      ctx.font = '600 10px Inter';
+      ctx.textAlign = 'center';
+      ctx.fillText(f.nome, x + (barW-8)/2, h * 0.75);
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.font = '400 9px Inter';
+      ctx.fillText(f.range, x + (barW-8)/2, h * 0.78 + 4);
+      ctx.textAlign = 'start';
+    }
+  });
+
+  // Range label
+  if (t > 3) {
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(245,158,11,0.6)';
+    ctx.font = '500 13px Inter';
+    ctx.fillText('20 Hz ←————————→ 20.000 Hz', w/2, h * 0.86);
+    ctx.textAlign = 'start';
+  }
+}
+
+function renderDetalhe(cena, w, h, t) {
+  ctx.fillStyle = '#fff';
+  ctx.font = '700 20px Inter';
+  ctx.fillText(cena.titulo, w * 0.08, h * 0.12);
+
+  if (cena.numero === 4) {
+    // Sub-bass visualization
+    const bassFreq = 0.3 + Math.sin(t * 0.5) * 0.1;
+    ctx.beginPath();
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 3;
+    for (let x = 0; x < w; x += 2) {
+      const y = h * 0.45 + Math.sin(x * 0.008 + t * bassFreq * 10) * (60 + Math.sin(t) * 20);
+      x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // Body silhouette pulse
+    const pulseSize = 1 + Math.sin(t * 4) * 0.05;
+    ctx.save();
+    ctx.translate(w * 0.75, h * 0.45);
+    ctx.scale(pulseSize, pulseSize);
+    ctx.fillStyle = 'rgba(239,68,68,0.15)';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 35, 55, 0, 0, Math.PI*2);
+    ctx.fill();
+    // Chest highlight
+    ctx.fillStyle = `rgba(239,68,68,${0.2 + Math.sin(t * 4) * 0.15})`;
+    ctx.beginPath();
+    ctx.ellipse(0, -15, 20, 15, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+
+    // Speaker cone
+    if (t > 1) {
+      const coneX = w * 0.25, coneY = h * 0.72;
+      const pump = Math.sin(t * 6) * 4;
+      ctx.strokeStyle = 'rgba(239,68,68,0.5)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(coneX, coneY, 25 + pump, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(coneX, coneY, 15 + pump * 0.5, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.font = '500 11px Inter';
+      ctx.textAlign = 'center';
+      ctx.fillText('Sub 18"', coneX, coneY + 42);
+      ctx.textAlign = 'start';
+    }
+  } else {
+    // Graves + Médios
+    // Kick drum
+    const kickPhase = t * 4;
+    const kickHit = Math.max(0, Math.sin(kickPhase)) * Math.exp(-((kickPhase % (Math.PI*2)) * 0.3));
+    ctx.beginPath();
+    ctx.arc(w * 0.25, h * 0.45, 30 + kickHit * 15, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(245,158,11,${0.3 + kickHit * 0.5})`;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(245,158,11,0.1)';
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.font = '500 10px Inter';
+    ctx.textAlign = 'center';
+    ctx.fillText('Kick: 60-100 Hz', w * 0.25, h * 0.45 + 55);
+
+    // Voice waveform
+    if (t > 3) {
+      ctx.beginPath();
+      ctx.strokeStyle = '#3b82f6';
+      ctx.lineWidth = 2;
+      for (let x = w * 0.5; x < w * 0.9; x += 2) {
+        const localX = x - w * 0.5;
+        const amp = 15 * Math.sin(localX * 0.1) * Math.sin(localX * 0.03 + t * 2);
+        const y = h * 0.45 + amp;
+        x === w * 0.5 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(59,130,246,0.5)';
+      ctx.fillText('Voz: 500-2000 Hz', w * 0.7, h * 0.45 + 40);
+    }
+    ctx.textAlign = 'start';
+  }
+}
+
+function renderAlerta(cena, w, h, t) {
+  // Red flash background
+  const flash = Math.sin(t * 4) * 0.03;
+  ctx.fillStyle = `rgba(239,68,68,${flash > 0 ? flash : 0})`;
+  ctx.fillRect(0, 0, w, h);
+
+  ctx.fillStyle = '#fff';
+  ctx.font = '700 22px Inter';
+  ctx.textAlign = 'center';
+  ctx.fillText(cena.titulo, w/2, h * 0.12);
+
+  // Fletcher-Munson-like sensitivity curve
+  ctx.beginPath();
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+  ctx.lineWidth = 1.5;
+  const curveProgress = Math.min(1, t / 2);
+  for (let x = w * 0.1; x < w * 0.1 + (w * 0.8) * curveProgress; x += 2) {
+    const norm = (x - w * 0.1) / (w * 0.8);
+    // Sensitivity curve dip around 3kHz (normalized ~0.65)
+    const sensitivity = 0.5 - 0.4 * Math.exp(-Math.pow((norm - 0.65) * 5, 2));
+    const y = h * 0.3 + sensitivity * h * 0.4;
+    x === w * 0.1 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+
+  // Highlight 3kHz peak
+  if (t > 1.5) {
+    const peakX = w * 0.1 + w * 0.8 * 0.65;
+    const peakY = h * 0.3 + 0.1 * h * 0.4;
+    ctx.beginPath();
+    ctx.arc(peakX, peakY, 10 + Math.sin(t * 5) * 4, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(239,68,68,${0.3 + Math.sin(t * 5) * 0.2})`;
+    ctx.fill();
+    ctx.fillStyle = '#ef4444';
+    ctx.font = '700 14px Inter';
+    ctx.fillText('3 kHz', peakX, peakY - 20);
+    ctx.font = '400 11px Inter';
+    ctx.fillStyle = 'rgba(239,68,68,0.7)';
+    ctx.fillText('Máxima sensibilidade', peakX, peakY + 28);
+  }
+
+  // Feedback loop icon
+  if (t > 2.5) {
+    const cx = w/2, cy = h * 0.78;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 20, 0, Math.PI * 2 * Math.min(1, (t - 2.5) / 0.5));
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.font = '500 10px Inter';
+    ctx.fillText('⚡ Feedback Loop', cx, cy + 35);
+  }
+  ctx.textAlign = 'start';
+}
+
+function renderFerramenta(cena, w, h, t) {
+  ctx.fillStyle = '#fff';
+  ctx.font = '700 20px Inter';
+  ctx.fillText(cena.titulo, w * 0.08, h * 0.1);
+
+  // Parametric EQ curve
+  const eqStartX = w * 0.08;
+  const eqEndX = w * 0.92;
+  const eqY = h * 0.5;
+  const eqH = h * 0.25;
+
+  // Grid
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+  ctx.lineWidth = 0.5;
+  for (let y = eqY - eqH; y <= eqY + eqH; y += eqH/4) {
+    ctx.beginPath(); ctx.moveTo(eqStartX, y); ctx.lineTo(eqEndX, y); ctx.stroke();
+  }
+
+  // Zero line
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.beginPath(); ctx.moveTo(eqStartX, eqY); ctx.lineTo(eqEndX, eqY); ctx.stroke();
+
+  // EQ Curve with animated points
+  const points = [
+    { x: 0.15, y: -0.3, color: '#ef4444' },  // Low cut
+    { x: 0.35, y: 0.15, color: '#f59e0b' },  // Slight boost at 200Hz
+    { x: 0.5, y: -0.4, color: '#22c55e' },   // Cut at 500Hz
+    { x: 0.7, y: -0.6, color: '#a855f7' },   // Cut at 3kHz
+    { x: 0.85, y: 0.2, color: '#06b6d4' },   // Air boost
+  ];
+
+  const curveProgress = Math.min(1, t / 3);
+  ctx.beginPath();
+  ctx.strokeStyle = '#f59e0b';
+  ctx.lineWidth = 2.5;
+  for (let x = eqStartX; x <= eqStartX + (eqEndX - eqStartX) * curveProgress; x += 2) {
+    const norm = (x - eqStartX) / (eqEndX - eqStartX);
+    let yOff = 0;
+    points.forEach(p => {
+      yOff += p.y * Math.exp(-Math.pow((norm - p.x) * 8, 2));
+    });
+    const y = eqY + yOff * eqH * (0.5 + Math.sin(t * 0.5) * 0.1);
+    x === eqStartX ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+
+  // Control points
+  if (t > 2) {
+    points.forEach((p, i) => {
+      const delay = i * 0.3 + 2;
+      if (t > delay) {
+        const px = eqStartX + p.x * (eqEndX - eqStartX);
+        const py = eqY + p.y * eqH * 0.5;
+        ctx.beginPath();
+        ctx.arc(px, py, 6, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(px, py, 10, 0, Math.PI * 2);
+        ctx.strokeStyle = p.color + '66';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    });
+  }
+
+  // Equipment labels
+  if (t > 5) {
+    const alpha = Math.min(1, (t - 5) / 0.5);
+    ctx.fillStyle = `rgba(255,255,255,${alpha * 0.4})`;
+    ctx.font = '400 11px Inter';
+    ctx.textAlign = 'center';
+    ctx.fillText('Yamaha CL  ·  DiGiCo SD  ·  Allen & Heath dLive', w/2, h * 0.9);
+    ctx.textAlign = 'start';
+  }
+}
+
+function renderRegra(cena, w, h, t) {
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#fff';
+  ctx.font = '700 22px Inter';
+  ctx.fillText(cena.titulo, w/2, h * 0.1);
+
+  const midX = w / 2;
+
+  // Wrong: Boost
+  const leftX = midX - w * 0.22;
+  if (t > 0.5) {
+    ctx.fillStyle = 'rgba(239,68,68,0.08)';
+    roundRect(ctx, leftX - w*0.18, h*0.18, w*0.36, h*0.55, 12); ctx.fill();
+    ctx.fillStyle = '#ef4444';
+    ctx.font = '600 13px Inter';
+    ctx.fillText('❌ Boosting +12dB', leftX, h * 0.26);
+
+    // Boost curve
+    ctx.beginPath();
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 2;
+    for (let x = leftX - w*0.14; x < leftX + w*0.14; x += 2) {
+      const norm = (x - leftX) / (w * 0.14);
+      const boost = 0.7 * Math.exp(-norm * norm * 2);
+      const y = h * 0.55 - boost * h * 0.2 * Math.min(1, (t - 0.5) / 1);
+      x === leftX - w*0.14 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    // Clipping indicator
+    if (t > 2) {
+      ctx.fillStyle = `rgba(239,68,68,${0.5 + Math.sin(t * 8) * 0.3})`;
+      ctx.font = '600 11px Inter';
+      ctx.fillText('⚡ CLIPPING', leftX, h * 0.68);
+    }
+  }
+
+  // Right: Cut
+  const rightX = midX + w * 0.22;
+  if (t > 1) {
+    ctx.fillStyle = 'rgba(34,197,94,0.08)';
+    roundRect(ctx, rightX - w*0.18, h*0.18, w*0.36, h*0.55, 12); ctx.fill();
+    ctx.fillStyle = '#22c55e';
+    ctx.font = '600 13px Inter';
+    ctx.fillText('✅ Cutting -6dB', rightX, h * 0.26);
+
+    // Cut curve
+    ctx.beginPath();
+    ctx.strokeStyle = '#22c55e';
+    ctx.lineWidth = 2;
+    for (let x = rightX - w*0.14; x < rightX + w*0.14; x += 2) {
+      const norm = (x - rightX) / (w * 0.14);
+      const cut = -0.35 * Math.exp(-norm * norm * 2);
+      const y = h * 0.55 - cut * h * 0.2 * Math.min(1, (t - 1) / 1);
+      x === rightX - w*0.14 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    if (t > 2.5) {
+      ctx.fillStyle = 'rgba(34,197,94,0.7)';
+      ctx.font = '600 11px Inter';
+      ctx.fillText('✓ Sinal limpo', rightX, h * 0.68);
+    }
+  }
+
+  // Golden rule text
+  if (t > 3.5) {
+    const alpha = Math.min(1, (t - 3.5) / 0.8);
+    ctx.fillStyle = `rgba(245,158,11,${alpha})`;
+    ctx.font = '700 18px Inter';
+    ctx.fillText('"Corte antes de reforço"', w/2, h * 0.88);
+  }
+  ctx.textAlign = 'start';
+}
+
+function renderPratica(cena, w, h, t) {
+  ctx.fillStyle = '#fff';
+  ctx.font = '700 20px Inter';
+  ctx.fillText(cena.titulo, w * 0.08, h * 0.1);
+
+  // RTA Bars
+  const bars = 31;
+  const barW = (w * 0.7) / bars;
+  const startX = w * 0.15;
+
+  for (let i = 0; i < bars; i++) {
+    const noise = Math.sin(i * 0.8 + t * 2) * 0.3 + Math.sin(i * 2.1 + t * 3.5) * 0.15;
+    const base = 0.3 + Math.sin(i * 0.15) * 0.15;
+    // Add a resonance peak
+    const resonance = 0.4 * Math.exp(-Math.pow((i - 20) * 0.3, 2));
+    const val = Math.min(1, base + noise + resonance);
+    const barH = val * h * 0.45;
+    const x = startX + i * barW;
+    const y = h * 0.7 - barH;
+
+    const grad = ctx.createLinearGradient(x, y, x, h * 0.7);
+    if (val > 0.75) {
+      grad.addColorStop(0, '#ef4444');
+      grad.addColorStop(0.3, '#f59e0b');
+    } else {
+      grad.addColorStop(0, '#22c55e');
+    }
+    grad.addColorStop(1, 'rgba(34,197,94,0.1)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(x + 1, y, barW - 2, barH);
+  }
+
+  // Resonance arrow
+  if (t > 3) {
+    const peakX = startX + 20 * barW + barW/2;
+    ctx.beginPath();
+    ctx.moveTo(peakX, h * 0.18);
+    ctx.lineTo(peakX, h * 0.25);
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath();
+    ctx.moveTo(peakX - 5, h * 0.25);
+    ctx.lineTo(peakX + 5, h * 0.25);
+    ctx.lineTo(peakX, h * 0.28);
+    ctx.fill();
+    ctx.textAlign = 'center';
+    ctx.font = '600 11px Inter';
+    ctx.fillText('Ressonância!', peakX, h * 0.16);
+    ctx.textAlign = 'start';
+  }
+
+  // Workflow steps
+  if (t > 2) {
+    const steps = ['RTA ligado', 'Pink noise', 'Identificar picos', 'Cortar', 'Refinar'];
+    const stepY = h * 0.82;
+    ctx.font = '500 10px Inter';
+    steps.forEach((s, i) => {
+      const appear = Math.min(1, Math.max(0, (t - 2 - i * 0.4) / 0.3));
+      const sx = w * 0.08 + i * w * 0.18;
+      ctx.fillStyle = `rgba(245,158,11,${appear * 0.8})`;
+      ctx.fillText(`${i+1}. ${s}`, sx, stepY);
+    });
+  }
+}
+
+function renderEncerramento(cena, w, h, t) {
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#f59e0b';
+  ctx.font = '700 22px Inter';
+  ctx.fillText(cena.titulo, w/2, h * 0.1);
+
+  // Recap cards
+  const cards = cena.elementos_visuais[0].conteudo;
+  cards.forEach((text, i) => {
+    const delay = i * 0.5;
+    const progress = Math.min(1, Math.max(0, (t - delay) / 0.4));
+    if (progress <= 0) return;
+
+    const cardW = w * 0.4;
+    const cardH = 36;
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+    const cx = w * 0.28 + col * (cardW + 12);
+    const cy = h * 0.18 + row * (cardH + 10);
+
+    const scale = 0.8 + progress * 0.2;
+    ctx.save();
+    ctx.translate(cx + cardW/2, cy + cardH/2);
+    ctx.scale(scale, scale);
+    ctx.translate(-cardW/2, -cardH/2);
+    ctx.fillStyle = `rgba(245,158,11,${progress * 0.08})`;
+    roundRect(ctx, 0, 0, cardW, cardH, 8); ctx.fill();
+    ctx.strokeStyle = `rgba(245,158,11,${progress * 0.3})`;
+    ctx.lineWidth = 1;
+    roundRect(ctx, 0, 0, cardW, cardH, 8); ctx.stroke();
+    ctx.fillStyle = `rgba(255,255,255,${progress * 0.8})`;
+    ctx.font = '500 11px Inter';
+    ctx.textAlign = 'left';
+    ctx.fillText(text, 12, 22);
+    ctx.restore();
+  });
+
+  // CTA
+  if (t > 4) {
+    const alpha = Math.min(1, (t - 4) / 0.5);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = `rgba(245,158,11,${alpha})`;
+    ctx.font = '600 14px Inter';
+    ctx.fillText('Próxima Aula: Simulação de Passagem de Som →', w/2, h * 0.82);
+  }
+
+  // Logo
+  if (t > 5) {
+    const alpha = Math.min(1, (t - 5) / 0.5);
+    ctx.fillStyle = `rgba(245,158,11,${alpha * 0.5})`;
+    ctx.font = '800 16px Inter';
+    ctx.fillText('SMU PRO', w/2, h * 0.93);
+  }
+  ctx.textAlign = 'start';
+}
+
+// ── Playback ──
+function togglePlayback() {
+  if (!generated) return;
+  isPlaying = !isPlaying;
+  document.getElementById('playBtn').innerHTML = isPlaying ? '⏸ Pause' : '▶ Play';
+  if (isPlaying) {
+    lastTimestamp = performance.now();
+    tick();
+  }
+}
+
+function tick() {
+  if (!isPlaying) return;
+  const now = performance.now();
+  const dt = (now - lastTimestamp) / 1000;
+  lastTimestamp = now;
+  animationTime += dt;
+
+  const cena = ANIMATION_SCRIPT.cenas[currentScene];
+  if (animationTime >= cena.duracao) {
+    if (currentScene < ANIMATION_SCRIPT.cenas.length - 1) {
+      currentScene++;
+      animationTime = 0;
+      highlightSceneCard(currentScene);
+    } else {
+      isPlaying = false;
+      document.getElementById('playBtn').innerHTML = '▶ Play';
+      return;
+    }
+  }
+
+  renderScene(currentScene);
+  updateUI();
+  animationFrame = requestAnimationFrame(tick);
+}
+
+function updateUI() {
+  const cena = ANIMATION_SCRIPT.cenas[currentScene];
+  const totalElapsed = ANIMATION_SCRIPT.cenas.slice(0, currentScene).reduce((s, c) => s + c.duracao, 0) + animationTime;
+  const total = ANIMATION_SCRIPT.metadata.duracao_total;
+  const pct = (totalElapsed / total) * 100;
+
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('sceneIndicator').textContent = `Cena ${currentScene + 1}/${ANIMATION_SCRIPT.cenas.length}`;
+  document.getElementById('currentSceneLabel').textContent = `${cena.titulo} (${cena.tipo})`;
+
+  const mins = Math.floor(totalElapsed / 60);
+  const secs = Math.floor(totalElapsed % 60);
+  document.getElementById('timeDisplay').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+function goToScene(idx) {
+  currentScene = idx;
+  animationTime = 0;
+  highlightSceneCard(idx);
+  renderScene(idx);
+  updateUI();
+}
+
+function highlightSceneCard(idx) {
+  document.querySelectorAll('.scene-card').forEach((c, i) => {
+    c.classList.toggle('active', i === idx);
+  });
+  const card = document.getElementById(`scene-card-${idx}`);
+  if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function resetAnimation() {
+  isPlaying = false;
+  currentScene = 0;
+  animationTime = 0;
+  document.getElementById('playBtn').innerHTML = '▶ Play';
+  renderScene(0);
+  updateUI();
+  highlightSceneCard(0);
+}
+
+// ── Helpers ──
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function wrapText(ctx, text, x, y, maxW, lineH) {
+  const words = text.split(' ');
+  let line = '';
+  for (const word of words) {
+    const test = line + word + ' ';
+    if (ctx.measureText(test).width > maxW && line) {
+      ctx.fillText(line, x, y);
+      line = word + ' ';
+      y += lineH;
+    } else {
+      line = test;
+    }
+  }
+  ctx.fillText(line, x, y);
+}
+
+// Handle resize
+window.addEventListener('resize', () => {
+  if (canvas) { setupCanvas(); renderScene(currentScene); }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMU PRO — Arquitetura Animation Engine v3 (100% Google)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --bg:#06060c;--s1:#0c0c16;--s2:#13132a;--s3:#1e1e3a;
+    --border:rgba(255,255,255,0.06);--amber:#f59e0b;--amber2:#fbbf24;
+    --blue:#4285f4;--green:#34a853;--red:#ea4335;--yellow:#fbbc04;
+    --text:#eef;--dim:#778;--code-bg:#0d1117;
+  }
+  body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden}
+  .app{max-width:1200px;margin:0 auto;padding:24px}
+
+  /* Header */
+  .header{text-align:center;padding:40px 0 16px}
+  .header h1{font-size:28px;font-weight:800;background:linear-gradient(135deg,var(--blue),var(--green),var(--yellow),var(--red));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .header .sub{color:var(--dim);font-size:13px;margin-top:8px}
+  .google-badge{display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:6px 14px;border-radius:8px;background:rgba(66,133,244,0.08);border:1px solid rgba(66,133,244,0.2);font-size:11px;font-weight:600;color:var(--blue)}
+  .google-badge span{font-size:14px}
+
+  /* Section */
+  .section{margin:40px 0}
+  .section-title{font-size:18px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:10px}
+  .section-title .icon{font-size:22px}
+
+  /* Pipeline */
+  .pipeline-visual{display:flex;align-items:stretch;gap:0;margin:32px 0;overflow-x:auto;padding:8px 0}
+  .pipe-step{flex:1;min-width:180px;padding:20px 16px;border:1px solid var(--border);position:relative;text-align:center;background:var(--s1);transition:all .3s}
+  .pipe-step:first-child{border-radius:12px 0 0 12px}
+  .pipe-step:last-child{border-radius:0 12px 12px 0}
+  .pipe-step:hover{background:var(--s2);transform:translateY(-2px);z-index:1;box-shadow:0 8px 24px rgba(0,0,0,0.3)}
+  .pipe-step .step-num{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px}
+  .pipe-step .step-icon{font-size:28px;margin-bottom:8px}
+  .pipe-step .step-name{font-size:14px;font-weight:700;margin-bottom:4px}
+  .pipe-step .step-tool{font-size:10px;padding:3px 8px;border-radius:4px;display:inline-block;margin-bottom:6px;font-weight:600}
+  .pipe-step .step-desc{font-size:11px;color:var(--dim);line-height:1.5}
+  .pipe-arrow{position:absolute;right:-12px;top:50%;transform:translateY(-50%);z-index:2;font-size:18px;color:var(--dim)}
+  .step-1 .step-num{color:var(--amber)}.step-1 .step-tool{background:rgba(245,158,11,0.1);color:var(--amber)}
+  .step-2 .step-num{color:var(--blue)}.step-2 .step-tool{background:rgba(66,133,244,0.1);color:var(--blue)}
+  .step-3 .step-num{color:var(--green)}.step-3 .step-tool{background:rgba(52,168,83,0.1);color:var(--green)}
+  .step-4 .step-num{color:var(--red)}.step-4 .step-tool{background:rgba(234,67,53,0.1);color:var(--red)}
+  .step-5 .step-num{color:var(--yellow)}.step-5 .step-tool{background:rgba(251,188,4,0.1);color:var(--yellow)}
+
+  /* Cards */
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .card{background:var(--s1);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+  .card-h{padding:14px 18px;background:var(--s2);border-bottom:1px solid var(--border);font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px}
+  .card-b{padding:18px}
+  .card-full{grid-column:1/-1}
+
+  /* Code */
+  .code-block{background:var(--code-bg);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:16px;font-family:'JetBrains Mono',monospace;font-size:11.5px;line-height:1.7;overflow-x:auto;color:#c9d1d9;tab-size:2}
+  .code-block .comment{color:#8b949e}
+  .code-block .keyword{color:#ff7b72}
+  .code-block .string{color:#a5d6ff}
+  .code-block .func{color:#d2a8ff}
+  .code-block .type{color:#79c0ff}
+  .code-block .num{color:#79c0ff}
+
+  /* Cost table */
+  .cost-table{width:100%;border-collapse:collapse;font-size:12px}
+  .cost-table th{text-align:left;padding:10px 12px;border-bottom:1px solid var(--border);color:var(--dim);font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:1px}
+  .cost-table td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.03)}
+  .cost-table .cost{color:var(--green);font-weight:600;font-family:'JetBrains Mono'}
+  .cost-table .model{color:var(--blue);font-weight:500}
+  .cost-table .total{background:rgba(245,158,11,0.05);font-weight:700}
+  .cost-table .total .cost{color:var(--amber);font-size:14px}
+
+  /* Flow diagram */
+  .flow{display:flex;flex-direction:column;gap:12px}
+  .flow-row{display:flex;align-items:center;gap:10px}
+  .flow-box{padding:10px 16px;border-radius:8px;font-size:12px;font-weight:500;border:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0}
+  .flow-arrow{color:var(--dim);font-size:16px;flex-shrink:0}
+  .flow-result{padding:8px 14px;border-radius:6px;font-size:11px;color:var(--dim);background:rgba(255,255,255,0.02);border:1px dashed rgba(255,255,255,0.06);flex:1}
+
+  /* Tags */
+  .tag{display:inline-block;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:600;margin:2px}
+  .tag-blue{background:rgba(66,133,244,0.12);color:var(--blue)}
+  .tag-green{background:rgba(52,168,83,0.12);color:var(--green)}
+  .tag-amber{background:rgba(245,158,11,0.12);color:var(--amber)}
+  .tag-red{background:rgba(234,67,53,0.12);color:var(--red)}
+  .tag-purple{background:rgba(168,85,247,0.12);color:#a855f7}
+
+  /* Specs */
+  .spec-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .spec{background:var(--s2);border-radius:10px;padding:14px;border:1px solid var(--border)}
+  .spec .label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--dim);margin-bottom:6px}
+  .spec .value{font-size:18px;font-weight:800}
+  .spec .detail{font-size:10px;color:var(--dim);margin-top:4px;line-height:1.4}
+
+  /* Responsive */
+  @media(max-width:768px){.cards{grid-template-columns:1fr}.spec-grid{grid-template-columns:1fr}.pipeline-visual{flex-direction:column}.pipe-arrow{display:none}}
+
+  /* Mermaid-like diagram */
+  .diagram{padding:24px;background:var(--code-bg);border-radius:12px;border:1px solid var(--border)}
+  .diagram-row{display:flex;align-items:center;justify-content:center;gap:8px;margin:8px 0;flex-wrap:wrap}
+  .diagram-box{padding:8px 16px;border-radius:8px;font-size:11px;font-weight:600;text-align:center;min-width:120px}
+  .diagram-box.admin{background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);color:var(--amber)}
+  .diagram-box.gemini{background:rgba(66,133,244,0.1);border:1px solid rgba(66,133,244,0.3);color:var(--blue)}
+  .diagram-box.imagen{background:rgba(52,168,83,0.1);border:1px solid rgba(52,168,83,0.3);color:var(--green)}
+  .diagram-box.veo{background:rgba(234,67,53,0.1);border:1px solid rgba(234,67,53,0.3);color:var(--red)}
+  .diagram-box.storage{background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.3);color:#a855f7}
+  .diagram-box.player{background:rgba(251,188,4,0.1);border:1px solid rgba(251,188,4,0.3);color:var(--yellow)}
+  .diagram-box.tts{background:rgba(6,182,212,0.1);border:1px solid rgba(6,182,212,0.3);color:#06b6d4}
+  .diagram-arrow{color:var(--dim);font-size:18px}
+  .diagram-label{font-size:9px;color:var(--dim);text-align:center;margin-top:2px}
+  .diagram-group{border:1px dashed var(--border);border-radius:12px;padding:16px;margin:8px 0}
+  .diagram-group-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--dim);margin-bottom:10px;text-align:center}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <div class="header">
+    <h1>SMU PRO — Animation Engine v3</h1>
+    <div class="sub">Arquitetura 100% Google · Gemini + Imagen + Veo · SDK Unificado @google/genai</div>
+    <div class="google-badge"><span>🔷</span> Google AI — Pipeline Completo</div>
+  </div>
+
+  <!-- ═══════════ PIPELINE VISUAL ═══════════ -->
+  <div class="section">
+    <div class="section-title"><span class="icon">🔄</span> Pipeline de Geração</div>
+    <div class="pipeline-visual">
+      <div class="pipe-step step-1">
+        <div class="step-num">Passo 1</div>
+        <div class="step-icon">📝</div>
+        <div class="step-name">Conteúdo</div>
+        <div class="step-tool">conteudo_rico (TipTap)</div>
+        <div class="step-desc">Admin salva o conteúdo da aula no editor rico</div>
+        <div class="pipe-arrow">→</div>
+      </div>
+      <div class="pipe-step step-2">
+        <div class="step-num">Passo 2</div>
+        <div class="step-icon">🧠</div>
+        <div class="step-name">Roteiro IA</div>
+        <div class="step-tool">Gemini 2.5 Flash</div>
+        <div class="step-desc">Analisa o conteúdo e gera roteiro com cenas, narrações e prompts visuais</div>
+        <div class="pipe-arrow">→</div>
+      </div>
+      <div class="pipe-step step-3">
+        <div class="step-num">Passo 3</div>
+        <div class="step-icon">🎨</div>
+        <div class="step-name">Ilustrações</div>
+        <div class="step-tool">Imagen 4.0</div>
+        <div class="step-desc">Gera imagens HD para cada cena: equipamentos, diagramas, cenários</div>
+        <div class="pipe-arrow">→</div>
+      </div>
+      <div class="pipe-step step-4">
+        <div class="step-num">Passo 4</div>
+        <div class="step-icon">🎬</div>
+        <div class="step-name">Animação</div>
+        <div class="step-tool">Veo 2</div>
+        <div class="step-desc">Transforma as imagens em vídeos curtos animados (4-8s por cena)</div>
+        <div class="pipe-arrow">→</div>
+      </div>
+      <div class="pipe-step step-5">
+        <div class="step-num">Passo 5</div>
+        <div class="step-icon">🔊</div>
+        <div class="step-name">Narração</div>
+        <div class="step-tool">Edge TTS (já temos)</div>
+        <div class="step-desc">Gera narração em PT-BR e monta o vídeo final com áudio</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ DIAGRAMA DE ARQUITETURA ═══════════ -->
+  <div class="section">
+    <div class="section-title"><span class="icon">🏗️</span> Arquitetura do Sistema</div>
+    <div class="diagram">
+      <div class="diagram-row">
+        <div class="diagram-box admin">Admin Panel<br><span style="font-size:9px;opacity:.6">course-content-manager.tsx</span></div>
+        <div class="diagram-arrow">→</div>
+        <div class="diagram-box admin">Botão "Gerar Animação"<br><span style="font-size:9px;opacity:.6">onClick → /api/animation/generate</span></div>
+      </div>
+      <div class="diagram-row"><div class="diagram-arrow" style="transform:rotate(90deg)">→</div></div>
+
+      <div class="diagram-group">
+        <div class="diagram-group-label">API Route: /api/animation/generate (Background Job)</div>
+        <div class="diagram-row">
+          <div class="diagram-box gemini">Gemini 2.5 Flash<br><span style="font-size:9px;opacity:.6">generateContent()</span></div>
+          <div class="diagram-arrow">→</div>
+          <div style="text-align:center">
+            <div class="diagram-box" style="background:rgba(255,255,255,0.03);border:1px solid var(--border);color:var(--text)">Roteiro JSON<br><span style="font-size:9px;opacity:.6">10 cenas + prompts visuais</span></div>
+          </div>
+        </div>
+        <div class="diagram-row"><div class="diagram-arrow" style="transform:rotate(90deg)">→</div></div>
+        <div class="diagram-row">
+          <div class="diagram-box imagen">Imagen 4.0<br><span style="font-size:9px;opacity:.6">generateImages() × 10</span></div>
+          <div class="diagram-arrow">→</div>
+          <div class="diagram-box veo">Veo 2<br><span style="font-size:9px;opacity:.6">generateVideos() × 10</span></div>
+          <div class="diagram-arrow">→</div>
+          <div class="diagram-box tts">Edge TTS<br><span style="font-size:9px;opacity:.6">tts() × 10 narrações</span></div>
+        </div>
+        <div class="diagram-row"><div class="diagram-arrow" style="transform:rotate(90deg)">→</div></div>
+        <div class="diagram-row">
+          <div class="diagram-box storage">Supabase Storage<br><span style="font-size:9px;opacity:.6">animations/{lesson_id}/</span></div>
+          <div class="diagram-arrow">→</div>
+          <div class="diagram-box storage">DB: ai_animations<br><span style="font-size:9px;opacity:.6">roteiro + URLs + status</span></div>
+        </div>
+      </div>
+
+      <div class="diagram-row"><div class="diagram-arrow" style="transform:rotate(90deg)">→</div></div>
+      <div class="diagram-row">
+        <div class="diagram-box player">Animation Player<br><span style="font-size:9px;opacity:.6">lesson-player.tsx → AnimationTab</span></div>
+        <div class="diagram-arrow">←</div>
+        <div class="diagram-box player">Vídeo Montado<br><span style="font-size:9px;opacity:.6">Cenas sequenciais + narração TTS</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ CUSTOS ═══════════ -->
+  <div class="section">
+    <div class="section-title"><span class="icon">💰</span> Custo Estimado por Animação (10 cenas · ~65s)</div>
+    <div class="cards">
+      <div class="card card-full">
+        <div class="card-h">📊 Breakdown de Custos</div>
+        <div class="card-b">
+          <table class="cost-table">
+            <thead>
+              <tr><th>Etapa</th><th>Modelo</th><th>Uso</th><th>Preço Unitário</th><th>Total</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Roteiro IA</td>
+                <td class="model">Gemini 2.5 Flash</td>
+                <td>~4K tokens input + ~2K output</td>
+                <td class="cost">$0.15/1M in · $0.60/1M out</td>
+                <td class="cost">~$0.002</td>
+              </tr>
+              <tr>
+                <td>Ilustrações</td>
+                <td class="model">Imagen 4.0 Fast</td>
+                <td>10 imagens (1 por cena)</td>
+                <td class="cost">~$0.02/imagem</td>
+                <td class="cost">~$0.20</td>
+              </tr>
+              <tr>
+                <td>Animação Vídeo</td>
+                <td class="model">Veo 2</td>
+                <td>10 clips × ~6s cada</td>
+                <td class="cost">$0.35/segundo</td>
+                <td class="cost">~$21.00</td>
+              </tr>
+              <tr>
+                <td>Narração</td>
+                <td class="model">Edge TTS (gratuito)</td>
+                <td>10 narrações</td>
+                <td class="cost">$0.00</td>
+                <td class="cost">$0.00</td>
+              </tr>
+              <tr class="total">
+                <td colspan="4"><strong>TOTAL POR ANIMAÇÃO COMPLETA</strong></td>
+                <td class="cost">~$21.20</td>
+              </tr>
+            </tbody>
+          </table>
+          <div style="margin-top:16px;padding:12px;background:rgba(245,158,11,0.05);border:1px solid rgba(245,158,11,0.15);border-radius:8px;font-size:11px;color:var(--dim);line-height:1.6">
+            <strong style="color:var(--amber)">💡 Alternativa econômica sem Veo:</strong> Se usar apenas <strong>Imagen</strong> para gerar as ilustrações e animar via CSS/JS no browser (parallax, Ken Burns, zoom, pan), o custo cai para <strong>~$0.22 por animação</strong>. Resultado visual muito bom, embora não cinematográfico. Pode ser uma boa opção para cursos gratuitos, reservando o Veo para cursos pagos premium.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ SPECS TÉCNICAS ═══════════ -->
+  <div class="section">
+    <div class="section-title"><span class="icon">⚙️</span> Especificações Técnicas</div>
+    <div class="spec-grid">
+      <div class="spec">
+        <div class="label">SDK</div>
+        <div class="value" style="color:var(--blue);font-size:14px">@google/genai</div>
+        <div class="detail">SDK unificado v1.45+ · Gemini + Imagen + Veo numa API só · npm i @google/genai</div>
+      </div>
+      <div class="spec">
+        <div class="label">Modelos</div>
+        <div class="value" style="font-size:12px;color:var(--green)">3 modelos</div>
+        <div class="detail">gemini-2.5-flash · imagen-4.0-fast-generate-001 · veo-2-generate-001</div>
+      </div>
+      <div class="spec">
+        <div class="label">Resolução</div>
+        <div class="value" style="color:var(--amber)">1080p</div>
+        <div class="detail">Imagens: 1024×1024 ou 16:9 · Vídeo: até 4K · Aspecto: 16:9 (widescreen)</div>
+      </div>
+      <div class="spec">
+        <div class="label">Tempo Geração</div>
+        <div class="value" style="color:var(--red)">~5 min</div>
+        <div class="detail">Roteiro: 3s · Imagens: 30s · Vídeo: 3-4min · TTS: 10s · Total: ~5 min</div>
+      </div>
+      <div class="spec">
+        <div class="label">Storage</div>
+        <div class="value" style="color:#a855f7;font-size:14px">Supabase</div>
+        <div class="detail">Bucket: animations/ · ~50MB por animação completa · CDN nativo</div>
+      </div>
+      <div class="spec">
+        <div class="label">Cache</div>
+        <div class="value" style="color:#06b6d4">Permanente</div>
+        <div class="detail">Gera 1x, serve sempre · Tabela ai_animations com status e URLs</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ CÓDIGO ═══════════ -->
+  <div class="section">
+    <div class="section-title"><span class="icon">💻</span> Código: API Route /api/animation/generate</div>
+    <div class="cards">
+      <div class="card card-full">
+        <div class="card-h">📄 src/app/api/animation/generate/route.ts</div>
+        <div class="card-b">
+          <div class="code-block"><span class="keyword">import</span> { NextRequest, NextResponse } <span class="keyword">from</span> <span class="string">"next/server"</span>;
+<span class="keyword">import</span> { auth } <span class="keyword">from</span> <span class="string">"@clerk/nextjs/server"</span>;
+<span class="keyword">import</span> { GoogleGenAI } <span class="keyword">from</span> <span class="string">"@google/genai"</span>;
+<span class="keyword">import</span> { createAdminClient } <span class="keyword">from</span> <span class="string">"@/lib/supabase/server"</span>;
+<span class="keyword">import</span> { tts } <span class="keyword">from</span> <span class="string">"@/lib/edge-tts"</span>;
+
+<span class="keyword">const</span> ai = <span class="keyword">new</span> <span class="func">GoogleGenAI</span>({ apiKey: process.env.<span class="type">GOOGLE_GENAI_API_KEY</span> });
+
+<span class="comment">// ── Passo 1: Gemini gera o roteiro detalhado ──</span>
+<span class="keyword">async function</span> <span class="func">generateScript</span>(titulo: <span class="type">string</span>, conteudo: <span class="type">string</span>, categoria: <span class="type">string</span>) {
+  <span class="keyword">const</span> response = <span class="keyword">await</span> ai.models.<span class="func">generateContent</span>({
+    model: <span class="string">"gemini-2.5-flash"</span>,
+    contents: <span class="string">`Você é um diretor de animações didáticas para cursos de eventos ao vivo.
+Analise o conteúdo abaixo e gere um ROTEIRO DE ANIMAÇÃO em JSON.
+
+REGRAS CRÍTICAS:
+- Entenda PROFUNDAMENTE cada conceito antes de criar as cenas
+- Cada cena deve ter: titulo, narracao (texto natural em PT-BR),
+  prompt_imagen (prompt detalhado em inglês para gerar a ilustração),
+  duracao (4-8 segundos), tipo (abertura|conceito|exemplo|alerta|pratica|resumo)
+- Os prompts de imagem devem ser ULTRA ESPECÍFICOS para o contexto de eventos
+- Inclua referências visuais reais: equipamentos, marcas, cenários de shows/festivais
+- Gere entre 8-12 cenas para cobrir todo o conteúdo
+- A narração deve ser didática, como um professor conversando
+
+Categoria: ${categoria}
+Título: ${titulo}
+
+Conteúdo:
+${conteudo}
+
+Responda APENAS com o JSON válido no formato:
+{
+  "cenas": [
+    {
+      "numero": 1,
+      "tipo": "abertura",
+      "titulo": "...",
+      "narracao": "...",
+      "prompt_imagen": "... detailed English prompt for Imagen ...",
+      "duracao": 5
+    }
+  ]
+}`</span>,
+  });
+
+  <span class="keyword">return</span> JSON.<span class="func">parse</span>(response.text);
+}
+
+<span class="comment">// ── Passo 2: Imagen gera as ilustrações ──</span>
+<span class="keyword">async function</span> <span class="func">generateSceneImages</span>(cenas: <span class="type">any</span>[]) {
+  <span class="keyword">const</span> results = [];
+  <span class="keyword">for</span> (<span class="keyword">const</span> cena <span class="keyword">of</span> cenas) {
+    <span class="keyword">const</span> response = <span class="keyword">await</span> ai.models.<span class="func">generateImages</span>({
+      model: <span class="string">"imagen-4.0-fast-generate-001"</span>,
+      prompt: cena.prompt_imagen,
+      config: {
+        numberOfImages: <span class="num">1</span>,
+        aspectRatio: <span class="string">"16:9"</span>,
+      },
+    });
+    results.<span class="func">push</span>({
+      ...cena,
+      imageBytes: response.generatedImages[<span class="num">0</span>].image.imageBytes,
+    });
+  }
+  <span class="keyword">return</span> results;
+}
+
+<span class="comment">// ── Passo 3: Veo anima as imagens (image-to-video) ──</span>
+<span class="keyword">async function</span> <span class="func">generateSceneVideos</span>(cenas: <span class="type">any</span>[]) {
+  <span class="keyword">const</span> operations = [];
+  <span class="keyword">for</span> (<span class="keyword">const</span> cena <span class="keyword">of</span> cenas) {
+    <span class="keyword">const</span> op = <span class="keyword">await</span> ai.models.<span class="func">generateVideos</span>({
+      model: <span class="string">"veo-2-generate-001"</span>,
+      prompt: <span class="string">`Smooth cinematic animation: ${cena.prompt_imagen}.
+Camera slowly zooms in with gentle parallax movement.`</span>,
+      image: { imageBytes: cena.imageBytes, mimeType: <span class="string">"image/png"</span> },
+      config: { aspectRatio: <span class="string">"16:9"</span> },
+    });
+    operations.<span class="func">push</span>({ cena, operation: op });
+  }
+
+  <span class="comment">// Poll all operations until complete</span>
+  <span class="keyword">for</span> (<span class="keyword">const</span> item <span class="keyword">of</span> operations) {
+    <span class="keyword">while</span> (!item.operation.done) {
+      <span class="keyword">await</span> <span class="func">sleep</span>(<span class="num">10000</span>);
+      item.operation = <span class="keyword">await</span> ai.operations.<span class="func">getVideosOperation</span>({
+        operation: item.operation,
+      });
+    }
+    item.videoFile = item.operation.response.generatedVideos[<span class="num">0</span>].video;
+  }
+  <span class="keyword">return</span> operations;
+}
+
+<span class="comment">// ── Passo 4: TTS gera as narrações (já existe no projeto) ──</span>
+<span class="keyword">async function</span> <span class="func">generateNarrations</span>(cenas: <span class="type">any</span>[]) {
+  <span class="keyword">return</span> Promise.<span class="func">all</span>(
+    cenas.<span class="func">map</span>(cena => <span class="func">tts</span>(cena.narracao))
+  );
+}
+
+<span class="comment">// ── Passo 5: Upload tudo para Supabase Storage ──</span>
+<span class="keyword">async function</span> <span class="func">uploadToStorage</span>(lessonId: <span class="type">string</span>, videos: <span class="type">any</span>[], narrations: <span class="type">Buffer</span>[]) {
+  <span class="keyword">const</span> supabase = <span class="func">createAdminClient</span>();
+  <span class="keyword">const</span> urls = [];
+
+  <span class="keyword">for</span> (<span class="keyword">let</span> i = <span class="num">0</span>; i < videos.length; i++) {
+    <span class="comment">// Download video from Google</span>
+    <span class="keyword">const</span> videoData = <span class="keyword">await</span> ai.files.<span class="func">download</span>({ file: videos[i].videoFile });
+
+    <span class="comment">// Upload video</span>
+    <span class="keyword">const</span> vPath = <span class="string">`animations/${lessonId}/scene-${i + 1}.mp4`</span>;
+    <span class="keyword">await</span> supabase.storage.from(<span class="string">"media"</span>).<span class="func">upload</span>(vPath, videoData);
+
+    <span class="comment">// Upload narration audio</span>
+    <span class="keyword">const</span> aPath = <span class="string">`animations/${lessonId}/narration-${i + 1}.mp3`</span>;
+    <span class="keyword">await</span> supabase.storage.from(<span class="string">"media"</span>).<span class="func">upload</span>(aPath, narrations[i]);
+
+    urls.<span class="func">push</span>({ video: vPath, audio: aPath });
+  }
+  <span class="keyword">return</span> urls;
+}
+
+<span class="comment">// ── POST handler ──</span>
+<span class="keyword">export async function</span> <span class="func">POST</span>(req: <span class="type">NextRequest</span>) {
+  <span class="keyword">const</span> { userId } = <span class="keyword">await</span> <span class="func">auth</span>();
+  <span class="keyword">if</span> (!userId) <span class="keyword">return</span> NextResponse.<span class="func">json</span>({ error: <span class="string">"Não autenticado"</span> }, { status: <span class="num">401</span> });
+
+  <span class="keyword">const</span> { lessonId, titulo, conteudo, categoria } = <span class="keyword">await</span> req.<span class="func">json</span>();
+  <span class="keyword">const</span> supabase = <span class="func">createAdminClient</span>();
+
+  <span class="comment">// Check cache</span>
+  <span class="keyword">const</span> { data: cached } = <span class="keyword">await</span> supabase
+    .from(<span class="string">"ai_animations"</span>).select(<span class="string">"*"</span>)
+    .eq(<span class="string">"lesson_id"</span>, lessonId).limit(<span class="num">1</span>);
+  <span class="keyword">if</span> (cached?.length) <span class="keyword">return</span> NextResponse.<span class="func">json</span>(cached[<span class="num">0</span>]);
+
+  <span class="comment">// Set status to "generating"</span>
+  <span class="keyword">await</span> supabase.from(<span class="string">"ai_animations"</span>).<span class="func">upsert</span>({
+    lesson_id: lessonId, status: <span class="string">"generating"</span>,
+    created_at: <span class="keyword">new</span> Date().<span class="func">toISOString</span>(),
+  });
+
+  <span class="keyword">try</span> {
+    <span class="comment">// Pipeline completo</span>
+    <span class="keyword">const</span> script     = <span class="keyword">await</span> <span class="func">generateScript</span>(titulo, conteudo, categoria);
+    <span class="keyword">const</span> withImages = <span class="keyword">await</span> <span class="func">generateSceneImages</span>(script.cenas);
+    <span class="keyword">const</span> withVideos = <span class="keyword">await</span> <span class="func">generateSceneVideos</span>(withImages);
+    <span class="keyword">const</span> narrations = <span class="keyword">await</span> <span class="func">generateNarrations</span>(script.cenas);
+    <span class="keyword">const</span> urls       = <span class="keyword">await</span> <span class="func">uploadToStorage</span>(lessonId, withVideos, narrations);
+
+    <span class="comment">// Save to DB</span>
+    <span class="keyword">const</span> record = {
+      lesson_id: lessonId, status: <span class="string">"ready"</span>,
+      roteiro: script, urls, model: <span class="string">"gemini-2.5-flash+imagen4+veo2"</span>,
+    };
+    <span class="keyword">await</span> supabase.from(<span class="string">"ai_animations"</span>).<span class="func">upsert</span>(record, { onConflict: <span class="string">"lesson_id"</span> });
+    <span class="keyword">return</span> NextResponse.<span class="func">json</span>(record);
+  } <span class="keyword">catch</span> (error) {
+    <span class="keyword">await</span> supabase.from(<span class="string">"ai_animations"</span>).<span class="func">update</span>({ status: <span class="string">"error"</span> })
+      .eq(<span class="string">"lesson_id"</span>, lessonId);
+    <span class="keyword">return</span> NextResponse.<span class="func">json</span>({ error: <span class="string">"Falha na geração"</span> }, { status: <span class="num">500</span> });
+  }
+}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ COMPARAÇÃO DE ABORDAGENS ═══════════ -->
+  <div class="section">
+    <div class="section-title"><span class="icon">⚖️</span> Duas Estratégias de Implementação</div>
+    <div class="cards">
+      <div class="card">
+        <div class="card-h" style="border-left:3px solid var(--green)">🟢 Estratégia A: Imagen + CSS/JS (Econômica)</div>
+        <div class="card-b" style="font-size:12px;line-height:1.8;color:var(--dim)">
+          <div style="margin-bottom:12px">
+            <span class="tag tag-green">$0.22/animação</span>
+            <span class="tag tag-green">Geração: ~40s</span>
+            <span class="tag tag-green">Sem Veo</span>
+          </div>
+          <strong style="color:var(--text)">Como funciona:</strong><br>
+          Gemini gera roteiro → Imagen gera 10 ilustrações HD → Player no browser anima as imagens com efeitos CSS (Ken Burns zoom, parallax, fade, slide) + overlay de texto + narração TTS sincronizada.<br><br>
+          <strong style="color:var(--green)">Prós:</strong> Custo quase zero, geração rápida (~40s), funciona em qualquer device, sem armazenamento pesado.<br>
+          <strong style="color:var(--red)">Contras:</strong> Animação limitada a efeitos de câmera sobre imagens estáticas (não tem movimento real dos elementos).
+          <br><br>
+          <strong style="color:var(--text)">Ideal para:</strong> Cursos gratuitos, conteúdo teórico, explicações conceituais.
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-h" style="border-left:3px solid var(--amber)">🟡 Estratégia B: Imagen + Veo (Premium)</div>
+        <div class="card-b" style="font-size:12px;line-height:1.8;color:var(--dim)">
+          <div style="margin-bottom:12px">
+            <span class="tag tag-amber">$21/animação</span>
+            <span class="tag tag-amber">Geração: ~5min</span>
+            <span class="tag tag-amber">Com Veo 2</span>
+          </div>
+          <strong style="color:var(--text)">Como funciona:</strong><br>
+          Gemini gera roteiro → Imagen gera ilustrações → Veo 2 transforma cada imagem em vídeo animado com movimento real → Concatena com narração TTS → Upload para Supabase.<br><br>
+          <strong style="color:var(--green)">Prós:</strong> Animação cinematográfica com movimento real, qualidade de vídeo explicativo profissional, diferencial enorme no mercado.<br>
+          <strong style="color:var(--red)">Contras:</strong> Custo mais alto por animação, tempo de geração maior, armazenamento de vídeo.
+          <br><br>
+          <strong style="color:var(--text)">Ideal para:</strong> Cursos pagos premium, conteúdo prático/demonstrativo, marketing.
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:16px;padding:16px;background:var(--s1);border:1px solid rgba(245,158,11,0.15);border-radius:12px;text-align:center">
+      <div style="font-size:13px;font-weight:600;color:var(--amber);margin-bottom:6px">💡 Recomendação: Implementar as DUAS estratégias</div>
+      <div style="font-size:11px;color:var(--dim);line-height:1.6;max-width:700px;margin:0 auto">
+        Comece pela <strong style="color:var(--green)">Estratégia A</strong> (rápida, barata, valida o conceito). Depois adicione a <strong style="color:var(--amber)">Estratégia B</strong> como upgrade premium. No admin, o botão "Gerar Animação" pode ter duas opções: "Rápida (imagens)" e "Premium (vídeo)".
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ DATABASE SCHEMA ═══════════ -->
+  <div class="section">
+    <div class="section-title"><span class="icon">🗃️</span> Schema: Tabela ai_animations</div>
+    <div class="card card-full">
+      <div class="card-h">📄 SQL Migration</div>
+      <div class="card-b">
+        <div class="code-block"><span class="keyword">CREATE TABLE</span> ai_animations (
+  id          <span class="type">UUID</span> <span class="keyword">DEFAULT</span> <span class="func">gen_random_uuid</span>() <span class="keyword">PRIMARY KEY</span>,
+  lesson_id   <span class="type">UUID</span> <span class="keyword">NOT NULL REFERENCES</span> lessons(id) <span class="keyword">ON DELETE CASCADE</span>,
+  status      <span class="type">TEXT</span> <span class="keyword">NOT NULL DEFAULT</span> <span class="string">'pending'</span>,  <span class="comment">-- pending | generating | ready | error</span>
+  tipo        <span class="type">TEXT</span> <span class="keyword">NOT NULL DEFAULT</span> <span class="string">'imagens'</span>,  <span class="comment">-- imagens (Estratégia A) | video (Estratégia B)</span>
+  roteiro     <span class="type">JSONB</span>,          <span class="comment">-- roteiro completo gerado pelo Gemini</span>
+  urls        <span class="type">JSONB</span>,          <span class="comment">-- [{video, audio, image}] por cena</span>
+  model       <span class="type">TEXT</span>,           <span class="comment">-- "gemini-2.5-flash+imagen4" ou "+veo2"</span>
+  custo_usd   <span class="type">NUMERIC</span>(<span class="num">6</span>,<span class="num">4</span>),  <span class="comment">-- custo da geração para controle</span>
+  created_at  <span class="type">TIMESTAMPTZ</span> <span class="keyword">DEFAULT</span> <span class="func">NOW</span>(),
+  updated_at  <span class="type">TIMESTAMPTZ</span> <span class="keyword">DEFAULT</span> <span class="func">NOW</span>(),
+  <span class="keyword">UNIQUE</span>(lesson_id, tipo)
+);
+
+<span class="keyword">CREATE INDEX</span> idx_animations_lesson <span class="keyword">ON</span> ai_animations(lesson_id);
+<span class="keyword">CREATE INDEX</span> idx_animations_status <span class="keyword">ON</span> ai_animations(status);</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ ENV ═══════════ -->
+  <div class="section">
+    <div class="section-title"><span class="icon">🔑</span> Configuração Necessária</div>
+    <div class="card card-full">
+      <div class="card-h">📄 .env.local — Única chave necessária</div>
+      <div class="card-b">
+        <div class="code-block"><span class="comment"># Google GenAI — Uma chave para tudo (Gemini + Imagen + Veo)</span>
+<span class="type">GOOGLE_GENAI_API_KEY</span>=<span class="string">"sua-chave-do-google-ai-studio"</span>
+
+<span class="comment"># Obter em: https://aistudio.google.com/apikey</span>
+<span class="comment"># Plano Pay-as-you-go ou Free tier (com limites)</span></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
