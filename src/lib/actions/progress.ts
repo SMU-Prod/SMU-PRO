@@ -45,16 +45,33 @@ export async function markLessonComplete(lessonId: string, courseSlug: string) {
       const isNR = /NR[- ]?\d+/i.test(courseTitulo);
 
       if (isNR) {
-        // Check if NR per-lesson certificate already exists (using lesson_id in metadata)
-        const { data: existingNRCert } = await admin
-          .from("certificates")
-          .select("id")
-          .eq("user_id", userUuid)
-          .eq("course_id", lessonData.modules.course_id)
-          .contains("metadata", { lesson_id: lessonId })
-          .maybeSingle();
+        const courseId = lessonData.modules.course_id;
 
-        if (!existingNRCert) {
+        // Check if NR per-lesson certificate already exists
+        // Try metadata filter first, fall back to checking all certs for this course
+        let alreadyExists = false;
+        try {
+          const { data: existingNRCert } = await admin
+            .from("certificates")
+            .select("id, metadata")
+            .eq("user_id", userUuid)
+            .eq("course_id", courseId)
+            .contains("metadata", { lesson_id: lessonId })
+            .maybeSingle();
+          alreadyExists = !!existingNRCert;
+        } catch {
+          // metadata column might not exist yet — check by listing all certs for this course
+          const { data: allCerts } = await admin
+            .from("certificates")
+            .select("id")
+            .eq("user_id", userUuid)
+            .eq("course_id", courseId);
+          // If there are certs but no metadata column, we can't distinguish per-lesson
+          // So only skip if we have many certs (one per lesson already generated)
+          alreadyExists = (allCerts?.length ?? 0) > 5;
+        }
+
+        if (!alreadyExists) {
           const { data: userRow } = await admin
             .from("users")
             .select("email, nome, projeto_cultural")
@@ -62,23 +79,64 @@ export async function markLessonComplete(lessonId: string, courseSlug: string) {
             .single();
 
           if (userRow) {
-            const { error: certErr } = await admin.from("certificates").insert({
+            // Try inserting with metadata first, fall back without
+            const insertData: Record<string, any> = {
               user_id: userUuid,
-              course_id: lessonData.modules.course_id,
+              course_id: courseId,
               nota_final: 100,
               carga_horaria: lessonData.duracao_min ?? 0,
               projeto_cultural: userRow.projeto_cultural ?? false,
-              metadata: { lesson_id: lessonId, lesson_titulo: lessonData.titulo, tipo: "nr_aula" },
-            });
+            };
+
+            // Try with metadata
+            let { error: certErr, data: cert } = await (admin as any)
+              .from("certificates")
+              .insert({ ...insertData, metadata: { lesson_id: lessonId, lesson_titulo: lessonData.titulo, tipo: "nr_aula" } })
+              .select("id, codigo_verificacao")
+              .single();
+
+            // If metadata column doesn't exist yet, retry without it
+            if (certErr && (certErr.message?.includes("metadata") || certErr.code === "PGRST204")) {
+              const retry = await (admin as any)
+                .from("certificates")
+                .insert(insertData)
+                .select("id, codigo_verificacao")
+                .single();
+              certErr = retry.error;
+              cert = retry.data;
+            }
+
             if (certErr && certErr.code !== "23505") {
               console.error("[NR Cert] Error:", certErr);
-            } else if (!certErr) {
+            } else if (cert) {
+              // Log activity
               await admin.from("activity_log").insert({
                 user_id: userUuid,
                 tipo: "certificate_issued" as any,
                 descricao: `Certificado NR emitido: ${lessonData.titulo}`,
-                metadata: { lesson_id: lessonId, course_id: lessonData.modules.course_id },
+                metadata: { lesson_id: lessonId, course_id: courseId, certificate_id: cert.id },
               });
+
+              // In-app notification for the student
+              createNotification({
+                userUuid,
+                tipo: "certificate",
+                titulo: `Certificado NR: ${lessonData.titulo}`,
+                mensagem: `Seu certificado para "${lessonData.titulo}" foi emitido.`,
+                link: `/certificado/${cert.codigo_verificacao}`,
+              }).catch(() => {});
+
+              // Send email
+              if (userRow.email) {
+                sendCertificateEmail({
+                  to: userRow.email,
+                  nome: userRow.nome,
+                  courseTitulo: `${courseTitulo} — ${lessonData.titulo}`,
+                  notaFinal: 100,
+                  cargaHoraria: lessonData.duracao_min ?? 0,
+                  codigoVerificacao: cert.codigo_verificacao,
+                }).catch((err) => console.error("[NR Cert Email] Error:", err));
+              }
             }
           }
         }
