@@ -88,22 +88,35 @@ export async function markLessonComplete(lessonId: string, courseSlug: string) {
               projeto_cultural: userRow.projeto_cultural ?? false,
             };
 
-            // Try with metadata
-            let { error: certErr, data: cert } = await (admin as any)
-              .from("certificates")
-              .insert({ ...insertData, metadata: { lesson_id: lessonId, lesson_titulo: lessonData.titulo, tipo: "nr_aula" } })
-              .select("id, codigo_verificacao")
-              .single();
+            // Try with metadata first, fall back without if column doesn't exist
+            let certErr: any = null;
+            let cert: any = null;
 
-            // If metadata column doesn't exist yet, retry without it
-            if (certErr && (certErr.message?.includes("metadata") || certErr.code === "PGRST204")) {
-              const retry = await (admin as any)
+            try {
+              const r1 = await (admin as any)
                 .from("certificates")
-                .insert(insertData)
+                .insert({ ...insertData, metadata: { lesson_id: lessonId, lesson_titulo: lessonData.titulo, tipo: "nr_aula" } })
                 .select("id, codigo_verificacao")
                 .single();
-              certErr = retry.error;
-              cert = retry.data;
+              certErr = r1.error;
+              cert = r1.data;
+            } catch {
+              certErr = { code: "FALLBACK" };
+            }
+
+            // If ANY error on first try (column missing, schema error, etc), retry without metadata
+            if (certErr && certErr.code !== "23505") {
+              try {
+                const r2 = await (admin as any)
+                  .from("certificates")
+                  .insert(insertData)
+                  .select("id, codigo_verificacao")
+                  .single();
+                certErr = r2.error;
+                cert = r2.data;
+              } catch (e2: any) {
+                certErr = { code: "FATAL", message: e2?.message };
+              }
             }
 
             if (certErr && certErr.code !== "23505") {
