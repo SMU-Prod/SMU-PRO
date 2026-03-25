@@ -1,4 +1,5 @@
-import { adminGetAllCourses } from "@/lib/actions/courses";
+import { adminGetAllCourses, instructorGetMyCourses } from "@/lib/actions/courses";
+import { getCurrentUser } from "@/lib/actions/users";
 import { Button } from "@/components/ui/button";
 import { Plus, Layers, Search, BookOpen, Users, Award } from "lucide-react";
 import Link from "next/link";
@@ -26,13 +27,32 @@ const TIPOS = [
 export default async function AdminCoursesPage({ searchParams }: Props) {
   const { q = "", nivel = "", tipo = "", page: pageStr = "1" } = await searchParams;
   const currentPage = Math.max(1, parseInt(pageStr));
+  const user = await getCurrentUser();
+  const isInstructor = user?.role === "instrutor";
 
-  const { courses: filtered, total } = await adminGetAllCourses({
-    page: currentPage, limit: PAGE_SIZE, search: q, nivel, tipo,
-  });
+  let filtered: any[];
+  let total: number;
+  let allCourses: any[];
 
-  // Stats require full dataset — use a separate unfiltered call
-  const { courses: allCourses } = await adminGetAllCourses({ limit: 500 });
+  if (isInstructor) {
+    // Instrutor vê só seus cursos
+    const myCourses = await instructorGetMyCourses();
+    // Filtro client-side para instrutor (dataset pequeno)
+    let result = myCourses;
+    if (q) result = result.filter((c: any) => c.titulo?.toLowerCase().includes(q.toLowerCase()));
+    if (nivel) result = result.filter((c: any) => c.nivel === nivel);
+    if (tipo) result = result.filter((c: any) => c.tipo === tipo);
+    total = result.length;
+    filtered = result.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+    allCourses = myCourses;
+  } else {
+    const res = await adminGetAllCourses({ page: currentPage, limit: PAGE_SIZE, search: q, nivel, tipo });
+    filtered = res.courses;
+    total = res.total;
+    const all = await adminGetAllCourses({ limit: 500 });
+    allCourses = all.courses;
+  }
+
   const totalAlunos = allCourses.reduce((s: number, c: any) => s + (c.total_alunos ?? 0), 0);
   const totalCerts = allCourses.reduce((s: number, c: any) => s + (c.total_certificados ?? 0), 0);
   const ativos = allCourses.filter((c: any) => c.ativo).length;
@@ -133,7 +153,7 @@ export default async function AdminCoursesPage({ searchParams }: Props) {
           </div>
         ) : (
           <>
-            <CourseBulkActions courses={filtered} />
+            {!isInstructor && <CourseBulkActions courses={filtered} />}
             {totalPages > 1 && (
               <div className="flex items-center justify-between text-sm text-muted-light pt-2">
                 <span>Página {currentPage} de {totalPages} ({total} cursos)</span>

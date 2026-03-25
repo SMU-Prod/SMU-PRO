@@ -17,6 +17,7 @@ interface QuizTabProps {
   quizAttempts: QuizAttempt[];
   quizData?: any;
   userId: string;
+  onQuizPassed?: () => void;
 }
 
 type QuizWithQuestions = Quiz & {
@@ -40,7 +41,7 @@ function formatTime(seconds: number) {
   return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 }
 
-export function QuizTab({ lesson, quizAttempts, quizData, userId }: QuizTabProps) {
+export function QuizTab({ lesson, quizAttempts, quizData, userId, onQuizPassed }: QuizTabProps) {
   const [quiz, setQuiz] = useState<QuizWithQuestions | null>(() => {
     if (!quizData) return null;
     return {
@@ -169,6 +170,7 @@ export function QuizTab({ lesson, quizAttempts, quizData, userId }: QuizTabProps
       await submitQuizAttempt(quiz.id, nota, aprovado, answers);
       setResult({ nota, aprovado });
       setSubmitted(true);
+      if (aprovado && onQuizPassed) onQuizPassed();
     } catch (err: any) {
       console.error("[Quiz] Erro ao salvar tentativa:", err);
       setSubmitError(err.message || "Erro ao salvar tentativa. Tente novamente.");

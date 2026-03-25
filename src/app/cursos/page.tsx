@@ -222,7 +222,9 @@ export default async function CursosPage({ searchParams }: Props) {
                         <h3 className="font-bold text-base text-foreground leading-tight mb-2 group-hover:text-amber-400 transition-colors">
                           {course.titulo}
                         </h3>
-                        <p className="text-muted-light text-sm line-clamp-2 mb-auto">{course.descricao_curta}</p>
+                        <p className="text-muted-light text-sm line-clamp-2 mb-auto">
+                          {course.descricao_curta || course.descricao || "Curso completo de formação profissional."}
+                        </p>
                         <div className="flex items-center justify-between text-xs text-muted-light pt-4 mt-4 border-t border-border/50">
                           <span>{course.total_aulas} aulas · {formatMinutes(course.carga_horaria ?? 0)}</span>
                           {course.preco && course.preco > 0 ? (

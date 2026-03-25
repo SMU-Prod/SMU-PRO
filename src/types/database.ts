@@ -3,7 +3,7 @@
 // Formato exato que supabase-js espera (com Relationships)
 // ============================================================
 
-export type UserRole = "visitor" | "trainee" | "junior" | "pleno" | "projeto_cultural" | "admin" | "content_manager";
+export type UserRole = "visitor" | "trainee" | "junior" | "pleno" | "projeto_cultural" | "admin" | "content_manager" | "instrutor";
 export type CourseLevel = "trainee" | "junior" | "pleno";
 export type CourseCategory = "som" | "luz" | "producao" | "dj" | "vj" | "roadie" | "marketing" | "efeitos" | "outros";
 export type CourseType = "free" | "pago" | "projeto_cultural";

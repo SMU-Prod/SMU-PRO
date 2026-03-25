@@ -27,15 +27,15 @@ async function assertAdmin() {
   const supabase = createAdminClient();
   const { data: rows } = await supabase
     .from("users")
-    .select("role")
+    .select("id, role")
     .eq("clerk_id", userId)
     .order("created_at", { ascending: false })
     .limit(1);
   const role = rows?.[0]?.role ?? null;
 
-  // Both admin and content_manager can manage course content
-  if (role !== "admin" && role !== "content_manager") {
-    throw new Error("Acesso negado: apenas administradores ou content managers");
+  // Admin, content_manager AND instrutor can manage course content
+  if (role !== "admin" && role !== "content_manager" && role !== "instrutor") {
+    throw new Error("Acesso negado: apenas administradores, content managers ou instrutores");
   }
   return userId;
 }
@@ -222,8 +222,24 @@ export async function adminCreateCourse(input: CourseInsert) {
 }
 
 export async function adminUpdateCourse(id: string, input: CourseUpdate) {
-  await assertAdmin();
+  const clerkId = await assertAdmin();
   const supabase = createAdminClient();
+
+  // Ownership check para instrutores
+  const { data: userRow } = await supabase
+    .from("users").select("id, role").eq("clerk_id", clerkId).limit(1).single();
+
+  if (userRow?.role === "instrutor") {
+    const { data: course } = await supabase.from("courses").select("criado_por").eq("id", id).single();
+    if (course?.criado_por !== userRow.id) {
+      throw new Error("Acesso negado: você só pode editar seus próprios cursos");
+    }
+    // Instrutor não pode alterar campos sensíveis
+    delete (input as any).ativo;
+    delete (input as any).destaque;
+    delete (input as any).preco;
+  }
+
   const { data, error } = await supabase
     .from("courses")
     .update(input)
@@ -616,4 +632,190 @@ export async function adminDuplicateCourse(id: string) {
 
   revalidatePath("/admin/cursos");
   return newCourse;
+}
+
+// ============================================================
+// INSTRUTOR — Actions com ownership filtering
+// ============================================================
+
+/**
+ * Verifica se o usuário logado é instrutor e retorna seu UUID.
+ * Aceita admin, content_manager E instrutor.
+ */
+async function assertInstructorOrAdmin() {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Não autenticado");
+
+  const supabase = createAdminClient();
+  const { data: rows } = await supabase
+    .from("users")
+    .select("id, role")
+    .eq("clerk_id", userId)
+    .limit(1);
+  const user = rows?.[0];
+  const role = user?.role ?? null;
+
+  if (role !== "admin" && role !== "content_manager" && role !== "instrutor") {
+    throw new Error("Acesso negado");
+  }
+  return { clerkId: userId, userUuid: user!.id, role: role as string };
+}
+
+/** Retorna cursos do instrutor logado (somente os que ele criou) */
+export async function instructorGetMyCourses() {
+  const { userUuid, role } = await assertInstructorOrAdmin();
+  const supabase = createAdminClient();
+
+  // Admin/CM veem tudo; instrutor vê só os dele
+  let query = (supabase as any)
+    .from("instructor_course_stats")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (role === "instrutor") {
+    query = query.eq("criado_por", userUuid);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return data ?? [];
+}
+
+/** Verifica ownership antes de update — instrutor só edita o que criou */
+export async function instructorUpdateCourse(id: string, input: CourseUpdate) {
+  const { userUuid, role } = await assertInstructorOrAdmin();
+  const supabase = createAdminClient();
+
+  // Instrutor: verificar ownership
+  if (role === "instrutor") {
+    const { data: course } = await supabase
+      .from("courses")
+      .select("criado_por")
+      .eq("id", id)
+      .single();
+
+    if (course?.criado_por !== userUuid) {
+      throw new Error("Acesso negado: você só pode editar seus próprios cursos");
+    }
+
+    // Instrutor NÃO pode alterar: ativo, destaque, preco (precisa de admin)
+    delete (input as any).ativo;
+    delete (input as any).destaque;
+    delete (input as any).preco;
+  }
+
+  const { data, error } = await supabase
+    .from("courses")
+    .update({ ...input, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+
+  revalidatePath("/admin/cursos");
+  revalidatePath("/cursos");
+  return data;
+}
+
+/** Dashboard stats do instrutor */
+export async function instructorGetDashboardStats() {
+  const { userUuid, role } = await assertInstructorOrAdmin();
+  const supabase = createAdminClient();
+
+  // Buscar cursos do instrutor
+  let coursesQuery = supabase.from("courses").select("id, titulo, preco, tipo").eq("ativo", true);
+  if (role === "instrutor") {
+    coursesQuery = coursesQuery.eq("criado_por", userUuid);
+  }
+  const { data: courses } = await coursesQuery;
+  const courseIds = (courses ?? []).map((c) => c.id);
+
+  if (courseIds.length === 0) {
+    return { totalCursos: 0, totalAlunos: 0, receitaBruta: 0, totalCertificados: 0, comissaoTotal: 0, comissaoPendente: 0, cursos: [] };
+  }
+
+  // Enrollments dos cursos do instrutor
+  const { data: enrollments } = await (supabase as any)
+    .from("enrollments")
+    .select("id, course_id, tipo_acesso, status")
+    .in("course_id", courseIds)
+    .eq("status", "ativo");
+
+  const totalAlunos = enrollments?.length ?? 0;
+
+  // Receita estimada (preço do curso × matrículas pagas)
+  const courseMap = Object.fromEntries((courses ?? []).map((c) => [c.id, c]));
+  let receitaBruta = 0;
+  for (const e of enrollments ?? []) {
+    if (e.tipo_acesso === "pago") {
+      receitaBruta += courseMap[e.course_id]?.preco ?? 0;
+    }
+  }
+
+  // Certificados
+  const { count: totalCertificados } = await supabase
+    .from("certificates")
+    .select("id", { count: "exact", head: true })
+    .in("course_id", courseIds);
+
+  // Comissões do parceiro (se vinculado)
+  let comissaoTotal = 0;
+  let comissaoPendente = 0;
+  const { data: partner } = await (supabase as any)
+    .from("instructor_partners")
+    .select("id")
+    .eq("user_id", userUuid)
+    .eq("ativo", true)
+    .maybeSingle();
+
+  if (partner) {
+    const { data: comissoes } = await (supabase as any)
+      .from("partner_commissions")
+      .select("valor_comissao, status")
+      .eq("partner_id", partner.id);
+
+    for (const c of comissoes ?? []) {
+      comissaoTotal += c.valor_comissao ?? 0;
+      if (c.status === "pendente") comissaoPendente += c.valor_comissao ?? 0;
+    }
+  }
+
+  return {
+    totalCursos: courseIds.length,
+    totalAlunos,
+    receitaBruta,
+    totalCertificados: totalCertificados ?? 0,
+    comissaoTotal,
+    comissaoPendente,
+    cursos: courses ?? [],
+  };
+}
+
+/** Alunos dos cursos do instrutor */
+export async function instructorGetMyStudents(courseId?: string) {
+  const { userUuid, role } = await assertInstructorOrAdmin();
+  const supabase = createAdminClient();
+
+  // IDs dos cursos do instrutor
+  let coursesQuery = supabase.from("courses").select("id");
+  if (role === "instrutor") {
+    coursesQuery = coursesQuery.eq("criado_por", userUuid);
+  }
+  if (courseId) {
+    coursesQuery = coursesQuery.eq("id", courseId);
+  }
+  const { data: courses } = await coursesQuery;
+  const courseIds = (courses ?? []).map((c) => c.id);
+  if (courseIds.length === 0) return [];
+
+  const { data, error } = await (supabase as any)
+    .from("enrollments")
+    .select("*, users(id, nome, email, avatar_url), courses(id, titulo, slug)")
+    .in("course_id", courseIds)
+    .eq("status", "ativo")
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  if (error) throw error;
+  return data ?? [];
 }

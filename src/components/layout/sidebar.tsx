@@ -26,6 +26,8 @@ import {
   CreditCard,
   PenTool,
   Handshake,
+  GraduationCap,
+  Wallet,
 } from "lucide-react";
 
 interface NavItem {
@@ -63,14 +65,22 @@ const contentManagerNav: NavItem[] = [
   { label: "Trilhas", href: "/admin/trilhas", icon: TrendingUp },
 ];
 
+const instructorNav: NavItem[] = [
+  { label: "Meu Painel", href: "/admin", icon: BarChart3 },
+  { label: "Meus Cursos", href: "/admin/cursos", icon: GraduationCap },
+  { label: "Meus Alunos", href: "/admin/meus-alunos", icon: Users },
+  { label: "Comissões", href: "/admin/minhas-comissoes", icon: Wallet },
+];
+
 interface SidebarProps {
   role?: UserRole;
 }
 
-function SidebarContent({ role, isAdmin, isContentManager, navItems, pathname, user, open, close, theme, toggleTheme }: {
+function SidebarContent({ role, isAdmin, isContentManager, isInstructor, navItems, pathname, user, open, close, theme, toggleTheme }: {
   role: UserRole;
   isAdmin: boolean;
   isContentManager: boolean;
+  isInstructor: boolean;
   navItems: NavItem[];
   pathname: string;
   user: any;
@@ -90,7 +100,7 @@ function SidebarContent({ role, isAdmin, isContentManager, navItems, pathname, u
           </div>
           <div className="h-8 w-px bg-border" />
           <p className="text-[10px] text-muted-light leading-tight">
-            {isAdmin ? "Painel Admin" : isContentManager ? "Gestão de Conteúdo" : "Plataforma de Cursos"}
+            {isAdmin ? "Painel Admin" : isContentManager ? "Gestão de Conteúdo" : isInstructor ? "Painel Instrutor" : "Plataforma de Cursos"}
           </p>
         </div>
         {/* Close button — mobile only */}
@@ -103,7 +113,7 @@ function SidebarContent({ role, isAdmin, isContentManager, navItems, pathname, u
       </div>
 
       {/* Admin toggle */}
-      {(role === "admin" || role === "content_manager") && (
+      {(role === "admin" || role === "content_manager" || role === "instrutor") && (
         <div className="mx-3 mt-3">
           <div className="flex rounded-lg overflow-hidden border border-border-strong bg-surface-2">
             <Link
@@ -207,9 +217,10 @@ export function Sidebar({ role = "trainee" }: SidebarProps) {
 
   const isAdmin = role === "admin";
   const isContentManager = role === "content_manager";
-  const navItems = isAdmin ? adminNav : isContentManager ? contentManagerNav : studentNav;
+  const isInstructor = role === "instrutor";
+  const navItems = isAdmin ? adminNav : isContentManager ? contentManagerNav : isInstructor ? instructorNav : studentNav;
 
-  const contentProps = { role, isAdmin, isContentManager, navItems, pathname, user, open, close, theme, toggleTheme };
+  const contentProps = { role, isAdmin, isContentManager, isInstructor, navItems, pathname, user, open, close, theme, toggleTheme };
 
   return (
     <>

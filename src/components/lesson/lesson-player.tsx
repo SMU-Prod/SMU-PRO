@@ -94,6 +94,12 @@ export function LessonPlayer({
   const isAdmin = userRole === "admin";
   const hasAccess = isAdmin || !!enrollment || lesson.preview_gratis;
 
+  // ── Quiz gate: bloqueia "Concluir" se a aula tem quiz e o aluno ainda não foi aprovado ──
+  const quizPassRequired = lesson.tem_quiz === true;
+  const [quizJustPassed, setQuizJustPassed] = useState(false);
+  const quizPassed = quizAttempts.some((a) => a.aprovado) || quizJustPassed;
+  const canComplete = !quizPassRequired || quizPassed;
+
   // ── Flatten all lessons from all modules (root + submodules) ──
   const allLessons = course.modules?.flatMap((m: any) => m.lessons ?? []) ?? [];
   const totalLessons = allLessons.length;
@@ -337,13 +343,16 @@ export function LessonPlayer({
             <Button
               onClick={handleMarkComplete}
               loading={marking}
-              disabled={isCompleted}
+              disabled={isCompleted || !canComplete}
               variant={isCompleted ? "success" : "default"}
               size="sm"
               className="shrink-0 px-2 sm:px-3"
+              title={!canComplete ? "Aprove no quiz para concluir esta aula" : undefined}
             >
               {isCompleted ? (
                 <><CheckCheck size={15} /><span className="hidden sm:inline ml-1">Concluída</span></>
+              ) : !canComplete ? (
+                <><Lock size={15} /><span className="hidden sm:inline ml-1">Quiz pendente</span></>
               ) : (
                 <><CheckCircle2 size={15} /><span className="hidden sm:inline ml-1">Concluir</span></>
               )}
@@ -510,7 +519,7 @@ export function LessonPlayer({
               )}
               {activeTab === "materials" && <MaterialsTab lesson={lesson} />}
               {activeTab === "quiz" && (
-                <QuizTab lesson={lesson} quizAttempts={quizAttempts} quizData={quizData} userId={userId} />
+                <QuizTab lesson={lesson} quizAttempts={quizAttempts} quizData={quizData} userId={userId} onQuizPassed={() => setQuizJustPassed(true)} />
               )}
               {activeTab === "notes" && (
                 <NotesTab lessonId={lesson.id} notes={notes} userId={userId} />

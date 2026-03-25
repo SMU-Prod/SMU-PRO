@@ -1,12 +1,13 @@
 import Link from "next/link";
-import { adminGetDashboardMetrics } from "@/lib/actions/users";
-import { adminGetAllCourses } from "@/lib/actions/courses";
+import { adminGetDashboardMetrics, getCurrentUser } from "@/lib/actions/users";
+import { adminGetAllCourses, instructorGetDashboardStats } from "@/lib/actions/courses";
 import { createAdminClient } from "@/lib/supabase/server";
 import { Header } from "@/components/layout/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, getLevelLabel } from "@/lib/utils";
 import { CategoryIcon } from "@/components/ui/category-icon";
+import { InstructorDashboard } from "@/components/admin/instructor-dashboard";
 import {
   Users, BookOpen, Award, DollarSign, TrendingUp,
   UserCheck, BarChart3, Activity,
@@ -15,6 +16,14 @@ import {
 } from "lucide-react";
 
 export default async function AdminDashboardPage() {
+  const user = await getCurrentUser();
+
+  // Instrutor vê dashboard próprio
+  if (user?.role === "instrutor") {
+    const stats = await instructorGetDashboardStats();
+    return <InstructorDashboard stats={stats} />;
+  }
+
   const [metrics, { courses }] = await Promise.all([
     adminGetDashboardMetrics(),
     adminGetAllCourses({ limit: 100 }),
