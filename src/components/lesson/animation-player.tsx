@@ -260,43 +260,9 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
 
   if (!hasContent) return null;
 
-  // ── Generating state (admin only) ──
-  if (generating) {
-    if (!isAdmin) return null; // Aluno não vê estado de geração
-    return (
-      <div className="rounded-xl bg-purple-500/5 border border-purple-500/20 p-4">
-        <div className="flex items-center gap-3">
-          <Loader2 size={18} className="animate-spin text-purple-400" />
-          <div>
-            <div className="text-sm font-medium text-foreground">Gerando conteúdo interativo...</div>
-            <div className="text-xs text-muted-light mt-0.5">
-              A IA está criando widgets interativos e narração. Isso leva 1-3 minutos.
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Initial state: sem conteúdo gerado ──
-  if (!isReady) {
-    // Aluno: não mostra nada se não tem conteúdo gerado
-    if (!isAdmin) return null;
-
-    // Admin: botão de gerar
-    return (
-      <div className="flex items-center gap-3 p-3 rounded-xl bg-purple-500/5 border border-purple-500/20">
-        <Button size="sm" onClick={handleGenerate} disabled={loading} className="gap-2 bg-purple-600 hover:bg-purple-500">
-          {loading ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
-          {loading ? "Preparando..." : "Gerar Conteúdo Interativo"}
-        </Button>
-        <span className="text-xs text-muted-light">
-          IA cria simulações interativas + imagens do conteúdo
-        </span>
-        {error && <span className="text-xs text-red-400">{error}</span>}
-      </div>
-    );
-  }
+  // Geração por IA desativada: não mostra os botões "Gerar/Preparando conteúdo".
+  // O player abaixo só renderiza quando JÁ existe conteúdo pronto (ex: os games).
+  if (generating || !isReady) return null;
 
   const currentSceneData = scenes[currentScene];
   const currentUrl = urls[currentScene];
@@ -367,8 +333,8 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
           </span>
         </button>
         <div className="flex items-center gap-2">
-          {/* Admin: Regenerar — botão visível */}
-          {isAdmin && (
+          {/* Admin: Regenerar (IA) removido a pedido */}
+          {false && (
             <Button
               size="sm"
               variant="outline"
