@@ -68,7 +68,12 @@ export async function getCourses(filters?: { nivel?: string; categoria?: string;
   if (filters?.nivel) query = query.eq("nivel", filters.nivel as any);
   if (filters?.categoria) query = query.or(`categoria.eq.${filters.categoria},categorias.cs.{${filters.categoria}}`);
   if (filters?.tipo) query = query.eq("tipo", filters.tipo as any);
-  if (filters?.search) query = query.ilike("titulo", `%${filters.search}%`);
+  if (filters?.search) {
+    // Busca no título E nas descrições (antes era só no título → não achava por assunto).
+    // Sanitiza vírgula/parênteses que quebram a sintaxe do .or() do PostgREST.
+    const s = filters.search.replace(/[,()]/g, " ").trim();
+    if (s) query = query.or(`titulo.ilike.%${s}%,descricao_curta.ilike.%${s}%,descricao.ilike.%${s}%`);
+  }
 
   const { data, error } = await query;
   if (error) throw error;

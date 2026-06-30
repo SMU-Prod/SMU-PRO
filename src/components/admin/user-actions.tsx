@@ -46,7 +46,7 @@ export function UserActions({ user, courses = [] }: UserActionsProps) {
   ];
 
   return (
-    <div className="flex items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+    <div className="flex items-center gap-1 transition-opacity">
       {/* Enroll button */}
       {courses.length > 0 && (
         <div className="relative">

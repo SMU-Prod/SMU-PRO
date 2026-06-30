@@ -133,7 +133,7 @@ export function tts(text: string, options: TtsOptions = {}): Promise<Buffer> {
         const escapedText = escapeXml(text);
         const ssml =
           `X-RequestId:${connectId()}\r\nContent-Type:application/ssml+xml\r\n` +
-          `X-Timestamp:${new Date().toISOString()}Z\r\nPath:ssml\r\n\r\n` +
+          `X-Timestamp:${new Date().toISOString()}\r\nPath:ssml\r\n\r\n` +
           `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='pt-BR'>` +
           `<voice name='${voice}'><prosody pitch='${pitch}' rate='${rate}' volume='${volume}'>` +
           `${escapedText}</prosody></voice></speak>`;

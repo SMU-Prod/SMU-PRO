@@ -92,6 +92,7 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const playingRef = useRef(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const hasContent = conteudo && conteudo.length > 100;
   const isReady = data?.status === "ready" && data.roteiro && data.urls;
@@ -118,6 +119,8 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
   }
 
   async function pollStatus() {
+    // Evita polls concorrentes: limpa qualquer intervalo anterior antes de iniciar
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
     const interval = setInterval(async () => {
       try {
         const res = await fetch(`/api/animation/generate?lessonId=${lessonId}&tipo=interactive`);
@@ -126,13 +129,16 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
           setData(result);
           setGenerating(false);
           clearInterval(interval);
+          pollIntervalRef.current = null;
         } else if (result.status === "error") {
           setError("Erro na geração. Tente novamente.");
           setGenerating(false);
           clearInterval(interval);
+          pollIntervalRef.current = null;
         }
       } catch { /* keep polling */ }
     }, 5000);
+    pollIntervalRef.current = interval;
     setTimeout(() => clearInterval(interval), 300_000);
   }
 
