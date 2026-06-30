@@ -354,8 +354,8 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
 
       {expanded && (
         <div className="px-4 pb-4 space-y-3">
-          {/* Widget canvas */}
-          <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-[#0f172a]">
+          {/* Widget canvas — responsivo: altura mínima confortável em celular/tablet, 16:9 quando sobra espaço */}
+          <div className="relative w-full aspect-video min-h-[470px] rounded-lg overflow-hidden bg-[#0f172a]">
             {/* Interactive widget (iframe with srcdoc) */}
             {currentUrl?.html ? (
               <iframe
