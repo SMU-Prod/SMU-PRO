@@ -228,9 +228,10 @@ export function RichContentViewer({ html, lessonId, titulo, categoria, isAdmin =
 
   const sections = useMemo(() => parseIntoSections(sanitized), [sanitized]);
 
-  // Botão admin de refinar (reutilizável)
+  // Botão admin de refinar (reutilizável) — DESATIVADO a pedido (flag abaixo)
+  const AI_REFINE_ENABLED = false;
   const RefineButton = () => {
-    if (!isAdmin) return null;
+    if (!AI_REFINE_ENABLED || !isAdmin) return null;
     if (refinedHtml) {
       return (
         <div className="flex items-center gap-2 pb-2">
