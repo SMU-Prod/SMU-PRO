@@ -1,12 +1,10 @@
 import { getCourses } from "@/lib/actions/courses";
 import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
-import Image from "next/image";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { getCategoryLabel, getLevelLabel, formatMinutes, formatCurrency } from "@/lib/utils";
 import { Search, SlidersHorizontal } from "lucide-react";
 import { CategoryIcon } from "@/components/ui/category-icon";
+import { CoursesView } from "@/components/cursos/courses-view";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -60,6 +58,15 @@ export default async function CursosPage({ searchParams }: Props) {
   } catch {
     courses = [];
   }
+
+  // ordena: iniciais (trainee) -> básicos (junior) -> plenos (pleno); alfabético dentro do grupo
+  const NIVEL_RANK: Record<string, number> = { trainee: 0, junior: 1, pleno: 2 };
+  courses = [...courses].sort((a, b) => {
+    const ra = NIVEL_RANK[a.nivel] ?? 99;
+    const rb = NIVEL_RANK[b.nivel] ?? 99;
+    if (ra !== rb) return ra - rb;
+    return (a.titulo || "").localeCompare(b.titulo || "", "pt-BR");
+  });
 
   const activeFilters = [nivel, categoria, tipo, search].filter(Boolean).length;
 
@@ -200,44 +207,7 @@ export default async function CursosPage({ searchParams }: Props) {
                 </p>
               </div>
             ) : (
-              <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-5">
-                {courses.map((course: any) => (
-                  <Link key={course.id} href={`/cursos/${course.slug}`} className="group">
-                    <div className="h-full rounded-2xl bg-surface border border-border overflow-hidden hover:border-amber-500/30 hover:shadow-md transition-all hover:-translate-y-1 flex flex-col">
-                      <div className="relative h-40 bg-gradient-to-br from-surface-2 to-surface-3 flex items-center justify-center text-5xl shrink-0 overflow-hidden">
-                        {course.thumbnail_url ? (
-                          <Image src={course.thumbnail_url} alt={course.titulo} fill className="object-cover" />
-                        ) : (
-                          <CategoryIcon category={course.categoria} size={40} />
-                        )}
-                      </div>
-                      <div className="p-5 flex flex-col flex-1">
-                        <div className="flex items-center gap-2 mb-3 flex-wrap">
-                          <Badge variant={course.nivel as any}>{getLevelLabel(course.nivel)}</Badge>
-                          {(course.categorias?.length ? course.categorias : [course.categoria]).map((cat: string) => (
-                            <Badge key={cat} variant="secondary" className="text-xs">{getCategoryLabel(cat)}</Badge>
-                          ))}
-                          {course.tipo === "free" && <Badge variant="free">Grátis</Badge>}
-                        </div>
-                        <h3 className="font-bold text-base text-foreground leading-tight mb-2 group-hover:text-amber-400 transition-colors">
-                          {course.titulo}
-                        </h3>
-                        <p className="text-muted-light text-sm line-clamp-2 mb-auto">
-                          {course.descricao_curta || course.descricao || "Curso completo de formação profissional."}
-                        </p>
-                        <div className="flex items-center justify-between text-xs text-muted-light pt-4 mt-4 border-t border-border/50">
-                          <span>{course.total_aulas} aulas · {formatMinutes(course.carga_horaria ?? 0)}</span>
-                          {course.preco && course.preco > 0 ? (
-                            <span className="text-foreground font-bold text-sm">{formatCurrency(course.preco)}</span>
-                          ) : (
-                            <span className="text-emerald-600 font-bold">Grátis</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
+              <CoursesView courses={courses} />
             )}
           </main>
         </div>

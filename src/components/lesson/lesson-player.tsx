@@ -483,27 +483,19 @@ export function LessonPlayer({
             <div className="animate-fade-in">
               {activeTab === "overview" && (
                 <div className="space-y-4 text-sm text-muted leading-relaxed">
-                  {/* Audio Player + Interactive Content */}
+                  {/* 1) Ouvir o conteúdo */}
                   {lesson.conteudo_rico && (
-                    <div className="space-y-3">
-                      <AudioPlayer lessonId={lesson.id} conteudo={lesson.conteudo_rico} />
-                      <ErrorBoundary>
-                        <AnimationPlayer
-                          lessonId={lesson.id}
-                          titulo={lesson.titulo}
-                          conteudo={lesson.conteudo_rico}
-                          categoria={course.categoria ?? "outros"}
-                          isAdmin={isAdmin}
-                        />
-                      </ErrorBoundary>
-                    </div>
+                    <AudioPlayer lessonId={lesson.id} conteudo={lesson.conteudo_rico} />
                   )}
 
+                  {/* 2) Descrição */}
                   {lesson.descricao ? (
                     <p>{lesson.descricao}</p>
                   ) : (
                     <p className="text-muted-light">Sem descrição para esta aula.</p>
                   )}
+
+                  {/* 3) Explicação (texto da aula) — vem ANTES da prática */}
                   {lesson.conteudo_rico && (
                     <ErrorBoundary>
                       <RichContentViewer
@@ -514,6 +506,28 @@ export function LessonPlayer({
                         isAdmin={isAdmin}
                       />
                     </ErrorBoundary>
+                  )}
+
+                  {/* 4) Prática — Simulação Interativa (game) por último */}
+                  {lesson.conteudo_rico && (
+                    <div className="pt-2">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="h-px flex-1 bg-border" />
+                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-light">
+                          Agora pratique
+                        </span>
+                        <span className="h-px flex-1 bg-border" />
+                      </div>
+                      <ErrorBoundary>
+                        <AnimationPlayer
+                          lessonId={lesson.id}
+                          titulo={lesson.titulo}
+                          conteudo={lesson.conteudo_rico}
+                          categoria={course.categoria ?? "outros"}
+                          isAdmin={isAdmin}
+                        />
+                      </ErrorBoundary>
+                    </div>
                   )}
                 </div>
               )}
