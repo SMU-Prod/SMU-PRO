@@ -92,7 +92,7 @@ export function LessonPlayer({
   );
 
   const isAdmin = userRole === "admin";
-  const hasAccess = isAdmin || !!enrollment || lesson.preview_gratis;
+  const hasAccess = isAdmin || enrollment?.status === "ativo" || lesson.preview_gratis;
 
   // ── Quiz gate: bloqueia "Concluir" se a aula tem quiz e o aluno ainda não foi aprovado ──
   const quizPassRequired = lesson.tem_quiz === true;

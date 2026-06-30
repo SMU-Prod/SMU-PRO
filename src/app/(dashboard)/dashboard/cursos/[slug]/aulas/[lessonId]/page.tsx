@@ -32,7 +32,7 @@ export default async function LessonPage({ params }: Props) {
     // Gate de acesso ao vídeo no servidor: remove youtube_id do payload
     // Admin tem acesso total; demais dependem de enrollment ou preview
     const isAdmin = userRole === "admin";
-    const hasAccess = isAdmin || !!enrollment || lesson.preview_gratis;
+    const hasAccess = isAdmin || enrollment?.status === "ativo" || lesson.preview_gratis;
     const lessonData = hasAccess ? lesson : { ...lesson, youtube_id: null };
 
     const [quizAttemptsResult, notesResult, quizResult] = await Promise.all([

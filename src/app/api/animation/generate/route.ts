@@ -80,16 +80,31 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Mark as generating ──
-  await (supabase as any).from("ai_animations").upsert(
-    {
+  // IMPORTANTE: não usar upsert aqui — ele pode zerar urls/roteiro do conteúdo
+  // já existente. Se a geração falhar, o conteúdo bom seria perdido.
+  // UPDATE só do status preserva o conteúdo atual até a nova geração concluir.
+  const { data: existingRow } = await (supabase as any)
+    .from("ai_animations")
+    .select("id")
+    .eq("lesson_id", lessonId)
+    .eq("tipo", tipo)
+    .maybeSingle();
+
+  if (existingRow) {
+    await (supabase as any)
+      .from("ai_animations")
+      .update({ status: "generating", updated_at: new Date().toISOString() })
+      .eq("lesson_id", lessonId)
+      .eq("tipo", tipo);
+  } else {
+    await (supabase as any).from("ai_animations").insert({
       lesson_id: lessonId,
       tipo,
       status: "generating",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-    },
-    { onConflict: "lesson_id,tipo" }
-  );
+    });
+  }
 
   try {
     // Ler memória da IA para esta categoria
@@ -203,9 +218,20 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error("[ContentEngine] Pipeline error:", error);
 
+    // Se já havia conteúdo bom, NÃO marca como erro (não derruba os games/conteúdo
+    // que estavam funcionando). Volta para "ready" preservando o conteúdo antigo.
+    const { data: prev } = await (supabase as any)
+      .from("ai_animations")
+      .select("urls")
+      .eq("lesson_id", lessonId)
+      .eq("tipo", tipo)
+      .maybeSingle();
+
+    const hadContent = prev?.urls?.some((u: any) => u?.html || u?.image);
+
     await (supabase as any)
       .from("ai_animations")
-      .update({ status: "error", updated_at: new Date().toISOString() })
+      .update({ status: hadContent ? "ready" : "error", updated_at: new Date().toISOString() })
       .eq("lesson_id", lessonId)
       .eq("tipo", tipo);
 
