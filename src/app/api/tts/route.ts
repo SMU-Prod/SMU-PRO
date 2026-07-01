@@ -609,6 +609,20 @@ function prepareTtsText(text: string): string {
   return t.trim();
 }
 
+/**
+ * Preparo leve para idiomas != pt-BR. Não expande unidades/siglas para palavras
+ * em português (isso é feito só no prepareTtsText do PT). Aqui apenas normaliza
+ * espaços e pontuação para uma leitura fluida; o Edge TTS lê números/unidades
+ * no próprio idioma da voz.
+ */
+function prepareTtsTextGeneric(text: string): string {
+  let t = text;
+  t = t.replace(/•\s*/g, ". ");
+  t = t.replace(/\s{2,}/g, " ");
+  t = t.replace(/\n{3,}/g, "\n\n");
+  return t.trim();
+}
+
 export async function POST(req: NextRequest) {
   const { userId } = await auth();
   if (!userId) {
@@ -620,15 +634,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Muitas requisições. Aguarde 1 minuto." }, { status: 429 });
   }
 
-  const { lessonId, text } = await req.json();
+  const { lessonId, text, lang: rawLang } = await req.json();
   if (!lessonId || !text) {
     return NextResponse.json({ error: "lessonId e text são obrigatórios" }, { status: 400 });
   }
 
+  // Idioma do áudio (piloto multilíngue). pt = padrão histórico.
+  const LANG_VOICE: Record<string, { voice: string; ssml: string; end: string }> = {
+    pt: { voice: "pt-BR-FranciscaNeural", ssml: "pt-BR", end: "... Fim do conteúdo disponível em áudio." },
+    en: { voice: "en-US-AriaNeural", ssml: "en-US", end: "... End of the audio content available." },
+    es: { voice: "es-ES-ElviraNeural", ssml: "es-ES", end: "... Fin del contenido disponible en audio." },
+  };
+  const lang = LANG_VOICE[rawLang] ? (rawLang as string) : "pt";
+  const langCfg = LANG_VOICE[lang];
+
   const supabase = createAdminClient();
 
-  // Check if audio already exists in storage
-  const storagePath = `tts/${lessonId}.mp3`;
+  // Check if audio already exists in storage (cache por idioma; pt mantém o path antigo)
+  const storagePath = `tts/${lessonId}${lang === "pt" ? "" : `.${lang}`}.mp3`;
   const { data: existing } = await supabase.storage
     .from("lesson-audio")
     .createSignedUrl(storagePath, 3600);
@@ -643,17 +666,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Conteúdo insuficiente para gerar áudio" }, { status: 400 });
   }
 
-  const prepared = prepareTtsText(plainText);
+  // O dicionário de pronúncia é específico de PT-BR — aplicá-lo em EN/ES estraga
+  // a leitura (ex.: "dB" viraria "decibéis"). Fora do PT, só limpeza leve de símbolos.
+  const prepared = lang === "pt" ? prepareTtsText(plainText) : prepareTtsTextGeneric(plainText);
 
   // Truncate very long texts (Edge TTS works best under ~5000 chars)
   const truncated = prepared.length > 5000
-    ? prepared.slice(0, 5000) + "... Fim do conteúdo disponível em áudio."
+    ? prepared.slice(0, 5000) + langCfg.end
     : prepared;
 
   try {
-    // Generate audio with Edge TTS
+    // Generate audio with Edge TTS — voz e idioma conforme o idioma escolhido
     // Slightly slower rate for technical content readability
     const audioBuffer = await tts(truncated, {
+      voice: langCfg.voice,
+      lang: langCfg.ssml,
       rate: "-5%",
       pitch: "+0Hz",
     });

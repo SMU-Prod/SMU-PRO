@@ -7,9 +7,17 @@ import { Button } from "@/components/ui/button";
 interface AudioPlayerProps {
   lessonId: string;
   conteudo: string;
+  lang?: string;
 }
 
-export function AudioPlayer({ lessonId, conteudo }: AudioPlayerProps) {
+const AUDIO_LABELS: Record<string, { btn: string; loading: string; hint: string; voice: string }> = {
+  pt: { btn: "Ouvir conteúdo", loading: "Gerando áudio...", hint: "Escute o conteúdo desta aula em áudio", voice: "Voz Francisca (PT-BR)" },
+  en: { btn: "Listen", loading: "Generating audio...", hint: "Listen to this lesson's content", voice: "Aria voice (EN-US)" },
+  es: { btn: "Escuchar", loading: "Generando audio...", hint: "Escucha el contenido de esta lección", voice: "Voz Elvira (ES-ES)" },
+};
+
+export function AudioPlayer({ lessonId, conteudo, lang = "pt" }: AudioPlayerProps) {
+  const L = AUDIO_LABELS[lang] ?? AUDIO_LABELS.pt;
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -32,7 +40,7 @@ export function AudioPlayer({ lessonId, conteudo }: AudioPlayerProps) {
       const res = await fetch("/api/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lessonId, text: conteudo }),
+        body: JSON.stringify({ lessonId, text: conteudo, lang }),
       });
 
       if (!res.ok) {
@@ -157,10 +165,10 @@ export function AudioPlayer({ lessonId, conteudo }: AudioPlayerProps) {
           ) : (
             <Headphones size={14} />
           )}
-          {loading ? "Gerando áudio..." : "Ouvir conteúdo"}
+          {loading ? L.loading : L.btn}
         </Button>
         <span className="text-xs text-muted-light">
-          Escute o conteúdo desta aula em áudio
+          {L.hint}
         </span>
         {error && <span className="text-xs text-red-400">{error}</span>}
       </div>
@@ -242,7 +250,7 @@ export function AudioPlayer({ lessonId, conteudo }: AudioPlayerProps) {
       <div className="flex items-center gap-2">
         <Headphones size={12} className="text-amber-500" />
         <span className="text-[10px] text-muted-light">
-          Áudio gerado automaticamente · Voz Francisca (PT-BR)
+          {lang === "pt" ? "Áudio gerado automaticamente" : "Auto-generated audio"} · {L.voice}
         </span>
       </div>
     </div>

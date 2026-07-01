@@ -52,6 +52,7 @@ interface TtsOptions {
   rate?: string;
   pitch?: string;
   volume?: string;
+  lang?: string;
 }
 
 export function tts(text: string, options: TtsOptions = {}): Promise<Buffer> {
@@ -60,6 +61,7 @@ export function tts(text: string, options: TtsOptions = {}): Promise<Buffer> {
     rate = "+0%",
     pitch = "+0Hz",
     volume = "+0%",
+    lang = "pt-BR",
   } = options;
 
   return new Promise<Buffer>((resolve, reject) => {
@@ -134,7 +136,7 @@ export function tts(text: string, options: TtsOptions = {}): Promise<Buffer> {
         const ssml =
           `X-RequestId:${connectId()}\r\nContent-Type:application/ssml+xml\r\n` +
           `X-Timestamp:${new Date().toISOString()}\r\nPath:ssml\r\n\r\n` +
-          `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='pt-BR'>` +
+          `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='${lang}'>` +
           `<voice name='${voice}'><prosody pitch='${pitch}' rate='${rate}' volume='${volume}'>` +
           `${escapedText}</prosody></voice></speak>`;
 

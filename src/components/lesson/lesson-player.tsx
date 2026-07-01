@@ -17,6 +17,9 @@ import { NotesTab } from "./notes-tab";
 import { AudioPlayer } from "./audio-player";
 import { AnimationPlayer } from "./animation-player";
 import { RichContentViewer } from "./rich-content-viewer";
+import { useLocale } from "@/lib/i18n/locale";
+import { getLessonTr } from "@/lib/i18n/pilot";
+import { LanguageSelector } from "@/components/i18n/language-selector";
 import type { Enrollment, Progress as ProgressType, QuizAttempt, Note } from "@/types/database";
 import {
   CheckCircle2, Circle, ChevronDown, ChevronRight, ChevronUp,
@@ -93,6 +96,13 @@ export function LessonPlayer({
 
   const isAdmin = userRole === "admin";
   const hasAccess = isAdmin || enrollment?.status === "ativo" || lesson.preview_gratis;
+
+  // ── Idioma do curso (piloto multilíngue): sobrepõe título/descrição/conteúdo ──
+  const locale = useLocale();
+  const tr = getLessonTr(course.slug, lesson.id, locale);
+  const dispTitulo = tr?.titulo ?? lesson.titulo;
+  const dispDescricao = tr?.descricao ?? lesson.descricao;
+  const dispConteudo = tr?.conteudo_rico ?? lesson.conteudo_rico;
 
   // ── Quiz gate: bloqueia "Concluir" se a aula tem quiz e o aluno ainda não foi aprovado ──
   const quizPassRequired = lesson.tem_quiz === true;
@@ -431,8 +441,9 @@ export function LessonPlayer({
                   <Clock size={10} className="mr-1" />
                   {formatMinutes(lesson.duracao_min)}
                 </Badge>
+                <LanguageSelector className="ml-auto" />
               </div>
-              <h1 className="text-lg sm:text-xl font-bold text-foreground">{lesson.titulo}</h1>
+              <h1 className="text-lg sm:text-xl font-bold text-foreground">{dispTitulo}</h1>
             </div>
 
             {/* Tabs */}
@@ -484,24 +495,25 @@ export function LessonPlayer({
               {activeTab === "overview" && (
                 <div className="space-y-4 text-sm text-muted leading-relaxed">
                   {/* 1) Ouvir o conteúdo */}
-                  {lesson.conteudo_rico && (
-                    <AudioPlayer lessonId={lesson.id} conteudo={lesson.conteudo_rico} />
+                  {dispConteudo && (
+                    <AudioPlayer key={locale} lessonId={lesson.id} conteudo={dispConteudo} lang={locale} />
                   )}
 
                   {/* 2) Descrição */}
-                  {lesson.descricao ? (
-                    <p>{lesson.descricao}</p>
+                  {dispDescricao ? (
+                    <p>{dispDescricao}</p>
                   ) : (
                     <p className="text-muted-light">Sem descrição para esta aula.</p>
                   )}
 
                   {/* 3) Explicação (texto da aula) — vem ANTES da prática */}
-                  {lesson.conteudo_rico && (
+                  {dispConteudo && (
                     <ErrorBoundary>
                       <RichContentViewer
-                        html={lesson.conteudo_rico}
+                        key={locale}
+                        html={dispConteudo}
                         lessonId={lesson.id}
-                        titulo={lesson.titulo}
+                        titulo={dispTitulo}
                         categoria={course.categoria ?? "outros"}
                         isAdmin={isAdmin}
                       />
@@ -533,7 +545,7 @@ export function LessonPlayer({
               )}
               {activeTab === "materials" && <MaterialsTab lesson={lesson} />}
               {activeTab === "quiz" && (
-                <QuizTab lesson={lesson} quizAttempts={quizAttempts} quizData={quizData} userId={userId} onQuizPassed={() => setQuizJustPassed(true)} />
+                <QuizTab lesson={lesson} quizAttempts={quizAttempts} quizData={quizData} userId={userId} onQuizPassed={() => setQuizJustPassed(true)} courseSlug={course.slug} locale={locale} />
               )}
               {activeTab === "notes" && (
                 <NotesTab lessonId={lesson.id} notes={notes} userId={userId} />
