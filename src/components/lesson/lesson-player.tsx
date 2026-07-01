@@ -18,7 +18,7 @@ import { AudioPlayer } from "./audio-player";
 import { AnimationPlayer } from "./animation-player";
 import { RichContentViewer } from "./rich-content-viewer";
 import { useLocale } from "@/lib/i18n/locale";
-import { getLessonTr } from "@/lib/i18n/pilot";
+import { useCourseTr } from "@/lib/i18n/pilot";
 import type { Enrollment, Progress as ProgressType, QuizAttempt, Note } from "@/types/database";
 import {
   CheckCircle2, Circle, ChevronDown, ChevronRight, ChevronUp,
@@ -96,9 +96,11 @@ export function LessonPlayer({
   const isAdmin = userRole === "admin";
   const hasAccess = isAdmin || enrollment?.status === "ativo" || lesson.preview_gratis;
 
-  // ── Idioma do curso (piloto multilíngue): sobrepõe título/descrição/conteúdo ──
+  // ── Idioma do curso (multilíngue): carrega a tradução do curso sob demanda ──
   const locale = useLocale();
-  const tr = getLessonTr(course.slug, lesson.id, locale);
+  const courseTr = useCourseTr(course.slug, locale);
+  const tr = courseTr?.lessons?.[lesson.id] ?? null;
+  const quizTr = courseTr?.quiz ?? null;
   const dispTitulo = tr?.titulo ?? lesson.titulo;
   const dispDescricao = tr?.descricao ?? lesson.descricao;
   const dispConteudo = tr?.conteudo_rico ?? lesson.conteudo_rico;
@@ -544,7 +546,7 @@ export function LessonPlayer({
               )}
               {activeTab === "materials" && <MaterialsTab lesson={lesson} />}
               {activeTab === "quiz" && (
-                <QuizTab lesson={lesson} quizAttempts={quizAttempts} quizData={quizData} userId={userId} onQuizPassed={() => setQuizJustPassed(true)} courseSlug={course.slug} locale={locale} />
+                <QuizTab lesson={lesson} quizAttempts={quizAttempts} quizData={quizData} userId={userId} onQuizPassed={() => setQuizJustPassed(true)} quizTr={quizTr} locale={locale} />
               )}
               {activeTab === "notes" && (
                 <NotesTab lessonId={lesson.id} notes={notes} userId={userId} />

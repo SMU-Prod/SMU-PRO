@@ -1,31 +1,63 @@
-import intro from "./data/introducao-para-eventos.json";
+"use client";
+
+import { useEffect, useState } from "react";
 import type { Locale } from "./locale";
 
 /**
- * Traduções do PILOTO multilíngue (fase 1), embutidas no app.
- * Fase 2 migra para o banco (coluna jsonb `traducoes`) quando escalar
- * para todos os cursos/idiomas. Estrutura por curso:
- *   { en: { lessons: { <lessonId>: {titulo,descricao,conteudo_rico} }, quiz: { <questionId>: {pergunta, opcoes:{<optId>:texto}} } }, es: {...} }
+ * Traduções por CURSO, carregadas SOB DEMANDA (dynamic import → cada curso vira
+ * um chunk separado; só carrega o do curso aberto, não pesa o app).
+ * Cada arquivo data/<slug>.json tem:
+ *   { en: { lessons: { <lessonId>: {titulo,descricao,conteudo_rico} }, quiz: { <questionId>: {pergunta,explicacao,opcoes:{<optId>:txt}} } }, es: {...} }
+ * Para adicionar um curso traduzido: gere data/<slug>.json e registre o slug aqui.
  */
-type LessonTr = { titulo?: string; descricao?: string; conteudo_rico?: string };
-type QuizTr = Record<string, { pergunta?: string; explicacao?: string; opcoes?: Record<string, string> }>;
-
-const PILOT: Record<string, any> = {
-  "introducao-para-eventos": intro,
+const LOADERS: Record<string, () => Promise<any>> = {
+  "introducao-para-eventos": () => import("./data/introducao-para-eventos.json"),
+  "panorama-das-profissoes-em-eventos": () => import("./data/panorama-das-profissoes-em-eventos.json"),
 };
 
-export function isPilotCourse(slug: string): boolean {
-  return !!PILOT[slug];
+const cache = new Map<string, any>();
+
+export function hasCourseTranslation(slug: string): boolean {
+  return !!LOADERS[slug];
 }
 
-export function getLessonTr(slug: string, lessonId: string, locale: Locale): LessonTr | null {
-  if (locale === "pt") return null;
-  const c = PILOT[slug];
-  return c?.[locale]?.lessons?.[lessonId] ?? null;
+export async function loadCourseTr(slug: string): Promise<any | null> {
+  if (!LOADERS[slug]) return null;
+  if (cache.has(slug)) return cache.get(slug);
+  try {
+    const mod = await LOADERS[slug]();
+    const data = mod?.default ?? mod;
+    cache.set(slug, data);
+    return data;
+  } catch {
+    return null;
+  }
 }
 
-export function getQuizTr(slug: string, locale: Locale): QuizTr | null {
-  if (locale === "pt") return null;
-  const c = PILOT[slug];
-  return c?.[locale]?.quiz ?? null;
+export type CourseTr = {
+  lessons?: Record<string, { titulo?: string; descricao?: string; conteudo_rico?: string }>;
+  quiz?: Record<string, { pergunta?: string; explicacao?: string; opcoes?: Record<string, string> }>;
+} | null;
+
+/**
+ * Hook: retorna as traduções do curso no idioma atual (ou null em PT / sem tradução).
+ * Carrega assíncrono; em PT retorna null na hora.
+ */
+export function useCourseTr(slug: string, locale: Locale): CourseTr {
+  const [data, setData] = useState<any | null>(null);
+  useEffect(() => {
+    if (locale === "pt" || !hasCourseTranslation(slug)) {
+      setData(null);
+      return;
+    }
+    let alive = true;
+    loadCourseTr(slug).then((d) => {
+      if (alive) setData(d);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [slug, locale]);
+  if (locale === "pt" || !data) return null;
+  return (data[locale] as CourseTr) ?? null;
 }

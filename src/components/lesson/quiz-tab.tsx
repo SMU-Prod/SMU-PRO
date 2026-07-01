@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import type { Quiz, QuizQuestion, QuizOption, QuizAttempt } from "@/types/database";
-import { getQuizTr } from "@/lib/i18n/pilot";
+import type { CourseTr } from "@/lib/i18n/pilot";
 import type { Locale } from "@/lib/i18n/locale";
 import {
   CheckCircle2, XCircle, Trophy, RotateCcw, HelpCircle,
@@ -20,7 +20,7 @@ interface QuizTabProps {
   quizData?: any;
   userId: string;
   onQuizPassed?: () => void;
-  courseSlug?: string;
+  quizTr?: NonNullable<CourseTr>["quiz"] | null;
   locale?: Locale;
 }
 
@@ -45,7 +45,7 @@ function formatTime(seconds: number) {
   return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 }
 
-export function QuizTab({ lesson, quizAttempts, quizData, userId, onQuizPassed, courseSlug, locale = "pt" }: QuizTabProps) {
+export function QuizTab({ lesson, quizAttempts, quizData, userId, onQuizPassed, quizTr, locale = "pt" }: QuizTabProps) {
   const [quiz, setQuiz] = useState<QuizWithQuestions | null>(() => {
     if (!quizData) return null;
     return {
@@ -87,7 +87,7 @@ export function QuizTab({ lesson, quizAttempts, quizData, userId, onQuizPassed, 
   // Embaralha questões e opções ao iniciar (memoizado por quiz)
   const displayQuestions = useMemo(() => {
     if (!quiz) return [];
-    const tr = courseSlug ? getQuizTr(courseSlug, locale) : null;
+    const tr = locale !== "pt" ? quizTr : null;
     const sorted = [...quiz.quiz_questions].sort((a, b) => a.ordem - b.ordem);
     const questions = quiz.embaralhar_questoes ? shuffle(sorted) : sorted;
     return questions.map((q) => {
@@ -106,7 +106,7 @@ export function QuizTab({ lesson, quizAttempts, quizData, userId, onQuizPassed, 
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quiz, started, courseSlug, locale]);
+  }, [quiz, started, quizTr, locale]);
 
 
   // Timer countdown
