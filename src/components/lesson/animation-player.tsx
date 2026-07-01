@@ -362,7 +362,7 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
                 key={`widget-${currentScene}`}
                 srcDoc={currentUrl.html}
                 className="absolute inset-0 w-full h-full border-0"
-                sandbox="allow-scripts"
+                sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
                 allow="autoplay"
                 title={currentSceneData?.titulo || "Widget interativo"}
                 style={{ display: "block" }}
@@ -372,7 +372,7 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
                 key={`widget-url-${currentScene}`}
                 src={currentUrl.widget}
                 className="absolute inset-0 w-full h-full border-0"
-                sandbox="allow-scripts"
+                sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
                 title={currentSceneData?.titulo || "Widget interativo"}
               />
             ) : currentUrl?.image ? (
