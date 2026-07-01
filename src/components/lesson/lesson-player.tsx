@@ -19,6 +19,7 @@ import { AnimationPlayer } from "./animation-player";
 import { RichContentViewer } from "./rich-content-viewer";
 import { useLocale } from "@/lib/i18n/locale";
 import { useCourseTr } from "@/lib/i18n/pilot";
+import { useT } from "@/lib/i18n/ui";
 import type { Enrollment, Progress as ProgressType, QuizAttempt, Note } from "@/types/database";
 import {
   CheckCircle2, Circle, ChevronDown, ChevronRight, ChevronUp,
@@ -98,6 +99,7 @@ export function LessonPlayer({
 
   // ── Idioma do curso (multilíngue): carrega a tradução do curso sob demanda ──
   const locale = useLocale();
+  const t = useT();
   const courseTr = useCourseTr(course.slug, locale);
   const tr = courseTr?.lessons?.[lesson.id] ?? null;
   const quizTr = courseTr?.quiz ?? null;
@@ -229,7 +231,7 @@ export function LessonPlayer({
           <Progress value={courseProgress} className="flex-1 h-2" />
           <span className="text-xs text-amber-400 font-semibold shrink-0">{courseProgress}%</span>
         </div>
-        <p className="text-xs text-muted-light">{completedLessons}/{totalLessons} aulas concluídas</p>
+        <p className="text-xs text-muted-light">{completedLessons}/{totalLessons} {t("aulas concluídas")}</p>
       </div>
       {/* Modules (only root modules, with submodules nested inside) */}
       {rootMods.map((mod: any, modIdx: number) => {
@@ -346,7 +348,7 @@ export function LessonPlayer({
             {nextLesson && (
               <Link href={`/dashboard/cursos/${course.slug}/aulas/${nextLesson.id}`}>
                 <Button variant="secondary" size="sm" className="gap-1 px-2 sm:px-3">
-                  <span className="hidden sm:inline">Próxima</span>
+                  <span className="hidden sm:inline">{t("Próxima")}</span>
                   <ChevronRight size={14} />
                 </Button>
               </Link>
@@ -365,7 +367,7 @@ export function LessonPlayer({
               ) : !canComplete ? (
                 <><Lock size={15} /><span className="hidden sm:inline ml-1">Quiz pendente</span></>
               ) : (
-                <><CheckCircle2 size={15} /><span className="hidden sm:inline ml-1">Concluir</span></>
+                <><CheckCircle2 size={15} /><span className="hidden sm:inline ml-1">{t("Concluir")}</span></>
               )}
             </Button>
           </div>
@@ -467,7 +469,7 @@ export function LessonPlayer({
                       )}
                     >
                       <Icon size={14} />
-                      {tab.label}
+                      {t(tab.label)}
                       {tab.id === "quiz" && lesson.tem_quiz && (
                         <span className="ml-0.5 h-1.5 w-1.5 rounded-full bg-amber-500" />
                       )}
@@ -485,7 +487,7 @@ export function LessonPlayer({
                   )}
                 >
                   <List size={14} />
-                  Conteúdo
+                  {t("Conteúdo")}
                 </button>
               </div>
             </div>
@@ -503,7 +505,7 @@ export function LessonPlayer({
                   {dispDescricao ? (
                     <p>{dispDescricao}</p>
                   ) : (
-                    <p className="text-muted-light">Sem descrição para esta aula.</p>
+                    <p className="text-muted-light">{t("Sem descrição para esta aula.")}</p>
                   )}
 
                   {/* 3) Explicação (texto da aula) — vem ANTES da prática */}
@@ -527,7 +529,7 @@ export function LessonPlayer({
                       <div className="flex items-center gap-2 mb-2">
                         <span className="h-px flex-1 bg-border" />
                         <span className="text-xs font-semibold uppercase tracking-wide text-muted-light">
-                          Agora pratique
+                          {t("Agora pratique")}
                         </span>
                         <span className="h-px flex-1 bg-border" />
                       </div>
@@ -565,12 +567,12 @@ export function LessonPlayer({
       <aside className="hidden lg:flex border-l border-border bg-surface flex-col overflow-hidden shrink-0 w-[35%]" aria-label="Lista de aulas">
         {/* Header */}
         <div className="px-4 py-4 border-b border-border shrink-0">
-          <h3 className="font-semibold text-foreground text-sm mb-2">Conteúdo do Curso</h3>
+          <h3 className="font-semibold text-foreground text-sm mb-2">{t("Conteúdo do Curso")}</h3>
           <div className="flex items-center gap-2">
             <Progress value={courseProgress} className="flex-1 h-2" />
             <span className="text-xs text-amber-400 font-semibold shrink-0">{courseProgress}%</span>
           </div>
-          <p className="text-xs text-muted-light mt-1">{completedLessons}/{totalLessons} aulas concluídas</p>
+          <p className="text-xs text-muted-light mt-1">{completedLessons}/{totalLessons} {t("aulas concluídas")}</p>
         </div>
         <div className="flex-1 overflow-y-auto">
           <CourseContentList />
