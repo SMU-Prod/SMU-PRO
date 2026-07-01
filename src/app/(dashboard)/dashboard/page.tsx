@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { StudyStreak } from "@/components/dashboard/study-streak";
 import { formatMinutes, getLevelLabel } from "@/lib/utils";
 import { CategoryIcon } from "@/components/ui/category-icon";
+import { getServerT } from "@/lib/i18n/server";
 import {
   BookOpen, Award, Clock, TrendingUp, Play, ChevronRight,
   Trophy, Music, Target, Flame, GraduationCap, BarChart3,
@@ -24,6 +25,7 @@ export default async function DashboardPage() {
   if (!userId) redirect("/login");
 
   const user = await getCurrentUser();
+  const t = await getServerT();
   const supabase = createAdminClient();
   const { data: userRow } = await supabase.from("users").select("id").eq("clerk_id", userId).single();
   const userUuid = userRow?.id;
@@ -95,8 +97,8 @@ export default async function DashboardPage() {
   return (
     <div className="animate-fade-in">
       <Header
-        title={`Olá, ${user?.nome?.split(" ")[0] ?? "Aluno"}!`}
-        subtitle="Bem-vindo de volta à SMU PRO"
+        title={`${t("Olá")}, ${user?.nome?.split(" ")[0] ?? t("Aluno")}!`}
+        subtitle={t("Bem-vindo de volta à SMU PRO")}
         role={user?.role}
       />
 
@@ -111,9 +113,9 @@ export default async function DashboardPage() {
                   <Trophy size={24} className="text-amber-400 hidden sm:block" />
                 </div>
                 <div>
-                  <p className="font-semibold text-amber-400 text-sm sm:text-base">Aluno Projeto Cultural MIT</p>
+                  <p className="font-semibold text-amber-400 text-sm sm:text-base">{t("Aluno Projeto Cultural MIT")}</p>
                   <p className="text-xs sm:text-sm text-muted-light">
-                    Acesso gratuito e ilimitado a todos os cursos da plataforma.
+                    {t("Acesso gratuito e ilimitado a todos os cursos da plataforma.")}
                   </p>
                 </div>
               </div>
@@ -129,25 +131,25 @@ export default async function DashboardPage() {
           </div>
           <StatCard
             icon={<BookOpen size={20} className="text-amber-400" />}
-            label="Cursos Matriculados"
+            label={t("Cursos Matriculados")}
             value={totalCursos}
             bg="bg-amber-500/10"
           />
           <StatCard
             icon={<CheckCircle2 size={20} className="text-emerald-400" />}
-            label="Concluídos"
+            label={t("Concluídos")}
             value={totalCompleted}
             bg="bg-emerald-500/10"
           />
           <StatCard
             icon={<Award size={20} className="text-amber-400" />}
-            label="Certificados"
+            label={t("Certificados")}
             value={certificates.length}
             bg="bg-amber-500/10"
           />
           <StatCard
             icon={<Clock size={20} className="text-blue-400" />}
-            label="Horas Estudadas"
+            label={t("Horas Estudadas")}
             value={formatMinutes(horasEstudadas)}
             bg="bg-blue-500/10"
           />
@@ -161,12 +163,12 @@ export default async function DashboardPage() {
               <CardContent className="p-5">
                 <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2">
                   <BarChart3 size={16} className="text-amber-400" />
-                  Seu Progresso
+                  {t("Seu Progresso")}
                 </h2>
                 <div className="space-y-4">
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-muted-light">Progresso geral</span>
+                      <span className="text-sm text-muted-light">{t("Progresso geral")}</span>
                       <span className="text-sm font-bold text-foreground">{progressoGeral}%</span>
                     </div>
                     <Progress value={progressoGeral} className="h-3" />
@@ -174,15 +176,15 @@ export default async function DashboardPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
                     <div className="text-center p-3 rounded-lg bg-amber-500/5 border border-amber-500/10">
                       <p className="text-lg font-bold text-foreground">{inProgress.length}</p>
-                      <p className="text-xs text-muted-light">Em andamento</p>
+                      <p className="text-xs text-muted-light">{t("Em andamento")}</p>
                     </div>
                     <div className="text-center p-3 rounded-lg bg-blue-500/5 border border-blue-500/10">
                       <p className="text-lg font-bold text-foreground">{notStarted.length}</p>
-                      <p className="text-xs text-muted-light">Não iniciados</p>
+                      <p className="text-xs text-muted-light">{t("Não iniciados")}</p>
                     </div>
                     <div className="text-center p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/10">
                       <p className="text-lg font-bold text-foreground">{totalCompleted}</p>
-                      <p className="text-xs text-muted-light">Finalizados</p>
+                      <p className="text-xs text-muted-light">{t("Finalizados")}</p>
                     </div>
                   </div>
                 </div>
@@ -194,7 +196,7 @@ export default async function DashboardPage() {
               <CardContent className="p-5">
                 <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2">
                   <Target size={16} className="text-amber-400" />
-                  Acesso Rápido
+                  {t("Acesso Rápido")}
                 </h2>
                 <div className="space-y-2">
                   <Link href="/dashboard/cursos" className="block">
@@ -202,7 +204,7 @@ export default async function DashboardPage() {
                       <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
                         <BookOpen size={14} className="text-amber-400" />
                       </div>
-                      <span className="text-sm text-foreground flex-1">Meus Cursos</span>
+                      <span className="text-sm text-foreground flex-1">{t("Meus Cursos")}</span>
                       <ChevronRight size={14} className="text-muted-light group-hover:text-amber-400 transition-colors" />
                     </div>
                   </Link>
@@ -211,7 +213,7 @@ export default async function DashboardPage() {
                       <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
                         <TrendingUp size={14} className="text-emerald-400" />
                       </div>
-                      <span className="text-sm text-foreground flex-1">Trilha de Aprendizado</span>
+                      <span className="text-sm text-foreground flex-1">{t("Trilha de Aprendizado")}</span>
                       <ChevronRight size={14} className="text-muted-light group-hover:text-amber-400 transition-colors" />
                     </div>
                   </Link>
@@ -220,7 +222,7 @@ export default async function DashboardPage() {
                       <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
                         <Award size={14} className="text-amber-400" />
                       </div>
-                      <span className="text-sm text-foreground flex-1">Certificados</span>
+                      <span className="text-sm text-foreground flex-1">{t("Certificados")}</span>
                       <ChevronRight size={14} className="text-muted-light group-hover:text-amber-400 transition-colors" />
                     </div>
                   </Link>
@@ -229,7 +231,7 @@ export default async function DashboardPage() {
                       <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
                         <GraduationCap size={14} className="text-blue-400" />
                       </div>
-                      <span className="text-sm text-foreground flex-1">Explorar Catálogo</span>
+                      <span className="text-sm text-foreground flex-1">{t("Explorar Catálogo")}</span>
                       <ChevronRight size={14} className="text-muted-light group-hover:text-amber-400 transition-colors" />
                     </div>
                   </Link>
@@ -245,11 +247,11 @@ export default async function DashboardPage() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold text-foreground flex items-center gap-2">
                 <Flame size={16} className="text-amber-500" />
-                Continuar Estudando
+                {t("Continuar Estudando")}
               </h2>
               <Link href="/dashboard/cursos">
                 <Button variant="ghost" size="sm">
-                  Ver todos <ChevronRight size={14} />
+                  {t("Ver todos")} <ChevronRight size={14} />
                 </Button>
               </Link>
             </div>
@@ -273,7 +275,7 @@ export default async function DashboardPage() {
           <section>
             <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2">
               <Calendar size={16} className="text-amber-400" />
-              Atividade Recente
+              {t("Atividade Recente")}
             </h2>
             <Card>
               <CardContent className="p-0 divide-y divide-border">
@@ -311,11 +313,11 @@ export default async function DashboardPage() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold text-foreground flex items-center gap-2">
                 <Award size={16} className="text-amber-500" />
-                Certificados Recentes
+                {t("Certificados Recentes")}
               </h2>
               <Link href="/dashboard/certificados">
                 <Button variant="ghost" size="sm">
-                  Ver todos <ChevronRight size={14} />
+                  {t("Ver todos")} <ChevronRight size={14} />
                 </Button>
               </Link>
             </div>
@@ -336,7 +338,7 @@ export default async function DashboardPage() {
                               {new Date(cert.emitido_em).toLocaleDateString("pt-BR")}
                             </p>
                             {cert.nota_final && (
-                              <p className="text-xs text-emerald-400 mt-0.5 font-medium">Nota: {cert.nota_final}/100</p>
+                              <p className="text-xs text-emerald-400 mt-0.5 font-medium">{t("Nota")}: {cert.nota_final}/100</p>
                             )}
                           </div>
                         </div>
@@ -353,14 +355,14 @@ export default async function DashboardPage() {
         {enrollments.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <div className="mb-4"><Music size={48} className="text-muted-light" /></div>
-            <h3 className="text-xl font-semibold text-foreground mb-2">Comece sua jornada</h3>
+            <h3 className="text-xl font-semibold text-foreground mb-2">{t("Comece sua jornada")}</h3>
             <p className="text-muted-light mb-6 max-w-md">
-              Explore nosso catálogo de cursos e inicie sua formação profissional no mercado de eventos.
+              {t("Explore nosso catálogo de cursos e inicie sua formação profissional no mercado de eventos.")}
             </p>
             <Link href="/cursos">
               <Button size="lg">
                 <BookOpen size={18} />
-                Explorar Cursos
+                {t("Explorar Cursos")}
               </Button>
             </Link>
           </div>

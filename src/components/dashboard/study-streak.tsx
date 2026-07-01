@@ -2,6 +2,7 @@
 
 import { Flame } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { useT } from "@/lib/i18n/ui";
 
 interface StudyStreakProps {
   streakDays: number;
@@ -9,6 +10,7 @@ interface StudyStreakProps {
 }
 
 export function StudyStreak({ streakDays, loading = false }: StudyStreakProps) {
+  const t = useT();
   return (
     <Card className="hover:border-amber-500/20 transition-colors">
       <CardContent className="p-5">
@@ -17,14 +19,14 @@ export function StudyStreak({ streakDays, loading = false }: StudyStreakProps) {
             <Flame size={28} className="text-amber-500 fill-amber-500 animate-pulse" />
           </div>
           <div className="flex-1">
-            <p className="text-xs text-muted-light uppercase tracking-widest font-semibold mb-1">Sequência de Estudos</p>
+            <p className="text-xs text-muted-light uppercase tracking-widest font-semibold mb-1">{t("Sequência de Estudos")}</p>
             {loading ? (
               <div className="h-8 w-16 bg-surface-3 rounded animate-pulse" />
             ) : (
               <div>
                 <p className="text-3xl font-bold text-amber-500">{streakDays}</p>
                 <p className="text-xs text-muted-light mt-0.5">
-                  {streakDays === 1 ? "1 dia" : `${streakDays} dias`} consecutivos
+                  {streakDays === 1 ? t("1 dia") : `${streakDays} ${t("dias")}`} {t("consecutivos")}
                 </p>
               </div>
             )}
@@ -32,7 +34,7 @@ export function StudyStreak({ streakDays, loading = false }: StudyStreakProps) {
         </div>
         <p className="text-sm text-amber-600 font-medium mt-3 flex items-center gap-1.5">
           <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500" />
-          Continue sua sequência de estudos!
+          {t("Continue sua sequência de estudos!")}
         </p>
       </CardContent>
     </Card>

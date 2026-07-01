@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { ChevronDown, Check } from "lucide-react";
 import { useLocale, setLocale, type Locale } from "@/lib/i18n/locale";
 
@@ -31,9 +32,16 @@ function Flag({ cc, w = 22 }: { cc: string; w?: number }) {
  */
 export function LanguageSelector({ className = "" }: { className?: string }) {
   const locale = useLocale();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
   const current = OPTIONS.find((o) => o.code === locale) ?? OPTIONS[0];
+
+  function choose(code: Locale) {
+    setLocale(code);
+    setOpen(false);
+    router.refresh(); // re-renderiza os server components no novo idioma
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -72,10 +80,7 @@ export function LanguageSelector({ className = "" }: { className?: string }) {
                 type="button"
                 role="option"
                 aria-selected={active}
-                onClick={() => {
-                  setLocale(o.code);
-                  setOpen(false);
-                }}
+                onClick={() => choose(o.code)}
                 className={`flex w-full items-center gap-2.5 px-3 py-2 text-sm text-left transition-colors ${
                   active ? "text-amber-500 font-medium bg-hover" : "text-foreground hover:bg-hover"
                 }`}

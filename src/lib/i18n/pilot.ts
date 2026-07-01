@@ -13,6 +13,10 @@ import type { Locale } from "./locale";
 const LOADERS: Record<string, () => Promise<any>> = {
   "introducao-para-eventos": () => import("./data/introducao-para-eventos.json"),
   "panorama-das-profissoes-em-eventos": () => import("./data/panorama-das-profissoes-em-eventos.json"),
+  "luz-basico": () => import("./data/luz-basico.json"),
+  "efeito-basico": () => import("./data/efeito-basico.json"),
+  "video-basico": () => import("./data/video-basico.json"),
+  "producao-basico": () => import("./data/producao-basico.json"),
 };
 
 const cache = new Map<string, any>();

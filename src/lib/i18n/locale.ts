@@ -16,6 +16,8 @@ export function getLocale(): Locale {
 export function setLocale(l: Locale) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(KEY, l);
+  // Cookie para os SERVER COMPONENTS lerem o idioma (getServerT).
+  document.cookie = `${KEY}=${l};path=/;max-age=31536000;samesite=lax`;
   window.dispatchEvent(new Event(EVT));
 }
 
