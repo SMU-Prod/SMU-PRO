@@ -21,6 +21,7 @@ const LOADERS: Record<string, () => Promise<any>> = {
   "dj": () => import("./data/dj.json"),
   "estruturas-rigging-energia-e-padroes": () => import("./data/estruturas-rigging-energia-e-padroes.json"),
   "pleno-som": () => import("./data/pleno-som.json"),
+  "eletronica-para-eventos-e-sistemas": () => import("./data/eletronica-para-eventos-e-sistemas.json"),
 };
 
 const cache = new Map<string, any>();
