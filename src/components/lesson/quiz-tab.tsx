@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import type { Quiz, QuizQuestion, QuizOption, QuizAttempt } from "@/types/database";
 import type { CourseTr } from "@/lib/i18n/pilot";
 import type { Locale } from "@/lib/i18n/locale";
+import { useT } from "@/lib/i18n/ui";
 import {
   CheckCircle2, XCircle, Trophy, RotateCcw, HelpCircle,
   AlertCircle, Clock, Ban,
@@ -46,6 +47,7 @@ function formatTime(seconds: number) {
 }
 
 export function QuizTab({ lesson, quizAttempts, quizData, userId, onQuizPassed, quizTr, locale = "pt" }: QuizTabProps) {
+  const t = useT();
   const [quiz, setQuiz] = useState<QuizWithQuestions | null>(() => {
     if (!quizData) return null;
     return {
@@ -140,7 +142,7 @@ export function QuizTab({ lesson, quizAttempts, quizData, userId, onQuizPassed, 
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <HelpCircle size={40} className="text-muted-light mb-3" />
-        <p className="text-muted-light text-sm">Esta aula não possui quiz.</p>
+        <p className="text-muted-light text-sm">{t("Esta aula não possui quiz.")}</p>
       </div>
     );
   }
@@ -246,22 +248,22 @@ export function QuizTab({ lesson, quizAttempts, quizData, userId, onQuizPassed, 
             <AlertCircle size={48} className="mx-auto mb-3 text-red-500" />
           )}
           <h3 className="text-xl font-bold text-foreground mb-1">
-            {result.aprovado ? "Parabéns!" : "Tente novamente"}
+            {result.aprovado ? t("Parabéns!") : t("Tente novamente")}
           </h3>
           <p className="text-muted-light mb-4">
             {result.aprovado
-              ? "Você foi aprovado no quiz desta aula."
-              : `Você precisa de ${quiz.nivel_minimo_aprovacao}% para passar.`}
+              ? t("Você foi aprovado no quiz desta aula.")
+              : `${t("Nota mínima")}: ${quiz.nivel_minimo_aprovacao}%`}
           </p>
           <div className="flex items-center justify-center gap-6">
             <div>
               <p className="text-4xl font-bold gradient-text">{result.nota}%</p>
-              <p className="text-xs text-muted-light mt-1">Sua nota</p>
+              <p className="text-xs text-muted-light mt-1">{t("Sua nota")}</p>
             </div>
             <div className="h-12 w-px bg-surface-3" />
             <div>
               <p className="text-2xl font-bold text-foreground">{quiz.nivel_minimo_aprovacao}%</p>
-              <p className="text-xs text-muted-light mt-1">Nota mínima</p>
+              <p className="text-xs text-muted-light mt-1">{t("Nota mínima")}</p>
             </div>
           </div>
           {!result.aprovado && (
@@ -275,7 +277,7 @@ export function QuizTab({ lesson, quizAttempts, quizData, userId, onQuizPassed, 
 
         {/* Gabarito */}
         <div className="space-y-4">
-          <h4 className="font-semibold text-foreground">Gabarito</h4>
+          <h4 className="font-semibold text-foreground">{t("Gabarito")}</h4>
           {displayQuestions.map((q) => {
             const chosen = answers[q.id];
             const correct = q.quiz_options.find((o) => o.correta);
@@ -326,7 +328,7 @@ export function QuizTab({ lesson, quizAttempts, quizData, userId, onQuizPassed, 
 
         {canRetry && (
           <Button onClick={handleReset} variant="secondary" className="w-full">
-            <RotateCcw size={16} /> Tentar Novamente
+            <RotateCcw size={16} /> {t("Tentar Novamente")}
           </Button>
         )}
       </div>
@@ -344,27 +346,27 @@ export function QuizTab({ lesson, quizAttempts, quizData, userId, onQuizPassed, 
           <div className="flex justify-center gap-6 mb-5 text-sm">
             <div className="text-center">
               <p className="font-bold text-foreground">{totalQuestions}</p>
-              <p className="text-xs text-muted-light">questões</p>
+              <p className="text-xs text-muted-light">{t("questões")}</p>
             </div>
             <div className="text-center">
               <p className="font-bold text-foreground">{quiz.nivel_minimo_aprovacao}%</p>
-              <p className="text-xs text-muted-light">para passar</p>
+              <p className="text-xs text-muted-light">{t("para passar")}</p>
             </div>
             <div className="text-center">
               <p className="font-bold text-foreground">{quiz.tentativas_permitidas}</p>
-              <p className="text-xs text-muted-light">tentativas</p>
+              <p className="text-xs text-muted-light">{t("tentativas")}</p>
             </div>
             {quiz.tempo_limite_min && (
               <div className="text-center">
                 <p className="font-bold text-foreground">{quiz.tempo_limite_min} min</p>
-                <p className="text-xs text-muted-light">tempo limite</p>
+                <p className="text-xs text-muted-light">{t("tempo limite")}</p>
               </div>
             )}
           </div>
 
           {bestAttempt && (
             <Badge variant={bestAttempt.aprovado ? "success" : "danger"} className="mb-4">
-              Melhor nota: {bestAttempt.nota}%
+              {t("Melhor nota")}: {bestAttempt.nota}%
             </Badge>
           )}
 
@@ -377,16 +379,16 @@ export function QuizTab({ lesson, quizAttempts, quizData, userId, onQuizPassed, 
           {attemptsExhausted && !alreadyPassed ? (
             <div className="flex flex-col items-center gap-2 pt-2">
               <Ban size={24} className="text-muted-light" />
-              <p className="text-sm text-muted-light">Tentativas esgotadas.</p>
+              <p className="text-sm text-muted-light">{t("Tentativas esgotadas.")}</p>
             </div>
           ) : alreadyPassed ? (
             <div className="flex flex-col items-center gap-2 pt-2">
               <CheckCircle2 size={24} className="text-emerald-500" />
-              <p className="text-sm text-emerald-600 font-medium">Quiz aprovado!</p>
+              <p className="text-sm text-emerald-600 font-medium">{t("Quiz aprovado!")}</p>
             </div>
           ) : (
             <Button onClick={() => setStarted(true)} className="w-full">
-              Iniciar Quiz
+              {t("Iniciar Quiz")}
             </Button>
           )}
         </div>
@@ -400,7 +402,7 @@ export function QuizTab({ lesson, quizAttempts, quizData, userId, onQuizPassed, 
       {/* Header do quiz */}
       <div className="flex items-center justify-between">
         <span className="text-sm text-muted-light">
-          {answeredCount}/{totalQuestions} respondidas
+          {answeredCount}/{totalQuestions} {t("respondidas")}
         </span>
         <div className="flex items-center gap-3">
           {timeLeft !== null && (
@@ -472,7 +474,7 @@ export function QuizTab({ lesson, quizAttempts, quizData, userId, onQuizPassed, 
         size="lg"
         className="w-full"
       >
-        Enviar Respostas ({answeredCount}/{totalQuestions})
+        {t("Enviar Respostas")} ({answeredCount}/{totalQuestions})
       </Button>
     </div>
   );

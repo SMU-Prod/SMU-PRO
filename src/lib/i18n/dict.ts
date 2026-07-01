@@ -82,6 +82,26 @@ export const DICT: Record<string, { en: string; es: string }> = {
   "aulas concluídas": { en: "lessons completed", es: "lecciones completadas" },
   "Agora pratique": { en: "Now practice", es: "Ahora practica" },
   "Sem descrição para esta aula.": { en: "No description for this lesson.", es: "Sin descripción para esta lección." },
+
+  // ── Quiz ──
+  "Esta aula não possui quiz.": { en: "This lesson has no quiz.", es: "Esta lección no tiene cuestionario." },
+  "Gabarito": { en: "Answer key", es: "Respuestas" },
+  "Parabéns!": { en: "Congratulations!", es: "¡Felicidades!" },
+  "Tente novamente": { en: "Try again", es: "Inténtalo de nuevo" },
+  "Você foi aprovado no quiz desta aula.": { en: "You passed this lesson's quiz.", es: "Aprobaste el cuestionario de esta lección." },
+  "Sua nota": { en: "Your score", es: "Tu nota" },
+  "Nota mínima": { en: "Minimum score", es: "Nota mínima" },
+  "Tentar Novamente": { en: "Try Again", es: "Intentar de Nuevo" },
+  "questões": { en: "questions", es: "preguntas" },
+  "para passar": { en: "to pass", es: "para aprobar" },
+  "tentativas": { en: "attempts", es: "intentos" },
+  "tempo limite": { en: "time limit", es: "tiempo límite" },
+  "Tentativas esgotadas.": { en: "No attempts left.", es: "Intentos agotados." },
+  "Quiz aprovado!": { en: "Quiz passed!", es: "¡Cuestionario aprobado!" },
+  "Iniciar Quiz": { en: "Start Quiz", es: "Iniciar Cuestionario" },
+  "Enviar Respostas": { en: "Submit Answers", es: "Enviar Respuestas" },
+  "respondidas": { en: "answered", es: "respondidas" },
+  "Melhor nota": { en: "Best score", es: "Mejor nota" },
 };
 
 /** Traduz uma string de interface para o idioma dado (PT devolve a própria string). */
