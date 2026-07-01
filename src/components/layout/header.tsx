@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { useSidebar } from "./sidebar-context";
 import { useTheme } from "@/components/theme-provider";
 import { NotificationDropdown } from "./notification-dropdown";
+import { LanguageSelector } from "@/components/i18n/language-selector";
 import type { UserRole } from "@/types/database";
 
 interface HeaderProps {
@@ -61,6 +62,9 @@ export function Header({ title, subtitle, role, className, actions }: HeaderProp
 
       {/* Actions */}
       {actions}
+
+      {/* Language selector (global) */}
+      <LanguageSelector className="shrink-0" />
 
       {/* Theme toggle */}
       <Button

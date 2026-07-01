@@ -16,6 +16,7 @@ interface RichContentViewerProps {
   titulo?: string;
   categoria?: string;
   isAdmin?: boolean;  // Só admin pode gerar/refinar
+  locale?: string;    // idioma do curso; != "pt" desativa o refinamento (que é só PT)
 }
 
 // Ícone por seção — cor âmbar SMU para todos
@@ -176,13 +177,15 @@ function neutralizeGenericColors(html: string): string {
   return container.innerHTML;
 }
 
-export function RichContentViewer({ html, lessonId, titulo, categoria, isAdmin = false }: RichContentViewerProps) {
+export function RichContentViewer({ html, lessonId, titulo, categoria, isAdmin = false, locale = "pt" }: RichContentViewerProps) {
   const [refinedHtml, setRefinedHtml] = useState<string | null>(null);
   const [refining, setRefining] = useState(false);
+  const isTranslated = locale !== "pt";
 
   // Carregar conteúdo refinado se existir (silencioso, sem gerar)
+  // Em idioma traduzido NÃO busca refinado (o refinado é só em PT e sobreporia a tradução).
   useEffect(() => {
-    if (!lessonId) return;
+    if (!lessonId || isTranslated) return;
     async function loadCachedRefined() {
       try {
         const res = await fetch(`/api/ai-refine?lessonId=${lessonId}`);
@@ -193,7 +196,7 @@ export function RichContentViewer({ html, lessonId, titulo, categoria, isAdmin =
       } catch { /* usar original */ }
     }
     loadCachedRefined();
-  }, [lessonId]);
+  }, [lessonId, isTranslated]);
 
   // Só admin pode gerar refinamento
   async function handleRefine() {
@@ -213,8 +216,8 @@ export function RichContentViewer({ html, lessonId, titulo, categoria, isAdmin =
     setRefining(false);
   }
 
-  // Aluno vê refinado se existir, senão original
-  const activeHtml = refinedHtml || html;
+  // Aluno vê refinado se existir, senão original. Em idioma traduzido, sempre a tradução.
+  const activeHtml = isTranslated ? html : (refinedHtml || html);
 
   // Sanitize HTML but preserve all inline styles (including colors chosen in the editor).
   // Color cleanup happens ONLY at paste time in the RichTextEditor (transformPastedHTML),

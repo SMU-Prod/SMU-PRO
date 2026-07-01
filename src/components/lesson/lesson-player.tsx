@@ -19,7 +19,6 @@ import { AnimationPlayer } from "./animation-player";
 import { RichContentViewer } from "./rich-content-viewer";
 import { useLocale } from "@/lib/i18n/locale";
 import { getLessonTr } from "@/lib/i18n/pilot";
-import { LanguageSelector } from "@/components/i18n/language-selector";
 import type { Enrollment, Progress as ProgressType, QuizAttempt, Note } from "@/types/database";
 import {
   CheckCircle2, Circle, ChevronDown, ChevronRight, ChevronUp,
@@ -441,7 +440,6 @@ export function LessonPlayer({
                   <Clock size={10} className="mr-1" />
                   {formatMinutes(lesson.duracao_min)}
                 </Badge>
-                <LanguageSelector className="ml-auto" />
               </div>
               <h1 className="text-lg sm:text-xl font-bold text-foreground">{dispTitulo}</h1>
             </div>
@@ -516,6 +514,7 @@ export function LessonPlayer({
                         titulo={dispTitulo}
                         categoria={course.categoria ?? "outros"}
                         isAdmin={isAdmin}
+                        locale={locale}
                       />
                     </ErrorBoundary>
                   )}
