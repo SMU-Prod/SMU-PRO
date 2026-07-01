@@ -8,6 +8,7 @@ import { useSidebar } from "./sidebar-context";
 import { useTheme } from "@/components/theme-provider";
 import { NotificationDropdown } from "./notification-dropdown";
 import { LanguageSelector } from "@/components/i18n/language-selector";
+import { useT } from "@/lib/i18n/ui";
 import type { UserRole } from "@/types/database";
 
 interface HeaderProps {
@@ -21,6 +22,7 @@ interface HeaderProps {
 export function Header({ title, subtitle, role, className, actions }: HeaderProps) {
   const { toggle } = useSidebar();
   const { theme, toggleTheme } = useTheme();
+  const t = useT();
 
   return (
     <header
@@ -33,7 +35,7 @@ export function Header({ title, subtitle, role, className, actions }: HeaderProp
       <button
         onClick={toggle}
         className="lg:hidden p-2.5 -ml-1 rounded-lg text-muted hover:text-foreground hover:bg-hover transition-colors"
-        aria-label="Abrir menu"
+        aria-label={t("Abrir menu")}
       >
         <Menu size={22} />
       </button>
@@ -72,8 +74,8 @@ export function Header({ title, subtitle, role, className, actions }: HeaderProp
         size="icon"
         className="shrink-0"
         onClick={toggleTheme}
-        title={theme === "dark" ? "Modo claro" : "Modo escuro"}
-        aria-label={theme === "dark" ? "Ativar modo claro" : "Ativar modo escuro"}
+        title={t(theme === "dark" ? "Modo claro" : "Modo escuro")}
+        aria-label={t(theme === "dark" ? "Ativar modo claro" : "Ativar modo escuro")}
       >
         {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
       </Button>

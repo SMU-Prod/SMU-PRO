@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { useSidebar } from "./sidebar-context";
 import { useTheme } from "@/components/theme-provider";
+import { useT } from "@/lib/i18n/ui";
 import type { UserRole } from "@/types/database";
 import {
   LayoutDashboard,
@@ -89,6 +90,7 @@ function SidebarContent({ role, isAdmin, isContentManager, isInstructor, navItem
   theme: "dark" | "light";
   toggleTheme: () => void;
 }) {
+  const t = useT();
   return (
     <aside className="flex h-full flex-col bg-surface">
       {/* Logo */}
@@ -100,7 +102,7 @@ function SidebarContent({ role, isAdmin, isContentManager, isInstructor, navItem
           </div>
           <div className="h-8 w-px bg-border" />
           <p className="text-[10px] text-muted-light leading-tight">
-            {isAdmin ? "Painel Admin" : isContentManager ? "Gestão de Conteúdo" : isInstructor ? "Painel Instrutor" : "Plataforma de Cursos"}
+            {t(isAdmin ? "Painel Admin" : isContentManager ? "Gestão de Conteúdo" : isInstructor ? "Painel Instrutor" : "Plataforma de Cursos")}
           </p>
         </div>
         {/* Close button — mobile only */}
@@ -121,10 +123,10 @@ function SidebarContent({ role, isAdmin, isContentManager, isInstructor, navItem
               onClick={close}
               className="flex-1 text-center py-1.5 text-xs text-muted-light hover:bg-hover transition-colors"
             >
-              Aluno
+              {t("Aluno")}
             </Link>
             <div className="flex-1 text-center py-1.5 text-xs bg-amber-500 text-black font-semibold rounded-md mx-0.5">
-              Admin
+              {t("Admin")}
             </div>
           </div>
         </div>
@@ -159,7 +161,7 @@ function SidebarContent({ role, isAdmin, isContentManager, isInstructor, navItem
                   active ? "text-amber-400" : "text-muted-light group-hover:text-muted"
                 )}
               />
-              <span className="flex-1">{item.label}</span>
+              <span className="flex-1">{t(item.label)}</span>
               {item.badge && (
                 <Badge variant="default" className="text-[10px] px-1.5 py-0">
                   {item.badge}
@@ -177,7 +179,7 @@ function SidebarContent({ role, isAdmin, isContentManager, isInstructor, navItem
             className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-light hover:text-foreground hover:bg-hover transition-all mt-2"
           >
             <ShieldCheck size={18} className="text-red-400" />
-            <span>Painel Admin</span>
+            <span>{t("Painel Admin")}</span>
           </Link>
         )}
       </nav>
@@ -200,7 +202,7 @@ function SidebarContent({ role, isAdmin, isContentManager, isInstructor, navItem
         <button
           onClick={toggleTheme}
           className="p-2 rounded-lg text-muted hover:text-foreground hover:bg-hover transition-colors shrink-0"
-          title={theme === "dark" ? "Modo claro" : "Modo escuro"}
+          title={t(theme === "dark" ? "Modo claro" : "Modo escuro")}
         >
           {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
         </button>
