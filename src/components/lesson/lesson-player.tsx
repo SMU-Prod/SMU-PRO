@@ -21,6 +21,7 @@ import { useLocale } from "@/lib/i18n/locale";
 import { LanguageSelector } from "@/components/i18n/language-selector";
 import { courseMeta } from "@/lib/i18n/courses-meta";
 import { useCourseTr } from "@/lib/i18n/pilot";
+import { trModule } from "@/lib/i18n/modules";
 import { useT } from "@/lib/i18n/ui";
 import type { Enrollment, Progress as ProgressType, QuizAttempt, Note } from "@/types/database";
 import {
@@ -216,7 +217,7 @@ export function LessonPlayer({
               isCurrent ? "text-amber-400 font-medium" : done ? "text-muted-light" : "text-muted"
             )}
           >
-            {l.titulo}
+            {courseTr?.lessons?.[l.id]?.titulo ?? l.titulo}
           </p>
           <p className="text-[10px] text-muted-light mt-0.5">{formatMinutes(l.duracao_min)}</p>
         </div>
@@ -250,8 +251,8 @@ export function LessonPlayer({
                 {modIdx + 1}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">{mod.titulo}</p>
-                <p className="text-xs text-muted-light mt-0.5">{modCompleted}/{modTotal} aulas</p>
+                <p className="text-sm font-medium text-foreground truncate">{trModule(mod.titulo, locale)}</p>
+                <p className="text-xs text-muted-light mt-0.5">{modCompleted}/{modTotal} {t("aulas")}</p>
               </div>
               <ChevronDown
                 size={15}
@@ -278,8 +279,8 @@ export function LessonPlayer({
                       >
                         <ChevronRight size={12} className="text-amber-400/50 shrink-0" />
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium text-foreground truncate">{sub.titulo}</p>
-                          <p className="text-[10px] text-muted-light">{subCompleted}/{subTotal} aulas</p>
+                          <p className="text-xs font-medium text-foreground truncate">{trModule(sub.titulo, locale)}</p>
+                          <p className="text-[10px] text-muted-light">{subCompleted}/{subTotal} {t("aulas")}</p>
                         </div>
                         <ChevronDown
                           size={13}
@@ -310,7 +311,7 @@ export function LessonPlayer({
             <p className="text-sm font-semibold text-foreground">SMU Produções</p>
             <div className="flex items-center gap-1">
               <Star size={10} className="text-amber-400 fill-amber-400" />
-              <span className="text-xs text-muted-light">4.9 · Instrutor Oficial</span>
+              <span className="text-xs text-muted-light">4.9 · {t("Instrutor Oficial")}</span>
             </div>
           </div>
         </div>
@@ -407,7 +408,7 @@ export function LessonPlayer({
               </div>
             </button>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-muted truncate">{lesson.titulo}</p>
+              <p className="text-xs font-medium text-muted truncate">{dispTitulo}</p>
               <p className="text-[10px] text-muted-light">{formatMinutes(lesson.duracao_min)}</p>
             </div>
             <button

@@ -501,6 +501,7 @@ export const DICT: Record<string, { en: string; es: string }> = {
   "Básicos": { en: "Basic", es: "Básicos" },
   "Plenos": { en: "Mid-level", es: "Plenos" },
   "aulas": { en: "lessons", es: "clases" },
+  "Instrutor Oficial": { en: "Official Instructor", es: "Instructor Oficial" },
   "Grátis": { en: "Free", es: "Gratis" },
   "Curso completo de formação profissional.": { en: "Complete professional training course.", es: "Curso completo de formación profesional." },
   "Ver em cartões": { en: "View as cards", es: "Ver en tarjetas" },
