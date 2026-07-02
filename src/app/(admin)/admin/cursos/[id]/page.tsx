@@ -75,9 +75,9 @@ export default async function AdminCourseDetailPage({ params, searchParams }: Pr
             </Badge>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap text-xs sm:text-sm text-muted-light">
-            <Badge variant={course.nivel as any} className="text-[10px]">{getLevelLabel(course.nivel)}</Badge>
+            <Badge variant={course.nivel as any} className="text-[10px]">{t(getLevelLabel(course.nivel))}</Badge>
             <span>·</span>
-            <span>{getCategoryLabel(course.categoria)}</span>
+            <span>{t(getCategoryLabel(course.categoria))}</span>
             <span>·</span>
             <span>{sortedCourse.modules.length} {t("módulos")}</span>
             <span>·</span>

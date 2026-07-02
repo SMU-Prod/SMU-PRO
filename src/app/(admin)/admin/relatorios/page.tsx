@@ -211,7 +211,7 @@ export default async function AdminRelatoriosPage() {
                   <p className="text-sm font-medium text-foreground truncate">{course.titulo}</p>
                 </div>
                 <div className="flex items-center gap-3 text-xs text-muted-light flex-wrap">
-                  <span>{getLevelLabel(course.nivel)}</span>
+                  <span>{t(getLevelLabel(course.nivel))}</span>
                   <span>{course.total_alunos} {t("alunos")}</span>
                   <span>{course.total_certificados} {t("cert.")}</span>
                   <span>{Math.round(course.progresso_medio ?? 0)}%</span>
@@ -240,7 +240,7 @@ export default async function AdminRelatoriosPage() {
                     <td className="px-5 py-3 text-muted-light font-mono text-xs">{i + 1}</td>
                     <td className="px-5 py-3 font-medium text-foreground">{course.titulo}</td>
                     <td className="px-5 py-3">
-                      <span className="text-xs text-muted-light">{getLevelLabel(course.nivel)}</span>
+                      <span className="text-xs text-muted-light">{t(getLevelLabel(course.nivel))}</span>
                     </td>
                     <td className="px-5 py-3 text-right text-muted">{course.total_alunos}</td>
                     <td className="px-5 py-3 text-right text-muted hidden lg:table-cell">{course.total_certificados}</td>
@@ -275,7 +275,7 @@ export default async function AdminRelatoriosPage() {
             <div className="space-y-3">
               {Object.entries(nivelCount).map(([nivel, count]) => (
                 <div key={nivel} className="flex items-center justify-between">
-                  <span className="text-sm text-muted">{getLevelLabel(nivel)}</span>
+                  <span className="text-sm text-muted">{t(getLevelLabel(nivel))}</span>
                   <div className="flex items-center gap-3">
                     <div className="w-24 h-2 bg-surface-3 rounded-full overflow-hidden">
                       <div

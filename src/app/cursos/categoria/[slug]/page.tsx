@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { CategoryIcon } from "@/components/ui/category-icon";
 import { getLevelLabel, formatCurrency, getCategoryLabel } from "@/lib/utils";
 import { ArrowLeft, BookOpen, Clock, ChevronRight, Users } from "lucide-react";
+import { getServerT } from "@/lib/i18n/server";
 import type { Metadata } from "next";
 
 export const revalidate = 3600;
@@ -86,6 +87,8 @@ export default async function CategoryPage({ params }: Props) {
   const { slug } = await params;
   const meta = CATEGORY_META[slug];
   if (!meta) notFound();
+
+  const t = await getServerT();
 
   const supabase = createAdminClient();
   const { data: courses } = await (supabase as any)
@@ -183,7 +186,7 @@ export default async function CategoryPage({ params }: Props) {
                       <CategoryIcon category={c.categoria} size={40} className="text-muted-light" />
                     )}
                     <div className="absolute top-3 right-3">
-                      <Badge variant={c.nivel as any} className="text-[10px]">{getLevelLabel(c.nivel)}</Badge>
+                      <Badge variant={c.nivel as any} className="text-[10px]">{t(getLevelLabel(c.nivel))}</Badge>
                     </div>
                   </div>
                   <div className="p-5 flex flex-col flex-1">
@@ -211,9 +214,9 @@ export default async function CategoryPage({ params }: Props) {
 
         {/* SEO text */}
         <div className="mt-16 text-center max-w-2xl mx-auto">
-          <h2 className="text-lg font-bold text-foreground mb-3">Sobre {getCategoryLabel(slug)}</h2>
+          <h2 className="text-lg font-bold text-foreground mb-3">Sobre {t(getCategoryLabel(slug))}</h2>
           <p className="text-sm text-muted-light leading-relaxed">
-            Os cursos de {getCategoryLabel(slug).toLowerCase()} da SMU PRO são desenvolvidos por profissionais atuantes no mercado de eventos.
+            Os cursos de {t(getCategoryLabel(slug)).toLowerCase()} da SMU PRO são desenvolvidos por profissionais atuantes no mercado de eventos.
             Com conteúdo interativo gerado por IA, certificado digital verificável e suporte completo, você aprende na prática
             e se prepara para atuar em shows, festivais, corporativos e muito mais.
           </p>

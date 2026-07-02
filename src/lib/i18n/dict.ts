@@ -6,6 +6,15 @@
 export type Lang = "pt" | "en" | "es";
 
 export const DICT: Record<string, { en: string; es: string }> = {
+  // ---- Nível / Categoria (badges) ----
+  "Visitante": { en: "Visitor", es: "Visitante" },
+  "Sonorização": { en: "Sound", es: "Sonorización" },
+  "Iluminação": { en: "Lighting", es: "Iluminación" },
+  "Produção": { en: "Production", es: "Producción" },
+  "VJ / Vídeo": { en: "VJ / Video", es: "VJ / Video" },
+  "Roadie": { en: "Roadie", es: "Roadie" },
+  "Efeitos Especiais": { en: "Special Effects", es: "Efectos Especiales" },
+  "Outros": { en: "Other", es: "Otros" },
   // ---- Admin (auto) ----
   "Painel Administrativo": { en: "Admin Dashboard", es: "Panel Administrativo" },
   "Visão geral da SMU PRO": { en: "SMU PRO overview", es: "Visión general de SMU PRO" },

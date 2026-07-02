@@ -140,7 +140,7 @@ export default async function AdminDashboardPage() {
                         </Badge>
                       </div>
                       <div className="flex items-center gap-3 text-xs text-muted-light">
-                        <Badge variant={c.nivel as any} className="text-[10px]">{getLevelLabel(c.nivel)}</Badge>
+                        <Badge variant={c.nivel as any} className="text-[10px]">{t(getLevelLabel(c.nivel))}</Badge>
                         <span>{c.total_alunos} {t("alunos")}</span>
                         <span>{c.total_certificados} {t("cert.")}</span>
                         <span>{c.progresso_medio ? `${c.progresso_medio}%` : "—"}</span>
@@ -172,7 +172,7 @@ export default async function AdminDashboardPage() {
                           </td>
                           <td className="px-5 py-3">
                             <Badge variant={c.nivel as any} className="text-[10px]">
-                              {getLevelLabel(c.nivel)}
+                              {t(getLevelLabel(c.nivel))}
                             </Badge>
                           </td>
                           <td className="px-5 py-3 text-right text-muted">{c.total_alunos}</td>
@@ -248,7 +248,7 @@ export default async function AdminDashboardPage() {
                     <p className="text-xs text-muted-light truncate">{u.email}</p>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <Badge variant={u.role as any} className="text-[10px]">{getLevelLabel(u.role)}</Badge>
+                    <Badge variant={u.role as any} className="text-[10px]">{t(getLevelLabel(u.role))}</Badge>
                     {u.projeto_cultural && <Badge variant="mit" className="text-[10px]">MIT</Badge>}
                   </div>
                 </div>
@@ -278,7 +278,7 @@ export default async function AdminDashboardPage() {
                       <td className="px-5 py-3 text-muted-light">{u.email}</td>
                       <td className="px-5 py-3">
                         <Badge variant={u.role as any} className="text-[10px]">
-                          {getLevelLabel(u.role)}
+                          {t(getLevelLabel(u.role))}
                         </Badge>
                       </td>
                       <td className="px-5 py-3">

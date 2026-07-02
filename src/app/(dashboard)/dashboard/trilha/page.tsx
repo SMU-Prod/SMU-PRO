@@ -142,7 +142,7 @@ export default async function TrilhaPage() {
               </div>
               <span className="text-sm text-muted-light">{t("Nível Atual")}</span>
             </div>
-            <p className="text-2xl font-black text-foreground capitalize">{user?.role === "projeto_cultural" ? "MIT" : getLevelLabel(user?.role ?? "trainee")}</p>
+            <p className="text-2xl font-black text-foreground capitalize">{user?.role === "projeto_cultural" ? "MIT" : t(getLevelLabel(user?.role ?? "trainee"))}</p>
             <p className="text-xs text-muted-light mt-0.5">{t("na plataforma")}</p>
           </div>
         </div>

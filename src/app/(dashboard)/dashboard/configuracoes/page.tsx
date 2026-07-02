@@ -36,7 +36,7 @@ export default async function ConfiguracoesPage() {
               <p className="text-sm text-muted-light">{user.email}</p>
             </div>
             <div className="flex items-center gap-2">
-              <Badge variant={user.role as any}>{getLevelLabel(user.role)}</Badge>
+              <Badge variant={user.role as any}>{t(getLevelLabel(user.role))}</Badge>
               {user.projeto_cultural && <Badge variant="mit">MIT</Badge>}
             </div>
           </div>

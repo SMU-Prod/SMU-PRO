@@ -10,6 +10,7 @@ import { getLevelLabel, getCategoryLabel, formatMinutes, formatCurrency } from "
 import { CategoryIcon } from "@/components/ui/category-icon";
 import { CheckCircle, Clock, BookOpen, Award, Lock, Play, ChevronRight, ArrowLeft, Star } from "lucide-react";
 import { EnrollButton } from "@/components/course/enroll-button";
+import { getServerT } from "@/lib/i18n/server";
 import type { Metadata } from "next";
 
 export const revalidate = 3600; // ISR: revalida a cada 1 hora
@@ -38,6 +39,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function CourseDetailPage({ params }: Props) {
   const { slug } = await params;
+  const t = await getServerT();
 
   let course: any;
   try {
@@ -166,9 +168,9 @@ export default async function CourseDetailPage({ params }: Props) {
           <div className="lg:col-span-2">
             <div className="flex items-center gap-3 mb-4 flex-wrap">
               <CategoryIcon category={course.categoria} size={30} />
-              <Badge variant={course.nivel as any}>{getLevelLabel(course.nivel)}</Badge>
+              <Badge variant={course.nivel as any}>{t(getLevelLabel(course.nivel))}</Badge>
               {(course.categorias?.length ? course.categorias : [course.categoria]).map((cat: string) => (
-                <Badge key={cat} variant="secondary">{getCategoryLabel(cat)}</Badge>
+                <Badge key={cat} variant="secondary">{t(getCategoryLabel(cat))}</Badge>
               ))}
               {isFree && <Badge variant="free">Grátis</Badge>}
               {course.destaque && <Badge variant="warning">Em destaque</Badge>}
@@ -380,12 +382,12 @@ export default async function CourseDetailPage({ params }: Props) {
             <dl className="space-y-3 text-sm">
               <div className="flex justify-between">
                 <dt className="text-muted-light">Nível</dt>
-                <dd className="font-medium text-foreground">{getLevelLabel(course.nivel)}</dd>
+                <dd className="font-medium text-foreground">{t(getLevelLabel(course.nivel))}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-muted-light">Categoria{(course.categorias?.length > 1) ? "s" : ""}</dt>
                 <dd className="font-medium text-foreground text-right">
-                  {(course.categorias?.length ? course.categorias : [course.categoria]).map((cat: string) => getCategoryLabel(cat)).join(", ")}
+                  {(course.categorias?.length ? course.categorias : [course.categoria]).map((cat: string) => t(getCategoryLabel(cat))).join(", ")}
                 </dd>
               </div>
               <div className="flex justify-between">

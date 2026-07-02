@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { CategoryIcon } from "@/components/ui/category-icon";
+import { useT } from "@/lib/i18n/ui";
 
 interface Course { id: string; titulo: string; nivel: string; ativo: boolean }
 
@@ -29,6 +30,7 @@ export function CollectionsManager({
   allCourses: Course[];
 }) {
   const router = useRouter();
+  const t = useT();
   const [collections, setCollections] = useState<any[]>(initial);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [adding, setAdding] = useState(false);
@@ -273,7 +275,7 @@ export function CollectionsManager({
                       <BookOpen size={13} className="text-amber-400 shrink-0" />
                       <span className="flex-1 text-sm text-foreground truncate">{course?.titulo ?? cc.course_id}</span>
                       {course?.nivel && (
-                        <Badge variant={course.nivel as any} className="text-[10px]">{getLevelLabel(course.nivel)}</Badge>
+                        <Badge variant={course.nivel as any} className="text-[10px]">{t(getLevelLabel(course.nivel))}</Badge>
                       )}
                       <button
                         className="opacity-0 group-hover/item:opacity-100 transition-opacity text-red-400 hover:text-red-500"

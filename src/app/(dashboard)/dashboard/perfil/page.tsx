@@ -52,7 +52,7 @@ export default async function PerfilPage() {
                 {t("Membro desde")} {memberSince}
               </div>
               <div className="flex items-center gap-2 mt-3 flex-wrap">
-                <Badge variant={user.role as any}>{getLevelLabel(user.role)}</Badge>
+                <Badge variant={user.role as any}>{t(getLevelLabel(user.role))}</Badge>
                 {user.projeto_cultural && (
                   <Badge variant="mit">{t("Projeto Cultural MIT")}</Badge>
                 )}

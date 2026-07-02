@@ -13,6 +13,7 @@ import Link from "next/link";
 import { CourseToggle } from "@/components/admin/course-toggle";
 import { StudentPreviewButton } from "@/components/admin/student-card-preview";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n/ui";
 
 interface Course {
   id: string;
@@ -142,6 +143,7 @@ function CourseAdminCard({
   onSelect: () => void;
 }) {
   const router = useRouter();
+  const t = useT();
   const [cloning, setCloning] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -207,7 +209,7 @@ function CourseAdminCard({
         )}
 
         <div className="absolute top-2 right-2 flex gap-1.5">
-          <Badge variant={c.nivel as any} className="text-[10px]">{getLevelLabel(c.nivel)}</Badge>
+          <Badge variant={c.nivel as any} className="text-[10px]">{t(getLevelLabel(c.nivel))}</Badge>
           <Badge variant={c.ativo ? "success" : "secondary"} className="text-[10px]">
             {c.ativo ? "Ativo" : "Rascunho"}
           </Badge>
@@ -223,7 +225,7 @@ function CourseAdminCard({
               {c.tipo === "pago" ? (c.preco ? formatCurrency(c.preco) : "Pago") : c.tipo === "free" ? "Grátis" : "MIT"}
             </Badge>
           </div>
-          <p className="text-xs text-muted-light mt-1">{getCategoryLabel(c.categoria)}</p>
+          <p className="text-xs text-muted-light mt-1">{t(getCategoryLabel(c.categoria))}</p>
         </div>
 
         {/* Stats */}

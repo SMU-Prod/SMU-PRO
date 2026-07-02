@@ -119,7 +119,7 @@ function CourseGrid({ courses, showCertificate = false, t }: { courses: any[]; s
             </div>
             <div className="p-5">
               <div className="flex items-center gap-2 mb-3">
-                <Badge variant={course.nivel as any}>{getLevelLabel(course.nivel)}</Badge>
+                <Badge variant={course.nivel as any}>{t(getLevelLabel(course.nivel))}</Badge>
               </div>
               <h3 className="font-bold text-foreground leading-tight mb-3 line-clamp-2">{course.titulo}</h3>
 

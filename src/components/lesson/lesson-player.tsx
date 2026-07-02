@@ -439,7 +439,7 @@ export function LessonPlayer({
             {/* Title + badges */}
             <div className="mb-4">
               <div className="flex items-center gap-2 mb-2 flex-wrap">
-                <Badge variant={course.nivel}>{getLevelLabel(course.nivel)}</Badge>
+                <Badge variant={course.nivel}>{t(getLevelLabel(course.nivel))}</Badge>
                 <Badge variant="secondary">
                   <Clock size={10} className="mr-1" />
                   {formatMinutes(lesson.duracao_min)}

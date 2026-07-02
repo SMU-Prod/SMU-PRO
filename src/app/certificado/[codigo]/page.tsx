@@ -5,6 +5,7 @@ import { CategoryIcon } from "@/components/ui/category-icon";
 import { Award, CheckCircle2, Calendar, Clock, User, Trophy, ShieldCheck, BookOpen, MapPin } from "lucide-react";
 import Link from "next/link";
 import { ShareButton } from "@/components/certificate/share-button";
+import { getServerT } from "@/lib/i18n/server";
 import QRCode from "qrcode";
 import type { Metadata } from "next";
 
@@ -34,6 +35,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function CertificatePage({ params }: Props) {
   const { codigo } = await params;
+  const t = await getServerT();
   const supabase = createAdminClient();
 
   const { data: cert } = await supabase
@@ -162,7 +164,7 @@ export default async function CertificatePage({ params }: Props) {
             )}
             <div className="flex items-center justify-center gap-2 mt-2">
               <CategoryIcon category={course.categoria} size={16} />
-              <span className="text-sm text-muted-light">{getLevelLabel(course.nivel)}</span>
+              <span className="text-sm text-muted-light">{t(getLevelLabel(course.nivel))}</span>
               {cert.nota_final && (
                 <>
                   <span className="text-border">·</span>
@@ -233,7 +235,7 @@ export default async function CertificatePage({ params }: Props) {
               <div className="rounded-xl bg-surface p-3 text-center">
                 <User size={16} className="mx-auto mb-1 text-amber-400" />
                 <p className="text-xs text-muted-light">Nível</p>
-                <p className="text-sm font-medium text-foreground">{getLevelLabel(course.nivel)}</p>
+                <p className="text-sm font-medium text-foreground">{t(getLevelLabel(course.nivel))}</p>
               </div>
             </div>
           )}

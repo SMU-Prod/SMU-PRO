@@ -263,6 +263,7 @@ export default async function DashboardPage() {
                     key={enrollment.id}
                     course={course}
                     progress={enrollment.progresso ?? 0}
+                    t={t}
                   />
                 );
               })}
@@ -391,7 +392,7 @@ function StatCard({ icon, label, value, bg }: {
   );
 }
 
-function CourseCard({ course, progress }: { course: any; progress: number }) {
+function CourseCard({ course, progress, t }: { course: any; progress: number; t: (s: string) => string }) {
   return (
     <Link href={`/dashboard/cursos/${course.slug}`}>
       <Card className="overflow-hidden hover:border-amber-500/20 hover:shadow-md transition-all group cursor-pointer">
@@ -409,7 +410,7 @@ function CourseCard({ course, progress }: { course: any; progress: number }) {
             </div>
           )}
           <div className="absolute top-2 right-2">
-            <Badge variant={course.nivel as any}>{getLevelLabel(course.nivel)}</Badge>
+            <Badge variant={course.nivel as any}>{t(getLevelLabel(course.nivel))}</Badge>
           </div>
           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30">
             <div className="h-12 w-12 rounded-full bg-amber-500 flex items-center justify-center shadow-lg">

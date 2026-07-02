@@ -36,9 +36,9 @@ function Cartao({ course, t }: { course: Course; t: TFn }) {
         </div>
         <div className="p-5 flex flex-col flex-1">
           <div className="flex items-center gap-2 mb-3 flex-wrap">
-            <Badge variant={course.nivel as any}>{getLevelLabel(course.nivel)}</Badge>
+            <Badge variant={course.nivel as any}>{t(getLevelLabel(course.nivel))}</Badge>
             {(course.categorias?.length ? course.categorias : [course.categoria]).map((cat: string) => (
-              <Badge key={cat} variant="secondary" className="text-xs">{getCategoryLabel(cat)}</Badge>
+              <Badge key={cat} variant="secondary" className="text-xs">{t(getCategoryLabel(cat))}</Badge>
             ))}
             {course.tipo === "free" && <Badge variant="free">{t("Grátis")}</Badge>}
           </div>
@@ -75,9 +75,9 @@ function LinhaLista({ course, t }: { course: Course; t: TFn }) {
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-            <Badge variant={course.nivel as any}>{getLevelLabel(course.nivel)}</Badge>
+            <Badge variant={course.nivel as any}>{t(getLevelLabel(course.nivel))}</Badge>
             {(course.categorias?.length ? course.categorias : [course.categoria]).slice(0, 2).map((cat: string) => (
-              <Badge key={cat} variant="secondary" className="text-xs">{getCategoryLabel(cat)}</Badge>
+              <Badge key={cat} variant="secondary" className="text-xs">{t(getCategoryLabel(cat))}</Badge>
             ))}
             {course.tipo === "free" && <Badge variant="free">{t("Grátis")}</Badge>}
           </div>

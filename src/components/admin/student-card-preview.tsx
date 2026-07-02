@@ -8,6 +8,7 @@ import { CategoryIcon } from "@/components/ui/category-icon";
 import { getLevelLabel, formatMinutes } from "@/lib/utils";
 import { Play, Trophy, BookOpen, Lock, ChevronRight, CheckCircle2, Circle, X, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n/ui";
 
 // ── Types ────────────────────────────────────────────────────────
 interface CourseData {
@@ -29,6 +30,7 @@ function StudentCourseCard({
   course: CourseData;
   progress?: number;
 }) {
+  const t = useT();
   return (
     <div className="rounded-2xl bg-surface border border-border overflow-hidden hover:border-amber-500/30 hover:shadow-md transition-all">
       <div className="h-36 bg-gradient-to-br from-surface-2 to-surface-3 flex items-center justify-center text-5xl overflow-hidden">
@@ -40,7 +42,7 @@ function StudentCourseCard({
       </div>
       <div className="p-5">
         <div className="flex items-center gap-2 mb-3">
-          <Badge variant={course.nivel as any}>{getLevelLabel(course.nivel)}</Badge>
+          <Badge variant={course.nivel as any}>{t(getLevelLabel(course.nivel))}</Badge>
         </div>
         <h3 className="font-bold text-foreground leading-tight mb-3 line-clamp-2">{course.titulo}</h3>
 

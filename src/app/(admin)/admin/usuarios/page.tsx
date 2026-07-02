@@ -164,7 +164,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
                       }
                       className="text-[10px]"
                     >
-                      {getLevelLabel(u.role)}
+                      {t(getLevelLabel(u.role))}
                     </Badge>
                     {u.projeto_cultural && <Badge variant="mit" className="text-[10px]">MIT</Badge>}
                     <Badge variant={u.ativo ? "success" : "danger"} className="text-[10px]">
@@ -230,7 +230,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
                           }
                           className="text-[10px]"
                         >
-                          {getLevelLabel(u.role)}
+                          {t(getLevelLabel(u.role))}
                         </Badge>
                       </td>
                       <td className="px-4 py-3">

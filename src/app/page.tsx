@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getCategoryLabel, getLevelLabel, formatMinutes, formatCurrency } from "@/lib/utils";
 import { CategoryIcon } from "@/components/ui/category-icon";
+import { getServerT } from "@/lib/i18n/server";
 import { Zap, Award, Users, PlayCircle, ChevronRight, Star, Shield, Mic, Lightbulb, Music, Film } from "lucide-react";
 
 export const revalidate = 3600; // revalidate stats every hour
@@ -54,6 +55,7 @@ const FEATURES = [
 export default async function HomePage() {
   const { userId } = await auth();
   const isSignedIn = !!userId;
+  const t = await getServerT();
 
   let featuredCourses: any[] = [];
   let stats = { totalUsers: 0, totalCourses: 0, totalHours: 0, completionRate: 0 };
@@ -191,7 +193,7 @@ export default async function HomePage() {
                         <span className="opacity-50"><CategoryIcon category={course.categoria} size={40} /></span>
                       )}
                       <div className="absolute top-3 left-3 flex gap-1.5">
-                        <Badge variant={course.nivel as any}>{getLevelLabel(course.nivel)}</Badge>
+                        <Badge variant={course.nivel as any}>{t(getLevelLabel(course.nivel))}</Badge>
                         {course.tipo === "free" && <Badge variant="free">Grátis</Badge>}
                       </div>
                     </div>
