@@ -28,6 +28,7 @@ const LOADERS: Record<string, () => Promise<any>> = {
   "pleno-efeito": () => import("./data/pleno-efeito.json"),
   "normas-regulamentar-nrs": () => import("./data/normas-regulamentar-nrs.json"),
   "pleno-video": () => import("./data/pleno-video.json"),
+  "panorama-das-profissoes-em-eventos-20": () => import("./data/panorama-das-profissoes-em-eventos-20.json"),
 };
 
 const cache = new Map<string, any>();
