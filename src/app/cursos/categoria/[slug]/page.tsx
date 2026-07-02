@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { CategoryIcon } from "@/components/ui/category-icon";
 import { getLevelLabel, formatCurrency, getCategoryLabel } from "@/lib/utils";
 import { ArrowLeft, BookOpen, Clock, ChevronRight, Users } from "lucide-react";
-import { getServerT } from "@/lib/i18n/server";
+import { getServerT, getServerLocale } from "@/lib/i18n/server";
+import { courseMeta } from "@/lib/i18n/courses-meta";
 import type { Metadata } from "next";
 
 export const revalidate = 3600;
@@ -89,6 +90,7 @@ export default async function CategoryPage({ params }: Props) {
   if (!meta) notFound();
 
   const t = await getServerT();
+  const lang = await getServerLocale();
 
   const supabase = createAdminClient();
   const { data: courses } = await (supabase as any)
@@ -191,10 +193,10 @@ export default async function CategoryPage({ params }: Props) {
                   </div>
                   <div className="p-5 flex flex-col flex-1">
                     <h2 className="font-bold text-foreground leading-tight mb-2 line-clamp-2 group-hover:text-amber-400 transition-colors">
-                      {c.titulo}
+                      {courseMeta(c.slug, lang)?.titulo ?? c.titulo}
                     </h2>
-                    {c.descricao_curta && (
-                      <p className="text-sm text-muted-light line-clamp-2 mb-4 flex-1">{c.descricao_curta}</p>
+                    {(courseMeta(c.slug, lang)?.descricao ?? c.descricao_curta) && (
+                      <p className="text-sm text-muted-light line-clamp-2 mb-4 flex-1">{courseMeta(c.slug, lang)?.descricao ?? c.descricao_curta}</p>
                     )}
                     <div className="flex items-center justify-between mt-auto pt-3 border-t border-border/50">
                       <div className="flex items-center gap-3 text-xs text-muted-light">

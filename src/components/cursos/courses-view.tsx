@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { CategoryIcon } from "@/components/ui/category-icon";
 import { getCategoryLabel, getLevelLabel, formatMinutes, formatCurrency } from "@/lib/utils";
 import { useT, type TFn } from "@/lib/i18n/ui";
+import { useLocale, type Locale } from "@/lib/i18n/locale";
+import { courseMeta } from "@/lib/i18n/courses-meta";
 
 type Course = any;
 
@@ -23,7 +25,7 @@ function metaLinha(course: Course, t: TFn) {
   return `${course.total_aulas} ${t("aulas")} · ${formatMinutes(course.carga_horaria ?? 0)}`;
 }
 
-function Cartao({ course, t }: { course: Course; t: TFn }) {
+function Cartao({ course, t, locale }: { course: Course; t: TFn; locale: Locale }) {
   return (
     <Link href={`/cursos/${course.slug}`} className="group">
       <div className="h-full rounded-2xl bg-surface border border-border overflow-hidden hover:border-amber-500/30 hover:shadow-md transition-all hover:-translate-y-1 flex flex-col">
@@ -43,10 +45,10 @@ function Cartao({ course, t }: { course: Course; t: TFn }) {
             {course.tipo === "free" && <Badge variant="free">{t("Grátis")}</Badge>}
           </div>
           <h3 className="font-bold text-base text-foreground leading-tight mb-2 group-hover:text-amber-400 transition-colors">
-            {course.titulo}
+            {courseMeta(course.slug, locale)?.titulo ?? course.titulo}
           </h3>
           <p className="text-muted-light text-sm line-clamp-2 mb-auto">
-            {course.descricao_curta || course.descricao || t("Curso completo de formação profissional.")}
+            {course.descricao_curta || courseMeta(course.slug, locale)?.descricao || course.descricao || t("Curso completo de formação profissional.")}
           </p>
           <div className="flex items-center justify-between text-xs text-muted-light pt-4 mt-4 border-t border-border/50">
             <span>{metaLinha(course, t)}</span>
@@ -62,7 +64,7 @@ function Cartao({ course, t }: { course: Course; t: TFn }) {
   );
 }
 
-function LinhaLista({ course, t }: { course: Course; t: TFn }) {
+function LinhaLista({ course, t, locale }: { course: Course; t: TFn; locale: Locale }) {
   return (
     <Link href={`/cursos/${course.slug}`} className="group block">
       <div className="flex items-center gap-4 rounded-xl bg-surface border border-border p-3 hover:border-amber-500/30 hover:shadow-sm transition-all">
@@ -82,10 +84,10 @@ function LinhaLista({ course, t }: { course: Course; t: TFn }) {
             {course.tipo === "free" && <Badge variant="free">{t("Grátis")}</Badge>}
           </div>
           <h3 className="font-bold text-foreground leading-tight truncate group-hover:text-amber-400 transition-colors">
-            {course.titulo}
+            {courseMeta(course.slug, locale)?.titulo ?? course.titulo}
           </h3>
           <p className="text-muted-light text-xs line-clamp-1">
-            {course.descricao_curta || course.descricao || t("Curso completo de formação profissional.")}
+            {course.descricao_curta || courseMeta(course.slug, locale)?.descricao || course.descricao || t("Curso completo de formação profissional.")}
           </p>
         </div>
         <div className="shrink-0 text-right text-xs text-muted-light">
@@ -104,6 +106,7 @@ function LinhaLista({ course, t }: { course: Course; t: TFn }) {
 
 export function CoursesView({ courses }: { courses: Course[] }) {
   const t = useT();
+  const locale = useLocale();
   const [view, setView] = useState<"cards" | "list">("cards");
 
   // lembra a preferência do usuário
@@ -162,11 +165,11 @@ export function CoursesView({ courses }: { courses: Course[] }) {
             </h2>
             {view === "cards" ? (
               <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-5">
-                {g.itens.map((c) => <Cartao key={c.id} course={c} t={t} />)}
+                {g.itens.map((c) => <Cartao key={c.id} course={c} t={t} locale={locale} />)}
               </div>
             ) : (
               <div className="space-y-2">
-                {g.itens.map((c) => <LinhaLista key={c.id} course={c} t={t} />)}
+                {g.itens.map((c) => <LinhaLista key={c.id} course={c} t={t} locale={locale} />)}
               </div>
             )}
           </section>

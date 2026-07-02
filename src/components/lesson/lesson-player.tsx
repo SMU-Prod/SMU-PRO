@@ -18,6 +18,7 @@ import { AudioPlayer } from "./audio-player";
 import { AnimationPlayer } from "./animation-player";
 import { RichContentViewer } from "./rich-content-viewer";
 import { useLocale } from "@/lib/i18n/locale";
+import { courseMeta } from "@/lib/i18n/courses-meta";
 import { useCourseTr } from "@/lib/i18n/pilot";
 import { useT } from "@/lib/i18n/ui";
 import type { Enrollment, Progress as ProgressType, QuizAttempt, Note } from "@/types/database";
@@ -329,7 +330,7 @@ export function LessonPlayer({
             <ChevronRight size={14} className="text-muted-light shrink-0 hidden sm:block" />
             <Link href={`/cursos/${course.slug}`} className="hover:text-foreground transition-colors shrink-0 flex items-center gap-1">
               <ChevronLeft size={16} className="sm:hidden" />
-              <span className="truncate max-w-[100px] sm:max-w-[120px] text-xs sm:text-sm">{course.titulo}</span>
+              <span className="truncate max-w-[100px] sm:max-w-[120px] text-xs sm:text-sm">{courseMeta(course.slug, locale)?.titulo ?? course.titulo}</span>
             </Link>
             <ChevronRight size={14} className="text-muted-light shrink-0 hidden sm:block" />
             <span className="text-foreground font-medium truncate max-w-[140px] sm:max-w-[200px] hidden sm:block">

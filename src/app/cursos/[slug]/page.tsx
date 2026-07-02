@@ -10,7 +10,8 @@ import { getLevelLabel, getCategoryLabel, formatMinutes, formatCurrency } from "
 import { CategoryIcon } from "@/components/ui/category-icon";
 import { CheckCircle, Clock, BookOpen, Award, Lock, Play, ChevronRight, ArrowLeft, Star } from "lucide-react";
 import { EnrollButton } from "@/components/course/enroll-button";
-import { getServerT } from "@/lib/i18n/server";
+import { getServerT, getServerLocale } from "@/lib/i18n/server";
+import { courseMeta } from "@/lib/i18n/courses-meta";
 import type { Metadata } from "next";
 
 export const revalidate = 3600; // ISR: revalida a cada 1 hora
@@ -40,6 +41,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function CourseDetailPage({ params }: Props) {
   const { slug } = await params;
   const t = await getServerT();
+  const lang = await getServerLocale();
 
   let course: any;
   try {
@@ -176,10 +178,10 @@ export default async function CourseDetailPage({ params }: Props) {
               {course.destaque && <Badge variant="warning">{t("Em destaque")}</Badge>}
             </div>
 
-            <h1 className="text-4xl md:text-5xl font-black text-foreground leading-tight mb-4">{course.titulo}</h1>
+            <h1 className="text-4xl md:text-5xl font-black text-foreground leading-tight mb-4">{courseMeta(course.slug, lang)?.titulo ?? course.titulo}</h1>
 
-            {course.descricao_curta && (
-              <p className="text-lg text-muted mb-6 leading-relaxed">{course.descricao_curta}</p>
+            {(courseMeta(course.slug, lang)?.descricao ?? course.descricao_curta) && (
+              <p className="text-lg text-muted mb-6 leading-relaxed">{courseMeta(course.slug, lang)?.descricao ?? course.descricao_curta}</p>
             )}
 
             <div className="flex flex-wrap gap-6 text-sm text-muted-light">
@@ -292,7 +294,7 @@ export default async function CourseDetailPage({ params }: Props) {
           {course.descricao && (
             <section>
               <h2 className="text-2xl font-bold text-foreground mb-4">{t("Sobre o curso")}</h2>
-              <div className="text-muted leading-relaxed whitespace-pre-line">{course.descricao}</div>
+              <div className="text-muted leading-relaxed whitespace-pre-line">{courseMeta(course.slug, lang)?.descricao ?? course.descricao}</div>
             </section>
           )}
 

@@ -12,7 +12,9 @@ import { Button } from "@/components/ui/button";
 import { StudyStreak } from "@/components/dashboard/study-streak";
 import { formatMinutes, getLevelLabel } from "@/lib/utils";
 import { CategoryIcon } from "@/components/ui/category-icon";
-import { getServerT } from "@/lib/i18n/server";
+import { getServerT, getServerLocale } from "@/lib/i18n/server";
+import { courseMeta } from "@/lib/i18n/courses-meta";
+import type { Lang } from "@/lib/i18n/dict";
 import {
   BookOpen, Award, Clock, TrendingUp, Play, ChevronRight,
   Trophy, Music, Target, Flame, GraduationCap, BarChart3,
@@ -26,6 +28,7 @@ export default async function DashboardPage() {
 
   const user = await getCurrentUser();
   const t = await getServerT();
+  const lang = await getServerLocale();
   const supabase = createAdminClient();
   const { data: userRow } = await supabase.from("users").select("id").eq("clerk_id", userId).single();
   const userUuid = userRow?.id;
@@ -45,7 +48,7 @@ export default async function DashboardPage() {
     userUuid
       ? supabase
           .from("certificates")
-          .select(`*, courses(titulo, nivel, categoria)`)
+          .select(`*, courses(titulo, slug, nivel, categoria)`)
           .eq("user_id", userUuid)
           .order("emitido_em", { ascending: false })
           .limit(4)
@@ -264,6 +267,7 @@ export default async function DashboardPage() {
                     course={course}
                     progress={enrollment.progresso ?? 0}
                     t={t}
+                    lang={lang}
                   />
                 );
               })}
@@ -334,7 +338,7 @@ export default async function DashboardPage() {
                             <Award size={18} className="text-amber-400" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-foreground truncate">{course?.titulo}</p>
+                            <p className="text-sm font-medium text-foreground truncate">{courseMeta(course?.slug, lang)?.titulo ?? course?.titulo}</p>
                             <p className="text-xs text-muted-light mt-0.5">
                               {new Date(cert.emitido_em).toLocaleDateString("pt-BR")}
                             </p>
@@ -392,7 +396,7 @@ function StatCard({ icon, label, value, bg }: {
   );
 }
 
-function CourseCard({ course, progress, t }: { course: any; progress: number; t: (s: string) => string }) {
+function CourseCard({ course, progress, t, lang }: { course: any; progress: number; t: (s: string) => string; lang: Lang }) {
   return (
     <Link href={`/dashboard/cursos/${course.slug}`}>
       <Card className="overflow-hidden hover:border-amber-500/20 hover:shadow-md transition-all group cursor-pointer">
@@ -419,7 +423,7 @@ function CourseCard({ course, progress, t }: { course: any; progress: number; t:
           </div>
         </div>
         <CardContent className="p-4">
-          <h3 className="font-medium text-sm text-foreground line-clamp-1">{course.titulo}</h3>
+          <h3 className="font-medium text-sm text-foreground line-clamp-1">{courseMeta(course.slug, lang)?.titulo ?? course.titulo}</h3>
           <div className="mt-3 space-y-1">
             <div className="flex items-center justify-between text-xs text-muted-light">
               <span>{progress}% concluído</span>

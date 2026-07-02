@@ -7,12 +7,14 @@ import { Header } from "@/components/layout/header";
 import { formatMinutes } from "@/lib/utils";
 import { Award, ExternalLink, Download, QrCode, Calendar } from "lucide-react";
 import { SignCertificateButton } from "@/components/certificate/sign-certificate-button";
-import { getServerT } from "@/lib/i18n/server";
+import { getServerT, getServerLocale } from "@/lib/i18n/server";
+import { courseMeta } from "@/lib/i18n/courses-meta";
 
 export default async function CertificadosPage() {
   const { userId } = await auth();
   if (!userId) redirect("/login");
   const t = await getServerT();
+  const lang = await getServerLocale();
 
   const supabase = createAdminClient();
   const { data: userRow } = await supabase.from("users").select("id").eq("clerk_id", userId).single();
@@ -21,7 +23,7 @@ export default async function CertificadosPage() {
   const { data: certs } = userUuid
     ? await (supabase as any)
         .from("certificates")
-        .select(`*, courses(titulo, categoria, nivel), certificate_signatures(tipo)`)
+        .select(`*, courses(titulo, slug, categoria, nivel), certificate_signatures(tipo)`)
         .eq("user_id", userUuid)
         .order("emitido_em", { ascending: false })
     : { data: [] };
@@ -78,8 +80,8 @@ export default async function CertificadosPage() {
                   <div>
                     <h3 className="font-bold text-foreground leading-tight mb-1">
                       {cert.metadata?.lesson_titulo
-                        ? `${course?.titulo ?? "NR"} — ${cert.metadata.lesson_titulo}`
-                        : course?.titulo ?? t("Curso")}
+                        ? `${courseMeta(course?.slug, lang)?.titulo ?? course?.titulo ?? "NR"} — ${cert.metadata.lesson_titulo}`
+                        : courseMeta(course?.slug, lang)?.titulo ?? course?.titulo ?? t("Curso")}
                     </h3>
                     {cert.metadata?.tipo === "nr_aula" && (
                       <span className="inline-block text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded-full font-semibold mb-1">

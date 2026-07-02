@@ -10,12 +10,15 @@ import { Header } from "@/components/layout/header";
 import { getLevelLabel, formatMinutes } from "@/lib/utils";
 import { CategoryIcon } from "@/components/ui/category-icon";
 import { BookOpen, Play, Trophy, ChevronRight, Plus } from "lucide-react";
-import { getServerT } from "@/lib/i18n/server";
+import { getServerT, getServerLocale } from "@/lib/i18n/server";
+import { courseMeta } from "@/lib/i18n/courses-meta";
+import type { Lang } from "@/lib/i18n/dict";
 
 export default async function MeusCursosPage() {
   const { userId } = await auth();
   if (!userId) redirect("/login");
   const t = await getServerT();
+  const lang = await getServerLocale();
 
   const supabase = createAdminClient();
   const { data: userRow } = await supabase.from("users").select("id").eq("clerk_id", userId).single();
@@ -71,7 +74,7 @@ export default async function MeusCursosPage() {
                   <Play size={16} className="text-amber-400" />
                   {t("Em andamento")} ({inProgress.length})
                 </h2>
-                <CourseGrid courses={inProgress} t={t} />
+                <CourseGrid courses={inProgress} t={t} lang={lang} />
               </section>
             )}
 
@@ -81,7 +84,7 @@ export default async function MeusCursosPage() {
                   <BookOpen size={16} className="text-blue-400" />
                   {t("Não iniciados")} ({notStarted.length})
                 </h2>
-                <CourseGrid courses={notStarted} t={t} />
+                <CourseGrid courses={notStarted} t={t} lang={lang} />
               </section>
             )}
 
@@ -91,7 +94,7 @@ export default async function MeusCursosPage() {
                   <Trophy size={16} className="text-amber-500" />
                   {t("Concluídos")} ({completed.length})
                 </h2>
-                <CourseGrid courses={completed} showCertificate t={t} />
+                <CourseGrid courses={completed} showCertificate t={t} lang={lang} />
               </section>
             )}
           </div>
@@ -101,7 +104,7 @@ export default async function MeusCursosPage() {
   );
 }
 
-function CourseGrid({ courses, showCertificate = false, t }: { courses: any[]; showCertificate?: boolean; t: (s: string) => string }) {
+function CourseGrid({ courses, showCertificate = false, t, lang }: { courses: any[]; showCertificate?: boolean; t: (s: string) => string; lang: Lang }) {
   return (
     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
       {courses.map((enrollment: any) => {
@@ -121,7 +124,7 @@ function CourseGrid({ courses, showCertificate = false, t }: { courses: any[]; s
               <div className="flex items-center gap-2 mb-3">
                 <Badge variant={course.nivel as any}>{t(getLevelLabel(course.nivel))}</Badge>
               </div>
-              <h3 className="font-bold text-foreground leading-tight mb-3 line-clamp-2">{course.titulo}</h3>
+              <h3 className="font-bold text-foreground leading-tight mb-3 line-clamp-2">{courseMeta(course.slug, lang)?.titulo ?? course.titulo}</h3>
 
               {/* Progress */}
               <div className="mb-4">
