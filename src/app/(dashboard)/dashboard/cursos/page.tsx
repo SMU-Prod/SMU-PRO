@@ -10,10 +10,12 @@ import { Header } from "@/components/layout/header";
 import { getLevelLabel, formatMinutes } from "@/lib/utils";
 import { CategoryIcon } from "@/components/ui/category-icon";
 import { BookOpen, Play, Trophy, ChevronRight, Plus } from "lucide-react";
+import { getServerT } from "@/lib/i18n/server";
 
 export default async function MeusCursosPage() {
   const { userId } = await auth();
   if (!userId) redirect("/login");
+  const t = await getServerT();
 
   const supabase = createAdminClient();
   const { data: userRow } = await supabase.from("users").select("id").eq("clerk_id", userId).single();
@@ -37,13 +39,13 @@ export default async function MeusCursosPage() {
   return (
     <div className="animate-fade-in">
       <Header
-        title="Meus Cursos"
-        subtitle={`${list.length} curso${list.length !== 1 ? "s" : ""} inscrito${list.length !== 1 ? "s" : ""}`}
+        title={t("Meus Cursos")}
+        subtitle={`${list.length} ${list.length !== 1 ? t("cursos inscritos") : t("curso inscrito")}`}
         actions={
           <Link href="/cursos">
             <Button variant="outline" size="sm" className="gap-2">
               <Plus size={15} />
-              Explorar cursos
+              {t("Explorar cursos")}
             </Button>
           </Link>
         }
@@ -53,11 +55,11 @@ export default async function MeusCursosPage() {
         {list.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-32 text-center rounded-2xl bg-surface border border-border">
             <div className="mb-4"><BookOpen size={48} className="text-muted-light" /></div>
-            <h2 className="text-xl font-bold text-foreground mb-2">Nenhum curso ainda</h2>
-            <p className="text-muted-light mb-6">Explore o catálogo e comece sua jornada profissional</p>
+            <h2 className="text-xl font-bold text-foreground mb-2">{t("Nenhum curso ainda")}</h2>
+            <p className="text-muted-light mb-6">{t("Explore o catálogo e comece sua jornada profissional")}</p>
             <Link href="/cursos">
               <Button className="gap-2">
-                Ver catálogo de cursos <ChevronRight size={16} />
+                {t("Ver catálogo de cursos")} <ChevronRight size={16} />
               </Button>
             </Link>
           </div>
@@ -67,9 +69,9 @@ export default async function MeusCursosPage() {
               <section>
                 <h2 className="text-base font-bold text-foreground mb-4 flex items-center gap-2">
                   <Play size={16} className="text-amber-400" />
-                  Em andamento ({inProgress.length})
+                  {t("Em andamento")} ({inProgress.length})
                 </h2>
-                <CourseGrid courses={inProgress} />
+                <CourseGrid courses={inProgress} t={t} />
               </section>
             )}
 
@@ -77,9 +79,9 @@ export default async function MeusCursosPage() {
               <section>
                 <h2 className="text-base font-bold text-foreground mb-4 flex items-center gap-2">
                   <BookOpen size={16} className="text-blue-400" />
-                  Não iniciados ({notStarted.length})
+                  {t("Não iniciados")} ({notStarted.length})
                 </h2>
-                <CourseGrid courses={notStarted} />
+                <CourseGrid courses={notStarted} t={t} />
               </section>
             )}
 
@@ -87,9 +89,9 @@ export default async function MeusCursosPage() {
               <section>
                 <h2 className="text-base font-bold text-foreground mb-4 flex items-center gap-2">
                   <Trophy size={16} className="text-amber-500" />
-                  Concluídos ({completed.length})
+                  {t("Concluídos")} ({completed.length})
                 </h2>
-                <CourseGrid courses={completed} showCertificate />
+                <CourseGrid courses={completed} showCertificate t={t} />
               </section>
             )}
           </div>
@@ -99,7 +101,7 @@ export default async function MeusCursosPage() {
   );
 }
 
-function CourseGrid({ courses, showCertificate = false }: { courses: any[]; showCertificate?: boolean }) {
+function CourseGrid({ courses, showCertificate = false, t }: { courses: any[]; showCertificate?: boolean; t: (s: string) => string }) {
   return (
     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
       {courses.map((enrollment: any) => {
@@ -124,7 +126,7 @@ function CourseGrid({ courses, showCertificate = false }: { courses: any[]; show
               {/* Progress */}
               <div className="mb-4">
                 <div className="flex justify-between text-xs text-muted-light mb-1.5">
-                  <span>Progresso</span>
+                  <span>{t("Progresso")}</span>
                   <span>{enrollment.progresso}%</span>
                 </div>
                 <Progress value={enrollment.progresso} className="h-1.5" />
@@ -133,11 +135,11 @@ function CourseGrid({ courses, showCertificate = false }: { courses: any[]; show
               <Link href={`/dashboard/cursos/${course.slug}`} className="block">
                 <Button variant={enrollment.progresso === 100 ? "secondary" : "default"} size="sm" className="w-full gap-1.5">
                   {enrollment.progresso === 0 ? (
-                    <><Play size={14} /> Começar</>
+                    <><Play size={14} /> {t("Começar")}</>
                   ) : enrollment.progresso === 100 ? (
-                    <><Trophy size={14} /> Ver curso</>
+                    <><Trophy size={14} /> {t("Ver curso")}</>
                   ) : (
-                    <><Play size={14} /> Continuar</>
+                    <><Play size={14} /> {t("Continuar")}</>
                   )}
                 </Button>
               </Link>

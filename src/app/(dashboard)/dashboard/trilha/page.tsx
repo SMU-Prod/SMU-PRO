@@ -13,6 +13,7 @@ import {
   BookOpen, ChevronRight, Star, Trophy,
 } from "lucide-react";
 import Link from "next/link";
+import { getServerT } from "@/lib/i18n/server";
 
 const LEARNING_PATH: {
   level: string;
@@ -51,6 +52,7 @@ const LEARNING_PATH: {
 export default async function TrilhaPage() {
   const { userId } = await auth();
   if (!userId) redirect("/login");
+  const t = await getServerT();
 
   const user = await getCurrentUser();
   const supabase = createAdminClient();
@@ -105,8 +107,8 @@ export default async function TrilhaPage() {
   return (
     <div className="animate-fade-in">
       <Header
-        title="Trilha de Aprendizado"
-        subtitle="Sua jornada de desenvolvimento profissional"
+        title={t("Trilha de Aprendizado")}
+        subtitle={t("Sua jornada de desenvolvimento profissional")}
         role={user?.role}
       />
 
@@ -118,30 +120,30 @@ export default async function TrilhaPage() {
               <div className="h-9 w-9 rounded-xl bg-amber-500/10 flex items-center justify-center">
                 <BookOpen size={18} className="text-amber-400" />
               </div>
-              <span className="text-sm text-muted-light">Matriculados</span>
+              <span className="text-sm text-muted-light">{t("Matriculados")}</span>
             </div>
             <p className="text-2xl font-black text-foreground">{totalEnrolled}</p>
-            <p className="text-xs text-muted-light mt-0.5">de {totalCourses} disponíveis</p>
+            <p className="text-xs text-muted-light mt-0.5">{t("de")} {totalCourses} {t("disponíveis")}</p>
           </div>
           <div className="bg-surface rounded-2xl border border-border p-5">
             <div className="flex items-center gap-3 mb-3">
               <div className="h-9 w-9 rounded-xl bg-emerald-500/10 flex items-center justify-center">
                 <CheckCircle2 size={18} className="text-emerald-400" />
               </div>
-              <span className="text-sm text-muted-light">Concluídos</span>
+              <span className="text-sm text-muted-light">{t("Concluídos")}</span>
             </div>
             <p className="text-2xl font-black text-foreground">{totalCompleted}</p>
-            <p className="text-xs text-muted-light mt-0.5">cursos finalizados</p>
+            <p className="text-xs text-muted-light mt-0.5">{t("cursos finalizados")}</p>
           </div>
           <div className="bg-surface rounded-2xl border border-border p-5">
             <div className="flex items-center gap-3 mb-3">
               <div className="h-9 w-9 rounded-xl bg-amber-500/10 flex items-center justify-center">
                 <Star size={18} className="text-amber-400" />
               </div>
-              <span className="text-sm text-muted-light">Nível Atual</span>
+              <span className="text-sm text-muted-light">{t("Nível Atual")}</span>
             </div>
             <p className="text-2xl font-black text-foreground capitalize">{user?.role === "projeto_cultural" ? "MIT" : getLevelLabel(user?.role ?? "trainee")}</p>
-            <p className="text-xs text-muted-light mt-0.5">na plataforma</p>
+            <p className="text-xs text-muted-light mt-0.5">{t("na plataforma")}</p>
           </div>
         </div>
 
@@ -167,13 +169,13 @@ export default async function TrilhaPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 sm:gap-3 mb-1 flex-wrap">
-                        <h2 className="font-bold text-foreground">{levelInfo.label}</h2>
-                        <Badge variant={levelInfo.level as any}>{levelInfo.label}</Badge>
+                        <h2 className="font-bold text-foreground">{t(levelInfo.label)}</h2>
+                        <Badge variant={levelInfo.level as any}>{t(levelInfo.label)}</Badge>
                         <span className="text-xs text-muted-light">
-                          {levelCompleted.length}/{levelCourses.length} concluídos
+                          {levelCompleted.length}/{levelCourses.length} {t("concluídos")}
                         </span>
                       </div>
-                      <p className="text-sm text-muted-light hidden sm:block">{levelInfo.description}</p>
+                      <p className="text-sm text-muted-light hidden sm:block">{t(levelInfo.description)}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0 ml-[3.25rem] sm:ml-0">
@@ -190,7 +192,7 @@ export default async function TrilhaPage() {
                 {/* Courses grid */}
                 {levelCourses.length === 0 ? (
                   <div className="ml-0 sm:ml-14 p-4 rounded-xl bg-background border border-dashed border-border text-sm text-muted-light">
-                    Nenhum curso disponível neste nível ainda.
+                    {t("Nenhum curso disponível neste nível ainda.")}
                   </div>
                 ) : (
                   <div className="ml-0 sm:ml-14 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -239,7 +241,7 @@ export default async function TrilhaPage() {
                           {isEnrolled && (
                             <div className="mb-3">
                               <Progress value={progress} className="h-1.5" />
-                              <p className="text-xs text-muted-light mt-1">{progress}% concluído</p>
+                              <p className="text-xs text-muted-light mt-1">{progress}% {t("concluído")}</p>
                             </div>
                           )}
 
@@ -250,7 +252,7 @@ export default async function TrilhaPage() {
                                 size="sm"
                                 className="w-full gap-1.5"
                               >
-                                <Award size={13} /> Ver certificado
+                                <Award size={13} /> {t("Ver certificado")}
                               </Button>
                             </Link>
                           ) : (
@@ -261,11 +263,11 @@ export default async function TrilhaPage() {
                                 className="w-full gap-1.5"
                               >
                                 {isDone ? (
-                                  <><Award size={13} /> Gerar certificado</>
+                                  <><Award size={13} /> {t("Gerar certificado")}</>
                                 ) : isEnrolled ? (
-                                  <><Play size={13} /> Continuar</>
+                                  <><Play size={13} /> {t("Continuar")}</>
                                 ) : (
-                                  <><ChevronRight size={13} /> Ver curso</>
+                                  <><ChevronRight size={13} /> {t("Ver curso")}</>
                                 )}
                               </Button>
                             </Link>
@@ -288,18 +290,18 @@ export default async function TrilhaPage() {
                 <Trophy size={28} className="text-amber-400" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-foreground mb-1">Projeto Cultural MIT</h3>
+                <h3 className="font-bold text-foreground mb-1">{t("Projeto Cultural MIT")}</h3>
                 <p className="text-xs sm:text-sm text-muted">
-                  Alunos selecionados têm acesso gratuito e ilimitado a todos os cursos, incluindo nível Pleno.
+                  {t("Alunos selecionados têm acesso gratuito e ilimitado a todos os cursos, incluindo nível Pleno.")}
                 </p>
               </div>
             </div>
             {user?.projeto_cultural ? (
-              <Badge variant="mit" className="shrink-0 text-sm px-3 py-1">MIT Ativo</Badge>
+              <Badge variant="mit" className="shrink-0 text-sm px-3 py-1">{t("MIT Ativo")}</Badge>
             ) : (
               <div className="shrink-0">
                 <Link href="/#sobre">
-                  <Button variant="outline" size="sm">Saiba mais</Button>
+                  <Button variant="outline" size="sm">{t("Saiba mais")}</Button>
                 </Link>
               </div>
             )}

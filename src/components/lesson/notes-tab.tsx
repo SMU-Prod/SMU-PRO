@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import type { Note } from "@/types/database";
 import { Plus, Trash2, StickyNote } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n/ui";
 
 interface NotesTabProps {
   lessonId: string;
@@ -14,6 +15,7 @@ interface NotesTabProps {
 }
 
 export function NotesTab({ lessonId, notes: initialNotes, userId }: NotesTabProps) {
+  const t = useT();
   const [notes, setNotes] = useState(initialNotes);
   const [newNote, setNewNote] = useState("");
   const [saving, setSaving] = useState(false);
@@ -43,7 +45,7 @@ export function NotesTab({ lessonId, notes: initialNotes, userId }: NotesTabProp
         <textarea
           value={newNote}
           onChange={(e) => setNewNote(e.target.value)}
-          placeholder="Escreva sua anotação..."
+          placeholder={t("Escreva sua anotação...")}
           className={cn(
             "w-full bg-transparent text-sm text-foreground placeholder:text-muted-light",
             "resize-none outline-none min-h-[80px]"
@@ -53,9 +55,9 @@ export function NotesTab({ lessonId, notes: initialNotes, userId }: NotesTabProp
           }}
         />
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
-          <span className="text-xs text-muted-light">Ctrl+Enter para salvar</span>
+          <span className="text-xs text-muted-light">{t("Ctrl+Enter para salvar")}</span>
           <Button size="sm" onClick={handleSave} loading={saving} disabled={!newNote.trim()}>
-            <Plus size={14} /> Salvar Nota
+            <Plus size={14} /> {t("Salvar Nota")}
           </Button>
         </div>
       </div>
@@ -64,8 +66,8 @@ export function NotesTab({ lessonId, notes: initialNotes, userId }: NotesTabProp
       {notes.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-10 text-center">
           <StickyNote size={36} className="text-muted-light mb-3" />
-          <p className="text-sm text-muted-light">Nenhuma anotação ainda.</p>
-          <p className="text-xs text-muted-light mt-1">Suas notas ficam salvas para revisar depois.</p>
+          <p className="text-sm text-muted-light">{t("Nenhuma anotação ainda.")}</p>
+          <p className="text-xs text-muted-light mt-1">{t("Suas notas ficam salvas para revisar depois.")}</p>
         </div>
       ) : (
         <div className="space-y-3">

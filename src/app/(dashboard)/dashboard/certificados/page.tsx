@@ -7,10 +7,12 @@ import { Header } from "@/components/layout/header";
 import { formatMinutes } from "@/lib/utils";
 import { Award, ExternalLink, Download, QrCode, Calendar } from "lucide-react";
 import { SignCertificateButton } from "@/components/certificate/sign-certificate-button";
+import { getServerT } from "@/lib/i18n/server";
 
 export default async function CertificadosPage() {
   const { userId } = await auth();
   if (!userId) redirect("/login");
+  const t = await getServerT();
 
   const supabase = createAdminClient();
   const { data: userRow } = await supabase.from("users").select("id").eq("clerk_id", userId).single();
@@ -29,20 +31,20 @@ export default async function CertificadosPage() {
   return (
     <div className="animate-fade-in">
       <Header
-        title="Meus Certificados"
-        subtitle={`${certificates.length} certificado${certificates.length !== 1 ? "s" : ""} emitido${certificates.length !== 1 ? "s" : ""}`}
+        title={t("Meus Certificados")}
+        subtitle={`${certificates.length} ${certificates.length !== 1 ? t("certificados") : t("certificado")} ${certificates.length !== 1 ? t("emitidos") : t("emitido")}`}
       />
 
       <div className="p-4 sm:p-6">
         {certificates.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-32 text-center rounded-2xl bg-surface border border-border">
             <Award size={56} className="text-muted-light mb-4" />
-            <h2 className="text-xl font-bold text-foreground mb-2">Nenhum certificado ainda</h2>
+            <h2 className="text-xl font-bold text-foreground mb-2">{t("Nenhum certificado ainda")}</h2>
             <p className="text-muted-light mb-6 max-w-sm">
-              Conclua 100% das aulas de um curso para desbloquear seu certificado verificável.
+              {t("Conclua 100% das aulas de um curso para desbloquear seu certificado verificável.")}
             </p>
             <Link href="/dashboard/cursos">
-              <Button className="gap-2">Ver meus cursos</Button>
+              <Button className="gap-2">{t("Ver meus cursos")}</Button>
             </Link>
           </div>
         ) : (
@@ -77,19 +79,19 @@ export default async function CertificadosPage() {
                     <h3 className="font-bold text-foreground leading-tight mb-1">
                       {cert.metadata?.lesson_titulo
                         ? `${course?.titulo ?? "NR"} — ${cert.metadata.lesson_titulo}`
-                        : course?.titulo ?? "Curso"}
+                        : course?.titulo ?? t("Curso")}
                     </h3>
                     {cert.metadata?.tipo === "nr_aula" && (
                       <span className="inline-block text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded-full font-semibold mb-1">
-                        Certificado por Aula
+                        {t("Certificado por Aula")}
                       </span>
                     )}
                     <div className="flex flex-col gap-1 text-sm text-muted-light">
                       {cert.nota_final != null && (
-                        <span>Nota final: <strong className="text-foreground">{cert.nota_final}/100</strong></span>
+                        <span>{t("Nota final")}: <strong className="text-foreground">{cert.nota_final}/100</strong></span>
                       )}
                       {cert.carga_horaria != null && cert.carga_horaria > 0 && (
-                        <span>Carga horária: <strong className="text-foreground">{formatMinutes(cert.carga_horaria)}</strong></span>
+                        <span>{t("Carga horária")}: <strong className="text-foreground">{formatMinutes(cert.carga_horaria)}</strong></span>
                       )}
                       <span className="flex items-center gap-1.5 mt-1">
                         <Calendar size={12} />
@@ -116,7 +118,7 @@ export default async function CertificadosPage() {
                       <Link href={`/certificado/${cert.codigo_verificacao}`} target="_blank" className="flex-1">
                         <Button variant="outline" size="sm" className="w-full gap-1.5">
                           <ExternalLink size={13} />
-                          Ver
+                          {t("Ver")}
                         </Button>
                       </Link>
                       <Link href={`/api/certificates/pdf/${cert.codigo_verificacao}`} className="flex-1">

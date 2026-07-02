@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { Header } from "@/components/layout/header";
 import { formatCurrency } from "@/lib/utils";
 import { DollarSign, CheckCircle } from "lucide-react";
+import { getServerT } from "@/lib/i18n/server";
 
 const STATUS_STYLES: Record<string, { label: string; className: string }> = {
   ativo: { label: "Confirmado", className: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" },
@@ -15,6 +16,7 @@ const STATUS_STYLES: Record<string, { label: string; className: string }> = {
 export default async function PagamentosPage() {
   const { userId } = await auth();
   if (!userId) redirect("/login");
+  const t = await getServerT();
 
   const supabase = createAdminClient();
   const { data: userRow } = await supabase.from("users").select("id").eq("clerk_id", userId).single();
@@ -32,7 +34,7 @@ export default async function PagamentosPage() {
 
   return (
     <div className="animate-fade-in">
-      <Header title="Pagamentos" subtitle="Histórico de pagamentos e matrículas" />
+      <Header title={t("Pagamentos")} subtitle={t("Histórico de pagamentos e matrículas")} />
 
       <div className="p-4 sm:p-6 space-y-6 max-w-3xl">
         {/* Summary */}
@@ -42,7 +44,7 @@ export default async function PagamentosPage() {
               <div className="h-9 w-9 rounded-xl bg-emerald-500/10 flex items-center justify-center">
                 <DollarSign size={20} className="text-emerald-400" />
               </div>
-              <span className="text-sm text-muted-light">Total investido</span>
+              <span className="text-sm text-muted-light">{t("Total investido")}</span>
             </div>
             <div className="text-2xl font-black text-foreground">{formatCurrency(totalPaid)}</div>
           </div>
@@ -51,7 +53,7 @@ export default async function PagamentosPage() {
               <div className="h-9 w-9 rounded-xl bg-amber-500/10 flex items-center justify-center">
                 <CheckCircle size={20} className="text-amber-400" />
               </div>
-              <span className="text-sm text-muted-light">Cursos adquiridos</span>
+              <span className="text-sm text-muted-light">{t("Cursos adquiridos")}</span>
             </div>
             <div className="text-2xl font-black text-foreground">{rows.filter((r) => r.status === "ativo").length}</div>
           </div>
@@ -62,7 +64,7 @@ export default async function PagamentosPage() {
           {rows.length === 0 && (
             <div className="px-5 py-12 text-center">
               <DollarSign size={32} className="mx-auto mb-3 text-muted-light" />
-              <p className="text-muted-light text-sm">Você ainda não realizou nenhum pagamento.</p>
+              <p className="text-muted-light text-sm">{t("Você ainda não realizou nenhum pagamento.")}</p>
             </div>
           )}
           {rows.map((row: any) => {
@@ -70,14 +72,14 @@ export default async function PagamentosPage() {
             return (
               <div key={row.id} className="px-3 sm:px-5 py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{row.courses?.titulo ?? "Curso removido"}</p>
+                  <p className="text-sm font-medium text-foreground truncate">{row.courses?.titulo ?? t("Curso removido")}</p>
                   <p className="text-xs text-muted-light mt-0.5">
                     {new Date(row.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 sm:gap-4">
                   <span className="font-semibold text-sm text-foreground shrink-0">{formatCurrency(row.valor_pago ?? 0)}</span>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full border shrink-0 ${style.className}`}>{style.label}</span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full border shrink-0 ${style.className}`}>{t(style.label)}</span>
                 </div>
               </div>
             );
