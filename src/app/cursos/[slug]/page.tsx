@@ -151,7 +151,7 @@ export default async function CourseDetailPage({ params }: Props) {
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
           <Link href="/cursos" className="flex items-center gap-2 text-muted-light hover:text-foreground transition-colors text-sm">
             <ArrowLeft size={16} />
-            Voltar aos cursos
+            {t("Voltar aos cursos")}
           </Link>
           <Link href="/" className="text-xl font-black tracking-tight">
             <span className="gradient-text">SMU</span>
@@ -172,8 +172,8 @@ export default async function CourseDetailPage({ params }: Props) {
               {(course.categorias?.length ? course.categorias : [course.categoria]).map((cat: string) => (
                 <Badge key={cat} variant="secondary">{t(getCategoryLabel(cat))}</Badge>
               ))}
-              {isFree && <Badge variant="free">Grátis</Badge>}
-              {course.destaque && <Badge variant="warning">Em destaque</Badge>}
+              {isFree && <Badge variant="free">{t("Grátis")}</Badge>}
+              {course.destaque && <Badge variant="warning">{t("Em destaque")}</Badge>}
             </div>
 
             <h1 className="text-4xl md:text-5xl font-black text-foreground leading-tight mb-4">{course.titulo}</h1>
@@ -185,7 +185,7 @@ export default async function CourseDetailPage({ params }: Props) {
             <div className="flex flex-wrap gap-6 text-sm text-muted-light">
               <span className="flex items-center gap-1.5">
                 <BookOpen size={15} className="text-amber-400" />
-                {totalLessons} aulas
+                {totalLessons} {t("aulas")}
               </span>
               <span className="flex items-center gap-1.5">
                 <Clock size={15} className="text-amber-400" />
@@ -193,12 +193,12 @@ export default async function CourseDetailPage({ params }: Props) {
               </span>
               <span className="flex items-center gap-1.5">
                 <Award size={15} className="text-amber-400" />
-                Certificado incluso
+                {t("Certificado incluso")}
               </span>
               {course.avaliacao_media > 0 && (
                 <span className="flex items-center gap-1.5">
                   <Star size={15} className="text-amber-400 fill-amber-400" />
-                  {course.avaliacao_media.toFixed(1)} ({course.total_alunos} alunos)
+                  {course.avaliacao_media.toFixed(1)} ({course.total_alunos} {t("alunos")})
                 </span>
               )}
             </div>
@@ -242,7 +242,7 @@ export default async function CourseDetailPage({ params }: Props) {
               {/* Preço */}
               <div className="mb-5">
                 {isFree ? (
-                  <div className="text-3xl font-black text-emerald-600">Grátis</div>
+                  <div className="text-3xl font-black text-emerald-600">{t("Grátis")}</div>
                 ) : (
                   <div className="text-3xl font-black text-foreground">{formatCurrency(course.preco ?? 0)}</div>
                 )}
@@ -253,7 +253,7 @@ export default async function CourseDetailPage({ params }: Props) {
                 <Link href={`/dashboard/cursos/${course.slug}`} className="block">
                   <Button size="lg" className="w-full gap-2">
                     <Play size={18} />
-                    Continuar estudando
+                    {t("Continuar estudando")}
                   </Button>
                 </Link>
               ) : userId ? (
@@ -261,7 +261,7 @@ export default async function CourseDetailPage({ params }: Props) {
               ) : (
                 <Link href={`/login?redirect_url=/cursos/${course.slug}`} className="block">
                   <Button size="lg" className="w-full gap-2">
-                    Entrar para acessar <ChevronRight size={18} />
+                    {t("Entrar para acessar")} <ChevronRight size={18} />
                   </Button>
                 </Link>
               )}
@@ -269,15 +269,15 @@ export default async function CourseDetailPage({ params }: Props) {
               <div className="mt-4 space-y-2 text-sm text-muted-light">
                 <div className="flex items-center gap-2">
                   <CheckCircle size={14} className="text-emerald-500 shrink-0" />
-                  Acesso vitalício após inscrição
+                  {t("Acesso vitalício após inscrição")}
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle size={14} className="text-emerald-500 shrink-0" />
-                  Certificado verificável com QR Code
+                  {t("Certificado verificável com QR Code")}
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle size={14} className="text-emerald-500 shrink-0" />
-                  Anotações pessoais no player
+                  {t("Anotações pessoais no player")}
                 </div>
               </div>
             </div>
@@ -291,14 +291,14 @@ export default async function CourseDetailPage({ params }: Props) {
           {/* Descrição completa */}
           {course.descricao && (
             <section>
-              <h2 className="text-2xl font-bold text-foreground mb-4">Sobre o curso</h2>
+              <h2 className="text-2xl font-bold text-foreground mb-4">{t("Sobre o curso")}</h2>
               <div className="text-muted leading-relaxed whitespace-pre-line">{course.descricao}</div>
             </section>
           )}
 
           {/* Conteúdo programático */}
           <section>
-            <h2 className="text-2xl font-bold text-foreground mb-6">Conteúdo do curso</h2>
+            <h2 className="text-2xl font-bold text-foreground mb-6">{t("Conteúdo do curso")}</h2>
             <div className="space-y-3">
               {modules.map((mod: any, mIdx: number) => {
                 const children = childModsMap.get(mod.id) ?? [];
@@ -307,10 +307,10 @@ export default async function CourseDetailPage({ params }: Props) {
                   <div key={mod.id} className="rounded-xl bg-surface border border-border overflow-hidden">
                     <div className="flex items-center justify-between px-5 py-4 bg-surface-2">
                       <h3 className="font-semibold text-sm text-foreground">
-                        <span className="text-muted-light mr-2">Módulo {mIdx + 1}</span>
+                        <span className="text-muted-light mr-2">{t("Módulo")} {mIdx + 1}</span>
                         {mod.titulo}
                       </h3>
-                      <span className="text-xs text-muted-light">{modTotalLessons} aulas</span>
+                      <span className="text-xs text-muted-light">{modTotalLessons} {t("aulas")}</span>
                     </div>
                     <div className="border-t border-border/50">
                       {/* Root module's own lessons */}
@@ -326,10 +326,10 @@ export default async function CourseDetailPage({ params }: Props) {
                           </span>
                           <div className="flex items-center gap-2 shrink-0">
                             {lesson.tem_quiz && (
-                              <span className="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/15 px-2 py-0.5 rounded-full">Quiz</span>
+                              <span className="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/15 px-2 py-0.5 rounded-full">{t("Quiz")}</span>
                             )}
                             {lesson.preview_gratis && !isEnrolled && (
-                              <span className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded-full">Grátis</span>
+                              <span className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded-full">{t("Grátis")}</span>
                             )}
                             <span className="text-xs text-muted-light">{lesson.duracao_min}min</span>
                           </div>
@@ -342,7 +342,7 @@ export default async function CourseDetailPage({ params }: Props) {
                           <div className="flex items-center gap-2 px-5 py-2.5 bg-surface-2/50 border-b border-border/50">
                             <ChevronRight size={12} className="text-amber-400/50 shrink-0" />
                             <span className="text-xs font-semibold text-foreground">{sub.titulo}</span>
-                            <span className="text-[10px] text-muted-light ml-auto">{sub.lessons?.length ?? 0} aulas</span>
+                            <span className="text-[10px] text-muted-light ml-auto">{sub.lessons?.length ?? 0} {t("aulas")}</span>
                           </div>
                           {(sub.lessons ?? []).map((lesson: any, lIdx: number) => (
                             <div key={lesson.id} className="flex items-center gap-3 px-7 py-3 border-b border-border/50 last:border-0">
@@ -356,10 +356,10 @@ export default async function CourseDetailPage({ params }: Props) {
                               </span>
                               <div className="flex items-center gap-2 shrink-0">
                                 {lesson.tem_quiz && (
-                                  <span className="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/15 px-2 py-0.5 rounded-full">Quiz</span>
+                                  <span className="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/15 px-2 py-0.5 rounded-full">{t("Quiz")}</span>
                                 )}
                                 {lesson.preview_gratis && !isEnrolled && (
-                                  <span className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded-full">Grátis</span>
+                                  <span className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded-full">{t("Grátis")}</span>
                                 )}
                                 <span className="text-xs text-muted-light">{lesson.duracao_min}min</span>
                               </div>
@@ -378,33 +378,33 @@ export default async function CourseDetailPage({ params }: Props) {
         {/* Sidebar info extra */}
         <aside className="lg:col-span-1">
           <div className="rounded-2xl bg-surface border border-border p-6">
-            <h3 className="font-bold mb-4 text-sm text-muted-light uppercase tracking-widest">Detalhes do curso</h3>
+            <h3 className="font-bold mb-4 text-sm text-muted-light uppercase tracking-widest">{t("Detalhes do curso")}</h3>
             <dl className="space-y-3 text-sm">
               <div className="flex justify-between">
-                <dt className="text-muted-light">Nível</dt>
+                <dt className="text-muted-light">{t("Nível")}</dt>
                 <dd className="font-medium text-foreground">{t(getLevelLabel(course.nivel))}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-muted-light">Categoria{(course.categorias?.length > 1) ? "s" : ""}</dt>
+                <dt className="text-muted-light">{(course.categorias?.length > 1) ? t("Categorias") : t("Categoria")}</dt>
                 <dd className="font-medium text-foreground text-right">
                   {(course.categorias?.length ? course.categorias : [course.categoria]).map((cat: string) => t(getCategoryLabel(cat))).join(", ")}
                 </dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-muted-light">Total de aulas</dt>
+                <dt className="text-muted-light">{t("Total de aulas")}</dt>
                 <dd className="font-medium text-foreground">{totalLessons}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-muted-light">Carga horária</dt>
+                <dt className="text-muted-light">{t("Carga horária")}</dt>
                 <dd className="font-medium text-foreground">{formatMinutes(course.carga_horaria ?? 0)}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-muted-light">Alunos inscritos</dt>
+                <dt className="text-muted-light">{t("Alunos inscritos")}</dt>
                 <dd className="font-medium text-foreground">{course.total_alunos}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-muted-light">Certificado</dt>
-                <dd className="font-medium text-emerald-600">Incluso</dd>
+                <dt className="text-muted-light">{t("Certificado")}</dt>
+                <dd className="font-medium text-emerald-600">{t("Incluso")}</dd>
               </div>
             </dl>
           </div>

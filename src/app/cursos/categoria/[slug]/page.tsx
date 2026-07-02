@@ -144,12 +144,12 @@ export default async function CategoryPage({ params }: Props) {
       <nav className="sticky top-0 z-50 border-b border-border bg-surface/90 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
           <Link href="/cursos" className="flex items-center gap-2 text-muted-light hover:text-foreground transition-colors text-sm">
-            <ArrowLeft size={16} /> Todos os cursos
+            <ArrowLeft size={16} /> {t("Todos os cursos")}
           </Link>
           <Link href="/" className="text-xl font-black tracking-tight">
             <span className="gradient-text">SMU</span> <span className="text-foreground">PRO</span>
           </Link>
-          <Link href="/cadastro"><Button size="sm">Começar grátis</Button></Link>
+          <Link href="/cadastro"><Button size="sm">{t("Começar grátis")}</Button></Link>
         </div>
       </nav>
 
@@ -161,18 +161,18 @@ export default async function CategoryPage({ params }: Props) {
               <CategoryIcon category={slug} size={28} className="text-amber-400" />
             </div>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-black text-foreground mb-3">{meta.title}</h1>
-          <p className="text-muted-light max-w-2xl mx-auto">{meta.description}</p>
-          <p className="text-sm text-amber-400 mt-3">{list.length} curso{list.length !== 1 ? "s" : ""} disponíve{list.length !== 1 ? "is" : "l"}</p>
+          <h1 className="text-3xl sm:text-4xl font-black text-foreground mb-3">{t(meta.title)}</h1>
+          <p className="text-muted-light max-w-2xl mx-auto">{t(meta.description)}</p>
+          <p className="text-sm text-amber-400 mt-3">{list.length} {list.length !== 1 ? t("cursos disponíveis") : t("curso disponível")}</p>
         </div>
 
         {/* Course grid */}
         {list.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center rounded-2xl bg-surface border border-border">
             <BookOpen size={40} className="text-muted-light mb-3" />
-            <p className="text-foreground font-medium mb-1">Em breve</p>
-            <p className="text-sm text-muted-light mb-5">Estamos preparando cursos nesta categoria.</p>
-            <Link href="/cursos"><Button variant="outline" size="sm">Ver todos os cursos</Button></Link>
+            <p className="text-foreground font-medium mb-1">{t("Em breve")}</p>
+            <p className="text-sm text-muted-light mb-5">{t("Estamos preparando cursos nesta categoria.")}</p>
+            <Link href="/cursos"><Button variant="outline" size="sm">{t("Ver todos os cursos")}</Button></Link>
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -202,7 +202,7 @@ export default async function CategoryPage({ params }: Props) {
                         {c.total_alunos > 0 && <span className="flex items-center gap-1"><Users size={11} /> {c.total_alunos}</span>}
                       </div>
                       <span className="text-sm font-bold text-amber-400">
-                        {c.tipo === "free" ? "Grátis" : c.preco ? formatCurrency(c.preco) : "Pago"}
+                        {c.tipo === "free" ? t("Grátis") : c.preco ? formatCurrency(c.preco) : t("Pago")}
                       </span>
                     </div>
                   </div>
@@ -214,14 +214,12 @@ export default async function CategoryPage({ params }: Props) {
 
         {/* SEO text */}
         <div className="mt-16 text-center max-w-2xl mx-auto">
-          <h2 className="text-lg font-bold text-foreground mb-3">Sobre {t(getCategoryLabel(slug))}</h2>
+          <h2 className="text-lg font-bold text-foreground mb-3">{t("Sobre")} {t(getCategoryLabel(slug))}</h2>
           <p className="text-sm text-muted-light leading-relaxed">
-            Os cursos de {t(getCategoryLabel(slug)).toLowerCase()} da SMU PRO são desenvolvidos por profissionais atuantes no mercado de eventos.
-            Com conteúdo interativo gerado por IA, certificado digital verificável e suporte completo, você aprende na prática
-            e se prepara para atuar em shows, festivais, corporativos e muito mais.
+            {t("Os cursos de")} {t(getCategoryLabel(slug)).toLowerCase()} {t("da SMU PRO são desenvolvidos por profissionais atuantes no mercado de eventos. Com conteúdo interativo gerado por IA, certificado digital verificável e suporte completo, você aprende na prática e se prepara para atuar em shows, festivais, corporativos e muito mais.")}
           </p>
           <Link href="/cursos" className="inline-flex items-center gap-1 text-sm text-amber-400 mt-4 hover:underline">
-            Ver todas as categorias <ChevronRight size={14} />
+            {t("Ver todas as categorias")} <ChevronRight size={14} />
           </Link>
         </div>
       </div>

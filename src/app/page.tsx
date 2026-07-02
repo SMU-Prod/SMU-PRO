@@ -93,22 +93,22 @@ export default async function HomePage() {
             </div>
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm text-muted">
-            <Link href="/cursos" className="hover:text-amber-400 transition-colors">Cursos</Link>
-            <Link href="/#categorias" className="hover:text-amber-400 transition-colors">Categorias</Link>
-            <Link href="/#sobre" className="hover:text-amber-400 transition-colors">Sobre</Link>
+            <Link href="/cursos" className="hover:text-amber-400 transition-colors">{t("Cursos")}</Link>
+            <Link href="/#categorias" className="hover:text-amber-400 transition-colors">{t("Categorias")}</Link>
+            <Link href="/#sobre" className="hover:text-amber-400 transition-colors">{t("Sobre")}</Link>
           </div>
           <div className="flex items-center gap-3">
             {isSignedIn ? (
               <Link href="/dashboard">
-                <Button size="sm">Meu painel</Button>
+                <Button size="sm">{t("Meu painel")}</Button>
               </Link>
             ) : (
               <>
                 <Link href="/login">
-                  <Button variant="ghost" size="sm">Entrar</Button>
+                  <Button variant="ghost" size="sm">{t("Entrar")}</Button>
                 </Link>
                 <Link href="/cadastro">
-                  <Button size="sm">Começar grátis</Button>
+                  <Button size="sm">{t("Começar grátis")}</Button>
                 </Link>
               </>
             )}
@@ -128,31 +128,30 @@ export default async function HomePage() {
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 mb-8">
           <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
           <span className="text-xs font-semibold text-amber-400 uppercase tracking-widest">
-            Escola Profissional de Eventos ao Vivo
+            {t("Escola Profissional de Eventos ao Vivo")}
           </span>
         </div>
 
         <h1 className="max-w-5xl text-5xl md:text-7xl lg:text-8xl font-black leading-[0.9] tracking-tight text-foreground">
-          Sua carreira no{" "}
-          <span className="text-amber-400">backstage</span>
+          {t("Sua carreira no")}{" "}
+          <span className="text-amber-400">{t("backstage")}</span>
           <br />
-          começa aqui
+          {t("começa aqui")}
         </h1>
 
         <p className="mt-8 max-w-2xl text-lg text-muted leading-relaxed">
-          Cursos técnicos de sonorização, iluminação, DJ e VJ com profissionais em atividade.
-          Certificados verificáveis. Trilha de carreira estruturada.
+          {t("Cursos técnicos de sonorização, iluminação, DJ e VJ com profissionais em atividade. Certificados verificáveis. Trilha de carreira estruturada.")}
         </p>
 
         <div className="mt-10 flex flex-col sm:flex-row gap-4">
           <Link href="/cadastro">
             <Button size="xl" className="shadow-[0_0_30px_rgba(245,158,11,0.3)]">
-              Criar conta grátis <ChevronRight size={18} />
+              {t("Criar conta grátis")} <ChevronRight size={18} />
             </Button>
           </Link>
           <Link href="/cursos">
             <Button size="xl" variant="outline">
-              Ver cursos
+              {t("Ver cursos")}
             </Button>
           </Link>
         </div>
@@ -162,7 +161,7 @@ export default async function HomePage() {
           {STATS.map((s) => (
             <div key={s.label} className="p-6 text-center hover:bg-surface-2/50 transition-colors">
               <div className="text-3xl font-black text-amber-400 tabular-nums">{s.value}</div>
-              <div className="text-xs text-muted-light mt-2 uppercase tracking-wider">{s.label}</div>
+              <div className="text-xs text-muted-light mt-2 uppercase tracking-wider">{t(s.label)}</div>
             </div>
           ))}
         </div>
@@ -174,11 +173,11 @@ export default async function HomePage() {
           <div className="mx-auto max-w-7xl">
             <div className="flex items-end justify-between mb-12">
               <div>
-                <p className="text-amber-400 text-sm font-semibold uppercase tracking-widest mb-2">Em destaque</p>
-                <h2 className="text-4xl font-black text-foreground">Cursos populares</h2>
+                <p className="text-amber-400 text-sm font-semibold uppercase tracking-widest mb-2">{t("Em destaque")}</p>
+                <h2 className="text-4xl font-black text-foreground">{t("Cursos populares")}</h2>
               </div>
               <Link href="/cursos" className="text-sm text-muted-light hover:text-amber-400 transition-colors flex items-center gap-1">
-                Ver todos <ChevronRight size={14} />
+                {t("Ver todos")} <ChevronRight size={14} />
               </Link>
             </div>
 
@@ -194,20 +193,20 @@ export default async function HomePage() {
                       )}
                       <div className="absolute top-3 left-3 flex gap-1.5">
                         <Badge variant={course.nivel as any}>{t(getLevelLabel(course.nivel))}</Badge>
-                        {course.tipo === "free" && <Badge variant="free">Grátis</Badge>}
+                        {course.tipo === "free" && <Badge variant="free">{t("Grátis")}</Badge>}
                       </div>
                     </div>
                     <div className="p-5">
                       <h3 className="font-bold text-lg text-foreground leading-tight mb-2 group-hover:text-amber-400 transition-colors">
                         {course.titulo}
                       </h3>
-                      <p className="text-muted-light text-sm line-clamp-2 mb-4">{course.descricao_curta || course.descricao || "Curso completo de formação profissional."}</p>
+                      <p className="text-muted-light text-sm line-clamp-2 mb-4">{course.descricao_curta || course.descricao || t("Curso completo de formação profissional.")}</p>
                       <div className="flex items-center justify-between text-xs text-muted-light pt-3 border-t border-border">
-                        <span>{course.total_aulas} aulas · {formatMinutes(course.carga_horaria ?? 0)}</span>
+                        <span>{course.total_aulas} {t("aulas")} · {formatMinutes(course.carga_horaria ?? 0)}</span>
                         {course.preco && course.preco > 0 ? (
                           <span className="text-amber-400 font-semibold">{formatCurrency(course.preco)}</span>
                         ) : (
-                          <span className="text-emerald-400 font-semibold">Grátis</span>
+                          <span className="text-emerald-400 font-semibold">{t("Grátis")}</span>
                         )}
                       </div>
                     </div>
@@ -223,8 +222,8 @@ export default async function HomePage() {
       <section id="categorias" className="py-24 px-6 border-t border-border/50">
         <div className="mx-auto max-w-7xl">
           <div className="text-center mb-16">
-            <p className="text-amber-400 text-sm font-semibold uppercase tracking-widest mb-2">Áreas de formação</p>
-            <h2 className="text-4xl font-black text-foreground">O que você quer dominar?</h2>
+            <p className="text-amber-400 text-sm font-semibold uppercase tracking-widest mb-2">{t("Áreas de formação")}</p>
+            <h2 className="text-4xl font-black text-foreground">{t("O que você quer dominar?")}</h2>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {CATEGORIES.map((cat) => (
@@ -233,8 +232,8 @@ export default async function HomePage() {
                   <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400 group-hover:bg-amber-500 group-hover:text-black transition-all">
                     {cat.icon}
                   </div>
-                  <h3 className="font-bold text-foreground mb-1">{cat.label}</h3>
-                  <p className="text-sm text-muted-light">{cat.desc}</p>
+                  <h3 className="font-bold text-foreground mb-1">{t(cat.label)}</h3>
+                  <p className="text-sm text-muted-light">{t(cat.desc)}</p>
                 </div>
               </Link>
             ))}
@@ -246,10 +245,10 @@ export default async function HomePage() {
       <section id="sobre" className="py-24 px-6 border-t border-border/50">
         <div className="mx-auto max-w-7xl">
           <div className="text-center mb-16">
-            <p className="text-amber-400 text-sm font-semibold uppercase tracking-widest mb-2">Plataforma</p>
-            <h2 className="text-4xl font-black text-foreground">Feita para profissionais</h2>
+            <p className="text-amber-400 text-sm font-semibold uppercase tracking-widest mb-2">{t("Plataforma")}</p>
+            <h2 className="text-4xl font-black text-foreground">{t("Feita para profissionais")}</h2>
             <p className="mt-4 text-muted-light max-w-xl mx-auto">
-              Cada detalhe foi pensado para quem trabalha em palco e precisa de formação séria.
+              {t("Cada detalhe foi pensado para quem trabalha em palco e precisa de formação séria.")}
             </p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -258,8 +257,8 @@ export default async function HomePage() {
                 <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-surface-3 border border-border-strong">
                   {f.icon}
                 </div>
-                <h3 className="font-bold text-foreground mb-2">{f.title}</h3>
-                <p className="text-sm text-muted-light leading-relaxed">{f.desc}</p>
+                <h3 className="font-bold text-foreground mb-2">{t(f.title)}</h3>
+                <p className="text-sm text-muted-light leading-relaxed">{t(f.desc)}</p>
               </div>
             ))}
           </div>
@@ -273,20 +272,20 @@ export default async function HomePage() {
 
         <div className="mx-auto max-w-3xl text-center relative">
           <h2 className="text-4xl md:text-6xl font-black text-foreground mb-6">
-            Pronto para subir<br />
-            <span className="text-amber-400">de nível</span>?
+            {t("Pronto para subir")}<br />
+            <span className="text-amber-400">{t("de nível")}</span>?
           </h2>
           <p className="text-muted mb-10 text-lg max-w-xl mx-auto">
-            Crie sua conta agora e acesse os cursos gratuitos do nível Trainee. Sem cartão de crédito.
+            {t("Crie sua conta agora e acesse os cursos gratuitos do nível Trainee. Sem cartão de crédito.")}
           </p>
           <Link href="/cadastro">
             <Button size="xl" className="shadow-[0_0_40px_rgba(245,158,11,0.3)] text-lg px-10">
-              Começar agora — é grátis <ChevronRight size={18} />
+              {t("Começar agora — é grátis")} <ChevronRight size={18} />
             </Button>
           </Link>
           {stats.totalUsers > 0 && (
             <p className="text-xs text-muted-light mt-4">
-              +{stats.totalUsers.toLocaleString("pt-BR")} profissionais já estudam na SMU PRO
+              +{stats.totalUsers.toLocaleString("pt-BR")} {t("profissionais já estudam na SMU PRO")}
             </p>
           )}
         </div>
@@ -301,11 +300,11 @@ export default async function HomePage() {
               <p className="text-[4.5px] font-medium tracking-[0.12em] text-muted-light leading-none mt-0.5" style={{ fontFamily: "var(--font-orbitron), sans-serif" }}>PRODUÇÕES</p>
             </div>
             <span className="text-muted-light">—</span>
-            <span>Escola Profissional de Eventos</span>
+            <span>{t("Escola Profissional de Eventos")}</span>
           </div>
           <div className="flex gap-6">
-            <Link href="/cursos" className="hover:text-amber-400 transition-colors">Cursos</Link>
-            <Link href="/certificado" className="hover:text-amber-400 transition-colors">Verificar certificado</Link>
+            <Link href="/cursos" className="hover:text-amber-400 transition-colors">{t("Cursos")}</Link>
+            <Link href="/certificado" className="hover:text-amber-400 transition-colors">{t("Verificar certificado")}</Link>
           </div>
           <span className="text-muted-light">© {new Date().getFullYear()} SMU PRO</span>
         </div>

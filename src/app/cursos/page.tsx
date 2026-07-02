@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Search, SlidersHorizontal } from "lucide-react";
 import { CategoryIcon } from "@/components/ui/category-icon";
 import { CoursesView } from "@/components/cursos/courses-view";
+import { getServerT } from "@/lib/i18n/server";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -51,6 +52,7 @@ export default async function CursosPage({ searchParams }: Props) {
   const { nivel, categoria, tipo, search } = await searchParams;
   const { userId } = await auth();
   const isSignedIn = !!userId;
+  const t = await getServerT();
 
   let courses: any[] = [];
   try {
@@ -82,15 +84,15 @@ export default async function CursosPage({ searchParams }: Props) {
           <div className="flex items-center gap-3">
             {isSignedIn ? (
               <Link href="/dashboard">
-                <Button size="sm">Meu painel</Button>
+                <Button size="sm">{t("Meu painel")}</Button>
               </Link>
             ) : (
               <>
                 <Link href="/login">
-                  <Button variant="ghost" size="sm">Entrar</Button>
+                  <Button variant="ghost" size="sm">{t("Entrar")}</Button>
                 </Link>
                 <Link href="/cadastro">
-                  <Button size="sm">Cadastrar</Button>
+                  <Button size="sm">{t("Cadastrar")}</Button>
                 </Link>
               </>
             )}
@@ -100,10 +102,10 @@ export default async function CursosPage({ searchParams }: Props) {
 
       <div className="mx-auto max-w-7xl px-6 py-12">
         <div className="mb-10">
-          <h1 className="text-4xl font-black text-foreground mb-2">Todos os cursos</h1>
+          <h1 className="text-4xl font-black text-foreground mb-2">{t("Todos os cursos")}</h1>
           <p className="text-muted-light">
-            {courses.length} {courses.length === 1 ? "curso encontrado" : "cursos encontrados"}
-            {activeFilters > 0 && ` com ${activeFilters} filtro${activeFilters > 1 ? "s" : ""} aplicado${activeFilters > 1 ? "s" : ""}`}
+            {courses.length} {courses.length === 1 ? t("curso encontrado") : t("cursos encontrados")}
+            {activeFilters > 0 && ` ${t("com")} ${activeFilters} ${activeFilters > 1 ? t("filtros aplicados") : t("filtro aplicado")}`}
           </p>
         </div>
 
@@ -113,10 +115,10 @@ export default async function CursosPage({ searchParams }: Props) {
             <div className="rounded-2xl bg-surface border border-border p-5 space-y-6">
               <div className="flex items-center gap-2 text-sm font-semibold text-muted-light uppercase tracking-widest">
                 <SlidersHorizontal size={14} />
-                Filtros
+                {t("Filtros")}
                 {activeFilters > 0 && (
                   <Link href="/cursos" className="ml-auto text-xs text-amber-400 hover:underline">
-                    Limpar
+                    {t("Limpar")}
                   </Link>
                 )}
               </div>
@@ -127,18 +129,18 @@ export default async function CursosPage({ searchParams }: Props) {
                 <input
                   name="search"
                   defaultValue={search}
-                  placeholder="Buscar cursos..."
+                  placeholder={t("Buscar cursos...")}
                   className="w-full rounded-lg bg-surface border border-border pl-8 pr-3 py-2 text-sm text-foreground placeholder:text-muted-light focus:outline-none focus:border-amber-500 transition-colors"
                 />
                 {nivel && <input type="hidden" name="nivel" value={nivel} />}
                 {categoria && <input type="hidden" name="categoria" value={categoria} />}
                 {tipo && <input type="hidden" name="tipo" value={tipo} />}
-                <button type="submit" className="sr-only">Buscar</button>
+                <button type="submit" className="sr-only">{t("Buscar")}</button>
               </form>
 
               {/* Nível */}
               <div>
-                <p className="text-xs font-semibold text-muted-light uppercase tracking-wider mb-3">Nível</p>
+                <p className="text-xs font-semibold text-muted-light uppercase tracking-wider mb-3">{t("Nível")}</p>
                 <div className="space-y-1">
                   {NIVEIS.map((n) => {
                     const params = new URLSearchParams({ ...(categoria ? { categoria } : {}), ...(tipo ? { tipo } : {}), ...(search ? { search } : {}), ...(n.value ? { nivel: n.value } : {}) });
@@ -148,7 +150,7 @@ export default async function CursosPage({ searchParams }: Props) {
                         href={`/cursos?${params}`}
                         className={`block px-3 py-1.5 rounded-lg text-sm transition-colors ${nivel === n.value || (!nivel && !n.value) ? "bg-amber-500 text-white" : "text-muted hover:text-foreground hover:bg-hover"}`}
                       >
-                        {n.label}
+                        {t(n.label)}
                       </Link>
                     );
                   })}
@@ -157,7 +159,7 @@ export default async function CursosPage({ searchParams }: Props) {
 
               {/* Categoria */}
               <div>
-                <p className="text-xs font-semibold text-muted-light uppercase tracking-wider mb-3">Categoria</p>
+                <p className="text-xs font-semibold text-muted-light uppercase tracking-wider mb-3">{t("Categoria")}</p>
                 <div className="space-y-1">
                   {CATEGORIAS.map((c) => {
                     const params = new URLSearchParams({ ...(nivel ? { nivel } : {}), ...(tipo ? { tipo } : {}), ...(search ? { search } : {}), ...(c.value ? { categoria: c.value } : {}) });
@@ -168,7 +170,7 @@ export default async function CursosPage({ searchParams }: Props) {
                         className={`block px-3 py-1.5 rounded-lg text-sm transition-colors ${categoria === c.value || (!categoria && !c.value) ? "bg-amber-500 text-white" : "text-muted hover:text-foreground hover:bg-hover"}`}
                       >
                         {c.value && <span className="mr-1.5 inline-flex"><CategoryIcon category={c.value} size={14} /></span>}
-                        {c.label}
+                        {t(c.label)}
                       </Link>
                     );
                   })}
@@ -177,17 +179,17 @@ export default async function CursosPage({ searchParams }: Props) {
 
               {/* Tipo */}
               <div>
-                <p className="text-xs font-semibold text-muted-light uppercase tracking-wider mb-3">Tipo</p>
+                <p className="text-xs font-semibold text-muted-light uppercase tracking-wider mb-3">{t("Tipo")}</p>
                 <div className="space-y-1">
-                  {TIPOS.map((t) => {
-                    const params = new URLSearchParams({ ...(nivel ? { nivel } : {}), ...(categoria ? { categoria } : {}), ...(search ? { search } : {}), ...(t.value ? { tipo: t.value } : {}) });
+                  {TIPOS.map((tp) => {
+                    const params = new URLSearchParams({ ...(nivel ? { nivel } : {}), ...(categoria ? { categoria } : {}), ...(search ? { search } : {}), ...(tp.value ? { tipo: tp.value } : {}) });
                     return (
                       <Link
-                        key={t.value}
+                        key={tp.value}
                         href={`/cursos?${params}`}
-                        className={`block px-3 py-1.5 rounded-lg text-sm transition-colors ${tipo === t.value || (!tipo && !t.value) ? "bg-amber-500 text-white" : "text-muted hover:text-foreground hover:bg-hover"}`}
+                        className={`block px-3 py-1.5 rounded-lg text-sm transition-colors ${tipo === tp.value || (!tipo && !tp.value) ? "bg-amber-500 text-white" : "text-muted hover:text-foreground hover:bg-hover"}`}
                       >
-                        {t.label}
+                        {t(tp.label)}
                       </Link>
                     );
                   })}
@@ -201,9 +203,9 @@ export default async function CursosPage({ searchParams }: Props) {
             {courses.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 text-center">
                 <div className="mb-4"><Search size={48} className="text-muted-light mx-auto" /></div>
-                <h3 className="text-xl font-bold text-foreground mb-2">Nenhum curso encontrado</h3>
-                <p className="text-muted-light mb-6">Tente ajustar os filtros ou{" "}
-                  <Link href="/cursos" className="text-amber-400 hover:underline">ver todos os cursos</Link>
+                <h3 className="text-xl font-bold text-foreground mb-2">{t("Nenhum curso encontrado")}</h3>
+                <p className="text-muted-light mb-6">{t("Tente ajustar os filtros ou")}{" "}
+                  <Link href="/cursos" className="text-amber-400 hover:underline">{t("ver todos os cursos")}</Link>
                 </p>
               </div>
             ) : (
