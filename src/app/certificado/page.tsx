@@ -34,9 +34,9 @@ export default function CertificateVerifyPage() {
           <Shield size={20} />
           <span className="text-sm font-semibold uppercase tracking-widest">{t("Verificação de Certificado")}</span>
         </div>
-        <h1 className="text-3xl font-bold text-foreground mb-2">Verificar Autenticidade</h1>
+        <h1 className="text-3xl font-bold text-foreground mb-2">{t("Verificar Autenticidade")}</h1>
         <p className="text-muted-light max-w-sm mx-auto text-sm leading-relaxed">
-          Digite o código de verificação impresso no certificado para confirmar sua autenticidade.
+          {t("Digite o código de verificação impresso no certificado para confirmar sua autenticidade.")}
         </p>
       </div>
 
@@ -52,7 +52,7 @@ export default function CertificateVerifyPage() {
           <form onSubmit={handleVerify} className="space-y-4">
             <div>
               <label className="block text-xs text-muted-light uppercase tracking-widest mb-2">
-                Código de Verificação
+                {t("Código de Verificação")}
               </label>
               <Input
                 value={codigo}
@@ -62,20 +62,20 @@ export default function CertificateVerifyPage() {
                 autoFocus
               />
               <p className="text-xs text-muted-light mt-2">
-                O código está no rodapé do certificado, abaixo do QR Code.
+                {t("O código está no rodapé do certificado, abaixo do QR Code.")}
               </p>
             </div>
             <Button type="submit" className="w-full gap-2" disabled={!codigo.trim()}>
               <Search size={16} />
-              Verificar Certificado
+              {t("Verificar Certificado")}
             </Button>
           </form>
         </div>
 
         <p className="text-center text-muted-light text-xs mt-6">
-          Certificados emitidos pela{" "}
+          {t("Certificados emitidos pela")}{" "}
           <Link href="/" className="text-amber-400 hover:underline">SMU PRO</Link>{" "}
-          são verificáveis publicamente e possuem QR Code único.
+          {t("são verificáveis publicamente e possuem QR Code único.")}
         </p>
       </div>
     </div>
