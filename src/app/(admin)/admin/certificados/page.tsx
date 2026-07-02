@@ -1,5 +1,6 @@
 import { requireAdminRole } from "@/lib/actions/users";
 import { createAdminClient } from "@/lib/supabase/server";
+import { getServerT } from "@/lib/i18n/server";
 import { Header } from "@/components/layout/header";
 import { Badge } from "@/components/ui/badge";
 import { formatMinutes } from "@/lib/utils";
@@ -15,6 +16,7 @@ const PAGE_SIZE = 20;
 
 export default async function AdminCertificadosPage({ searchParams }: Props) {
   await requireAdminRole();
+  const t = await getServerT();
   const { search, page: pageStr } = await searchParams;
   const page = Math.max(1, parseInt(pageStr ?? "1"));
 
@@ -37,8 +39,8 @@ export default async function AdminCertificadosPage({ searchParams }: Props) {
   return (
     <div className="animate-fade-in">
       <Header
-        title="Certificados"
-        subtitle={`${total} certificados emitidos`}
+        title={t("Certificados")}
+        subtitle={`${total} ${t("certificados emitidos")}`}
         actions={<GenerateNRCertsButton />}
       />
 
@@ -49,7 +51,7 @@ export default async function AdminCertificadosPage({ searchParams }: Props) {
           <input
             name="search"
             defaultValue={search}
-            placeholder="Buscar por código..."
+            placeholder={t("Buscar por código...")}
             className="w-full rounded-xl bg-surface border border-border pl-9 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-light focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors"
           />
         </form>
@@ -88,7 +90,7 @@ export default async function AdminCertificadosPage({ searchParams }: Props) {
             {(certs ?? []).length === 0 && (
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <Award size={40} className="mx-auto mb-3 text-muted-light" />
-                <p className="text-muted-light">Nenhum certificado encontrado</p>
+                <p className="text-muted-light">{t("Nenhum certificado encontrado")}</p>
               </div>
             )}
           </div>
@@ -97,13 +99,13 @@ export default async function AdminCertificadosPage({ searchParams }: Props) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border/50 bg-surface-2">
-                  <th className="px-5 py-4 text-left text-xs font-semibold text-muted-light uppercase tracking-wider">Aluno</th>
-                  <th className="px-5 py-4 text-left text-xs font-semibold text-muted-light uppercase tracking-wider">Curso</th>
-                  <th className="px-5 py-4 text-left text-xs font-semibold text-muted-light uppercase tracking-wider">Nota</th>
-                  <th className="px-5 py-4 text-left text-xs font-semibold text-muted-light uppercase tracking-wider hidden lg:table-cell">Carga</th>
+                  <th className="px-5 py-4 text-left text-xs font-semibold text-muted-light uppercase tracking-wider">{t("Aluno")}</th>
+                  <th className="px-5 py-4 text-left text-xs font-semibold text-muted-light uppercase tracking-wider">{t("Curso")}</th>
+                  <th className="px-5 py-4 text-left text-xs font-semibold text-muted-light uppercase tracking-wider">{t("Nota")}</th>
+                  <th className="px-5 py-4 text-left text-xs font-semibold text-muted-light uppercase tracking-wider hidden lg:table-cell">{t("Carga")}</th>
                   <th className="px-5 py-4 text-left text-xs font-semibold text-muted-light uppercase tracking-wider hidden lg:table-cell">MIT</th>
-                  <th className="px-5 py-4 text-left text-xs font-semibold text-muted-light uppercase tracking-wider">Emitido em</th>
-                  <th className="px-5 py-4 text-left text-xs font-semibold text-muted-light uppercase tracking-wider hidden xl:table-cell">Código</th>
+                  <th className="px-5 py-4 text-left text-xs font-semibold text-muted-light uppercase tracking-wider">{t("Emitido em")}</th>
+                  <th className="px-5 py-4 text-left text-xs font-semibold text-muted-light uppercase tracking-wider hidden xl:table-cell">{t("Código")}</th>
                   <th className="px-5 py-4"></th>
                 </tr>
               </thead>
@@ -155,7 +157,7 @@ export default async function AdminCertificadosPage({ searchParams }: Props) {
                   <tr>
                     <td colSpan={8} className="px-5 py-16 text-center text-muted-light">
                       <Award size={40} className="mx-auto mb-3 text-muted-light" />
-                      Nenhum certificado encontrado
+                      {t("Nenhum certificado encontrado")}
                     </td>
                   </tr>
                 )}
@@ -167,14 +169,14 @@ export default async function AdminCertificadosPage({ searchParams }: Props) {
         {/* Paginação */}
         {totalPages > 1 && (
           <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-sm text-muted-light">
-            <span className="text-xs sm:text-sm">Página {page} de {totalPages} ({total} total)</span>
+            <span className="text-xs sm:text-sm">{t("Página")} {page} {t("de")} {totalPages} ({total} {t("total")})</span>
             <div className="flex gap-2">
               {page > 1 && (
                 <Link
                   href={`?page=${page - 1}${search ? `&search=${search}` : ""}`}
                   className="px-3 py-1.5 rounded-lg bg-surface border border-border hover:bg-hover transition-colors text-muted"
                 >
-                  Anterior
+                  {t("Anterior")}
                 </Link>
               )}
               {page < totalPages && (
@@ -182,7 +184,7 @@ export default async function AdminCertificadosPage({ searchParams }: Props) {
                   href={`?page=${page + 1}${search ? `&search=${search}` : ""}`}
                   className="px-3 py-1.5 rounded-lg bg-surface border border-border hover:bg-hover transition-colors text-muted"
                 >
-                  Próxima
+                  {t("Próxima")}
                 </Link>
               )}
             </div>

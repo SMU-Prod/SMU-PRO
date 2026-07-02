@@ -3,12 +3,14 @@ import { Header } from "@/components/layout/header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users, BookOpen, Mail } from "lucide-react";
+import { getServerT } from "@/lib/i18n/server";
 
 export default async function InstructorStudentsPage({
   searchParams,
 }: {
   searchParams: Promise<{ curso?: string }>;
 }) {
+  const t = await getServerT();
   const params = await searchParams;
   const [students, courses] = await Promise.all([
     instructorGetMyStudents(params.curso),
@@ -18,8 +20,8 @@ export default async function InstructorStudentsPage({
   return (
     <div className="animate-fade-in">
       <Header
-        title="Meus Alunos"
-        subtitle={`${students.length} aluno${students.length !== 1 ? "s" : ""} matriculado${students.length !== 1 ? "s" : ""}`}
+        title={t("Meus Alunos")}
+        subtitle={`${students.length} ${students.length !== 1 ? t("alunos matriculados") : t("aluno matriculado")}`}
         role="instrutor"
       />
 
@@ -34,7 +36,7 @@ export default async function InstructorStudentsPage({
                 : "bg-surface-2 text-muted hover:text-foreground border border-border"
             }`}
           >
-            Todos
+            {t("Todos")}
           </a>
           {(courses as any[]).map((c: any) => (
             <a
@@ -56,8 +58,8 @@ export default async function InstructorStudentsPage({
           <Card>
             <CardContent className="py-16 text-center">
               <Users size={48} className="mx-auto text-muted-light mb-4" />
-              <h3 className="text-lg font-semibold text-foreground mb-2">Nenhum aluno encontrado</h3>
-              <p className="text-muted-light text-sm">Os alunos aparecerão aqui quando se matricularem nos seus cursos.</p>
+              <h3 className="text-lg font-semibold text-foreground mb-2">{t("Nenhum aluno encontrado")}</h3>
+              <p className="text-muted-light text-sm">{t("Os alunos aparecerão aqui quando se matricularem nos seus cursos.")}</p>
             </CardContent>
           </Card>
         ) : (
@@ -98,7 +100,7 @@ export default async function InstructorStudentsPage({
                     variant={enrollment.tipo_acesso === "pago" ? "default" : "free"}
                     className="shrink-0 text-xs"
                   >
-                    {enrollment.tipo_acesso === "pago" ? "Pago" : enrollment.tipo_acesso === "projeto_cultural" ? "MIT" : "Grátis"}
+                    {enrollment.tipo_acesso === "pago" ? t("Pago") : enrollment.tipo_acesso === "projeto_cultural" ? "MIT" : t("Grátis")}
                   </Badge>
 
                   {/* Data */}

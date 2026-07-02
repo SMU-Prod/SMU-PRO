@@ -2,8 +2,10 @@ import { requireAdminRole } from "@/lib/actions/users";
 import { createAdminClient } from "@/lib/supabase/server";
 import { Header } from "@/components/layout/header";
 import { InstructorManager } from "@/components/admin/instructor-manager";
+import { getServerT } from "@/lib/i18n/server";
 
 export default async function AdminInstrutoresPage() {
+  const t = await getServerT();
   await requireAdminRole();
   const supabase = createAdminClient();
 
@@ -44,8 +46,8 @@ export default async function AdminInstrutoresPage() {
   return (
     <div className="animate-fade-in">
       <Header
-        title="Instrutores & Assinaturas"
-        subtitle="Gerencie instrutores e responsáveis técnicos para certificados"
+        title={t("Instrutores & Assinaturas")}
+        subtitle={t("Gerencie instrutores e responsáveis técnicos para certificados")}
       />
       <div className="p-4 sm:p-6">
         <InstructorManager

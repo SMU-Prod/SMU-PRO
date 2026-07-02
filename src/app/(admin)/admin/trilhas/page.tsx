@@ -3,8 +3,10 @@ import { adminGetAllCourses } from "@/lib/actions/courses";
 import { Header } from "@/components/layout/header";
 import { CollectionsManager } from "@/components/admin/collections-manager";
 import { TrendingUp } from "lucide-react";
+import { getServerT } from "@/lib/i18n/server";
 
 export default async function AdminTrilhasPage() {
+  const t = await getServerT();
   let collections: any[] = [];
   let error = "";
 
@@ -20,13 +22,13 @@ export default async function AdminTrilhasPage() {
   if (error) {
     return (
       <div className="animate-fade-in">
-        <Header title="Trilhas de Aprendizado" subtitle="Agrupe cursos em trilhas sequenciais" />
+        <Header title={t("Trilhas de Aprendizado")} subtitle={t("Agrupe cursos em trilhas sequenciais")} />
         <div className="p-4 sm:p-6">
           <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-6 text-center max-w-lg mx-auto">
             <TrendingUp size={32} className="text-amber-400 mx-auto mb-3" />
-            <p className="font-semibold text-amber-300 mb-2">Tabela não encontrada</p>
+            <p className="font-semibold text-amber-300 mb-2">{t("Tabela não encontrada")}</p>
             <p className="text-sm text-amber-400/80 mb-4">
-              Execute o SQL abaixo no Supabase para criar as tabelas de trilhas:
+              {t("Execute o SQL abaixo no Supabase para criar as tabelas de trilhas:")}
             </p>
             <pre className="text-left text-xs bg-surface-2 border border-border rounded-lg p-3 overflow-auto text-muted whitespace-pre-wrap">
 {`CREATE TABLE IF NOT EXISTS collections (
@@ -58,8 +60,8 @@ CREATE TABLE IF NOT EXISTS collection_courses (
   return (
     <div className="animate-fade-in">
       <Header
-        title="Trilhas de Aprendizado"
-        subtitle={`${collections.length} trilha${collections.length !== 1 ? "s" : ""} cadastrada${collections.length !== 1 ? "s" : ""}`}
+        title={t("Trilhas de Aprendizado")}
+        subtitle={`${collections.length} ${collections.length !== 1 ? t("trilhas cadastradas") : t("trilha cadastrada")}`}
       />
       <div className="p-4 sm:p-6">
         <CollectionsManager collections={collections} allCourses={courses} />

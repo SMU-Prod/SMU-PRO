@@ -7,8 +7,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
 import { Wallet, TrendingUp, Clock, CheckCircle2, XCircle, DollarSign } from "lucide-react";
+import { getServerT } from "@/lib/i18n/server";
 
 export default async function InstructorCommissionsPage() {
+  const t = await getServerT();
   const { userId } = await auth();
   if (!userId) redirect("/login");
 
@@ -58,8 +60,8 @@ export default async function InstructorCommissionsPage() {
   return (
     <div className="animate-fade-in">
       <Header
-        title="Minhas Comissões"
-        subtitle={partner ? `Comissão padrão: ${partner.comissao_padrao}%` : "Perfil de parceiro não vinculado"}
+        title={t("Minhas Comissões")}
+        subtitle={partner ? `${t("Comissão padrão:")} ${partner.comissao_padrao}%` : t("Perfil de parceiro não vinculado")}
         role="instrutor"
       />
 
@@ -68,8 +70,8 @@ export default async function InstructorCommissionsPage() {
           <Card>
             <CardContent className="py-16 text-center">
               <Wallet size={48} className="mx-auto text-muted-light mb-4" />
-              <h3 className="text-lg font-semibold text-foreground mb-2">Perfil de parceiro não vinculado</h3>
-              <p className="text-muted-light text-sm">Solicite ao administrador que vincule sua conta ao sistema de comissões.</p>
+              <h3 className="text-lg font-semibold text-foreground mb-2">{t("Perfil de parceiro não vinculado")}</h3>
+              <p className="text-muted-light text-sm">{t("Solicite ao administrador que vincule sua conta ao sistema de comissões.")}</p>
             </CardContent>
           </Card>
         ) : (
@@ -82,7 +84,7 @@ export default async function InstructorCommissionsPage() {
                     <DollarSign size={20} className="text-emerald-400" />
                   </div>
                   <div>
-                    <p className="text-xs text-muted-light">Total Ganho</p>
+                    <p className="text-xs text-muted-light">{t("Total Ganho")}</p>
                     <p className="text-lg font-bold text-foreground">{formatCurrency(stats.total)}</p>
                   </div>
                 </CardContent>
@@ -93,7 +95,7 @@ export default async function InstructorCommissionsPage() {
                     <Clock size={20} className="text-amber-400" />
                   </div>
                   <div>
-                    <p className="text-xs text-muted-light">Pendente</p>
+                    <p className="text-xs text-muted-light">{t("Pendente")}</p>
                     <p className="text-lg font-bold text-foreground">{formatCurrency(stats.pendente)}</p>
                   </div>
                 </CardContent>
@@ -104,7 +106,7 @@ export default async function InstructorCommissionsPage() {
                     <CheckCircle2 size={20} className="text-green-400" />
                   </div>
                   <div>
-                    <p className="text-xs text-muted-light">Pago</p>
+                    <p className="text-xs text-muted-light">{t("Pago")}</p>
                     <p className="text-lg font-bold text-foreground">{formatCurrency(stats.pago)}</p>
                   </div>
                 </CardContent>
@@ -115,7 +117,7 @@ export default async function InstructorCommissionsPage() {
                     <TrendingUp size={20} className="text-red-400" />
                   </div>
                   <div>
-                    <p className="text-xs text-muted-light">Vendas</p>
+                    <p className="text-xs text-muted-light">{t("Vendas")}</p>
                     <p className="text-lg font-bold text-foreground">{commissions.length}</p>
                   </div>
                 </CardContent>
@@ -125,7 +127,7 @@ export default async function InstructorCommissionsPage() {
             {/* Wallet Info */}
             {partner.asaas_wallet_id && (
               <div className="bg-surface-2 rounded-xl border border-border p-4 text-sm text-muted-light">
-                <span className="font-medium text-foreground">Wallet Asaas: </span>
+                <span className="font-medium text-foreground">{t("Wallet Asaas:")} </span>
                 <code className="bg-surface-3 px-2 py-0.5 rounded text-xs">{partner.asaas_wallet_id}</code>
               </div>
             )}
@@ -135,21 +137,21 @@ export default async function InstructorCommissionsPage() {
               <Card>
                 <CardContent className="py-12 text-center">
                   <Wallet size={40} className="mx-auto text-muted-light mb-3" />
-                  <p className="text-muted-light">Nenhuma comissão registrada ainda.</p>
+                  <p className="text-muted-light">{t("Nenhuma comissão registrada ainda.")}</p>
                 </CardContent>
               </Card>
             ) : (
               <div className="space-y-2">
-                <h3 className="text-sm font-semibold text-muted-light uppercase tracking-wider">Histórico de Comissões</h3>
+                <h3 className="text-sm font-semibold text-muted-light uppercase tracking-wider">{t("Histórico de Comissões")}</h3>
                 {commissions.map((c: any) => (
                   <Card key={c.id}>
                     <CardContent className="p-4 flex items-center gap-4">
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-foreground text-sm truncate">
-                          {c.courses?.titulo ?? "Curso"}
+                          {c.courses?.titulo ?? t("Curso")}
                         </p>
                         <p className="text-xs text-muted-light">
-                          Venda: {formatCurrency(c.valor_venda ?? 0)} · Líquido: {formatCurrency(c.valor_liquido ?? 0)} · {c.comissao_percentual}%
+                          {t("Venda:")} {formatCurrency(c.valor_venda ?? 0)} · {t("Líquido:")} {formatCurrency(c.valor_liquido ?? 0)} · {c.comissao_percentual}%
                         </p>
                       </div>
                       <div className="text-right shrink-0">
@@ -158,7 +160,7 @@ export default async function InstructorCommissionsPage() {
                           variant={c.status === "pago" ? "success" : c.status === "pendente" ? "warning" : "danger"}
                           className="text-[10px] mt-1"
                         >
-                          {c.status === "pago" ? "Pago" : c.status === "pendente" ? "Pendente" : "Cancelado"}
+                          {c.status === "pago" ? t("Pago") : c.status === "pendente" ? t("Pendente") : t("Cancelado")}
                         </Badge>
                       </div>
                       <span className="text-xs text-muted-light shrink-0 hidden sm:block">

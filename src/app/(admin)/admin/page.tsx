@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatCurrency, getLevelLabel } from "@/lib/utils";
 import { CategoryIcon } from "@/components/ui/category-icon";
 import { InstructorDashboard } from "@/components/admin/instructor-dashboard";
+import { getServerT } from "@/lib/i18n/server";
 import {
   Users, BookOpen, Award, DollarSign, TrendingUp,
   UserCheck, BarChart3, Activity,
@@ -16,6 +17,7 @@ import {
 } from "lucide-react";
 
 export default async function AdminDashboardPage() {
+  const t = await getServerT();
   const user = await getCurrentUser();
 
   // Instrutor vê dashboard próprio
@@ -45,8 +47,8 @@ export default async function AdminDashboardPage() {
   return (
     <div className="animate-fade-in">
       <Header
-        title="Painel Administrativo"
-        subtitle="Visão geral da SMU PRO"
+        title={t("Painel Administrativo")}
+        subtitle={t("Visão geral da SMU PRO")}
         role="admin"
       />
 
@@ -55,60 +57,60 @@ export default async function AdminDashboardPage() {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
           <KpiCard
             icon={<Users size={20} className="text-blue-400" />}
-            label="Total de Alunos"
+            label={t("Total de Alunos")}
             value={metrics.total_users}
-            sub={`+${metrics.new_users_30d} nos últimos 30 dias`}
+            sub={`+${metrics.new_users_30d} ${t("nos últimos 30 dias")}`}
             bg="bg-blue-500/10"
             trend={metrics.new_users_30d > 0 ? "up" : "neutral"}
           />
           <KpiCard
             icon={<UserCheck size={20} className="text-amber-400" />}
-            label="Alunos MIT"
+            label={t("Alunos MIT")}
             value={metrics.alunos_mit}
-            sub="Projeto Cultural"
+            sub={t("Projeto Cultural")}
             bg="bg-amber-500/10"
           />
           <KpiCard
             icon={<BookOpen size={20} className="text-amber-400" />}
-            label="Cursos Ativos"
+            label={t("Cursos Ativos")}
             value={metrics.total_courses}
-            sub={`${metrics.new_enrollments_30d} matrículas/mês`}
+            sub={`${metrics.new_enrollments_30d} ${t("matrículas/mês")}`}
             bg="bg-amber-500/10"
           />
           <KpiCard
             icon={<Award size={20} className="text-emerald-400" />}
-            label="Certificados"
+            label={t("Certificados")}
             value={metrics.total_certificates}
-            sub="Total emitidos"
+            sub={t("Total emitidos")}
             bg="bg-emerald-500/10"
           />
           <KpiCard
             icon={<DollarSign size={20} className="text-emerald-400" />}
-            label="Receita Total"
+            label={t("Receita Total")}
             value={formatCurrency(metrics.receita_total)}
-            sub="Pagamentos confirmados"
+            sub={t("Pagamentos confirmados")}
             bg="bg-emerald-500/10"
           />
           <KpiCard
             icon={<TrendingUp size={20} className="text-amber-400" />}
-            label="Matrículas Ativas"
+            label={t("Matrículas Ativas")}
             value={metrics.total_enrollments}
-            sub="Status ativo"
+            sub={t("Status ativo")}
             bg="bg-amber-500/10"
           />
           <KpiCard
             icon={<BarChart3 size={20} className="text-blue-400" />}
-            label="Novas Matrículas"
+            label={t("Novas Matrículas")}
             value={metrics.new_enrollments_30d}
-            sub="Últimos 30 dias"
+            sub={t("Últimos 30 dias")}
             bg="bg-blue-500/10"
             trend={metrics.new_enrollments_30d > 0 ? "up" : "neutral"}
           />
           <KpiCard
             icon={<Activity size={20} className="text-red-400" />}
-            label="Usuários Novos"
+            label={t("Usuários Novos")}
             value={metrics.new_users_30d}
-            sub="Últimos 30 dias"
+            sub={t("Últimos 30 dias")}
             bg="bg-red-500/10"
           />
         </div>
@@ -118,9 +120,9 @@ export default async function AdminDashboardPage() {
           <div className="xl:col-span-2">
             <Card>
               <CardHeader className="flex-row items-center justify-between">
-                <CardTitle className="text-base">Cursos</CardTitle>
+                <CardTitle className="text-base">{t("Cursos")}</CardTitle>
                 <Link href="/admin/cursos" className="text-xs text-amber-400 hover:underline">
-                  Gerenciar →
+                  {t("Gerenciar →")}
                 </Link>
               </CardHeader>
               <CardContent className="p-0">
@@ -134,13 +136,13 @@ export default async function AdminDashboardPage() {
                           <span className="text-foreground font-medium truncate">{c.titulo}</span>
                         </div>
                         <Badge variant={c.ativo ? "success" : "secondary"} className="text-[10px] shrink-0">
-                          {c.ativo ? "Ativo" : "Rascunho"}
+                          {c.ativo ? t("Ativo") : t("Rascunho")}
                         </Badge>
                       </div>
                       <div className="flex items-center gap-3 text-xs text-muted-light">
                         <Badge variant={c.nivel as any} className="text-[10px]">{getLevelLabel(c.nivel)}</Badge>
-                        <span>{c.total_alunos} alunos</span>
-                        <span>{c.total_certificados} cert.</span>
+                        <span>{c.total_alunos} {t("alunos")}</span>
+                        <span>{c.total_certificados} {t("cert.")}</span>
                         <span>{c.progresso_medio ? `${c.progresso_medio}%` : "—"}</span>
                       </div>
                     </div>
@@ -151,12 +153,12 @@ export default async function AdminDashboardPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border/50 bg-surface-2">
-                        <th className="px-5 pb-3 pt-3 text-left text-xs text-muted-light font-medium">Curso</th>
-                        <th className="px-5 pb-3 pt-3 text-left text-xs text-muted-light font-medium">Nível</th>
-                        <th className="px-5 pb-3 pt-3 text-right text-xs text-muted-light font-medium">Alunos</th>
-                        <th className="px-5 pb-3 pt-3 text-right text-xs text-muted-light font-medium">Cert.</th>
-                        <th className="px-5 pb-3 pt-3 text-right text-xs text-muted-light font-medium">Progresso</th>
-                        <th className="px-5 pb-3 pt-3 text-center text-xs text-muted-light font-medium">Status</th>
+                        <th className="px-5 pb-3 pt-3 text-left text-xs text-muted-light font-medium">{t("Curso")}</th>
+                        <th className="px-5 pb-3 pt-3 text-left text-xs text-muted-light font-medium">{t("Nível")}</th>
+                        <th className="px-5 pb-3 pt-3 text-right text-xs text-muted-light font-medium">{t("Alunos")}</th>
+                        <th className="px-5 pb-3 pt-3 text-right text-xs text-muted-light font-medium">{t("Cert.")}</th>
+                        <th className="px-5 pb-3 pt-3 text-right text-xs text-muted-light font-medium">{t("Progresso")}</th>
+                        <th className="px-5 pb-3 pt-3 text-center text-xs text-muted-light font-medium">{t("Status")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -180,7 +182,7 @@ export default async function AdminDashboardPage() {
                           </td>
                           <td className="px-5 py-3 text-center">
                             <Badge variant={c.ativo ? "success" : "secondary"} className="text-[10px]">
-                              {c.ativo ? "Ativo" : "Rascunho"}
+                              {c.ativo ? t("Ativo") : t("Rascunho")}
                             </Badge>
                           </td>
                         </tr>
@@ -196,7 +198,7 @@ export default async function AdminDashboardPage() {
           <div>
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Atividade Recente</CardTitle>
+                <CardTitle className="text-base">{t("Atividade Recente")}</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
                 <div className="space-y-0">
@@ -210,12 +212,12 @@ export default async function AdminDashboardPage() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-xs text-foreground truncate">
-                          {log.users?.nome ?? "Sistema"}
+                          {log.users?.nome ?? t("Sistema")}
                         </p>
                         <p className="text-xs text-muted-light truncate">{log.descricao}</p>
                       </div>
                       <span className="text-[10px] text-muted-light shrink-0">
-                        {timeAgo(log.created_at)}
+                        {timeAgo(log.created_at, t)}
                       </span>
                     </div>
                   ))}
@@ -228,9 +230,9 @@ export default async function AdminDashboardPage() {
         {/* Novos usuários */}
         <Card>
           <CardHeader className="flex-row items-center justify-between">
-            <CardTitle className="text-base">Alunos Recentes</CardTitle>
+            <CardTitle className="text-base">{t("Alunos Recentes")}</CardTitle>
             <a href="/admin/usuarios" className="text-xs text-amber-400 hover:underline">
-              Ver todos →
+              {t("Ver todos →")}
             </a>
           </CardHeader>
           <CardContent className="p-0">
@@ -257,7 +259,7 @@ export default async function AdminDashboardPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border/50 bg-surface-2">
-                    {["Aluno", "Email", "Role", "MIT", "Cadastro"].map((h) => (
+                    {[t("Aluno"), "Email", "Role", "MIT", t("Cadastro")].map((h) => (
                       <th key={h} className="px-5 pb-3 pt-3 text-left text-xs text-muted-light font-medium">{h}</th>
                     ))}
                   </tr>
@@ -354,10 +356,10 @@ function getActivityEmoji(tipo: string) {
   return <Icon size={14} className="text-muted-light" />;
 }
 
-function timeAgo(date: string) {
+function timeAgo(date: string, t: (s: string) => string) {
   const diff = Date.now() - new Date(date).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "agora";
+  if (mins < 1) return t("agora");
   if (mins < 60) return `${mins}min`;
   const hours = Math.floor(mins / 60);
   if (hours < 24) return `${hours}h`;

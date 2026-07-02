@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, Layers, Search, BookOpen, Users, Award } from "lucide-react";
 import Link from "next/link";
 import { CourseBulkActions } from "@/components/admin/course-bulk-actions";
+import { getServerT } from "@/lib/i18n/server";
 
 const PAGE_SIZE = 24;
 
@@ -25,6 +26,7 @@ const TIPOS = [
 ];
 
 export default async function AdminCoursesPage({ searchParams }: Props) {
+  const t = await getServerT();
   const { q = "", nivel = "", tipo = "", page: pageStr = "1" } = await searchParams;
   const currentPage = Math.max(1, parseInt(pageStr));
   const user = await getCurrentUser();
@@ -73,11 +75,11 @@ export default async function AdminCoursesPage({ searchParams }: Props) {
       {/* Header */}
       <div className="sticky top-0 z-30 flex items-center gap-3 border-b border-border bg-surface/90 backdrop-blur-md px-4 sm:px-6 h-14 sm:h-16">
         <div className="flex-1 min-w-0">
-          <h1 className="text-base sm:text-lg font-semibold text-foreground">Gerenciar Cursos</h1>
-          <p className="text-xs text-muted-light hidden sm:block">{total} cursos cadastrados</p>
+          <h1 className="text-base sm:text-lg font-semibold text-foreground">{t("Gerenciar Cursos")}</h1>
+          <p className="text-xs text-muted-light hidden sm:block">{total} {t("cursos cadastrados")}</p>
         </div>
         <Link href="/admin/cursos/novo">
-          <Button size="sm"><Plus size={16} /> Novo Curso</Button>
+          <Button size="sm"><Plus size={16} /> {t("Novo Curso")}</Button>
         </Link>
       </div>
 
@@ -85,10 +87,10 @@ export default async function AdminCoursesPage({ searchParams }: Props) {
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { label: "Total de cursos", value: allCourses.length, icon: <Layers size={16} className="text-amber-400" />, bg: "bg-amber-500/10" },
-            { label: "Cursos ativos", value: ativos, icon: <BookOpen size={16} className="text-emerald-400" />, bg: "bg-emerald-500/10" },
-            { label: "Total de alunos", value: totalAlunos, icon: <Users size={16} className="text-blue-400" />, bg: "bg-blue-500/10" },
-            { label: "Certificados", value: totalCerts, icon: <Award size={16} className="text-amber-400" />, bg: "bg-amber-500/10" },
+            { label: t("Total de cursos"), value: allCourses.length, icon: <Layers size={16} className="text-amber-400" />, bg: "bg-amber-500/10" },
+            { label: t("Cursos ativos"), value: ativos, icon: <BookOpen size={16} className="text-emerald-400" />, bg: "bg-emerald-500/10" },
+            { label: t("Total de alunos"), value: totalAlunos, icon: <Users size={16} className="text-blue-400" />, bg: "bg-blue-500/10" },
+            { label: t("Certificados"), value: totalCerts, icon: <Award size={16} className="text-amber-400" />, bg: "bg-amber-500/10" },
           ].map((s) => (
             <div key={s.label} className="rounded-xl bg-surface border border-border px-4 py-3 flex items-center gap-3">
               <div className={`h-8 w-8 rounded-lg ${s.bg} flex items-center justify-center shrink-0`}>{s.icon}</div>
@@ -107,12 +109,12 @@ export default async function AdminCoursesPage({ searchParams }: Props) {
             <input
               name="q"
               defaultValue={q}
-              placeholder="Buscar cursos..."
+              placeholder={t("Buscar cursos...")}
               className="w-full h-9 rounded-lg border border-border bg-surface pl-8 pr-3 text-sm text-foreground placeholder:text-muted-light focus:outline-none focus:border-amber-500 transition-colors"
             />
             {nivel && <input type="hidden" name="nivel" value={nivel} />}
             {tipo && <input type="hidden" name="tipo" value={tipo} />}
-            <button type="submit" className="sr-only">Buscar</button>
+            <button type="submit" className="sr-only">{t("Buscar")}</button>
           </form>
 
           <div className="flex gap-2 flex-wrap">
@@ -123,17 +125,17 @@ export default async function AdminCoursesPage({ searchParams }: Props) {
                     ? "bg-amber-500 text-white border-amber-500"
                     : "bg-surface text-muted border-border hover:border-amber-500/30"
                 }`}>
-                {n.label}
+                {t(n.label)}
               </Link>
             ))}
-            {TIPOS.map((t) => (
-              <Link key={t.value} href={makeHref({ tipo: tipo === t.value ? "" : t.value })}
+            {TIPOS.map((ti) => (
+              <Link key={ti.value} href={makeHref({ tipo: tipo === ti.value ? "" : ti.value })}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                  tipo === t.value
+                  tipo === ti.value
                     ? "bg-amber-500 text-white border-amber-500"
                     : "bg-surface text-muted border-border hover:border-amber-500/30"
                 }`}>
-                {t.label}
+                {t(ti.label)}
               </Link>
             ))}
           </div>
@@ -143,12 +145,12 @@ export default async function AdminCoursesPage({ searchParams }: Props) {
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center rounded-2xl bg-surface border border-border">
             <Layers size={40} className="text-muted-light mb-3" />
-            <p className="text-foreground font-medium mb-1">Nenhum curso encontrado</p>
+            <p className="text-foreground font-medium mb-1">{t("Nenhum curso encontrado")}</p>
             <p className="text-sm text-muted-light mb-5">
-              {q || nivel || tipo ? "Tente ajustar os filtros." : "Crie o primeiro curso da plataforma."}
+              {q || nivel || tipo ? t("Tente ajustar os filtros.") : t("Crie o primeiro curso da plataforma.")}
             </p>
             <Link href="/admin/cursos/novo">
-              <Button><Plus size={16} /> Criar Curso</Button>
+              <Button><Plus size={16} /> {t("Criar Curso")}</Button>
             </Link>
           </div>
         ) : (
@@ -156,18 +158,18 @@ export default async function AdminCoursesPage({ searchParams }: Props) {
             {!isInstructor && <CourseBulkActions courses={filtered} />}
             {totalPages > 1 && (
               <div className="flex items-center justify-between text-sm text-muted-light pt-2">
-                <span>Página {currentPage} de {totalPages} ({total} cursos)</span>
+                <span>{t("Página")} {currentPage} {t("de")} {totalPages} ({total} {t("cursos")})</span>
                 <div className="flex gap-2">
                   {currentPage > 1 && (
                     <Link href={makeHref({ page: String(currentPage - 1) })}
                       className="px-3 py-1.5 rounded-lg bg-surface border border-border hover:bg-hover transition-colors text-muted text-xs">
-                      Anterior
+                      {t("Anterior")}
                     </Link>
                   )}
                   {currentPage < totalPages && (
                     <Link href={makeHref({ page: String(currentPage + 1) })}
                       className="px-3 py-1.5 rounded-lg bg-surface border border-border hover:bg-hover transition-colors text-muted text-xs">
-                      Próxima
+                      {t("Próxima")}
                     </Link>
                   )}
                 </div>

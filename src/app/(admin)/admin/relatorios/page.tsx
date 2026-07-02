@@ -1,11 +1,13 @@
 import { requireAdminRole } from "@/lib/actions/users";
 import { createAdminClient } from "@/lib/supabase/server";
+import { getServerT } from "@/lib/i18n/server";
 import { Header } from "@/components/layout/header";
 import { formatCurrency, getLevelLabel } from "@/lib/utils";
 import { TrendingUp, Users, BookOpen, Award, DollarSign, BarChart3 } from "lucide-react";
 
 export default async function AdminRelatoriosPage() {
   await requireAdminRole();
+  const t = await getServerT();
   const supabase = createAdminClient();
 
   // Métricas gerais
@@ -102,32 +104,32 @@ export default async function AdminRelatoriosPage() {
 
   return (
     <div className="animate-fade-in">
-      <Header title="Relatórios" subtitle="Visão analítica da plataforma" />
+      <Header title={t("Relatórios")} subtitle={t("Visão analítica da plataforma")} />
 
       <div className="p-4 sm:p-6 space-y-6 sm:space-y-8">
         {/* KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
           <KpiCard
             icon={<Users size={20} className="text-blue-400" />}
-            label="Total de usuários"
+            label={t("Total de usuários")}
             value={metrics?.total_users ?? 0}
             bg="bg-blue-500/10"
           />
           <KpiCard
             icon={<BookOpen size={20} className="text-amber-400" />}
-            label="Total de matrículas"
+            label={t("Total de matrículas")}
             value={metrics?.total_enrollments ?? 0}
             bg="bg-amber-500/10"
           />
           <KpiCard
             icon={<Award size={20} className="text-amber-400" />}
-            label="Certificados emitidos"
+            label={t("Certificados emitidos")}
             value={metrics?.total_certificates ?? 0}
             bg="bg-amber-500/10"
           />
           <KpiCard
             icon={<DollarSign size={20} className="text-emerald-400" />}
-            label="Receita total"
+            label={t("Receita total")}
             value={formatCurrency(metrics?.receita_total ?? 0)}
             isText
             bg="bg-emerald-500/10"
@@ -139,10 +141,10 @@ export default async function AdminRelatoriosPage() {
           <div className="rounded-2xl bg-surface border border-border p-4 sm:p-6">
             <h2 className="font-bold text-foreground mb-6 flex items-center gap-2">
               <TrendingUp size={18} className="text-emerald-400" />
-              Receita — últimos 6 meses
+              {t("Receita — últimos 6 meses")}
             </h2>
             {meses.length === 0 ? (
-              <p className="text-muted-light text-sm">Sem dados de receita ainda.</p>
+              <p className="text-muted-light text-sm">{t("Sem dados de receita ainda.")}</p>
             ) : (
               <div className="space-y-3">
                 {meses.map((mes) => (
@@ -167,10 +169,10 @@ export default async function AdminRelatoriosPage() {
           <div className="rounded-2xl bg-surface border border-border p-4 sm:p-6">
             <h2 className="font-bold text-foreground mb-6 flex items-center gap-2">
               <BarChart3 size={18} className="text-amber-400" />
-              Inscrições — últimos 6 meses
+              {t("Inscrições — últimos 6 meses")}
             </h2>
             {Object.keys(inscricoesPorMes).length === 0 ? (
-              <p className="text-muted-light text-sm">Sem dados de inscrições ainda.</p>
+              <p className="text-muted-light text-sm">{t("Sem dados de inscrições ainda.")}</p>
             ) : (
               <div className="space-y-3">
                 {Object.entries(inscricoesPorMes).map(([mes, count]) => (
@@ -183,7 +185,7 @@ export default async function AdminRelatoriosPage() {
                       />
                     </div>
                     <span className="w-14 sm:w-16 text-right text-[10px] sm:text-xs font-semibold text-muted shrink-0">
-                      {count} aluno{count !== 1 ? "s" : ""}
+                      {count} {count !== 1 ? t("alunos") : t("aluno")}
                     </span>
                   </div>
                 ))}
@@ -197,7 +199,7 @@ export default async function AdminRelatoriosPage() {
           <div className="px-4 sm:px-5 py-4 border-b border-border/50">
             <h2 className="font-bold text-foreground flex items-center gap-2">
               <BookOpen size={18} className="text-amber-400" />
-              Top 10 cursos por alunos
+              {t("Top 10 cursos por alunos")}
             </h2>
           </div>
           {/* Mobile: card layout */}
@@ -210,8 +212,8 @@ export default async function AdminRelatoriosPage() {
                 </div>
                 <div className="flex items-center gap-3 text-xs text-muted-light flex-wrap">
                   <span>{getLevelLabel(course.nivel)}</span>
-                  <span>{course.total_alunos} alunos</span>
-                  <span>{course.total_certificados} cert.</span>
+                  <span>{course.total_alunos} {t("alunos")}</span>
+                  <span>{course.total_certificados} {t("cert.")}</span>
                   <span>{Math.round(course.progresso_medio ?? 0)}%</span>
                   {course.avaliacao_media > 0 && <span>★ {course.avaliacao_media.toFixed(1)}</span>}
                 </div>
@@ -224,12 +226,12 @@ export default async function AdminRelatoriosPage() {
               <thead>
                 <tr className="border-b border-border/50 bg-surface-2">
                   <th className="px-5 py-3 text-left text-xs font-semibold text-muted-light uppercase tracking-wider">#</th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold text-muted-light uppercase tracking-wider">Curso</th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold text-muted-light uppercase tracking-wider">Nível</th>
-                  <th className="px-5 py-3 text-right text-xs font-semibold text-muted-light uppercase tracking-wider">Alunos</th>
-                  <th className="px-5 py-3 text-right text-xs font-semibold text-muted-light uppercase tracking-wider hidden lg:table-cell">Certificados</th>
-                  <th className="px-5 py-3 text-right text-xs font-semibold text-muted-light uppercase tracking-wider">Progresso</th>
-                  <th className="px-5 py-3 text-right text-xs font-semibold text-muted-light uppercase tracking-wider hidden lg:table-cell">Avaliação</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-muted-light uppercase tracking-wider">{t("Curso")}</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-muted-light uppercase tracking-wider">{t("Nível")}</th>
+                  <th className="px-5 py-3 text-right text-xs font-semibold text-muted-light uppercase tracking-wider">{t("Alunos")}</th>
+                  <th className="px-5 py-3 text-right text-xs font-semibold text-muted-light uppercase tracking-wider hidden lg:table-cell">{t("Certificados")}</th>
+                  <th className="px-5 py-3 text-right text-xs font-semibold text-muted-light uppercase tracking-wider">{t("Progresso")}</th>
+                  <th className="px-5 py-3 text-right text-xs font-semibold text-muted-light uppercase tracking-wider hidden lg:table-cell">{t("Avaliação")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50">
@@ -268,7 +270,7 @@ export default async function AdminRelatoriosPage() {
           <div className="rounded-2xl bg-surface border border-border p-4 sm:p-6 max-w-sm">
             <h2 className="font-bold text-foreground mb-5 flex items-center gap-2">
               <BarChart3 size={18} className="text-blue-400" />
-              Cursos por nível
+              {t("Cursos por nível")}
             </h2>
             <div className="space-y-3">
               {Object.entries(nivelCount).map(([nivel, count]) => (
@@ -295,10 +297,10 @@ export default async function AdminRelatoriosPage() {
           <div className="rounded-2xl bg-surface border border-border p-4 sm:p-6">
             <h2 className="font-bold text-foreground mb-5 flex items-center gap-2">
               <DollarSign size={18} className="text-emerald-400" />
-              Receita por método de pagamento
+              {t("Receita por método de pagamento")}
             </h2>
             {Object.keys(methodStats).length === 0 ? (
-              <p className="text-muted-light text-sm">Sem dados de pagamento ainda.</p>
+              <p className="text-muted-light text-sm">{t("Sem dados de pagamento ainda.")}</p>
             ) : (
               <div className="space-y-3">
                 {Object.entries(methodStats).map(([method, stats]) => {
@@ -326,35 +328,35 @@ export default async function AdminRelatoriosPage() {
           <div className="rounded-2xl bg-surface border border-border p-4 sm:p-6">
             <h2 className="font-bold text-foreground mb-5 flex items-center gap-2">
               <TrendingUp size={18} className="text-blue-400" />
-              Taxas e distribuição
+              {t("Taxas e distribuição")}
             </h2>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-foreground">Taxa de conversão</p>
-                  <p className="text-xs text-muted-light">Matrículas pagas / total</p>
+                  <p className="text-sm font-medium text-foreground">{t("Taxa de conversão")}</p>
+                  <p className="text-xs text-muted-light">{t("Matrículas pagas / total")}</p>
                 </div>
                 <span className="text-2xl font-black text-foreground">{conversionRate}%</span>
               </div>
               <div className="h-px bg-border/50" />
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-foreground">Matrículas gratuitas</p>
-                  <p className="text-xs text-muted-light">Cursos free + projeto cultural</p>
+                  <p className="text-sm font-medium text-foreground">{t("Matrículas gratuitas")}</p>
+                  <p className="text-xs text-muted-light">{t("Cursos free + projeto cultural")}</p>
                 </div>
                 <span className="text-lg font-bold text-foreground">{freeEnrollments ?? 0}</span>
               </div>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-foreground">Matrículas pagas</p>
-                  <p className="text-xs text-muted-light">Via PIX, boleto ou cartão</p>
+                  <p className="text-sm font-medium text-foreground">{t("Matrículas pagas")}</p>
+                  <p className="text-xs text-muted-light">{t("Via PIX, boleto ou cartão")}</p>
                 </div>
                 <span className="text-lg font-bold text-foreground">{paidEnrollments ?? 0}</span>
               </div>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-foreground">Total de matrículas</p>
-                  <p className="text-xs text-muted-light">Todas as matrículas</p>
+                  <p className="text-sm font-medium text-foreground">{t("Total de matrículas")}</p>
+                  <p className="text-xs text-muted-light">{t("Todas as matrículas")}</p>
                 </div>
                 <span className="text-lg font-bold text-foreground">{totalEnrollments ?? 0}</span>
               </div>

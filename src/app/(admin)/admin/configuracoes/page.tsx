@@ -1,4 +1,5 @@
 import { requireAdminRole } from "@/lib/actions/users";
+import { getServerT } from "@/lib/i18n/server";
 import { Header } from "@/components/layout/header";
 import {
   Settings, Shield, Bell, Database, Key, AlertTriangle,
@@ -6,52 +7,53 @@ import {
 
 export default async function AdminConfiguracoesPage() {
   await requireAdminRole();
+  const t = await getServerT();
   return (
     <div className="animate-fade-in">
       <Header
-        title="Configurações do Sistema"
-        subtitle="Parâmetros gerais da plataforma SMU PRO"
+        title={t("Configurações do Sistema")}
+        subtitle={t("Parâmetros gerais da plataforma SMU PRO")}
       />
 
       <div className="p-4 sm:p-6 max-w-3xl space-y-6">
         {/* Seção: Plataforma */}
-        <Section title="Plataforma" icon={<Settings size={16} className="text-amber-400" />}>
-          <Row label="Nome da plataforma" value="SMU PRO" />
-          <Row label="URL base" value="smu-pro.vercel.app" />
-          <Row label="Versão" value="1.0.0" />
-          <Row label="Ambiente" value="Produção" />
+        <Section title={t("Plataforma")} icon={<Settings size={16} className="text-amber-400" />}>
+          <Row label={t("Nome da plataforma")} value="SMU PRO" />
+          <Row label={t("URL base")} value="smu-pro.vercel.app" />
+          <Row label={t("Versão")} value="1.0.0" />
+          <Row label={t("Ambiente")} value={t("Produção")} />
         </Section>
 
         {/* Seção: Autenticação */}
-        <Section title="Autenticação" icon={<Key size={16} className="text-amber-400" />}>
-          <Row label="Provedor" value="Clerk" />
-          <Row label="Sessões simultâneas" value="Ilimitadas" />
+        <Section title={t("Autenticação")} icon={<Key size={16} className="text-amber-400" />}>
+          <Row label={t("Provedor")} value="Clerk" />
+          <Row label={t("Sessões simultâneas")} value={t("Ilimitadas")} />
           <InfoRow
-            label="Definir role de admin"
-            description='Para promover um usuário a admin: (1) Acesse o Clerk Dashboard → Users → selecione o usuário → Metadata → adicione {"role":"admin"}. (2) No Supabase, atualize a coluna role na tabela users para "admin".'
+            label={t("Definir role de admin")}
+            description={t('Para promover um usuário a admin: (1) Acesse o Clerk Dashboard → Users → selecione o usuário → Metadata → adicione {"role":"admin"}. (2) No Supabase, atualize a coluna role na tabela users para "admin".')}
           />
         </Section>
 
         {/* Seção: Banco de Dados */}
-        <Section title="Banco de Dados" icon={<Database size={16} className="text-blue-400" />}>
-          <Row label="Provedor" value="Supabase (PostgreSQL)" />
-          <Row label="RLS" value="Ativado" />
-          <Row label="Criação automática de usuários" value="Via getCurrentUser() (upsert)" />
+        <Section title={t("Banco de Dados")} icon={<Database size={16} className="text-blue-400" />}>
+          <Row label={t("Provedor")} value="Supabase (PostgreSQL)" />
+          <Row label="RLS" value={t("Ativado")} />
+          <Row label={t("Criação automática de usuários")} value={t("Via getCurrentUser() (upsert)")} />
         </Section>
 
         {/* Seção: Segurança */}
-        <Section title="Segurança" icon={<Shield size={16} className="text-emerald-400" />}>
-          <Row label="Autenticação de dois fatores" value="Suportado (Clerk)" />
-          <Row label="Proteção CSRF" value="Next.js nativo" />
-          <Row label="Validação de roles" value="Middleware + Layout" />
+        <Section title={t("Segurança")} icon={<Shield size={16} className="text-emerald-400" />}>
+          <Row label={t("Autenticação de dois fatores")} value={t("Suportado (Clerk)")} />
+          <Row label={t("Proteção CSRF")} value={t("Next.js nativo")} />
+          <Row label={t("Validação de roles")} value={t("Middleware + Layout")} />
         </Section>
 
         {/* Seção: Notificações */}
-        <Section title="Notificações" icon={<Bell size={16} className="text-orange-400" />}>
-          <Row label="Provedor de e-mail" value="Não configurado" />
+        <Section title={t("Notificações")} icon={<Bell size={16} className="text-orange-400" />}>
+          <Row label={t("Provedor de e-mail")} value={t("Não configurado")} />
           <InfoRow
-            label="Webhooks do Clerk"
-            description="Configure um webhook no Clerk Dashboard apontando para /api/webhooks/clerk para sincronização em tempo real de usuários."
+            label={t("Webhooks do Clerk")}
+            description={t("Configure um webhook no Clerk Dashboard apontando para /api/webhooks/clerk para sincronização em tempo real de usuários.")}
           />
         </Section>
 
@@ -59,10 +61,9 @@ export default async function AdminConfiguracoesPage() {
         <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-5 flex gap-3">
           <AlertTriangle size={18} className="text-amber-400 shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-semibold text-amber-300 mb-1">Configurações avançadas</p>
+            <p className="text-sm font-semibold text-amber-300 mb-1">{t("Configurações avançadas")}</p>
             <p className="text-sm text-amber-400/80">
-              Alterações em variáveis de ambiente, chaves de API e configurações de banco de dados
-              devem ser feitas diretamente nos painéis do Supabase, Clerk e Vercel.
+              {t("Alterações em variáveis de ambiente, chaves de API e configurações de banco de dados devem ser feitas diretamente nos painéis do Supabase, Clerk e Vercel.")}
             </p>
           </div>
         </div>

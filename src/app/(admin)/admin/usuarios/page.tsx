@@ -1,5 +1,6 @@
 import { adminGetUsers, requireAdminRole } from "@/lib/actions/users";
 import { adminGetAllCourses } from "@/lib/actions/courses";
+import { getServerT } from "@/lib/i18n/server";
 import { Header } from "@/components/layout/header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +27,7 @@ const ROLES = [
 
 export default async function AdminUsersPage({ searchParams }: Props) {
   await requireAdminRole();
+  const t = await getServerT();
   const { q = "", page = "1", role = "", mit = "" } = await searchParams;
   const currentPage = parseInt(page);
   const pageSize = 20;
@@ -52,8 +54,8 @@ export default async function AdminUsersPage({ searchParams }: Props) {
   return (
     <div className="animate-fade-in">
       <Header
-        title="Gerenciar Usuários"
-        subtitle={`${total} usuários cadastrados`}
+        title={t("Gerenciar Usuários")}
+        subtitle={`${total} ${t("usuários cadastrados")}`}
       />
 
       <div className="p-4 sm:p-6 space-y-4">
@@ -65,7 +67,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
             <input
               name="q"
               defaultValue={q}
-              placeholder="Buscar por nome ou email..."
+              placeholder={t("Buscar por nome ou email...")}
               className="w-full h-9 rounded-lg border border-border bg-surface pl-8 pr-3 text-sm text-foreground placeholder:text-muted-light focus:outline-none focus:border-amber-500 transition-colors"
             />
             {role && <input type="hidden" name="role" value={role} />}
@@ -85,7 +87,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
                     : "bg-surface text-muted border-border hover:border-amber-500/30"
                 }`}
               >
-                {r.label}
+                {r.value === "" ? t(r.label) : r.label}
               </Link>
             ))}
             <Link
@@ -103,7 +105,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
                 href="/admin/usuarios"
                 className="px-3 py-1.5 rounded-lg text-xs font-medium border border-border bg-surface text-red-400 hover:border-red-500/30 transition-colors"
               >
-                Limpar
+                {t("Limpar")}
               </Link>
             )}
           </div>
@@ -112,10 +114,10 @@ export default async function AdminUsersPage({ searchParams }: Props) {
         {/* Stats row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { label: "Total", value: total, color: "text-foreground" },
+            { label: t("Total"), value: total, color: "text-foreground" },
             { label: "MIT", value: users.filter((u) => u.projeto_cultural).length, color: "text-amber-600" },
-            { label: "Admins", value: users.filter((u) => u.role === "admin").length, color: "text-red-500" },
-            { label: "Ativos", value: users.filter((u) => u.ativo).length, color: "text-emerald-600" },
+            { label: t("Admins"), value: users.filter((u) => u.role === "admin").length, color: "text-red-500" },
+            { label: t("Ativos"), value: users.filter((u) => u.ativo).length, color: "text-emerald-600" },
           ].map((s) => (
             <div key={s.label} className="rounded-xl bg-surface border border-border px-4 py-3 flex items-center gap-3">
               <div>
@@ -166,7 +168,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
                     </Badge>
                     {u.projeto_cultural && <Badge variant="mit" className="text-[10px]">MIT</Badge>}
                     <Badge variant={u.ativo ? "success" : "danger"} className="text-[10px]">
-                      {u.ativo ? "Ativo" : "Inativo"}
+                      {u.ativo ? t("Ativo") : t("Inativo")}
                     </Badge>
                     <span className="text-[10px] text-muted-light">
                       {new Date(u.created_at).toLocaleDateString("pt-BR")}
@@ -180,7 +182,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border/50 bg-surface-2">
-                    {["Aluno", "Email", "Role", "MIT", "Status", "Cadastro", "Ações"].map((h) => (
+                    {[t("Aluno"), t("Email"), t("Role"), "MIT", t("Status"), t("Cadastro"), t("Ações")].map((h) => (
                       <th key={h} className="px-4 py-3 text-left text-xs text-muted-light font-medium whitespace-nowrap">
                         {h}
                       </th>
@@ -211,7 +213,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
                             <p className="text-foreground font-medium truncate max-w-[100px] lg:max-w-[180px]">{u.nome}</p>
                             {u.ultimo_acesso && (
                               <p className="text-[10px] text-muted-light">
-                                Último acesso: {new Date(u.ultimo_acesso).toLocaleDateString("pt-BR")}
+                                {t("Último acesso:")} {new Date(u.ultimo_acesso).toLocaleDateString("pt-BR")}
                               </p>
                             )}
                           </div>
@@ -233,14 +235,14 @@ export default async function AdminUsersPage({ searchParams }: Props) {
                       </td>
                       <td className="px-4 py-3">
                         {u.projeto_cultural ? (
-                          <Badge variant="mit" className="text-[10px]">MIT ✓</Badge>
+                          <Badge variant="mit" className="text-[10px]">{t("MIT ✓")}</Badge>
                         ) : (
                           <span className="text-muted-light">—</span>
                         )}
                       </td>
                       <td className="px-4 py-3">
                         <Badge variant={u.ativo ? "success" : "danger"} className="text-[10px]">
-                          {u.ativo ? "Ativo" : "Inativo"}
+                          {u.ativo ? t("Ativo") : t("Inativo")}
                         </Badge>
                       </td>
                       <td className="px-4 py-3 text-muted-light text-xs whitespace-nowrap">
@@ -258,8 +260,8 @@ export default async function AdminUsersPage({ searchParams }: Props) {
             {users.length === 0 && (
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <Users size={40} className="text-muted-light mb-3" />
-                <p className="text-foreground font-medium">Nenhum usuário encontrado</p>
-                <p className="text-sm text-muted-light mt-1">Tente ajustar os filtros de busca.</p>
+                <p className="text-foreground font-medium">{t("Nenhum usuário encontrado")}</p>
+                <p className="text-sm text-muted-light mt-1">{t("Tente ajustar os filtros de busca.")}</p>
               </div>
             )}
 
@@ -267,20 +269,20 @@ export default async function AdminUsersPage({ searchParams }: Props) {
             {totalPages > 1 && (
               <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-3 sm:px-5 py-3 border-t border-border/50 bg-surface-2">
                 <p className="text-xs text-muted-light">
-                  Página {currentPage} de {totalPages} · {total} usuários
+                  {t("Página")} {currentPage} {t("de")} {totalPages} · {total} {t("usuários")}
                 </p>
                 <div className="flex items-center gap-1">
                   {currentPage > 1 && (
                     <Link href={makeHref({ page: String(currentPage - 1) })}>
                       <Button variant="secondary" size="sm" className="gap-1">
-                        <ChevronLeft size={14} /> Anterior
+                        <ChevronLeft size={14} /> {t("Anterior")}
                       </Button>
                     </Link>
                   )}
                   {currentPage < totalPages && (
                     <Link href={makeHref({ page: String(currentPage + 1) })}>
                       <Button variant="secondary" size="sm" className="gap-1">
-                        Próxima <ChevronRight size={14} />
+                        {t("Próxima")} <ChevronRight size={14} />
                       </Button>
                     </Link>
                   )}

@@ -11,6 +11,7 @@ import { CourseStudentPreview } from "@/components/admin/course-student-preview"
 import { CourseContentManager } from "@/components/admin/course-content-manager";
 import { Edit, ArrowLeft, Layers, Info, ShieldCheck, BarChart3, Eye, Monitor } from "lucide-react";
 import Link from "next/link";
+import { getServerT } from "@/lib/i18n/server";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -26,6 +27,7 @@ const TABS = [
 ];
 
 export default async function AdminCourseDetailPage({ params, searchParams }: Props) {
+  const t = await getServerT();
   const { id } = await params;
   const { tab = "curriculo" } = await searchParams;
 
@@ -57,7 +59,7 @@ export default async function AdminCourseDetailPage({ params, searchParams }: Pr
     <div className="animate-fade-in">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 px-4 sm:px-6 pt-4 text-xs text-muted-light">
-        <Link href="/admin/cursos" className="hover:text-muted transition-colors shrink-0">Cursos</Link>
+        <Link href="/admin/cursos" className="hover:text-muted transition-colors shrink-0">{t("Cursos")}</Link>
         <span>/</span>
         <span className="text-muted font-medium truncate">{course.titulo}</span>
       </div>
@@ -69,7 +71,7 @@ export default async function AdminCourseDetailPage({ params, searchParams }: Pr
             <CategoryIcon category={course.categoria} size={24} />
             <h1 className="text-lg sm:text-xl font-bold text-foreground truncate">{course.titulo}</h1>
             <Badge variant={course.ativo ? "success" : "secondary"} className="text-[10px]">
-              {course.ativo ? "Publicado" : "Rascunho"}
+              {course.ativo ? t("Publicado") : t("Rascunho")}
             </Badge>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap text-xs sm:text-sm text-muted-light">
@@ -77,9 +79,9 @@ export default async function AdminCourseDetailPage({ params, searchParams }: Pr
             <span>·</span>
             <span>{getCategoryLabel(course.categoria)}</span>
             <span>·</span>
-            <span>{sortedCourse.modules.length} módulos</span>
+            <span>{sortedCourse.modules.length} {t("módulos")}</span>
             <span>·</span>
-            <span>{totalLessons} aulas</span>
+            <span>{totalLessons} {t("aulas")}</span>
             {course.carga_horaria && (
               <>
                 <span>·</span>
@@ -92,17 +94,17 @@ export default async function AdminCourseDetailPage({ params, searchParams }: Pr
         <div className="flex items-center gap-2 shrink-0">
           <Link href="/admin/cursos">
             <Button variant="ghost" size="sm">
-              <ArrowLeft size={15} /> <span className="hidden sm:inline">Voltar</span>
+              <ArrowLeft size={15} /> <span className="hidden sm:inline">{t("Voltar")}</span>
             </Button>
           </Link>
           <Link href={`/admin/cursos/${id}?tab=preview`}>
-            <Button variant="ghost" size="sm" title="Ver como o aluno visualiza">
-              <Monitor size={15} /> <span className="hidden sm:inline">Preview</span>
+            <Button variant="ghost" size="sm" title={t("Ver como o aluno visualiza")}>
+              <Monitor size={15} /> <span className="hidden sm:inline">{t("Preview")}</span>
             </Button>
           </Link>
           <Link href={`/admin/cursos/${id}/editar`}>
             <Button variant="secondary" size="sm">
-              <Edit size={15} /> <span className="hidden sm:inline">Editar</span>
+              <Edit size={15} /> <span className="hidden sm:inline">{t("Editar")}</span>
             </Button>
           </Link>
         </div>
@@ -112,13 +114,13 @@ export default async function AdminCourseDetailPage({ params, searchParams }: Pr
       <div className="border-b border-border">
         <div className="overflow-x-auto scrollbar-hide">
           <div className="flex gap-0 px-4 sm:px-6 min-w-max">
-            {TABS.map((t) => {
-              const Icon = t.icon;
-              const active = tab === t.id;
+            {TABS.map((tabItem) => {
+              const Icon = tabItem.icon;
+              const active = tab === tabItem.id;
               return (
                 <Link
-                  key={t.id}
-                  href={`/admin/cursos/${id}?tab=${t.id}`}
+                  key={tabItem.id}
+                  href={`/admin/cursos/${id}?tab=${tabItem.id}`}
                   className={`flex items-center gap-1.5 px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                     active
                       ? "border-amber-500 text-amber-400"
@@ -126,7 +128,7 @@ export default async function AdminCourseDetailPage({ params, searchParams }: Pr
                   }`}
                 >
                   <Icon size={14} />
-                  {t.label}
+                  {t(tabItem.label)}
                 </Link>
               );
             })}
