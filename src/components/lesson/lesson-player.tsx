@@ -18,6 +18,7 @@ import { AudioPlayer } from "./audio-player";
 import { AnimationPlayer } from "./animation-player";
 import { RichContentViewer } from "./rich-content-viewer";
 import { useLocale } from "@/lib/i18n/locale";
+import { LanguageSelector } from "@/components/i18n/language-selector";
 import { courseMeta } from "@/lib/i18n/courses-meta";
 import { useCourseTr } from "@/lib/i18n/pilot";
 import { useT } from "@/lib/i18n/ui";
@@ -325,7 +326,7 @@ export function LessonPlayer({
         <div className="flex items-center justify-between px-3 sm:px-5 py-2.5 border-b border-border bg-surface shrink-0 gap-2">
           <div className="flex items-center gap-1.5 text-sm text-muted-light min-w-0">
             <Link href="/dashboard/cursos" className="hover:text-foreground transition-colors shrink-0 hidden sm:block">
-              Meus Cursos
+              {t("Meus Cursos")}
             </Link>
             <ChevronRight size={14} className="text-muted-light shrink-0 hidden sm:block" />
             <Link href={`/cursos/${course.slug}`} className="hover:text-foreground transition-colors shrink-0 flex items-center gap-1">
@@ -334,15 +335,16 @@ export function LessonPlayer({
             </Link>
             <ChevronRight size={14} className="text-muted-light shrink-0 hidden sm:block" />
             <span className="text-foreground font-medium truncate max-w-[140px] sm:max-w-[200px] hidden sm:block">
-              {lesson.titulo}
+              {dispTitulo}
             </span>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
+            <LanguageSelector />
             {prevLesson && (
               <Link href={`/dashboard/cursos/${course.slug}/aulas/${prevLesson.id}`}>
                 <Button variant="secondary" size="sm" className="gap-1 px-2 sm:px-3">
                   <ChevronLeft size={14} />
-                  <span className="hidden sm:inline">Anterior</span>
+                  <span className="hidden sm:inline">{t("Anterior")}</span>
                 </Button>
               </Link>
             )}

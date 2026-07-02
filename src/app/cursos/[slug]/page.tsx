@@ -11,6 +11,7 @@ import { CategoryIcon } from "@/components/ui/category-icon";
 import { CheckCircle, Clock, BookOpen, Award, Lock, Play, ChevronRight, ArrowLeft, Star } from "lucide-react";
 import { EnrollButton } from "@/components/course/enroll-button";
 import { getServerT, getServerLocale } from "@/lib/i18n/server";
+import { LanguageSelector } from "@/components/i18n/language-selector";
 import { courseMeta } from "@/lib/i18n/courses-meta";
 import type { Metadata } from "next";
 
@@ -159,7 +160,7 @@ export default async function CourseDetailPage({ params }: Props) {
             <span className="gradient-text">SMU</span>
             <span className="text-muted-light text-sm font-normal ml-1">PRO</span>
           </Link>
-          <div className="w-32" />
+          <LanguageSelector />
         </div>
       </nav>
 

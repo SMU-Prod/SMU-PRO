@@ -8,6 +8,7 @@ import { CategoryIcon } from "@/components/ui/category-icon";
 import { getLevelLabel, formatCurrency, getCategoryLabel } from "@/lib/utils";
 import { ArrowLeft, BookOpen, Clock, ChevronRight, Users } from "lucide-react";
 import { getServerT, getServerLocale } from "@/lib/i18n/server";
+import { LanguageSelector } from "@/components/i18n/language-selector";
 import { courseMeta } from "@/lib/i18n/courses-meta";
 import type { Metadata } from "next";
 
@@ -151,7 +152,10 @@ export default async function CategoryPage({ params }: Props) {
           <Link href="/" className="text-xl font-black tracking-tight">
             <span className="gradient-text">SMU</span> <span className="text-foreground">PRO</span>
           </Link>
-          <Link href="/cadastro"><Button size="sm">{t("Começar grátis")}</Button></Link>
+          <div className="flex items-center gap-3">
+            <LanguageSelector />
+            <Link href="/cadastro"><Button size="sm">{t("Começar grátis")}</Button></Link>
+          </div>
         </div>
       </nav>
 

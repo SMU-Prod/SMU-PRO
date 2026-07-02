@@ -6,6 +6,7 @@ import { Search, SlidersHorizontal } from "lucide-react";
 import { CategoryIcon } from "@/components/ui/category-icon";
 import { CoursesView } from "@/components/cursos/courses-view";
 import { getServerT } from "@/lib/i18n/server";
+import { LanguageSelector } from "@/components/i18n/language-selector";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -82,6 +83,7 @@ export default async function CursosPage({ searchParams }: Props) {
             <span className="text-muted-light text-sm font-normal ml-1">PRO</span>
           </Link>
           <div className="flex items-center gap-3">
+            <LanguageSelector />
             {isSignedIn ? (
               <Link href="/dashboard">
                 <Button size="sm">{t("Meu painel")}</Button>

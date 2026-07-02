@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { getCategoryLabel, getLevelLabel, formatMinutes, formatCurrency } from "@/lib/utils";
 import { CategoryIcon } from "@/components/ui/category-icon";
 import { getServerT } from "@/lib/i18n/server";
+import { LanguageSelector } from "@/components/i18n/language-selector";
 import { Zap, Award, Users, PlayCircle, ChevronRight, Star, Shield, Mic, Lightbulb, Music, Film } from "lucide-react";
 
 export const dynamic = "force-dynamic"; // renderiza por requisição p/ ler o cookie de idioma
@@ -98,6 +99,7 @@ export default async function HomePage() {
             <Link href="/#sobre" className="hover:text-amber-400 transition-colors">{t("Sobre")}</Link>
           </div>
           <div className="flex items-center gap-3">
+            <LanguageSelector />
             {isSignedIn ? (
               <Link href="/dashboard">
                 <Button size="sm">{t("Meu painel")}</Button>
