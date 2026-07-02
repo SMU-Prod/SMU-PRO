@@ -1,4 +1,5 @@
 import { getPublishedPosts, getFeaturedPosts } from "@/lib/actions/blog";
+import { getServerT } from "@/lib/i18n/server";
 import Link from "next/link";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +37,7 @@ interface Props {
 }
 
 export default async function BlogPage({ searchParams }: Props) {
+  const t = await getServerT();
   const { categoria, page: pageStr = "1" } = await searchParams;
   const currentPage = Math.max(1, parseInt(pageStr));
 
@@ -68,13 +70,13 @@ export default async function BlogPage({ searchParams }: Props) {
       <nav className="sticky top-0 z-50 border-b border-border bg-surface/90 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
           <Link href="/" className="flex items-center gap-2 text-muted-light hover:text-foreground transition-colors text-sm">
-            <ArrowLeft size={16} /> Home
+            <ArrowLeft size={16} /> {t("Home")}
           </Link>
           <Link href="/" className="text-xl font-black tracking-tight">
             <span className="gradient-text">SMU</span> <span className="text-foreground">PRO</span>
           </Link>
           <Link href="/cursos">
-            <Button variant="outline" size="sm">Ver Cursos</Button>
+            <Button variant="outline" size="sm">{t("Ver Cursos")}</Button>
           </Link>
         </div>
       </nav>
@@ -86,7 +88,7 @@ export default async function BlogPage({ searchParams }: Props) {
             Blog <span className="gradient-text">SMU PRO</span>
           </h1>
           <p className="text-muted-light max-w-xl mx-auto">
-            Artigos, tutoriais e insights sobre sonorização, iluminação e produção de eventos
+            {t("Artigos, tutoriais e insights sobre sonorização, iluminação e produção de eventos")}
           </p>
         </div>
 
@@ -100,7 +102,7 @@ export default async function BlogPage({ searchParams }: Props) {
                 : "bg-surface text-muted border-border hover:border-amber-500/30"
             }`}
           >
-            Todos
+            {t("Todos")}
           </Link>
           {Object.entries(BLOG_CATEGORIAS).map(([key, label]) => (
             <Link
@@ -122,11 +124,11 @@ export default async function BlogPage({ searchParams }: Props) {
           <section className="mb-12">
             <h2 className="text-lg font-bold text-foreground mb-5 flex items-center gap-2">
               <BookOpen size={18} className="text-amber-400" />
-              Destaques
+              {t("Destaques")}
             </h2>
             <div className="grid md:grid-cols-3 gap-6">
               {featured.map((post: any) => (
-                <PostCard key={post.id} post={post} featured />
+                <PostCard key={post.id} post={post} featured t={t} />
               ))}
             </div>
           </section>
@@ -136,17 +138,17 @@ export default async function BlogPage({ searchParams }: Props) {
         {posts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center rounded-2xl bg-surface border border-border">
             <BookOpen size={40} className="text-muted-light mb-3" />
-            <p className="text-foreground font-medium mb-1">Nenhum artigo encontrado</p>
+            <p className="text-foreground font-medium mb-1">{t("Nenhum artigo encontrado")}</p>
             <p className="text-sm text-muted-light mb-5">
-              {categoria ? "Tente outra categoria." : "Em breve teremos novos conteúdos."}
+              {categoria ? t("Tente outra categoria.") : t("Em breve teremos novos conteúdos.")}
             </p>
-            <Link href="/blog"><Button variant="outline" size="sm">Ver todos</Button></Link>
+            <Link href="/blog"><Button variant="outline" size="sm">{t("Ver todos")}</Button></Link>
           </div>
         ) : (
           <>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {posts.map((post: any) => (
-                <PostCard key={post.id} post={post} />
+                <PostCard key={post.id} post={post} t={t} />
               ))}
             </div>
 
@@ -155,15 +157,15 @@ export default async function BlogPage({ searchParams }: Props) {
               <div className="flex items-center justify-center gap-3 mt-10">
                 {currentPage > 1 && (
                   <Link href={`/blog?${categoria ? `categoria=${categoria}&` : ""}page=${currentPage - 1}`}>
-                    <Button variant="outline" size="sm">Anterior</Button>
+                    <Button variant="outline" size="sm">{t("Anterior")}</Button>
                   </Link>
                 )}
                 <span className="text-sm text-muted-light">
-                  Página {currentPage} de {totalPages}
+                  {t("Página")} {currentPage} {t("de")} {totalPages}
                 </span>
                 {currentPage < totalPages && (
                   <Link href={`/blog?${categoria ? `categoria=${categoria}&` : ""}page=${currentPage + 1}`}>
-                    <Button variant="outline" size="sm">Próxima</Button>
+                    <Button variant="outline" size="sm">{t("Próxima")}</Button>
                   </Link>
                 )}
               </div>
@@ -175,7 +177,7 @@ export default async function BlogPage({ searchParams }: Props) {
   );
 }
 
-function PostCard({ post, featured = false }: { post: any; featured?: boolean }) {
+function PostCard({ post, featured = false, t }: { post: any; featured?: boolean; t: (s: string) => string }) {
   const date = new Date(post.created_at).toLocaleDateString("pt-BR", {
     day: "2-digit",
     month: "short",
@@ -201,7 +203,7 @@ function PostCard({ post, featured = false }: { post: any; featured?: boolean })
               {BLOG_CATEGORIAS[post.categoria] ?? post.categoria}
             </Badge>
             <span className="text-[10px] text-muted-light flex items-center gap-1">
-              <Clock size={10} /> {post.tempo_leitura ?? 5} min
+              <Clock size={10} /> {post.tempo_leitura ?? 5} {t("min")}
             </span>
           </div>
 
@@ -218,7 +220,7 @@ function PostCard({ post, featured = false }: { post: any; featured?: boolean })
           <div className="flex items-center justify-between mt-auto pt-3 border-t border-border/50">
             <span className="text-[10px] text-muted-light">{date}</span>
             <span className="text-xs text-amber-400 font-medium flex items-center gap-1 group-hover:gap-2 transition-all">
-              Ler mais <ChevronRight size={12} />
+              {t("Ler mais")} <ChevronRight size={12} />
             </span>
           </div>
         </div>

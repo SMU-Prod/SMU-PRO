@@ -367,7 +367,7 @@ export function LessonPlayer({
               title={!canComplete ? "Aprove no quiz para concluir esta aula" : undefined}
             >
               {isCompleted ? (
-                <><CheckCheck size={15} /><span className="hidden sm:inline ml-1">Concluída</span></>
+                <><CheckCheck size={15} /><span className="hidden sm:inline ml-1">{t("Concluída")}</span></>
               ) : !canComplete ? (
                 <><Lock size={15} /><span className="hidden sm:inline ml-1">Quiz pendente</span></>
               ) : (
@@ -398,7 +398,7 @@ export function LessonPlayer({
             >
               <Image
                 src={`https://img.youtube.com/vi/${youtubeId}/mqdefault.jpg`}
-                alt="Thumbnail do vídeo"
+                alt={t("Thumbnail do vídeo")}
                 fill
                 className="object-cover opacity-80 group-hover:opacity-100 transition-opacity"
                 sizes="112px"
@@ -414,7 +414,7 @@ export function LessonPlayer({
             <button
               onClick={() => setVideoExpanded(true)}
               className="p-1.5 rounded-lg text-muted-light hover:text-amber-400 hover:bg-amber-500/10 transition-colors shrink-0"
-              title="Expandir vídeo"
+              title={t("Expandir vídeo")}
             >
               <Maximize2 size={16} />
             </button>
@@ -429,9 +429,9 @@ export function LessonPlayer({
               className="flex items-center gap-1.5 text-xs font-medium text-muted hover:text-amber-500 transition-colors py-1 px-3 rounded-lg hover:bg-amber-500/10 border border-transparent hover:border-amber-500/20"
             >
               {videoExpanded ? (
-                <><Minimize2 size={14} /> Minimizar vídeo</>
+                <><Minimize2 size={14} /> {t("Minimizar vídeo")}</>
               ) : (
-                <><Maximize2 size={14} /> Expandir vídeo</>
+                <><Maximize2 size={14} /> {t("Expandir vídeo")}</>
               )}
             </button>
           </div>
@@ -552,7 +552,7 @@ export function LessonPlayer({
               )}
               {activeTab === "materials" && <MaterialsTab lesson={lesson} />}
               {activeTab === "quiz" && (
-                <QuizTab lesson={lesson} quizAttempts={quizAttempts} quizData={quizData} userId={userId} onQuizPassed={() => setQuizJustPassed(true)} quizTr={quizTr} locale={locale} />
+                <QuizTab lesson={lesson} quizAttempts={quizAttempts} quizData={quizData} userId={userId} onQuizPassed={() => setQuizJustPassed(true)} quizTr={quizTr} locale={locale} lessonTitulo={dispTitulo} />
               )}
               {activeTab === "notes" && (
                 <NotesTab lessonId={lesson.id} notes={notes} userId={userId} />
@@ -587,13 +587,14 @@ export function LessonPlayer({
 }
 
 function MaterialsTab({ lesson }: { lesson: any }) {
+  const t = useT();
   const [showPdf, setShowPdf] = useState(false);
 
   if (!lesson.pdf_path) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <FileText size={40} className="text-muted-light mb-3" />
-        <p className="text-muted-light text-sm">Nenhum material disponível para esta aula.</p>
+        <p className="text-muted-light text-sm">{t("Nenhum material disponível para esta aula.")}</p>
       </div>
     );
   }

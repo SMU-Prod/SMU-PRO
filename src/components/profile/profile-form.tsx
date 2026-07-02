@@ -7,6 +7,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { updateUserProfile } from "@/lib/actions/users";
 import { CheckCircle, Loader2 } from "lucide-react";
+import { useT } from "@/lib/i18n/ui";
 import type { User } from "@/types/database";
 
 const cpfRegex = /^\d{3}\.\d{3}\.\d{3}-\d{2}$/;
@@ -32,6 +33,7 @@ interface Props {
 const inputClass = "w-full rounded-xl bg-surface-2 border border-border-strong px-4 py-2.5 text-sm text-foreground placeholder:text-muted-light focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors";
 
 export function ProfileForm({ user }: Props) {
+  const t = useT();
   const [saved, setSaved] = useState(false);
 
   const {
@@ -57,7 +59,7 @@ export function ProfileForm({ user }: Props) {
       setTimeout(() => setSaved(false), 3000);
     } catch (error) {
       console.error(error);
-      alert("Erro ao salvar. Tente novamente.");
+      alert(t("Erro ao salvar. Tente novamente."));
     }
   }
 
@@ -65,8 +67,8 @@ export function ProfileForm({ user }: Props) {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       <div className="grid sm:grid-cols-2 gap-5">
         <div>
-          <label className="block text-sm font-medium text-muted mb-1.5">Nome completo</label>
-          <input {...register("nome")} className={inputClass} placeholder="Seu nome" />
+          <label className="block text-sm font-medium text-muted mb-1.5">{t("Nome completo")}</label>
+          <input {...register("nome")} className={inputClass} placeholder={t("Seu nome")} />
           {errors.nome && <p className="text-red-500 text-xs mt-1">{errors.nome.message}</p>}
         </div>
 
@@ -74,25 +76,25 @@ export function ProfileForm({ user }: Props) {
           <label className="block text-sm font-medium text-muted mb-1.5">CPF</label>
           <input {...register("cpf")} className={inputClass} placeholder="000.000.000-00" maxLength={14} />
           {errors.cpf && <p className="text-red-500 text-xs mt-1">{errors.cpf.message}</p>}
-          <p className="text-xs text-muted-light mt-1">Necessário para pagamentos via PIX/Boleto</p>
+          <p className="text-xs text-muted-light mt-1">{t("Necessário para pagamentos via PIX/Boleto")}</p>
         </div>
       </div>
 
       <div className="grid sm:grid-cols-2 gap-5">
         <div>
-          <label className="block text-sm font-medium text-muted mb-1.5">Telefone</label>
+          <label className="block text-sm font-medium text-muted mb-1.5">{t("Telefone")}</label>
           <input {...register("telefone")} className={inputClass} placeholder="(11) 99999-9999" />
         </div>
       </div>
 
       <div className="grid sm:grid-cols-2 gap-5">
         <div>
-          <label className="block text-sm font-medium text-muted mb-1.5">Cidade</label>
-          <input {...register("cidade")} className={inputClass} placeholder="São Paulo" />
+          <label className="block text-sm font-medium text-muted mb-1.5">{t("Cidade")}</label>
+          <input {...register("cidade")} className={inputClass} placeholder={t("São Paulo")} />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-muted mb-1.5">Estado (sigla)</label>
+          <label className="block text-sm font-medium text-muted mb-1.5">{t("Estado (sigla)")}</label>
           <input
             {...register("estado")}
             maxLength={2}
@@ -104,12 +106,12 @@ export function ProfileForm({ user }: Props) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-muted mb-1.5">Bio</label>
+        <label className="block text-sm font-medium text-muted mb-1.5">{t("Bio")}</label>
         <textarea
           {...register("bio")}
           rows={4}
           className={inputClass + " resize-none"}
-          placeholder="Conte um pouco sobre você e sua experiência no mercado de eventos..."
+          placeholder={t("Conte um pouco sobre você e sua experiência no mercado de eventos...")}
         />
         {errors.bio && <p className="text-red-500 text-xs mt-1">{errors.bio.message}</p>}
       </div>
@@ -121,10 +123,10 @@ export function ProfileForm({ user }: Props) {
           ) : saved ? (
             <CheckCircle size={16} />
           ) : null}
-          {isSubmitting ? "Salvando..." : saved ? "Salvo!" : "Salvar alterações"}
+          {isSubmitting ? t("Salvando...") : saved ? t("Salvo!") : t("Salvar alterações")}
         </Button>
         {saved && (
-          <span className="text-sm text-emerald-600">Perfil atualizado com sucesso</span>
+          <span className="text-sm text-emerald-600">{t("Perfil atualizado com sucesso")}</span>
         )}
       </div>
     </form>

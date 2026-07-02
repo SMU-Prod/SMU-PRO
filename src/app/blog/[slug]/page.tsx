@@ -1,4 +1,5 @@
 import { getPostBySlug, getRelatedPosts } from "@/lib/actions/blog";
+import { getServerT } from "@/lib/i18n/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -55,6 +56,7 @@ const BLOG_CATEGORIAS: Record<string, string> = {
 };
 
 export default async function BlogPostPage({ params }: Props) {
+  const t = await getServerT();
   const { slug } = await params;
   const post = await getPostBySlug(slug);
   if (!post) notFound();
@@ -108,21 +110,21 @@ export default async function BlogPostPage({ params }: Props) {
       <nav className="sticky top-0 z-50 border-b border-border bg-surface/90 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
           <Link href="/blog" className="flex items-center gap-2 text-muted-light hover:text-foreground transition-colors text-sm">
-            <ArrowLeft size={16} /> Blog
+            <ArrowLeft size={16} /> {t("Blog")}
           </Link>
           <Link href="/" className="text-xl font-black tracking-tight">
             <span className="gradient-text">SMU</span> <span className="text-foreground">PRO</span>
           </Link>
-          <Link href="/cursos"><Button variant="outline" size="sm">Ver Cursos</Button></Link>
+          <Link href="/cursos"><Button variant="outline" size="sm">{t("Ver Cursos")}</Button></Link>
         </div>
       </nav>
 
       <article className="mx-auto max-w-3xl px-6 py-12">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-xs text-muted-light mb-8">
-          <Link href="/" className="hover:text-muted transition-colors">Home</Link>
+          <Link href="/" className="hover:text-muted transition-colors">{t("Home")}</Link>
           <span>/</span>
-          <Link href="/blog" className="hover:text-muted transition-colors">Blog</Link>
+          <Link href="/blog" className="hover:text-muted transition-colors">{t("Blog")}</Link>
           <span>/</span>
           <span className="text-muted truncate max-w-[200px]">{post.titulo}</span>
         </nav>
@@ -131,7 +133,7 @@ export default async function BlogPostPage({ params }: Props) {
         <header className="mb-8">
           <div className="flex items-center gap-3 mb-4">
             <Badge variant="default">{BLOG_CATEGORIAS[post.categoria] ?? post.categoria}</Badge>
-            <span className="text-xs text-muted-light flex items-center gap-1"><Clock size={12} /> {post.tempo_leitura ?? 5} min de leitura</span>
+            <span className="text-xs text-muted-light flex items-center gap-1"><Clock size={12} /> {post.tempo_leitura ?? 5} {t("min de leitura")}</span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-black text-foreground leading-tight mb-4">{post.titulo}</h1>
           {post.resumo && (
@@ -139,7 +141,7 @@ export default async function BlogPostPage({ params }: Props) {
           )}
           <div className="flex items-center gap-4 mt-5 text-xs text-muted-light">
             <span className="flex items-center gap-1"><Calendar size={12} /> {date}</span>
-            {post.views > 0 && <span className="flex items-center gap-1"><Eye size={12} /> {post.views} visualizações</span>}
+            {post.views > 0 && <span className="flex items-center gap-1"><Eye size={12} /> {post.views} {t("visualizações")}</span>}
           </div>
         </header>
 
@@ -180,16 +182,16 @@ export default async function BlogPostPage({ params }: Props) {
 
         {/* CTA */}
         <div className="mt-10 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6 text-center">
-          <h3 className="font-bold text-foreground mb-2">Quer aprender na prática?</h3>
-          <p className="text-sm text-muted-light mb-4">Explore nossos cursos com certificado, IA e conteúdo interativo.</p>
-          <Link href="/cursos"><Button>Ver cursos disponíveis <ChevronRight size={14} /></Button></Link>
+          <h3 className="font-bold text-foreground mb-2">{t("Quer aprender na prática?")}</h3>
+          <p className="text-sm text-muted-light mb-4">{t("Explore nossos cursos com certificado, IA e conteúdo interativo.")}</p>
+          <Link href="/cursos"><Button>{t("Ver cursos disponíveis")} <ChevronRight size={14} /></Button></Link>
         </div>
       </article>
 
       {/* Related posts */}
       {related.length > 0 && (
         <section className="mx-auto max-w-7xl px-6 pb-16">
-          <h2 className="text-lg font-bold text-foreground mb-5">Artigos relacionados</h2>
+          <h2 className="text-lg font-bold text-foreground mb-5">{t("Artigos relacionados")}</h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {related.map((r: any) => (
               <Link key={r.id} href={`/blog/${r.slug}`} className="group">
@@ -203,7 +205,7 @@ export default async function BlogPostPage({ params }: Props) {
                   </div>
                   <div className="p-4">
                     <h3 className="font-semibold text-foreground text-sm leading-tight line-clamp-2 group-hover:text-amber-400 transition-colors">{r.titulo}</h3>
-                    <span className="text-[10px] text-muted-light mt-2 flex items-center gap-1"><Clock size={10} /> {r.tempo_leitura ?? 5} min</span>
+                    <span className="text-[10px] text-muted-light mt-2 flex items-center gap-1"><Clock size={10} /> {r.tempo_leitura ?? 5} {t("min")}</span>
                   </div>
                 </div>
               </Link>

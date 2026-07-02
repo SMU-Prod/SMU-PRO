@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Award, Search, Shield } from "lucide-react";
 import Link from "next/link";
+import { useT } from "@/lib/i18n/ui";
 
 export default function CertificateVerifyPage() {
   const router = useRouter();
+  const t = useT();
   const [codigo, setCodigo] = useState("");
 
   const handleVerify = (e: React.FormEvent) => {
@@ -30,7 +32,7 @@ export default function CertificateVerifyPage() {
         </Link>
         <div className="flex items-center justify-center gap-2 text-amber-400 mb-4">
           <Shield size={20} />
-          <span className="text-sm font-semibold uppercase tracking-widest">Verificação de Certificado</span>
+          <span className="text-sm font-semibold uppercase tracking-widest">{t("Verificação de Certificado")}</span>
         </div>
         <h1 className="text-3xl font-bold text-foreground mb-2">Verificar Autenticidade</h1>
         <p className="text-muted-light max-w-sm mx-auto text-sm leading-relaxed">

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
+import { useT } from "@/lib/i18n/ui";
 import {
   CheckCircle,
   Copy,
@@ -42,6 +43,7 @@ export function PaymentPageClient({
   boletoData,
   invoiceUrl,
 }: Props) {
+  const t = useT();
   const router = useRouter();
   const [status, setStatus] = useState(initialStatus);
   const [confirmed, setConfirmed] = useState(
@@ -107,15 +109,15 @@ export function PaymentPageClient({
           <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-green-500/20">
             <CheckCircle size={40} className="text-green-400" />
           </div>
-          <h1 className="text-3xl font-black mb-3">Pagamento confirmado!</h1>
+          <h1 className="text-3xl font-black mb-3">{t("Pagamento confirmado!")}</h1>
           <p className="text-white/50 mb-2">{courseTitle}</p>
           <p className="text-white/30 text-sm mb-8">
-            Você já tem acesso completo ao curso. Redirecionando...
+            {t("Você já tem acesso completo ao curso. Redirecionando...")}
           </p>
           {courseSlug && (
             <Link href={`/dashboard/cursos/${courseSlug}`}>
               <Button size="lg" className="gap-2">
-                Começar a estudar agora
+                {t("Começar a estudar agora")}
               </Button>
             </Link>
           )}
@@ -141,10 +143,10 @@ export function PaymentPageClient({
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 rounded-full bg-yellow-500/10 border border-yellow-500/20 px-4 py-1.5 text-sm text-yellow-400 mb-4">
             <Clock size={14} />
-            Aguardando pagamento
+            {t("Aguardando pagamento")}
           </div>
           <h1 className="text-3xl font-black mb-2">{courseTitle}</h1>
-          <p className="text-white/40">Valor: <strong className="text-white">{formatCurrency(value)}</strong></p>
+          <p className="text-white/40">{t("Valor:")} <strong className="text-white">{formatCurrency(value)}</strong></p>
         </div>
 
         {/* PIX */}
@@ -152,11 +154,11 @@ export function PaymentPageClient({
           <div className="rounded-2xl bg-white/5 border border-white/10 p-6">
             <div className="flex items-center gap-2 mb-6">
               <QrCode size={20} className="text-amber-400" />
-              <h2 className="font-bold">Pague com PIX</h2>
+              <h2 className="font-bold">{t("Pague com PIX")}</h2>
               {polling && (
                 <span className="ml-auto flex items-center gap-1.5 text-xs text-white/30">
                   <Loader2 size={12} className="animate-spin" />
-                  Verificando...
+                  {t("Verificando...")}
                 </span>
               )}
             </div>
@@ -166,14 +168,14 @@ export function PaymentPageClient({
               <div className="rounded-xl bg-white p-4 inline-block">
                 <img
                   src={pixData.qrCodeImage}
-                  alt="QR Code PIX"
+                  alt={t("QR Code PIX")}
                   className="h-48 w-48 object-contain"
                 />
               </div>
 
               <div className="text-center text-sm text-white/40">
-                <p>Abra o app do seu banco → PIX → QR Code</p>
-                <p>ou use o código abaixo (Copia e Cola)</p>
+                <p>{t("Abra o app do seu banco → PIX → QR Code")}</p>
+                <p>{t("ou use o código abaixo (Copia e Cola)")}</p>
               </div>
 
               {/* Copia e Cola */}
@@ -191,16 +193,16 @@ export function PaymentPageClient({
                     onClick={() => copyToClipboard(pixData.copyPaste, "pix")}
                   >
                     {copiedPix ? (
-                      <><CheckCircle size={14} className="text-green-400" /> Copiado!</>
+                      <><CheckCircle size={14} className="text-green-400" /> {t("Copiado!")}</>
                     ) : (
-                      <><Copy size={14} /> Copiar</>
+                      <><Copy size={14} /> {t("Copiar")}</>
                     )}
                   </Button>
                 </div>
               </div>
 
               <p className="text-xs text-white/25">
-                Expira em: {new Date(pixData.expiresAt).toLocaleString("pt-BR")}
+                {t("Expira em:")} {new Date(pixData.expiresAt).toLocaleString("pt-BR")}
               </p>
             </div>
 
@@ -213,7 +215,7 @@ export function PaymentPageClient({
                 onClick={checkStatus}
               >
                 <RefreshCw size={14} />
-                Verificar manualmente
+                {t("Verificar manualmente")}
               </Button>
             </div>
           </div>
@@ -224,14 +226,14 @@ export function PaymentPageClient({
           <div className="rounded-2xl bg-white/5 border border-white/10 p-6">
             <div className="flex items-center gap-2 mb-6">
               <FileText size={20} className="text-amber-400" />
-              <h2 className="font-bold">Boleto Bancário</h2>
+              <h2 className="font-bold">{t("Boleto Bancário")}</h2>
             </div>
 
             <div className="space-y-4">
               <div className="rounded-xl bg-white/5 border border-white/10 p-4">
-                <p className="text-xs text-white/40 mb-2">Linha digitável</p>
+                <p className="text-xs text-white/40 mb-2">{t("Linha digitável")}</p>
                 <p className="font-mono text-sm text-white break-all leading-relaxed">
-                  {boletoData.identificationField || "Linha digitável disponível no PDF"}
+                  {boletoData.identificationField || t("Linha digitável disponível no PDF")}
                 </p>
               </div>
 
@@ -243,9 +245,9 @@ export function PaymentPageClient({
                   onClick={() => copyToClipboard(boletoData!.identificationField, "boleto")}
                 >
                   {copiedBoleto ? (
-                    <><CheckCircle size={14} className="text-green-400" /> Copiado!</>
+                    <><CheckCircle size={14} className="text-green-400" /> {t("Copiado!")}</>
                   ) : (
-                    <><Copy size={14} /> Copiar linha digitável</>
+                    <><Copy size={14} /> {t("Copiar linha digitável")}</>
                   )}
                 </Button>
               )}
@@ -254,14 +256,13 @@ export function PaymentPageClient({
                 <a href={boletoData.bankSlipUrl} target="_blank" rel="noopener noreferrer" className="flex-1">
                   <Button size="lg" className="w-full gap-2">
                     <ExternalLink size={16} />
-                    Visualizar / Imprimir boleto
+                    {t("Visualizar / Imprimir boleto")}
                   </Button>
                 </a>
               </div>
 
               <p className="text-xs text-white/30 text-center">
-                O boleto pode levar até 3 dias úteis para compensar.
-                Após o pagamento, seu acesso será liberado automaticamente.
+                {t("O boleto pode levar até 3 dias úteis para compensar. Após o pagamento, seu acesso será liberado automaticamente.")}
               </p>
             </div>
           </div>
@@ -270,11 +271,11 @@ export function PaymentPageClient({
         {/* Invoice URL (fallback) */}
         {invoiceUrl && billingType !== "PIX" && billingType !== "BOLETO" && (
           <div className="rounded-2xl bg-white/5 border border-white/10 p-6 text-center">
-            <p className="text-white/50 mb-4">Finalize o pagamento na página segura do Asaas</p>
+            <p className="text-white/50 mb-4">{t("Finalize o pagamento na página segura do Asaas")}</p>
             <a href={invoiceUrl} target="_blank" rel="noopener noreferrer">
               <Button size="lg" className="gap-2">
                 <ExternalLink size={16} />
-                Ir para página de pagamento
+                {t("Ir para página de pagamento")}
               </Button>
             </a>
           </div>
@@ -282,10 +283,10 @@ export function PaymentPageClient({
 
         {/* Status atual */}
         <div className="mt-6 text-center text-xs text-white/25">
-          Status atual: <strong className="text-white/40">{status}</strong>
+          {t("Status atual:")} <strong className="text-white/40">{status}</strong>
           {" · "}
           <Link href="/dashboard" className="hover:text-white transition-colors">
-            Voltar ao painel
+            {t("Voltar ao painel")}
           </Link>
         </div>
       </div>

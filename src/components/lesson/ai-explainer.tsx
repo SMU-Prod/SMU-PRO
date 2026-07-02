@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Sparkles, Loader2, ChevronDown, ChevronUp, Headphones } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/lib/i18n/ui";
 
 interface AiExplainerProps {
   lessonId: string;
@@ -11,6 +12,7 @@ interface AiExplainerProps {
 }
 
 export function AiExplainer({ lessonId, titulo, conteudo }: AiExplainerProps) {
+  const t = useT();
   const [explanation, setExplanation] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(true);
@@ -36,7 +38,7 @@ export function AiExplainer({ lessonId, titulo, conteudo }: AiExplainerProps) {
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || "Erro ao gerar explicação");
+        throw new Error(data.error || t("Erro ao gerar explicação"));
       }
 
       const data = await res.json();
@@ -62,7 +64,7 @@ export function AiExplainer({ lessonId, titulo, conteudo }: AiExplainerProps) {
         }),
       });
 
-      if (!res.ok) throw new Error("Erro ao gerar áudio");
+      if (!res.ok) throw new Error(t("Erro ao gerar áudio"));
 
       const contentType = res.headers.get("Content-Type");
       if (contentType?.includes("audio/")) {
@@ -96,10 +98,10 @@ export function AiExplainer({ lessonId, titulo, conteudo }: AiExplainerProps) {
           ) : (
             <Sparkles size={14} />
           )}
-          {loading ? "Analisando conteúdo..." : "Explicação IA"}
+          {loading ? t("Analisando conteúdo...") : t("Explicação IA")}
         </Button>
         <span className="text-xs text-muted-light">
-          Masterclass IA: casos reais, curiosidades técnicas e dicas de campo
+          {t("Masterclass IA: casos reais, curiosidades técnicas e dicas de campo")}
         </span>
         {error && <span className="text-xs text-red-400">{error}</span>}
       </div>
@@ -116,7 +118,7 @@ export function AiExplainer({ lessonId, titulo, conteudo }: AiExplainerProps) {
       >
         <div className="flex items-center gap-2">
           <Sparkles size={14} className="text-amber-500" />
-          <span className="text-sm font-medium text-foreground">Explicação IA</span>
+          <span className="text-sm font-medium text-foreground">{t("Explicação IA")}</span>
           <span className="text-[10px] text-muted-light px-1.5 py-0.5 rounded-full bg-surface-3">
             GPT-4.1
           </span>
@@ -146,7 +148,7 @@ export function AiExplainer({ lessonId, titulo, conteudo }: AiExplainerProps) {
                 ) : (
                   <Headphones size={12} />
                 )}
-                {audioLoading ? "Gerando..." : "Ouvir explicação"}
+                {audioLoading ? t("Gerando...") : t("Ouvir explicação")}
               </button>
             )}
           </div>

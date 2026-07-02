@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { CheckCircle, Loader2, Play, QrCode, FileText, ChevronDown, CreditCard, User } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { useT } from "@/lib/i18n/ui";
 
 interface Course {
   id: string;
@@ -31,6 +32,7 @@ export function EnrollButton({ course, userId, isMIT = false }: Props) {
   const [cpfError, setCpfError] = useState("");
   const [pendingBillingType, setPendingBillingType] = useState<BillingType | null>(null);
   const router = useRouter();
+  const t = useT();
 
   // MIT (projeto cultural) tem acesso gratuito a todos os cursos
   const isFree = course.tipo === "free" || isMIT;
@@ -64,7 +66,7 @@ export function EnrollButton({ course, userId, isMIT = false }: Props) {
       });
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error ?? "Erro ao se inscrever");
+        throw new Error(data.error ?? t("Erro ao se inscrever"));
       }
       setEnrolled(true);
       setTimeout(() => {
@@ -72,7 +74,7 @@ export function EnrollButton({ course, userId, isMIT = false }: Props) {
         router.refresh();
       }, 800);
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Erro ao processar. Tente novamente.");
+      alert(error instanceof Error ? error.message : t("Erro ao processar. Tente novamente."));
     } finally {
       setLoading(false);
     }
@@ -100,18 +102,18 @@ export function EnrollButton({ course, userId, isMIT = false }: Props) {
         return;
       }
 
-      if (!res.ok) throw new Error(data.error ?? "Erro ao iniciar pagamento");
+      if (!res.ok) throw new Error(data.error ?? t("Erro ao iniciar pagamento"));
 
       router.push(`/pagamento/${data.paymentId}`);
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Erro ao processar. Tente novamente.");
+      alert(error instanceof Error ? error.message : t("Erro ao processar. Tente novamente."));
       setLoading(false);
     }
   }
 
   function handleCpfSubmit() {
     if (!validateCpf(cpf)) {
-      setCpfError("CPF inválido. Verifique e tente novamente.");
+      setCpfError(t("CPF inválido. Verifique e tente novamente."));
       return;
     }
     setShowCpfModal(false);
@@ -124,7 +126,7 @@ export function EnrollButton({ course, userId, isMIT = false }: Props) {
     return (
       <Button size="lg" variant="success" className="w-full gap-2" disabled>
         <CheckCircle size={18} />
-        Inscrito! Redirecionando...
+        {t("Inscrito! Redirecionando...")}
       </Button>
     );
   }
@@ -138,7 +140,7 @@ export function EnrollButton({ course, userId, isMIT = false }: Props) {
         disabled={loading}
       >
         {loading ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} />}
-        {loading ? "Processando..." : isMIT ? "Inscrever-se — Projeto MIT" : "Inscrever-se grátis"}
+        {loading ? t("Processando...") : isMIT ? t("Inscrever-se — Projeto MIT") : t("Inscrever-se grátis")}
       </Button>
     );
   }
@@ -151,10 +153,10 @@ export function EnrollButton({ course, userId, isMIT = false }: Props) {
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-3">
           <div className="flex items-center gap-2 text-sm font-medium text-foreground">
             <User size={16} className="text-amber-400" />
-            Informe seu CPF para continuar
+            {t("Informe seu CPF para continuar")}
           </div>
           <p className="text-xs text-muted-light">
-            Obrigatório para pagamentos via PIX, Boleto ou Cartão. Será salvo no seu perfil.
+            {t("Obrigatório para pagamentos via PIX, Boleto ou Cartão. Será salvo no seu perfil.")}
           </p>
           <input
             type="text"
@@ -170,10 +172,10 @@ export function EnrollButton({ course, userId, isMIT = false }: Props) {
           <div className="flex gap-2">
             <Button size="sm" onClick={handleCpfSubmit} className="flex-1 gap-1" disabled={loading}>
               {loading ? <Loader2 size={14} className="animate-spin" /> : null}
-              Continuar
+              {t("Continuar")}
             </Button>
             <Button size="sm" variant="ghost" onClick={() => { setShowCpfModal(false); setPendingBillingType(null); }}>
-              Cancelar
+              {t("Cancelar")}
             </Button>
           </div>
         </div>
@@ -181,7 +183,7 @@ export function EnrollButton({ course, userId, isMIT = false }: Props) {
 
       {showMethods && !showCpfModal ? (
         <>
-          <p className="text-center text-sm text-muted mb-3">Escolha a forma de pagamento:</p>
+          <p className="text-center text-sm text-muted mb-3">{t("Escolha a forma de pagamento:")}</p>
 
           <button
             onClick={() => handlePaidEnroll("PIX")}
@@ -190,8 +192,8 @@ export function EnrollButton({ course, userId, isMIT = false }: Props) {
           >
             <QrCode size={20} className="text-emerald-400 shrink-0" />
             <div>
-              <div className="font-semibold text-sm text-foreground">PIX</div>
-              <div className="text-xs text-muted-light">Confirmação instantânea</div>
+              <div className="font-semibold text-sm text-foreground">{t("PIX")}</div>
+              <div className="text-xs text-muted-light">{t("Confirmação instantânea")}</div>
             </div>
             {loading ? (
               <Loader2 size={16} className="ml-auto animate-spin text-muted-light" />
@@ -207,8 +209,8 @@ export function EnrollButton({ course, userId, isMIT = false }: Props) {
           >
             <FileText size={20} className="text-blue-400 shrink-0" />
             <div>
-              <div className="font-semibold text-sm text-foreground">Boleto Bancário</div>
-              <div className="text-xs text-muted-light">Prazo de até 3 dias úteis</div>
+              <div className="font-semibold text-sm text-foreground">{t("Boleto Bancário")}</div>
+              <div className="text-xs text-muted-light">{t("Prazo de até 3 dias úteis")}</div>
             </div>
             {loading ? (
               <Loader2 size={16} className="ml-auto animate-spin text-muted-light" />
@@ -224,8 +226,8 @@ export function EnrollButton({ course, userId, isMIT = false }: Props) {
           >
             <CreditCard size={20} className="text-purple-400 shrink-0" />
             <div>
-              <div className="font-semibold text-sm text-foreground">Cartão de Crédito</div>
-              <div className="text-xs text-muted-light">Acesso liberado imediatamente</div>
+              <div className="font-semibold text-sm text-foreground">{t("Cartão de Crédito")}</div>
+              <div className="text-xs text-muted-light">{t("Acesso liberado imediatamente")}</div>
             </div>
             {loading ? (
               <Loader2 size={16} className="ml-auto animate-spin text-muted-light" />
@@ -241,7 +243,7 @@ export function EnrollButton({ course, userId, isMIT = false }: Props) {
             onClick={() => setShowMethods(false)}
             disabled={loading}
           >
-            Cancelar
+            {t("Cancelar")}
           </Button>
         </>
       ) : !showCpfModal ? (
@@ -252,9 +254,9 @@ export function EnrollButton({ course, userId, isMIT = false }: Props) {
           disabled={loading}
         >
           {loading && <Loader2 size={18} className="animate-spin" />}
-          {loading ? "Processando..." : (
+          {loading ? t("Processando...") : (
             <span className="flex items-center gap-2 w-full justify-center">
-              Comprar — {formatCurrency(course.preco ?? 0)}
+              {t("Comprar")} — {formatCurrency(course.preco ?? 0)}
               <ChevronDown size={16} />
             </span>
           )}

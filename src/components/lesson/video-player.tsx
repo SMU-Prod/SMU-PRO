@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { updateWatchTime } from "@/lib/actions/progress";
+import { useT } from "@/lib/i18n/ui";
 
 interface VideoPlayerProps {
   youtubeId: string;
@@ -9,6 +10,7 @@ interface VideoPlayerProps {
 }
 
 export function VideoPlayer({ youtubeId, lessonId }: VideoPlayerProps) {
+  const t = useT();
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const watchTimeRef = useRef(0);
 
@@ -34,7 +36,7 @@ export function VideoPlayer({ youtubeId, lessonId }: VideoPlayerProps) {
       className="w-full h-full"
       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
       allowFullScreen={false}
-      title="Vídeo da aula"
+      title={t("Vídeo da aula")}
     />
   );
 }

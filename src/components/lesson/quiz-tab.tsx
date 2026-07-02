@@ -23,6 +23,8 @@ interface QuizTabProps {
   onQuizPassed?: () => void;
   quizTr?: NonNullable<CourseTr>["quiz"] | null;
   locale?: Locale;
+  /** Título da aula já traduzido (para montar "Quiz — <aula>" no idioma ativo) */
+  lessonTitulo?: string;
 }
 
 type QuizWithQuestions = Quiz & {
@@ -46,7 +48,7 @@ function formatTime(seconds: number) {
   return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 }
 
-export function QuizTab({ lesson, quizAttempts, quizData, userId, onQuizPassed, quizTr, locale = "pt" }: QuizTabProps) {
+export function QuizTab({ lesson, quizAttempts, quizData, userId, onQuizPassed, quizTr, locale = "pt", lessonTitulo }: QuizTabProps) {
   const t = useT();
   const [quiz, setQuiz] = useState<QuizWithQuestions | null>(() => {
     if (!quizData) return null;
@@ -341,7 +343,7 @@ export function QuizTab({ lesson, quizAttempts, quizData, userId, onQuizPassed, 
       <div className="animate-fade-in">
         <div className="rounded-xl border border-border bg-surface p-6 text-center">
           <HelpCircle size={40} className="mx-auto mb-3 text-amber-400" />
-          <h3 className="font-bold text-foreground mb-1">{quiz.titulo}</h3>
+          <h3 className="font-bold text-foreground mb-1">{locale !== "pt" && lessonTitulo ? `Quiz — ${lessonTitulo}` : quiz.titulo}</h3>
           <p className="text-sm text-muted-light mb-5">{quiz.descricao}</p>
           <div className="flex justify-center gap-6 mb-5 text-sm">
             <div className="text-center">
@@ -372,7 +374,7 @@ export function QuizTab({ lesson, quizAttempts, quizData, userId, onQuizPassed, 
 
           {lessonAttempts.length > 0 && (
             <p className="text-xs text-muted-light mb-3">
-              {lessonAttempts.length}/{quiz.tentativas_permitidas} tentativas usadas
+              {lessonAttempts.length}/{quiz.tentativas_permitidas} {t("tentativas usadas")}
             </p>
           )}
 

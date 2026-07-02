@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n/ui";
 import {
   getNotifications,
   getUnreadCount,
@@ -53,6 +54,7 @@ function timeAgo(dateStr: string): string {
 }
 
 export function NotificationDropdown() {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -145,7 +147,7 @@ export function NotificationDropdown() {
         size="icon"
         className="relative shrink-0"
         onClick={handleOpen}
-        aria-label="Notificações"
+        aria-label={t("Notificações")}
       >
         <Bell size={18} />
         {unreadCount > 0 && (
@@ -159,14 +161,14 @@ export function NotificationDropdown() {
         <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 rounded-xl border border-border bg-surface shadow-2xl z-50 overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-            <h3 className="text-sm font-semibold text-foreground">Notificações</h3>
+            <h3 className="text-sm font-semibold text-foreground">{t("Notificações")}</h3>
             {unreadCount > 0 && (
               <button
                 onClick={handleMarkAll}
                 className="flex items-center gap-1 text-xs text-amber-400 hover:text-amber-300 transition-colors"
               >
                 <CheckCheck size={14} />
-                Marcar todas
+                {t("Marcar todas")}
               </button>
             )}
           </div>
@@ -180,8 +182,8 @@ export function NotificationDropdown() {
             ) : notifications.length === 0 ? (
               <div className="py-10 text-center">
                 <Bell size={28} className="mx-auto text-muted-light/50 mb-2" />
-                <p className="text-sm text-muted-light">Nenhuma notificação</p>
-                <p className="text-xs text-muted-light/60 mt-1">Você está em dia!</p>
+                <p className="text-sm text-muted-light">{t("Nenhuma notificação")}</p>
+                <p className="text-xs text-muted-light/60 mt-1">{t("Você está em dia!")}</p>
               </div>
             ) : (
               notifications.map((n) => {
@@ -228,7 +230,7 @@ export function NotificationDropdown() {
                       <button
                         onClick={(e) => { e.stopPropagation(); handleDelete(e, n.id); }}
                         className="p-1 rounded opacity-0 group-hover:opacity-100 text-muted-light hover:text-red-400 transition-all"
-                        title="Remover"
+                        title={t("Remover")}
                       >
                         <Trash2 size={12} />
                       </button>
@@ -249,7 +251,7 @@ export function NotificationDropdown() {
                 }}
                 className="w-full text-center text-xs text-muted-light hover:text-foreground transition-colors"
               >
-                Gerenciar preferências de notificação
+                {t("Gerenciar preferências de notificação")}
               </button>
             </div>
           )}

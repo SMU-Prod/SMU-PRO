@@ -98,7 +98,7 @@ export default async function CertificatePage({ params }: Props) {
         </Link>
         <div className="flex items-center gap-2 justify-center text-emerald-400 text-sm">
           <CheckCircle2 size={16} />
-          <span>Certificado Válido e Verificado</span>
+          <span>{t("Certificado Válido e Verificado")}</span>
         </div>
       </div>
 
@@ -149,7 +149,7 @@ export default async function CertificatePage({ params }: Props) {
             <h1 className="text-3xl font-bold text-foreground mb-3">{displayName}</h1>
             {isNR ? (
               <>
-                <p className="text-sm text-muted-light mb-2">concluiu com êxito o treinamento de</p>
+                <p className="text-sm text-muted-light mb-2">{t("concluiu com êxito o treinamento de")}</p>
                 {nrNumber && (
                   <h2 className="text-2xl font-bold text-blue-400 mb-1">{nrNumber}</h2>
                 )}
@@ -158,7 +158,7 @@ export default async function CertificatePage({ params }: Props) {
               </>
             ) : (
               <>
-                <p className="text-sm text-muted-light mb-2">concluiu com êxito o curso</p>
+                <p className="text-sm text-muted-light mb-2">{t("concluiu com êxito o curso")}</p>
                 <h2 className="text-xl font-semibold text-[#FBBF24] mb-1">{course.titulo}</h2>
               </>
             )}
@@ -181,14 +181,14 @@ export default async function CertificatePage({ params }: Props) {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="rounded-xl bg-surface p-3 text-center">
                   <Calendar size={16} className="mx-auto mb-1 text-blue-400" />
-                  <p className="text-xs text-muted-light">Data de Realização</p>
+                  <p className="text-xs text-muted-light">{t("Data de Realização")}</p>
                   <p className="text-sm font-medium text-foreground">
                     {new Date(cert.emitido_em).toLocaleDateString("pt-BR")}
                   </p>
                 </div>
                 <div className="rounded-xl bg-surface p-3 text-center">
                   <Clock size={16} className="mx-auto mb-1 text-blue-400" />
-                  <p className="text-xs text-muted-light">Carga Horária</p>
+                  <p className="text-xs text-muted-light">{t("Carga Horária")}</p>
                   <p className="text-sm font-medium text-foreground">
                     {formatMinutes(cert.carga_horaria ?? course.carga_horaria ?? 0)}
                   </p>
@@ -227,14 +227,14 @@ export default async function CertificatePage({ params }: Props) {
               </div>
               <div className="rounded-xl bg-surface p-3 text-center">
                 <Clock size={16} className="mx-auto mb-1 text-amber-400" />
-                <p className="text-xs text-muted-light">Carga Horária</p>
+                <p className="text-xs text-muted-light">{t("Carga Horária")}</p>
                 <p className="text-sm font-medium text-foreground">
                   {formatMinutes(cert.carga_horaria ?? course.carga_horaria ?? 0)}
                 </p>
               </div>
               <div className="rounded-xl bg-surface p-3 text-center">
                 <User size={16} className="mx-auto mb-1 text-amber-400" />
-                <p className="text-xs text-muted-light">Nível</p>
+                <p className="text-xs text-muted-light">{t("Nível")}</p>
                 <p className="text-sm font-medium text-foreground">{t(getLevelLabel(course.nivel))}</p>
               </div>
             </div>
@@ -251,11 +251,11 @@ export default async function CertificatePage({ params }: Props) {
             </div>
             <div className="flex flex-col items-center gap-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={qrDataUrl} alt="QR Code de verificação" className="h-[80px] w-[80px] rounded-lg" />
+              <img src={qrDataUrl} alt={t("QR Code de verificação")} className="h-[80px] w-[80px] rounded-lg" />
               <p className="text-[10px] text-muted-light">Verificar autenticidade</p>
             </div>
             <div className="text-right">
-              <p className="text-[10px] text-muted-light">Código de verificação</p>
+              <p className="text-[10px] text-muted-light">{t("Código de verificação")}</p>
               <p className={`text-[10px] font-mono break-all max-w-[140px] ${isNR ? "text-blue-400" : "text-amber-400"}`}>
                 {codigo.substring(0, 8)}...
               </p>
