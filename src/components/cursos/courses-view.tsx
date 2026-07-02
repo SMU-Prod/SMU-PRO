@@ -7,6 +7,7 @@ import { LayoutGrid, List as ListIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { CategoryIcon } from "@/components/ui/category-icon";
 import { getCategoryLabel, getLevelLabel, formatMinutes, formatCurrency } from "@/lib/utils";
+import { useT, type TFn } from "@/lib/i18n/ui";
 
 type Course = any;
 
@@ -18,11 +19,11 @@ const GROUPS: { nivel: string; label: string }[] = [
   { nivel: "__outros", label: "Outros" },
 ];
 
-function metaLinha(course: Course) {
-  return `${course.total_aulas} aulas · ${formatMinutes(course.carga_horaria ?? 0)}`;
+function metaLinha(course: Course, t: TFn) {
+  return `${course.total_aulas} ${t("aulas")} · ${formatMinutes(course.carga_horaria ?? 0)}`;
 }
 
-function Cartao({ course }: { course: Course }) {
+function Cartao({ course, t }: { course: Course; t: TFn }) {
   return (
     <Link href={`/cursos/${course.slug}`} className="group">
       <div className="h-full rounded-2xl bg-surface border border-border overflow-hidden hover:border-amber-500/30 hover:shadow-md transition-all hover:-translate-y-1 flex flex-col">
@@ -39,20 +40,20 @@ function Cartao({ course }: { course: Course }) {
             {(course.categorias?.length ? course.categorias : [course.categoria]).map((cat: string) => (
               <Badge key={cat} variant="secondary" className="text-xs">{getCategoryLabel(cat)}</Badge>
             ))}
-            {course.tipo === "free" && <Badge variant="free">Grátis</Badge>}
+            {course.tipo === "free" && <Badge variant="free">{t("Grátis")}</Badge>}
           </div>
           <h3 className="font-bold text-base text-foreground leading-tight mb-2 group-hover:text-amber-400 transition-colors">
             {course.titulo}
           </h3>
           <p className="text-muted-light text-sm line-clamp-2 mb-auto">
-            {course.descricao_curta || course.descricao || "Curso completo de formação profissional."}
+            {course.descricao_curta || course.descricao || t("Curso completo de formação profissional.")}
           </p>
           <div className="flex items-center justify-between text-xs text-muted-light pt-4 mt-4 border-t border-border/50">
-            <span>{metaLinha(course)}</span>
+            <span>{metaLinha(course, t)}</span>
             {course.preco && course.preco > 0 ? (
               <span className="text-foreground font-bold text-sm">{formatCurrency(course.preco)}</span>
             ) : (
-              <span className="text-emerald-600 font-bold">Grátis</span>
+              <span className="text-emerald-600 font-bold">{t("Grátis")}</span>
             )}
           </div>
         </div>
@@ -61,7 +62,7 @@ function Cartao({ course }: { course: Course }) {
   );
 }
 
-function LinhaLista({ course }: { course: Course }) {
+function LinhaLista({ course, t }: { course: Course; t: TFn }) {
   return (
     <Link href={`/cursos/${course.slug}`} className="group block">
       <div className="flex items-center gap-4 rounded-xl bg-surface border border-border p-3 hover:border-amber-500/30 hover:shadow-sm transition-all">
@@ -78,22 +79,22 @@ function LinhaLista({ course }: { course: Course }) {
             {(course.categorias?.length ? course.categorias : [course.categoria]).slice(0, 2).map((cat: string) => (
               <Badge key={cat} variant="secondary" className="text-xs">{getCategoryLabel(cat)}</Badge>
             ))}
-            {course.tipo === "free" && <Badge variant="free">Grátis</Badge>}
+            {course.tipo === "free" && <Badge variant="free">{t("Grátis")}</Badge>}
           </div>
           <h3 className="font-bold text-foreground leading-tight truncate group-hover:text-amber-400 transition-colors">
             {course.titulo}
           </h3>
           <p className="text-muted-light text-xs line-clamp-1">
-            {course.descricao_curta || course.descricao || "Curso completo de formação profissional."}
+            {course.descricao_curta || course.descricao || t("Curso completo de formação profissional.")}
           </p>
         </div>
         <div className="shrink-0 text-right text-xs text-muted-light">
-          <div>{course.total_aulas} aulas</div>
+          <div>{course.total_aulas} {t("aulas")}</div>
           <div>{formatMinutes(course.carga_horaria ?? 0)}</div>
           {course.preco && course.preco > 0 ? (
             <div className="text-foreground font-bold">{formatCurrency(course.preco)}</div>
           ) : (
-            <div className="text-emerald-600 font-bold">Grátis</div>
+            <div className="text-emerald-600 font-bold">{t("Grátis")}</div>
           )}
         </div>
       </div>
@@ -102,6 +103,7 @@ function LinhaLista({ course }: { course: Course }) {
 }
 
 export function CoursesView({ courses }: { courses: Course[] }) {
+  const t = useT();
   const [view, setView] = useState<"cards" | "list">("cards");
 
   // lembra a preferência do usuário
@@ -131,20 +133,20 @@ export function CoursesView({ courses }: { courses: Course[] }) {
           <button
             type="button"
             onClick={() => change("cards")}
-            aria-label="Ver em cartões"
-            title="Cartões"
+            aria-label={t("Ver em cartões")}
+            title={t("Cartões")}
             className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${view === "cards" ? "bg-amber-500 text-white" : "text-muted hover:text-foreground"}`}
           >
-            <LayoutGrid size={15} /> Cartões
+            <LayoutGrid size={15} /> {t("Cartões")}
           </button>
           <button
             type="button"
             onClick={() => change("list")}
-            aria-label="Ver em lista"
-            title="Lista"
+            aria-label={t("Ver em lista")}
+            title={t("Lista")}
             className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${view === "list" ? "bg-amber-500 text-white" : "text-muted hover:text-foreground"}`}
           >
-            <ListIcon size={15} /> Lista
+            <ListIcon size={15} /> {t("Lista")}
           </button>
         </div>
       </div>
@@ -155,16 +157,16 @@ export function CoursesView({ courses }: { courses: Course[] }) {
           <section key={g.nivel}>
             <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-light mb-4 flex items-center gap-2">
               <span className="h-px w-5 bg-amber-500/60" />
-              {g.label}
+              {t(g.label)}
               <span className="text-muted-light/60 normal-case font-normal tracking-normal">({g.itens.length})</span>
             </h2>
             {view === "cards" ? (
               <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-5">
-                {g.itens.map((c) => <Cartao key={c.id} course={c} />)}
+                {g.itens.map((c) => <Cartao key={c.id} course={c} t={t} />)}
               </div>
             ) : (
               <div className="space-y-2">
-                {g.itens.map((c) => <LinhaLista key={c.id} course={c} />)}
+                {g.itens.map((c) => <LinhaLista key={c.id} course={c} t={t} />)}
               </div>
             )}
           </section>

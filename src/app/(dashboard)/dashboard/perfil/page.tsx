@@ -5,6 +5,7 @@ import { Header } from "@/components/layout/header";
 import { ProfileForm } from "@/components/profile/profile-form";
 import { Badge } from "@/components/ui/badge";
 import { getLevelLabel } from "@/lib/utils";
+import { getServerT } from "@/lib/i18n/server";
 import { UserCircle, Mail, Calendar, ShieldCheck } from "lucide-react";
 
 export default async function PerfilPage() {
@@ -14,6 +15,8 @@ export default async function PerfilPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
+  const t = await getServerT();
+
   const memberSince = new Date(user.created_at).toLocaleDateString("pt-BR", {
     month: "long",
     year: "numeric",
@@ -21,7 +24,7 @@ export default async function PerfilPage() {
 
   return (
     <div className="animate-fade-in">
-      <Header title="Meu Perfil" subtitle="Gerencie suas informações pessoais" />
+      <Header title={t("Meu Perfil")} subtitle={t("Gerencie suas informações pessoais")} />
 
       <div className="p-4 sm:p-6 max-w-2xl space-y-6">
         {/* Card de info */}
@@ -46,17 +49,17 @@ export default async function PerfilPage() {
               </div>
               <div className="flex items-center gap-2 mt-0.5 text-sm text-muted-light">
                 <Calendar size={13} />
-                Membro desde {memberSince}
+                {t("Membro desde")} {memberSince}
               </div>
               <div className="flex items-center gap-2 mt-3 flex-wrap">
                 <Badge variant={user.role as any}>{getLevelLabel(user.role)}</Badge>
                 {user.projeto_cultural && (
-                  <Badge variant="mit">Projeto Cultural MIT</Badge>
+                  <Badge variant="mit">{t("Projeto Cultural MIT")}</Badge>
                 )}
                 {user.ativo ? (
-                  <Badge variant="success">Ativo</Badge>
+                  <Badge variant="success">{t("Ativo")}</Badge>
                 ) : (
-                  <Badge variant="danger">Inativo</Badge>
+                  <Badge variant="danger">{t("Inativo")}</Badge>
                 )}
               </div>
             </div>
@@ -67,7 +70,7 @@ export default async function PerfilPage() {
         <div className="rounded-2xl bg-surface border border-border p-4 sm:p-6">
           <h3 className="font-bold text-foreground mb-6 flex items-center gap-2">
             <ShieldCheck size={18} className="text-amber-400" />
-            Informações pessoais
+            {t("Informações pessoais")}
           </h3>
           <ProfileForm user={user} />
         </div>

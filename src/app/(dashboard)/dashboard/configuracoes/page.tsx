@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/actions/users";
 import { Header } from "@/components/layout/header";
 import { Badge } from "@/components/ui/badge";
 import { getLevelLabel } from "@/lib/utils";
+import { getServerT } from "@/lib/i18n/server";
 import { NotificationPreferencesForm } from "@/components/settings/notification-preferences";
 import {
   Bell, Shield, Globe, CreditCard, Trash2, UserCircle,
@@ -17,9 +18,11 @@ export default async function ConfiguracoesPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
+  const t = await getServerT();
+
   return (
     <div className="animate-fade-in">
-      <Header title="Configurações" subtitle="Preferências e configurações da sua conta" />
+      <Header title={t("Configurações")} subtitle={t("Preferências e configurações da sua conta")} />
 
       <div className="p-4 sm:p-6 max-w-2xl space-y-6">
         {/* Account info summary */}
@@ -40,71 +43,71 @@ export default async function ConfiguracoesPage() {
         </div>
 
         {/* Seção: Conta */}
-        <Section title="Conta" icon={<UserCircle size={16} className="text-amber-400" />}>
+        <Section title={t("Conta")} icon={<UserCircle size={16} className="text-amber-400" />}>
           <SettingItem
             icon={<Mail size={16} className="text-muted-light" />}
-            label="E-mail"
+            label={t("E-mail")}
             description={user.email}
-            action="Gerenciado pelo Clerk"
+            action={t("Gerenciado pelo Clerk")}
             disabled
           />
           <SettingItem
             icon={<Lock size={16} className="text-muted-light" />}
-            label="Senha"
-            description="Altere sua senha de acesso"
-            action="Alterar"
+            label={t("Senha")}
+            description={t("Altere sua senha de acesso")}
+            action={t("Alterar")}
             href="https://accounts.clerk.dev/user/security"
           />
           <SettingItem
             icon={<Smartphone size={16} className="text-muted-light" />}
-            label="Autenticação em dois fatores"
-            description="Adicione uma camada extra de segurança"
-            action="Configurar"
+            label={t("Autenticação em dois fatores")}
+            description={t("Adicione uma camada extra de segurança")}
+            action={t("Configurar")}
             href="https://accounts.clerk.dev/user/security"
           />
         </Section>
 
         {/* Seção: Notificações */}
-        <Section title="Notificações" icon={<Bell size={16} className="text-amber-400" />}>
+        <Section title={t("Notificações")} icon={<Bell size={16} className="text-amber-400" />}>
           <NotificationPreferencesForm />
         </Section>
 
         {/* Seção: Privacidade */}
-        <Section title="Privacidade e Segurança" icon={<Shield size={16} className="text-emerald-400" />}>
+        <Section title={t("Privacidade e Segurança")} icon={<Shield size={16} className="text-emerald-400" />}>
           <ToggleItem
-            label="Exibir meu perfil publicamente"
-            description="Outros alunos podem ver seu progresso e conquistas"
+            label={t("Exibir meu perfil publicamente")}
+            description={t("Outros alunos podem ver seu progresso e conquistas")}
             defaultEnabled={false}
           />
           <ToggleItem
-            label="Aparecer no ranking da turma"
-            description="Mostre seu desempenho nas classificações"
+            label={t("Aparecer no ranking da turma")}
+            description={t("Mostre seu desempenho nas classificações")}
             defaultEnabled
           />
         </Section>
 
         {/* Seção: Preferências */}
-        <Section title="Preferências" icon={<Globe size={16} className="text-blue-400" />}>
+        <Section title={t("Preferências")} icon={<Globe size={16} className="text-blue-400" />}>
           <SettingRow
-            label="Idioma"
-            description="Português (Brasil)"
+            label={t("Idioma")}
+            description={t("Português (Brasil)")}
           />
           <SettingRow
-            label="Fuso horário"
+            label={t("Fuso horário")}
             description="América/São_Paulo (GMT-3)"
           />
         </Section>
 
         {/* Seção: Assinatura */}
         {user.projeto_cultural && (
-          <Section title="Plano MIT" icon={<CreditCard size={16} className="text-amber-400" />}>
+          <Section title={t("Plano MIT")} icon={<CreditCard size={16} className="text-amber-400" />}>
             <div className="px-4 py-4">
               <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
                 <Trophy size={24} className="text-amber-400" />
                 <div>
-                  <p className="font-semibold text-amber-400">Projeto Cultural MIT — Ativo</p>
+                  <p className="font-semibold text-amber-400">{t("Projeto Cultural MIT — Ativo")}</p>
                   <p className="text-sm text-amber-500/80">
-                    Você tem acesso gratuito e ilimitado a todos os cursos da plataforma.
+                    {t("Você tem acesso gratuito e ilimitado a todos os cursos da plataforma.")}
                   </p>
                 </div>
                 <Badge variant="mit" className="ml-auto shrink-0">MIT</Badge>
@@ -114,15 +117,15 @@ export default async function ConfiguracoesPage() {
         )}
 
         {/* Zona de perigo */}
-        <Section title="Zona de Risco" icon={<Trash2 size={16} className="text-red-500" />}>
+        <Section title={t("Zona de Risco")} icon={<Trash2 size={16} className="text-red-500" />}>
           <div className="px-4 py-4">
             <div className="p-4 rounded-xl border border-red-500/20 bg-red-500/10">
-              <h4 className="font-semibold text-red-400 mb-1">Excluir conta</h4>
+              <h4 className="font-semibold text-red-400 mb-1">{t("Excluir conta")}</h4>
               <p className="text-sm text-red-400/80 mb-3">
-                Esta ação é permanente e irá remover todos os seus dados, progresso e certificados.
+                {t("Esta ação é permanente e irá remover todos os seus dados, progresso e certificados.")}
               </p>
               <button className="text-sm font-semibold text-red-400 hover:text-red-300 transition-colors">
-                Solicitar exclusão de conta →
+                {t("Solicitar exclusão de conta →")}
               </button>
             </div>
           </div>
