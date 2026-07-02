@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   },
 };
 
-export const revalidate = 3600; // ISR: revalida a cada 1 hora
+export const dynamic = "force-dynamic"; // renderiza por requisição p/ ler o cookie de idioma
 
 interface Props {
   searchParams: Promise<{ nivel?: string; categoria?: string; tipo?: string; search?: string }>;

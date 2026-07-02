@@ -14,7 +14,7 @@ import { getServerT, getServerLocale } from "@/lib/i18n/server";
 import { courseMeta } from "@/lib/i18n/courses-meta";
 import type { Metadata } from "next";
 
-export const revalidate = 3600; // ISR: revalida a cada 1 hora
+export const dynamic = "force-dynamic"; // renderiza por requisição p/ ler o cookie de idioma
 
 interface Props {
   params: Promise<{ slug: string }>;

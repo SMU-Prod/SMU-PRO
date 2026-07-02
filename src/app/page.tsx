@@ -10,7 +10,7 @@ import { CategoryIcon } from "@/components/ui/category-icon";
 import { getServerT } from "@/lib/i18n/server";
 import { Zap, Award, Users, PlayCircle, ChevronRight, Star, Shield, Mic, Lightbulb, Music, Film } from "lucide-react";
 
-export const revalidate = 3600; // revalidate stats every hour
+export const dynamic = "force-dynamic"; // renderiza por requisição p/ ler o cookie de idioma
 
 const CATEGORIES = [
   { key: "som", icon: <Mic size={28} />, label: "Sonorização", desc: "PA, monitor, mixing ao vivo" },
