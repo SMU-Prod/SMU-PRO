@@ -25,6 +25,7 @@ const LOADERS: Record<string, () => Promise<any>> = {
   "junior-profissoes-de-evento": () => import("./data/junior-profissoes-de-evento.json"),
   "pleno-luz": () => import("./data/pleno-luz.json"),
   "pleno-produtor": () => import("./data/pleno-produtor.json"),
+  "pleno-efeito": () => import("./data/pleno-efeito.json"),
 };
 
 const cache = new Map<string, any>();
