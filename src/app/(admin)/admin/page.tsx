@@ -8,7 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { formatCurrency, getLevelLabel } from "@/lib/utils";
 import { CategoryIcon } from "@/components/ui/category-icon";
 import { InstructorDashboard } from "@/components/admin/instructor-dashboard";
-import { getServerT } from "@/lib/i18n/server";
+import { getServerT, getServerLocale } from "@/lib/i18n/server";
+import { courseMeta } from "@/lib/i18n/courses-meta";
+import { trActivity } from "@/lib/i18n/activity";
 import {
   Users, BookOpen, Award, DollarSign, TrendingUp,
   UserCheck, BarChart3, Activity,
@@ -18,6 +20,7 @@ import {
 
 export default async function AdminDashboardPage() {
   const t = await getServerT();
+  const lang = await getServerLocale();
   const user = await getCurrentUser();
 
   // Instrutor vê dashboard próprio
@@ -133,7 +136,7 @@ export default async function AdminDashboardPage() {
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2 min-w-0">
                           <span className="shrink-0"><CategoryIcon category={c.categoria} size={16} /></span>
-                          <span className="text-foreground font-medium truncate">{c.titulo}</span>
+                          <span className="text-foreground font-medium truncate">{courseMeta(c.slug, lang)?.titulo ?? c.titulo}</span>
                         </div>
                         <Badge variant={c.ativo ? "success" : "secondary"} className="text-[10px] shrink-0">
                           {c.ativo ? t("Ativo") : t("Rascunho")}
@@ -167,7 +170,7 @@ export default async function AdminDashboardPage() {
                           <td className="px-5 py-3">
                             <div className="flex items-center gap-2">
                               <CategoryIcon category={c.categoria} size={16} />
-                              <span className="text-foreground font-medium truncate max-w-[120px] sm:max-w-[160px] lg:max-w-[200px]">{c.titulo}</span>
+                              <span className="text-foreground font-medium truncate max-w-[120px] sm:max-w-[160px] lg:max-w-[200px]">{courseMeta(c.slug, lang)?.titulo ?? c.titulo}</span>
                             </div>
                           </td>
                           <td className="px-5 py-3">
@@ -214,7 +217,7 @@ export default async function AdminDashboardPage() {
                         <p className="text-xs text-foreground truncate">
                           {log.users?.nome ?? t("Sistema")}
                         </p>
-                        <p className="text-xs text-muted-light truncate">{log.descricao}</p>
+                        <p className="text-xs text-muted-light truncate">{trActivity(log.descricao, t)}</p>
                       </div>
                       <span className="text-[10px] text-muted-light shrink-0">
                         {timeAgo(log.created_at, t)}
