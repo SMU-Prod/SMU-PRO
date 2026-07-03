@@ -5,6 +5,8 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { ptBR } from "@clerk/localizations";
 import { HighlightInit } from "@highlight-run/next/client";
 import { ThemeProvider } from "@/components/theme-provider";
+import { LocaleProvider } from "@/lib/i18n/locale";
+import { getServerLocale } from "@/lib/i18n/server";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -72,11 +74,12 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const locale = await getServerLocale();
   return (
     <>
       <HighlightInit
@@ -86,7 +89,7 @@ export default function RootLayout({
         networkRecording={{ enabled: true, recordHeadersAndBody: true }}
       />
       <ClerkProvider localization={ptBR}>
-        <html lang="pt-BR" className={`${spaceGrotesk.variable} ${inter.variable} ${geistMono.variable} ${instrumentSerif.variable}`} suppressHydrationWarning>
+        <html lang={locale === "pt" ? "pt-BR" : locale} className={`${spaceGrotesk.variable} ${inter.variable} ${geistMono.variable} ${instrumentSerif.variable}`} suppressHydrationWarning>
           <head>
             <script dangerouslySetInnerHTML={{ __html: `
               try {
@@ -98,7 +101,9 @@ export default function RootLayout({
           </head>
           <body className="antialiased bg-background text-foreground">
             <ThemeProvider>
-              {children}
+              <LocaleProvider initial={locale}>
+                {children}
+              </LocaleProvider>
             </ThemeProvider>
           </body>
         </html>

@@ -48,7 +48,7 @@ function Cartao({ course, t, locale }: { course: Course; t: TFn; locale: Locale 
             {courseMeta(course.slug, locale)?.titulo ?? course.titulo}
           </h3>
           <p className="text-muted-light text-sm line-clamp-2 mb-auto">
-            {course.descricao_curta || courseMeta(course.slug, locale)?.descricao || course.descricao || t("Curso completo de formação profissional.")}
+            {(locale !== "pt" && courseMeta(course.slug, locale)?.descricao) || course.descricao_curta || course.descricao || t("Curso completo de formação profissional.")}
           </p>
           <div className="flex items-center justify-between text-xs text-muted-light pt-4 mt-4 border-t border-border/50">
             <span>{metaLinha(course, t)}</span>
