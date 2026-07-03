@@ -7,11 +7,18 @@ import { auth, currentUser } from "@clerk/nextjs/server";
  * Assim, nem que um funcionário consiga virar "admin" no banco de dados ele se
  * torna Odin. Só quem está nesta lista tem o poder máximo — à prova de adulteração.
  *
- * Em produção, configure a variável de ambiente OWNER_EMAILS (lista separada por
- * vírgula). O fallback abaixo garante que o dono não fique trancado para fora caso
- * a env ainda não esteja setada no Vercel.
+ * Dono (Odin): rick@smucontroller.com
+ * Recuperação (destravar se algo der errado): atendimento.smu@gmail.com
+ * NÃO incluir a conta de sistema atendimento@smucontroller.com (essa é só para
+ * o sistema enviar/receber; ninguém loga com ela).
+ *
+ * O fallback abaixo é o padrão embutido. Em produção dá para sobrescrever pela
+ * env OWNER_EMAILS (lista separada por vírgula) sem mexer no código.
  */
-const FALLBACK_OWNER_EMAILS = ["atendimento.smu@gmail.com"];
+const FALLBACK_OWNER_EMAILS: string[] = [
+  "rick@smucontroller.com",
+  "atendimento.smu@gmail.com",
+];
 
 export function getOwnerEmails(): string[] {
   const fromEnv = (process.env.OWNER_EMAILS ?? "")
