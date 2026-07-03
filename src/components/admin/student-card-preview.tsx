@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -33,7 +34,7 @@ function StudentCourseCard({
     <div className="rounded-2xl bg-surface border border-border overflow-hidden hover:border-amber-500/30 hover:shadow-md transition-all">
       <div className="h-36 bg-gradient-to-br from-surface-2 to-surface-3 flex items-center justify-center text-5xl overflow-hidden">
         {course.thumbnail_url ? (
-          <img src={course.thumbnail_url} alt={course.titulo} className="w-full h-full object-cover" />
+          <Image src={course.thumbnail_url} alt={course.titulo} width={300} height={144} className="w-full h-full object-cover" />
         ) : (
           <CategoryIcon category={course.categoria} size={40} />
         )}
@@ -171,7 +172,7 @@ export function StudentPreviewModal({
             <Eye size={16} className="text-amber-400" />
             <span className="text-sm font-semibold text-foreground">Preview — Visão do Aluno</span>
           </div>
-          <button onClick={onClose} className="text-muted-light hover:text-foreground transition-colors">
+          <button onClick={onClose} className="text-muted-light hover:text-foreground transition-colors" aria-label="Fechar preview">
             <X size={18} />
           </button>
         </div>
@@ -237,6 +238,7 @@ export function StudentPreviewButton({ course }: { course: CourseData }) {
         size="icon"
         className="h-8 w-8"
         title="Preview: como o aluno vê"
+        aria-label="Visualizar preview como aluno"
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(true); }}
       >
         <Eye size={14} />

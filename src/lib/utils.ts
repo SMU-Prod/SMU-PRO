@@ -69,3 +69,49 @@ export function getCategoryLabel(cat: string) {
   return map[cat] ?? cat;
 }
 
+/**
+ * Valida CPF usando o algoritmo oficial do Brasil.
+ * ISSUE #30: Proper CPF validation with check digit verification
+ *
+ * Rejeita:
+ * - CPF com comprimento diferente de 11 dígitos
+ * - Todos os dígitos iguais (11111111111, 22222222222, etc)
+ * - CPF com dígitos verificadores inválidos
+ */
+export function isValidCpf(cpf: string): boolean {
+  // Remove não-dígitos
+  const digits = cpf.replace(/\D/g, "");
+
+  // Deve ter exatamente 11 dígitos
+  if (digits.length !== 11) return false;
+
+  // Rejeita CPF com todos os dígitos iguais
+  if (/^(\d)\1{10}$/.test(digits)) return false;
+
+  // Calcula primeiro dígito verificador
+  let sum = 0;
+  let multiplier = 10;
+  for (let i = 0; i < 9; i++) {
+    sum += parseInt(digits[i], 10) * multiplier;
+    multiplier--;
+  }
+
+  const firstDigit = 11 - (sum % 11);
+  const digit1 = firstDigit > 9 ? 0 : firstDigit;
+
+  if (parseInt(digits[9], 10) !== digit1) return false;
+
+  // Calcula segundo dígito verificador
+  sum = 0;
+  multiplier = 11;
+  for (let i = 0; i < 10; i++) {
+    sum += parseInt(digits[i], 10) * multiplier;
+    multiplier--;
+  }
+
+  const secondDigit = 11 - (sum % 11);
+  const digit2 = secondDigit > 9 ? 0 : secondDigit;
+
+  return parseInt(digits[10], 10) === digit2;
+}
+

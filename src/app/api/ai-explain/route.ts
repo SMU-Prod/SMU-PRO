@@ -124,6 +124,16 @@ O QUE NUNCA FAZER:
 
     const explanation = response.choices[0]?.message?.content ?? "";
 
+    // Track AI usage for cost monitoring
+    const tokensUsed = response.usage?.total_tokens ?? 0;
+    const estimatedCost = tokensUsed * 0.00015 / 1000; // gpt-4o-mini approximate rate
+    await supabase.from("activity_log").insert({
+      user_id: null, // system-level tracking
+      tipo: "system" as any,
+      descricao: `AI explain: ${tokensUsed} tokens (~$${estimatedCost.toFixed(4)})`,
+      metadata: { lesson_id: lessonId, tokens: tokensUsed, model: "gpt-4.1-mini", estimated_cost_usd: estimatedCost },
+    });
+
     // Cache the explanation
     await (supabase as any).from("ai_explanations").upsert(
       {

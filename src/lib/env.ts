@@ -3,6 +3,9 @@
  *
  * Importado pelo instrumentation.ts para falhar rápido se alguma
  * variável crítica estiver ausente.
+ *
+ * Durante o build, apenas avisa (NODE_ENV='development' ou não definido).
+ * Em runtime (NODE_ENV='production'), lança erro se alguma env obrigatória faltar.
  */
 
 const required = [
@@ -18,14 +21,18 @@ const required = [
   "NEXT_PUBLIC_APP_URL",
 ] as const;
 
-export function validateEnv() {
+export function validateEnv(strict?: boolean) {
   const missing = required.filter((key) => !process.env[key]);
 
   if (missing.length > 0) {
-    console.error(
-      `[ENV] Variáveis de ambiente obrigatórias ausentes:\n${missing.map((k) => `  - ${k}`).join("\n")}`
-    );
-    // Não lança erro para não quebrar builds (onde nem todas as envs estão disponíveis)
-    // Em runtime, cada serviço deve validar suas próprias envs
+    const message = `[ENV] Variáveis de ambiente obrigatórias ausentes:\n${missing.map((k) => `  - ${k}`).join("\n")}`;
+    console.error(message);
+
+    // strict=true: lança erro (runtime/production)
+    // strict=false ou undefined: apenas avisa (build ou development)
+    const shouldThrow = strict ?? process.env.NODE_ENV === "production";
+    if (shouldThrow) {
+      throw new Error(message);
+    }
   }
 }

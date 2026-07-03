@@ -1,6 +1,8 @@
 import { auth } from "@clerk/nextjs/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { z } from "zod";
+import { rateLimit } from "@/lib/rate-limit";
 import {
   createOrGetCustomer,
   createPayment,
@@ -9,7 +11,26 @@ import {
   type AsaasBillingType,
   type AsaasSplitItem,
 } from "@/lib/asaas";
-import { getCourseSplitConfig, registerCommission } from "@/lib/actions/partners";
+import { getCourseSplitConfig } from "@/lib/actions/partners";
+import { isValidCpf } from "@/lib/utils";
+import { checkoutSchema } from "@/lib/validations";
+
+/**
+ * ISSUE #17: Get Asaas fee rate based on billing type
+ * PIX: 1.99%, Boleto: 2.49%, Card: 2.99%
+ */
+function getAsaasFeeRate(billingType: AsaasBillingType): number {
+  switch (billingType) {
+    case "PIX":
+      return 0.0199; // 1.99%
+    case "BOLETO":
+      return 0.0249; // 2.49%
+    case "CREDIT_CARD":
+      return 0.0299; // 2.99%
+    default:
+      return 0.035; // Fallback to old hardcoded value
+  }
+}
 
 /**
  * POST /api/payments/checkout
@@ -28,19 +49,27 @@ export async function POST(req: Request) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
 
+  // Rate limit: max 5 checkout attempts per user per 60 seconds
+  const { success } = await rateLimit(`checkout:${userId}`, 5, 60000);
+  if (!success) {
+    return NextResponse.json({ error: "Muitas tentativas. Aguarde 1 minuto." }, { status: 429 });
+  }
+
   const body = await req.json();
-  const { courseId, billingType = "PIX" } = body as {
-    courseId: string;
-    billingType?: AsaasBillingType;
-  };
 
-  if (!courseId) {
-    return NextResponse.json({ error: "courseId obrigatório" }, { status: 400 });
+  // Validate input with Zod
+  let validated: z.infer<typeof checkoutSchema>;
+  try {
+    validated = checkoutSchema.parse(body);
+  } catch (e) {
+    if (e instanceof z.ZodError) {
+      const errorMessage = e.issues[0]?.message || "Validação falhou";
+      return NextResponse.json({ error: errorMessage }, { status: 400 });
+    }
+    throw e;
   }
 
-  if (!["PIX", "BOLETO", "CREDIT_CARD"].includes(billingType)) {
-    return NextResponse.json({ error: "billingType inválido. Utilize PIX, BOLETO ou CREDIT_CARD" }, { status: 400 });
-  }
+  const { courseId, billingType = "PIX" } = validated;
 
   const supabase = createAdminClient();
 
@@ -51,7 +80,7 @@ export async function POST(req: Request) {
 
   // CPF pode vir do body (modal de checkout) ou do perfil do usuário
   const cpf = (body.cpf as string)?.replace(/\D/g, "") || userRow.cpf?.replace(/\D/g, "") || null;
-  if (!cpf || cpf.length !== 11) {
+  if (!cpf || !isValidCpf(cpf)) {
     return NextResponse.json(
       { error: "CPF é obrigatório para pagamento. Informe seu CPF para continuar.", needsCpf: true },
       { status: 422 }
@@ -158,22 +187,11 @@ export async function POST(req: Request) {
       split: splitItems,
     });
 
-    // 8. Registrar comissão se houver split
-    if (splitConfig) {
-      const taxaEstimada = course.preco * 0.035; // ~3.5% Asaas
-      const valorLiquido = course.preco - taxaEstimada;
-      registerCommission({
-        partnerId: splitConfig.partnerId,
-        enrollmentId,
-        courseId,
-        valorVenda: course.preco,
-        valorLiquido,
-        comissaoPercentual: splitConfig.comissaoPercentual,
-        tipoIndicacao: "organico",
-      }).catch((err) => console.error("[Commission] Erro:", err));
-    }
+    // ISSUE #12: Commission registration moved to webhook (PAYMENT_CONFIRMED)
+    // The commission will be registered when the payment is actually confirmed by Asaas,
+    // ensuring we only create commissions for successful payments.
 
-    // 9. Salvar payment_id no enrollment
+    // 8. Salvar payment_id no enrollment
     await supabase
       .from("enrollments")
       .update({

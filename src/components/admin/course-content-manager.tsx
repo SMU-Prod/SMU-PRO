@@ -1,6 +1,41 @@
 "use client";
 
+// TODO: REFACTOR NEEDED (1613 LOC)
+// This component handles both modules and lessons management in one file.
+// Size: 1613 LOC - exceeds recommended limits (~400-600 LOC per component)
+//
+// SAFE EXTRACTION CANDIDATES (when refactoring):
+// 1. QuizBuilder (lines ~1010-1448) - Self-contained quiz creation/editing
+//    Dependencies: minimal, mostly internal state
+//    Files: Extract to src/components/admin/quiz-builder.tsx
+//
+// 2. LessonForm (lines ~863-1009) - Lesson editing form
+//    Dependencies: useForm, RichTextEditor, FileUploader
+//    Files: Extract to src/components/admin/lesson-form.tsx
+//    Note: Maintain form integration pattern
+//
+// 3. ModuleList (lines ~288-397) - Root modules list display
+//    Dependencies: SortableModule, DndContext setup
+//    Files: Extract to src/components/admin/module-list.tsx
+//
+// REFACTORING RISKS & MITIGATIONS:
+// - Heavy prop drilling through SortableModule/SortableLesson
+//  ↳ Consider useContext for state management before extraction
+// - Complex form state (moduleForm, lessonForm)
+//  ↳ Would require creating form context or provider
+// - Drag-drop context coordination (DndContext IDs)
+//  ↳ Requires careful ID management after extraction
+//
+// RECOMMENDED APPROACH:
+// 1. First: Create CourseContentContext to manage all nested state
+// 2. Then: Extract QuizBuilder (most independent)
+// 3. Then: Extract LessonForm (next most independent)
+// 4. Finally: Split module/lesson rendering logic if needed
+//
+// DO NOT EXTRACT without addressing prop drilling - it will create worse problems.
+
 import { useState, useEffect, useRef, useId } from "react";
+import dynamic from "next/dynamic";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -28,7 +63,11 @@ import {
   adminCreateOption, adminUpdateOption, adminDeleteOption,
 } from "@/lib/actions/courses";
 import { FileUploader } from "@/components/admin/file-uploader";
-import { RichTextEditor } from "@/components/admin/rich-text-editor";
+
+const RichTextEditor = dynamic(
+  () => import("@/components/admin/rich-text-editor").then(m => m.RichTextEditor),
+  { loading: () => <div className="animate-pulse h-64 bg-surface-2 rounded-lg" />, ssr: false }
+);
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,8 +102,36 @@ const lessonSchema = z.object({
   preview_gratis: z.boolean().default(false),
 });
 
-export function CourseContentManager({ course }: { course: any }) {
-  const [modules, setModules] = useState<any[]>(course.modules ?? []);
+interface CourseWithModules {
+  id: string;
+  titulo: string;
+  slug: string;
+  categoria: string;
+  modules?: Array<{
+    id: string;
+    titulo: string;
+    descricao?: string | null;
+    ordem: number;
+    parent_id?: string | null;
+    lessons?: Array<{
+      id: string;
+      titulo: string;
+      descricao?: string | null;
+      tipo: string;
+      youtube_id?: string | null;
+      pdf_path?: string | null;
+      conteudo_rico?: string | null;
+      duracao_min: number;
+      ordem: number;
+      tem_quiz: boolean;
+      preview_gratis: boolean;
+      module_id: string;
+    }>;
+  }>;
+}
+
+export function CourseContentManager({ course }: { course: CourseWithModules }) {
+  const [modules, setModules] = useState(course.modules ?? []);
   const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({});
   const [editingModule, setEditingModule] = useState<string | null>(null);
   const [addingModule, setAddingModule] = useState(false);
@@ -198,7 +265,7 @@ export function CourseContentManager({ course }: { course: any }) {
       setModules((prev) =>
         prev.map((m) =>
           m.id === moduleId
-            ? { ...m, lessons: m.lessons.map((l: any) => (l.id === lessonId ? { ...l, ...data } : l)) }
+            ? { ...m, lessons: (m.lessons ?? []).map((l: any) => (l.id === lessonId ? { ...l, ...data } : l)) }
             : m
         )
       );
@@ -216,7 +283,7 @@ export function CourseContentManager({ course }: { course: any }) {
       setModules((prev) =>
         prev.map((m) =>
           m.id === moduleId
-            ? { ...m, lessons: m.lessons.map((l: any) => (l.id === lessonId ? { ...l, ...data } : l)) }
+            ? { ...m, lessons: (m.lessons ?? []).map((l: any) => (l.id === lessonId ? { ...l, ...data } : l)) }
             : m
         )
       );
@@ -231,7 +298,7 @@ export function CourseContentManager({ course }: { course: any }) {
     await adminDeleteLesson(lessonId);
     setModules((prev) =>
       prev.map((m) =>
-        m.id === moduleId ? { ...m, lessons: m.lessons.filter((l: any) => l.id !== lessonId) } : m
+        m.id === moduleId ? { ...m, lessons: (m.lessons ?? []).filter((l: any) => l.id !== lessonId) } : m
       )
     );
   };
@@ -244,7 +311,7 @@ export function CourseContentManager({ course }: { course: any }) {
       const lesson = prev.find((m) => m.id === fromModuleId)?.lessons?.find((l: any) => l.id === lessonId);
       if (!lesson) return prev;
       return prev.map((m) => {
-        if (m.id === fromModuleId) return { ...m, lessons: m.lessons.filter((l: any) => l.id !== lessonId) };
+        if (m.id === fromModuleId) return { ...m, lessons: (m.lessons ?? []).filter((l: any) => l.id !== lessonId) };
         if (m.id === toModuleId) return { ...m, lessons: [...(m.lessons ?? []), { ...lesson, module_id: toModuleId }] };
         return m;
       });
@@ -268,9 +335,10 @@ export function CourseContentManager({ course }: { course: any }) {
     if (!over || active.id === over.id) return;
     const mod = modules.find((m) => m.id === moduleId);
     if (!mod) return;
-    const oldIndex = mod.lessons.findIndex((l: any) => l.id === active.id);
-    const newIndex = mod.lessons.findIndex((l: any) => l.id === over.id);
-    const reordered = arrayMove(mod.lessons, oldIndex, newIndex).map((l: any, i: number) => ({ ...l, ordem: i }));
+    const lessons = mod.lessons ?? [];
+    const oldIndex = lessons.findIndex((l: any) => l.id === active.id);
+    const newIndex = lessons.findIndex((l: any) => l.id === over.id);
+    const reordered = arrayMove(lessons, oldIndex, newIndex).map((l: any, i: number) => ({ ...l, ordem: i }));
     setModules((prev) =>
       prev.map((m) => m.id === moduleId ? { ...m, lessons: reordered } : m)
     );
@@ -346,7 +414,7 @@ export function CourseContentManager({ course }: { course: any }) {
                 setModules((prev) =>
                   prev.map((m) =>
                     m.id === modId
-                      ? { ...m, lessons: m.lessons.map((l: any) => (l.id === lessonId ? { ...l, ...updates } : l)) }
+                      ? { ...m, lessons: (m.lessons ?? []).map((l: any) => (l.id === lessonId ? { ...l, ...updates } : l)) }
                       : m
                   )
                 );

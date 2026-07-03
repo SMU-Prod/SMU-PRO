@@ -1,10 +1,13 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
+import Image from "next/image";
 import { getLevelLabel, formatMinutes } from "@/lib/utils";
 import { CategoryIcon } from "@/components/ui/category-icon";
 import { Award, CheckCircle2, Calendar, Clock, User, Trophy, ShieldCheck, BookOpen, MapPin } from "lucide-react";
 import Link from "next/link";
 import { ShareButton } from "@/components/certificate/share-button";
+import { rateLimit } from "@/lib/rate-limit";
 import QRCode from "qrcode";
 import type { Metadata } from "next";
 
@@ -33,6 +36,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function CertificatePage({ params }: Props) {
+  // Rate limit por IP para evitar scraping de certificados
+  const headersList = await headers();
+  const ip = headersList.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const { success: rateLimitOk } = await rateLimit(`cert-page:${ip}`, 30, 60000);
+  if (!rateLimitOk) {
+    notFound(); // Retorna 404 silencioso para abusadores
+  }
+
   const { codigo } = await params;
   const supabase = createAdminClient();
 
@@ -90,8 +101,7 @@ export default async function CertificatePage({ params }: Props) {
       {/* Header */}
       <div className="mb-8 text-center">
         <Link href="/" className="inline-flex items-center gap-2 mb-4">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.jpg" alt="SMU PRO" className="h-9 w-9 rounded-lg" />
+          <Image src="/logo.jpg" alt="SMU PRO" width={36} height={36} className="rounded-lg" />
           <span className="font-bold text-foreground">SMU PRO</span>
         </Link>
         <div className="flex items-center gap-2 justify-center text-emerald-400 text-sm">
@@ -242,14 +252,12 @@ export default async function CertificatePage({ params }: Props) {
           <div className="flex items-end justify-between border-t border-border pt-6">
             <div>
               <div className="h-px w-40 bg-border mb-2" />
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo.jpg" alt="SMU" className="h-8 rounded mb-1" />
+              <Image src="/logo.jpg" alt="SMU" width={32} height={32} className="rounded mb-1" />
               <p className="text-xs text-muted-light">SMU Produções</p>
               <p className="text-xs text-muted-light">Escola Profissional de Eventos</p>
             </div>
             <div className="flex flex-col items-center gap-2">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={qrDataUrl} alt="QR Code de verificação" className="h-[80px] w-[80px] rounded-lg" />
+              <Image src={qrDataUrl} alt="QR Code de verificação" width={80} height={80} className="rounded-lg" />
               <p className="text-[10px] text-muted-light">Verificar autenticidade</p>
             </div>
             <div className="text-right">

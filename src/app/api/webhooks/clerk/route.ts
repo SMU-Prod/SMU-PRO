@@ -45,6 +45,20 @@ export async function POST(req: Request) {
 
   const supabase = createAdminClient();
 
+  // Deduplication: verificar se esse webhook já foi processado usando svix_id
+  if (svix_id) {
+    const dedupeKey = `${evt.type}_${svix_id}`;
+    const { error: dedupeErr } = await (supabase as any).from("webhook_log").insert({
+      provider: "clerk",
+      event_type: evt.type,
+      external_id: dedupeKey,
+    });
+    if (dedupeErr?.code === "23505") {
+      console.log("[Clerk Webhook] Já processado, ignorando duplicata:", dedupeKey);
+      return new Response("OK (deduplicated)", { status: 200 });
+    }
+  }
+
   try {
     switch (evt.type) {
       case "user.created": {

@@ -1,5 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { createAdminClient } from "@/lib/supabase/server";
 
 // Rotas que não precisam de autenticação
 const isPublicRoute = createRouteMatcher([
@@ -28,6 +29,35 @@ export default clerkMiddleware(async (auth, req) => {
     url.pathname = "/login";
     url.searchParams.set("redirect_url", req.nextUrl.pathname);
     return NextResponse.redirect(url);
+  }
+
+  // Admin route protection: verify user has required role
+  if (isAdminRoute(req)) {
+    try {
+      const supabase = createAdminClient();
+      const { data: rows } = await supabase
+        .from("users")
+        .select("role")
+        .eq("clerk_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      const userRole = rows?.[0]?.role ?? null;
+      const allowedRoles = ["admin", "content_manager", "instrutor"];
+
+      if (!userRole || !allowedRoles.includes(userRole)) {
+        // User lacks admin privileges — redirect to dashboard
+        url.pathname = "/dashboard";
+        url.searchParams.set("error", "unauthorized");
+        return NextResponse.redirect(url);
+      }
+    } catch (error) {
+      // If we can't verify role, deny access as a safety measure
+      console.error("[Middleware] Error verifying admin role:", error);
+      url.pathname = "/dashboard";
+      url.searchParams.set("error", "auth_error");
+      return NextResponse.redirect(url);
+    }
   }
 
   return NextResponse.next();

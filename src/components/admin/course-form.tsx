@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -33,6 +34,7 @@ const schema = z.object({
   categorias: z.array(z.string()).default([]),
   tipo: z.enum(["free", "pago", "projeto_cultural"]),
   preco: z.preprocess((v) => (v === "" || v == null ? undefined : Number(v)), z.number().optional()),
+  disponivel_assinatura: z.boolean().default(false),
   carga_horaria: z.preprocess((v) => (v === "" || v == null ? undefined : Number(v)), z.number().optional()),
   thumbnail_url: z.string().optional().nullable(),
   trailer_youtube_id: z.string().optional().nullable(),
@@ -106,7 +108,7 @@ export function CourseForm({ course }: { course?: Course }) {
           preco: course.preco ?? undefined,
           carga_horaria: course.carga_horaria ?? undefined,
         }
-      : { nivel: "trainee", categoria: "som", categorias: [], tipo: "free", ativo: false, destaque: false, ordem: 0 },
+      : { nivel: "trainee", categoria: "som", categorias: [], tipo: "free", ativo: false, destaque: false, ordem: 0, disponivel_assinatura: false },
   });
 
   const { register, handleSubmit, setValue, watch, formState: { errors } } = form;
@@ -127,9 +129,9 @@ export function CourseForm({ course }: { course?: Course }) {
       const next = current.includes(val) ? current.filter((c) => c !== val) : [...current, val];
       setValue("categorias", next);
       // Keep primary categoria in sync
-      if (next.length > 0) setValue("categoria", next[0] as any);
+      if (next.length > 0) setValue("categoria", next[0] as Extract<typeof categoria, string>);
     } else {
-      setValue("categoria", val as any);
+      setValue("categoria", val as Extract<typeof categoria, string>);
       setValue("categorias", [val]);
     }
   };
@@ -145,17 +147,19 @@ export function CourseForm({ course }: { course?: Course }) {
     try {
       // Ensure categorias includes the primary categoria
       const cats = data.categorias?.length ? data.categorias : [data.categoria];
-      const payload = { ...data, categorias: cats, categoria: (cats[0] ?? data.categoria) as any };
+      const categoria = (cats[0] ?? data.categoria) as Extract<typeof data.categoria, string>;
+      const payload = { ...data, categorias: cats, categoria };
       if (isEditing) {
-        await adminUpdateCourse(course.id, payload);
-        router.push(`/admin/cursos/${course.id}?tab=curriculo`);
+        await adminUpdateCourse(course!.id, payload);
+        router.push(`/admin/cursos/${course!.id}?tab=curriculo`);
       } else {
-        const created = await adminCreateCourse(payload as any);
+        const created = await adminCreateCourse(payload);
         setCreatedCourseId((created as any).id);
         setStep(5);
       }
-    } catch (e: any) {
-      setError(e.message ?? "Erro ao salvar");
+    } catch (e: unknown) {
+      const error = e as { message?: string };
+      setError(error.message ?? "Erro ao salvar");
     } finally {
       setLoading(false);
     }
@@ -248,7 +252,7 @@ export function CourseForm({ course }: { course?: Course }) {
         </div>
       )}
 
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <form onSubmit={handleSubmit(onSubmit as any)}>
 
         {/* ── STEP 1 ── */}
         {step === 1 && (
@@ -325,6 +329,42 @@ export function CourseForm({ course }: { course?: Course }) {
                   <Input type="number" step="0.01" {...register("preco")} placeholder="97.00" />
                 </Field>
               )}
+
+              {/* Toggle de assinatura */}
+              {tipo === "pago" && (
+                <Field label="Plano de Assinatura">
+                  <label
+                    className={cn(
+                      "flex items-center gap-4 rounded-xl border-2 p-4 cursor-pointer transition-all",
+                      watch("disponivel_assinatura")
+                        ? "border-amber-500 bg-amber-500/10"
+                        : "border-border bg-surface hover:border-border-strong"
+                    )}
+                    onClick={() => setValue("disponivel_assinatura", !watch("disponivel_assinatura"))}
+                  >
+                    <div className={cn(
+                      "relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 transition-colors",
+                      watch("disponivel_assinatura")
+                        ? "bg-amber-500 border-amber-500"
+                        : "bg-surface-3 border-border-strong"
+                    )}>
+                      <span className={cn(
+                        "pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
+                        watch("disponivel_assinatura") ? "translate-x-4" : "translate-x-0"
+                      )} />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-foreground">Disponível na assinatura mensal</p>
+                      <p className="text-xs text-muted-light">
+                        Assinantes do plano mensal terão acesso a este curso sem pagar individualmente.
+                      </p>
+                    </div>
+                    {watch("disponivel_assinatura") && (
+                      <Sparkles size={18} className="text-amber-400 shrink-0" />
+                    )}
+                  </label>
+                </Field>
+              )}
             </div>
             <div className="flex justify-end">
               <Button type="button" onClick={async () => {
@@ -345,7 +385,7 @@ export function CourseForm({ course }: { course?: Course }) {
               <Field label="Thumbnail do Curso">
                 {thumbnail_url ? (
                   <div className="rounded-xl overflow-hidden border border-border h-40 relative">
-                    <img src={thumbnail_url} alt="" className="w-full h-full object-cover" />
+                    <Image src={thumbnail_url} alt="Course thumbnail" width={400} height={160} className="w-full h-full object-cover" />
                     <button type="button" onClick={() => setValue("thumbnail_url", "")}
                       className="absolute top-2 right-2 h-7 w-7 flex items-center justify-center rounded-full bg-black/50 text-foreground hover:bg-black/70">
                       <Trash2 size={12} />
@@ -682,7 +722,7 @@ function CoursePreviewCard({ watch }: { watch: any }) {
     <div className="rounded-2xl border border-border overflow-hidden shadow-sm">
       <div className="h-24 bg-gradient-to-br from-surface-2 to-surface-3 flex items-center justify-center text-4xl relative overflow-hidden">
         {thumbnail_url
-          ? <img src={thumbnail_url} alt="" className="w-full h-full object-cover absolute inset-0" onError={(e) => (e.currentTarget.style.display = "none")} />
+          ? <Image src={thumbnail_url} alt="Course thumbnail preview" width={300} height={96} className="w-full h-full object-cover absolute inset-0" onError={(e) => (e.currentTarget.style.display = "none")} />
           : <CategoryIcon category={categoria} size={32} />}
         <div className="absolute top-2 right-2">
           <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-medium", nivelColors[nivel])}>{nivelLabels[nivel]}</span>
@@ -760,12 +800,39 @@ function FlatForm({ form, loading, error, onSubmit, onCancel, handleTituloChange
           </div>
         </Field>
         {tipo === "pago" && <Field label="Preço (R$)"><Input type="number" step="0.01" {...register("preco")} placeholder="97.00" className="w-40" /></Field>}
+        {tipo === "pago" && (
+          <Field label="Assinatura Mensal">
+            <label
+              className={cn(
+                "flex items-center gap-3 rounded-xl border-2 p-3 cursor-pointer transition-all",
+                watch("disponivel_assinatura")
+                  ? "border-amber-500 bg-amber-500/10"
+                  : "border-border bg-surface hover:border-border-strong"
+              )}
+              onClick={() => setValue("disponivel_assinatura", !watch("disponivel_assinatura"))}
+            >
+              <div className={cn(
+                "relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 transition-colors",
+                watch("disponivel_assinatura") ? "bg-amber-500 border-amber-500" : "bg-surface-3 border-border-strong"
+              )}>
+                <span className={cn(
+                  "pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
+                  watch("disponivel_assinatura") ? "translate-x-4" : "translate-x-0"
+                )} />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">Incluir na assinatura</p>
+                <p className="text-xs text-muted-light">Assinantes acessam sem pagar individualmente</p>
+              </div>
+            </label>
+          </Field>
+        )}
       </Section>
 
       <Section title="Thumbnail">
         {thumbnail_url ? (
           <div className="rounded-xl overflow-hidden border border-border h-36 relative">
-            <img src={thumbnail_url} alt="" className="w-full h-full object-cover" />
+            <Image src={thumbnail_url} alt="Course thumbnail" width={400} height={144} className="w-full h-full object-cover" />
             <button type="button" onClick={() => setValue("thumbnail_url", "")} className="absolute top-2 right-2 h-7 w-7 flex items-center justify-center rounded-full bg-black/50 text-foreground hover:bg-black/70"><Trash2 size={12} /></button>
           </div>
         ) : (

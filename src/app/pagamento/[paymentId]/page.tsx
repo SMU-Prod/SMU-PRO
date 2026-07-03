@@ -48,8 +48,14 @@ export default async function PaymentPage({ params }: Props) {
         copyPaste: qr.payload,
         expiresAt: qr.expirationDate,
       };
-    } catch {
-      // QR code pode ainda estar sendo gerado
+    } catch (err) {
+      console.error("[PaymentPage] Erro ao gerar QR Code PIX:", err);
+      // Fallback: sinalizar que o QR code falhou para exibir mensagem no client
+      pixData = {
+        qrCodeImage: "",
+        copyPaste: "",
+        expiresAt: "",
+      };
     }
   }
 

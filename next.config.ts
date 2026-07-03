@@ -26,6 +26,10 @@ const nextConfig: NextConfig = {
           key: "Strict-Transport-Security",
           value: "max-age=63072000; includeSubDomains; preload",
         },
+        {
+          key: "Content-Security-Policy",
+          value: "default-src 'self'; script-src 'self' https://*.clerk.accounts.dev https://clerk.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; frame-src https://www.youtube.com https://www.youtube-nocookie.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://*.clerk.accounts.dev https://clerk.com https://api.highlight.run; frame-ancestors 'none'",
+        },
       ],
     },
   ],

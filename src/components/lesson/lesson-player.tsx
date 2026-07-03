@@ -42,12 +42,63 @@ function extractYoutubeId(raw: string): string {
 }
 
 interface LessonPlayerProps {
-  course: any;
-  lesson: any;
+  course: {
+    id: string;
+    titulo: string;
+    slug: string;
+    nivel: string;
+    categoria?: string;
+    modules?: Array<{
+      id: string;
+      titulo: string;
+      ordem: number;
+      parent_id: string | null;
+      lessons?: Array<{
+        id: string;
+        titulo: string;
+        duracao_min: number;
+        tem_quiz: boolean;
+        preview_gratis: boolean;
+      }>;
+    }>;
+  };
+  lesson: {
+    id: string;
+    titulo: string;
+    youtube_id?: string | null;
+    descricao?: string | null;
+    duracao_min: number;
+    tem_quiz: boolean;
+    preview_gratis: boolean;
+    pdf_path?: string | null;
+    conteudo_rico?: string | null;
+  };
   enrollment: Enrollment | null;
   progressMap: Record<string, ProgressType>;
   quizAttempts: QuizAttempt[];
-  quizData?: any;
+  quizData?: {
+    id: string;
+    titulo: string;
+    descricao?: string | null;
+    nivel_minimo_aprovacao: number;
+    tentativas_permitidas: number;
+    tempo_limite_min?: number | null;
+    embaralhar_questoes: boolean;
+    quiz_questions?: Array<{
+      id: string;
+      texto: string;
+      tipo: "multipla_escolha" | "verdadeiro_falso" | "dissertativa";
+      ordem: number;
+      pontos: number;
+      explicacao?: string | null;
+      quiz_options?: Array<{
+        id: string;
+        texto: string;
+        correta: boolean;
+        ordem: number;
+      }>;
+    }>;
+  };
   notes: Note[];
   userId: string;
   userRole?: string | null;
@@ -289,8 +340,7 @@ export function LessonPlayer({
       {/* Instructor */}
       <div className="px-4 py-3 border-t border-border bg-surface mt-auto">
         <div className="flex items-center gap-3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.jpg" alt="SMU" className="h-9 w-9 rounded-full object-cover shrink-0" />
+          <Image src="/logo.jpg" alt="SMU" width={36} height={36} className="h-9 w-9 rounded-full object-cover shrink-0" />
           <div className="min-w-0">
             <p className="text-sm font-semibold text-foreground">SMU Produções</p>
             <div className="flex items-center gap-1">
@@ -426,7 +476,7 @@ export function LessonPlayer({
             {/* Title + badges */}
             <div className="mb-4">
               <div className="flex items-center gap-2 mb-2 flex-wrap">
-                <Badge variant={course.nivel}>{getLevelLabel(course.nivel)}</Badge>
+                <Badge variant={course.nivel as any}>{getLevelLabel(course.nivel)}</Badge>
                 <Badge variant="secondary">
                   <Clock size={10} className="mr-1" />
                   {formatMinutes(lesson.duracao_min)}
@@ -519,7 +569,7 @@ export function LessonPlayer({
               )}
               {activeTab === "materials" && <MaterialsTab lesson={lesson} />}
               {activeTab === "quiz" && (
-                <QuizTab lesson={lesson} quizAttempts={quizAttempts} quizData={quizData} userId={userId} onQuizPassed={() => setQuizJustPassed(true)} />
+                <QuizTab lesson={lesson} quizAttempts={quizAttempts} quizData={quizData as any} userId={userId} onQuizPassed={() => setQuizJustPassed(true)} />
               )}
               {activeTab === "notes" && (
                 <NotesTab lessonId={lesson.id} notes={notes} userId={userId} />
@@ -553,7 +603,7 @@ export function LessonPlayer({
   );
 }
 
-function MaterialsTab({ lesson }: { lesson: any }) {
+function MaterialsTab({ lesson }: { lesson: { pdf_path?: string | null; titulo: string; duracao_min: number } }) {
   const [showPdf, setShowPdf] = useState(false);
 
   if (!lesson.pdf_path) {

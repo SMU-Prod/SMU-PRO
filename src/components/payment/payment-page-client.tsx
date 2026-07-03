@@ -162,46 +162,64 @@ export function PaymentPageClient({
             </div>
 
             <div className="flex flex-col items-center gap-6">
-              {/* QR Code */}
-              <div className="rounded-xl bg-white p-4 inline-block">
-                <img
-                  src={pixData.qrCodeImage}
-                  alt="QR Code PIX"
-                  className="h-48 w-48 object-contain"
-                />
-              </div>
+              {pixData.qrCodeImage ? (
+                <>
+                  {/* QR Code */}
+                  <div className="rounded-xl bg-white p-4 inline-block">
+                    <img
+                      src={pixData.qrCodeImage}
+                      alt="QR Code PIX"
+                      className="h-48 w-48 object-contain"
+                    />
+                  </div>
 
-              <div className="text-center text-sm text-white/40">
-                <p>Abra o app do seu banco → PIX → QR Code</p>
-                <p>ou use o código abaixo (Copia e Cola)</p>
-              </div>
+                  <div className="text-center text-sm text-white/40">
+                    <p>Abra o app do seu banco → PIX → QR Code</p>
+                    <p>ou use o código abaixo (Copia e Cola)</p>
+                  </div>
 
-              {/* Copia e Cola */}
-              <div className="w-full">
-                <div className="flex gap-2">
-                  <input
-                    readOnly
-                    value={pixData.copyPaste}
-                    className="flex-1 rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 text-xs text-white/60 font-mono truncate focus:outline-none"
-                  />
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="gap-1.5 shrink-0"
-                    onClick={() => copyToClipboard(pixData.copyPaste, "pix")}
-                  >
-                    {copiedPix ? (
-                      <><CheckCircle size={14} className="text-green-400" /> Copiado!</>
-                    ) : (
-                      <><Copy size={14} /> Copiar</>
-                    )}
-                  </Button>
+                  {/* Copia e Cola */}
+                  <div className="w-full">
+                    <div className="flex gap-2">
+                      <input
+                        readOnly
+                        value={pixData.copyPaste}
+                        className="flex-1 rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 text-xs text-white/60 font-mono truncate focus:outline-none"
+                      />
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="gap-1.5 shrink-0"
+                        onClick={() => copyToClipboard(pixData.copyPaste, "pix")}
+                      >
+                        {copiedPix ? (
+                          <><CheckCircle size={14} className="text-green-400" /> Copiado!</>
+                        ) : (
+                          <><Copy size={14} /> Copiar</>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {pixData.expiresAt && (
+                    <p className="text-xs text-white/25">
+                      Expira em: {new Date(pixData.expiresAt).toLocaleString("pt-BR")}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <div className="text-center py-6">
+                  <div className="h-16 w-16 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto mb-4">
+                    <QrCode size={28} className="text-amber-400" />
+                  </div>
+                  <p className="text-sm text-white/60 mb-2">
+                    O QR Code PIX ainda está sendo gerado.
+                  </p>
+                  <p className="text-xs text-white/30">
+                    Aguarde alguns segundos e recarregue a página, ou use o link de pagamento abaixo.
+                  </p>
                 </div>
-              </div>
-
-              <p className="text-xs text-white/25">
-                Expira em: {new Date(pixData.expiresAt).toLocaleString("pt-BR")}
-              </p>
+              )}
             </div>
 
             {/* Manual check */}

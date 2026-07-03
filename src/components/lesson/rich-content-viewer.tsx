@@ -220,6 +220,38 @@ export function RichContentViewer({ html, lessonId, titulo, categoria, isAdmin =
   // Color cleanup happens ONLY at paste time in the RichTextEditor (transformPastedHTML),
   // not here — otherwise editor-chosen colors would be stripped.
   const sanitized = useMemo(() => {
+    // Configure DOMPurify with a hook to strip dangerous CSS properties
+    DOMPurify.addHook("afterSanitizeAttributes", (node) => {
+      if (node.hasAttribute("style")) {
+        const style = node.getAttribute("style") || "";
+        // Whitelist of safe CSS properties
+        const safeProperties = [
+          "color", "background-color", "font-weight", "font-size", "text-align",
+          "margin", "padding", "border", "width", "height", "display", "text-decoration"
+        ];
+
+        // Parse CSS properties and filter out dangerous ones
+        const declarations = style.split(";").filter(d => d.trim());
+        const safeCss = declarations
+          .map(decl => {
+            const [prop] = decl.split(":").map(s => s.trim().toLowerCase());
+            // Allow only whitelisted properties
+            if (safeProperties.includes(prop)) {
+              return decl.trim();
+            }
+            return null;
+          })
+          .filter(Boolean)
+          .join("; ");
+
+        if (safeCss) {
+          node.setAttribute("style", safeCss);
+        } else {
+          node.removeAttribute("style");
+        }
+      }
+    });
+
     return DOMPurify.sanitize(activeHtml, {
       ADD_ATTR: ["style", "class", "target", "rel", "data-width", "data-alignment", "alt"],
       ADD_TAGS: ["mark", "sup", "sub", "img", "table", "thead", "tbody", "tr", "td", "th", "colgroup", "col", "figure", "figcaption"],

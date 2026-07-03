@@ -30,46 +30,63 @@ export default async function DashboardPage() {
 
   const streakDays = await getStudyStreak();
 
-  const [enrollmentsResult, certificatesResult, recentActivityResult, allEnrollmentsResult] = await Promise.all([
-    userUuid
-      ? supabase
-          .from("enrollments")
-          .select(`*, courses(*)`)
-          .eq("user_id", userUuid)
-          .eq("status", "ativo")
-          .order("updated_at", { ascending: false })
-          .limit(6)
-      : Promise.resolve({ data: [] }),
-    userUuid
-      ? supabase
-          .from("certificates")
-          .select(`*, courses(titulo, nivel, categoria)`)
-          .eq("user_id", userUuid)
-          .order("emitido_em", { ascending: false })
-          .limit(4)
-      : Promise.resolve({ data: [] }),
-    userUuid
-      ? supabase
-          .from("activity_log")
-          .select("*")
-          .eq("user_id", userUuid)
-          .in("tipo", ["lesson_complete", "quiz_pass", "certificate_issued"])
-          .order("created_at", { ascending: false })
-          .limit(5)
-      : Promise.resolve({ data: [] }),
-    userUuid
-      ? supabase
-          .from("enrollments")
-          .select("progresso, course_id, courses(carga_horaria)")
-          .eq("user_id", userUuid)
-          .eq("status", "ativo")
-      : Promise.resolve({ data: [] }),
-  ]);
+  const safeQuery = async <T,>(queryFn: () => PromiseLike<{ data: T | null; error: any }>): Promise<T> => {
+    try {
+      const result = await queryFn();
+      if (result.error) {
+        console.error("[Dashboard] Query error:", result.error.message);
+        return [] as unknown as T;
+      }
+      return result.data ?? ([] as unknown as T);
+    } catch (err) {
+      console.error("[Dashboard] Unexpected error:", err);
+      return [] as unknown as T;
+    }
+  };
 
-  const enrollments = enrollmentsResult.data ?? [];
-  const certificates = certificatesResult.data ?? [];
-  const recentActivity = recentActivityResult.data ?? [];
-  const allEnrollments = allEnrollmentsResult.data ?? [];
+  const [enrollments, certificates, recentActivity, allEnrollments] = await Promise.all([
+    safeQuery(() =>
+      userUuid
+        ? supabase
+            .from("enrollments")
+            .select(`*, courses(*)`)
+            .eq("user_id", userUuid)
+            .eq("status", "ativo")
+            .order("updated_at", { ascending: false })
+            .limit(6)
+        : Promise.resolve({ data: [] as any[], error: null })
+    ),
+    safeQuery(() =>
+      userUuid
+        ? supabase
+            .from("certificates")
+            .select(`*, courses(titulo, nivel, categoria)`)
+            .eq("user_id", userUuid)
+            .order("emitido_em", { ascending: false })
+            .limit(4)
+        : Promise.resolve({ data: [] as any[], error: null })
+    ),
+    safeQuery(() =>
+      userUuid
+        ? supabase
+            .from("activity_log")
+            .select("*")
+            .eq("user_id", userUuid)
+            .in("tipo", ["lesson_complete", "quiz_pass", "certificate_issued"])
+            .order("created_at", { ascending: false })
+            .limit(5)
+        : Promise.resolve({ data: [] as any[], error: null })
+    ),
+    safeQuery(() =>
+      userUuid
+        ? supabase
+            .from("enrollments")
+            .select("progresso, course_id, courses(carga_horaria)")
+            .eq("user_id", userUuid)
+            .eq("status", "ativo")
+        : Promise.resolve({ data: [] as any[], error: null })
+    ),
+  ]);
 
   // Calculate stats
   const totalCursos = allEnrollments.length;

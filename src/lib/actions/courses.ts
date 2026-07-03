@@ -3,7 +3,9 @@
 import { auth } from "@clerk/nextjs/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import type { CourseInsert, CourseUpdate, ModuleInsert, LessonInsert, Progress } from "@/types/database";
+import { courseCreateSchema, moduleCreateSchema, lessonCreateSchema } from "@/lib/validations";
 
 // ============================================================
 // Helper: resolve Clerk user ID → Supabase user UUID
@@ -17,10 +19,16 @@ async function resolveUserUUID(clerkId: string): Promise<string | null> {
 }
 
 // ============================================================
-// Segurança: verifica role admin no nível da action
+// Segurança: unified role checking function
 // ============================================================
 
-async function assertAdmin() {
+/**
+ * Unified role checking function
+ * Gets Clerk userId, resolves to Supabase UUID, checks role against allowedRoles
+ * Returns { userId, userUuid, role }
+ * Throws descriptive error if unauthorized
+ */
+async function requireRole(allowedRoles: string[]) {
   const { userId } = await auth();
   if (!userId) throw new Error("Não autenticado");
 
@@ -29,26 +37,27 @@ async function assertAdmin() {
     .from("users")
     .select("id, role")
     .eq("clerk_id", userId)
-    .order("created_at", { ascending: false })
     .limit(1);
-  const role = rows?.[0]?.role ?? null;
 
-  // Admin, content_manager AND instrutor can manage course content
-  if (role !== "admin" && role !== "content_manager" && role !== "instrutor") {
-    throw new Error("Acesso negado: apenas administradores, content managers ou instrutores");
+  const user = rows?.[0];
+  const role = user?.role ?? null;
+
+  if (!role || !allowedRoles.includes(role)) {
+    throw new Error(`Acesso negado: permissão insuficiente. Roles permitidas: ${allowedRoles.join(", ")}`);
   }
+
+  return { userId, userUuid: user!.id, role };
+}
+
+// Wrapper: admin, content_manager, or instrutor can manage course content
+async function assertAdmin() {
+  const { userId } = await requireRole(["admin", "content_manager", "instrutor"]);
   return userId;
 }
 
-// Strict: admin-only operations (publish/unpublish, delete course)
+// Wrapper: strict admin-only operations (publish/unpublish, delete course)
 async function assertAdminOnly() {
-  const { userId } = await auth();
-  if (!userId) throw new Error("Não autenticado");
-
-  const supabase = createAdminClient();
-  const { data: rows } = await supabase
-    .from("users").select("role").eq("clerk_id", userId).limit(1);
-  if (rows?.[0]?.role !== "admin") throw new Error("Acesso negado: apenas administradores");
+  const { userId } = await requireRole(["admin"]);
   return userId;
 }
 
@@ -79,7 +88,7 @@ export async function getCourseBySlug(slug: string) {
   const supabase = await createClient();
   const { data, error } = await (supabase as any)
     .from("courses")
-    .select(`*, modules(*, lessons(*))`)
+    .select(`id, titulo, slug, descricao, descricao_curta, nivel, categoria, categorias, tipo, preco, carga_horaria, thumbnail_url, trailer_youtube_id, ativo, destaque, total_aulas, total_alunos, avaliacao_media, criado_por, modules(id, course_id, titulo, descricao, ordem, parent_id, lessons(id, module_id, titulo, tipo, youtube_id, pdf_path, conteudo_rico, duracao_min, ordem, tem_quiz, preview_gratis))`)
     .eq("slug", slug)
     .eq("ativo", true)
     .single();
@@ -111,7 +120,7 @@ export async function getCourseWithProgress(slug: string) {
   const [courseResult, enrollmentResult, progressResult] = await Promise.all([
     (supabase as any)
       .from("courses")
-      .select(`*, modules(*, lessons(*))`)
+      .select(`id, titulo, slug, descricao, descricao_curta, nivel, categoria, categorias, tipo, preco, carga_horaria, thumbnail_url, trailer_youtube_id, ativo, destaque, total_aulas, total_alunos, avaliacao_media, criado_por, modules(id, course_id, titulo, descricao, ordem, parent_id, lessons(id, module_id, titulo, tipo, youtube_id, pdf_path, conteudo_rico, duracao_min, ordem, tem_quiz, preview_gratis))`)
       .eq("slug", slug)
       .single(),
     userUuid
@@ -205,13 +214,24 @@ export async function adminCreateCourse(input: CourseInsert) {
   const clerkId = await assertAdmin();
   const supabase = createAdminClient();
 
+  // Validate input with Zod
+  let validated: z.infer<typeof courseCreateSchema>;
+  try {
+    validated = courseCreateSchema.parse(input);
+  } catch (e) {
+    if (e instanceof z.ZodError) {
+      throw new Error(`Validação falhou: ${e.issues.map((err: { message: string }) => err.message).join(", ")}`);
+    }
+    throw e;
+  }
+
   // clerk_id is not a UUID — resolve the internal user UUID first
   const { data: userRow } = await supabase
     .from("users").select("id").eq("clerk_id", clerkId).limit(1).single();
 
   const { data, error } = await supabase
     .from("courses")
-    .insert({ ...input, ...(userRow?.id ? { criado_por: userRow.id } : {}) })
+    .insert({ ...validated, ...(userRow?.id ? { criado_por: userRow.id } : {}) })
     .select()
     .single();
   if (error) throw error;
@@ -225,6 +245,17 @@ export async function adminUpdateCourse(id: string, input: CourseUpdate) {
   const clerkId = await assertAdmin();
   const supabase = createAdminClient();
 
+  // Validate input with Zod (partial schema for updates)
+  let validated: Partial<z.infer<typeof courseCreateSchema>>;
+  try {
+    validated = courseCreateSchema.partial().parse(input);
+  } catch (e) {
+    if (e instanceof z.ZodError) {
+      throw new Error(`Validação falhou: ${e.issues.map((err: { message: string }) => err.message).join(", ")}`);
+    }
+    throw e;
+  }
+
   // Ownership check para instrutores
   const { data: userRow } = await supabase
     .from("users").select("id, role").eq("clerk_id", clerkId).limit(1).single();
@@ -235,14 +266,14 @@ export async function adminUpdateCourse(id: string, input: CourseUpdate) {
       throw new Error("Acesso negado: você só pode editar seus próprios cursos");
     }
     // Instrutor não pode alterar campos sensíveis
-    delete (input as any).ativo;
-    delete (input as any).destaque;
-    delete (input as any).preco;
+    delete (validated as any).ativo;
+    delete (validated as any).destaque;
+    delete (validated as any).preco;
   }
 
   const { data, error } = await supabase
     .from("courses")
-    .update(input)
+    .update(validated)
     .eq("id", id)
     .select()
     .single();
@@ -256,10 +287,38 @@ export async function adminUpdateCourse(id: string, input: CourseUpdate) {
 export async function adminDeleteCourse(id: string) {
   await assertAdminOnly();
   const supabase = createAdminClient();
+
+  // Verificar se há alunos matriculados ANTES de deletar (proteção no backend)
+  const { count: enrollmentCount } = await supabase
+    .from("enrollments")
+    .select("id", { count: "exact", head: true })
+    .eq("course_id", id);
+
+  if (enrollmentCount && enrollmentCount > 0) {
+    throw new Error(
+      `Não é possível excluir: este curso tem ${enrollmentCount} matrícula(s) ativa(s). ` +
+      `Remova as matrículas primeiro em Admin > Cursos > Gerenciar Alunos.`
+    );
+  }
+
+  // Verificar se há pagamentos pendentes
+  const { count: pendingPayments } = await supabase
+    .from("enrollments")
+    .select("id", { count: "exact", head: true })
+    .eq("course_id", id)
+    .eq("status", "pendente");
+
+  if (pendingPayments && pendingPayments > 0) {
+    throw new Error(
+      `Não é possível excluir: existem ${pendingPayments} pagamento(s) pendente(s) para este curso.`
+    );
+  }
+
   const { error } = await supabase.from("courses").delete().eq("id", id);
   if (error) throw error;
 
   revalidatePath("/admin/cursos");
+  revalidatePath("/cursos");
 }
 
 export async function adminToggleCourse(id: string, ativo: boolean) {
@@ -291,9 +350,21 @@ export async function adminToggleCourse(id: string, ativo: boolean) {
 export async function adminCreateModule(input: ModuleInsert) {
   await assertAdmin();
   const supabase = createAdminClient();
-  const { data, error } = await supabase.from("modules").insert(input).select().single();
+
+  // Validate input with Zod
+  let validated: z.infer<typeof moduleCreateSchema>;
+  try {
+    validated = moduleCreateSchema.parse(input);
+  } catch (e) {
+    if (e instanceof z.ZodError) {
+      throw new Error(`Validação falhou: ${e.issues.map((err: { message: string }) => err.message).join(", ")}`);
+    }
+    throw e;
+  }
+
+  const { data, error } = await supabase.from("modules").insert(validated).select().single();
   if (error) throw error;
-  revalidatePath(`/admin/cursos/${input.course_id}`);
+  revalidatePath(`/admin/cursos/${validated.course_id}`);
   return data;
 }
 
@@ -302,6 +373,8 @@ export async function adminUpdateModule(id: string, input: Partial<ModuleInsert>
   const supabase = createAdminClient();
   const { data, error } = await supabase.from("modules").update(input).eq("id", id).select().single();
   if (error) throw error;
+  revalidatePath("/admin/cursos");
+  revalidatePath("/cursos");
   return data;
 }
 
@@ -309,6 +382,8 @@ export async function adminDeleteModule(id: string) {
   await assertAdmin();
   const supabase = createAdminClient();
   await supabase.from("modules").delete().eq("id", id);
+  revalidatePath("/admin/cursos");
+  revalidatePath("/cursos");
 }
 
 /**
@@ -335,8 +410,22 @@ export async function adminMoveModule(id: string, parentId: string | null, cours
 export async function adminCreateLesson(input: LessonInsert) {
   await assertAdmin();
   const supabase = createAdminClient();
-  const { data, error } = await supabase.from("lessons").insert(input).select().single();
+
+  // Validate input with Zod
+  let validated: z.infer<typeof lessonCreateSchema>;
+  try {
+    validated = lessonCreateSchema.parse(input);
+  } catch (e) {
+    if (e instanceof z.ZodError) {
+      throw new Error(`Validação falhou: ${e.issues.map((err: { message: string }) => err.message).join(", ")}`);
+    }
+    throw e;
+  }
+
+  const { data, error } = await supabase.from("lessons").insert(validated).select().single();
   if (error) throw error;
+  revalidatePath("/admin/cursos");
+  revalidatePath("/cursos");
   return data;
 }
 
@@ -345,6 +434,14 @@ export async function adminUpdateLesson(id: string, input: Partial<LessonInsert>
   const supabase = createAdminClient();
   const { data, error } = await supabase.from("lessons").update(input).eq("id", id).select().single();
   if (error) throw error;
+
+  // Invalidate AI cache if content changed
+  if ((input as any).conteudo_rico !== undefined) {
+    await (supabase as any).from("ai_explanations").delete().eq("lesson_id", id);
+  }
+
+  revalidatePath("/admin/cursos");
+  revalidatePath("/cursos");
   return data;
 }
 
@@ -352,6 +449,8 @@ export async function adminDeleteLesson(id: string) {
   await assertAdmin();
   const supabase = createAdminClient();
   await supabase.from("lessons").delete().eq("id", id);
+  revalidatePath("/admin/cursos");
+  revalidatePath("/cursos");
 }
 
 // ============================================================
@@ -643,22 +742,8 @@ export async function adminDuplicateCourse(id: string) {
  * Aceita admin, content_manager E instrutor.
  */
 async function assertInstructorOrAdmin() {
-  const { userId } = await auth();
-  if (!userId) throw new Error("Não autenticado");
-
-  const supabase = createAdminClient();
-  const { data: rows } = await supabase
-    .from("users")
-    .select("id, role")
-    .eq("clerk_id", userId)
-    .limit(1);
-  const user = rows?.[0];
-  const role = user?.role ?? null;
-
-  if (role !== "admin" && role !== "content_manager" && role !== "instrutor") {
-    throw new Error("Acesso negado");
-  }
-  return { clerkId: userId, userUuid: user!.id, role: role as string };
+  const { userId, userUuid, role } = await requireRole(["admin", "content_manager", "instrutor"]);
+  return { clerkId: userId, userUuid, role };
 }
 
 /** Retorna cursos do instrutor logado (somente os que ele criou) */

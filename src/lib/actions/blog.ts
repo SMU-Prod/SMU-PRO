@@ -1,10 +1,13 @@
 "use server";
 
-import { createAdminClient as _createAdminClient } from "@/lib/supabase/server";
+import { z } from "zod";
+import { createAdminClient as _createAdminClient, createClient as _createAnonClient } from "@/lib/supabase/server";
 import { auth } from "@clerk/nextjs/server";
+import { blogPostCreateSchema } from "@/lib/validations";
 
 // Cast para any porque blog_posts ainda não existe no tipo Database gerado
 const createAdminClient = () => _createAdminClient() as any;
+const createAnonClient = async () => (await _createAnonClient()) as any;
 
 // ── Public queries ───────────────────────────────────────────────
 
@@ -17,7 +20,7 @@ export async function getPublishedPosts({
   limit?: number;
   categoria?: string;
 } = {}) {
-  const supabase = createAdminClient();
+  const supabase = await createAnonClient();
   let query = supabase
     .from("blog_posts")
     .select("id, titulo, slug, resumo, thumbnail_url, categoria, tags, tempo_leitura, created_at, autor_id, destaque", { count: "exact" })
@@ -34,7 +37,7 @@ export async function getPublishedPosts({
 }
 
 export async function getFeaturedPosts() {
-  const supabase = createAdminClient();
+  const supabase = await createAnonClient();
   const { data } = await supabase
     .from("blog_posts")
     .select("id, titulo, slug, resumo, thumbnail_url, categoria, tempo_leitura, created_at")
@@ -47,7 +50,7 @@ export async function getFeaturedPosts() {
 }
 
 export async function getPostBySlug(slug: string): Promise<any | null> {
-  const supabase = createAdminClient();
+  const supabase = await createAnonClient();
   const { data, error } = await supabase
     .from("blog_posts")
     .select("*")
@@ -57,18 +60,19 @@ export async function getPostBySlug(slug: string): Promise<any | null> {
 
   if (error || !data) return null;
 
-  // Incrementa views (fire & forget)
+  // Incrementa views (fire & forget, but handle errors)
   supabase
     .from("blog_posts")
     .update({ views: (data.views ?? 0) + 1 })
     .eq("id", data.id)
-    .then(() => {});
+    .then(() => {})
+    .catch((err: unknown) => console.error("Failed to increment post views:", err));
 
   return data;
 }
 
 export async function getRelatedPosts(categoria: string, excludeId: string) {
-  const supabase = createAdminClient();
+  const supabase = await createAnonClient();
   const { data } = await supabase
     .from("blog_posts")
     .select("id, titulo, slug, resumo, thumbnail_url, tempo_leitura, created_at")
@@ -116,12 +120,23 @@ export async function adminCreatePost(post: {
 
   const supabase = createAdminClient();
 
+  // Validate input with Zod
+  let validated: z.infer<typeof blogPostCreateSchema>;
+  try {
+    validated = blogPostCreateSchema.parse(post);
+  } catch (e) {
+    if (e instanceof z.ZodError) {
+      throw new Error(`Validação falhou: ${e.issues.map((err: { message: string }) => err.message).join(", ")}`);
+    }
+    throw e;
+  }
+
   // Resolve user UUID
   const { data: user } = await supabase.from("users").select("id").eq("clerk_id", userId).single();
 
   const { data, error } = await supabase
     .from("blog_posts")
-    .insert({ ...post, autor_id: user?.id })
+    .insert({ ...validated, autor_id: user?.id })
     .select()
     .single();
 

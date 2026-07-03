@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Image from "next/image";
 import { SignaturePad } from "@/components/certificate/signature-pad";
 import {
   createInstructor,
@@ -221,18 +222,21 @@ export function InstructorManager({ instructors, courses, lessons, assignments }
                           ? "border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
                           : "border border-border text-muted-light hover:bg-surface"
                       }`}
+                      aria-label={inst.assinatura_img ? `Editar assinatura de ${inst.nome}` : `Adicionar assinatura de ${inst.nome}`}
                     >
                       <PenTool size={12} /> {inst.assinatura_img ? "Editar Assinatura" : "Assinar"}
                     </button>
                     <button
                       onClick={() => setAssigningId(assigningId === inst.id ? null : inst.id)}
                       className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs text-muted-light hover:bg-surface"
+                      aria-label={`Vincular cursos para ${inst.nome}`}
                     >
                       <Link2 size={12} /> Vincular Curso
                     </button>
                     <button
                       onClick={() => handleDelete(inst.id)}
                       className="rounded-lg border border-red-500/20 px-2 py-1.5 text-red-400 hover:bg-red-500/10"
+                      aria-label={`Desativar instrutor ${inst.nome}`}
                     >
                       <Trash2 size={12} />
                     </button>
@@ -242,8 +246,7 @@ export function InstructorManager({ instructors, courses, lessons, assignments }
                 {/* Preview signature */}
                 {inst.assinatura_img && signingId !== inst.id && (
                   <div className="mt-3 p-2 rounded-lg bg-white inline-block border border-gray-200">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={inst.assinatura_img} alt="Assinatura" className="h-12 object-contain" />
+                    <Image src={inst.assinatura_img} alt={`Assinatura de ${inst.nome}`} width={96} height={48} className="h-12 object-contain" />
                   </div>
                 )}
 
@@ -331,6 +334,7 @@ export function InstructorManager({ instructors, courses, lessons, assignments }
                           <button
                             onClick={() => handleRemoveAssignment(a.id)}
                             className="ml-0.5 hover:text-red-400"
+                            aria-label="Remover vínculo"
                           >
                             <X size={10} />
                           </button>

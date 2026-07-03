@@ -1,8 +1,10 @@
 "use server";
 
+import { z } from "zod";
 import { auth } from "@clerk/nextjs/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { partnerCreateSchema } from "@/lib/validations";
 
 // ── Helpers ──
 
@@ -42,17 +44,29 @@ export async function createPartner(input: {
   instructor_id?: string;
 }) {
   const supabase = await requireAdmin();
+
+  // Validate input with Zod
+  let validated: z.infer<typeof partnerCreateSchema>;
+  try {
+    validated = partnerCreateSchema.parse(input);
+  } catch (e) {
+    if (e instanceof z.ZodError) {
+      throw new Error(`Validação falhou: ${e.issues.map((err: { message: string }) => err.message).join(", ")}`);
+    }
+    throw e;
+  }
+
   const { data, error } = await (supabase as any)
     .from("instructor_partners")
     .insert({
-      nome: input.nome,
-      email: input.email,
-      cpf: input.cpf || null,
-      telefone: input.telefone || null,
-      bio: input.bio || null,
-      comissao_padrao: input.comissao_padrao ?? 40,
-      asaas_wallet_id: input.asaas_wallet_id || null,
-      instructor_id: input.instructor_id || null,
+      nome: validated.nome,
+      email: validated.email,
+      cpf: validated.cpf || null,
+      telefone: validated.telefone || null,
+      bio: validated.bio || null,
+      comissao_padrao: validated.comissao_padrao ?? 40,
+      asaas_wallet_id: validated.asaas_wallet_id || null,
+      instructor_id: validated.instructor_id || null,
     })
     .select()
     .single();

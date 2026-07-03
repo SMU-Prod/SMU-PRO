@@ -22,6 +22,22 @@ export async function POST(req: Request) {
   if (!userRow) return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
   const userUuid = userRow.id;
 
+  // Verificar se o usuário tem matrícula ativa neste curso
+  const { data: enrollment } = await supabase
+    .from("enrollments")
+    .select("id, status, expires_at")
+    .eq("user_id", userUuid)
+    .eq("course_id", courseId)
+    .maybeSingle();
+
+  if (!enrollment || enrollment.status !== "ativo") {
+    return NextResponse.json({ error: "Você não está matriculado neste curso" }, { status: 403 });
+  }
+
+  if (enrollment.expires_at && new Date(enrollment.expires_at) < new Date()) {
+    return NextResponse.json({ error: "Sua matrícula expirou. Renove para gerar o certificado." }, { status: 403 });
+  }
+
   // Verificar se o certificado já existe
   const { data: existing } = await supabase
     .from("certificates")

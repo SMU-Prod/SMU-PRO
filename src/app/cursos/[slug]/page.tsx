@@ -1,6 +1,7 @@
 import { getCourseBySlug } from "@/lib/actions/courses";
 import { auth } from "@clerk/nextjs/server";
 import { createAdminClient } from "@/lib/supabase/server";
+import { hasSubscriptionAccess, getActivePlan } from "@/lib/actions/subscriptions";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -51,6 +52,7 @@ export default async function CourseDetailPage({ params }: Props) {
   const { userId } = await auth();
   let enrollment: any = null;
   let isMIT = false;
+  let hasSubscription = false;
 
   if (userId) {
     const supabase = createAdminClient();
@@ -64,8 +66,19 @@ export default async function CourseDetailPage({ params }: Props) {
         .eq("course_id", course.id)
         .maybeSingle();
       enrollment = data;
+
+      // Verificar acesso por assinatura
+      if (!enrollment || enrollment.status !== "ativo") {
+        hasSubscription = await hasSubscriptionAccess(userRow.id, course.id);
+      }
     }
   }
+
+  // Buscar plano de assinatura para exibir opção no card de compra
+  const subscriptionPlan: { preco_mensal: number } | null =
+    course.tipo === "pago" && (course as any).disponivel_assinatura
+      ? await getActivePlan()
+      : null;
 
   const allModules = course.modules ?? [];
   const modules = allModules.filter((m: any) => !m.parent_id);
@@ -79,7 +92,10 @@ export default async function CourseDetailPage({ params }: Props) {
   }
 
   const totalLessons = allModules.reduce((acc: number, m: any) => acc + (m.lessons?.length ?? 0), 0);
-  const isEnrolled = enrollment?.status === "ativo";
+  const isEnrolled = hasSubscription || (
+    enrollment?.status === "ativo" &&
+    (!enrollment.expires_at || new Date(enrollment.expires_at) > new Date())
+  );
   const isFree = course.tipo === "free";
 
   // ── Schema.org JSON-LD ─────────────────────────────────────────
@@ -244,6 +260,14 @@ export default async function CourseDetailPage({ params }: Props) {
                 ) : (
                   <div className="text-3xl font-black text-foreground">{formatCurrency(course.preco ?? 0)}</div>
                 )}
+                {subscriptionPlan && !isEnrolled && (
+                  <p className="text-sm text-muted-light mt-1">
+                    ou incluso na assinatura de{" "}
+                    <span className="text-amber-400 font-semibold">
+                      {formatCurrency(subscriptionPlan.preco_mensal)}/mês
+                    </span>
+                  </p>
+                )}
               </div>
 
               {/* CTA */}
@@ -251,11 +275,21 @@ export default async function CourseDetailPage({ params }: Props) {
                 <Link href={`/dashboard/cursos/${course.slug}`} className="block">
                   <Button size="lg" className="w-full gap-2">
                     <Play size={18} />
-                    Continuar estudando
+                    {hasSubscription ? "Acessar (Assinante)" : "Continuar estudando"}
                   </Button>
                 </Link>
               ) : userId ? (
-                <EnrollButton course={course} userId={userId} isMIT={isMIT} />
+                <div className="space-y-2">
+                  <EnrollButton course={course} userId={userId} isMIT={isMIT} />
+                  {subscriptionPlan && (
+                    <Link href="/dashboard/assinatura" className="block">
+                      <Button size="lg" variant="outline" className="w-full gap-2 border-amber-500/30 text-amber-400 hover:bg-amber-500/10">
+                        <Star size={16} className="fill-amber-400" />
+                        Assinar por {formatCurrency(subscriptionPlan.preco_mensal)}/mês
+                      </Button>
+                    </Link>
+                  )}
+                </div>
               ) : (
                 <Link href={`/login?redirect_url=/cursos/${course.slug}`} className="block">
                   <Button size="lg" className="w-full gap-2">

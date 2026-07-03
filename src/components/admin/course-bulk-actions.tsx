@@ -1,14 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { adminToggleCourse, adminDuplicateCourse, adminDeleteCourse } from "@/lib/actions/courses";
+import { adminRemoveAllCourseEnrollments } from "@/lib/actions/users";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { getCategoryLabel, getLevelLabel, formatCurrency } from "@/lib/utils";
 import { CategoryIcon } from "@/components/ui/category-icon";
-import { Edit, Layers, EyeOff, CheckSquare, Square, X, Zap, Copy, Trash2 } from "lucide-react";
+import { Edit, Layers, EyeOff, CheckSquare, Square, X, Zap, Copy, Trash2, Users } from "lucide-react";
 import Link from "next/link";
 import { CourseToggle } from "@/components/admin/course-toggle";
 import { StudentPreviewButton } from "@/components/admin/student-card-preview";
@@ -160,7 +162,33 @@ function CourseAdminCard({
   const handleDelete = async (e: React.MouseEvent) => {
     e.preventDefault();
     if (c.total_alunos > 0) {
-      alert(`Este curso tem ${c.total_alunos} aluno${c.total_alunos > 1 ? "s" : ""} matriculado${c.total_alunos > 1 ? "s" : ""}. Desative-o primeiro ou remova as matrículas.`);
+      const shouldRemove = confirm(
+        `Este curso tem ${c.total_alunos} aluno(s) matriculado(s).\n\n` +
+        `Deseja REMOVER TODAS as matrículas e depois apagar o curso?\n\n` +
+        `⚠️ Esta ação é irreversível! Os alunos perderão acesso e progresso.\n\n` +
+        `Dica: Você também pode gerenciar alunos individualmente clicando no ícone de "Alunos" do curso.`
+      );
+      if (!shouldRemove) return;
+
+      // Confirmação extra de segurança
+      const confirmText = prompt(
+        `Para confirmar, digite o nome do curso: "${c.titulo}"`
+      );
+      if (confirmText !== c.titulo) {
+        alert("Nome do curso não confere. Operação cancelada.");
+        return;
+      }
+
+      setDeleting(true);
+      try {
+        await adminRemoveAllCourseEnrollments(c.id);
+        await adminDeleteCourse(c.id);
+        router.refresh();
+      } catch (err) {
+        alert(err instanceof Error ? err.message : "Erro ao apagar curso.");
+      } finally {
+        setDeleting(false);
+      }
       return;
     }
     if (!confirm(`Tem certeza que deseja apagar "${c.titulo}"? Esta ação não pode ser desfeita.`)) return;
@@ -168,8 +196,8 @@ function CourseAdminCard({
     try {
       await adminDeleteCourse(c.id);
       router.refresh();
-    } catch {
-      alert("Erro ao apagar curso. Verifique se não há dados vinculados.");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Erro ao apagar curso. Verifique se não há dados vinculados.");
     } finally {
       setDeleting(false);
     }
@@ -185,7 +213,7 @@ function CourseAdminCard({
       {/* Thumbnail / Header */}
       <div className="h-20 bg-gradient-to-br from-surface-2 to-surface-3 flex items-center justify-center text-4xl relative overflow-hidden">
         {c.thumbnail_url ? (
-          <img src={c.thumbnail_url} alt={c.titulo} className="w-full h-full object-cover" />
+          <Image src={c.thumbnail_url} alt={c.titulo} width={200} height={80} className="w-full h-full object-cover" />
         ) : (
           <CategoryIcon category={c.categoria} size={32} />
         )}
@@ -195,13 +223,14 @@ function CourseAdminCard({
           onClick={onSelect}
           className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity"
           title="Selecionar"
+          aria-label={selected ? "Desselecionar curso" : "Selecionar curso"}
         >
           {selected
             ? <CheckSquare size={18} className="text-amber-400 drop-shadow-sm" />
             : <Square size={18} className="text-white drop-shadow-sm" />}
         </button>
         {selected && (
-          <button onClick={onSelect} className="absolute top-2 left-2">
+          <button onClick={onSelect} className="absolute top-2 left-2" aria-label="Desselecionar curso">
             <CheckSquare size={18} className="text-amber-400 drop-shadow-sm" />
           </button>
         )}
@@ -262,12 +291,17 @@ function CourseAdminCard({
             </Button>
           </Link>
           <StudentPreviewButton course={c} />
+          <Link href={`/admin/cursos/${c.id}/alunos`}>
+            <Button variant="ghost" size="icon" className="h-8 w-8" title={`Gerenciar alunos (${c.total_alunos})`} aria-label="Gerenciar alunos do curso">
+              <Users size={14} />
+            </Button>
+          </Link>
           <Link href={`/admin/cursos/${c.id}?tab=informacoes`}>
-            <Button variant="ghost" size="icon" className="h-8 w-8" title="Editar informações">
+            <Button variant="ghost" size="icon" className="h-8 w-8" title="Editar informações" aria-label="Editar informações do curso">
               <Edit size={14} />
             </Button>
           </Link>
-          <Button variant="ghost" size="icon" className="h-8 w-8" title="Clonar curso" loading={cloning} onClick={handleClone}>
+          <Button variant="ghost" size="icon" className="h-8 w-8" title="Clonar curso" aria-label="Clonar curso" loading={cloning} onClick={handleClone}>
             <Copy size={14} />
           </Button>
           <Button
@@ -275,6 +309,7 @@ function CourseAdminCard({
             size="icon"
             className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-500/10"
             title="Apagar curso"
+            aria-label="Apagar curso permanentemente"
             loading={deleting}
             onClick={handleDelete}
           >

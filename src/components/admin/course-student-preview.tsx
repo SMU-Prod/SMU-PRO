@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -95,6 +96,7 @@ export function CourseStudentPreview({ course }: { course: CourseData }) {
                     : "text-muted-light hover:text-muted"
                 )}
                 title={label}
+                aria-label={`Visualizar como ${label}`}
               >
                 <Icon size={13} />
                 <span className="hidden sm:inline">{label}</span>
@@ -235,7 +237,7 @@ function StudentCourseCard({ course, progress }: { course: CourseData; progress:
     <div className="rounded-2xl bg-surface border border-border overflow-hidden hover:border-amber-500/30 hover:shadow-md transition-all">
       <div className="h-36 bg-gradient-to-br from-surface-2 to-surface-3 flex items-center justify-center text-5xl overflow-hidden">
         {course.thumbnail_url ? (
-          <img src={course.thumbnail_url} alt={course.titulo} className="w-full h-full object-cover" />
+          <Image src={course.thumbnail_url} alt={course.titulo} width={300} height={144} className="w-full h-full object-cover" />
         ) : (
           <CategoryIcon category={course.categoria} size={40} />
         )}

@@ -310,6 +310,51 @@ export async function createWebhook(input: CreateWebhookInput) {
 }
 
 // ============================================================
+// Assinaturas (Subscriptions)
+// ============================================================
+
+export interface AsaasSubscription {
+  id: string;
+  customer: string;
+  billingType: AsaasBillingType;
+  value: number;
+  cycle: "MONTHLY" | "YEARLY";
+  status: "ACTIVE" | "INACTIVE" | "EXPIRED";
+  nextDueDate: string;
+  description?: string;
+  externalReference?: string;
+}
+
+interface CreateSubscriptionInput {
+  customer: string;
+  billingType: AsaasBillingType;
+  value: number;
+  cycle: "MONTHLY" | "YEARLY";
+  nextDueDate: string;
+  description?: string;
+  externalReference?: string;
+}
+
+export async function createSubscription(
+  input: CreateSubscriptionInput
+): Promise<AsaasSubscription> {
+  return asaasRequest<AsaasSubscription>("/subscriptions", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function getSubscription(subscriptionId: string): Promise<AsaasSubscription> {
+  return asaasRequest<AsaasSubscription>(`/subscriptions/${subscriptionId}`);
+}
+
+export async function cancelSubscription(subscriptionId: string): Promise<AsaasSubscription> {
+  return asaasRequest<AsaasSubscription>(`/subscriptions/${subscriptionId}`, {
+    method: "DELETE",
+  });
+}
+
+// ============================================================
 // Utilitários
 // ============================================================
 

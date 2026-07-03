@@ -14,6 +14,19 @@ const FROM = process.env.EMAIL_FROM ?? "SMU PRO <noreply@smu.pro>";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
 // ============================================================
+// Security: HTML escape function for user-provided data
+// ============================================================
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+// ============================================================
 // Templates HTML
 // ============================================================
 
@@ -96,8 +109,10 @@ export async function sendWelcomeEmail(params: {
   to: string;
   nome: string;
 }) {
+  const nomeFirstName = escapeHtml(params.nome.split(" ")[0]);
+
   const html = baseLayout(`
-    ${h1(`Bem-vindo ao SMU PRO, ${params.nome.split(" ")[0]}!`)}
+    ${h1(`Bem-vindo ao SMU PRO, ${nomeFirstName}!`)}
     ${p("Sua conta profissional está ativa. Agora você tem acesso ao maior conteúdo técnico para profissionais de eventos do Brasil.")}
     ${divider()}
     ${p("Comece explorando nossos cursos gratuitos ou veja a trilha completa para sua carreira:")}
@@ -109,7 +124,7 @@ export async function sendWelcomeEmail(params: {
   return resend.emails.send({
     from: FROM,
     to: params.to,
-    subject: `Bem-vindo ao SMU PRO, ${params.nome.split(" ")[0]}!`,
+    subject: `Bem-vindo ao SMU PRO, ${nomeFirstName}!`,
     html,
   });
 }
@@ -124,13 +139,14 @@ export async function sendEnrollmentEmail(params: {
   courseTitulo: string;
   courseSlug: string;
 }) {
-  const courseUrl = `${APP_URL}/dashboard/cursos/${params.courseSlug}`;
+  const courseUrl = `${APP_URL}/dashboard/cursos/${escapeHtml(params.courseSlug)}`;
+  const courseTituloEscaped = escapeHtml(params.courseTitulo);
 
   const html = baseLayout(`
     ${h1("Inscrição confirmada!")}
-    ${p(`Você está inscrito em <strong style="color:#ffffff;">${params.courseTitulo}</strong>. Bom estudo!`)}
+    ${p(`Você está inscrito em <strong style="color:#ffffff;">${courseTituloEscaped}</strong>. Bom estudo!`)}
     ${divider()}
-    ${highlight("Curso", params.courseTitulo)}
+    ${highlight("Curso", courseTituloEscaped)}
     ${highlight("Status", "Acesso liberado")}
     ${divider()}
     ${btn("Começar a estudar", courseUrl)}
@@ -140,7 +156,7 @@ export async function sendEnrollmentEmail(params: {
   return resend.emails.send({
     from: FROM,
     to: params.to,
-    subject: `Acesso liberado: ${params.courseTitulo}`,
+    subject: `Acesso liberado: ${courseTituloEscaped}`,
     html,
   });
 }
@@ -155,9 +171,12 @@ export async function sendCourseCompletionEmail(params: {
   courseTitulo: string;
   courseSlug: string;
 }) {
+  const nomeFirstName = escapeHtml(params.nome.split(" ")[0]);
+  const courseTituloEscaped = escapeHtml(params.courseTitulo);
+
   const html = baseLayout(`
     ${h1("Parabéns! Você concluiu o curso!")}
-    ${p(`<strong style="color:#ffffff;">${params.nome.split(" ")[0]}</strong>, você completou 100% do curso <strong style="color:#ffffff;">${params.courseTitulo}</strong>.`)}
+    ${p(`<strong style="color:#ffffff;">${nomeFirstName}</strong>, você completou 100% do curso <strong style="color:#ffffff;">${courseTituloEscaped}</strong>.`)}
     ${divider()}
     ${p("Seu certificado verificável está disponível no painel. Compartilhe com contratantes — cada certificado tem QR Code único.")}
     ${btn("Ver meu certificado", `${APP_URL}/dashboard/certificados`)}
@@ -169,7 +188,7 @@ export async function sendCourseCompletionEmail(params: {
   return resend.emails.send({
     from: FROM,
     to: params.to,
-    subject: `Certificado disponível: ${params.courseTitulo}`,
+    subject: `Certificado disponível: ${courseTituloEscaped}`,
     html,
   });
 }
@@ -186,15 +205,17 @@ export async function sendCertificateEmail(params: {
   cargaHoraria: number | null;
   codigoVerificacao: string;
 }) {
-  const verifyUrl = `${APP_URL}/certificado/${params.codigoVerificacao}`;
+  const courseTituloEscaped = escapeHtml(params.courseTitulo);
+  const codigoVerificacaoEscaped = escapeHtml(params.codigoVerificacao);
+  const verifyUrl = `${APP_URL}/certificado/${codigoVerificacaoEscaped}`;
 
   const html = baseLayout(`
     ${h1("Seu certificado foi emitido!")}
-    ${p(`Certificado de conclusão para <strong style="color:#ffffff;">${params.courseTitulo}</strong>.`)}
+    ${p(`Certificado de conclusão para <strong style="color:#ffffff;">${courseTituloEscaped}</strong>.`)}
     ${divider()}
     ${params.notaFinal != null ? highlight("Nota final", `${params.notaFinal}/100`) : ""}
     ${params.cargaHoraria != null ? highlight("Carga horária", `${params.cargaHoraria}h`) : ""}
-    ${highlight("Código de verificação", params.codigoVerificacao)}
+    ${highlight("Código de verificação", codigoVerificacaoEscaped)}
     ${divider()}
     ${btn("Visualizar certificado", verifyUrl)}
     ${p("Qualquer pessoa pode verificar a autenticidade do seu certificado acessando o link acima ou escaneando o QR Code.")}
@@ -203,7 +224,7 @@ export async function sendCertificateEmail(params: {
   return resend.emails.send({
     from: FROM,
     to: params.to,
-    subject: `Certificado: ${params.courseTitulo} — SMU PRO`,
+    subject: `Certificado: ${courseTituloEscaped} — SMU PRO`,
     html,
   });
 }
@@ -222,22 +243,24 @@ export async function sendPaymentConfirmedEmail(params: {
 }) {
   const valor = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(params.valor);
   const metodo = params.billingType === "PIX" ? "PIX" : params.billingType === "BOLETO" ? "Boleto" : "Cartão";
+  const courseTituloEscaped = escapeHtml(params.courseTitulo);
+  const courseSlugEscaped = escapeHtml(params.courseSlug);
 
   const html = baseLayout(`
     ${h1("Pagamento confirmado!")}
     ${p(`Recebemos seu pagamento e seu acesso ao curso foi liberado.`)}
     ${divider()}
-    ${highlight("Curso", params.courseTitulo)}
+    ${highlight("Curso", courseTituloEscaped)}
     ${highlight("Valor pago", valor)}
     ${highlight("Método", metodo)}
     ${divider()}
-    ${btn("Começar a estudar agora", `${APP_URL}/dashboard/cursos/${params.courseSlug}`)}
+    ${btn("Começar a estudar agora", `${APP_URL}/dashboard/cursos/${courseSlugEscaped}`)}
   `);
 
   return resend.emails.send({
     from: FROM,
     to: params.to,
-    subject: `Pagamento confirmado — ${params.courseTitulo}`,
+    subject: `Pagamento confirmado — ${courseTituloEscaped}`,
     html,
   });
 }

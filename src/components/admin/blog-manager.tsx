@@ -1,12 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   adminCreatePost, adminUpdatePost, adminDeletePost, adminTogglePostPublish,
 } from "@/lib/actions/blog";
-import { RichTextEditor } from "@/components/admin/rich-text-editor";
 import { FileUploader } from "@/components/admin/file-uploader";
+
+const RichTextEditor = dynamic(
+  () => import("@/components/admin/rich-text-editor").then(m => m.RichTextEditor),
+  { loading: () => <div className="animate-pulse h-64 bg-surface-2 rounded-lg" />, ssr: false }
+);
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -153,7 +159,7 @@ export function BlogManager({ initialPosts }: { initialPosts: Post[] }) {
             <div key={post.id} className="rounded-xl border border-border bg-surface p-4 flex items-start gap-4 hover:border-amber-500/20 transition-colors group">
               <div className="h-16 w-24 rounded-lg bg-surface-2 shrink-0 overflow-hidden flex items-center justify-center">
                 {post.thumbnail_url ? (
-                  <img src={post.thumbnail_url} alt="" className="w-full h-full object-cover" />
+                  <Image src={post.thumbnail_url} alt={post.titulo} width={96} height={64} className="w-full h-full object-cover" />
                 ) : (
                   <BookOpen size={20} className="text-muted-light" />
                 )}
@@ -178,25 +184,26 @@ export function BlogManager({ initialPosts }: { initialPosts: Post[] }) {
               <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                 {post.publicado && (
                   <a href={`/blog/${post.slug}`} target="_blank" rel="noopener noreferrer">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" title="Ver post publicado">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" title="Ver post publicado" aria-label="Abrir post publicado em nova aba">
                       <ExternalLink size={13} />
                     </Button>
                   </a>
                 )}
-                <Button variant="ghost" size="icon" className="h-8 w-8" title="Preview"
+                <Button variant="ghost" size="icon" className="h-8 w-8" title="Preview" aria-label="Visualizar preview do post"
                   onClick={() => { startEdit(post); setView("preview"); }}>
                   <Monitor size={13} />
                 </Button>
                 <Button variant="ghost" size="icon" className="h-8 w-8"
                   title={post.publicado ? "Despublicar" : "Publicar"}
+                  aria-label={post.publicado ? "Despublicar post" : "Publicar post"}
                   onClick={() => handleToggle(post.id, !post.publicado)}>
                   {post.publicado ? <EyeOff size={13} /> : <Eye size={13} />}
                 </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8" title="Editar" onClick={() => startEdit(post)}>
+                <Button variant="ghost" size="icon" className="h-8 w-8" title="Editar" aria-label="Editar post" onClick={() => startEdit(post)}>
                   <Edit2 size={13} />
                 </Button>
                 <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-500"
-                  title="Apagar" onClick={() => handleDelete(post.id)}>
+                  title="Apagar" aria-label="Apagar post permanentemente" onClick={() => handleDelete(post.id)}>
                   <Trash2 size={13} />
                 </Button>
               </div>
@@ -257,7 +264,7 @@ export function BlogManager({ initialPosts }: { initialPosts: Post[] }) {
             {/* Thumbnail */}
             {form.thumbnail_url && (
               <div className="rounded-2xl overflow-hidden border border-border mb-10">
-                <img src={form.thumbnail_url} alt={form.titulo} className="w-full aspect-video object-cover" />
+                <Image src={form.thumbnail_url} alt={form.titulo} width={1200} height={675} className="w-full aspect-video object-cover" />
               </div>
             )}
 
@@ -366,7 +373,7 @@ export function BlogManager({ initialPosts }: { initialPosts: Post[] }) {
           <label className="block text-xs text-muted-light mb-1.5">Thumbnail</label>
           {form.thumbnail_url ? (
             <div className="rounded-xl overflow-hidden border border-border h-40 relative">
-              <img src={form.thumbnail_url} alt="" className="w-full h-full object-cover" />
+              <Image src={form.thumbnail_url} alt="Thumbnail preview" width={400} height={160} className="w-full h-full object-cover" />
               <button
                 onClick={() => setForm((f) => ({ ...f, thumbnail_url: "" }))}
                 className="absolute top-2 right-2 h-7 w-7 flex items-center justify-center rounded-full bg-black/50 text-foreground hover:bg-black/70"

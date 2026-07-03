@@ -227,6 +227,7 @@ export function NotificationDropdown() {
                       )}
                       <button
                         onClick={(e) => { e.stopPropagation(); handleDelete(e, n.id); }}
+                        aria-label="Remover notificação"
                         className="p-1 rounded opacity-0 group-hover:opacity-100 text-muted-light hover:text-red-400 transition-all"
                         title="Remover"
                       >

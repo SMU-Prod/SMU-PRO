@@ -33,7 +33,7 @@ export default async function AdminCourseDetailPage({ params, searchParams }: Pr
 
   const { data: course } = await (supabase as any)
     .from("courses")
-    .select(`*, modules(*, lessons(*))`)
+    .select(`id, titulo, slug, descricao, descricao_curta, nivel, categoria, categorias, tipo, preco, carga_horaria, thumbnail_url, trailer_youtube_id, ativo, destaque, total_aulas, total_alunos, avaliacao_media, criado_por, modules(id, course_id, titulo, descricao, ordem, parent_id, lessons(id, module_id, titulo, descricao, tipo, youtube_id, pdf_path, conteudo_rico, duracao_min, ordem, tem_quiz, preview_gratis))`)
     .eq("id", id)
     .single();
 

@@ -28,6 +28,7 @@ import {
   Handshake,
   GraduationCap,
   Wallet,
+  Crown,
 } from "lucide-react";
 
 interface NavItem {
@@ -42,6 +43,7 @@ const studentNav: NavItem[] = [
   { label: "Meus Cursos", href: "/dashboard/cursos", icon: BookOpen },
   { label: "Trilha de Aprendizado", href: "/dashboard/trilha", icon: TrendingUp },
   { label: "Certificados", href: "/dashboard/certificados", icon: Award },
+  { label: "Assinatura", href: "/dashboard/assinatura", icon: Crown, badge: "PRO" },
   { label: "Pagamentos", href: "/dashboard/pagamentos", icon: CreditCard },
   { label: "Configurações", href: "/dashboard/configuracoes", icon: Settings },
 ];
@@ -55,6 +57,7 @@ const adminNav: NavItem[] = [
   { label: "Certificados", href: "/admin/certificados", icon: Award },
   { label: "Instrutores", href: "/admin/instrutores", icon: PenTool },
   { label: "Parceiros", href: "/admin/parceiros", icon: Handshake },
+  { label: "Assinaturas", href: "/admin/assinaturas", icon: Crown },
   { label: "Pagamentos", href: "/admin/pagamentos", icon: CreditCard },
   { label: "Relatórios", href: "/admin/relatorios", icon: FileText },
   { label: "Configurações", href: "/admin/configuracoes", icon: Settings },
@@ -106,6 +109,7 @@ function SidebarContent({ role, isAdmin, isContentManager, isInstructor, navItem
         {/* Close button — mobile only */}
         <button
           onClick={close}
+          aria-label="Fechar menu de navegação"
           className="lg:hidden p-2.5 rounded-lg text-muted hover:text-foreground hover:bg-hover transition-colors"
         >
           <X size={20} />
@@ -199,6 +203,7 @@ function SidebarContent({ role, isAdmin, isContentManager, isInstructor, navItem
         )}
         <button
           onClick={toggleTheme}
+          aria-label={theme === "dark" ? "Alternar para modo claro" : "Alternar para modo escuro"}
           className="p-2 rounded-lg text-muted hover:text-foreground hover:bg-hover transition-colors shrink-0"
           title={theme === "dark" ? "Modo claro" : "Modo escuro"}
         >

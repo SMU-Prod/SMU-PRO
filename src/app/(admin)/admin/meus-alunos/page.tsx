@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { instructorGetMyStudents, instructorGetMyCourses } from "@/lib/actions/courses";
 import { Header } from "@/components/layout/header";
 import { Card, CardContent } from "@/components/ui/card";
@@ -68,8 +69,13 @@ export default async function InstructorStudentsPage({
                   {/* Avatar */}
                   <div className="h-10 w-10 rounded-full bg-surface-3 flex items-center justify-center shrink-0 overflow-hidden">
                     {enrollment.users?.avatar_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={enrollment.users.avatar_url} alt="" className="h-full w-full object-cover" />
+                      <Image
+                        src={enrollment.users.avatar_url}
+                        alt={enrollment.users?.nome ?? "Avatar"}
+                        width={40}
+                        height={40}
+                        className="h-full w-full object-cover"
+                      />
                     ) : (
                       <span className="text-sm font-bold text-muted-light">
                         {(enrollment.users?.nome ?? "?")[0]?.toUpperCase()}

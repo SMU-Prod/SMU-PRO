@@ -36,6 +36,7 @@ export type Course = {
   tipo: CourseType; preco: number | null; carga_horaria: number | null;
   thumbnail_url: string | null; trailer_youtube_id: string | null;
   ativo: boolean; destaque: boolean; ordem: number;
+  disponivel_assinatura: boolean;
   total_aulas: number; total_alunos: number; avaliacao_media: number;
   criado_por: string | null; created_at: string; updated_at: string;
 };
@@ -45,6 +46,7 @@ export type CourseInsert = {
   categorias?: string[]; preco?: number | null; carga_horaria?: number | null;
   thumbnail_url?: string | null; trailer_youtube_id?: string | null;
   ativo?: boolean; destaque?: boolean; ordem?: number; criado_por?: string | null;
+  disponivel_assinatura?: boolean;
 };
 export type CourseUpdate = Partial<Omit<Course, "id" | "created_at">>;
 
@@ -250,6 +252,138 @@ export type AdminDashboardMetrics = {
   receita_total: number; new_users_30d: number; new_enrollments_30d: number;
 };
 
+// ── Blog Posts Types ───────────────────────────────────────
+
+export type BlogPost = {
+  id: string; titulo: string; slug: string;
+  resumo: string | null; conteudo: string;
+  thumbnail_url: string | null; categoria: string;
+  tags: string[]; autor_id: string | null;
+  publicado: boolean; destaque: boolean;
+  views: number; tempo_leitura: number;
+  meta_title: string | null; meta_description: string | null;
+  og_image_url: string | null;
+  created_at: string; updated_at: string;
+};
+export type BlogPostInsert = {
+  titulo: string; slug: string; conteudo: string;
+  resumo?: string | null; thumbnail_url?: string | null;
+  categoria?: string; tags?: string[]; autor_id?: string | null;
+  publicado?: boolean; destaque?: boolean; views?: number;
+  tempo_leitura?: number; meta_title?: string | null;
+  meta_description?: string | null; og_image_url?: string | null;
+};
+export type BlogPostUpdate = Partial<Omit<BlogPost, "id" | "created_at">>;
+
+// ── Collections Types ──────────────────────────────────────
+
+export type Collection = {
+  id: string; titulo: string; slug: string;
+  descricao: string | null; ativo: boolean;
+  ordem: number; created_at: string; updated_at: string;
+};
+export type CollectionInsert = {
+  titulo: string; slug: string;
+  descricao?: string | null; ativo?: boolean; ordem?: number;
+};
+export type CollectionUpdate = Partial<Omit<Collection, "id" | "created_at">>;
+
+export type CollectionCourse = {
+  id: string; collection_id: string; course_id: string; ordem: number;
+};
+export type CollectionCourseInsert = { collection_id: string; course_id: string; ordem?: number };
+export type CollectionCourseUpdate = Partial<Omit<CollectionCourse, "id">>;
+
+// ── Webhook Log Types ──────────────────────────────────────
+
+export type WebhookLog = {
+  id: string; provider: string; event_type: string;
+  external_id: string; processed: boolean; created_at: string;
+};
+export type WebhookLogInsert = {
+  provider: string; event_type: string;
+  external_id: string; processed?: boolean;
+};
+
+// ── AI Explanations Types ──────────────────────────────────
+
+export type AiExplanation = {
+  id: string; lesson_id: string; tipo: string;
+  explanation: string | null; content: string | null;
+  model: string; created_at: string;
+};
+export type AiExplanationInsert = {
+  lesson_id: string; tipo?: string;
+  explanation?: string | null; content?: string | null;
+  model: string;
+};
+
+// ── AI Memory Types ────────────────────────────────────────
+
+export type AiMemory = {
+  id: string; categoria: string; tipo: string;
+  chave: string; conteudo: string;
+  contexto: Record<string, any> | null;
+  vezes_usado: number; score: number;
+  created_at: string; updated_at: string;
+};
+export type AiMemoryInsert = {
+  categoria: string; tipo?: string;
+  chave: string; conteudo: string;
+  contexto?: Record<string, any> | null;
+  vezes_usado?: number; score?: number;
+};
+export type AiMemoryUpdate = Partial<Omit<AiMemory, "id" | "created_at">>;
+
+// ── Partner Types ──────────────────────────────────────────
+
+export type InstructorPartner = {
+  id: string; nome: string; email: string;
+  cpf: string | null; telefone: string | null;
+  bio: string | null; avatar_url: string | null;
+  instructor_id: string | null; asaas_wallet_id: string | null;
+  asaas_customer_id: string | null; comissao_padrao: number;
+  ativo: boolean; created_at: string; updated_at: string;
+};
+export type InstructorPartnerInsert = {
+  nome: string; email: string;
+  cpf?: string | null; telefone?: string | null;
+  bio?: string | null; avatar_url?: string | null;
+  instructor_id?: string | null; asaas_wallet_id?: string | null;
+  asaas_customer_id?: string | null; comissao_padrao?: number;
+  ativo?: boolean;
+};
+export type InstructorPartnerUpdate = Partial<Omit<InstructorPartner, "id" | "created_at">>;
+
+export type PartnerCourse = {
+  id: string; partner_id: string; course_id: string;
+  comissao_percentual: number | null; comissao_indicacao: number;
+  ativo: boolean; created_at: string;
+};
+export type PartnerCourseInsert = {
+  partner_id: string; course_id: string;
+  comissao_percentual?: number | null;
+  comissao_indicacao?: number; ativo?: boolean;
+};
+export type PartnerCourseUpdate = Partial<Omit<PartnerCourse, "id" | "created_at">>;
+
+export type PartnerCommission = {
+  id: string; partner_id: string; enrollment_id: string | null;
+  course_id: string; valor_venda: number; valor_liquido: number;
+  comissao_percentual: number; valor_comissao: number;
+  valor_plataforma: number; asaas_split_id: string | null;
+  tipo_indicacao: string; status: string;
+  pago_em: string | null; created_at: string;
+};
+export type PartnerCommissionInsert = {
+  partner_id: string; course_id: string;
+  enrollment_id?: string | null; valor_venda: number;
+  valor_liquido: number; comissao_percentual: number;
+  valor_comissao: number; valor_plataforma: number;
+  asaas_split_id?: string | null; tipo_indicacao?: string;
+  status?: string; pago_em?: string | null;
+};
+
 // ── Database type (formato supabase-js v2) ─────────────────
 
 export type Database = {
@@ -273,6 +407,15 @@ export type Database = {
       activity_log: { Row: ActivityLog; Insert: ActivityLogInsert; Update: never; Relationships: [] };
       settings: { Row: Setting; Insert: SettingInsert; Update: SettingUpdate; Relationships: [] };
       ai_animations: { Row: AiAnimation; Insert: AiAnimationInsert; Update: AiAnimationUpdate; Relationships: [] };
+      blog_posts: { Row: BlogPost; Insert: BlogPostInsert; Update: BlogPostUpdate; Relationships: [] };
+      collections: { Row: Collection; Insert: CollectionInsert; Update: CollectionUpdate; Relationships: [] };
+      collection_courses: { Row: CollectionCourse; Insert: CollectionCourseInsert; Update: CollectionCourseUpdate; Relationships: [] };
+      webhook_log: { Row: WebhookLog; Insert: WebhookLogInsert; Update: never; Relationships: [] };
+      ai_explanations: { Row: AiExplanation; Insert: AiExplanationInsert; Update: never; Relationships: [] };
+      ai_memory: { Row: AiMemory; Insert: AiMemoryInsert; Update: AiMemoryUpdate; Relationships: [] };
+      instructor_partners: { Row: InstructorPartner; Insert: InstructorPartnerInsert; Update: InstructorPartnerUpdate; Relationships: [] };
+      partner_courses: { Row: PartnerCourse; Insert: PartnerCourseInsert; Update: PartnerCourseUpdate; Relationships: [] };
+      partner_commissions: { Row: PartnerCommission; Insert: PartnerCommissionInsert; Update: never; Relationships: [] };
     };
     Views: {
       admin_course_stats: { Row: AdminCourseStat; Relationships: [] };
@@ -296,49 +439,32 @@ export type Database = {
 
 // ── Composite types (joins) ────────────────────────────────
 
-// ── AI Tables ──
-export type AiAnimation2 = {
-  id: string;
-  lesson_id: string;
-  tipo: string;
-  status: "generating" | "ready" | "error";
-  roteiro: any;
-  urls: any[];
-  model: string | null;
-  custo_usd: number | null;
-  created_at: string;
-  updated_at: string;
-};
-
-export type AiExplanation = {
-  id: string;
-  lesson_id: string;
-  tipo: string;
-  explanation: string | null;
-  content: string | null;
-  model: string;
-  created_at: string;
-};
-
-export type AiMemory = {
-  id: string;
-  categoria: string;
-  tipo: string;
-  chave: string;
-  conteudo: string;
-  contexto: Record<string, any>;
-  vezes_usado: number;
-  score: number;
-  created_at: string;
-  updated_at: string;
-};
-
-export type NotificationType2 = NotificationType;
-
-// ── Composite types (joins) ────────────────────────────────
-
 export type CourseWithModules = Course & { modules: (Module & { lessons: Lesson[] })[] };
 export type LessonWithProgress = Lesson & { progress?: Progress | null; quiz?: Quiz | null };
 export type ModuleWithLessonsAndProgress = Module & { lessons: LessonWithProgress[] };
 export type CourseWithProgress = Course & { enrollment?: Enrollment | null; modules: ModuleWithLessonsAndProgress[] };
 export type UserWithStats = User & { total_courses: number; total_certificates: number; total_hours: number };
+
+// ── Subscription types ───────────────────────────────────
+export type SubscriptionStatus = "pendente" | "ativo" | "cancelado" | "expirado" | "inadimplente";
+export type SubscriptionCiclo = "mensal" | "anual";
+
+export type SubscriptionPlan = {
+  id: string; nome: string; descricao: string | null;
+  preco_mensal: number; preco_anual: number | null;
+  ativo: boolean; max_cursos: number | null;
+  features: string[];
+  created_at: string; updated_at: string;
+};
+
+export type Subscription = {
+  id: string; user_id: string; plan_id: string;
+  status: SubscriptionStatus;
+  asaas_subscription_id: string | null;
+  asaas_customer_id: string | null;
+  ciclo: SubscriptionCiclo;
+  data_inicio: string | null;
+  data_proximo_pagamento: string | null;
+  data_cancelamento: string | null;
+  created_at: string; updated_at: string;
+};

@@ -6,16 +6,33 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import type { Quiz, QuizQuestion, QuizOption, QuizAttempt } from "@/types/database";
+import type { Quiz, QuizQuestion, QuizOption, QuizAttempt, QuestionType } from "@/types/database";
 import {
   CheckCircle2, XCircle, Trophy, RotateCcw, HelpCircle,
   AlertCircle, Clock, Ban,
 } from "lucide-react";
 
 interface QuizTabProps {
-  lesson: { id: string; tem_quiz: boolean; quizzes?: any[] };
+  lesson: { id: string; tem_quiz: boolean; quizzes?: Quiz[] };
   quizAttempts: QuizAttempt[];
-  quizData?: any;
+  quizData?: {
+    id: string;
+    titulo: string;
+    descricao?: string | null;
+    nivel_minimo_aprovacao: number;
+    tentativas_permitidas: number;
+    tempo_limite_min?: number | null;
+    embaralhar_questoes: boolean;
+    quiz_questions?: Array<{
+      id: string;
+      texto: string;
+      tipo: QuestionType;
+      ordem: number;
+      pontos: number;
+      explicacao?: string | null;
+      quiz_options?: QuizOption[];
+    }>;
+  };
   userId: string;
   onQuizPassed?: () => void;
 }
@@ -45,7 +62,7 @@ export function QuizTab({ lesson, quizAttempts, quizData, userId, onQuizPassed }
   const [quiz, setQuiz] = useState<QuizWithQuestions | null>(() => {
     if (!quizData) return null;
     return {
-      ...quizData,
+      ...quizData as any,
       quiz_questions: (quizData.quiz_questions ?? [])
         .sort((a: any, b: any) => a.ordem - b.ordem)
         .map((q: any) => ({

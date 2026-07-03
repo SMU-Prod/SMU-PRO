@@ -250,6 +250,196 @@ export async function adminEnrollUserManually(clerkId: string, courseId: string)
   revalidatePath("/admin/usuarios");
 }
 
+// ============================================================
+// Admin — Gestão de Matrículas (Enrollments)
+// ============================================================
+
+/** Lista alunos matriculados em um curso específico com detalhes */
+export async function adminGetCourseEnrollments(courseId: string) {
+  await assertAdmin();
+  const supabase = createAdminClient();
+
+  const { data, error } = await (supabase as any)
+    .from("enrollments")
+    .select("*, users(id, nome, email, avatar_url, clerk_id), courses(id, titulo, slug)")
+    .eq("course_id", courseId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+/** Remove matrícula de um aluno (desmatricula) e atualiza contagem */
+export async function adminRemoveEnrollment(enrollmentId: string) {
+  await assertAdmin();
+  const supabase = createAdminClient();
+
+  // Buscar enrollment para saber o course_id (para atualizar total_alunos)
+  const { data: enrollment, error: fetchErr } = await supabase
+    .from("enrollments")
+    .select("id, user_id, course_id, tipo_acesso, status")
+    .eq("id", enrollmentId)
+    .single();
+
+  if (fetchErr || !enrollment) throw new Error("Matrícula não encontrada");
+
+  // Deletar a matrícula
+  const { error: deleteErr } = await supabase
+    .from("enrollments")
+    .delete()
+    .eq("id", enrollmentId);
+
+  if (deleteErr) throw deleteErr;
+
+  // Também limpar progresso do aluno neste curso
+  // (progress é ligado a lessons, não diretamente ao curso, precisamos pegar via modules->lessons)
+  const { data: courseLessons } = await (supabase as any)
+    .from("lessons")
+    .select("id, modules!inner(course_id)")
+    .eq("modules.course_id", enrollment.course_id);
+
+  if (courseLessons && courseLessons.length > 0) {
+    const lessonIds = courseLessons.map((l: any) => l.id);
+
+    // Limpar progresso
+    await supabase
+      .from("progress")
+      .delete()
+      .eq("user_id", enrollment.user_id)
+      .in("lesson_id", lessonIds);
+
+    // Limpar notas pessoais do aluno neste curso
+    await (supabase as any)
+      .from("notes")
+      .delete()
+      .eq("user_id", enrollment.user_id)
+      .in("lesson_id", lessonIds);
+
+    // Limpar quiz_attempts do aluno neste curso
+    const { data: quizzes } = await (supabase as any)
+      .from("quizzes")
+      .select("id")
+      .in("lesson_id", lessonIds);
+
+    if (quizzes && quizzes.length > 0) {
+      const quizIds = quizzes.map((q: any) => q.id);
+      await (supabase as any)
+        .from("quiz_attempts")
+        .delete()
+        .eq("user_id", enrollment.user_id)
+        .in("quiz_id", quizIds);
+    }
+  }
+
+  // Atualizar contagem denormalizada de total_alunos
+  const { count } = await supabase
+    .from("enrollments")
+    .select("id", { count: "exact", head: true })
+    .eq("course_id", enrollment.course_id)
+    .eq("status", "ativo");
+
+  await supabase
+    .from("courses")
+    .update({ total_alunos: count ?? 0 })
+    .eq("id", enrollment.course_id);
+
+  // Log
+  await supabase.from("activity_log").insert({
+    user_id: enrollment.user_id,
+    tipo: "enrollment",
+    descricao: "Matrícula removida por administrador",
+    metadata: { enrollment_id: enrollmentId, course_id: enrollment.course_id },
+  });
+
+  revalidatePath("/admin/cursos");
+  revalidatePath("/admin/meus-alunos");
+}
+
+/** Remove TODAS as matrículas de um curso (para permitir exclusão do curso) */
+export async function adminRemoveAllCourseEnrollments(courseId: string) {
+  await assertAdmin();
+  const supabase = createAdminClient();
+
+  // Buscar todos os enrollments antes de deletar (para log)
+  const { data: enrollments } = await supabase
+    .from("enrollments")
+    .select("id, user_id")
+    .eq("course_id", courseId);
+
+  if (!enrollments || enrollments.length === 0) return { removed: 0 };
+
+  // Limpar progresso de todos os alunos neste curso
+  const { data: courseLessons } = await (supabase as any)
+    .from("lessons")
+    .select("id, modules!inner(course_id)")
+    .eq("modules.course_id", courseId);
+
+  if (courseLessons && courseLessons.length > 0) {
+    const lessonIds = courseLessons.map((l: any) => l.id);
+    const userIds = enrollments.map((e) => e.user_id);
+
+    // Buscar quizzes deste curso para limpar attempts
+    const { data: quizzes } = await (supabase as any)
+      .from("quizzes")
+      .select("id")
+      .in("lesson_id", lessonIds);
+    const quizIds = (quizzes ?? []).map((q: any) => q.id);
+
+    for (const userId of userIds) {
+      // Limpar progresso
+      await supabase
+        .from("progress")
+        .delete()
+        .eq("user_id", userId)
+        .in("lesson_id", lessonIds);
+
+      // Limpar notas
+      await (supabase as any)
+        .from("notes")
+        .delete()
+        .eq("user_id", userId)
+        .in("lesson_id", lessonIds);
+
+      // Limpar quiz_attempts
+      if (quizIds.length > 0) {
+        await (supabase as any)
+          .from("quiz_attempts")
+          .delete()
+          .eq("user_id", userId)
+          .in("quiz_id", quizIds);
+      }
+    }
+  }
+
+  // Deletar todas as matrículas
+  const { error } = await supabase
+    .from("enrollments")
+    .delete()
+    .eq("course_id", courseId);
+
+  if (error) throw error;
+
+  // Zerar contagem
+  await supabase
+    .from("courses")
+    .update({ total_alunos: 0 })
+    .eq("id", courseId);
+
+  // Log
+  for (const enrollment of enrollments) {
+    await supabase.from("activity_log").insert({
+      user_id: enrollment.user_id,
+      tipo: "enrollment",
+      descricao: "Matrícula removida em massa por administrador (exclusão de curso)",
+      metadata: { enrollment_id: enrollment.id, course_id: courseId },
+    });
+  }
+
+  revalidatePath("/admin/cursos");
+  revalidatePath("/admin/meus-alunos");
+  return { removed: enrollments.length };
+}
+
 export async function adminGetDashboardMetrics() {
   await assertAdmin();
   const supabase = createAdminClient();
