@@ -8,6 +8,8 @@ interface AudioPlayerProps {
   lessonId: string;
   conteudo: string;
   lang?: string;
+  /** Título da aula — mostrado nos controles da tela de bloqueio (MediaSession). */
+  title?: string;
 }
 
 const AUDIO_LABELS: Record<string, { btn: string; loading: string; hint: string; voice: string }> = {
@@ -16,7 +18,7 @@ const AUDIO_LABELS: Record<string, { btn: string; loading: string; hint: string;
   es: { btn: "Escuchar", loading: "Generando audio...", hint: "Escucha el contenido de esta lección", voice: "Voz Elvira (ES-ES)" },
 };
 
-export function AudioPlayer({ lessonId, conteudo, lang = "pt" }: AudioPlayerProps) {
+export function AudioPlayer({ lessonId, conteudo, lang = "pt", title }: AudioPlayerProps) {
   const L = AUDIO_LABELS[lang] ?? AUDIO_LABELS.pt;
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -67,17 +69,45 @@ export function AudioPlayer({ lessonId, conteudo, lang = "pt" }: AudioPlayerProp
 
   function togglePlay() {
     if (!audioRef.current) return;
-    if (playing) {
-      audioRef.current.pause();
-    } else {
+    // O estado `playing` é dirigido pelos eventos onPlay/onPause do <audio>,
+    // para ficar sincronizado mesmo quando o comando vem da tela de bloqueio.
+    if (audioRef.current.paused) {
       audioRef.current.play();
+    } else {
+      audioRef.current.pause();
     }
-    setPlaying(!playing);
+  }
+
+  function handlePlay() {
+    setPlaying(true);
+    if (typeof navigator !== "undefined" && "mediaSession" in navigator) {
+      navigator.mediaSession.playbackState = "playing";
+    }
+  }
+
+  function handlePause() {
+    setPlaying(false);
+    if (typeof navigator !== "undefined" && "mediaSession" in navigator) {
+      navigator.mediaSession.playbackState = "paused";
+    }
   }
 
   function handleTimeUpdate() {
     if (!audioRef.current) return;
     setProgress(audioRef.current.currentTime);
+    // Atualiza a barra de progresso na tela de bloqueio.
+    if (typeof navigator !== "undefined" && "mediaSession" in navigator && "setPositionState" in navigator.mediaSession) {
+      const a = audioRef.current;
+      if (a.duration && isFinite(a.duration)) {
+        try {
+          navigator.mediaSession.setPositionState({
+            duration: a.duration,
+            playbackRate: a.playbackRate,
+            position: Math.min(a.currentTime, a.duration),
+          });
+        } catch {}
+      }
+    }
   }
 
   function handleLoadedMetadata() {
@@ -147,6 +177,38 @@ export function AudioPlayer({ lessonId, conteudo, lang = "pt" }: AudioPlayerProp
     };
   }, [audioUrl]);
 
+  // MediaSession: mantém o áudio tocando em segundo plano / tela bloqueada (celular)
+  // e mostra os controles play/pause/avançar na tela de bloqueio e notificação.
+  useEffect(() => {
+    if (!audioUrl || typeof navigator === "undefined" || !("mediaSession" in navigator)) return;
+    const a = audioRef.current;
+    if (!a) return;
+
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: title || (lang === "pt" ? "Aula em áudio" : lang === "es" ? "Lección en audio" : "Lesson audio"),
+        artist: "SMU PRO",
+        artwork: [
+          { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
+          { src: "/icon-512.png", sizes: "512x512", type: "image/png" },
+        ],
+      });
+    } catch {}
+
+    const setH = (action: MediaSessionAction, handler: MediaSessionActionHandler | null) => {
+      try { navigator.mediaSession.setActionHandler(action, handler); } catch {}
+    };
+    setH("play", () => { a.play(); });
+    setH("pause", () => { a.pause(); });
+    setH("seekbackward", (d) => { a.currentTime = Math.max(0, a.currentTime - (d.seekOffset || 10)); });
+    setH("seekforward", (d) => { a.currentTime = Math.min(a.duration || 0, a.currentTime + (d.seekOffset || 10)); });
+    setH("seekto", (d) => { if (d.seekTime != null) a.currentTime = d.seekTime; });
+
+    return () => {
+      (["play", "pause", "seekbackward", "seekforward", "seekto"] as MediaSessionAction[]).forEach((act) => setH(act, null));
+    };
+  }, [audioUrl, title, lang]);
+
   if (!hasContent) return null;
 
   // Initial state — show "Ouvir conteúdo" button
@@ -183,6 +245,8 @@ export function AudioPlayer({ lessonId, conteudo, lang = "pt" }: AudioPlayerProp
         src={audioUrl}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
+        onPlay={handlePlay}
+        onPause={handlePause}
         onEnded={handleEnded}
         preload="metadata"
       />

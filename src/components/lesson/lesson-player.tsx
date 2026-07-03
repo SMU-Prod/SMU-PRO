@@ -502,7 +502,7 @@ export function LessonPlayer({
                 <div className="space-y-4 text-sm text-muted leading-relaxed">
                   {/* 1) Ouvir o conteúdo */}
                   {dispConteudo && (
-                    <AudioPlayer key={locale} lessonId={lesson.id} conteudo={dispConteudo} lang={locale} />
+                    <AudioPlayer key={locale} lessonId={lesson.id} conteudo={dispConteudo} lang={locale} title={dispTitulo} />
                   )}
 
                   {/* 2) Descrição */}

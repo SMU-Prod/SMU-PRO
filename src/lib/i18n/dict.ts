@@ -621,6 +621,13 @@ export const DICT: Record<string, { en: string; es: string }> = {
   "Cartões": { en: "Cards", es: "Tarjetas" },
   "Ver em lista": { en: "View as list", es: "Ver en lista" },
   "Lista": { en: "List", es: "Lista" },
+  // ---- Cadastro / senha ----
+  "Crie sua conta profissional": { en: "Create your professional account", es: "Crea tu cuenta profesional" },
+  "Como criar sua senha": { en: "How to create your password", es: "Cómo crear tu contraseña" },
+  "Use pelo menos 8 caracteres": { en: "Use at least 8 characters", es: "Usa al menos 8 caracteres" },
+  "Combine letras e números (ex.: Palco2025)": { en: "Combine letters and numbers (e.g. Stage2025)", es: "Combina letras y números (ej.: Escenario2025)" },
+  "Pode usar símbolos (! @ # $) para deixar mais forte": { en: "You can add symbols (! @ # $) to make it stronger", es: "Puedes usar símbolos (! @ # $) para hacerla más fuerte" },
+  "Evite senhas óbvias como 12345678 ou sua data de nascimento": { en: "Avoid obvious passwords like 12345678 or your birth date", es: "Evita contraseñas obvias como 12345678 o tu fecha de nacimiento" },
 };
 
 /** Traduz uma string de interface para o idioma dado (PT devolve a própria string). */
