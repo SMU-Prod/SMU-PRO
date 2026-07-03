@@ -1,6 +1,7 @@
 import { requireAdminRole } from "@/lib/actions/users";
 import { createAdminClient } from "@/lib/supabase/server";
-import { getServerT } from "@/lib/i18n/server";
+import { getServerT, getServerLocale } from "@/lib/i18n/server";
+import { courseMeta } from "@/lib/i18n/courses-meta";
 import { Header } from "@/components/layout/header";
 import { formatCurrency, getLevelLabel } from "@/lib/utils";
 import { TrendingUp, Users, BookOpen, Award, DollarSign, BarChart3 } from "lucide-react";
@@ -46,9 +47,19 @@ export default async function AdminRelatoriosPage() {
   // Top cursos por alunos
   const { data: topCursos } = await (supabase as any)
     .from("admin_course_stats")
-    .select("titulo, total_alunos, total_certificados, progresso_medio, nivel, avaliacao_media")
+    .select("id, titulo, total_alunos, total_certificados, progresso_medio, nivel, avaliacao_media")
     .order("total_alunos", { ascending: false })
     .limit(10);
+
+  // A view admin_course_stats não expõe slug; buscamos p/ traduzir o título (courseMeta).
+  const lang = await getServerLocale();
+  let topCursosTr: any[] = topCursos ?? [];
+  if (topCursosTr.length) {
+    const ids = topCursosTr.map((c: any) => c.id);
+    const { data: slugRows } = await supabase.from("courses").select("id, slug").in("id", ids);
+    const slugMap = new Map((slugRows ?? []).map((r: any) => [r.id, r.slug]));
+    topCursosTr = topCursosTr.map((c: any) => ({ ...c, slug: slugMap.get(c.id) }));
+  }
 
   // Inscrições por mês (últimos 6 meses)
   const { data: enrollmentsByMonth } = await supabase
@@ -204,11 +215,11 @@ export default async function AdminRelatoriosPage() {
           </div>
           {/* Mobile: card layout */}
           <div className="md:hidden divide-y divide-border/50">
-            {(topCursos ?? []).map((course: any, i: number) => (
+            {topCursosTr.map((course: any, i: number) => (
               <div key={i} className="px-4 py-3 space-y-1.5">
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-light font-mono shrink-0">#{i + 1}</span>
-                  <p className="text-sm font-medium text-foreground truncate">{course.titulo}</p>
+                  <p className="text-sm font-medium text-foreground truncate">{courseMeta(course.slug, lang)?.titulo ?? course.titulo}</p>
                 </div>
                 <div className="flex items-center gap-3 text-xs text-muted-light flex-wrap">
                   <span>{t(getLevelLabel(course.nivel))}</span>
@@ -235,10 +246,10 @@ export default async function AdminRelatoriosPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50">
-                {(topCursos ?? []).map((course: any, i: number) => (
+                {topCursosTr.map((course: any, i: number) => (
                   <tr key={i} className="hover:bg-surface-3 transition-colors">
                     <td className="px-5 py-3 text-muted-light font-mono text-xs">{i + 1}</td>
-                    <td className="px-5 py-3 font-medium text-foreground">{course.titulo}</td>
+                    <td className="px-5 py-3 font-medium text-foreground">{courseMeta(course.slug, lang)?.titulo ?? course.titulo}</td>
                     <td className="px-5 py-3">
                       <span className="text-xs text-muted-light">{t(getLevelLabel(course.nivel))}</span>
                     </td>

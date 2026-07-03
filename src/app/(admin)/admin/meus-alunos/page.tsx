@@ -3,7 +3,8 @@ import { Header } from "@/components/layout/header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users, BookOpen, Mail } from "lucide-react";
-import { getServerT } from "@/lib/i18n/server";
+import { getServerT, getServerLocale } from "@/lib/i18n/server";
+import { courseMeta } from "@/lib/i18n/courses-meta";
 
 export default async function InstructorStudentsPage({
   searchParams,
@@ -11,6 +12,7 @@ export default async function InstructorStudentsPage({
   searchParams: Promise<{ curso?: string }>;
 }) {
   const t = await getServerT();
+  const lang = await getServerLocale();
   const params = await searchParams;
   const [students, courses] = await Promise.all([
     instructorGetMyStudents(params.curso),
@@ -48,7 +50,7 @@ export default async function InstructorStudentsPage({
                   : "bg-surface-2 text-muted hover:text-foreground border border-border"
               }`}
             >
-              {c.titulo}
+              {courseMeta(c.slug, lang)?.titulo ?? c.titulo}
             </a>
           ))}
         </div>
@@ -91,7 +93,7 @@ export default async function InstructorStudentsPage({
                   <div className="hidden sm:block">
                     <Badge variant="secondary" className="text-xs">
                       <BookOpen size={10} className="mr-1" />
-                      {enrollment.courses?.titulo ?? "—"}
+                      {courseMeta(enrollment.courses?.slug, lang)?.titulo ?? enrollment.courses?.titulo ?? "—"}
                     </Badge>
                   </div>
 

@@ -1,6 +1,7 @@
 import { requireAdminRole } from "@/lib/actions/users";
 import { createAdminClient } from "@/lib/supabase/server";
-import { getServerT } from "@/lib/i18n/server";
+import { getServerT, getServerLocale } from "@/lib/i18n/server";
+import { courseMeta } from "@/lib/i18n/courses-meta";
 import { Header } from "@/components/layout/header";
 import { Badge } from "@/components/ui/badge";
 import { formatMinutes } from "@/lib/utils";
@@ -17,6 +18,7 @@ const PAGE_SIZE = 20;
 export default async function AdminCertificadosPage({ searchParams }: Props) {
   await requireAdminRole();
   const t = await getServerT();
+  const lang = await getServerLocale();
   const { search, page: pageStr } = await searchParams;
   const page = Math.max(1, parseInt(pageStr ?? "1"));
 
@@ -24,7 +26,7 @@ export default async function AdminCertificadosPage({ searchParams }: Props) {
 
   let query = (supabase as any)
     .from("certificates")
-    .select(`*, users(nome, email), courses(titulo, nivel, categoria)`, { count: "exact" })
+    .select(`*, users(nome, email), courses(titulo, nivel, categoria, slug)`, { count: "exact" })
     .order("emitido_em", { ascending: false })
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
 
@@ -65,7 +67,7 @@ export default async function AdminCertificadosPage({ searchParams }: Props) {
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{cert.users?.nome ?? "—"}</p>
-                    <p className="text-xs text-muted-light truncate">{cert.courses?.titulo ?? "—"}</p>
+                    <p className="text-xs text-muted-light truncate">{courseMeta(cert.courses?.slug, lang)?.titulo ?? cert.courses?.titulo ?? "—"}</p>
                   </div>
                   <Link
                     href={`/certificado/${cert.codigo_verificacao}`}
@@ -117,7 +119,7 @@ export default async function AdminCertificadosPage({ searchParams }: Props) {
                       <div className="text-xs text-muted-light mt-0.5">{cert.users?.email}</div>
                     </td>
                     <td className="px-5 py-4">
-                      <div className="text-foreground">{cert.courses?.titulo ?? "—"}</div>
+                      <div className="text-foreground">{courseMeta(cert.courses?.slug, lang)?.titulo ?? cert.courses?.titulo ?? "—"}</div>
                       {cert.courses?.nivel && (
                         <Badge variant={cert.courses.nivel} className="mt-1 text-xs">{cert.courses.nivel}</Badge>
                       )}

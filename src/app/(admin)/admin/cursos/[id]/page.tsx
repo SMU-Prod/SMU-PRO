@@ -11,7 +11,8 @@ import { CourseStudentPreview } from "@/components/admin/course-student-preview"
 import { CourseContentManager } from "@/components/admin/course-content-manager";
 import { Edit, ArrowLeft, Layers, Info, ShieldCheck, BarChart3, Eye, Monitor } from "lucide-react";
 import Link from "next/link";
-import { getServerT } from "@/lib/i18n/server";
+import { getServerT, getServerLocale } from "@/lib/i18n/server";
+import { courseMeta } from "@/lib/i18n/courses-meta";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -28,6 +29,7 @@ const TABS = [
 
 export default async function AdminCourseDetailPage({ params, searchParams }: Props) {
   const t = await getServerT();
+  const lang = await getServerLocale();
   const { id } = await params;
   const { tab = "curriculo" } = await searchParams;
 
@@ -61,7 +63,7 @@ export default async function AdminCourseDetailPage({ params, searchParams }: Pr
       <div className="flex items-center gap-2 px-4 sm:px-6 pt-4 text-xs text-muted-light">
         <Link href="/admin/cursos" className="hover:text-muted transition-colors shrink-0">{t("Cursos")}</Link>
         <span>/</span>
-        <span className="text-muted font-medium truncate">{course.titulo}</span>
+        <span className="text-muted font-medium truncate">{courseMeta(course.slug, lang)?.titulo ?? course.titulo}</span>
       </div>
 
       {/* Header */}
@@ -69,7 +71,7 @@ export default async function AdminCourseDetailPage({ params, searchParams }: Pr
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-1">
             <CategoryIcon category={course.categoria} size={24} />
-            <h1 className="text-lg sm:text-xl font-bold text-foreground truncate">{course.titulo}</h1>
+            <h1 className="text-lg sm:text-xl font-bold text-foreground truncate">{courseMeta(course.slug, lang)?.titulo ?? course.titulo}</h1>
             <Badge variant={course.ativo ? "success" : "secondary"} className="text-[10px]">
               {course.ativo ? t("Publicado") : t("Rascunho")}
             </Badge>

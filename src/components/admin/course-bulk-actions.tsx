@@ -14,9 +14,12 @@ import { CourseToggle } from "@/components/admin/course-toggle";
 import { StudentPreviewButton } from "@/components/admin/student-card-preview";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/ui";
+import { useLocale } from "@/lib/i18n/locale";
+import { courseMeta } from "@/lib/i18n/courses-meta";
 
 interface Course {
   id: string;
+  slug?: string;
   titulo: string;
   nivel: string;
   categoria: string;
@@ -145,12 +148,14 @@ function CourseAdminCard({
 }) {
   const router = useRouter();
   const t = useT();
+  const locale = useLocale();
+  const dispTitulo = courseMeta(c.slug, locale)?.titulo ?? c.titulo;
   const [cloning, setCloning] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   const handleClone = async (e: React.MouseEvent) => {
     e.preventDefault();
-    if (!confirm(`${t("Clonar o curso")} "${c.titulo}"?`)) return;
+    if (!confirm(`${t("Clonar o curso")} "${dispTitulo}"?`)) return;
     setCloning(true);
     try {
       await adminDuplicateCourse(c.id);
@@ -166,7 +171,7 @@ function CourseAdminCard({
       alert(`${t("Este curso tem")} ${c.total_alunos} ${c.total_alunos > 1 ? t("alunos") : t("aluno")} ${c.total_alunos > 1 ? t("matriculados") : t("matriculado")}. ${t("Desative-o primeiro ou remova as matrículas.")}`);
       return;
     }
-    if (!confirm(`${t("Tem certeza que deseja apagar")} "${c.titulo}"? ${t("Esta ação não pode ser desfeita.")}`)) return;
+    if (!confirm(`${t("Tem certeza que deseja apagar")} "${dispTitulo}"? ${t("Esta ação não pode ser desfeita.")}`)) return;
     setDeleting(true);
     try {
       await adminDeleteCourse(c.id);
@@ -221,7 +226,7 @@ function CourseAdminCard({
       <div className="p-4 space-y-3">
         <div>
           <div className="flex items-start justify-between gap-2">
-            <h3 className="font-semibold text-foreground text-sm leading-tight line-clamp-2">{c.titulo}</h3>
+            <h3 className="font-semibold text-foreground text-sm leading-tight line-clamp-2">{dispTitulo}</h3>
             <Badge variant={c.tipo === "pago" ? "default" : "free"} className="text-[10px] shrink-0">
               {c.tipo === "pago" ? (c.preco ? formatCurrency(c.preco) : t("Pago")) : c.tipo === "free" ? t("Grátis") : "MIT"}
             </Badge>

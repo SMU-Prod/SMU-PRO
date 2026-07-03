@@ -203,7 +203,24 @@ export async function adminGetAllCourses(opts?: { page?: number; limit?: number;
 
   const { data, count, error } = await query;
   if (error) throw error;
-  return { courses: data ?? [], total: count ?? 0 };
+
+  // A view admin_course_stats NÃO expõe slug/descricao_curta; buscamos na tabela
+  // courses para permitir a tradução do título (courseMeta usa o slug).
+  let courses = data ?? [];
+  if (courses.length) {
+    const ids = courses.map((c: any) => c.id);
+    const { data: extra } = await supabase
+      .from("courses")
+      .select("id, slug, descricao_curta")
+      .in("id", ids);
+    const bySlug = new Map((extra ?? []).map((r: any) => [r.id, r]));
+    courses = courses.map((c: any) => ({
+      ...c,
+      slug: c.slug ?? bySlug.get(c.id)?.slug,
+      descricao_curta: c.descricao_curta ?? bySlug.get(c.id)?.descricao_curta,
+    }));
+  }
+  return { courses, total: count ?? 0 };
 }
 
 export async function adminCreateCourse(input: CourseInsert) {

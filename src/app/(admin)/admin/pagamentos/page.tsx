@@ -1,6 +1,7 @@
 import { requireAdminRole } from "@/lib/actions/users";
 import { createAdminClient } from "@/lib/supabase/server";
-import { getServerT } from "@/lib/i18n/server";
+import { getServerT, getServerLocale } from "@/lib/i18n/server";
+import { courseMeta } from "@/lib/i18n/courses-meta";
 import { Header } from "@/components/layout/header";
 import { formatCurrency } from "@/lib/utils";
 import { RefundButton } from "@/components/admin/refund-button";
@@ -16,12 +17,13 @@ const STATUS_STYLES: Record<string, { label: string; className: string }> = {
 export default async function AdminPagamentosPage() {
   await requireAdminRole();
   const t = await getServerT();
+  const lang = await getServerLocale();
   const supabase = createAdminClient();
 
   // Fetch paid enrollments with user and course data
   const { data: enrollments } = await (supabase as any)
     .from("enrollments")
-    .select("id, status, tipo_acesso, payment_id, payment_provider, valor_pago, created_at, users(nome, email), courses(titulo)")
+    .select("id, status, tipo_acesso, payment_id, payment_provider, valor_pago, created_at, users(nome, email), courses(titulo, slug)")
     .not("payment_id", "is", null)
     .order("created_at", { ascending: false })
     .limit(200);
@@ -60,7 +62,7 @@ export default async function AdminPagamentosPage() {
                     <p className="text-sm font-medium text-foreground truncate">{row.users?.nome ?? "—"}</p>
                     <span className={`text-[10px] px-2 py-0.5 rounded-full border ${style.className}`}>{t(style.label)}</span>
                   </div>
-                  <p className="text-xs text-muted-light truncate">{row.courses?.titulo ?? "—"}</p>
+                  <p className="text-xs text-muted-light truncate">{courseMeta(row.courses?.slug, lang)?.titulo ?? row.courses?.titulo ?? "—"}</p>
                   <div className="flex items-center justify-between text-xs text-muted-light">
                     <span>{formatCurrency(row.valor_pago ?? 0)}</span>
                     <span>{new Date(row.created_at).toLocaleDateString("pt-BR")}</span>
@@ -98,7 +100,7 @@ export default async function AdminPagamentosPage() {
                         <p className="font-medium text-foreground">{row.users?.nome ?? "—"}</p>
                         <p className="text-xs text-muted-light">{row.users?.email ?? ""}</p>
                       </td>
-                      <td className="px-5 py-3 text-muted">{row.courses?.titulo ?? "—"}</td>
+                      <td className="px-5 py-3 text-muted">{courseMeta(row.courses?.slug, lang)?.titulo ?? row.courses?.titulo ?? "—"}</td>
                       <td className="px-5 py-3 text-right font-medium text-foreground">{formatCurrency(row.valor_pago ?? 0)}</td>
                       <td className="px-5 py-3 text-center">
                         <span className={`text-[10px] px-2 py-0.5 rounded-full border ${style.className}`}>{t(style.label)}</span>

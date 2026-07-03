@@ -4,6 +4,8 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { getPayment, getPixQrCode, getBoletoIdentificationField } from "@/lib/asaas";
 import { notFound } from "next/navigation";
 import { PaymentPageClient } from "@/components/payment/payment-page-client";
+import { getServerLocale } from "@/lib/i18n/server";
+import { courseMeta } from "@/lib/i18n/courses-meta";
 
 interface Props {
   params: Promise<{ paymentId: string }>;
@@ -26,7 +28,7 @@ export default async function PaymentPage({ params }: Props) {
   const supabase = createAdminClient();
   const { data: userRow } = await supabase.from("users").select("id").eq("clerk_id", userId).single();
   const { data: enrollment } = userRow
-    ? await supabase.from("enrollments").select("*, courses(titulo, categoria, preco)").eq("payment_id", paymentId).eq("user_id", userRow.id).maybeSingle()
+    ? await supabase.from("enrollments").select("*, courses(titulo, slug, categoria, preco)").eq("payment_id", paymentId).eq("user_id", userRow.id).maybeSingle()
     : { data: null };
 
   if (!enrollment) notFound();
@@ -68,6 +70,7 @@ export default async function PaymentPage({ params }: Props) {
   }
 
   const course = (enrollment as any).courses;
+  const lang = await getServerLocale();
 
   return (
     <PaymentPageClient
@@ -75,7 +78,7 @@ export default async function PaymentPage({ params }: Props) {
       billingType={payment.billingType}
       status={payment.status}
       value={payment.value}
-      courseTitle={course?.titulo ?? "Curso"}
+      courseTitle={courseMeta(course?.slug, lang)?.titulo ?? course?.titulo ?? "Curso"}
       courseSlug={course?.slug}
       pixData={pixData}
       boletoData={boletoData}

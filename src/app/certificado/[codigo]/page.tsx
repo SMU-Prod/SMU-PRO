@@ -5,7 +5,8 @@ import { CategoryIcon } from "@/components/ui/category-icon";
 import { Award, CheckCircle2, Calendar, Clock, User, Trophy, ShieldCheck, BookOpen, MapPin } from "lucide-react";
 import Link from "next/link";
 import { ShareButton } from "@/components/certificate/share-button";
-import { getServerT } from "@/lib/i18n/server";
+import { getServerT, getServerLocale } from "@/lib/i18n/server";
+import { courseMeta } from "@/lib/i18n/courses-meta";
 import QRCode from "qrcode";
 import type { Metadata } from "next";
 
@@ -20,22 +21,25 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const supabase = createAdminClient();
   const { data: cert } = await supabase
     .from("certificates")
-    .select("users(nome), courses(titulo)")
+    .select("users(nome), courses(titulo, slug)")
     .eq("codigo_verificacao", codigo)
     .single();
 
   if (!cert) return { title: "Certificado não encontrado" };
   const user = cert.users as any;
   const course = cert.courses as any;
+  const lang = await getServerLocale();
+  const courseTitulo = courseMeta(course?.slug, lang)?.titulo ?? course?.titulo;
   return {
     title: `Certificado — ${user?.nome}`,
-    description: `Certificado de conclusão do curso ${course?.titulo} na SMU PRO`,
+    description: `Certificado de conclusão do curso ${courseTitulo} na SMU PRO`,
   };
 }
 
 export default async function CertificatePage({ params }: Props) {
   const { codigo } = await params;
   const t = await getServerT();
+  const lang = await getServerLocale();
   const supabase = createAdminClient();
 
   const { data: cert } = await supabase
@@ -43,7 +47,7 @@ export default async function CertificatePage({ params }: Props) {
     .select(`
       *,
       users(nome, email, avatar_url),
-      courses(titulo, nivel, categoria, carga_horaria, descricao_curta)
+      courses(titulo, slug, nivel, categoria, carga_horaria, descricao_curta)
     `)
     .eq("codigo_verificacao", codigo)
     .single();
@@ -52,6 +56,7 @@ export default async function CertificatePage({ params }: Props) {
 
   const user = cert.users as any;
   const course = cert.courses as any;
+  const courseTitulo = courseMeta(course?.slug, lang)?.titulo ?? course.titulo;
   const verifyUrl = `${process.env.NEXT_PUBLIC_APP_URL}/certificado/${codigo}`;
   const qrDataUrl = await QRCode.toDataURL(verifyUrl, {
     width: 120,
@@ -159,7 +164,7 @@ export default async function CertificatePage({ params }: Props) {
             ) : (
               <>
                 <p className="text-sm text-muted-light mb-2">{t("concluiu com êxito o curso")}</p>
-                <h2 className="text-xl font-semibold text-[#FBBF24] mb-1">{course.titulo}</h2>
+                <h2 className="text-xl font-semibold text-[#FBBF24] mb-1">{courseTitulo}</h2>
               </>
             )}
             <div className="flex items-center justify-center gap-2 mt-2">
@@ -273,7 +278,7 @@ export default async function CertificatePage({ params }: Props) {
           >
             <Award size={16} /> Baixar PDF
           </a>
-          <ShareButton url={verifyUrl} title={`Certificado ${nrNumber ?? ""} - ${isNR ? lessonTitulo : course.titulo}`} />
+          <ShareButton url={verifyUrl} title={`Certificado ${nrNumber ?? ""} - ${isNR ? lessonTitulo : courseTitulo}`} />
         </div>
       </div>
     </div>

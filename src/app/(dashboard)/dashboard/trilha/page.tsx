@@ -13,7 +13,8 @@ import {
   BookOpen, ChevronRight, Star, Trophy,
 } from "lucide-react";
 import Link from "next/link";
-import { getServerT } from "@/lib/i18n/server";
+import { getServerT, getServerLocale } from "@/lib/i18n/server";
+import { courseMeta } from "@/lib/i18n/courses-meta";
 
 const LEARNING_PATH: {
   level: string;
@@ -53,6 +54,7 @@ export default async function TrilhaPage() {
   const { userId } = await auth();
   if (!userId) redirect("/login");
   const t = await getServerT();
+  const lang = await getServerLocale();
 
   const user = await getCurrentUser();
   const supabase = createAdminClient();
@@ -219,7 +221,7 @@ export default async function TrilhaPage() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-semibold text-foreground line-clamp-2 leading-snug">
-                                {course.titulo}
+                                {courseMeta(course.slug, lang)?.titulo ?? course.titulo}
                               </p>
                               {course.carga_horaria && (
                                 <p className="text-xs text-muted-light mt-1">

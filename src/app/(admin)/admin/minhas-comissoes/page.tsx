@@ -7,10 +7,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
 import { Wallet, TrendingUp, Clock, CheckCircle2, XCircle, DollarSign } from "lucide-react";
-import { getServerT } from "@/lib/i18n/server";
+import { getServerT, getServerLocale } from "@/lib/i18n/server";
+import { courseMeta } from "@/lib/i18n/courses-meta";
 
 export default async function InstructorCommissionsPage() {
   const t = await getServerT();
+  const lang = await getServerLocale();
   const { userId } = await auth();
   if (!userId) redirect("/login");
 
@@ -42,7 +44,7 @@ export default async function InstructorCommissionsPage() {
   if (partner) {
     const { data } = await (supabase as any)
       .from("partner_commissions")
-      .select("*, courses(titulo)")
+      .select("*, courses(titulo, slug)")
       .eq("partner_id", partner.id)
       .order("created_at", { ascending: false })
       .limit(100);
@@ -148,7 +150,7 @@ export default async function InstructorCommissionsPage() {
                     <CardContent className="p-4 flex items-center gap-4">
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-foreground text-sm truncate">
-                          {c.courses?.titulo ?? t("Curso")}
+                          {courseMeta(c.courses?.slug, lang)?.titulo ?? c.courses?.titulo ?? t("Curso")}
                         </p>
                         <p className="text-xs text-muted-light">
                           {t("Venda:")} {formatCurrency(c.valor_venda ?? 0)} · {t("Líquido:")} {formatCurrency(c.valor_liquido ?? 0)} · {c.comissao_percentual}%

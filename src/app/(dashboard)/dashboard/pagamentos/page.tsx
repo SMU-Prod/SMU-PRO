@@ -4,7 +4,8 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { Header } from "@/components/layout/header";
 import { formatCurrency } from "@/lib/utils";
 import { DollarSign, CheckCircle } from "lucide-react";
-import { getServerT } from "@/lib/i18n/server";
+import { getServerT, getServerLocale } from "@/lib/i18n/server";
+import { courseMeta } from "@/lib/i18n/courses-meta";
 
 const STATUS_STYLES: Record<string, { label: string; className: string }> = {
   ativo: { label: "Confirmado", className: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" },
@@ -17,6 +18,7 @@ export default async function PagamentosPage() {
   const { userId } = await auth();
   if (!userId) redirect("/login");
   const t = await getServerT();
+  const lang = await getServerLocale();
 
   const supabase = createAdminClient();
   const { data: userRow } = await supabase.from("users").select("id").eq("clerk_id", userId).single();
@@ -72,7 +74,7 @@ export default async function PagamentosPage() {
             return (
               <div key={row.id} className="px-3 sm:px-5 py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{row.courses?.titulo ?? t("Curso removido")}</p>
+                  <p className="text-sm font-medium text-foreground truncate">{(row.courses?.slug ? courseMeta(row.courses.slug, lang)?.titulo : null) ?? row.courses?.titulo ?? t("Curso removido")}</p>
                   <p className="text-xs text-muted-light mt-0.5">
                     {new Date(row.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}
                   </p>
