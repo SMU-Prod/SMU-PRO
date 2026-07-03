@@ -636,6 +636,9 @@ export const DICT: Record<string, { en: string; es: string }> = {
   "Microfone dinâmico instrumento": { en: "Instrument dynamic microphone", es: "Micrófono dinámico de instrumento" },
   "Microfone dinâmico supercardioide": { en: "Supercardioid dynamic microphone", es: "Micrófono dinámico supercardioide" },
   "Mesa de som digital": { en: "Digital mixing console", es: "Consola de sonido digital" },
+  "Microfone dinâmico de estúdio": { en: "Studio dynamic microphone", es: "Micrófono dinámico de estudio" },
+  "Moving head (wash)": { en: "Moving head (wash)", es: "Cabeza móvil (wash)" },
+  "Máquina de fumaça (fog)": { en: "Fog machine", es: "Máquina de humo (fog)" },
   // ---- Simulador (interface) ----
   "interativo": { en: "interactive", es: "interactivo" },
   "imagem": { en: "image", es: "imagen" },
