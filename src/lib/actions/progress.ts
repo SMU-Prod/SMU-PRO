@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { sendCourseCompletionEmail, sendCertificateEmail } from "@/lib/email";
 import { createNotification } from "@/lib/actions/notifications";
+import { hasCourseAccessByLesson } from "@/lib/actions/access";
 import { revalidatePath } from "next/cache";
 
 async function resolveUserUUID(clerkId: string): Promise<string | null> {
@@ -17,8 +18,15 @@ export async function markLessonComplete(lessonId: string, courseSlug: string) {
   if (!userId) throw new Error("Não autenticado");
 
   const admin = createAdminClient();
-  const userUuid = await resolveUserUUID(userId);
+  const { data: userRow } = await admin.from("users").select("id, role").eq("clerk_id", userId).single();
+  const userUuid = userRow?.id;
   if (!userUuid) throw new Error("Usuário não encontrado");
+
+  // Gate de acesso: só registra progresso se o usuário tiver acesso ao curso
+  // da aula (matrícula ativa / admin / curso free). Sem isso, qualquer usuário
+  // autenticado poderia marcar aulas como concluídas e forjar certificados NR.
+  const canAccess = await hasCourseAccessByLesson(admin, userUuid, (userRow as { role?: string | null })?.role, lessonId);
+  if (!canAccess) throw new Error("Acesso negado: você não está matriculado neste curso");
 
   const { error } = await admin.from("progress").upsert(
     {

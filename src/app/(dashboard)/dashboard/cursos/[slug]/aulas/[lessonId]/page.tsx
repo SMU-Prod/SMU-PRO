@@ -43,7 +43,13 @@ export default async function LessonPage({ params }: Props) {
         ? supabase.from("notes").select("*").eq("user_id", userUuid).eq("lesson_id", lessonId).order("created_at", { ascending: false })
         : Promise.resolve({ data: [] }),
       lessonData.tem_quiz
-        ? (supabase as any).from("quizzes").select("*, quiz_questions(*, quiz_options(*))").eq("lesson_id", lessonId).single()
+        ? // Segurança: NÃO enviar quiz_options.correta ao cliente (gabarito).
+          // A nota é calculada no servidor e o gabarito volta só após o envio.
+          (supabase as any)
+            .from("quizzes")
+            .select("*, quiz_questions(*, quiz_options(id, texto, ordem))")
+            .eq("lesson_id", lessonId)
+            .single()
         : Promise.resolve({ data: null }),
     ]);
     const quizAttempts = quizAttemptsResult.data;

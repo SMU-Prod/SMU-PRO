@@ -1,4 +1,5 @@
 import { getCourses } from "@/lib/actions/courses";
+import { getPublicCoursesCached } from "@/lib/cache/public-data";
 import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -57,7 +58,12 @@ export default async function CursosPage({ searchParams }: Props) {
 
   let courses: any[] = [];
   try {
-    courses = await getCourses({ nivel, categoria, tipo, search }) ?? [];
+    // Busca textual não é cacheada (variantes infinitas); os demais filtros usam
+    // a lista cacheada (i18n por cookie continua funcionando — só os dados vêm do cache).
+    const trimmedSearch = search?.trim();
+    courses = trimmedSearch
+      ? (await getCourses({ nivel, categoria, tipo, search: trimmedSearch })) ?? []
+      : (await getPublicCoursesCached({ nivel, categoria, tipo })) ?? [];
   } catch {
     courses = [];
   }

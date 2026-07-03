@@ -1,8 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { auth } from "@clerk/nextjs/server";
-import { getCourses } from "@/lib/actions/courses";
-import { getLandingPageStats } from "@/lib/actions/users";
+import { getPublicCoursesCached, getLandingStatsCached } from "@/lib/cache/public-data";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getCategoryLabel, getLevelLabel, formatMinutes, formatCurrency } from "@/lib/utils";
@@ -61,7 +60,7 @@ export default async function HomePage() {
   let featuredCourses: any[] = [];
   let stats = { totalUsers: 0, totalCourses: 0, totalHours: 0, completionRate: 0 };
   try {
-    const [courses, realStats] = await Promise.all([getCourses(), getLandingPageStats()]);
+    const [courses, realStats] = await Promise.all([getPublicCoursesCached(), getLandingStatsCached()]);
     featuredCourses = (courses ?? []).filter((c: any) => c.destaque).slice(0, 3);
     if (featuredCourses.length === 0) {
       featuredCourses = (courses ?? []).slice(0, 3);

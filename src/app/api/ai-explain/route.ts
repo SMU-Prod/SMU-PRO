@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/rate-limit";
+import { hasCourseAccessByLesson } from "@/lib/actions/access";
 import OpenAI from "openai";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
@@ -43,6 +44,17 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = createAdminClient();
+
+  // Gate de acesso: só usuários com acesso ao curso da aula podem consumir a IA
+  // (evita vazamento de conteúdo pago e abuso de custo por não-matriculados).
+  const { data: userRow } = await supabase.from("users").select("id, role").eq("clerk_id", userId).single();
+  if (!userRow) {
+    return NextResponse.json({ error: "Usuário não encontrado" }, { status: 403 });
+  }
+  const canAccess = await hasCourseAccessByLesson(supabase, userRow.id, userRow.role, lessonId);
+  if (!canAccess) {
+    return NextResponse.json({ error: "Acesso negado a esta aula" }, { status: 403 });
+  }
 
   // Check cache first
   const { data: cached } = await (supabase as any)

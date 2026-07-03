@@ -2,7 +2,7 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import type { CourseInsert, CourseUpdate, ModuleInsert, LessonInsert, Progress } from "@/types/database";
 
 // ============================================================
@@ -240,6 +240,7 @@ export async function adminCreateCourse(input: CourseInsert) {
 
   revalidatePath("/admin/cursos");
   revalidatePath("/cursos");
+  updateTag("courses"); // invalida a lista pública cacheada (landing/catálogo)
   return data;
 }
 
@@ -272,6 +273,7 @@ export async function adminUpdateCourse(id: string, input: CourseUpdate) {
 
   revalidatePath("/admin/cursos");
   revalidatePath("/cursos");
+  updateTag("courses"); // invalida a lista pública cacheada (landing/catálogo)
   return data;
 }
 
@@ -282,6 +284,8 @@ export async function adminDeleteCourse(id: string) {
   if (error) throw error;
 
   revalidatePath("/admin/cursos");
+  revalidatePath("/cursos");
+  updateTag("courses"); // invalida a lista pública cacheada (landing/catálogo)
 }
 
 export async function adminToggleCourse(id: string, ativo: boolean) {

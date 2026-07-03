@@ -67,7 +67,7 @@ export function QuizTab({ lesson, quizAttempts, quizData, userId, onQuizPassed, 
   const [started, setStarted] = useState(false);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
-  const [result, setResult] = useState<{ nota: number; aprovado: boolean } | null>(null);
+  const [result, setResult] = useState<{ nota: number; aprovado: boolean; gabarito: Record<string, string> } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
@@ -165,51 +165,35 @@ export function QuizTab({ lesson, quizAttempts, quizData, userId, onQuizPassed, 
   const answeredCount = Object.keys(answers).length;
   const canSubmit = answeredCount === totalQuestions;
 
-  const calculateResult = () => {
-    let correct = 0;
-    let totalPoints = 0;
-    for (const q of quiz.quiz_questions) {
-      totalPoints += q.pontos;
-      const chosen = answers[q.id];
-      const correctOption = q.quiz_options.find((o) => o.correta);
-      if (correctOption && chosen === correctOption.id) {
-        correct += q.pontos;
-      }
-    }
-    const nota = totalPoints > 0 ? Math.round((correct / totalPoints) * 100) : 0;
-    const aprovado = nota >= quiz.nivel_minimo_aprovacao;
-    return { nota, aprovado };
-  };
-
-  const saveAttempt = async (nota: number, aprovado: boolean) => {
+  // A nota é calculada no SERVIDOR (fonte da verdade). O cliente só envia as
+  // respostas e recebe nota/aprovado/gabarito de volta.
+  const saveAttempt = async () => {
+    if (submitting) return;
     setSubmitError(null);
     setSubmitting(true);
     try {
-      await submitQuizAttempt(quiz.id, nota, aprovado, answers);
-      setResult({ nota, aprovado });
+      const res = await submitQuizAttempt(quiz.id, answers);
+      setResult(res);
       setSubmitted(true);
-      if (aprovado && onQuizPassed) onQuizPassed();
+      if (res.aprovado && onQuizPassed) onQuizPassed();
     } catch (err: any) {
       console.error("[Quiz] Erro ao salvar tentativa:", err);
-      setSubmitError(err.message || "Erro ao salvar tentativa. Tente novamente.");
-      // Still show result even if save failed, so user sees their score
-      setResult({ nota, aprovado });
-      setSubmitted(true);
+      // Sem cálculo no cliente: se o envio falhar, não há nota a exibir.
+      // Mantém o aluno no quiz para tentar enviar de novo.
+      setSubmitError(err.message || "Erro ao enviar respostas. Tente novamente.");
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleAutoSubmit = async () => {
-    const { nota, aprovado } = calculateResult();
-    await saveAttempt(nota, aprovado);
+    await saveAttempt();
   };
 
   const handleSubmit = async () => {
     if (!canSubmit || submitting) return;
     if (timerRef.current) clearInterval(timerRef.current);
-    const { nota, aprovado } = calculateResult();
-    await saveAttempt(nota, aprovado);
+    await saveAttempt();
   };
 
   const handleReset = () => {
@@ -282,8 +266,8 @@ export function QuizTab({ lesson, quizAttempts, quizData, userId, onQuizPassed, 
           <h4 className="font-semibold text-foreground">{t("Gabarito")}</h4>
           {displayQuestions.map((q) => {
             const chosen = answers[q.id];
-            const correct = q.quiz_options.find((o) => o.correta);
-            const isRight = chosen === correct?.id;
+            const correctId = result.gabarito[q.id];
+            const isRight = chosen === correctId;
             const isTrueFalse = q.tipo === "true_false";
 
             return (
@@ -302,23 +286,26 @@ export function QuizTab({ lesson, quizAttempts, quizData, userId, onQuizPassed, 
                   </div>
                 </div>
                 <div className="space-y-2 pl-6">
-                  {q.quiz_options.map((opt) => (
-                    <div
-                      key={opt.id}
-                      className={cn(
-                        "flex items-center gap-2 text-xs px-3 py-2 rounded-lg border",
-                        opt.correta
-                          ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
-                          : chosen === opt.id
-                          ? "border-red-500/20 bg-red-500/10 text-red-400"
-                          : "border-border text-muted-light"
-                      )}
-                    >
-                      {opt.correta && <CheckCircle2 size={12} />}
-                      {chosen === opt.id && !opt.correta && <XCircle size={12} />}
-                      {opt.texto}
-                    </div>
-                  ))}
+                  {q.quiz_options.map((opt) => {
+                    const isCorrect = opt.id === correctId;
+                    return (
+                      <div
+                        key={opt.id}
+                        className={cn(
+                          "flex items-center gap-2 text-xs px-3 py-2 rounded-lg border",
+                          isCorrect
+                            ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+                            : chosen === opt.id
+                            ? "border-red-500/20 bg-red-500/10 text-red-400"
+                            : "border-border text-muted-light"
+                        )}
+                      >
+                        {isCorrect && <CheckCircle2 size={12} />}
+                        {chosen === opt.id && !isCorrect && <XCircle size={12} />}
+                        {opt.texto}
+                      </div>
+                    );
+                  })}
                 </div>
                 {q.explicacao && (
                   <p className="mt-3 text-xs text-muted-light pl-6 italic">{q.explicacao}</p>
@@ -468,6 +455,13 @@ export function QuizTab({ lesson, quizAttempts, quizData, userId, onQuizPassed, 
           </div>
         );
       })}
+
+      {submitError && (
+        <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-400 flex items-center gap-2">
+          <AlertCircle size={16} className="shrink-0" />
+          <p>{submitError}</p>
+        </div>
+      )}
 
       <Button
         onClick={handleSubmit}
