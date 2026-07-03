@@ -9,9 +9,15 @@ import { headers } from "next/headers";
  * (Fase 2, se o Rick quiser gerenciar pelo admin: virar uma flag no banco + toggle.)
  */
 export const AULA_COURSE_SLUGS: string[] = [
-  // Ex.: "introducao-para-eventos",
-  // (Rick define quais cursos entram no portal aula.)
+  // Usado só quando AULA_INCLUDE_ALL = false (curadoria de um subconjunto).
 ];
+
+/**
+ * Rick pediu TODOS os cursos no portal aula. Com `true`, o aula mostra todos os cursos
+ * ativos (mesmo catálogo do site principal, incluindo cursos futuros). Para curar um
+ * subconjunto no futuro: ponha `false` e liste os slugs em AULA_COURSE_SLUGS.
+ */
+export const AULA_INCLUDE_ALL = true;
 
 export type Portal = "aula" | "main";
 
@@ -27,7 +33,7 @@ export async function getPortal(): Promise<Portal> {
 
 /** Filtra uma lista de cursos para o catálogo do portal (no aula, só os curados). */
 export function filterCoursesByPortal<T extends { slug?: string | null }>(courses: T[], portal: Portal): T[] {
-  if (portal !== "aula") return courses;
+  if (portal !== "aula" || AULA_INCLUDE_ALL) return courses;
   const set = new Set(AULA_COURSE_SLUGS);
   return courses.filter((c) => !!c.slug && set.has(c.slug));
 }
