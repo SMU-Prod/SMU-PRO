@@ -7,6 +7,7 @@ import {
   CheckCircle2, Lightbulb, Maximize2, Minimize2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/lib/i18n/ui";
 
 // ── Types ──────────────────────────────────────────────────
 
@@ -76,6 +77,7 @@ interface AnimationPlayerProps {
 // ── Component ──────────────────────────────────────────────
 
 export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin = false }: AnimationPlayerProps) {
+  const t = useT();
   const [data, setData] = useState<AnimationData | null>(null);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -131,7 +133,7 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
           clearInterval(interval);
           pollIntervalRef.current = null;
         } else if (result.status === "error") {
-          setError("Erro na geração. Tente novamente.");
+          setError(t("Erro na geração. Tente novamente."));
           setGenerating(false);
           clearInterval(interval);
           pollIntervalRef.current = null;
@@ -269,10 +271,10 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
 
   // ── Badge ──
   const engineLabel = data?.model?.includes("hybrid")
-    ? "Híbrido"
+    ? t("Híbrido")
     : isHybrid
-    ? "Interativo"
-    : "IA Visual";
+    ? t("Interativo")
+    : t("IA Visual");
 
   const currentMode = currentSceneData?.modo;
   const nivel = data?.roteiro?.classificacao?.nivel;
@@ -318,7 +320,7 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
         >
           <Zap size={14} className="text-purple-400" />
           <span className="text-sm font-medium text-foreground">
-            {isHybrid ? "Simulação Interativa" : "Conteúdo Visual"}
+            {isHybrid ? t("Simulação Interativa") : t("Conteúdo Visual")}
           </span>
           <span className="text-[10px] text-muted-light px-1.5 py-0.5 rounded-full bg-surface-3">
             {engineLabel}
@@ -329,7 +331,7 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
             </span>
           )}
           <span className="text-[10px] text-muted-light">
-            {scenes.length} cenas
+            {scenes.length} {t("cenas")}
           </span>
         </button>
         <div className="flex items-center gap-2">
@@ -364,7 +366,7 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
                 className="absolute inset-0 w-full h-full border-0"
                 sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
                 allow="autoplay"
-                title={currentSceneData?.titulo || "Widget interativo"}
+                title={currentSceneData?.titulo || t("Widget interativo")}
                 style={{ display: "block" }}
               />
             ) : currentUrl?.widget ? (
@@ -373,7 +375,7 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
                 src={currentUrl.widget}
                 className="absolute inset-0 w-full h-full border-0"
                 sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
-                title={currentSceneData?.titulo || "Widget interativo"}
+                title={currentSceneData?.titulo || t("Widget interativo")}
               />
             ) : currentUrl?.image ? (
               /* Fallback: static image */
@@ -395,7 +397,7 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
                 <span className={`text-[10px] px-1.5 py-0.5 rounded text-white font-medium uppercase tracking-wider ${
                   currentMode === "widget" ? "bg-cyan-600/80" : "bg-purple-500/80"
                 }`}>
-                  {currentMode === "widget" ? "interativo" : currentMode === "image" ? "imagem" : currentSceneData?.tipo?.replace(/_/g, " ") || "cena"}
+                  {currentMode === "widget" ? t("interativo") : currentMode === "image" ? t("imagem") : currentSceneData?.tipo?.replace(/_/g, " ") || t("cena")}
                 </span>
                 <span className="text-xs font-medium text-white/80 line-clamp-1">
                   {currentSceneData?.titulo}
@@ -460,7 +462,7 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
               className={`p-1.5 rounded-lg transition-colors ${
                 showText ? "text-purple-400 bg-purple-500/10" : "text-muted hover:text-foreground hover:bg-hover"
               }`}
-              title={showText ? "Ocultar texto" : "Mostrar texto"}
+              title={showText ? t("Ocultar texto") : t("Mostrar texto")}
             >
               <BookOpen size={14} />
             </button>
@@ -506,7 +508,7 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
                 <div className="rounded-xl bg-gradient-to-br from-cyan-500/8 to-blue-500/5 border border-cyan-500/15 p-3">
                   <div className="flex items-center gap-1.5 mb-2">
                     <CheckCircle2 size={12} className="text-cyan-400" />
-                    <span className="text-[10px] font-semibold text-cyan-300 uppercase tracking-wide">Pontos-chave</span>
+                    <span className="text-[10px] font-semibold text-cyan-300 uppercase tracking-wide">{t("Pontos-chave")}</span>
                   </div>
                   <div className="space-y-1.5">
                     {currentSceneData.destaques.map((d, idx) => (
@@ -526,7 +528,7 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
                     <Sparkles size={14} className="text-amber-400" />
                   </div>
                   <div>
-                    <span className="text-[10px] font-semibold text-amber-300 uppercase tracking-wide">Dica do Profissional</span>
+                    <span className="text-[10px] font-semibold text-amber-300 uppercase tracking-wide">{t("Dica do Profissional")}</span>
                     <p className="text-xs text-amber-100/70 leading-relaxed mt-0.5">
                       {currentSceneData.dica_profissional}
                     </p>
@@ -538,7 +540,7 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
               {isHybrid && currentUrl?.html && (
                 <div className="md:col-span-2 flex items-center gap-1.5 text-[10px] text-purple-400/50 px-1">
                   <Zap size={10} />
-                  <span>Interaja com o widget acima — mova sliders e clique nos elementos</span>
+                  <span>{t("Interaja com o widget acima — mova sliders e clique nos elementos")}</span>
                 </div>
               )}
             </div>

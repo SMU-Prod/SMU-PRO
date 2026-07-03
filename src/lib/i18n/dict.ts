@@ -623,11 +623,11 @@ export const DICT: Record<string, { en: string; es: string }> = {
   "Lista": { en: "List", es: "Lista" },
   // ---- Cadastro / senha ----
   "Crie sua conta profissional": { en: "Create your professional account", es: "Crea tu cuenta profesional" },
-  "Como criar sua senha": { en: "How to create your password", es: "Cómo crear tu contraseña" },
-  "Use pelo menos 8 caracteres": { en: "Use at least 8 characters", es: "Usa al menos 8 caracteres" },
-  "Combine letras e números (ex.: Palco2025)": { en: "Combine letters and numbers (e.g. Stage2025)", es: "Combina letras y números (ej.: Escenario2025)" },
-  "Pode usar símbolos (! @ # $) para deixar mais forte": { en: "You can add symbols (! @ # $) to make it stronger", es: "Puedes usar símbolos (! @ # $) para hacerla más fuerte" },
-  "Evite senhas óbvias como 12345678 ou sua data de nascimento": { en: "Avoid obvious passwords like 12345678 or your birth date", es: "Evita contraseñas obvias como 12345678 o tu fecha de nacimiento" },
+  "Requisitos da senha": { en: "Password requirements", es: "Requisitos de la contraseña" },
+  "Mínimo de 8 caracteres": { en: "Minimum of 8 characters", es: "Mínimo de 8 caracteres" },
+  "Máximo de 72 caracteres": { en: "Maximum of 72 characters", es: "Máximo de 72 caracteres" },
+  "Deve conter letras e números": { en: "Must contain letters and numbers", es: "Debe contener letras y números" },
+  "Não pode ser uma senha comum ou exposta em vazamentos de dados": { en: "Cannot be a common password or one exposed in data breaches", es: "No puede ser una contraseña común o expuesta en filtraciones de datos" },
   // ---- Manuais dos equipamentos ----
   "Manuais dos equipamentos": { en: "Equipment manuals", es: "Manuales de los equipos" },
   "Manuais oficiais do fabricante para consulta técnica.": { en: "Official manufacturer manuals for technical reference.", es: "Manuales oficiales del fabricante para consulta técnica." },
@@ -636,6 +636,23 @@ export const DICT: Record<string, { en: string; es: string }> = {
   "Microfone dinâmico instrumento": { en: "Instrument dynamic microphone", es: "Micrófono dinámico de instrumento" },
   "Microfone dinâmico supercardioide": { en: "Supercardioid dynamic microphone", es: "Micrófono dinámico supercardioide" },
   "Mesa de som digital": { en: "Digital mixing console", es: "Consola de sonido digital" },
+  // ---- Simulador (interface) ----
+  "interativo": { en: "interactive", es: "interactivo" },
+  "imagem": { en: "image", es: "imagen" },
+  "cena": { en: "scene", es: "escena" },
+  "Pontos-chave": { en: "Key points", es: "Puntos clave" },
+  "Dica do Profissional": { en: "Pro Tip", es: "Consejo del Profesional" },
+  "Interaja com o widget acima — mova sliders e clique nos elementos": { en: "Interact with the widget above — move sliders and click the elements", es: "Interactúa con el widget de arriba — mueve los deslizadores y haz clic en los elementos" },
+  "Simulação Interativa": { en: "Interactive Simulation", es: "Simulación Interactiva" },
+  "Conteúdo Visual": { en: "Visual Content", es: "Contenido Visual" },
+  "Híbrido": { en: "Hybrid", es: "Híbrido" },
+  "Interativo": { en: "Interactive", es: "Interactivo" },
+  "IA Visual": { en: "Visual AI", es: "IA Visual" },
+  "cenas": { en: "scenes", es: "escenas" },
+  "Widget interativo": { en: "Interactive widget", es: "Widget interactivo" },
+  "Ocultar texto": { en: "Hide text", es: "Ocultar texto" },
+  "Mostrar texto": { en: "Show text", es: "Mostrar texto" },
+  "Erro na geração. Tente novamente.": { en: "Generation error. Please try again.", es: "Error en la generación. Inténtalo de nuevo." },
 };
 
 /** Traduz uma string de interface para o idioma dado (PT devolve a própria string). */
