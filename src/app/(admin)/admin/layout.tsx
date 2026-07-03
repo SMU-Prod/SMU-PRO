@@ -5,6 +5,7 @@ import { adminGetAllCourses, instructorGetMyCourses } from "@/lib/actions/course
 import { Sidebar } from "@/components/layout/sidebar";
 import { SidebarProvider } from "@/components/layout/sidebar-context";
 import { CommandPalette } from "@/components/admin/command-palette";
+import { IdleLogout } from "@/components/security/idle-logout";
 
 export default async function AdminLayout({
   children,
@@ -15,6 +16,8 @@ export default async function AdminLayout({
   if (!userId) redirect("/login");
 
   const user = await getCurrentUser();
+  // Conta desativada: bloqueia o acesso mesmo com sessão ainda válida no navegador.
+  if (user && user.ativo === false) redirect("/conta-desativada");
   if (process.env.NODE_ENV === 'development') {
     console.log("[Admin Layout] userId:", userId, "user:", user?.email, "role:", user?.role);
   }
@@ -44,6 +47,7 @@ export default async function AdminLayout({
 
   return (
     <SidebarProvider>
+      <IdleLogout />
       <div className="flex h-screen bg-background">
         <Sidebar role={user?.role as "admin" | "content_manager" | "instrutor"} />
         <main className="flex-1 lg:ml-64 overflow-y-auto min-w-0">

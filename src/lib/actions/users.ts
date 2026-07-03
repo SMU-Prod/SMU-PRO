@@ -1,10 +1,11 @@
 "use server";
 
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { auth, currentUser, clerkClient } from "@clerk/nextjs/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createNotification } from "@/lib/actions/notifications";
+import { assertOwner } from "@/lib/auth/owner";
 import type { UserRole } from "@/types/database";
 
 async function assertAdmin() {
@@ -16,11 +17,12 @@ async function assertAdmin() {
   const supabase = createAdminClient();
   const { data: rows } = await supabase
     .from("users")
-    .select("role")
+    .select("role, ativo")
     .eq("clerk_id", userId)
     .order("created_at", { ascending: false })
     .limit(1);
   const user = rows?.[0] ?? null;
+  if (user?.ativo === false) throw new Error("Conta desativada");
   if (user?.role !== "admin") throw new Error("Acesso negado: apenas administradores");
   return userId;
 }
@@ -37,11 +39,12 @@ export async function requireAdminRole() {
   const supabase = createAdminClient();
   const { data: rows } = await supabase
     .from("users")
-    .select("role")
+    .select("role, ativo")
     .eq("clerk_id", userId)
     .limit(1);
-  const role = rows?.[0]?.role ?? null;
-  if (role !== "admin") redirect("/admin/cursos");
+  const row = rows?.[0] ?? null;
+  if (row?.ativo === false) redirect("/conta-desativada");
+  if (row?.role !== "admin") redirect("/admin/cursos");
 }
 
 export async function getCurrentUser() {
@@ -248,6 +251,72 @@ export async function adminEnrollUserManually(clerkId: string, courseId: string)
   }
 
   revalidatePath("/admin/usuarios");
+}
+
+// ============================================================
+// ODIN (dono) — controle máximo: acesso e senhas
+// ============================================================
+
+/** Senha temporária forte (cross-runtime, via Web Crypto). */
+function generateTempPassword(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%&*";
+  const arr = new Uint32Array(16);
+  crypto.getRandomValues(arr);
+  return Array.from(arr, (n) => chars[n % chars.length]).join("");
+}
+
+/**
+ * Desativa/reativa uma conta. EXCLUSIVO DO ODIN.
+ * - Marca ativo=false/true no banco (o app bloqueia o acesso mesmo com sessão viva).
+ * - Revoga/restaura a sessão no Clerk (ban/unban) para matar o acesso na hora.
+ */
+export async function ownerSetUserActive(clerkId: string, active: boolean) {
+  await assertOwner();
+  const supabase = createAdminClient();
+  const { data: userRow, error } = await supabase
+    .from("users")
+    .update({ ativo: active })
+    .eq("clerk_id", clerkId)
+    .select("id")
+    .single();
+  if (error) throw error;
+
+  // Revoga/restaura a sessão no Clerk (mata o acesso imediatamente).
+  // Se falhar (ex: permissão da chave), o gate de 'ativo' no app já barra o acesso.
+  try {
+    const client = await clerkClient();
+    if (active) await client.users.unbanUser(clerkId);
+    else await client.users.banUser(clerkId);
+  } catch (e) {
+    console.error("[ownerSetUserActive] Clerk ban/unban falhou:", e);
+  }
+
+  if (userRow) {
+    await supabase.from("activity_log").insert({
+      user_id: userRow.id,
+      tipo: "role_change",
+      descricao: active ? "Conta reativada pelo dono" : "Conta desativada pelo dono",
+      metadata: { ativo: active },
+    });
+  }
+
+  revalidatePath("/admin/usuarios");
+}
+
+/**
+ * Redefine a senha de um usuário e retorna a senha temporária para o Odin
+ * entregar em mãos. EXCLUSIVO DO ODIN. NÃO envia e-mail — o dono controla.
+ * A senha antiga deixa de funcionar imediatamente.
+ */
+export async function ownerResetPassword(clerkId: string): Promise<{ tempPassword: string }> {
+  await assertOwner();
+  const tempPassword = generateTempPassword();
+  const client = await clerkClient();
+  await client.users.updateUser(clerkId, {
+    password: tempPassword,
+    skipPasswordChecks: true,
+  });
+  return { tempPassword };
 }
 
 export async function adminGetDashboardMetrics() {

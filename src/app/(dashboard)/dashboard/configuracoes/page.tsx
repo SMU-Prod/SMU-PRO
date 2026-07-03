@@ -6,9 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { getLevelLabel } from "@/lib/utils";
 import { getServerT } from "@/lib/i18n/server";
 import { NotificationPreferencesForm } from "@/components/settings/notification-preferences";
+import { AccountSecurityLinks } from "@/components/settings/account-security-links";
 import {
   Bell, Shield, Globe, CreditCard, Trash2, UserCircle,
-  Mail, Lock, Smartphone, ChevronRight, Trophy,
+  Mail, ChevronRight, Trophy,
 } from "lucide-react";
 
 export default async function ConfiguracoesPage() {
@@ -51,20 +52,7 @@ export default async function ConfiguracoesPage() {
             action={t("Gerenciado pelo Clerk")}
             disabled
           />
-          <SettingItem
-            icon={<Lock size={16} className="text-muted-light" />}
-            label={t("Senha")}
-            description={t("Altere sua senha de acesso")}
-            action={t("Alterar")}
-            href="https://accounts.clerk.dev/user/security"
-          />
-          <SettingItem
-            icon={<Smartphone size={16} className="text-muted-light" />}
-            label={t("Autenticação em dois fatores")}
-            description={t("Adicione uma camada extra de segurança")}
-            action={t("Configurar")}
-            href="https://accounts.clerk.dev/user/security"
-          />
+          <AccountSecurityLinks />
         </Section>
 
         {/* Seção: Notificações */}
