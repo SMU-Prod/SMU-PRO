@@ -7,6 +7,7 @@ import { CategoryIcon } from "@/components/ui/category-icon";
 import { CoursesView } from "@/components/cursos/courses-view";
 import { getServerT } from "@/lib/i18n/server";
 import { LanguageSelector } from "@/components/i18n/language-selector";
+import { getPortal, filterCoursesByPortal } from "@/lib/portal";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -61,6 +62,10 @@ export default async function CursosPage({ searchParams }: Props) {
   } catch {
     courses = [];
   }
+
+  // Portal aula.smuproducoes.com: catálogo curado (só os cursos do portal).
+  const portal = await getPortal();
+  courses = filterCoursesByPortal(courses, portal);
 
   // ordena: iniciais (trainee) -> básicos (junior) -> plenos (pleno); alfabético dentro do grupo
   const NIVEL_RANK: Record<string, number> = { trainee: 0, junior: 1, pleno: 2 };

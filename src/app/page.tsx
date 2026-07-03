@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { auth } from "@clerk/nextjs/server";
 import { getCourses } from "@/lib/actions/courses";
+import { getPortal, filterCoursesByPortal } from "@/lib/portal";
 import { getLandingPageStats } from "@/lib/actions/users";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -62,9 +63,12 @@ export default async function HomePage() {
   let stats = { totalUsers: 0, totalCourses: 0, totalHours: 0, completionRate: 0 };
   try {
     const [courses, realStats] = await Promise.all([getCourses(), getLandingPageStats()]);
-    featuredCourses = (courses ?? []).filter((c: any) => c.destaque).slice(0, 3);
+    // Portal aula.smuproducoes.com: só os cursos curados do portal.
+    const portal = await getPortal();
+    const scoped = filterCoursesByPortal(courses ?? [], portal);
+    featuredCourses = scoped.filter((c: any) => c.destaque).slice(0, 3);
     if (featuredCourses.length === 0) {
-      featuredCourses = (courses ?? []).slice(0, 3);
+      featuredCourses = scoped.slice(0, 3);
     }
     stats = realStats;
   } catch {

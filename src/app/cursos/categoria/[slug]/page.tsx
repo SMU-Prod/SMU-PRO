@@ -10,6 +10,7 @@ import { ArrowLeft, BookOpen, Clock, ChevronRight, Users } from "lucide-react";
 import { getServerT, getServerLocale } from "@/lib/i18n/server";
 import { LanguageSelector } from "@/components/i18n/language-selector";
 import { courseMeta } from "@/lib/i18n/courses-meta";
+import { getPortal, filterCoursesByPortal } from "@/lib/portal";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -102,7 +103,8 @@ export default async function CategoryPage({ params }: Props) {
     .order("nivel")
     .order("titulo");
 
-  const list = courses ?? [];
+  const portal = await getPortal();
+  const list = filterCoursesByPortal(courses ?? [], portal);
 
   // Schema.org
   const categorySchema = {
