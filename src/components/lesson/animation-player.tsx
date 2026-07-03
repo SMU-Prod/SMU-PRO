@@ -76,6 +76,12 @@ interface AnimationPlayerProps {
 
 // ── Component ──────────────────────────────────────────────
 
+// Remove o controle de zoom injetado dentro dos widgets/games (script marcado com
+// SMU-ZOOM), que sobrepunha os botões do simulador. O zoom agora é o GLOBAL (PageZoom).
+function stripWidgetZoom(html: string): string {
+  return html.replace(/<script[^>]*>\s*\/\*SMU-ZOOM\*\/[\s\S]*?<\/script>/gi, "");
+}
+
 export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin = false }: AnimationPlayerProps) {
   const t = useT();
   const [data, setData] = useState<AnimationData | null>(null);
@@ -362,7 +368,7 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
             {currentUrl?.html ? (
               <iframe
                 key={`widget-${currentScene}`}
-                srcDoc={currentUrl.html}
+                srcDoc={stripWidgetZoom(currentUrl.html)}
                 className="absolute inset-0 w-full h-full border-0"
                 sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
                 allow="autoplay"
