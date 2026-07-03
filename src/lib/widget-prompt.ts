@@ -128,18 +128,44 @@ function Widget() {
   );
 }
 
+═══ DOIS ARQUÉTIPOS DE WIDGET — ESCOLHA PELO CONTEÚDO ═══
+
+▸ ARQUÉTIPO A — PAINEL REAL DO EQUIPAMENTO (PREFERIR quando a aula é sobre OPERAR um
+  equipamento específico: mesa/console de som, CDJ/mixer de DJ, mesa de luz/DMX,
+  amplificador, crossover/processador, moving head, rack). NÃO use barras deslizantes
+  genéricas para representar um equipamento — reproduza o PAINEL REAL do modelo:
+  • Replique o layout físico real do fabricante/modelo citado (ex.: channel strip de uma
+    Yamaha CL5 = GAIN, +48V, Ø (polaridade), HPF, EQ 4 bandas, DYN, AUX sends, PAN,
+    FADER, ON/MUTE, CUE; CDJ Pioneer = jog wheel, TEMPO, CUE, PLAY/PAUSE, hot cues, loop;
+    mesa DMX = canais, pan/tilt, dimmer, cues, grand master).
+  • CADA controle deve ter RÓTULO com o nome real E mostrar SUA FUNÇÃO: um texto curto
+    embaixo/ao lado, ou um painel de "info" que atualiza ao selecionar/passar o controle
+    (ex.: clicar em "HPF" mostra "Filtro passa-alta: corta graves abaixo de X Hz, tira ruído
+    de palco"). O aluno tem que aprender o que cada botão FAZ.
+  • Knobs/encoders desenhados de verdade (SVG ou Canvas: círculo + indicador que gira),
+    faders verticais com trilho e cursor, botões com LED aceso/apagado, mini-display.
+  • Interativo: mexer num controle muda um estado/leitura visível (o valor, um medidor de
+    LED, a cor). Estética de equipamento pro: metal escuro, serigrafia clara, LEDs.
+
+▸ ARQUÉTIPO B — SIMULAÇÃO DE FENÔMENO/FÓRMULA (quando é conceito físico/matemático:
+  Lei de Ohm, dB, propagação, fase, potência). Use o EXEMPLO DE REFERÊNCIA acima:
+  Canvas animado + fórmula + sliders com unidades.
+
 ═══ REGRAS OBRIGATÓRIAS ═══
 
-1. Canvas com requestAnimationFrame + DPI (devicePixelRatio)
-2. Partículas/elementos animados que REAGEM aos sliders com FÍSICA real
-3. Glow (ctx.shadowBlur + ctx.shadowColor)
-4. Fórmula em HTML (serif/itálico) com resultado em tempo real
-5. Layout: esquerda = fórmula + valores | direita = Canvas | baixo = sliders
-6. Fundo #0f172a, Canvas bg #1e293b, glow cyan/azul
-7. TUDO em PT-BR
-8. Sliders com min/max/step técnicos reais + labels com unidades
+1. Escolha o arquétipo A ou B pelo conteúdo. Equipamento → A. Fenômeno/fórmula → B.
+2. Animação suave (requestAnimationFrame + DPI no Canvas; transições CSS nos knobs/faders).
+3. Elementos REAGEM à interação em tempo real (física real no B; leitura/LED/estado no A).
+4. Todo controle ROTULADO com nome real; no arquétipo A, mostrar a FUNÇÃO de cada controle.
+5. Layout B: esquerda = fórmula + valores | direita = Canvas | baixo = sliders.
+   Layout A: painel do equipamento fiel ao modelo + área de "o que este controle faz".
+6. Visual premium escuro; use a paleta da área; glow/LED onde fizer sentido.
+7. TUDO em PT-BR, com a terminologia técnica REAL do fabricante.
+8. Valores técnicos reais (min/max/step, faixas, unidades). NÃO invente specs absurdas.
 
-PROIBIDO: fetch, localStorage, imports, require, alert. Widgets SÓ texto sem Canvas. Canvas estático. Texto em inglês.
+PROIBIDO: fetch, localStorage, imports, require, alert. Widget só-texto sem interação.
+Canvas/painel estático (tem que reagir). Texto em inglês. Sliders genéricos no lugar de um
+painel de equipamento real (arquétipo A).
 
 Responda SOMENTE com function Widget() { ... }`;
 
@@ -158,12 +184,20 @@ Explicação: ${explicacao}
 
 ${techDirection}
 
-O widget DEVE ter:
-1. Canvas com simulação visual animada (partículas, ondas, fluxo, medidores)
-2. Sliders com valores técnicos reais que alteram a simulação
-3. Fórmula/cálculo visível com resultado em tempo real
-4. Visual premium: fundo escuro, glow, gradientes
-5. Tudo em PT-BR
+PRIMEIRO decida o arquétipo:
+- Se o conceito é OPERAR/entender um EQUIPAMENTO específico (mesa de som, CDJ, mixer,
+  mesa de luz/DMX, amplificador, processador, moving head) → ARQUÉTIPO A (painel real do
+  equipamento). Identifique o fabricante/modelo mais provável a partir dos EQUIPAMENTOS
+  listados acima e reproduza o painel REAL dele, com CADA controle rotulado e explicando
+  O QUE ELE FAZ. Nada de barras deslizantes genéricas para representar o aparelho.
+- Se é um FENÔMENO/FÓRMULA (física/matemática) → ARQUÉTIPO B (Canvas + fórmula + sliders),
+  seguindo o exemplo de referência.
 
-Siga EXATAMENTE o padrão do exemplo de referência. Responda SOMENTE com function Widget() { ... }`;
+O widget DEVE:
+1. Ser fiel ao equipamento real (arquétipo A) ou ao fenômeno (arquétipo B).
+2. Ter todos os controles ROTULADOS com o nome técnico real; no A, mostrar a função de cada um.
+3. Reagir à interação em tempo real (leitura/LED/estado no A; simulação no B).
+4. Visual premium escuro na paleta da área; terminologia REAL em PT-BR.
+
+Responda SOMENTE com function Widget() { ... }`;
 }

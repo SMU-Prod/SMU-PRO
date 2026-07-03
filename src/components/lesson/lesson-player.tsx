@@ -17,6 +17,8 @@ import { NotesTab } from "./notes-tab";
 import { AudioPlayer } from "./audio-player";
 import { AnimationPlayer } from "./animation-player";
 import { RichContentViewer } from "./rich-content-viewer";
+import { EquipmentManuals } from "./equipment-manuals";
+import { manualsForCategory } from "@/lib/equipment-manuals";
 import { useLocale } from "@/lib/i18n/locale";
 import { LanguageSelector } from "@/components/i18n/language-selector";
 import { courseMeta } from "@/lib/i18n/courses-meta";
@@ -550,7 +552,7 @@ export function LessonPlayer({
                   )}
                 </div>
               )}
-              {activeTab === "materials" && <MaterialsTab lesson={lesson} />}
+              {activeTab === "materials" && <MaterialsTab lesson={lesson} categoria={course.categoria} />}
               {activeTab === "quiz" && (
                 <QuizTab lesson={lesson} quizAttempts={quizAttempts} quizData={quizData} userId={userId} onQuizPassed={() => setQuizJustPassed(true)} quizTr={quizTr} locale={locale} lessonTitulo={dispTitulo} />
               )}
@@ -586,11 +588,12 @@ export function LessonPlayer({
   );
 }
 
-function MaterialsTab({ lesson }: { lesson: any }) {
+function MaterialsTab({ lesson, categoria }: { lesson: any; categoria?: string }) {
   const t = useT();
   const [showPdf, setShowPdf] = useState(false);
+  const temManuais = manualsForCategory(categoria).length > 0;
 
-  if (!lesson.pdf_path) {
+  if (!lesson.pdf_path && !temManuais) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <FileText size={40} className="text-muted-light mb-3" />
@@ -601,7 +604,9 @@ function MaterialsTab({ lesson }: { lesson: any }) {
 
   return (
     <div className="space-y-3">
-      {/* Card do material */}
+      {/* Card do material da aula */}
+      {lesson.pdf_path && (
+      <>
       <div className="flex items-center gap-3 p-4 rounded-xl border border-border bg-surface-2">
         <div className="h-10 w-10 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center shrink-0">
           <FileText size={18} className="text-red-500" />
@@ -639,6 +644,11 @@ function MaterialsTab({ lesson }: { lesson: any }) {
           />
         </div>
       )}
+      </>
+      )}
+
+      {/* Manuais oficiais dos equipamentos da categoria */}
+      <EquipmentManuals categoria={categoria} />
     </div>
   );
 }

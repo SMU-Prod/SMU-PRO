@@ -628,6 +628,14 @@ export const DICT: Record<string, { en: string; es: string }> = {
   "Combine letras e números (ex.: Palco2025)": { en: "Combine letters and numbers (e.g. Stage2025)", es: "Combina letras y números (ej.: Escenario2025)" },
   "Pode usar símbolos (! @ # $) para deixar mais forte": { en: "You can add symbols (! @ # $) to make it stronger", es: "Puedes usar símbolos (! @ # $) para hacerla más fuerte" },
   "Evite senhas óbvias como 12345678 ou sua data de nascimento": { en: "Avoid obvious passwords like 12345678 or your birth date", es: "Evita contraseñas obvias como 12345678 o tu fecha de nacimiento" },
+  // ---- Manuais dos equipamentos ----
+  "Manuais dos equipamentos": { en: "Equipment manuals", es: "Manuales de los equipos" },
+  "Manuais oficiais do fabricante para consulta técnica.": { en: "Official manufacturer manuals for technical reference.", es: "Manuales oficiales del fabricante para consulta técnica." },
+  "Manual online": { en: "Online manual", es: "Manual en línea" },
+  "Microfone dinâmico vocal": { en: "Vocal dynamic microphone", es: "Micrófono dinámico vocal" },
+  "Microfone dinâmico instrumento": { en: "Instrument dynamic microphone", es: "Micrófono dinámico de instrumento" },
+  "Microfone dinâmico supercardioide": { en: "Supercardioid dynamic microphone", es: "Micrófono dinámico supercardioide" },
+  "Mesa de som digital": { en: "Digital mixing console", es: "Consola de sonido digital" },
 };
 
 /** Traduz uma string de interface para o idioma dado (PT devolve a própria string). */
