@@ -68,7 +68,7 @@ export function CollectionsManager({
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Remover esta trilha?")) return;
+    if (!confirm(t("Remover esta trilha?"))) return;
     await adminDeleteCollection(id);
     setCollections((p) => p.filter((c) => c.id !== id));
   };
@@ -115,21 +115,21 @@ export function CollectionsManager({
     <div className="space-y-4 max-w-3xl">
       <div className="flex justify-end">
         <Button size="sm" onClick={() => setAdding(true)}>
-          <Plus size={14} /> Nova Trilha
+          <Plus size={14} /> {t("Nova Trilha")}
         </Button>
       </div>
 
       {adding && (
         <div className="rounded-2xl border border-amber-500/30 bg-surface p-5 space-y-3">
-          <p className="font-semibold text-sm text-foreground">Nova Trilha</p>
+          <p className="font-semibold text-sm text-foreground">{t("Nova Trilha")}</p>
           <Input
-            placeholder="Título da trilha *"
+            placeholder={t("Título da trilha *")}
             value={newForm.titulo}
             onChange={(e) => setNewForm((p) => ({ ...p, titulo: e.target.value, slug: slugify(e.target.value) }))}
             autoFocus
           />
           <Input
-            placeholder="Descrição (opcional)"
+            placeholder={t("Descrição (opcional)")}
             value={newForm.descricao}
             onChange={(e) => setNewForm((p) => ({ ...p, descricao: e.target.value }))}
           />
@@ -139,8 +139,8 @@ export function CollectionsManager({
             onChange={(e) => setNewForm((p) => ({ ...p, slug: e.target.value }))}
           />
           <div className="flex gap-2">
-            <Button size="sm" loading={loading} onClick={handleCreate}><Save size={13} /> Criar</Button>
-            <Button size="sm" variant="ghost" onClick={() => setAdding(false)}><X size={13} /> Cancelar</Button>
+            <Button size="sm" loading={loading} onClick={handleCreate}><Save size={13} /> {t("Criar")}</Button>
+            <Button size="sm" variant="ghost" onClick={() => setAdding(false)}><X size={13} /> {t("Cancelar")}</Button>
           </div>
         </div>
       )}
@@ -148,9 +148,9 @@ export function CollectionsManager({
       {collections.length === 0 && !adding && (
         <div className="flex flex-col items-center justify-center py-20 text-center rounded-2xl border-2 border-dashed border-border bg-surface">
           <TrendingUp size={40} className="text-muted-light mb-3" />
-          <p className="font-medium text-foreground mb-1">Nenhuma trilha criada</p>
-          <p className="text-sm text-muted-light mb-4">Crie uma trilha para agrupar cursos em sequência.</p>
-          <Button size="sm" onClick={() => setAdding(true)}><Plus size={13} /> Criar Trilha</Button>
+          <p className="font-medium text-foreground mb-1">{t("Nenhuma trilha criada")}</p>
+          <p className="text-sm text-muted-light mb-4">{t("Crie uma trilha para agrupar cursos em sequência.")}</p>
+          <Button size="sm" onClick={() => setAdding(true)}><Plus size={13} /> {t("Criar Trilha")}</Button>
         </div>
       )}
 
@@ -187,14 +187,14 @@ export function CollectionsManager({
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <Badge variant={col.ativo ? "success" : "secondary"} className="text-[10px]">
-                  {col.ativo ? "Ativa" : "Rascunho"}
+                  {col.ativo ? t("Ativa") : t("Rascunho")}
                 </Badge>
-                <span className="text-xs text-muted-light">{coursesInCol.length} cursos</span>
+                <span className="text-xs text-muted-light">{coursesInCol.length} {t("cursos")}</span>
                 <div className="md:opacity-0 md:group-hover:opacity-100 transition-opacity flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                  <Button variant="ghost" size="icon" className="h-9 w-9 sm:h-7 sm:w-7" title="Preview do aluno" onClick={() => setPreviewId(previewId === col.id ? null : col.id)}>
+                  <Button variant="ghost" size="icon" className="h-9 w-9 sm:h-7 sm:w-7" title={t("Preview do aluno")} onClick={() => setPreviewId(previewId === col.id ? null : col.id)}>
                     <Monitor size={12} />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-9 w-9 sm:h-7 sm:w-7" title={col.ativo ? "Desativar" : "Ativar"} onClick={() => handleToggleActive(col)}>
+                  <Button variant="ghost" size="icon" className="h-9 w-9 sm:h-7 sm:w-7" title={col.ativo ? t("Desativar") : t("Ativar")} onClick={() => handleToggleActive(col)}>
                     {col.ativo ? <EyeOff size={12} /> : <Eye size={12} />}
                   </Button>
                   <Button variant="ghost" size="icon" className="h-9 w-9 sm:h-7 sm:w-7" onClick={() => { setEditing(col.id); setEditForm({ titulo: col.titulo, descricao: col.descricao ?? "" }); }}>
@@ -213,7 +213,7 @@ export function CollectionsManager({
               <div className="border-t border-amber-500/20 bg-amber-500/5 p-5">
                 <div className="flex items-center gap-2 mb-4">
                   <Monitor size={14} className="text-amber-400" />
-                  <span className="text-xs font-semibold text-amber-400 uppercase tracking-wider">Preview — Visão do Aluno</span>
+                  <span className="text-xs font-semibold text-amber-400 uppercase tracking-wider">{t("Preview — Visão do Aluno")}</span>
                 </div>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {coursesInCol.map((cc: any, i: number) => {
@@ -245,18 +245,18 @@ export function CollectionsManager({
                         {isEnrolled && (
                           <div className="mb-3">
                             <Progress value={mockProgress} className="h-1.5" />
-                            <p className="text-xs text-muted-light mt-1">{mockProgress}% concluído</p>
+                            <p className="text-xs text-muted-light mt-1">{mockProgress}% {t("concluído")}</p>
                           </div>
                         )}
                         <Button variant={isDone ? "success" : isEnrolled ? "default" : "secondary"} size="sm" className="w-full gap-1.5 pointer-events-none">
-                          {isDone ? <><Trophy size={13} /> Ver certificado</> : isEnrolled ? <><Play size={13} /> Continuar</> : <><ChevronRight size={13} /> Ver curso</>}
+                          {isDone ? <><Trophy size={13} /> {t("Ver certificado")}</> : isEnrolled ? <><Play size={13} /> {t("Continuar")}</> : <><ChevronRight size={13} /> {t("Ver curso")}</>}
                         </Button>
                       </div>
                     );
                   })}
                 </div>
                 {coursesInCol.length === 0 && (
-                  <p className="text-sm text-muted-light text-center py-4">Adicione cursos à trilha para ver o preview.</p>
+                  <p className="text-sm text-muted-light text-center py-4">{t("Adicione cursos à trilha para ver o preview.")}</p>
                 )}
               </div>
             )}
@@ -265,7 +265,7 @@ export function CollectionsManager({
             {expanded[col.id] && (
               <div className="border-t border-border/50">
                 {coursesInCol.length === 0 && (
-                  <p className="px-5 py-4 text-sm text-muted-light">Nenhum curso nesta trilha.</p>
+                  <p className="px-5 py-4 text-sm text-muted-light">{t("Nenhum curso nesta trilha.")}</p>
                 )}
                 {coursesInCol.map((cc: any, i: number) => {
                   const course = cc.courses ?? allCourses.find((c) => c.id === cc.course_id);
@@ -295,7 +295,7 @@ export function CollectionsManager({
                       defaultValue=""
                       onChange={(e) => { if (e.target.value) handleAddCourse(col.id, e.target.value); }}
                     >
-                      <option value="">Selecionar curso...</option>
+                      <option value="">{t("Selecionar curso...")}</option>
                       {available.map((c) => (
                         <option key={c.id} value={c.id}>{c.titulo}</option>
                       ))}
@@ -307,7 +307,7 @@ export function CollectionsManager({
                     className="w-full flex items-center gap-2 px-5 py-2.5 text-sm text-muted-light hover:text-amber-400 hover:bg-amber-500/5 transition-colors"
                     onClick={() => setAddingCourse(col.id)}
                   >
-                    <Plus size={13} /> Adicionar curso
+                    <Plus size={13} /> {t("Adicionar curso")}
                   </button>
                 )}
               </div>

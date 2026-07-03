@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
+import { useT } from "@/lib/i18n/ui";
 import {
   GraduationCap, Users, DollarSign, Award, Wallet, TrendingUp,
   ArrowRight, BookOpen,
@@ -22,6 +23,7 @@ interface InstructorDashboardProps {
 }
 
 export function InstructorDashboard({ stats }: InstructorDashboardProps) {
+  const t = useT();
   return (
     <div className="animate-fade-in">
       {/* Header */}
@@ -31,8 +33,8 @@ export function InstructorDashboard({ stats }: InstructorDashboardProps) {
             <GraduationCap size={22} className="text-amber-400" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground">Painel do Instrutor</h1>
-            <p className="text-sm text-muted-light">Acompanhe seus cursos, alunos e comissões</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-foreground">{t("Painel do Instrutor")}</h1>
+            <p className="text-sm text-muted-light">{t("Acompanhe seus cursos, alunos e comissões")}</p>
           </div>
         </div>
       </div>
@@ -42,37 +44,37 @@ export function InstructorDashboard({ stats }: InstructorDashboardProps) {
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           <KpiCard
             icon={<BookOpen size={20} className="text-amber-400" />}
-            label="Meus Cursos"
+            label={t("Meus Cursos")}
             value={stats.totalCursos}
             bg="bg-amber-500/10"
           />
           <KpiCard
             icon={<Users size={20} className="text-blue-400" />}
-            label="Total de Alunos"
+            label={t("Total de Alunos")}
             value={stats.totalAlunos}
             bg="bg-blue-500/10"
           />
           <KpiCard
             icon={<DollarSign size={20} className="text-emerald-400" />}
-            label="Receita Bruta"
+            label={t("Receita Bruta")}
             value={formatCurrency(stats.receitaBruta)}
             bg="bg-emerald-500/10"
           />
           <KpiCard
             icon={<Award size={20} className="text-purple-400" />}
-            label="Certificados Emitidos"
+            label={t("Certificados Emitidos")}
             value={stats.totalCertificados}
             bg="bg-purple-500/10"
           />
           <KpiCard
             icon={<Wallet size={20} className="text-green-400" />}
-            label="Comissão Total"
+            label={t("Comissão Total")}
             value={formatCurrency(stats.comissaoTotal)}
             bg="bg-green-500/10"
           />
           <KpiCard
             icon={<TrendingUp size={20} className="text-orange-400" />}
-            label="Comissão Pendente"
+            label={t("Comissão Pendente")}
             value={formatCurrency(stats.comissaoPendente)}
             bg="bg-orange-500/10"
           />
@@ -81,9 +83,9 @@ export function InstructorDashboard({ stats }: InstructorDashboardProps) {
         {/* Meus Cursos */}
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-foreground">Meus Cursos</h2>
+            <h2 className="text-lg font-bold text-foreground">{t("Meus Cursos")}</h2>
             <Link href="/admin/cursos" className="text-sm text-amber-400 hover:underline flex items-center gap-1">
-              Ver todos <ArrowRight size={14} />
+              {t("Ver todos")} <ArrowRight size={14} />
             </Link>
           </div>
 
@@ -91,8 +93,8 @@ export function InstructorDashboard({ stats }: InstructorDashboardProps) {
             <Card>
               <CardContent className="py-12 text-center">
                 <GraduationCap size={40} className="mx-auto text-muted-light mb-3" />
-                <p className="text-muted-light">Você ainda não tem cursos atribuídos.</p>
-                <p className="text-xs text-muted-light mt-1">O administrador precisa criar um curso vinculado a você.</p>
+                <p className="text-muted-light">{t("Você ainda não tem cursos atribuídos.")}</p>
+                <p className="text-xs text-muted-light mt-1">{t("O administrador precisa criar um curso vinculado a você.")}</p>
               </CardContent>
             </Card>
           ) : (
@@ -106,7 +108,7 @@ export function InstructorDashboard({ stats }: InstructorDashboardProps) {
                       </h3>
                       <div className="flex items-center gap-2">
                         <Badge variant={curso.tipo === "free" ? "free" : "default"}>
-                          {curso.tipo === "free" ? "Grátis" : formatCurrency(curso.preco ?? 0)}
+                          {curso.tipo === "free" ? t("Grátis") : formatCurrency(curso.preco ?? 0)}
                         </Badge>
                       </div>
                     </CardContent>
@@ -126,8 +128,8 @@ export function InstructorDashboard({ stats }: InstructorDashboardProps) {
                   <Users size={24} className="text-blue-400" />
                 </div>
                 <div>
-                  <p className="font-semibold text-foreground">Meus Alunos</p>
-                  <p className="text-sm text-muted-light">Ver alunos matriculados nos seus cursos</p>
+                  <p className="font-semibold text-foreground">{t("Meus Alunos")}</p>
+                  <p className="text-sm text-muted-light">{t("Ver alunos matriculados nos seus cursos")}</p>
                 </div>
                 <ArrowRight size={18} className="text-muted-light ml-auto shrink-0" />
               </CardContent>
@@ -140,8 +142,8 @@ export function InstructorDashboard({ stats }: InstructorDashboardProps) {
                   <Wallet size={24} className="text-green-400" />
                 </div>
                 <div>
-                  <p className="font-semibold text-foreground">Minhas Comissões</p>
-                  <p className="text-sm text-muted-light">Acompanhe seus ganhos e pagamentos</p>
+                  <p className="font-semibold text-foreground">{t("Minhas Comissões")}</p>
+                  <p className="text-sm text-muted-light">{t("Acompanhe seus ganhos e pagamentos")}</p>
                 </div>
                 <ArrowRight size={18} className="text-muted-light ml-auto shrink-0" />
               </CardContent>

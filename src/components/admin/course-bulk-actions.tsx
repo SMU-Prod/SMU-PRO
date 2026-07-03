@@ -32,6 +32,7 @@ interface Course {
 
 export function CourseBulkActions({ courses }: { courses: Course[] }) {
   const router = useRouter();
+  const t = useT();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
 
@@ -73,7 +74,7 @@ export function CourseBulkActions({ courses }: { courses: Course[] }) {
               ? <CheckSquare size={16} className="text-amber-400" />
               : <Square size={16} className="text-muted-light" />}
             <span className="hidden sm:inline">
-              {selected.size > 0 ? `${selected.size} selecionado${selected.size > 1 ? "s" : ""}` : "Selecionar todos"}
+              {selected.size > 0 ? `${selected.size} ${selected.size > 1 ? t("selecionados") : t("selecionado")}` : t("Selecionar todos")}
             </span>
             <span className="sm:hidden">
               {selected.size > 0 ? selected.size : ""}
@@ -92,7 +93,7 @@ export function CourseBulkActions({ courses }: { courses: Course[] }) {
 
         {selected.size > 0 && (
           <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-light hidden sm:inline">{selected.size} curso{selected.size > 1 ? "s" : ""}</span>
+            <span className="text-xs text-muted-light hidden sm:inline">{selected.size} {selected.size > 1 ? t("cursos") : t("curso")}</span>
             <Button
               size="sm"
               variant="secondary"
@@ -100,7 +101,7 @@ export function CourseBulkActions({ courses }: { courses: Course[] }) {
               onClick={() => handleBulkActivate(false)}
               className="h-7 text-xs gap-1"
             >
-              <EyeOff size={12} /> Desativar
+              <EyeOff size={12} /> {t("Desativar")}
             </Button>
             <Button
               size="sm"
@@ -108,13 +109,13 @@ export function CourseBulkActions({ courses }: { courses: Course[] }) {
               onClick={() => handleBulkActivate(true)}
               className="h-7 text-xs gap-1"
             >
-              <Zap size={12} /> Publicar
+              <Zap size={12} /> {t("Publicar")}
             </Button>
           </div>
         )}
 
         {selected.size === 0 && (
-          <span className="text-xs text-muted-light">{courses.length} curso{courses.length !== 1 ? "s" : ""}</span>
+          <span className="text-xs text-muted-light">{courses.length} {courses.length !== 1 ? t("cursos") : t("curso")}</span>
         )}
       </div>
 
@@ -149,7 +150,7 @@ function CourseAdminCard({
 
   const handleClone = async (e: React.MouseEvent) => {
     e.preventDefault();
-    if (!confirm(`Clonar o curso "${c.titulo}"?`)) return;
+    if (!confirm(`${t("Clonar o curso")} "${c.titulo}"?`)) return;
     setCloning(true);
     try {
       await adminDuplicateCourse(c.id);
@@ -162,16 +163,16 @@ function CourseAdminCard({
   const handleDelete = async (e: React.MouseEvent) => {
     e.preventDefault();
     if (c.total_alunos > 0) {
-      alert(`Este curso tem ${c.total_alunos} aluno${c.total_alunos > 1 ? "s" : ""} matriculado${c.total_alunos > 1 ? "s" : ""}. Desative-o primeiro ou remova as matrículas.`);
+      alert(`${t("Este curso tem")} ${c.total_alunos} ${c.total_alunos > 1 ? t("alunos") : t("aluno")} ${c.total_alunos > 1 ? t("matriculados") : t("matriculado")}. ${t("Desative-o primeiro ou remova as matrículas.")}`);
       return;
     }
-    if (!confirm(`Tem certeza que deseja apagar "${c.titulo}"? Esta ação não pode ser desfeita.`)) return;
+    if (!confirm(`${t("Tem certeza que deseja apagar")} "${c.titulo}"? ${t("Esta ação não pode ser desfeita.")}`)) return;
     setDeleting(true);
     try {
       await adminDeleteCourse(c.id);
       router.refresh();
     } catch {
-      alert("Erro ao apagar curso. Verifique se não há dados vinculados.");
+      alert(t("Erro ao apagar curso. Verifique se não há dados vinculados."));
     } finally {
       setDeleting(false);
     }
@@ -196,7 +197,7 @@ function CourseAdminCard({
         <button
           onClick={onSelect}
           className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity"
-          title="Selecionar"
+          title={t("Selecionar")}
         >
           {selected
             ? <CheckSquare size={18} className="text-amber-400 drop-shadow-sm" />
@@ -211,7 +212,7 @@ function CourseAdminCard({
         <div className="absolute top-2 right-2 flex gap-1.5">
           <Badge variant={c.nivel as any} className="text-[10px]">{t(getLevelLabel(c.nivel))}</Badge>
           <Badge variant={c.ativo ? "success" : "secondary"} className="text-[10px]">
-            {c.ativo ? "Ativo" : "Rascunho"}
+            {c.ativo ? t("Ativo") : t("Rascunho")}
           </Badge>
         </div>
       </div>
@@ -222,7 +223,7 @@ function CourseAdminCard({
           <div className="flex items-start justify-between gap-2">
             <h3 className="font-semibold text-foreground text-sm leading-tight line-clamp-2">{c.titulo}</h3>
             <Badge variant={c.tipo === "pago" ? "default" : "free"} className="text-[10px] shrink-0">
-              {c.tipo === "pago" ? (c.preco ? formatCurrency(c.preco) : "Pago") : c.tipo === "free" ? "Grátis" : "MIT"}
+              {c.tipo === "pago" ? (c.preco ? formatCurrency(c.preco) : t("Pago")) : c.tipo === "free" ? t("Grátis") : "MIT"}
             </Badge>
           </div>
           <p className="text-xs text-muted-light mt-1">{t(getCategoryLabel(c.categoria))}</p>
@@ -232,15 +233,15 @@ function CourseAdminCard({
         <div className="grid grid-cols-3 gap-2 text-center">
           <div className="bg-surface-2 rounded-lg py-2">
             <p className="text-sm font-bold text-foreground">{c.total_aulas}</p>
-            <p className="text-[10px] text-muted-light">Aulas</p>
+            <p className="text-[10px] text-muted-light">{t("Aulas")}</p>
           </div>
           <div className="bg-surface-2 rounded-lg py-2">
             <p className="text-sm font-bold text-foreground">{c.total_alunos}</p>
-            <p className="text-[10px] text-muted-light">Alunos</p>
+            <p className="text-[10px] text-muted-light">{t("Alunos")}</p>
           </div>
           <div className="bg-surface-2 rounded-lg py-2">
             <p className="text-sm font-bold text-amber-600">{c.total_certificados}</p>
-            <p className="text-[10px] text-muted-light">Certs.</p>
+            <p className="text-[10px] text-muted-light">{t("Certs.")}</p>
           </div>
         </div>
 
@@ -248,7 +249,7 @@ function CourseAdminCard({
         {c.progresso_medio != null && (
           <div>
             <div className="flex justify-between text-[10px] text-muted-light mb-1">
-              <span>Progresso médio</span>
+              <span>{t("Progresso médio")}</span>
               <span>{c.progresso_medio}%</span>
             </div>
             <Progress value={c.progresso_medio} className="h-1.5" />
@@ -260,23 +261,23 @@ function CourseAdminCard({
           <CourseToggle id={c.id} ativo={c.ativo} />
           <Link href={`/admin/cursos/${c.id}`} className="flex-1">
             <Button variant="secondary" size="sm" className="w-full gap-1.5">
-              <Layers size={13} /> Módulos
+              <Layers size={13} /> {t("Módulos")}
             </Button>
           </Link>
           <StudentPreviewButton course={c} />
           <Link href={`/admin/cursos/${c.id}?tab=informacoes`}>
-            <Button variant="ghost" size="icon" className="h-8 w-8" title="Editar informações">
+            <Button variant="ghost" size="icon" className="h-8 w-8" title={t("Editar informações")}>
               <Edit size={14} />
             </Button>
           </Link>
-          <Button variant="ghost" size="icon" className="h-8 w-8" title="Clonar curso" loading={cloning} onClick={handleClone}>
+          <Button variant="ghost" size="icon" className="h-8 w-8" title={t("Clonar curso")} loading={cloning} onClick={handleClone}>
             <Copy size={14} />
           </Button>
           <Button
             variant="ghost"
             size="icon"
             className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-500/10"
-            title="Apagar curso"
+            title={t("Apagar curso")}
             loading={deleting}
             onClick={handleDelete}
           >

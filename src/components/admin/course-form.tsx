@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { FileUploader } from "@/components/admin/file-uploader";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n/ui";
 import {
   Check, ChevronRight, Info, Settings, Eye, EyeOff, Star,
   AlertCircle, Layers, Plus, Video, FileText, BookOpen,
@@ -82,6 +83,7 @@ interface ModuleDraft {
 // ── Main component ────────────────────────────────────────────
 
 export function CourseForm({ course }: { course?: Course }) {
+  const t = useT();
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -230,7 +232,7 @@ export function CourseForm({ course }: { course?: Course }) {
                     {done ? <Check size={15} /> : sid}
                   </button>
                   <span className={cn("text-[10px] font-medium whitespace-nowrap", active ? "text-amber-400" : done ? "text-muted" : "text-muted-light")}>
-                    {label}
+                    {t(label)}
                   </span>
                 </div>
                 {i < 3 && (
@@ -253,38 +255,38 @@ export function CourseForm({ course }: { course?: Course }) {
         {/* ── STEP 1 ── */}
         {step === 1 && (
           <div className="space-y-6">
-            <StepHeader title="Identidade do Curso" desc="Nome, categoria e tipo de acesso." />
+            <StepHeader title={t("Identidade do Curso")} desc={t("Nome, categoria e tipo de acesso.")} />
             <div className="space-y-4">
-              <Field label="Título do curso *">
-                <Input {...register("titulo")} onChange={handleTituloChange} placeholder="Ex: Fundamentos de Áudio ao Vivo" error={errors.titulo?.message} />
+              <Field label={t("Título do curso *")}>
+                <Input {...register("titulo")} onChange={handleTituloChange} placeholder={t("Ex: Fundamentos de Áudio ao Vivo")} error={errors.titulo?.message} />
               </Field>
-              <Field label="Slug (URL) *">
+              <Field label={t("Slug (URL) *")}>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-light">/cursos/</span>
                   <Input {...register("slug")} className="pl-16" placeholder="fundamentos-audio-ao-vivo" error={errors.slug?.message} />
                 </div>
               </Field>
-              <Field label="Descrição curta">
-                <Input {...register("descricao_curta")} placeholder="Resumo de até 160 caracteres" />
+              <Field label={t("Descrição curta")}>
+                <Input {...register("descricao_curta")} placeholder={t("Resumo de até 160 caracteres")} />
               </Field>
 
-              <Field label="Nível *">
+              <Field label={t("Nível *")}>
                 <div className="grid grid-cols-3 gap-3">
                   {NIVEIS.map((n) => (
                     <button key={n.value} type="button" onClick={() => setValue("nivel", n.value)}
                       className={cn("rounded-xl border-2 p-3 text-left transition-all",
                         nivel === n.value ? `${n.color} border-current` : "border-border bg-surface hover:border-border-strong"
                       )}>
-                      <Badge variant={n.value as any} className="text-[10px] mb-1.5">{n.label}</Badge>
-                      <p className="text-xs text-muted-light leading-tight">{n.desc}</p>
+                      <Badge variant={n.value as any} className="text-[10px] mb-1.5">{t(n.label)}</Badge>
+                      <p className="text-xs text-muted-light leading-tight">{t(n.desc)}</p>
                     </button>
                   ))}
                 </div>
               </Field>
 
-              <Field label={allowMultiCategory ? "Categorias * (selecione várias)" : "Categoria *"}>
+              <Field label={allowMultiCategory ? t("Categorias * (selecione várias)") : t("Categoria *")}>
                 {allowMultiCategory && (
-                  <p className="text-xs text-muted-light mb-2">Cursos {nivel} podem ter múltiplas matérias. Clique para selecionar/deselecionar.</p>
+                  <p className="text-xs text-muted-light mb-2">{t("Cursos")} {nivel} {t("podem ter múltiplas matérias. Clique para selecionar/deselecionar.")}</p>
                 )}
                 <div className="grid grid-cols-3 gap-2">
                   {CATEGORIAS.map(([val, label]) => {
@@ -297,7 +299,7 @@ export function CourseForm({ course }: { course?: Course }) {
                           isSelected ? "border-amber-500 bg-amber-500/10 text-amber-400" : "border-border bg-surface text-muted hover:border-amber-500/20"
                         )}>
                         <CategoryIcon category={val} size={14} />
-                        <span className="truncate text-xs">{label}</span>
+                        <span className="truncate text-xs">{t(label)}</span>
                         {allowMultiCategory && isSelected && <Check size={12} className="ml-auto text-amber-400" />}
                       </button>
                     );
@@ -305,23 +307,23 @@ export function CourseForm({ course }: { course?: Course }) {
                 </div>
               </Field>
 
-              <Field label="Tipo de Acesso *">
+              <Field label={t("Tipo de Acesso *")}>
                 <div className="grid grid-cols-3 gap-3">
-                  {TIPOS.map((t) => (
-                    <button key={t.value} type="button" onClick={() => setValue("tipo", t.value)}
+                  {TIPOS.map((tp) => (
+                    <button key={tp.value} type="button" onClick={() => setValue("tipo", tp.value)}
                       className={cn("rounded-xl border-2 p-3 text-left transition-all",
-                        tipo === t.value ? "border-amber-500 bg-amber-500/10" : "border-border bg-surface hover:border-border-strong"
+                        tipo === tp.value ? "border-amber-500 bg-amber-500/10" : "border-border bg-surface hover:border-border-strong"
                       )}>
-                      <t.icon size={20} className="text-muted-light" />
-                      <p className="text-sm font-medium text-foreground mt-1">{t.label}</p>
-                      <p className="text-xs text-muted-light leading-tight mt-0.5">{t.desc}</p>
+                      <tp.icon size={20} className="text-muted-light" />
+                      <p className="text-sm font-medium text-foreground mt-1">{t(tp.label)}</p>
+                      <p className="text-xs text-muted-light leading-tight mt-0.5">{t(tp.desc)}</p>
                     </button>
                   ))}
                 </div>
               </Field>
 
               {tipo === "pago" && (
-                <Field label="Preço (R$) *">
+                <Field label={t("Preço (R$) *")}>
                   <Input type="number" step="0.01" {...register("preco")} placeholder="97.00" />
                 </Field>
               )}
@@ -331,7 +333,7 @@ export function CourseForm({ course }: { course?: Course }) {
                 const ok = await form.trigger(["titulo", "slug", "nivel", "categoria"]);
                 if (ok) setStep(2);
               }}>
-                Próximo <ChevronRight size={15} />
+                {t("Próximo")} <ChevronRight size={15} />
               </Button>
             </div>
           </div>
@@ -340,9 +342,9 @@ export function CourseForm({ course }: { course?: Course }) {
         {/* ── STEP 2 ── */}
         {step === 2 && (
           <div className="space-y-6">
-            <StepHeader title="Mídia e Conteúdo" desc="Thumbnail, descrição e trailer." />
+            <StepHeader title={t("Mídia e Conteúdo")} desc={t("Thumbnail, descrição e trailer.")} />
             <div className="space-y-5">
-              <Field label="Thumbnail do Curso">
+              <Field label={t("Thumbnail do Curso")}>
                 {thumbnail_url ? (
                   <div className="rounded-xl overflow-hidden border border-border h-40 relative">
                     <img src={thumbnail_url} alt="" className="w-full h-full object-cover" />
@@ -357,42 +359,42 @@ export function CourseForm({ course }: { course?: Course }) {
                       accept={{ "image/*": [".jpg", ".jpeg", ".png", ".webp"] }}
                       bucket="course-thumbnails"
                       folder="thumbnails"
-                      label="Enviar thumbnail do curso"
-                      hint="JPG, PNG, WEBP · 1280×720px recomendado · Máx. 10MB"
+                      label={t("Enviar thumbnail do curso")}
+                      hint={t("JPG, PNG, WEBP · 1280×720px recomendado · Máx. 10MB")}
                       maxSizeMB={10}
                       imagePreview
                       onUpload={(url) => setValue("thumbnail_url", url)}
                     />
-                    <p className="text-xs text-muted-light mt-1.5">Ou cole uma URL:</p>
+                    <p className="text-xs text-muted-light mt-1.5">{t("Ou cole uma URL:")}</p>
                     <Input {...register("thumbnail_url")} placeholder="https://..." className="mt-1" />
                   </>
                 )}
               </Field>
 
-              <Field label="Descrição Completa">
+              <Field label={t("Descrição Completa")}>
                 <textarea
                   {...register("descricao")}
-                  placeholder="Descreva o conteúdo, o que o aluno vai aprender, pré-requisitos..."
+                  placeholder={t("Descreva o conteúdo, o que o aluno vai aprender, pré-requisitos...")}
                   className="w-full min-h-[140px] rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground placeholder:text-muted-light focus:outline-none focus:border-amber-500 resize-none"
                 />
               </Field>
 
               <div className="grid grid-cols-2 gap-4">
-                <Field label="YouTube ID do Trailer">
+                <Field label={t("YouTube ID do Trailer")}>
                   <Input {...register("trailer_youtube_id")} placeholder="dQw4w9WgXcQ" />
                 </Field>
-                <Field label="Carga Horária (min)">
+                <Field label={t("Carga Horária (min)")}>
                   <Input type="number" {...register("carga_horaria")} placeholder="120" />
-                  <p className="text-xs text-muted-light mt-1">Aparece no certificado</p>
+                  <p className="text-xs text-muted-light mt-1">{t("Aparece no certificado")}</p>
                 </Field>
               </div>
             </div>
             <div className="flex justify-between">
-              <Button type="button" variant="ghost" onClick={() => setStep(1)}>Voltar</Button>
+              <Button type="button" variant="ghost" onClick={() => setStep(1)}>{t("Voltar")}</Button>
               <Button type="button" onClick={async () => {
                 const ok = await form.trigger(["thumbnail_url", "trailer_youtube_id"]);
                 if (ok) setStep(3);
-              }}>Próximo <ChevronRight size={15} /></Button>
+              }}>{t("Próximo")} <ChevronRight size={15} /></Button>
             </div>
           </div>
         )}
@@ -400,28 +402,28 @@ export function CourseForm({ course }: { course?: Course }) {
         {/* ── STEP 3 ── */}
         {step === 3 && (
           <div className="space-y-6">
-            <StepHeader title="Configurações" desc="Visibilidade e destaque." />
+            <StepHeader title={t("Configurações")} desc={t("Visibilidade e destaque.")} />
             <div className="space-y-3">
               <ToggleCard active={ativo} onToggle={() => setValue("ativo", !ativo)}
                 activeIcon={<Eye size={18} />} inactiveIcon={<EyeOff size={18} />}
-                title={ativo ? "Publicado" : "Rascunho"}
-                desc={ativo ? "Visível para alunos elegíveis." : "Invisível para alunos. Edite com calma."}
+                title={ativo ? t("Publicado") : t("Rascunho")}
+                desc={ativo ? t("Visível para alunos elegíveis.") : t("Invisível para alunos. Edite com calma.")}
                 activeColor="bg-amber-500" activeBorder="border-amber-500" activeBg="bg-amber-500/10" />
               <ToggleCard active={destaque} onToggle={() => setValue("destaque", !destaque)}
                 activeIcon={<Star size={18} />} inactiveIcon={<Star size={18} />}
-                title="Curso em Destaque" desc="Aparece no topo da listagem e na home."
+                title={t("Curso em Destaque")} desc={t("Aparece no topo da listagem e na home.")}
                 activeColor="bg-amber-400" activeBorder="border-amber-400" activeBg="bg-amber-50" />
-              <Field label="Ordem de exibição">
+              <Field label={t("Ordem de exibição")}>
                 <Input type="number" {...register("ordem")} placeholder="0" className="w-32" />
-                <p className="text-xs text-muted-light mt-1">Número menor = aparece primeiro.</p>
+                <p className="text-xs text-muted-light mt-1">{t("Número menor = aparece primeiro.")}</p>
               </Field>
             </div>
             <div className="flex justify-between">
-              <Button type="button" variant="ghost" onClick={() => setStep(2)}>Voltar</Button>
+              <Button type="button" variant="ghost" onClick={() => setStep(2)}>{t("Voltar")}</Button>
               <Button type="button" onClick={async () => {
                 const ok = await form.trigger(["tipo", "preco"]);
                 if (ok) setStep(4);
-              }}>Revisar <ChevronRight size={15} /></Button>
+              }}>{t("Revisar")} <ChevronRight size={15} /></Button>
             </div>
           </div>
         )}
@@ -429,19 +431,19 @@ export function CourseForm({ course }: { course?: Course }) {
         {/* ── STEP 4 ── */}
         {step === 4 && (
           <div className="space-y-6">
-            <StepHeader title="Revisar e Criar" desc="Confira tudo antes de salvar." />
+            <StepHeader title={t("Revisar e Criar")} desc={t("Confira tudo antes de salvar.")} />
 
             <CoursePreviewCard watch={watch} />
 
             <div className="rounded-xl border border-border bg-surface-2 p-4 space-y-2">
-              <p className="text-xs font-semibold text-muted-light uppercase tracking-wide mb-3">Checklist</p>
+              <p className="text-xs font-semibold text-muted-light uppercase tracking-wide mb-3">{t("Checklist")}</p>
               {[
-                { label: "Título preenchido", ok: !!watch("titulo") },
-                { label: "Slug definido", ok: !!watch("slug") },
-                { label: "Categoria e nível", ok: !!watch("categoria") && !!watch("nivel") },
-                { label: "Tipo de acesso", ok: !!watch("tipo") },
-                { label: "Thumbnail", ok: !!watch("thumbnail_url"), optional: true },
-                { label: "Descrição curta", ok: !!watch("descricao_curta"), optional: true },
+                { label: t("Título preenchido"), ok: !!watch("titulo") },
+                { label: t("Slug definido"), ok: !!watch("slug") },
+                { label: t("Categoria e nível"), ok: !!watch("categoria") && !!watch("nivel") },
+                { label: t("Tipo de acesso"), ok: !!watch("tipo") },
+                { label: t("Thumbnail"), ok: !!watch("thumbnail_url"), optional: true },
+                { label: t("Descrição curta"), ok: !!watch("descricao_curta"), optional: true },
               ].map((item) => (
                 <div key={item.label} className="flex items-center gap-2 text-sm">
                   <div className={cn("h-4 w-4 rounded-full flex items-center justify-center shrink-0",
@@ -450,24 +452,24 @@ export function CourseForm({ course }: { course?: Course }) {
                     {item.ok && <Check size={10} className="text-foreground" />}
                   </div>
                   <span className={item.ok ? "text-muted" : item.optional ? "text-muted-light" : "text-amber-700"}>
-                    {item.label}{item.optional && <span className="text-muted-light ml-1">(opcional)</span>}
+                    {item.label}{item.optional && <span className="text-muted-light ml-1">{t("(opcional)")}</span>}
                   </span>
                 </div>
               ))}
             </div>
 
             <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">
-              <Sparkles size={14} className="inline shrink-0 text-blue-600 mr-1" /> Após criar, você será levado para a <strong>Etapa 5</strong> onde adiciona módulos e aulas diretamente.
+              <Sparkles size={14} className="inline shrink-0 text-blue-600 mr-1" /> {t("Após criar, você será levado para a")} <strong>{t("Etapa 5")}</strong> {t("onde adiciona módulos e aulas diretamente.")}
             </div>
 
             <div className="flex justify-between gap-3">
-              <Button type="button" variant="ghost" onClick={() => setStep(3)}>Voltar</Button>
+              <Button type="button" variant="ghost" onClick={() => setStep(3)}>{t("Voltar")}</Button>
               <div className="flex gap-2">
                 <Button type="submit" variant="secondary" loading={loading} onClick={() => setValue("ativo", false)}>
-                  Salvar como Rascunho
+                  {t("Salvar como Rascunho")}
                 </Button>
                 <Button type="submit" loading={loading} onClick={() => setValue("ativo", true)}>
-                  Criar e Publicar
+                  {t("Criar e Publicar")}
                 </Button>
               </div>
             </div>
@@ -484,10 +486,9 @@ export function CourseForm({ course }: { course?: Course }) {
               <Check size={20} className="text-foreground" />
             </div>
             <div>
-              <p className="font-semibold text-emerald-800">Curso criado com sucesso!</p>
+              <p className="font-semibold text-emerald-800">{t("Curso criado com sucesso!")}</p>
               <p className="text-sm text-emerald-700 mt-0.5">
-                Agora crie a estrutura: adicione módulos e as aulas de cada módulo.
-                Você pode detalhar cada aula (vídeo, PDF, quiz) no editor completo depois.
+                {t("Agora crie a estrutura: adicione módulos e as aulas de cada módulo. Você pode detalhar cada aula (vídeo, PDF, quiz) no editor completo depois.")}
               </p>
             </div>
           </div>
@@ -508,7 +509,7 @@ export function CourseForm({ course }: { course?: Course }) {
                     {modIdx + 1}
                   </div>
                   <p className="flex-1 font-medium text-sm text-foreground">{mod.titulo}</p>
-                  <span className="text-xs text-muted-light">{mod.lessons.length} aula{mod.lessons.length !== 1 ? "s" : ""}</span>
+                  <span className="text-xs text-muted-light">{mod.lessons.length} {mod.lessons.length !== 1 ? t("aulas") : t("aula")}</span>
                   <button
                     onClick={(e) => { e.stopPropagation(); setModules((p) => p.filter((m) => m.id !== mod.id)); }}
                     className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-500 transition-opacity p-1"
@@ -551,11 +552,11 @@ export function CourseForm({ course }: { course?: Course }) {
                 value={newModuleName}
                 onChange={(e) => setNewModuleName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && addModule()}
-                placeholder="Nome do módulo... (Enter para adicionar)"
+                placeholder={t("Nome do módulo... (Enter para adicionar)")}
                 className="flex-1 h-10 rounded-xl border border-dashed border-border-strong bg-surface px-4 text-sm text-foreground placeholder:text-muted-light focus:outline-none focus:border-amber-500 transition-colors"
               />
               <Button type="button" variant="secondary" size="sm" loading={savingStructure} onClick={addModule} disabled={!newModuleName.trim()}>
-                <Plus size={14} /> Módulo
+                <Plus size={14} /> {t("Módulo")}
               </Button>
             </div>
           </div>
@@ -563,17 +564,17 @@ export function CourseForm({ course }: { course?: Course }) {
           {modules.length === 0 && (
             <div className="text-center py-8 rounded-xl border border-dashed border-border">
               <Layers size={28} className="text-muted-light mx-auto mb-2" />
-              <p className="text-sm text-muted-light">Digite o nome de um módulo acima e pressione Enter.</p>
-              <p className="text-xs text-muted-light mt-1">Ex: "Fundamentos", "Técnicas Avançadas", "Avaliação Final"</p>
+              <p className="text-sm text-muted-light">{t("Digite o nome de um módulo acima e pressione Enter.")}</p>
+              <p className="text-xs text-muted-light mt-1">{t('Ex: "Fundamentos", "Técnicas Avançadas", "Avaliação Final"')}</p>
             </div>
           )}
 
           <div className="flex items-center justify-between pt-2 border-t border-border/50">
             <p className="text-sm text-muted-light">
-              {modules.length} módulo{modules.length !== 1 ? "s" : ""} · {modules.reduce((a, m) => a + m.lessons.length, 0)} aulas
+              {modules.length} {modules.length !== 1 ? t("módulos") : t("módulo")} · {modules.reduce((a, m) => a + m.lessons.length, 0)} {t("aulas")}
             </p>
             <Button onClick={() => router.push(`/admin/cursos/${createdCourseId}?tab=curriculo`)}>
-              <Rocket size={15} /> Ir para o Editor Completo
+              <Rocket size={15} /> {t("Ir para o Editor Completo")}
             </Button>
           </div>
         </div>
@@ -593,6 +594,7 @@ function AddLessonInline({
   onAdd: (moduleId: string, titulo: string, tipo: string) => void;
   loading: boolean;
 }) {
+  const t = useT();
   const [titulo, setTitulo] = useState("");
   const [tipo, setTipo] = useState("video");
   const submit = () => {
@@ -607,15 +609,15 @@ function AddLessonInline({
         onChange={(e) => setTipo(e.target.value)}
         className="h-7 rounded-lg border border-border bg-surface px-2 text-xs text-muted focus:outline-none"
       >
-        {LESSON_TYPES.map((t) => (
-          <option key={t.value} value={t.value}>{t.label}</option>
+        {LESSON_TYPES.map((lt) => (
+          <option key={lt.value} value={lt.value}>{t(lt.label)}</option>
         ))}
       </select>
       <input
         value={titulo}
         onChange={(e) => setTitulo(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && submit()}
-        placeholder="Nome da aula... (Enter)"
+        placeholder={t("Nome da aula... (Enter)")}
         className="flex-1 h-7 rounded-lg border border-border bg-surface px-2 text-xs text-foreground placeholder:text-muted-light focus:outline-none focus:border-amber-500"
       />
       <button
@@ -668,6 +670,7 @@ function ToggleCard({ active, onToggle, activeIcon, inactiveIcon, title, desc, a
 // ── CoursePreviewCard ─────────────────────────────────────────
 
 function CoursePreviewCard({ watch }: { watch: any }) {
+  const t = useT();
   const titulo = watch("titulo");
   const descricao_curta = watch("descricao_curta");
   const nivel = watch("nivel");
@@ -676,8 +679,8 @@ function CoursePreviewCard({ watch }: { watch: any }) {
   const thumbnail_url = watch("thumbnail_url");
   const preco = watch("preco");
   const nivelColors: Record<string, string> = { trainee: "bg-blue-100 text-blue-700", junior: "bg-emerald-100 text-emerald-700", pleno: "bg-amber-500/15 text-amber-400" };
-  const nivelLabels: Record<string, string> = { trainee: "Trainee", junior: "Junior", pleno: "Pleno" };
-  const tipoLabel = tipo === "pago" ? (preco ? `R$ ${preco}` : "Pago") : tipo === "free" ? "Grátis" : "MIT";
+  const nivelLabels: Record<string, string> = { trainee: t("Trainee"), junior: t("Junior"), pleno: t("Pleno") };
+  const tipoLabel = tipo === "pago" ? (preco ? `R$ ${preco}` : t("Pago")) : tipo === "free" ? t("Grátis") : "MIT";
   return (
     <div className="rounded-2xl border border-border overflow-hidden shadow-sm">
       <div className="h-24 bg-gradient-to-br from-surface-2 to-surface-3 flex items-center justify-center text-4xl relative overflow-hidden">
@@ -690,10 +693,10 @@ function CoursePreviewCard({ watch }: { watch: any }) {
       </div>
       <div className="p-4">
         <div className="flex items-start justify-between gap-2 mb-1">
-          <h3 className="font-semibold text-foreground text-sm">{titulo || "Título do curso"}</h3>
+          <h3 className="font-semibold text-foreground text-sm">{titulo || t("Título do curso")}</h3>
           <span className="text-xs font-medium text-amber-400 shrink-0">{tipoLabel}</span>
         </div>
-        <p className="text-xs text-muted-light">{descricao_curta || "Descrição curta aparecerá aqui..."}</p>
+        <p className="text-xs text-muted-light">{descricao_curta || t("Descrição curta aparecerá aqui...")}</p>
       </div>
     </div>
   );
@@ -702,6 +705,7 @@ function CoursePreviewCard({ watch }: { watch: any }) {
 // ── FlatForm (edição) ─────────────────────────────────────────
 
 function FlatForm({ form, loading, error, onSubmit, onCancel, handleTituloChange, setValue }: any) {
+  const t = useT();
   const { register, watch, formState: { errors } } = form;
   const tipo = watch("tipo");
   const nivel = watch("nivel");
@@ -727,22 +731,22 @@ function FlatForm({ form, loading, error, onSubmit, onCancel, handleTituloChange
           <AlertCircle size={15} className="shrink-0" /> {error}
         </div>
       )}
-      <Section title="Informações Básicas">
-        <Field label="Título *"><Input {...register("titulo")} onChange={handleTituloChange} placeholder="Ex: Fundamentos de Áudio ao Vivo" error={errors.titulo?.message} /></Field>
-        <Field label="Slug (URL) *"><Input {...register("slug")} placeholder="fundamentos-audio-ao-vivo" error={errors.slug?.message} /></Field>
-        <Field label="Descrição Curta"><Input {...register("descricao_curta")} placeholder="Até 160 caracteres" /></Field>
-        <Field label="Descrição Completa">
-          <textarea {...register("descricao")} placeholder="Descreva o conteúdo do curso..." className="w-full min-h-[120px] rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground placeholder:text-muted-light focus:outline-none focus:border-amber-500 resize-none" />
+      <Section title={t("Informações Básicas")}>
+        <Field label={t("Título *")}><Input {...register("titulo")} onChange={handleTituloChange} placeholder={t("Ex: Fundamentos de Áudio ao Vivo")} error={errors.titulo?.message} /></Field>
+        <Field label={t("Slug (URL) *")}><Input {...register("slug")} placeholder="fundamentos-audio-ao-vivo" error={errors.slug?.message} /></Field>
+        <Field label={t("Descrição Curta")}><Input {...register("descricao_curta")} placeholder={t("Até 160 caracteres")} /></Field>
+        <Field label={t("Descrição Completa")}>
+          <textarea {...register("descricao")} placeholder={t("Descreva o conteúdo do curso...")} className="w-full min-h-[120px] rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground placeholder:text-muted-light focus:outline-none focus:border-amber-500 resize-none" />
         </Field>
       </Section>
 
-      <Section title="Classificação">
+      <Section title={t("Classificação")}>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Nível *"><select {...register("nivel")} className={selectCls}><option value="trainee">Trainee</option><option value="junior">Junior</option><option value="pleno">Pleno</option></select></Field>
-          <Field label="Tipo *"><select {...register("tipo")} className={selectCls}><option value="free">Gratuito</option><option value="pago">Pago</option><option value="projeto_cultural">MIT</option></select></Field>
+          <Field label={t("Nível *")}><select {...register("nivel")} className={selectCls}><option value="trainee">{t("Trainee")}</option><option value="junior">{t("Junior")}</option><option value="pleno">{t("Pleno")}</option></select></Field>
+          <Field label={t("Tipo *")}><select {...register("tipo")} className={selectCls}><option value="free">{t("Gratuito")}</option><option value="pago">{t("Pago")}</option><option value="projeto_cultural">MIT</option></select></Field>
         </div>
-        <Field label={allowMultiCat ? "Categorias * (selecione várias)" : "Categoria *"}>
-          {allowMultiCat && <p className="text-xs text-muted-light mb-2">Cursos {nivel} podem ter múltiplas matérias.</p>}
+        <Field label={allowMultiCat ? t("Categorias * (selecione várias)") : t("Categoria *")}>
+          {allowMultiCat && <p className="text-xs text-muted-light mb-2">{t("Cursos")} {nivel} {t("podem ter múltiplas matérias.")}</p>}
           <div className="grid grid-cols-3 gap-2">
             {CATEGORIAS.map(([val, label]) => {
               const isSel = allowMultiCat ? (categorias as string[]).includes(val) : watch("categoria") === val;
@@ -752,17 +756,17 @@ function FlatForm({ form, loading, error, onSubmit, onCancel, handleTituloChange
                     isSel ? "border-amber-500 bg-amber-500/10 text-amber-400" : "border-border bg-surface text-muted hover:border-amber-500/20"
                   )}>
                   <CategoryIcon category={val} size={14} />
-                  <span className="truncate text-xs">{label}</span>
+                  <span className="truncate text-xs">{t(label)}</span>
                   {allowMultiCat && isSel && <Check size={12} className="ml-auto text-amber-400" />}
                 </button>
               );
             })}
           </div>
         </Field>
-        {tipo === "pago" && <Field label="Preço (R$)"><Input type="number" step="0.01" {...register("preco")} placeholder="97.00" className="w-40" /></Field>}
+        {tipo === "pago" && <Field label={t("Preço (R$)")}><Input type="number" step="0.01" {...register("preco")} placeholder="97.00" className="w-40" /></Field>}
       </Section>
 
-      <Section title="Thumbnail">
+      <Section title={t("Thumbnail")}>
         {thumbnail_url ? (
           <div className="rounded-xl overflow-hidden border border-border h-36 relative">
             <img src={thumbnail_url} alt="" className="w-full h-full object-cover" />
@@ -770,28 +774,28 @@ function FlatForm({ form, loading, error, onSubmit, onCancel, handleTituloChange
           </div>
         ) : (
           <>
-            <FileUploader accept={{ "image/*": [".jpg", ".jpeg", ".png", ".webp"] }} bucket="course-thumbnails" folder="thumbnails" label="Enviar nova thumbnail" hint="JPG, PNG, WEBP · 1280×720px" maxSizeMB={10} imagePreview onUpload={(url) => setValue("thumbnail_url", url)} />
-            <Field label="Ou cole a URL"><Input {...register("thumbnail_url")} placeholder="https://..." /></Field>
+            <FileUploader accept={{ "image/*": [".jpg", ".jpeg", ".png", ".webp"] }} bucket="course-thumbnails" folder="thumbnails" label={t("Enviar nova thumbnail")} hint={t("JPG, PNG, WEBP · 1280×720px")} maxSizeMB={10} imagePreview onUpload={(url) => setValue("thumbnail_url", url)} />
+            <Field label={t("Ou cole a URL")}><Input {...register("thumbnail_url")} placeholder="https://..." /></Field>
           </>
         )}
       </Section>
 
-      <Section title="Mídia Adicional">
-        <Field label="YouTube ID do Trailer"><Input {...register("trailer_youtube_id")} placeholder="dQw4w9WgXcQ" /></Field>
-        <Field label="Carga Horária (minutos)"><Input type="number" {...register("carga_horaria")} placeholder="120" className="w-32" /></Field>
+      <Section title={t("Mídia Adicional")}>
+        <Field label={t("YouTube ID do Trailer")}><Input {...register("trailer_youtube_id")} placeholder="dQw4w9WgXcQ" /></Field>
+        <Field label={t("Carga Horária (minutos)")}><Input type="number" {...register("carga_horaria")} placeholder="120" className="w-32" /></Field>
       </Section>
 
-      <Section title="Configurações">
+      <Section title={t("Configurações")}>
         <div className="flex flex-wrap gap-4">
-          <label className="flex items-center gap-2 cursor-pointer select-none"><input type="checkbox" {...register("ativo")} className="h-4 w-4 rounded border-border-strong accent-amber-500" /><span className="text-sm text-muted">Publicado</span></label>
-          <label className="flex items-center gap-2 cursor-pointer select-none"><input type="checkbox" {...register("destaque")} className="h-4 w-4 rounded border-border-strong accent-amber-500" /><span className="text-sm text-muted">Em destaque</span></label>
+          <label className="flex items-center gap-2 cursor-pointer select-none"><input type="checkbox" {...register("ativo")} className="h-4 w-4 rounded border-border-strong accent-amber-500" /><span className="text-sm text-muted">{t("Publicado")}</span></label>
+          <label className="flex items-center gap-2 cursor-pointer select-none"><input type="checkbox" {...register("destaque")} className="h-4 w-4 rounded border-border-strong accent-amber-500" /><span className="text-sm text-muted">{t("Em destaque")}</span></label>
         </div>
-        <Field label="Ordem"><Input type="number" {...register("ordem")} placeholder="0" className="w-24" /></Field>
+        <Field label={t("Ordem")}><Input type="number" {...register("ordem")} placeholder="0" className="w-24" /></Field>
       </Section>
 
       <div className="flex gap-3 pt-2">
-        <Button type="submit" loading={loading} size="lg">Salvar Alterações</Button>
-        <Button type="button" variant="secondary" size="lg" onClick={onCancel}>Cancelar</Button>
+        <Button type="submit" loading={loading} size="lg">{t("Salvar Alterações")}</Button>
+        <Button type="button" variant="secondary" size="lg" onClick={onCancel}>{t("Cancelar")}</Button>
       </div>
     </form>
   );

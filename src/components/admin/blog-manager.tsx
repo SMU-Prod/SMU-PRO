@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn, slugify } from "@/lib/utils";
+import { useT } from "@/lib/i18n/ui";
 import {
   Plus, Edit2, Trash2, Save, X, Eye, EyeOff,
   BookOpen, Clock, ExternalLink, FileText, Monitor,
@@ -45,6 +46,7 @@ interface Post {
 type View = "list" | "editor" | "preview";
 
 export function BlogManager({ initialPosts }: { initialPosts: Post[] }) {
+  const t = useT();
   const router = useRouter();
   const [posts, setPosts] = useState(initialPosts);
   const [view, setView] = useState<View>("list");
@@ -99,7 +101,7 @@ export function BlogManager({ initialPosts }: { initialPosts: Post[] }) {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Apagar este post permanentemente?")) return;
+    if (!confirm(t("Apagar este post permanentemente?"))) return;
     await adminDeletePost(id);
     setPosts((p) => p.filter((post) => post.id !== id));
     router.refresh();
@@ -133,18 +135,18 @@ export function BlogManager({ initialPosts }: { initialPosts: Post[] }) {
     return (
       <div className="space-y-4 max-w-4xl">
         <div className="flex justify-between items-center">
-          <p className="text-sm text-muted-light">{posts.length} posts total</p>
+          <p className="text-sm text-muted-light">{posts.length} {t("posts total")}</p>
           <Button size="sm" onClick={startCreate}>
-            <Plus size={14} /> Novo Post
+            <Plus size={14} /> {t("Novo Post")}
           </Button>
         </div>
 
         {posts.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 text-center rounded-2xl border-2 border-dashed border-border bg-surface">
             <FileText size={40} className="text-muted-light mb-3" />
-            <p className="font-medium text-foreground mb-1">Nenhum post criado</p>
-            <p className="text-sm text-muted-light mb-4">Crie o primeiro artigo para impulsionar o SEO.</p>
-            <Button size="sm" onClick={startCreate}><Plus size={13} /> Criar Post</Button>
+            <p className="font-medium text-foreground mb-1">{t("Nenhum post criado")}</p>
+            <p className="text-sm text-muted-light mb-4">{t("Crie o primeiro artigo para impulsionar o SEO.")}</p>
+            <Button size="sm" onClick={startCreate}><Plus size={13} /> {t("Criar Post")}</Button>
           </div>
         )}
 
@@ -163,14 +165,14 @@ export function BlogManager({ initialPosts }: { initialPosts: Post[] }) {
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="font-semibold text-foreground text-sm truncate">{post.titulo}</h3>
                   <Badge variant={post.publicado ? "success" : "secondary"} className="text-[10px] shrink-0">
-                    {post.publicado ? "Publicado" : "Rascunho"}
+                    {post.publicado ? t("Publicado") : t("Rascunho")}
                   </Badge>
-                  {post.destaque && <Badge variant="warning" className="text-[10px] shrink-0">Destaque</Badge>}
+                  {post.destaque && <Badge variant="warning" className="text-[10px] shrink-0">{t("Destaque")}</Badge>}
                 </div>
                 <div className="flex items-center gap-3 text-xs text-muted-light">
                   <span>{CAT_LABELS[post.categoria] ?? post.categoria}</span>
-                  <span className="flex items-center gap-1"><Clock size={10} /> {post.tempo_leitura} min</span>
-                  <span>{post.views} views</span>
+                  <span className="flex items-center gap-1"><Clock size={10} /> {post.tempo_leitura} {t("min")}</span>
+                  <span>{post.views} {t("views")}</span>
                   <span>{new Date(post.created_at).toLocaleDateString("pt-BR")}</span>
                 </div>
               </div>
@@ -178,25 +180,25 @@ export function BlogManager({ initialPosts }: { initialPosts: Post[] }) {
               <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                 {post.publicado && (
                   <a href={`/blog/${post.slug}`} target="_blank" rel="noopener noreferrer">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" title="Ver post publicado">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" title={t("Ver post publicado")}>
                       <ExternalLink size={13} />
                     </Button>
                   </a>
                 )}
-                <Button variant="ghost" size="icon" className="h-8 w-8" title="Preview"
+                <Button variant="ghost" size="icon" className="h-8 w-8" title={t("Preview")}
                   onClick={() => { startEdit(post); setView("preview"); }}>
                   <Monitor size={13} />
                 </Button>
                 <Button variant="ghost" size="icon" className="h-8 w-8"
-                  title={post.publicado ? "Despublicar" : "Publicar"}
+                  title={post.publicado ? t("Despublicar") : t("Publicar")}
                   onClick={() => handleToggle(post.id, !post.publicado)}>
                   {post.publicado ? <EyeOff size={13} /> : <Eye size={13} />}
                 </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8" title="Editar" onClick={() => startEdit(post)}>
+                <Button variant="ghost" size="icon" className="h-8 w-8" title={t("Editar")} onClick={() => startEdit(post)}>
                   <Edit2 size={13} />
                 </Button>
                 <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-500"
-                  title="Apagar" onClick={() => handleDelete(post.id)}>
+                  title={t("Apagar")} onClick={() => handleDelete(post.id)}>
                   <Trash2 size={13} />
                 </Button>
               </div>
@@ -219,15 +221,15 @@ export function BlogManager({ initialPosts }: { initialPosts: Post[] }) {
         <div className="flex items-center justify-between mb-5 bg-surface rounded-xl border border-border p-3">
           <div className="flex items-center gap-3">
             <Monitor size={16} className="text-amber-400" />
-            <span className="text-sm font-semibold text-foreground">Preview — Visão do Leitor</span>
-            <Badge variant="warning" className="text-[10px]">Simulação</Badge>
+            <span className="text-sm font-semibold text-foreground">{t("Preview — Visão do Leitor")}</span>
+            <Badge variant="warning" className="text-[10px]">{t("Simulação")}</Badge>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={() => setView("editor")}>
-              <Edit2 size={13} /> Editar
+              <Edit2 size={13} /> {t("Editar")}
             </Button>
             <Button variant="ghost" size="sm" onClick={() => { setView("list"); setEditingId(null); resetForm(); }}>
-              <ArrowLeft size={13} /> Voltar
+              <ArrowLeft size={13} /> {t("Voltar")}
             </Button>
           </div>
         </div>
@@ -237,17 +239,17 @@ export function BlogManager({ initialPosts }: { initialPosts: Post[] }) {
           <article className="max-w-3xl mx-auto px-6 py-10">
             {/* Breadcrumb */}
             <nav className="flex items-center gap-2 text-xs text-muted-light mb-8">
-              <span>Home</span><span>/</span><span>Blog</span><span>/</span>
-              <span className="text-muted truncate max-w-[200px]">{form.titulo || "Sem título"}</span>
+              <span>{t("Home")}</span><span>/</span><span>{t("Blog")}</span><span>/</span>
+              <span className="text-muted truncate max-w-[200px]">{form.titulo || t("Sem título")}</span>
             </nav>
 
             {/* Header */}
             <header className="mb-8">
               <div className="flex items-center gap-3 mb-4">
                 <Badge variant="default">{CAT_LABELS[form.categoria] ?? form.categoria}</Badge>
-                <span className="text-xs text-muted-light flex items-center gap-1"><Clock size={12} /> {form.tempo_leitura} min de leitura</span>
+                <span className="text-xs text-muted-light flex items-center gap-1"><Clock size={12} /> {form.tempo_leitura} {t("min de leitura")}</span>
               </div>
-              <h1 className="text-3xl font-black text-foreground leading-tight mb-4">{form.titulo || "Título do post"}</h1>
+              <h1 className="text-3xl font-black text-foreground leading-tight mb-4">{form.titulo || t("Título do post")}</h1>
               {form.resumo && <p className="text-lg text-muted-light leading-relaxed">{form.resumo}</p>}
               <div className="flex items-center gap-4 mt-5 text-xs text-muted-light">
                 <span className="flex items-center gap-1"><Calendar size={12} /> {date}</span>
@@ -283,7 +285,7 @@ export function BlogManager({ initialPosts }: { initialPosts: Post[] }) {
             ) : (
               <div className="py-16 text-center text-muted-light">
                 <FileText size={32} className="mx-auto mb-2" />
-                <p>Nenhum conteúdo ainda. Volte ao editor para escrever.</p>
+                <p>{t("Nenhum conteúdo ainda. Volte ao editor para escrever.")}</p>
               </div>
             )}
 
@@ -298,9 +300,9 @@ export function BlogManager({ initialPosts }: { initialPosts: Post[] }) {
 
             {/* CTA */}
             <div className="mt-10 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6 text-center">
-              <h3 className="font-bold text-foreground mb-2">Quer aprender na prática?</h3>
-              <p className="text-sm text-muted-light mb-4">Explore nossos cursos com certificado, IA e conteúdo interativo.</p>
-              <Button className="pointer-events-none">Ver cursos disponíveis <ChevronRight size={14} /></Button>
+              <h3 className="font-bold text-foreground mb-2">{t("Quer aprender na prática?")}</h3>
+              <p className="text-sm text-muted-light mb-4">{t("Explore nossos cursos com certificado, IA e conteúdo interativo.")}</p>
+              <Button className="pointer-events-none">{t("Ver cursos disponíveis")} <ChevronRight size={14} /></Button>
             </div>
           </article>
         </div>
@@ -315,18 +317,18 @@ export function BlogManager({ initialPosts }: { initialPosts: Post[] }) {
       <div className="flex items-center justify-between mb-5 bg-surface rounded-xl border border-border p-3">
         <div className="flex items-center gap-3">
           <Edit2 size={16} className="text-amber-400" />
-          <span className="text-sm font-semibold text-foreground">{editingId ? "Editar Post" : "Novo Post"}</span>
+          <span className="text-sm font-semibold text-foreground">{editingId ? t("Editar Post") : t("Novo Post")}</span>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" onClick={() => setView("preview")} disabled={!form.titulo}>
-            <Monitor size={13} /> Preview
+            <Monitor size={13} /> {t("Preview")}
           </Button>
           <Button size="sm" loading={loading}
             onClick={() => editingId ? handleUpdate() : handleCreate()}>
-            <Save size={13} /> {editingId ? "Salvar" : "Publicar"}
+            <Save size={13} /> {editingId ? t("Salvar") : t("Publicar")}
           </Button>
           <Button variant="ghost" size="sm" onClick={() => { setView("list"); setEditingId(null); resetForm(); }}>
-            <X size={13} /> Cancelar
+            <X size={13} /> {t("Cancelar")}
           </Button>
         </div>
       </div>
@@ -335,35 +337,35 @@ export function BlogManager({ initialPosts }: { initialPosts: Post[] }) {
         {/* Title + Slug */}
         <div className="space-y-3">
           <div>
-            <label className="block text-xs text-muted-light mb-1.5">Título *</label>
+            <label className="block text-xs text-muted-light mb-1.5">{t("Título *")}</label>
             <Input
               value={form.titulo}
               onChange={(e) => setForm((f) => ({
                 ...f, titulo: e.target.value,
                 ...(!editingId ? { slug: slugify(e.target.value) } : {}),
               }))}
-              placeholder="Título do artigo"
+              placeholder={t("Título do artigo")}
               className="text-lg font-bold h-12"
               autoFocus
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-muted-light mb-1.5">Slug (URL)</label>
+              <label className="block text-xs text-muted-light mb-1.5">{t("Slug (URL)")}</label>
               <Input value={form.slug} onChange={(e) => setForm((f) => ({ ...f, slug: e.target.value }))}
                 placeholder="titulo-do-artigo" />
             </div>
             <div>
-              <label className="block text-xs text-muted-light mb-1.5">Resumo (meta description)</label>
+              <label className="block text-xs text-muted-light mb-1.5">{t("Resumo (meta description)")}</label>
               <Input value={form.resumo} onChange={(e) => setForm((f) => ({ ...f, resumo: e.target.value }))}
-                placeholder="Até 160 caracteres para SEO" maxLength={160} />
+                placeholder={t("Até 160 caracteres para SEO")} maxLength={160} />
             </div>
           </div>
         </div>
 
         {/* Thumbnail */}
         <div>
-          <label className="block text-xs text-muted-light mb-1.5">Thumbnail</label>
+          <label className="block text-xs text-muted-light mb-1.5">{t("Thumbnail")}</label>
           {form.thumbnail_url ? (
             <div className="rounded-xl overflow-hidden border border-border h-40 relative">
               <img src={form.thumbnail_url} alt="" className="w-full h-full object-cover" />
@@ -380,15 +382,15 @@ export function BlogManager({ initialPosts }: { initialPosts: Post[] }) {
                 accept={{ "image/*": [".jpg", ".jpeg", ".png", ".webp"] }}
                 bucket="course-thumbnails"
                 folder="blog"
-                label="Enviar thumbnail"
-                hint="JPG, PNG, WEBP · 1200×630px"
+                label={t("Enviar thumbnail")}
+                hint={t("JPG, PNG, WEBP · 1200×630px")}
                 maxSizeMB={10}
                 imagePreview
                 onUpload={(url) => setForm((f) => ({ ...f, thumbnail_url: url }))}
               />
               <div>
                 <Input value={form.thumbnail_url} onChange={(e) => setForm((f) => ({ ...f, thumbnail_url: e.target.value }))}
-                  placeholder="Ou cole a URL da imagem" />
+                  placeholder={t("Ou cole a URL da imagem")} />
               </div>
             </div>
           )}
@@ -396,7 +398,7 @@ export function BlogManager({ initialPosts }: { initialPosts: Post[] }) {
 
         {/* Rich Text Editor */}
         <div>
-          <label className="block text-xs text-muted-light mb-1.5">Conteúdo *</label>
+          <label className="block text-xs text-muted-light mb-1.5">{t("Conteúdo *")}</label>
           <RichTextEditor
             value={form.conteudo}
             onChange={(html) => setForm((f) => ({ ...f, conteudo: html }))}
@@ -407,32 +409,32 @@ export function BlogManager({ initialPosts }: { initialPosts: Post[] }) {
         {/* Metadata */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div>
-            <label className="block text-xs text-muted-light mb-1.5">Categoria</label>
+            <label className="block text-xs text-muted-light mb-1.5">{t("Categoria")}</label>
             <select value={form.categoria} onChange={(e) => setForm((f) => ({ ...f, categoria: e.target.value }))}
               className="w-full h-9 rounded-lg border border-border bg-surface px-2 text-sm text-foreground focus:outline-none focus:border-amber-500">
               {CATEGORIAS.map((c) => <option key={c} value={c}>{CAT_LABELS[c]}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-xs text-muted-light mb-1.5">Tempo leitura (min)</label>
+            <label className="block text-xs text-muted-light mb-1.5">{t("Tempo leitura (min)")}</label>
             <Input type="number" value={form.tempo_leitura}
               onChange={(e) => setForm((f) => ({ ...f, tempo_leitura: Number(e.target.value) }))} />
           </div>
           <div>
-            <label className="block text-xs text-muted-light mb-1.5">Tags (vírgula)</label>
+            <label className="block text-xs text-muted-light mb-1.5">{t("Tags (vírgula)")}</label>
             <Input value={form.tags} onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))}
-              placeholder="som, iluminação, dicas" />
+              placeholder={t("som, iluminação, dicas")} />
           </div>
           <div className="flex items-end gap-4 pb-1">
             <label className="flex items-center gap-1.5 text-xs text-muted-light cursor-pointer">
               <input type="checkbox" checked={form.publicado}
                 onChange={(e) => setForm((f) => ({ ...f, publicado: e.target.checked }))} className="accent-amber-500" />
-              Publicado
+              {t("Publicado")}
             </label>
             <label className="flex items-center gap-1.5 text-xs text-muted-light cursor-pointer">
               <input type="checkbox" checked={form.destaque}
                 onChange={(e) => setForm((f) => ({ ...f, destaque: e.target.checked }))} className="accent-amber-500" />
-              Destaque
+              {t("Destaque")}
             </label>
           </div>
         </div>
@@ -440,15 +442,15 @@ export function BlogManager({ initialPosts }: { initialPosts: Post[] }) {
         {/* Bottom actions */}
         <div className="flex items-center justify-between pt-4 border-t border-border">
           <Button variant="ghost" size="sm" onClick={() => setView("preview")} disabled={!form.titulo}>
-            <Monitor size={13} /> Preview como leitor
+            <Monitor size={13} /> {t("Preview como leitor")}
           </Button>
           <div className="flex gap-2">
             <Button variant="ghost" size="sm" onClick={() => { setView("list"); setEditingId(null); resetForm(); }}>
-              Cancelar
+              {t("Cancelar")}
             </Button>
             <Button size="sm" loading={loading}
               onClick={() => editingId ? handleUpdate() : handleCreate()}>
-              <Save size={13} /> {editingId ? "Salvar alterações" : "Criar post"}
+              <Save size={13} /> {editingId ? t("Salvar alterações") : t("Criar post")}
             </Button>
           </div>
         </div>

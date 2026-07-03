@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Search, Layers, Users, BarChart3, Settings, Plus, Award, FileText, ArrowRight, Command } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n/ui";
 
 interface CommandItem {
   id: string;
@@ -33,6 +34,7 @@ interface CommandPaletteProps {
 }
 
 export function CommandPalette({ courses = [] }: CommandPaletteProps) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
@@ -64,7 +66,7 @@ export function CommandPalette({ courses = [] }: CommandPaletteProps) {
   const courseCommands: CommandItem[] = courses.map((c) => ({
     id: `course-${c.id}`,
     label: c.titulo,
-    sublabel: `${c.nivel} · ${c.ativo ? "Publicado" : "Rascunho"}`,
+    sublabel: `${c.nivel} · ${c.ativo ? t("Publicado") : t("Rascunho")}`,
     icon: Layers,
     iconColor: "text-amber-400",
     href: `/admin/cursos/${c.id}`,
@@ -122,10 +124,10 @@ export function CommandPalette({ courses = [] }: CommandPaletteProps) {
       <button
         onClick={() => setOpen(true)}
         className="hidden md:flex items-center gap-2 h-8 px-3 rounded-lg border border-border bg-surface text-sm text-muted-light hover:border-amber-500/30 hover:text-muted transition-colors"
-        title="Busca rápida (Ctrl+K)"
+        title={t("Busca rápida (Ctrl+K)")}
       >
         <Search size={13} />
-        <span>Buscar...</span>
+        <span>{t("Buscar...")}</span>
         <div className="ml-2 flex items-center gap-0.5 text-[10px] text-muted-light font-mono">
           <Command size={10} />
           <span>K</span>
@@ -148,7 +150,7 @@ export function CommandPalette({ courses = [] }: CommandPaletteProps) {
                 ref={inputRef}
                 value={query}
                 onChange={(e) => { setQuery(e.target.value); setActiveIndex(0); }}
-                placeholder="Buscar páginas, cursos, ações..."
+                placeholder={t("Buscar páginas, cursos, ações...")}
                 className="flex-1 text-sm text-foreground placeholder:text-muted-light bg-transparent focus:outline-none"
               />
               <kbd className="text-[10px] text-muted-light font-mono border border-border rounded px-1.5 py-0.5">ESC</kbd>
@@ -158,13 +160,13 @@ export function CommandPalette({ courses = [] }: CommandPaletteProps) {
             <div className="max-h-80 overflow-y-auto py-2">
               {filtered.length === 0 ? (
                 <div className="py-8 text-center text-sm text-muted-light">
-                  Nenhum resultado para "<span className="text-muted">{query}</span>"
+                  {t("Nenhum resultado para")} "<span className="text-muted">{query}</span>"
                 </div>
               ) : (
                 Object.entries(grouped).map(([group, items]) => (
                   <div key={group}>
                     <p className="px-4 py-1.5 text-[10px] font-semibold text-muted-light uppercase tracking-wide">
-                      {group}
+                      {t(group)}
                     </p>
                     {items.map((item) => {
                       const Icon = item.icon;
@@ -184,8 +186,8 @@ export function CommandPalette({ courses = [] }: CommandPaletteProps) {
                             <Icon size={15} className={item.iconColor ?? "text-muted-light"} />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-foreground truncate">{item.label}</p>
-                            {item.sublabel && <p className="text-xs text-muted-light truncate">{item.sublabel}</p>}
+                            <p className="text-sm font-medium text-foreground truncate">{t(item.label)}</p>
+                            {item.sublabel && <p className="text-xs text-muted-light truncate">{t(item.sublabel)}</p>}
                           </div>
                           {isActive && <ArrowRight size={13} className="text-amber-400 shrink-0" />}
                         </button>
@@ -198,9 +200,9 @@ export function CommandPalette({ courses = [] }: CommandPaletteProps) {
 
             {/* Footer hint */}
             <div className="border-t border-border/50 px-4 py-2 flex items-center gap-4 text-[10px] text-muted-light">
-              <span><kbd className="font-mono border border-border rounded px-1">↑↓</kbd> navegar</span>
-              <span><kbd className="font-mono border border-border rounded px-1">Enter</kbd> abrir</span>
-              <span><kbd className="font-mono border border-border rounded px-1">Esc</kbd> fechar</span>
+              <span><kbd className="font-mono border border-border rounded px-1">↑↓</kbd> {t("navegar")}</span>
+              <span><kbd className="font-mono border border-border rounded px-1">Enter</kbd> {t("abrir")}</span>
+              <span><kbd className="font-mono border border-border rounded px-1">Esc</kbd> {t("fechar")}</span>
             </div>
           </Dialog.Content>
         </Dialog.Portal>

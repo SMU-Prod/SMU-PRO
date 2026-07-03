@@ -49,7 +49,7 @@ function StudentCourseCard({
         {/* Progress */}
         <div className="mb-4">
           <div className="flex justify-between text-xs text-muted-light mb-1.5">
-            <span>Progresso</span>
+            <span>{t("Progresso")}</span>
             <span>{progress}%</span>
           </div>
           <Progress value={progress} className="h-1.5" />
@@ -61,11 +61,11 @@ function StudentCourseCard({
           className="w-full gap-1.5 pointer-events-none"
         >
           {progress === 0 ? (
-            <><Play size={14} /> Começar</>
+            <><Play size={14} /> {t("Começar")}</>
           ) : progress === 100 ? (
-            <><Trophy size={14} /> Ver certificado</>
+            <><Trophy size={14} /> {t("Ver certificado")}</>
           ) : (
-            <><Play size={14} /> Continuar</>
+            <><Play size={14} /> {t("Continuar")}</>
           )}
         </Button>
       </div>
@@ -84,6 +84,7 @@ function StudentTrilhaCard({
   progress?: number;
   isEnrolled?: boolean;
 }) {
+  const t = useT();
   const isDone = progress === 100;
 
   return (
@@ -125,7 +126,7 @@ function StudentTrilhaCard({
       {isEnrolled && (
         <div className="mb-3">
           <Progress value={progress} className="h-1.5" />
-          <p className="text-xs text-muted-light mt-1">{progress}% concluído</p>
+          <p className="text-xs text-muted-light mt-1">{progress}% {t("concluído")}</p>
         </div>
       )}
 
@@ -135,11 +136,11 @@ function StudentTrilhaCard({
         className="w-full gap-1.5 pointer-events-none"
       >
         {isDone ? (
-          <><Trophy size={13} /> Ver certificado</>
+          <><Trophy size={13} /> {t("Ver certificado")}</>
         ) : isEnrolled ? (
-          <><Play size={13} /> Continuar</>
+          <><Play size={13} /> {t("Continuar")}</>
         ) : (
-          <><ChevronRight size={13} /> Ver curso</>
+          <><ChevronRight size={13} /> {t("Ver curso")}</>
         )}
       </Button>
     </div>
@@ -157,6 +158,7 @@ export function StudentPreviewModal({
   open: boolean;
   onClose: () => void;
 }) {
+  const t = useT();
   const [mockProgress, setMockProgress] = useState(35);
 
   if (!open) return null;
@@ -171,7 +173,7 @@ export function StudentPreviewModal({
         <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-3 border-b border-border bg-background/95 backdrop-blur-sm rounded-t-2xl">
           <div className="flex items-center gap-2">
             <Eye size={16} className="text-amber-400" />
-            <span className="text-sm font-semibold text-foreground">Preview — Visão do Aluno</span>
+            <span className="text-sm font-semibold text-foreground">{t("Preview — Visão do Aluno")}</span>
           </div>
           <button onClick={onClose} className="text-muted-light hover:text-foreground transition-colors">
             <X size={18} />
@@ -182,7 +184,7 @@ export function StudentPreviewModal({
         <div className="p-5 space-y-8">
           {/* Simulated progress slider */}
           <div className="flex items-center gap-4 bg-surface rounded-xl border border-border p-4">
-            <span className="text-xs text-muted-light whitespace-nowrap">Simular progresso:</span>
+            <span className="text-xs text-muted-light whitespace-nowrap">{t("Simular progresso:")}</span>
             <input
               type="range"
               min={0}
@@ -199,7 +201,7 @@ export function StudentPreviewModal({
           <section>
             <h3 className="text-xs font-semibold text-muted-light uppercase tracking-wider mb-3 flex items-center gap-2">
               <BookOpen size={13} />
-              Dashboard → Meus Cursos
+              {t("Dashboard → Meus Cursos")}
             </h3>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
               <StudentCourseCard course={course} progress={mockProgress} />
@@ -210,7 +212,7 @@ export function StudentPreviewModal({
           <section>
             <h3 className="text-xs font-semibold text-muted-light uppercase tracking-wider mb-3 flex items-center gap-2">
               <Play size={13} />
-              Dashboard → Trilha de Aprendizado
+              {t("Dashboard → Trilha de Aprendizado")}
             </h3>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <StudentTrilhaCard course={course} progress={mockProgress} isEnrolled={mockProgress > 0} />
@@ -218,7 +220,7 @@ export function StudentPreviewModal({
               <StudentTrilhaCard course={course} progress={100} isEnrolled={true} />
             </div>
             <p className="text-[10px] text-muted-light mt-2">
-              Esquerda: progresso simulado · Centro: não matriculado · Direita: concluído
+              {t("Esquerda: progresso simulado · Centro: não matriculado · Direita: concluído")}
             </p>
           </section>
         </div>
@@ -230,6 +232,7 @@ export function StudentPreviewModal({
 // ── StudentPreviewButton ─────────────────────────────────────────
 // Botão reutilizável que abre o modal de preview
 export function StudentPreviewButton({ course }: { course: CourseData }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
 
   return (
@@ -238,7 +241,7 @@ export function StudentPreviewButton({ course }: { course: CourseData }) {
         variant="ghost"
         size="icon"
         className="h-8 w-8"
-        title="Preview: como o aluno vê"
+        title={t("Preview: como o aluno vê")}
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(true); }}
       >
         <Eye size={14} />

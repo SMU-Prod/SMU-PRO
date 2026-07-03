@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useT } from "@/lib/i18n/ui";
 import {
   UserPlus,
   Trash2,
@@ -33,6 +34,7 @@ interface Props {
 }
 
 export function PartnerManager({ partners: initialPartners, courses, commissions }: Props) {
+  const t = useT();
   const [partners, setPartners] = useState(initialPartners);
   const [showForm, setShowForm] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -83,7 +85,7 @@ export function PartnerManager({ partners: initialPartners, courses, commissions
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Desativar este parceiro?")) return;
+    if (!confirm(t("Desativar este parceiro?"))) return;
     setLoading(true);
     try {
       await deletePartner(id);
@@ -157,42 +159,42 @@ export function PartnerManager({ partners: initialPartners, courses, commissions
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="rounded-xl bg-surface border border-border px-4 py-3">
           <p className="text-xl font-bold text-foreground">{partners.length}</p>
-          <p className="text-xs text-muted-light">Parceiros</p>
+          <p className="text-xs text-muted-light">{t("Parceiros")}</p>
         </div>
         <div className="rounded-xl bg-surface border border-border px-4 py-3">
           <p className="text-xl font-bold text-amber-500">{commissions.length}</p>
-          <p className="text-xs text-muted-light">Comissões</p>
+          <p className="text-xs text-muted-light">{t("Comissões")}</p>
         </div>
         <div className="rounded-xl bg-surface border border-border px-4 py-3">
           <p className="text-xl font-bold text-emerald-500">
             R$ {totalComissoes.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
           </p>
-          <p className="text-xs text-muted-light">Total pago</p>
+          <p className="text-xs text-muted-light">{t("Total pago")}</p>
         </div>
         <div className="rounded-xl bg-surface border border-border px-4 py-3">
           <p className="text-xl font-bold text-blue-500">
             {partners.filter((p: any) => p.asaas_wallet_id).length}
           </p>
-          <p className="text-xs text-muted-light">Com Wallet Asaas</p>
+          <p className="text-xs text-muted-light">{t("Com Wallet Asaas")}</p>
         </div>
       </div>
 
       {/* Add partner button */}
       <Button onClick={() => setShowForm((v) => !v)} className="gap-2">
         <UserPlus size={16} />
-        {showForm ? "Cancelar" : "Adicionar Parceiro"}
+        {showForm ? t("Cancelar") : t("Adicionar Parceiro")}
       </Button>
 
       {/* New partner form */}
       {showForm && (
         <Card>
           <CardContent className="p-4 space-y-3">
-            <h3 className="text-sm font-semibold text-foreground">Novo Parceiro</h3>
+            <h3 className="text-sm font-semibold text-foreground">{t("Novo Parceiro")}</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input className={inputClass} placeholder="Nome completo *" value={nome} onChange={(e) => setNome(e.target.value)} />
-              <input className={inputClass} placeholder="Email *" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-              <input className={inputClass} placeholder="CPF" value={cpf} onChange={(e) => setCpf(e.target.value)} />
-              <input className={inputClass} placeholder="Telefone" value={telefone} onChange={(e) => setTelefone(e.target.value)} />
+              <input className={inputClass} placeholder={t("Nome completo *")} value={nome} onChange={(e) => setNome(e.target.value)} />
+              <input className={inputClass} placeholder={t("Email *")} type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <input className={inputClass} placeholder={t("CPF")} value={cpf} onChange={(e) => setCpf(e.target.value)} />
+              <input className={inputClass} placeholder={t("Telefone")} value={telefone} onChange={(e) => setTelefone(e.target.value)} />
               <div className="flex items-center gap-2">
                 <Percent size={14} className="text-muted-light shrink-0" />
                 <input
@@ -200,23 +202,23 @@ export function PartnerManager({ partners: initialPartners, courses, commissions
                   type="number"
                   min={0}
                   max={80}
-                  placeholder="Comissão padrão %"
+                  placeholder={t("Comissão padrão %")}
                   value={comissao}
                   onChange={(e) => setComissao(Number(e.target.value))}
                 />
               </div>
               <div className="flex items-center gap-2">
                 <Wallet size={14} className="text-muted-light shrink-0" />
-                <input className={inputClass} placeholder="Wallet ID Asaas" value={walletId} onChange={(e) => setWalletId(e.target.value)} />
+                <input className={inputClass} placeholder={t("Wallet ID Asaas")} value={walletId} onChange={(e) => setWalletId(e.target.value)} />
               </div>
             </div>
             <div className="flex gap-2 pt-2">
               <Button onClick={handleCreate} disabled={loading || !nome || !email} className="gap-2">
                 <Save size={14} />
-                Salvar Parceiro
+                {t("Salvar Parceiro")}
               </Button>
               <Button variant="ghost" onClick={resetForm}>
-                Cancelar
+                {t("Cancelar")}
               </Button>
             </div>
           </CardContent>
@@ -245,7 +247,7 @@ export function PartnerManager({ partners: initialPartners, courses, commissions
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-sm font-medium text-foreground">{partner.nome}</p>
                       <Badge variant={partner.asaas_wallet_id ? "success" : "danger"} className="text-[10px]">
-                        {partner.asaas_wallet_id ? "Wallet OK" : "Sem Wallet"}
+                        {partner.asaas_wallet_id ? t("Wallet OK") : t("Sem Wallet")}
                       </Badge>
                     </div>
                     <div className="flex items-center gap-3 text-xs text-muted-light mt-0.5">
@@ -255,7 +257,7 @@ export function PartnerManager({ partners: initialPartners, courses, commissions
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-light">{partner.partner_courses?.length ?? 0} cursos</span>
+                    <span className="text-xs text-muted-light">{partner.partner_courses?.length ?? 0} {t("cursos")}</span>
                     {isExpanded ? <ChevronUp size={16} className="text-muted-light" /> : <ChevronDown size={16} className="text-muted-light" />}
                   </div>
                 </button>
@@ -268,7 +270,7 @@ export function PartnerManager({ partners: initialPartners, courses, commissions
                       <Wallet size={14} className="text-muted-light shrink-0" />
                       <input
                         className={`${inputClass} max-w-xs`}
-                        placeholder="Wallet ID Asaas"
+                        placeholder={t("Wallet ID Asaas")}
                         defaultValue={partner.asaas_wallet_id ?? ""}
                         onBlur={(e) => {
                           if (e.target.value !== (partner.asaas_wallet_id ?? "")) {
@@ -276,12 +278,12 @@ export function PartnerManager({ partners: initialPartners, courses, commissions
                           }
                         }}
                       />
-                      <span className="text-[10px] text-muted-light">Necessário para split automático</span>
+                      <span className="text-[10px] text-muted-light">{t("Necessário para split automático")}</span>
                     </div>
 
                     {/* Current courses */}
                     <div>
-                      <p className="text-xs font-semibold text-muted mb-2">Cursos vinculados:</p>
+                      <p className="text-xs font-semibold text-muted mb-2">{t("Cursos vinculados:")}</p>
                       {partner.partner_courses?.length > 0 ? (
                         <div className="flex flex-wrap gap-2">
                           {partner.partner_courses.map((pc: any) => (
@@ -289,7 +291,7 @@ export function PartnerManager({ partners: initialPartners, courses, commissions
                               key={pc.id}
                               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-400 text-xs border border-amber-500/20"
                             >
-                              {pc.courses?.titulo ?? "Curso"}
+                              {pc.courses?.titulo ?? t("Curso")}
                               <span className="text-amber-300">({pc.comissao_percentual ?? partner.comissao_padrao}%)</span>
                               <button
                                 onClick={() => handleRemoveCourse(partner.id, pc.course_id)}
@@ -301,20 +303,20 @@ export function PartnerManager({ partners: initialPartners, courses, commissions
                           ))}
                         </div>
                       ) : (
-                        <p className="text-xs text-muted-light">Nenhum curso vinculado</p>
+                        <p className="text-xs text-muted-light">{t("Nenhum curso vinculado")}</p>
                       )}
                     </div>
 
                     {/* Assign course */}
                     <div className="flex flex-col sm:flex-row items-start sm:items-end gap-2">
                       <div className="flex-1 min-w-0">
-                        <label className="text-[10px] text-muted-light uppercase tracking-wider font-semibold mb-1 block">Vincular curso</label>
+                        <label className="text-[10px] text-muted-light uppercase tracking-wider font-semibold mb-1 block">{t("Vincular curso")}</label>
                         <select
                           className={inputClass}
                           value={assignCourseId}
                           onChange={(e) => setAssignCourseId(e.target.value)}
                         >
-                          <option value="">Selecione um curso</option>
+                          <option value="">{t("Selecione um curso")}</option>
                           {courses.map((c: any) => (
                             <option key={c.id} value={c.id}>
                               {c.titulo}
@@ -323,7 +325,7 @@ export function PartnerManager({ partners: initialPartners, courses, commissions
                         </select>
                       </div>
                       <div className="w-24">
-                        <label className="text-[10px] text-muted-light uppercase tracking-wider font-semibold mb-1 block">Comissão %</label>
+                        <label className="text-[10px] text-muted-light uppercase tracking-wider font-semibold mb-1 block">{t("Comissão %")}</label>
                         <input
                           className={inputClass}
                           type="number"
@@ -335,7 +337,7 @@ export function PartnerManager({ partners: initialPartners, courses, commissions
                         />
                       </div>
                       <div className="w-24">
-                        <label className="text-[10px] text-muted-light uppercase tracking-wider font-semibold mb-1 block">Indicação %</label>
+                        <label className="text-[10px] text-muted-light uppercase tracking-wider font-semibold mb-1 block">{t("Indicação %")}</label>
                         <input
                           className={inputClass}
                           type="number"
@@ -352,18 +354,18 @@ export function PartnerManager({ partners: initialPartners, courses, commissions
                         className="gap-1"
                       >
                         <Link2 size={12} />
-                        Vincular
+                        {t("Vincular")}
                       </Button>
                     </div>
 
                     {/* Recent commissions */}
                     {partnerCommissions.length > 0 && (
                       <div>
-                        <p className="text-xs font-semibold text-muted mb-2">Últimas comissões:</p>
+                        <p className="text-xs font-semibold text-muted mb-2">{t("Últimas comissões:")}</p>
                         <div className="space-y-1">
                           {partnerCommissions.slice(0, 5).map((c: any) => (
                             <div key={c.id} className="flex items-center justify-between text-xs px-2 py-1.5 rounded-lg bg-surface-2">
-                              <span className="text-muted">{c.courses?.titulo ?? "Curso"}</span>
+                              <span className="text-muted">{c.courses?.titulo ?? t("Curso")}</span>
                               <div className="flex items-center gap-3">
                                 <span className="text-muted-light">
                                   R$ {Number(c.valor_venda).toFixed(2)} × {c.comissao_percentual}%
@@ -394,7 +396,7 @@ export function PartnerManager({ partners: initialPartners, courses, commissions
                         disabled={loading}
                       >
                         <Trash2 size={12} />
-                        Desativar
+                        {t("Desativar")}
                       </Button>
                     </div>
                   </div>
@@ -407,9 +409,9 @@ export function PartnerManager({ partners: initialPartners, courses, commissions
         {partners.length === 0 && (
           <div className="text-center py-12">
             <DollarSign size={40} className="mx-auto text-muted-light mb-3" />
-            <p className="text-foreground font-medium">Nenhum parceiro cadastrado</p>
+            <p className="text-foreground font-medium">{t("Nenhum parceiro cadastrado")}</p>
             <p className="text-sm text-muted-light mt-1">
-              Adicione instrutores parceiros que receberão comissão por cada venda dos cursos deles.
+              {t("Adicione instrutores parceiros que receberão comissão por cada venda dos cursos deles.")}
             </p>
           </div>
         )}

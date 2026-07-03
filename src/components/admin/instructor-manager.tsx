@@ -11,6 +11,7 @@ import {
 } from "@/lib/actions/signatures";
 import { PenTool, Trash2, Plus, UserCheck, Link2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useT } from "@/lib/i18n/ui";
 
 interface Props {
   instructors: any[];
@@ -20,6 +21,7 @@ interface Props {
 }
 
 export function InstructorManager({ instructors, courses, lessons, assignments }: Props) {
+  const t = useT();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [showNewForm, setShowNewForm] = useState(false);
@@ -66,7 +68,7 @@ export function InstructorManager({ instructors, courses, lessons, assignments }
   };
 
   const handleDelete = (id: string) => {
-    if (!confirm("Desativar este instrutor?")) return;
+    if (!confirm(t("Desativar este instrutor?"))) return;
     startTransition(async () => {
       await deleteInstructor(id);
       router.refresh();
@@ -108,56 +110,56 @@ export function InstructorManager({ instructors, courses, lessons, assignments }
           onClick={() => setShowNewForm(true)}
           className="flex items-center gap-2 rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-600 transition-colors"
         >
-          <Plus size={16} /> Novo Instrutor
+          <Plus size={16} /> {t("Novo Instrutor")}
         </button>
       ) : (
         <div className="rounded-xl border border-border bg-surface p-4 sm:p-6 space-y-4">
-          <h3 className="text-lg font-semibold text-foreground">Novo Instrutor</h3>
+          <h3 className="text-lg font-semibold text-foreground">{t("Novo Instrutor")}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-muted-light mb-1">Nome *</label>
+              <label className="block text-xs font-medium text-muted-light mb-1">{t("Nome *")}</label>
               <input
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                placeholder="Nome completo"
+                placeholder={t("Nome completo")}
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-muted-light mb-1">Tipo *</label>
+              <label className="block text-xs font-medium text-muted-light mb-1">{t("Tipo *")}</label>
               <select
                 value={newTipo}
                 onChange={(e) => setNewTipo(e.target.value as any)}
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
               >
-                <option value="instrutor">Instrutor</option>
-                <option value="responsavel_tecnico">Responsável Técnico</option>
+                <option value="instrutor">{t("Instrutor")}</option>
+                <option value="responsavel_tecnico">{t("Responsável Técnico")}</option>
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-muted-light mb-1">Qualificação</label>
+              <label className="block text-xs font-medium text-muted-light mb-1">{t("Qualificação")}</label>
               <input
                 value={newQual}
                 onChange={(e) => setNewQual(e.target.value)}
-                placeholder="Ex: Eng. Segurança do Trabalho"
+                placeholder={t("Ex: Eng. Segurança do Trabalho")}
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-muted-light mb-1">Formação</label>
+              <label className="block text-xs font-medium text-muted-light mb-1">{t("Formação")}</label>
               <input
                 value={newFormacao}
                 onChange={(e) => setNewFormacao(e.target.value)}
-                placeholder="Ex: Engenharia Civil"
+                placeholder={t("Ex: Engenharia Civil")}
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-muted-light mb-1">Registro Profissional</label>
+              <label className="block text-xs font-medium text-muted-light mb-1">{t("Registro Profissional")}</label>
               <input
                 value={newRegistro}
                 onChange={(e) => setNewRegistro(e.target.value)}
-                placeholder="Ex: CREA-SP 123456"
+                placeholder={t("Ex: CREA-SP 123456")}
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
               />
             </div>
@@ -168,13 +170,13 @@ export function InstructorManager({ instructors, courses, lessons, assignments }
               disabled={!newName.trim() || isPending}
               className="flex items-center gap-1.5 rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-600 disabled:opacity-40"
             >
-              <UserCheck size={14} /> {isPending ? "Salvando..." : "Criar Instrutor"}
+              <UserCheck size={14} /> {isPending ? t("Salvando...") : t("Criar Instrutor")}
             </button>
             <button
               onClick={() => setShowNewForm(false)}
               className="rounded-lg border border-border px-4 py-2 text-sm text-muted-light hover:bg-surface"
             >
-              Cancelar
+              {t("Cancelar")}
             </button>
           </div>
         </div>
@@ -184,8 +186,8 @@ export function InstructorManager({ instructors, courses, lessons, assignments }
       {instructors.length === 0 ? (
         <div className="rounded-xl border border-border bg-surface p-8 text-center">
           <PenTool size={32} className="mx-auto mb-3 text-muted-light opacity-40" />
-          <p className="text-sm text-muted-light">Nenhum instrutor cadastrado</p>
-          <p className="text-xs text-muted-light mt-1">Cadastre instrutores para assinar certificados NR digitalmente</p>
+          <p className="text-sm text-muted-light">{t("Nenhum instrutor cadastrado")}</p>
+          <p className="text-xs text-muted-light mt-1">{t("Cadastre instrutores para assinar certificados NR digitalmente")}</p>
         </div>
       ) : (
         <div className="grid gap-4">
@@ -203,7 +205,7 @@ export function InstructorManager({ instructors, courses, lessons, assignments }
                           ? "bg-blue-500/10 text-blue-400"
                           : "bg-emerald-500/10 text-emerald-400"
                       }`}>
-                        {inst.tipo === "instrutor" ? "Instrutor" : "Resp. Técnico"}
+                        {inst.tipo === "instrutor" ? t("Instrutor") : t("Resp. Técnico")}
                       </span>
                     </div>
                     <div className="flex flex-wrap gap-3 mt-1 text-xs text-muted-light">
@@ -222,13 +224,13 @@ export function InstructorManager({ instructors, courses, lessons, assignments }
                           : "border border-border text-muted-light hover:bg-surface"
                       }`}
                     >
-                      <PenTool size={12} /> {inst.assinatura_img ? "Editar Assinatura" : "Assinar"}
+                      <PenTool size={12} /> {inst.assinatura_img ? t("Editar Assinatura") : t("Assinar")}
                     </button>
                     <button
                       onClick={() => setAssigningId(assigningId === inst.id ? null : inst.id)}
                       className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs text-muted-light hover:bg-surface"
                     >
-                      <Link2 size={12} /> Vincular Curso
+                      <Link2 size={12} /> {t("Vincular Curso")}
                     </button>
                     <button
                       onClick={() => handleDelete(inst.id)}
@@ -243,7 +245,7 @@ export function InstructorManager({ instructors, courses, lessons, assignments }
                 {inst.assinatura_img && signingId !== inst.id && (
                   <div className="mt-3 p-2 rounded-lg bg-white inline-block border border-gray-200">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={inst.assinatura_img} alt="Assinatura" className="h-12 object-contain" />
+                    <img src={inst.assinatura_img} alt={t("Assinatura")} className="h-12 object-contain" />
                   </div>
                 )}
 
@@ -251,7 +253,7 @@ export function InstructorManager({ instructors, courses, lessons, assignments }
                 {signingId === inst.id && (
                   <div className="mt-4 pt-4 border-t border-border">
                     <SignaturePad
-                      label={`Assinatura de ${inst.nome}`}
+                      label={`${t("Assinatura de")} ${inst.nome}`}
                       onSave={handleSignatureSave(inst.id)}
                       onCancel={() => setSigningId(null)}
                     />
@@ -261,16 +263,16 @@ export function InstructorManager({ instructors, courses, lessons, assignments }
                 {/* Assignment form */}
                 {assigningId === inst.id && (
                   <div className="mt-4 pt-4 border-t border-border space-y-3">
-                    <p className="text-sm font-medium text-foreground">Vincular a NR</p>
+                    <p className="text-sm font-medium text-foreground">{t("Vincular a NR")}</p>
                     <div className="flex flex-wrap gap-3 items-end">
                       <div>
-                        <label className="block text-xs text-muted-light mb-1">Curso</label>
+                        <label className="block text-xs text-muted-light mb-1">{t("Curso")}</label>
                         <select
                           value={assignCourseId}
                           onChange={(e) => { setAssignCourseId(e.target.value); setAssignLessonId(""); }}
                           className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground"
                         >
-                          <option value="">Selecione...</option>
+                          <option value="">{t("Selecione...")}</option>
                           {courses.map((c: any) => (
                             <option key={c.id} value={c.id}>{c.titulo}</option>
                           ))}
@@ -278,13 +280,13 @@ export function InstructorManager({ instructors, courses, lessons, assignments }
                       </div>
                       {assignCourseId && courseLessons.length > 0 && (
                         <div>
-                          <label className="block text-xs text-muted-light mb-1">Aula (opcional)</label>
+                          <label className="block text-xs text-muted-light mb-1">{t("Aula (opcional)")}</label>
                           <select
                             value={assignLessonId}
                             onChange={(e) => setAssignLessonId(e.target.value)}
                             className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground"
                           >
-                            <option value="">Todas as aulas</option>
+                            <option value="">{t("Todas as aulas")}</option>
                             {courseLessons.map((l: any) => (
                               <option key={l.id} value={l.id}>{l.titulo}</option>
                             ))}
@@ -292,14 +294,14 @@ export function InstructorManager({ instructors, courses, lessons, assignments }
                         </div>
                       )}
                       <div>
-                        <label className="block text-xs text-muted-light mb-1">Função</label>
+                        <label className="block text-xs text-muted-light mb-1">{t("Função")}</label>
                         <select
                           value={assignTipo}
                           onChange={(e) => setAssignTipo(e.target.value as any)}
                           className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground"
                         >
-                          <option value="instrutor">Instrutor</option>
-                          <option value="responsavel_tecnico">Resp. Técnico</option>
+                          <option value="instrutor">{t("Instrutor")}</option>
+                          <option value="responsavel_tecnico">{t("Resp. Técnico")}</option>
                         </select>
                       </div>
                       <button
@@ -307,7 +309,7 @@ export function InstructorManager({ instructors, courses, lessons, assignments }
                         disabled={!assignCourseId || isPending}
                         className="rounded-lg bg-blue-500 px-4 py-1.5 text-sm font-semibold text-white hover:bg-blue-600 disabled:opacity-40"
                       >
-                        Vincular
+                        {t("Vincular")}
                       </button>
                     </div>
                   </div>
@@ -317,7 +319,7 @@ export function InstructorManager({ instructors, courses, lessons, assignments }
                 {instAssignments.length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-2">
                     {instAssignments.map((a: any) => {
-                      const courseName = courses.find((c: any) => c.id === a.course_id)?.titulo ?? "Curso";
+                      const courseName = courses.find((c: any) => c.id === a.course_id)?.titulo ?? t("Curso");
                       const lessonName = a.lesson_id
                         ? lessons.find((l: any) => l.id === a.lesson_id)?.titulo
                         : null;
@@ -327,7 +329,7 @@ export function InstructorManager({ instructors, courses, lessons, assignments }
                           className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 px-2.5 py-1 text-[11px] text-blue-400"
                         >
                           {lessonName ?? courseName}
-                          <span className="text-blue-400/50">({a.tipo === "instrutor" ? "Inst." : "RT"})</span>
+                          <span className="text-blue-400/50">({a.tipo === "instrutor" ? t("Inst.") : t("RT")})</span>
                           <button
                             onClick={() => handleRemoveAssignment(a.id)}
                             className="ml-0.5 hover:text-red-400"

@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { formatMinutes } from "@/lib/utils";
+import { getServerT } from "@/lib/i18n/server";
 import { Users, Award, TrendingUp, BookOpen, BarChart3 } from "lucide-react";
 
 interface Props {
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export async function CourseAnalytics({ courseId, totalLessons }: Props) {
+  const t = await getServerT();
   const supabase = createAdminClient();
 
   // Enrollment stats
@@ -89,10 +91,10 @@ export async function CourseAnalytics({ courseId, totalLessons }: Props) {
     <div className="space-y-6 max-w-4xl">
       {/* KPI row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <KpiCard icon={<Users size={18} className="text-blue-600" />} label="Matrículas" value={total} bg="bg-blue-50" />
-        <KpiCard icon={<TrendingUp size={18} className="text-amber-400" />} label="Iniciaram" value={`${started} (${total > 0 ? Math.round(started / total * 100) : 0}%)`} bg="bg-amber-500/10" isText />
-        <KpiCard icon={<BookOpen size={18} className="text-emerald-600" />} label="Concluíram" value={`${completed} (${total > 0 ? Math.round(completed / total * 100) : 0}%)`} bg="bg-emerald-50" isText />
-        <KpiCard icon={<Award size={18} className="text-amber-600" />} label="Certificados" value={certCount ?? 0} bg="bg-amber-50" />
+        <KpiCard icon={<Users size={18} className="text-blue-600" />} label={t("Matrículas")} value={total} bg="bg-blue-50" />
+        <KpiCard icon={<TrendingUp size={18} className="text-amber-400" />} label={t("Iniciaram")} value={`${started} (${total > 0 ? Math.round(started / total * 100) : 0}%)`} bg="bg-amber-500/10" isText />
+        <KpiCard icon={<BookOpen size={18} className="text-emerald-600" />} label={t("Concluíram")} value={`${completed} (${total > 0 ? Math.round(completed / total * 100) : 0}%)`} bg="bg-emerald-50" isText />
+        <KpiCard icon={<Award size={18} className="text-amber-600" />} label={t("Certificados")} value={certCount ?? 0} bg="bg-amber-50" />
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
@@ -100,10 +102,10 @@ export async function CourseAnalytics({ courseId, totalLessons }: Props) {
         <div className="rounded-2xl border border-border bg-surface p-5">
           <h2 className="font-bold text-foreground mb-4 flex items-center gap-2 text-sm">
             <TrendingUp size={16} className="text-amber-400" />
-            Funil de Conclusão
+            {t("Funil de Conclusão")}
           </h2>
           {total === 0 ? (
-            <p className="text-muted-light text-sm">Nenhuma matrícula ainda.</p>
+            <p className="text-muted-light text-sm">{t("Nenhuma matrícula ainda.")}</p>
           ) : (
             <div className="space-y-3">
               {[
@@ -113,7 +115,7 @@ export async function CourseAnalytics({ courseId, totalLessons }: Props) {
                 { label: "Certificados", count: certCount ?? 0, color: "bg-amber-500" },
               ].map((step) => (
                 <div key={step.label} className="flex items-center gap-3">
-                  <span className="w-24 text-xs text-muted-light shrink-0">{step.label}</span>
+                  <span className="w-24 text-xs text-muted-light shrink-0">{t(step.label)}</span>
                   <div className="flex-1 h-6 bg-surface-3 rounded-full overflow-hidden">
                     <div
                       className={`h-full ${step.color} rounded-full transition-all`}
@@ -128,7 +130,7 @@ export async function CourseAnalytics({ courseId, totalLessons }: Props) {
             </div>
           )}
           <div className="mt-4 pt-4 border-t border-border/50">
-            <p className="text-xs text-muted-light">Progresso médio dos alunos: <strong className="text-foreground">{avgProgress}%</strong></p>
+            <p className="text-xs text-muted-light">{t("Progresso médio dos alunos:")} <strong className="text-foreground">{avgProgress}%</strong></p>
           </div>
         </div>
 
@@ -136,10 +138,10 @@ export async function CourseAnalytics({ courseId, totalLessons }: Props) {
         <div className="rounded-2xl border border-border bg-surface p-5">
           <h2 className="font-bold text-foreground mb-4 flex items-center gap-2 text-sm">
             <BarChart3 size={16} className="text-blue-600" />
-            Distribuição de Progresso
+            {t("Distribuição de Progresso")}
           </h2>
           {total === 0 ? (
-            <p className="text-muted-light text-sm">Nenhuma matrícula ainda.</p>
+            <p className="text-muted-light text-sm">{t("Nenhuma matrícula ainda.")}</p>
           ) : (
             <div className="space-y-2">
               {distribution.map((d) => (
@@ -164,7 +166,7 @@ export async function CourseAnalytics({ courseId, totalLessons }: Props) {
         <div className="rounded-2xl border border-border bg-surface p-5">
           <h2 className="font-bold text-foreground mb-4 flex items-center gap-2 text-sm">
             <Users size={16} className="text-blue-600" />
-            Matrículas — últimas 12 semanas
+            {t("Matrículas — últimas 12 semanas")}
           </h2>
           <div className="space-y-2">
             {weeks.map((week) => (

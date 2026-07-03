@@ -47,6 +47,7 @@ type ViewMode = "desktop" | "tablet" | "mobile";
 
 // ── Main Component ───────────────────────────────────────────────
 export function CourseStudentPreview({ course }: { course: CourseData }) {
+  const t = useT();
   const [mockProgress, setMockProgress] = useState(35);
   const [viewMode, setViewMode] = useState<ViewMode>("desktop");
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
@@ -67,12 +68,12 @@ export function CourseStudentPreview({ course }: { course: CourseData }) {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-surface rounded-xl border border-border p-4">
         <div className="flex items-center gap-3">
           <Eye size={16} className="text-amber-400" />
-          <span className="text-sm font-semibold text-foreground">Visualização do Aluno</span>
-          <Badge variant="warning" className="text-[10px]">Simulação</Badge>
+          <span className="text-sm font-semibold text-foreground">{t("Visualização do Aluno")}</span>
+          <Badge variant="warning" className="text-[10px]">{t("Simulação")}</Badge>
           {course.slug && (
             <a href={`/cursos/${course.slug}`} target="_blank" rel="noopener noreferrer">
               <Button variant="outline" size="sm" className="gap-1.5 h-7 text-xs">
-                <ExternalLink size={12} /> Abrir landing page
+                <ExternalLink size={12} /> {t("Abrir landing page")}
               </Button>
             </a>
           )}
@@ -95,17 +96,17 @@ export function CourseStudentPreview({ course }: { course: CourseData }) {
                     ? "bg-amber-500 text-black"
                     : "text-muted-light hover:text-muted"
                 )}
-                title={label}
+                title={t(label)}
               >
                 <Icon size={13} />
-                <span className="hidden sm:inline">{label}</span>
+                <span className="hidden sm:inline">{t(label)}</span>
               </button>
             ))}
           </div>
 
           {/* Progress slider */}
           <div className="flex items-center gap-2">
-            <span className="text-[10px] text-muted-light whitespace-nowrap">Progresso:</span>
+            <span className="text-[10px] text-muted-light whitespace-nowrap">{t("Progresso:")}</span>
             <input
               type="range"
               min={0}
@@ -126,8 +127,8 @@ export function CourseStudentPreview({ course }: { course: CourseData }) {
 
           {/* Section 1: Card em "Meus Cursos" */}
           <PreviewSection
-            title="Meus Cursos"
-            subtitle="Como o card aparece no dashboard do aluno"
+            title={t("Meus Cursos")}
+            subtitle={t("Como o card aparece no dashboard do aluno")}
             icon={BookOpen}
           >
             <div className={cn(
@@ -140,8 +141,8 @@ export function CourseStudentPreview({ course }: { course: CourseData }) {
 
           {/* Section 2: Card na Trilha */}
           <PreviewSection
-            title="Trilha de Aprendizado"
-            subtitle="Como o card aparece na trilha por nível"
+            title={t("Trilha de Aprendizado")}
+            subtitle={t("Como o card aparece na trilha por nível")}
             icon={TrendingUp}
           >
             <div className={cn(
@@ -149,15 +150,15 @@ export function CourseStudentPreview({ course }: { course: CourseData }) {
               viewMode === "mobile" ? "grid-cols-1" : "sm:grid-cols-2 lg:grid-cols-3",
             )}>
               <div>
-                <p className="text-[10px] text-muted-light mb-2 text-center">Em andamento</p>
+                <p className="text-[10px] text-muted-light mb-2 text-center">{t("Em andamento")}</p>
                 <StudentTrilhaCard course={course} progress={mockProgress} isEnrolled={true} />
               </div>
               <div>
-                <p className="text-[10px] text-muted-light mb-2 text-center">Não matriculado</p>
+                <p className="text-[10px] text-muted-light mb-2 text-center">{t("Não matriculado")}</p>
                 <StudentTrilhaCard course={course} progress={0} isEnrolled={false} />
               </div>
               <div>
-                <p className="text-[10px] text-muted-light mb-2 text-center">Concluído</p>
+                <p className="text-[10px] text-muted-light mb-2 text-center">{t("Concluído")}</p>
                 <StudentTrilhaCard course={course} progress={100} isEnrolled={true} />
               </div>
             </div>
@@ -166,8 +167,8 @@ export function CourseStudentPreview({ course }: { course: CourseData }) {
           {/* Section 3: Preview de Aula */}
           {allLessons.length > 0 && (
             <PreviewSection
-              title="Player de Aula"
-              subtitle="Como a aula aparece para o aluno"
+              title={t("Player de Aula")}
+              subtitle={t("Como a aula aparece para o aluno")}
               icon={Play}
             >
               {/* Lesson selector */}
@@ -185,13 +186,13 @@ export function CourseStudentPreview({ course }: { course: CourseData }) {
                   >
                     {lesson.titulo}
                     {lesson.preview_gratis && (
-                      <span className="ml-1 text-[9px] opacity-70">(preview)</span>
+                      <span className="ml-1 text-[9px] opacity-70">{t("(preview)")}</span>
                     )}
                   </button>
                 ))}
                 {allLessons.length > 8 && (
                   <span className="px-3 py-1.5 text-xs text-muted-light">
-                    +{allLessons.length - 8} aulas
+                    +{allLessons.length - 8} {t("aulas")}
                   </span>
                 )}
               </div>
@@ -249,13 +250,13 @@ function StudentCourseCard({ course, progress }: { course: CourseData; progress:
         <h3 className="font-bold text-foreground leading-tight mb-3 line-clamp-2">{course.titulo}</h3>
         <div className="mb-4">
           <div className="flex justify-between text-xs text-muted-light mb-1.5">
-            <span>Progresso</span>
+            <span>{t("Progresso")}</span>
             <span>{progress}%</span>
           </div>
           <Progress value={progress} className="h-1.5" />
         </div>
         <Button variant={progress === 100 ? "secondary" : "default"} size="sm" className="w-full gap-1.5 pointer-events-none">
-          {progress === 0 ? <><Play size={14} /> Começar</> : progress === 100 ? <><Trophy size={14} /> Ver certificado</> : <><Play size={14} /> Continuar</>}
+          {progress === 0 ? <><Play size={14} /> {t("Começar")}</> : progress === 100 ? <><Trophy size={14} /> {t("Ver certificado")}</> : <><Play size={14} /> {t("Continuar")}</>}
         </Button>
       </div>
     </div>
@@ -264,6 +265,7 @@ function StudentCourseCard({ course, progress }: { course: CourseData; progress:
 
 // ── Student Trilha Card ──────────────────────────────────────────
 function StudentTrilhaCard({ course, progress, isEnrolled }: { course: CourseData; progress: number; isEnrolled: boolean }) {
+  const t = useT();
   const isDone = progress === 100;
 
   return (
@@ -288,11 +290,11 @@ function StudentTrilhaCard({ course, progress, isEnrolled }: { course: CourseDat
       {isEnrolled && (
         <div className="mb-3">
           <Progress value={progress} className="h-1.5" />
-          <p className="text-xs text-muted-light mt-1">{progress}% concluído</p>
+          <p className="text-xs text-muted-light mt-1">{progress}% {t("concluído")}</p>
         </div>
       )}
       <Button variant={isDone ? "success" : isEnrolled ? "default" : "secondary"} size="sm" className="w-full gap-1.5 pointer-events-none">
-        {isDone ? <><Trophy size={13} /> Ver certificado</> : isEnrolled ? <><Play size={13} /> Continuar</> : <><ChevronRight size={13} /> Ver curso</>}
+        {isDone ? <><Trophy size={13} /> {t("Ver certificado")}</> : isEnrolled ? <><Play size={13} /> {t("Continuar")}</> : <><ChevronRight size={13} /> {t("Ver curso")}</>}
       </Button>
     </div>
   );
@@ -300,11 +302,12 @@ function StudentTrilhaCard({ course, progress, isEnrolled }: { course: CourseDat
 
 // ── Lesson Preview (Player embed) ────────────────────────────────
 function LessonPreview({ lesson }: { lesson: Lesson | null }) {
+  const t = useT();
   if (!lesson) {
     return (
       <div className="rounded-xl border border-dashed border-border bg-surface-2 p-8 text-center">
         <FileText size={32} className="text-muted-light mx-auto mb-2" />
-        <p className="text-sm text-muted-light">Nenhuma aula disponível para preview</p>
+        <p className="text-sm text-muted-light">{t("Nenhuma aula disponível para preview")}</p>
       </div>
     );
   }
@@ -328,7 +331,7 @@ function LessonPreview({ lesson }: { lesson: Lesson | null }) {
         <div className="aspect-video bg-gradient-to-br from-surface-2 to-surface-3 flex items-center justify-center">
           <div className="text-center">
             <Play size={48} className="text-muted-light mx-auto mb-2" />
-            <p className="text-sm text-muted-light">Sem vídeo — conteúdo rico disponível</p>
+            <p className="text-sm text-muted-light">{t("Sem vídeo — conteúdo rico disponível")}</p>
           </div>
         </div>
       )}
@@ -338,7 +341,7 @@ function LessonPreview({ lesson }: { lesson: Lesson | null }) {
         <div className="flex items-center justify-between gap-2">
           <h4 className="font-semibold text-foreground text-sm">{lesson.titulo}</h4>
           <div className="flex items-center gap-2 shrink-0">
-            {lesson.preview_gratis && <Badge variant="success" className="text-[10px]">Preview</Badge>}
+            {lesson.preview_gratis && <Badge variant="success" className="text-[10px]">{t("Preview")}</Badge>}
             {lesson.duracao && (
               <span className="text-xs text-muted-light">{formatMinutes(lesson.duracao)}</span>
             )}
@@ -365,7 +368,7 @@ function LessonPreview({ lesson }: { lesson: Lesson | null }) {
                 i === 0 ? "border-amber-500 text-amber-400" : "border-transparent text-muted-light"
               )}
             >
-              {tab}
+              {t(tab)}
             </div>
           ))}
         </div>

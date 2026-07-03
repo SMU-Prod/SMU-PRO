@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ShieldCheck, AlertTriangle, CheckCircle2, Info, Loader2, X, ExternalLink } from "lucide-react";
+import { useT } from "@/lib/i18n/ui";
 
 interface ValidationIssue {
   tipo: string;
@@ -21,6 +22,7 @@ interface ValidationResult {
 }
 
 export function ContentValidatorButton({ lessonId, courseCategoria }: { lessonId: string; courseCategoria?: string }) {
+  const t = useT();
   const [result, setResult] = useState<ValidationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPanel, setShowPanel] = useState(false);
@@ -72,7 +74,7 @@ export function ContentValidatorButton({ lessonId, courseCategoria }: { lessonId
         disabled={loading}
       >
         {loading ? <Loader2 size={12} className="animate-spin" /> : <ShieldCheck size={12} />}
-        Validar Conteúdo
+        {t("Validar Conteúdo")}
       </Button>
 
       {showPanel && (
@@ -80,7 +82,7 @@ export function ContentValidatorButton({ lessonId, courseCategoria }: { lessonId
           <div className="flex items-center justify-between">
             <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
               <ShieldCheck size={14} className="text-emerald-500" />
-              Validação de Conteúdo
+              {t("Validação de Conteúdo")}
             </h4>
             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setShowPanel(false)}>
               <X size={12} />
@@ -90,7 +92,7 @@ export function ContentValidatorButton({ lessonId, courseCategoria }: { lessonId
           {loading ? (
             <div className="flex items-center justify-center py-6">
               <Loader2 size={20} className="animate-spin text-muted-light" />
-              <span className="ml-2 text-xs text-muted-light">Analisando conteúdo...</span>
+              <span className="ml-2 text-xs text-muted-light">{t("Analisando conteúdo...")}</span>
             </div>
           ) : result ? (
             <>
@@ -101,10 +103,10 @@ export function ContentValidatorButton({ lessonId, courseCategoria }: { lessonId
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-foreground">
-                    {result.score >= 80 ? "Conteúdo de qualidade" : result.score >= 60 ? "Pode melhorar" : "Precisa de atenção"}
+                    {result.score >= 80 ? t("Conteúdo de qualidade") : result.score >= 60 ? t("Pode melhorar") : t("Precisa de atenção")}
                   </p>
                   <p className="text-[10px] text-muted-light">
-                    {result.issues.length} problemas · {result.suggestions.length} sugestões
+                    {result.issues.length} {t("problemas")} · {result.suggestions.length} {t("sugestões")}
                   </p>
                 </div>
               </div>
@@ -112,7 +114,7 @@ export function ContentValidatorButton({ lessonId, courseCategoria }: { lessonId
               {/* Issues */}
               {result.issues.length > 0 && (
                 <div className="space-y-1.5">
-                  <p className="text-[10px] font-bold text-muted-light uppercase tracking-wide">Problemas</p>
+                  <p className="text-[10px] font-bold text-muted-light uppercase tracking-wide">{t("Problemas")}</p>
                   {result.issues.map((issue, i) => (
                     <div key={i} className="flex items-start gap-2 p-2 rounded-md bg-surface-2 text-xs">
                       {severityIcon(issue.severidade)}
@@ -135,7 +137,7 @@ export function ContentValidatorButton({ lessonId, courseCategoria }: { lessonId
               {/* Suggestions */}
               {result.suggestions.length > 0 && (
                 <div className="space-y-1.5">
-                  <p className="text-[10px] font-bold text-muted-light uppercase tracking-wide">Sugestões</p>
+                  <p className="text-[10px] font-bold text-muted-light uppercase tracking-wide">{t("Sugestões")}</p>
                   {result.suggestions.map((s, i) => (
                     <div key={i} className="flex items-start gap-2 p-2 rounded-md bg-surface-2 text-xs">
                       <CheckCircle2 size={12} className="text-emerald-400 shrink-0 mt-0.5" />
@@ -148,7 +150,7 @@ export function ContentValidatorButton({ lessonId, courseCategoria }: { lessonId
               {/* Sources */}
               {result.sources.length > 0 && (
                 <div>
-                  <p className="text-[10px] font-bold text-muted-light uppercase tracking-wide mb-1">Fontes Oficiais de Referência</p>
+                  <p className="text-[10px] font-bold text-muted-light uppercase tracking-wide mb-1">{t("Fontes Oficiais de Referência")}</p>
                   <div className="flex flex-wrap gap-1">
                     {result.sources.map((src, i) => (
                       <span key={i} className="text-[9px] px-2 py-0.5 rounded-full bg-surface-2 border border-border text-muted-light">
@@ -160,7 +162,7 @@ export function ContentValidatorButton({ lessonId, courseCategoria }: { lessonId
               )}
 
               <p className="text-[9px] text-muted-light">
-                Verificado em {new Date(result.lastChecked).toLocaleString("pt-BR")}
+                {t("Verificado em")} {new Date(result.lastChecked).toLocaleString("pt-BR")}
               </p>
             </>
           ) : null}

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CheckCircle2, AlertCircle, XCircle, Zap, Eye, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { useT } from "@/lib/i18n/ui";
 
 interface QualityItem {
   label: string;
@@ -106,6 +107,7 @@ function computeScore(checks: QualityItem[]): number {
 }
 
 export function CourseQualityScore({ course }: { course: any }) {
+  const t = useT();
   const checks = computeChecks(course);
   const score = computeScore(checks);
   const errors = checks.filter((c) => c.status === "error");
@@ -164,25 +166,25 @@ export function CourseQualityScore({ course }: { course: any }) {
 
           <div className="flex-1">
             <p className="font-semibold text-foreground text-lg">
-              {score >= 80 ? "Pronto para publicar!" : score >= 50 ? "Quase lá..." : "Precisa de atenção"}
+              {score >= 80 ? t("Pronto para publicar!") : score >= 50 ? t("Quase lá...") : t("Precisa de atenção")}
             </p>
             <p className="text-sm text-muted-light mt-0.5">
-              {checks.filter((c) => c.status === "ok").length}/{checks.length} critérios atendidos
+              {checks.filter((c) => c.status === "ok").length}/{checks.length} {t("critérios atendidos")}
             </p>
             <div className="flex items-center gap-2 mt-2 text-xs">
               {errors.length > 0 && (
                 <span className="flex items-center gap-1 text-red-600">
-                  <XCircle size={12} /> {errors.length} erro{errors.length > 1 ? "s" : ""}
+                  <XCircle size={12} /> {errors.length} {errors.length > 1 ? t("erros") : t("erro")}
                 </span>
               )}
               {warnings.length > 0 && (
                 <span className="flex items-center gap-1 text-amber-600">
-                  <AlertCircle size={12} /> {warnings.length} aviso{warnings.length > 1 ? "s" : ""}
+                  <AlertCircle size={12} /> {warnings.length} {warnings.length > 1 ? t("avisos") : t("aviso")}
                 </span>
               )}
               {errors.length === 0 && warnings.length === 0 && (
                 <span className="flex items-center gap-1 text-emerald-600">
-                  <CheckCircle2 size={12} /> Tudo certo!
+                  <CheckCircle2 size={12} /> {t("Tudo certo!")}
                 </span>
               )}
             </div>
@@ -196,8 +198,8 @@ export function CourseQualityScore({ course }: { course: any }) {
           )}>
             <p className="text-sm text-muted-light">
               {canPublish
-                ? "Curso pronto para publicação."
-                : "Corrija os erros antes de publicar."}
+                ? t("Curso pronto para publicação.")
+                : t("Corrija os erros antes de publicar.")}
             </p>
             <Button
               size="sm"
@@ -205,14 +207,14 @@ export function CourseQualityScore({ course }: { course: any }) {
               disabled={!canPublish || publishing}
             >
               {publishing ? <Loader2 size={13} className="animate-spin" /> : <Zap size={13} />}
-              Publicar Agora
+              {t("Publicar Agora")}
             </Button>
           </div>
         )}
         {course.ativo && (
           <div className="mt-4 pt-4 border-t border-border/50 flex items-center gap-2 text-sm text-emerald-600">
             <Eye size={14} />
-            <span>Curso publicado e visível para alunos</span>
+            <span>{t("Curso publicado e visível para alunos")}</span>
           </div>
         )}
       </div>
@@ -220,7 +222,7 @@ export function CourseQualityScore({ course }: { course: any }) {
       {/* Checklist */}
       <div className="rounded-2xl border border-border bg-surface overflow-hidden">
         <div className="px-5 py-3 border-b border-border/50 bg-surface-2">
-          <p className="text-sm font-semibold text-foreground">Checklist de Qualidade</p>
+          <p className="text-sm font-semibold text-foreground">{t("Checklist de Qualidade")}</p>
         </div>
         <div className="divide-y divide-border/50">
           {checks.map((item, i) => (
@@ -232,10 +234,10 @@ export function CourseQualityScore({ course }: { course: any }) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className={cn("text-sm", item.status === "ok" ? "text-muted" : item.status === "warn" ? "text-amber-700" : "text-red-700")}>
-                  {item.label}
+                  {t(item.label)}
                 </p>
                 {item.detail && item.status !== "ok" && (
-                  <p className="text-xs text-muted-light mt-0.5">{item.detail}</p>
+                  <p className="text-xs text-muted-light mt-0.5">{t(item.detail)}</p>
                 )}
               </div>
             </div>
@@ -245,19 +247,19 @@ export function CourseQualityScore({ course }: { course: any }) {
 
       {/* Quick links */}
       <div className="rounded-2xl border border-border bg-surface p-4 space-y-2">
-        <p className="text-xs font-semibold text-muted-light uppercase tracking-wide mb-3">Ações Rápidas</p>
+        <p className="text-xs font-semibold text-muted-light uppercase tracking-wide mb-3">{t("Ações Rápidas")}</p>
         <Link
           href={`/admin/cursos/${course.id}`}
           className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-muted hover:bg-surface-2 transition-colors"
         >
-          Editar currículo
+          {t("Editar currículo")}
           <span className="text-muted-light">→</span>
         </Link>
         <Link
           href={`/admin/cursos/${course.id}/editar`}
           className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-muted hover:bg-surface-2 transition-colors"
         >
-          Editar informações
+          {t("Editar informações")}
           <span className="text-muted-light">→</span>
         </Link>
       </div>

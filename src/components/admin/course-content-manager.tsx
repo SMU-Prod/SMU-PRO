@@ -43,6 +43,7 @@ import {
 } from "lucide-react";
 import { parseQuizText } from "@/lib/quiz-parser";
 import { ContentValidatorButton } from "@/components/admin/content-validator-button";
+import { useT } from "@/lib/i18n/ui";
 
 const moduleSchema = z.object({
   titulo: z.string().min(2),
@@ -64,6 +65,7 @@ const lessonSchema = z.object({
 });
 
 export function CourseContentManager({ course }: { course: any }) {
+  const t = useT();
   const [modules, setModules] = useState<any[]>(course.modules ?? []);
   const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({});
   const [editingModule, setEditingModule] = useState<string | null>(null);
@@ -138,7 +140,7 @@ export function CourseContentManager({ course }: { course: any }) {
 
   // ── DELETE MODULE
   const handleDeleteModule = async (id: string) => {
-    if (!confirm("Tem certeza? Todas as aulas deste módulo serão removidas.")) return;
+    if (!confirm(t("Tem certeza? Todas as aulas deste módulo serão removidas."))) return;
     await adminDeleteModule(id);
     setModules((prev) => prev.filter((m) => m.id !== id));
   };
@@ -205,7 +207,7 @@ export function CourseContentManager({ course }: { course: any }) {
       setEditingLesson(null);
     } catch (err) {
       console.error("Erro ao salvar aula:", err);
-      alert("Erro ao salvar aula. Verifique o console.");
+      alert(t("Erro ao salvar aula. Verifique o console."));
     } finally { setLoading(false); }
   };
 
@@ -227,7 +229,7 @@ export function CourseContentManager({ course }: { course: any }) {
 
   // ── DELETE LESSON
   const handleDeleteLesson = async (lessonId: string, moduleId: string) => {
-    if (!confirm("Remover esta aula?")) return;
+    if (!confirm(t("Remover esta aula?"))) return;
     await adminDeleteLesson(lessonId);
     setModules((prev) =>
       prev.map((m) =>
@@ -285,29 +287,29 @@ export function CourseContentManager({ course }: { course: any }) {
       {/* Header stats */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4 text-sm text-muted-light">
-          <span>{rootModules.length} módulos</span>
-          {totalSubmodules > 0 && <><span>·</span><span>{totalSubmodules} sub-módulos</span></>}
+          <span>{rootModules.length} {t("módulos")}</span>
+          {totalSubmodules > 0 && <><span>·</span><span>{totalSubmodules} {t("sub-módulos")}</span></>}
           <span>·</span>
-          <span>{totalLessons} aulas</span>
-          <span className="text-[11px] text-muted-light hidden sm:inline">Arraste pelo ⠿ para reordenar</span>
+          <span>{totalLessons} {t("aulas")}</span>
+          <span className="text-[11px] text-muted-light hidden sm:inline">{t("Arraste pelo ⠿ para reordenar")}</span>
         </div>
         <Button size="sm" onClick={() => { setAddingModule(true); moduleForm.reset({ ordem: rootModules.length }); }}>
-          <Plus size={15} /> Novo Módulo
+          <Plus size={15} /> {t("Novo Módulo")}
         </Button>
       </div>
 
       {/* Add Module Form */}
       {addingModule && (
         <Card className="border-amber-500/30">
-          <CardHeader><CardTitle className="text-sm">Novo Módulo</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm">{t("Novo Módulo")}</CardTitle></CardHeader>
           <CardContent>
             <form onSubmit={moduleForm.handleSubmit(handleCreateModule)} className="space-y-3">
-              <Input {...moduleForm.register("titulo")} placeholder="Título do módulo" autoFocus />
-              <Input {...moduleForm.register("descricao")} placeholder="Descrição (opcional)" />
+              <Input {...moduleForm.register("titulo")} placeholder={t("Título do módulo")} autoFocus />
+              <Input {...moduleForm.register("descricao")} placeholder={t("Descrição (opcional)")} />
               <div className="flex gap-2">
-                <Button type="submit" size="sm" loading={loading}><Save size={14} /> Salvar</Button>
+                <Button type="submit" size="sm" loading={loading}><Save size={14} /> {t("Salvar")}</Button>
                 <Button type="button" variant="ghost" size="sm" onClick={() => setAddingModule(false)}>
-                  <X size={14} /> Cancelar
+                  <X size={14} /> {t("Cancelar")}
                 </Button>
               </div>
             </form>
@@ -380,10 +382,10 @@ export function CourseContentManager({ course }: { course: any }) {
       {modules.length === 0 && !addingModule && (
         <div className="flex flex-col items-center justify-center py-16 text-center border-2 border-dashed border-border rounded-xl">
           <BookOpen size={40} className="text-muted-light mb-3" />
-          <p className="text-foreground font-medium mb-1">Nenhum módulo ainda</p>
-          <p className="text-sm text-muted-light mb-4">Crie o primeiro módulo para começar.</p>
+          <p className="text-foreground font-medium mb-1">{t("Nenhum módulo ainda")}</p>
+          <p className="text-sm text-muted-light mb-4">{t("Crie o primeiro módulo para começar.")}</p>
           <Button size="sm" onClick={() => setAddingModule(true)}>
-            <Plus size={14} /> Criar Primeiro Módulo
+            <Plus size={14} /> {t("Criar Primeiro Módulo")}
           </Button>
         </div>
       )}
@@ -394,6 +396,7 @@ export function CourseContentManager({ course }: { course: any }) {
 // ── SortableModule ────────────────────────────────────────────
 
 function SortableModule({ mod, modIdx, submodules = [], expanded, editingModule, addingLesson, editingLesson, quizLesson, moduleForm, lessonForm, loading, sensors, onToggle, onEditModule, onCancelEditModule, onUpdateModule, onDeleteModule, onCreateLesson, onUpdateLesson, onAutoSaveLesson, onUpdateLessonState, onDeleteLesson, onDuplicateLesson, onMoveLesson, allModules, onStartAddLesson, onCancelAddLesson, onStartEditLesson, onCancelEditLesson, onToggleQuiz, onLessonDragEnd, courseCategoria, addingSubmodule, onStartAddSubmodule, onCancelAddSubmodule, onCreateSubmodule, onMoveModuleToParent, onSubmoduleDragEnd, expandedModules, onToggleSubmodule, rootModules }: any) {
+  const t = useT();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: mod.id });
   const lessonDndId = useId();
 
@@ -440,8 +443,8 @@ function SortableModule({ mod, modIdx, submodules = [], expanded, editingModule,
               <p className="font-medium text-sm text-foreground truncate">{mod.titulo}</p>
             )}
             <p className="text-xs text-muted-light">
-              {submodules.length > 0 && <>{submodules.length} sub-módulo{submodules.length !== 1 ? "s" : ""} · </>}
-              {mod.lessons?.length ?? 0} aulas
+              {submodules.length > 0 && <>{submodules.length} {submodules.length !== 1 ? t("sub-módulos") : t("sub-módulo")} · </>}
+              {mod.lessons?.length ?? 0} {t("aulas")}
             </p>
           </div>
 
@@ -517,12 +520,12 @@ function SortableModule({ mod, modIdx, submodules = [], expanded, editingModule,
                   <div className="px-4 py-3 ml-6 border-l-2 border-amber-500/20">
                     <form onSubmit={moduleForm.handleSubmit(onCreateSubmodule)} className="space-y-2">
                       <p className="text-xs font-semibold text-muted-light flex items-center gap-1.5">
-                        <CornerDownRight size={12} /> Novo Sub-módulo
+                        <CornerDownRight size={12} /> {t("Novo Sub-módulo")}
                       </p>
-                      <Input {...moduleForm.register("titulo")} placeholder="Título do sub-módulo" className="h-8 text-xs" autoFocus />
+                      <Input {...moduleForm.register("titulo")} placeholder={t("Título do sub-módulo")} className="h-8 text-xs" autoFocus />
                       <div className="flex gap-2">
-                        <Button type="submit" size="sm" loading={loading} className="h-7 text-xs"><Save size={12} /> Criar</Button>
-                        <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={onCancelAddSubmodule}><X size={12} /> Cancelar</Button>
+                        <Button type="submit" size="sm" loading={loading} className="h-7 text-xs"><Save size={12} /> {t("Criar")}</Button>
+                        <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={onCancelAddSubmodule}><X size={12} /> {t("Cancelar")}</Button>
                       </div>
                     </form>
                   </div>
@@ -536,7 +539,7 @@ function SortableModule({ mod, modIdx, submodules = [], expanded, editingModule,
                 className="w-full flex items-center gap-2 px-4 py-2 text-xs text-muted-light hover:text-amber-400 hover:bg-amber-500/5 transition-colors border-b border-border/30"
                 onClick={onStartAddSubmodule}
               >
-                <FolderTree size={13} /> Adicionar Sub-módulo
+                <FolderTree size={13} /> {t("Adicionar Sub-módulo")}
               </button>
             )}
 
@@ -576,7 +579,7 @@ function SortableModule({ mod, modIdx, submodules = [], expanded, editingModule,
                 loading={loading}
                 onSubmit={onCreateLesson}
                 onCancel={onCancelAddLesson}
-                label="Criar Aula"
+                label={t("Criar Aula")}
                 categoria={courseCategoria}
               />
             ) : (
@@ -584,7 +587,7 @@ function SortableModule({ mod, modIdx, submodules = [], expanded, editingModule,
                 className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-muted-light hover:text-amber-400 hover:bg-amber-500/5 transition-colors"
                 onClick={() => onStartAddLesson()}
               >
-                <Plus size={14} /> Adicionar Aula
+                <Plus size={14} /> {t("Adicionar Aula")}
               </button>
             )}
           </div>
@@ -597,6 +600,7 @@ function SortableModule({ mod, modIdx, submodules = [], expanded, editingModule,
 // ── SortableSubmodule ─────────────────────────────────────────
 
 function SortableSubmodule({ sub, subIdx, expanded, onToggle, editingModule, moduleForm, loading, sensors, onDeleteModule, onPromoteToRoot, onMoveToModule, rootModules, currentParentId, addingLesson, editingLesson, quizLesson, lessonForm, onCreateLesson, onUpdateLesson, onAutoSaveLesson, onUpdateLessonState, onDeleteLesson, onDuplicateLesson, onMoveLesson, allModules, onStartAddLesson, onCancelAddLesson, onStartEditLesson, onCancelEditLesson, onToggleQuiz, courseCategoria }: any) {
+  const t = useT();
   const [showMoveMenu, setShowMoveMenu] = useState(false);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: sub.id });
   const subDndId = useId();
@@ -633,25 +637,25 @@ function SortableSubmodule({ sub, subIdx, expanded, onToggle, editingModule, mod
 
         <div className="flex-1 min-w-0">
           <p className="font-medium text-xs text-foreground truncate">{sub.titulo}</p>
-          <p className="text-[10px] text-muted-light">{lessons.length} aulas</p>
+          <p className="text-[10px] text-muted-light">{lessons.length} {t("aulas")}</p>
         </div>
 
         {/* Actions */}
         <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
           {/* Promote to root */}
-          <Button variant="ghost" size="icon" className="h-6 w-6" title="Promover a módulo raiz" onClick={onPromoteToRoot}>
+          <Button variant="ghost" size="icon" className="h-6 w-6" title={t("Promover a módulo raiz")} onClick={onPromoteToRoot}>
             <ArrowUp size={11} />
           </Button>
 
           {/* Move to another parent */}
           {rootModules.length > 1 && (
             <div className="relative">
-              <Button variant="ghost" size="icon" className="h-6 w-6" title="Mover para outro módulo" onClick={() => setShowMoveMenu((p) => !p)}>
+              <Button variant="ghost" size="icon" className="h-6 w-6" title={t("Mover para outro módulo")} onClick={() => setShowMoveMenu((p) => !p)}>
                 <ChevronRight size={11} />
               </Button>
               {showMoveMenu && (
                 <div className="absolute right-0 top-7 z-50 w-44 rounded-lg border border-border bg-surface shadow-lg py-1">
-                  <p className="px-3 py-1 text-[10px] text-muted-light uppercase tracking-wide font-semibold">Mover para</p>
+                  <p className="px-3 py-1 text-[10px] text-muted-light uppercase tracking-wide font-semibold">{t("Mover para")}</p>
                   {rootModules.filter((m: any) => m.id !== currentParentId).map((m: any) => (
                     <button
                       key={m.id}
@@ -712,7 +716,7 @@ function SortableSubmodule({ sub, subIdx, expanded, onToggle, editingModule, mod
               loading={loading}
               onSubmit={(d: any) => onCreateLesson(d, sub.id)}
               onCancel={onCancelAddLesson}
-              label="Criar Aula"
+              label={t("Criar Aula")}
               categoria={courseCategoria}
             />
           ) : (
@@ -720,7 +724,7 @@ function SortableSubmodule({ sub, subIdx, expanded, onToggle, editingModule, mod
               className="w-full flex items-center gap-2 px-4 py-2 text-xs text-muted-light hover:text-amber-400 hover:bg-amber-500/5 transition-colors"
               onClick={() => onStartAddLesson(sub.id)}
             >
-              <Plus size={12} /> Adicionar Aula
+              <Plus size={12} /> {t("Adicionar Aula")}
             </button>
           )}
         </div>
@@ -732,6 +736,7 @@ function SortableSubmodule({ sub, subIdx, expanded, onToggle, editingModule, mod
 // ── SortableLesson ────────────────────────────────────────────
 
 function SortableLesson({ lesson, lessonIdx, editingLesson, quizLesson, lessonForm, loading, onStartEdit, onCancelEdit, onUpdate, onAutoSave, onDelete, onDuplicate, onToggleQuiz, onLessonStateChange, onMoveToModule, allModules, currentModuleId, courseCategoria }: any) {
+  const t = useT();
   const [showMoveMenu, setShowMoveMenu] = useState(false);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: lesson.id });
 
@@ -762,7 +767,7 @@ function SortableLesson({ lesson, lessonIdx, editingLesson, quizLesson, lessonFo
             <span className="text-xs text-muted-light">{formatMinutes(lesson.duracao_min)}</span>
             {lesson.youtube_id && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">YouTube</Badge>}
             {lesson.tem_quiz && <Badge variant="default" className="text-[10px] px-1.5 py-0">Quiz</Badge>}
-            {lesson.preview_gratis && <Badge variant="success" className="text-[10px] px-1.5 py-0">Preview</Badge>}
+            {lesson.preview_gratis && <Badge variant="success" className="text-[10px] px-1.5 py-0">{t("Preview")}</Badge>}
           </div>
         </div>
 
@@ -770,26 +775,26 @@ function SortableLesson({ lesson, lessonIdx, editingLesson, quizLesson, lessonFo
           <Button
             variant="ghost" size="icon"
             className={cn("h-7 w-7", quizLesson === lesson.id && "bg-amber-500/10 text-amber-400")}
-            title="Gerenciar Quiz"
+            title={t("Gerenciar Quiz")}
             onClick={onToggleQuiz}
           >
             <HelpCircle size={13} />
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7" title="Duplicar aula" onClick={onDuplicate}>
+          <Button variant="ghost" size="icon" className="h-7 w-7" title={t("Duplicar aula")} onClick={onDuplicate}>
             <Copy size={12} />
           </Button>
           {allModules && allModules.length > 1 && (
             <div className="relative">
               <Button
                 variant="ghost" size="icon" className="h-7 w-7"
-                title="Mover para módulo"
+                title={t("Mover para módulo")}
                 onClick={() => setShowMoveMenu((p) => !p)}
               >
                 <ChevronRight size={13} />
               </Button>
               {showMoveMenu && (
                 <div className="absolute right-0 top-8 z-50 w-48 rounded-xl border border-border bg-surface shadow-lg py-1">
-                  <p className="px-3 py-1.5 text-[10px] text-muted-light uppercase tracking-wide font-semibold">Mover para</p>
+                  <p className="px-3 py-1.5 text-[10px] text-muted-light uppercase tracking-wide font-semibold">{t("Mover para")}</p>
                   {allModules.filter((m: any) => m.id !== currentModuleId).map((m: any) => (
                     <button
                       key={m.id}
@@ -819,7 +824,7 @@ function SortableLesson({ lesson, lessonIdx, editingLesson, quizLesson, lessonFo
           onSubmit={onUpdate}
           onAutoSave={onAutoSave}
           onCancel={onCancelEdit}
-          label="Salvar Alterações"
+          label={t("Salvar Alterações")}
           lessonId={lesson.id}
           categoria={courseCategoria}
         />
@@ -856,6 +861,7 @@ function LessonTypeIcon({ tipo }: { tipo: string }) {
 // ── LessonForm ────────────────────────────────────────────────
 
 function LessonForm({ form, loading, onSubmit, onAutoSave, onCancel, label, lessonId, categoria }: any) {
+  const t = useT();
   const tipo = form.watch("tipo");
   const pdfPath = form.watch("pdf_path");
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -900,20 +906,20 @@ function LessonForm({ form, loading, onSubmit, onAutoSave, onCancel, label, less
     >
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs text-muted-light mb-1">Título *</label>
-          <Input {...form.register("titulo")} placeholder="Título da aula" className="h-8 text-xs" autoFocus />
+          <label className="block text-xs text-muted-light mb-1">{t("Título *")}</label>
+          <Input {...form.register("titulo")} placeholder={t("Título da aula")} className="h-8 text-xs" autoFocus />
         </div>
         <div>
-          <label className="block text-xs text-muted-light mb-1">Tipo</label>
+          <label className="block text-xs text-muted-light mb-1">{t("Tipo")}</label>
           <select
             {...form.register("tipo")}
             className="w-full h-8 rounded-lg border border-border bg-surface px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-amber-500"
           >
-            <option value="video">Vídeo</option>
+            <option value="video">{t("Vídeo")}</option>
             <option value="pdf">PDF</option>
-            <option value="texto">Texto</option>
+            <option value="texto">{t("Texto")}</option>
             <option value="quiz">Quiz</option>
-            <option value="misto">Misto</option>
+            <option value="misto">{t("Misto")}</option>
           </select>
         </div>
       </div>
@@ -921,10 +927,10 @@ function LessonForm({ form, loading, onSubmit, onAutoSave, onCancel, label, less
       {(tipo === "video" || tipo === "misto") && (
         <div>
           <label className="block text-xs text-muted-light mb-1">
-            YouTube ID <span className="text-[10px] text-muted-light">(ex: dQw4w9WgXcQ)</span>
+            YouTube ID <span className="text-[10px] text-muted-light">{t("(ex: dQw4w9WgXcQ)")}</span>
           </label>
           <div className="flex gap-2">
-            <Input {...form.register("youtube_id")} placeholder="YouTube Video ID" className="h-8 text-xs flex-1" />
+            <Input {...form.register("youtube_id")} placeholder={t("YouTube Video ID")} className="h-8 text-xs flex-1" />
             {form.watch("youtube_id") && (
               <a
                 href={`https://www.youtube.com/watch?v=${form.watch("youtube_id")}`}
@@ -932,7 +938,7 @@ function LessonForm({ form, loading, onSubmit, onAutoSave, onCancel, label, less
                 rel="noopener noreferrer"
                 className="flex items-center gap-1 px-2 h-8 text-[10px] text-amber-400 border border-amber-500/30 rounded-lg hover:bg-amber-500/10 transition-colors shrink-0"
               >
-                ▶ Preview
+                ▶ {t("Preview")}
               </a>
             )}
           </div>
@@ -941,7 +947,7 @@ function LessonForm({ form, loading, onSubmit, onAutoSave, onCancel, label, less
 
       {(tipo === "texto" || tipo === "misto") && (
         <div>
-          <label className="block text-xs text-muted-light mb-1">Conteúdo Rico</label>
+          <label className="block text-xs text-muted-light mb-1">{t("Conteúdo Rico")}</label>
           <RichTextEditor
             value={form.watch("conteudo_rico") ?? ""}
             onChange={(html) => form.setValue("conteudo_rico", html, { shouldDirty: true })}
@@ -952,14 +958,14 @@ function LessonForm({ form, loading, onSubmit, onAutoSave, onCancel, label, less
 
       {(tipo === "pdf" || tipo === "misto") && (
         <div>
-          <label className="block text-xs text-muted-light mb-1">Arquivo PDF</label>
+          <label className="block text-xs text-muted-light mb-1">{t("Arquivo PDF")}</label>
           <FileUploader
             bucket="course-materials"
             folder="lessons"
             accept={{ "application/pdf": [".pdf"] }}
             maxSizeMB={50}
-            label="Arraste o PDF ou clique para selecionar"
-            hint="PDF até 50 MB"
+            label={t("Arraste o PDF ou clique para selecionar")}
+            hint={t("PDF até 50 MB")}
             currentUrl={pdfPath}
             onUpload={(url) => form.setValue("pdf_path", url)}
             onRemove={() => form.setValue("pdf_path", "")}
@@ -969,11 +975,11 @@ function LessonForm({ form, loading, onSubmit, onAutoSave, onCancel, label, less
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs text-muted-light mb-1">Duração (min)</label>
+          <label className="block text-xs text-muted-light mb-1">{t("Duração (min)")}</label>
           <Input type="number" {...form.register("duracao_min")} placeholder="15" className="h-8 text-xs" />
         </div>
         <div>
-          <label className="block text-xs text-muted-light mb-1">Ordem</label>
+          <label className="block text-xs text-muted-light mb-1">{t("Ordem")}</label>
           <Input type="number" {...form.register("ordem")} placeholder="0" className="h-8 text-xs" />
         </div>
       </div>
@@ -981,20 +987,20 @@ function LessonForm({ form, loading, onSubmit, onAutoSave, onCancel, label, less
       <div className="flex items-center gap-4">
         <label className="flex items-center gap-2 cursor-pointer text-xs text-muted">
           <input type="checkbox" {...form.register("tem_quiz")} className="accent-amber-500" />
-          Tem Quiz
+          {t("Tem Quiz")}
         </label>
         <label className="flex items-center gap-2 cursor-pointer text-xs text-muted">
           <input type="checkbox" {...form.register("preview_gratis")} className="accent-amber-500" />
-          Preview Gratuito
+          {t("Preview Gratuito")}
         </label>
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
         <Button type="submit" size="sm" loading={loading}><Save size={13} /> {label}</Button>
-        <Button type="button" variant="ghost" size="sm" onClick={onCancel}><X size={13} /> Cancelar</Button>
+        <Button type="button" variant="ghost" size="sm" onClick={onCancel}><X size={13} /> {t("Cancelar")}</Button>
         {lessonId && <ContentValidatorButton lessonId={lessonId} courseCategoria={categoria} />}
-        {autoSaving && <span className="text-xs text-muted-light ml-auto animate-pulse">Salvando...</span>}
-        {autoSaved && !autoSaving && <span className="text-xs text-emerald-600 ml-auto">✓ Salvo automaticamente</span>}
+        {autoSaving && <span className="text-xs text-muted-light ml-auto animate-pulse">{t("Salvando...")}</span>}
+        {autoSaved && !autoSaving && <span className="text-xs text-emerald-600 ml-auto">{t("✓ Salvo automaticamente")}</span>}
       </div>
     </form>
   );
@@ -1003,6 +1009,7 @@ function LessonForm({ form, loading, onSubmit, onAutoSave, onCancel, label, less
 // ── QuizBuilder ───────────────────────────────────────────────
 
 function QuizBuilder({ lessonId, lessonTitulo, lessonConteudo, onClose, onQuizCreated, onQuizDeleted }: { lessonId: string; lessonTitulo?: string; lessonConteudo?: string | null; onClose: () => void; onQuizCreated?: () => void; onQuizDeleted?: () => void }) {
+  const t = useT();
   const [quiz, setQuiz] = useState<any>(null);
   const [loaded, setLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -1056,7 +1063,7 @@ function QuizBuilder({ lessonId, lessonTitulo, lessonConteudo, onClose, onQuizCr
   };
 
   const handleDeleteQuiz = async () => {
-    if (!confirm("Remover o quiz e todas as questões?")) return;
+    if (!confirm(t("Remover o quiz e todas as questões?"))) return;
     await adminDeleteQuiz(quiz.id);
     await adminUpdateLesson(lessonId, { tem_quiz: false });
     setQuiz(null);
@@ -1143,7 +1150,7 @@ function QuizBuilder({ lessonId, lessonTitulo, lessonConteudo, onClose, onQuizCr
       });
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error || "Erro ao gerar quiz");
+        throw new Error(err.error || t("Erro ao gerar quiz"));
       }
       const { questions } = await res.json();
 
@@ -1175,7 +1182,7 @@ function QuizBuilder({ lessonId, lessonTitulo, lessonConteudo, onClose, onQuizCr
         }));
       }
     } catch (err: any) {
-      alert(err.message || "Erro ao gerar quiz com IA");
+      alert(err.message || t("Erro ao gerar quiz com IA"));
     } finally {
       setGeneratingAI(false);
     }
@@ -1236,7 +1243,7 @@ function QuizBuilder({ lessonId, lessonTitulo, lessonConteudo, onClose, onQuizCr
         setPasteText("");
       }
     } catch (err: any) {
-      setPasteErrors([`Erro ao importar: ${err.message || "Erro desconhecido"}`]);
+      setPasteErrors([`${t("Erro ao importar:")} ${err.message || t("Erro desconhecido")}`]);
     } finally {
       setImportingPaste(false);
     }
@@ -1247,28 +1254,28 @@ function QuizBuilder({ lessonId, lessonTitulo, lessonConteudo, onClose, onQuizCr
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <HelpCircle size={15} className="text-amber-400" />
-          <span className="text-sm font-semibold text-foreground">Builder de Quiz</span>
-          {quiz && <Badge variant="secondary" className="text-[10px]">{quiz.quiz_questions?.length ?? 0} questões</Badge>}
+          <span className="text-sm font-semibold text-foreground">{t("Builder de Quiz")}</span>
+          {quiz && <Badge variant="secondary" className="text-[10px]">{quiz.quiz_questions?.length ?? 0} {t("questões")}</Badge>}
         </div>
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}><X size={14} /></Button>
       </div>
 
       {loading && !loaded ? (
-        <div className="text-sm text-muted-light py-4 text-center">Carregando...</div>
+        <div className="text-sm text-muted-light py-4 text-center">{t("Carregando...")}</div>
       ) : !quiz ? (
         <div className="text-center py-6">
           <HelpCircle size={32} className="text-muted-light mx-auto mb-2" />
-          <p className="text-sm text-muted-light mb-3">Nenhum quiz criado ainda para esta aula.</p>
-          <Button size="sm" onClick={handleCreateQuiz} loading={loading}><Plus size={13} /> Criar Quiz</Button>
+          <p className="text-sm text-muted-light mb-3">{t("Nenhum quiz criado ainda para esta aula.")}</p>
+          <Button size="sm" onClick={handleCreateQuiz} loading={loading}><Plus size={13} /> {t("Criar Quiz")}</Button>
         </div>
       ) : (
         <div className="space-y-3">
           {editingSettings ? (
             <div className="bg-surface rounded-lg border border-amber-500/20 px-3 py-3 space-y-3">
-              <p className="text-xs font-semibold text-muted">Configurações do Quiz</p>
+              <p className="text-xs font-semibold text-muted">{t("Configurações do Quiz")}</p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div>
-                  <label className="block text-[10px] text-muted-light mb-1">Aprovação mínima (%)</label>
+                  <label className="block text-[10px] text-muted-light mb-1">{t("Aprovação mínima (%)")}</label>
                   <input
                     type="number" min={0} max={100}
                     value={settingsForm.nivel_minimo_aprovacao}
@@ -1277,7 +1284,7 @@ function QuizBuilder({ lessonId, lessonTitulo, lessonConteudo, onClose, onQuizCr
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] text-muted-light mb-1">Tentativas</label>
+                  <label className="block text-[10px] text-muted-light mb-1">{t("Tentativas")}</label>
                   <input
                     type="number" min={1} max={10}
                     value={settingsForm.tentativas_permitidas}
@@ -1286,11 +1293,11 @@ function QuizBuilder({ lessonId, lessonTitulo, lessonConteudo, onClose, onQuizCr
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] text-muted-light mb-1">Tempo limite (min)</label>
+                  <label className="block text-[10px] text-muted-light mb-1">{t("Tempo limite (min)")}</label>
                   <input
                     type="number" min={0} max={120}
                     value={settingsForm.tempo_limite_min ?? ""}
-                    placeholder="Sem limite"
+                    placeholder={t("Sem limite")}
                     onChange={(e) => setSettingsForm((p) => ({ ...p, tempo_limite_min: e.target.value ? Number(e.target.value) : null }))}
                     className="w-full h-7 text-xs border border-border rounded-lg px-2 focus:outline-none focus:border-amber-500"
                   />
@@ -1303,36 +1310,36 @@ function QuizBuilder({ lessonId, lessonTitulo, lessonConteudo, onClose, onQuizCr
                       onChange={(e) => setSettingsForm((p) => ({ ...p, embaralhar_questoes: e.target.checked }))}
                       className="accent-amber-500"
                     />
-                    Embaralhar
+                    {t("Embaralhar")}
                   </label>
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button size="sm" loading={loading} onClick={handleSaveSettings}><Save size={11} /> Salvar</Button>
-                <Button size="sm" variant="ghost" onClick={() => setEditingSettings(false)}><X size={11} /> Cancelar</Button>
+                <Button size="sm" loading={loading} onClick={handleSaveSettings}><Save size={11} /> {t("Salvar")}</Button>
+                <Button size="sm" variant="ghost" onClick={() => setEditingSettings(false)}><X size={11} /> {t("Cancelar")}</Button>
               </div>
             </div>
           ) : (
             <div className="flex items-center gap-3 bg-surface rounded-lg border border-border px-3 py-2 text-xs text-muted-light flex-wrap">
               <Settings2 size={13} className="text-muted-light" />
-              <span>Aprovação: <strong className="text-foreground">{quiz.nivel_minimo_aprovacao}%</strong></span>
+              <span>{t("Aprovação:")} <strong className="text-foreground">{quiz.nivel_minimo_aprovacao}%</strong></span>
               <span>·</span>
-              <span>Tentativas: <strong className="text-foreground">{quiz.tentativas_permitidas}x</strong></span>
+              <span>{t("Tentativas:")} <strong className="text-foreground">{quiz.tentativas_permitidas}x</strong></span>
               <span>·</span>
               <span className={quiz.embaralhar_questoes ? "text-emerald-600" : "text-muted-light"}>
-                {quiz.embaralhar_questoes ? "Embaralhar ✓" : "Ordem fixa"}
+                {quiz.embaralhar_questoes ? t("Embaralhar ✓") : t("Ordem fixa")}
               </span>
               {quiz.tempo_limite_min && (
                 <>
                   <span>·</span>
-                  <span>Tempo: <strong className="text-foreground">{quiz.tempo_limite_min} min</strong></span>
+                  <span>{t("Tempo:")} <strong className="text-foreground">{quiz.tempo_limite_min} {t("min")}</strong></span>
                 </>
               )}
               <div className="ml-auto flex items-center gap-1">
-                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-light hover:text-muted" onClick={() => setEditingSettings(true)} title="Editar configurações">
+                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-light hover:text-muted" onClick={() => setEditingSettings(true)} title={t("Editar configurações")}>
                   <Edit2 size={11} />
                 </Button>
-                <Button variant="ghost" size="icon" className="h-6 w-6 text-red-400 hover:text-red-500" onClick={handleDeleteQuiz} title="Remover quiz">
+                <Button variant="ghost" size="icon" className="h-6 w-6 text-red-400 hover:text-red-500" onClick={handleDeleteQuiz} title={t("Remover quiz")}>
                   <Trash2 size={11} />
                 </Button>
               </div>
@@ -1360,18 +1367,17 @@ function QuizBuilder({ lessonId, lessonTitulo, lessonConteudo, onClose, onQuizCr
             <div className="bg-surface rounded-lg border border-amber-500/20 p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                  <ClipboardPaste size={13} className="text-amber-400" /> Colar Quiz Completo
+                  <ClipboardPaste size={13} className="text-amber-400" /> {t("Colar Quiz Completo")}
                 </p>
                 <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setShowPasteModal(false); setPasteErrors([]); }}><X size={12} /></Button>
               </div>
               <p className="text-[10px] text-muted-light">
-                Cole o texto do quiz com perguntas numeradas (1, 2, 3...), alternativas com letras (a, b, c, d)
-                e gabarito no final. O sistema detecta automaticamente as respostas corretas.
+                {t("Cole o texto do quiz com perguntas numeradas (1, 2, 3...), alternativas com letras (a, b, c, d) e gabarito no final. O sistema detecta automaticamente as respostas corretas.")}
               </p>
               <textarea
                 value={pasteText}
                 onChange={(e) => setPasteText(e.target.value)}
-                placeholder={"1. Qual a capital do Brasil?\n   a) São Paulo\n   b) Brasília\n   c) Rio de Janeiro\n   d) Salvador\n\nGABARITO\n1 B"}
+                placeholder={t("1. Qual a capital do Brasil?\n   a) São Paulo\n   b) Brasília\n   c) Rio de Janeiro\n   d) Salvador\n\nGABARITO\n1 B")}
                 className="w-full h-48 text-xs font-mono bg-background border border-border rounded-lg p-3 focus:outline-none focus:border-amber-500 resize-y"
                 autoFocus
               />
@@ -1388,18 +1394,18 @@ function QuizBuilder({ lessonId, lessonTitulo, lessonConteudo, onClose, onQuizCr
                 const preview = parseQuizText(pasteText);
                 return preview.questions.length > 0 ? (
                   <p className="text-[10px] text-emerald-500">
-                    {preview.questions.length} questões detectadas
-                    {preview.aprovacao_minima ? ` · Aprovação: ${preview.aprovacao_minima}%` : ""}
-                    {preview.errors.length > 0 ? ` · ${preview.errors.length} avisos` : " · Tudo OK"}
+                    {preview.questions.length} {t("questões detectadas")}
+                    {preview.aprovacao_minima ? ` · ${t("Aprovação:")} ${preview.aprovacao_minima}%` : ""}
+                    {preview.errors.length > 0 ? ` · ${preview.errors.length} ${t("avisos")}` : ` · ${t("Tudo OK")}`}
                   </p>
                 ) : null;
               })()}
               <div className="flex gap-2">
                 <Button size="sm" onClick={handleImportFromPaste} loading={importingPaste} disabled={!pasteText.trim()}>
-                  <ClipboardPaste size={11} /> Importar {parseQuizText(pasteText).questions.length} questões
+                  <ClipboardPaste size={11} /> {t("Importar")} {parseQuizText(pasteText).questions.length} {t("questões")}
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => { setShowPasteModal(false); setPasteText(""); setPasteErrors([]); }}>
-                  Cancelar
+                  {t("Cancelar")}
                 </Button>
               </div>
             </div>
@@ -1413,13 +1419,13 @@ function QuizBuilder({ lessonId, lessonTitulo, lessonConteudo, onClose, onQuizCr
                 className="flex-1 flex items-center gap-2 px-3 py-2 text-sm text-muted-light hover:text-amber-400 hover:bg-surface border border-dashed border-border hover:border-amber-500/30 rounded-lg transition-colors"
                 onClick={() => setAddingQuestion(true)}
               >
-                <Plus size={13} /> Adicionar Questão
+                <Plus size={13} /> {t("Adicionar Questão")}
               </button>
               <button
                 className="flex items-center gap-2 px-3 py-2 text-sm text-blue-500 hover:text-blue-600 hover:bg-blue-50 border border-dashed border-blue-300 hover:border-blue-400 rounded-lg transition-colors"
                 onClick={() => { setShowPasteModal(true); setPasteText(""); setPasteErrors([]); }}
               >
-                <ClipboardPaste size={13} /> Colar Quiz
+                <ClipboardPaste size={13} /> {t("Colar Quiz")}
               </button>
               {lessonConteudo && (
                 <button
@@ -1428,7 +1434,7 @@ function QuizBuilder({ lessonId, lessonTitulo, lessonConteudo, onClose, onQuizCr
                   disabled={generatingAI}
                 >
                   <Sparkles size={13} className={generatingAI ? "animate-spin" : ""} />
-                  {generatingAI ? "Gerando..." : "Gerar com IA"}
+                  {generatingAI ? t("Gerando...") : t("Gerar com IA")}
                 </button>
               )}
             </div>
@@ -1442,6 +1448,7 @@ function QuizBuilder({ lessonId, lessonTitulo, lessonConteudo, onClose, onQuizCr
 // ── QuestionCard ──────────────────────────────────────────────
 
 function QuestionCard({ question, index, expanded, onToggle, onDelete, onUpdate, onAddOption, onSetCorrect, onDeleteOption, loading }: any) {
+  const t = useT();
   const [newOption, setNewOption] = useState("");
   const [isCorrect, setIsCorrect] = useState(false);
   const [editingText, setEditingText] = useState(false);
@@ -1461,8 +1468,8 @@ function QuestionCard({ question, index, expanded, onToggle, onDelete, onUpdate,
         <div className="flex items-center gap-2 shrink-0">
           {hasCorrect
             ? <CheckCircle2 size={13} className="text-emerald-500" />
-            : <span title="Nenhuma resposta correta marcada"><Circle size={13} className="text-amber-400" /></span>}
-          <span className="text-[10px] text-muted-light">{question.quiz_options?.length ?? 0} opções</span>
+            : <span title={t("Nenhuma resposta correta marcada")}><Circle size={13} className="text-amber-400" /></span>}
+          <span className="text-[10px] text-muted-light">{question.quiz_options?.length ?? 0} {t("opções")}</span>
           <Button variant="ghost" size="icon" className="h-6 w-6 text-red-400 hover:text-red-500" onClick={(e: React.MouseEvent) => { e.stopPropagation(); onDelete(); }}>
             <Trash2 size={11} />
           </Button>
@@ -1484,12 +1491,12 @@ function QuestionCard({ question, index, expanded, onToggle, onDelete, onUpdate,
               />
               <input
                 className="w-full text-xs border border-border rounded-lg px-2 py-1.5 focus:outline-none focus:border-amber-500"
-                placeholder="Explicação da resposta (opcional)"
+                placeholder={t("Explicação da resposta (opcional)")}
                 value={editExplicacao}
                 onChange={(e) => setEditExplicacao(e.target.value)}
               />
               <div className="flex gap-2">
-                <Button size="sm" onClick={() => { onUpdate({ texto: editText, explicacao: editExplicacao || null }); setEditingText(false); }}><Save size={11} /> Salvar</Button>
+                <Button size="sm" onClick={() => { onUpdate({ texto: editText, explicacao: editExplicacao || null }); setEditingText(false); }}><Save size={11} /> {t("Salvar")}</Button>
                 <Button size="sm" variant="ghost" onClick={() => { setEditText(question.texto); setEditExplicacao(question.explicacao ?? ""); setEditingText(false); }}><X size={11} /></Button>
               </div>
             </div>
@@ -1498,7 +1505,7 @@ function QuestionCard({ question, index, expanded, onToggle, onDelete, onUpdate,
               className="text-[10px] text-amber-400 hover:underline mb-1"
               onClick={() => setEditingText(true)}
             >
-              Editar questão{question.explicacao ? " · tem explicação" : ""}
+              {t("Editar questão")}{question.explicacao ? ` · ${t("tem explicação")}` : ""}
             </button>
           )}
 
@@ -1508,7 +1515,7 @@ function QuestionCard({ question, index, expanded, onToggle, onDelete, onUpdate,
               <button
                 className={cn("flex h-5 w-5 items-center justify-center rounded-full border-2 shrink-0 transition-colors", opt.correta ? "border-emerald-500 bg-emerald-500" : "border-border-strong hover:border-emerald-400")}
                 onClick={() => onSetCorrect(opt.id)}
-                title="Marcar como correta"
+                title={t("Marcar como correta")}
               >
                 {opt.correta && <span className="text-white text-[8px]">✓</span>}
               </button>
@@ -1528,13 +1535,13 @@ function QuestionCard({ question, index, expanded, onToggle, onDelete, onUpdate,
                 <button
                   className={cn("flex h-5 w-5 items-center justify-center rounded-full border-2 shrink-0 transition-colors", isCorrect ? "border-emerald-500 bg-emerald-500" : "border-border-strong hover:border-emerald-400")}
                   onClick={() => setIsCorrect(!isCorrect)}
-                  title="Marcar como correta"
+                  title={t("Marcar como correta")}
                 >
                   {isCorrect && <span className="text-white text-[8px]">✓</span>}
                 </button>
                 <input
                   className="flex-1 text-sm border border-border rounded-lg px-2 py-1 focus:outline-none focus:border-amber-500"
-                  placeholder="Nova opção..."
+                  placeholder={t("Nova opção...")}
                   value={newOption}
                   onChange={(e) => setNewOption(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); onAddOption(newOption, isCorrect); setNewOption(""); setIsCorrect(false); } }}
@@ -1543,12 +1550,12 @@ function QuestionCard({ question, index, expanded, onToggle, onDelete, onUpdate,
                   <Plus size={12} />
                 </Button>
               </div>
-              <p className="text-[10px] text-muted-light">Clique no círculo para marcar a resposta correta. Enter para adicionar.</p>
+              <p className="text-[10px] text-muted-light">{t("Clique no círculo para marcar a resposta correta. Enter para adicionar.")}</p>
             </>
           )}
 
           {isTrueFalse && (
-            <p className="text-[10px] text-muted-light">Clique no círculo para definir se a afirmação é verdadeira ou falsa.</p>
+            <p className="text-[10px] text-muted-light">{t("Clique no círculo para definir se a afirmação é verdadeira ou falsa.")}</p>
           )}
         </div>
       )}
@@ -1559,12 +1566,13 @@ function QuestionCard({ question, index, expanded, onToggle, onDelete, onUpdate,
 // ── AddQuestionForm ───────────────────────────────────────────
 
 function AddQuestionForm({ onSave, onCancel, loading }: { onSave: (texto: string, tipo: "multiple_choice" | "true_false") => void; onCancel: () => void; loading: boolean }) {
+  const t = useT();
   const [texto, setTexto] = useState("");
   const [tipo, setTipo] = useState<"multiple_choice" | "true_false">("multiple_choice");
   return (
     <div className="bg-surface rounded-lg border border-amber-500/20 px-3 py-3 space-y-2">
       <div className="flex items-center gap-3 mb-1">
-        <label className="block text-xs text-muted-light">Tipo:</label>
+        <label className="block text-xs text-muted-light">{t("Tipo:")}</label>
         <div className="flex gap-1">
           <button
             className={cn(
@@ -1573,7 +1581,7 @@ function AddQuestionForm({ onSave, onCancel, loading }: { onSave: (texto: string
             )}
             onClick={() => setTipo("multiple_choice")}
           >
-            Múltipla Escolha
+            {t("Múltipla Escolha")}
           </button>
           <button
             className={cn(
@@ -1582,7 +1590,7 @@ function AddQuestionForm({ onSave, onCancel, loading }: { onSave: (texto: string
             )}
             onClick={() => setTipo("true_false")}
           >
-            Verdadeiro / Falso
+            {t("Verdadeiro / Falso")}
           </button>
         </div>
       </div>
@@ -1590,18 +1598,18 @@ function AddQuestionForm({ onSave, onCancel, loading }: { onSave: (texto: string
         className="w-full text-sm border border-border rounded-lg px-2 py-1.5 focus:outline-none focus:border-amber-500 resize-none"
         rows={2}
         placeholder={tipo === "true_false"
-          ? "Ex: O compressor de áudio reduz a faixa dinâmica do sinal."
-          : "Ex: Qual a função principal do compressor de áudio?"}
+          ? t("Ex: O compressor de áudio reduz a faixa dinâmica do sinal.")
+          : t("Ex: Qual a função principal do compressor de áudio?")}
         value={texto}
         onChange={(e) => setTexto(e.target.value)}
         autoFocus
       />
       {tipo === "true_false" && (
-        <p className="text-[10px] text-muted-light">As opções &quot;Verdadeiro&quot; e &quot;Falso&quot; serão criadas automaticamente.</p>
+        <p className="text-[10px] text-muted-light">{t('As opções "Verdadeiro" e "Falso" serão criadas automaticamente.')}</p>
       )}
       <div className="flex gap-2">
-        <Button size="sm" loading={loading} onClick={() => onSave(texto, tipo)}><Save size={12} /> Salvar Questão</Button>
-        <Button size="sm" variant="ghost" onClick={onCancel}><X size={12} /> Cancelar</Button>
+        <Button size="sm" loading={loading} onClick={() => onSave(texto, tipo)}><Save size={12} /> {t("Salvar Questão")}</Button>
+        <Button size="sm" variant="ghost" onClick={onCancel}><X size={12} /> {t("Cancelar")}</Button>
       </div>
     </div>
   );
