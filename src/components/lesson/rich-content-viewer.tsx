@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import DOMPurify from "isomorphic-dompurify";
 import { Button } from "@/components/ui/button";
-import { useImageLightbox } from "@/components/ui/image-lightbox";
 
 interface RichContentViewerProps {
   html: string;
@@ -182,7 +181,6 @@ export function RichContentViewer({ html, lessonId, titulo, categoria, isAdmin =
   const [refinedHtml, setRefinedHtml] = useState<string | null>(null);
   const [refining, setRefining] = useState(false);
   const isTranslated = locale !== "pt";
-  const { onContentClick, lightbox } = useImageLightbox();
 
   // Carregar conteúdo refinado se existir (silencioso, sem gerar)
   // Em idioma traduzido NÃO busca refinado (o refinado é só em PT e sobreporia a tradução).
@@ -276,16 +274,14 @@ export function RichContentViewer({ html, lessonId, titulo, categoria, isAdmin =
     return (
       <div>
         <RefineButton />
-        <div className="prose-light max-w-none" onClick={onContentClick} dangerouslySetInnerHTML={{ __html: sanitized }} />
-        {lightbox}
+        <div className="prose-light max-w-none" dangerouslySetInnerHTML={{ __html: sanitized }} />
       </div>
     );
   }
 
   return (
-    <div className="space-y-2" onClick={onContentClick}>
+    <div className="space-y-2">
       <RefineButton />
-      {lightbox}
 
       {sections.map((section, idx) => {
         if (!section.title && !section.content) return null;

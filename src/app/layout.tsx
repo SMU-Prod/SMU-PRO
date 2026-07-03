@@ -7,6 +7,7 @@ import { HighlightInit } from "@highlight-run/next/client";
 import { ThemeProvider } from "@/components/theme-provider";
 import { LocaleProvider } from "@/lib/i18n/locale";
 import { getServerLocale } from "@/lib/i18n/server";
+import { PageZoom } from "@/components/ui/page-zoom";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -102,7 +103,8 @@ export default async function RootLayout({
           <body className="antialiased bg-background text-foreground">
             <ThemeProvider>
               <LocaleProvider initial={locale}>
-                {children}
+                <div id="smu-zoom-root">{children}</div>
+                <PageZoom />
               </LocaleProvider>
             </ThemeProvider>
           </body>
