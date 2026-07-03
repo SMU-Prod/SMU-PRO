@@ -30,8 +30,9 @@ import {
   CheckCircle2, Circle, ChevronDown, ChevronRight, ChevronUp,
   PlayCircle, FileText, HelpCircle, StickyNote,
   Lock, CheckCheck, BookOpen, Clock, Star, ChevronLeft, List,
-  Minimize2, Maximize2, Download, Eye, EyeOff,
+  Minimize2, Maximize2, Download, Eye, EyeOff, Menu,
 } from "lucide-react";
+import { useSidebar } from "@/components/layout/sidebar-context";
 
 /** Extrai o ID puro do YouTube de qualquer formato (URL completa, watch?v=, etc.) */
 function extractYoutubeId(raw: string): string {
@@ -106,6 +107,7 @@ export function LessonPlayer({
   const locale = useLocale();
   const t = useT();
   const courseTr = useCourseTr(course.slug, locale);
+  const { toggle: toggleSidebar } = useSidebar();
   const tr = courseTr?.lessons?.[lesson.id] ?? null;
   const quizTr = courseTr?.quiz ?? null;
   const dispTitulo = tr?.titulo ?? lesson.titulo;
@@ -328,6 +330,14 @@ export function LessonPlayer({
         {/* Top Bar */}
         <div className="flex items-center justify-between px-3 sm:px-5 py-2.5 border-b border-border bg-surface shrink-0 gap-2">
           <div className="flex items-center gap-1.5 text-sm text-muted-light min-w-0">
+            <button
+              onClick={toggleSidebar}
+              className="lg:hidden p-2 -ml-1 rounded-lg text-muted hover:text-foreground hover:bg-hover transition-colors shrink-0"
+              aria-label={t("Abrir menu")}
+              title={t("Menu")}
+            >
+              <Menu size={20} />
+            </button>
             <Link href="/dashboard/cursos" className="hover:text-foreground transition-colors shrink-0 hidden sm:block">
               {t("Meus Cursos")}
             </Link>

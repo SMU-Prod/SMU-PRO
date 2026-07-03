@@ -324,6 +324,7 @@ export const DICT: Record<string, { en: string; es: string }> = {
   "Ativar modo claro": { en: "Switch to light mode", es: "Activar modo claro" },
   "Ativar modo escuro": { en: "Switch to dark mode", es: "Activar modo oscuro" },
   "Abrir menu": { en: "Open menu", es: "Abrir menú" },
+  "Menu": { en: "Menu", es: "Menú" },
   "Idioma": { en: "Language", es: "Idioma" },
 
   // ── Dashboard do aluno ──
