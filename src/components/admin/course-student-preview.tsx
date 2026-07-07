@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { useDarkContentFix } from "@/lib/hooks/use-dark-content-fix";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -303,6 +304,9 @@ function StudentTrilhaCard({ course, progress, isEnrolled }: { course: CourseDat
 // ── Lesson Preview (Player embed) ────────────────────────────────
 function LessonPreview({ lesson }: { lesson: Lesson | null }) {
   const t = useT();
+  // Correção de contraste no modo escuro (mesmo tratamento da visão do aluno).
+  const previewRef = useRef<HTMLDivElement>(null);
+  useDarkContentFix(previewRef, [lesson?.conteudo_rico]);
   if (!lesson) {
     return (
       <div className="rounded-xl border border-dashed border-border bg-surface-2 p-8 text-center">
@@ -315,7 +319,7 @@ function LessonPreview({ lesson }: { lesson: Lesson | null }) {
   const youtubeId = lesson.youtube_url ? extractYoutubeId(lesson.youtube_url) : null;
 
   return (
-    <div className="rounded-xl border border-border bg-surface overflow-hidden">
+    <div ref={previewRef} className="rounded-xl border border-border bg-surface overflow-hidden">
       {/* Video area */}
       {youtubeId ? (
         <div className="aspect-video bg-black">

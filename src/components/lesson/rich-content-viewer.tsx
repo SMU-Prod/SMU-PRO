@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
+import { useDarkContentFix } from "@/lib/hooks/use-dark-content-fix";
 import {
   Target, BookOpen, MapPin, Users, Megaphone,
   AlertTriangle, Wrench, TrendingUp,
@@ -231,6 +232,12 @@ export function RichContentViewer({ html, lessonId, titulo, categoria, isAdmin =
 
   const sections = useMemo(() => parseIntoSections(sanitized), [sanitized]);
 
+  // Correção de contraste no MODO ESCURO: clareia as cores de texto escuras que o
+  // editor embutiu no conteúdo (somem no fundo escuro, só aparecem ao imprimir).
+  // Pula os infográficos <figure> (fundo branco próprio). Ver o hook.
+  const contentRootRef = useRef<HTMLDivElement>(null);
+  useDarkContentFix(contentRootRef, [sanitized]);
+
   // Botão admin de refinar (reutilizável) — DESATIVADO a pedido (flag abaixo)
   const AI_REFINE_ENABLED = false;
   const RefineButton = () => {
@@ -272,7 +279,7 @@ export function RichContentViewer({ html, lessonId, titulo, categoria, isAdmin =
 
   if (sections.length <= 1 && !sections[0]?.title) {
     return (
-      <div>
+      <div ref={contentRootRef}>
         <RefineButton />
         <div className="prose-light max-w-none" dangerouslySetInnerHTML={{ __html: sanitized }} />
       </div>
@@ -280,7 +287,7 @@ export function RichContentViewer({ html, lessonId, titulo, categoria, isAdmin =
   }
 
   return (
-    <div className="space-y-2">
+    <div ref={contentRootRef} className="space-y-2">
       <RefineButton />
 
       {sections.map((section, idx) => {
