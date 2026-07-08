@@ -590,7 +590,7 @@ export function LessonPlayer({
           </div>
           <p className="text-xs text-muted-light mt-1">{completedLessons}/{totalLessons} {t("aulas concluídas")}</p>
         </div>
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto pb-20">
           <CourseContentList />
         </div>
       </aside>
