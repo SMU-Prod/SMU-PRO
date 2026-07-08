@@ -50,6 +50,13 @@ const TIPOS = [
   { value: "pago", label: "Pago" },
 ];
 
+// Portal aula (escola livre): filtra por ÁREA, não por nível nem categoria de eventos.
+const CATEGORIAS_AULA = [
+  { value: "", label: "Todas as áreas" },
+  { value: "tecnico", label: "Cursos técnicos" },
+  { value: "renda-em-casa", label: "Renda em casa" },
+];
+
 export default async function CursosPage({ searchParams }: Props) {
   const { nivel, categoria, tipo, search } = await searchParams;
   const { userId } = await auth();
@@ -65,7 +72,10 @@ export default async function CursosPage({ searchParams }: Props) {
 
   // Portal aula.smuproducoes.com: catálogo curado (só os cursos do portal).
   const portal = await getPortal();
+  const isAula = portal === "aula";
   courses = filterCoursesByPortal(courses, portal);
+  // No aula, o filtro de categoria é por ÁREA (técnico/renda); no www, categorias de eventos.
+  const CATS = isAula ? CATEGORIAS_AULA : CATEGORIAS;
 
   // ordena: iniciais (trainee) -> básicos (junior) -> plenos (pleno); alfabético dentro do grupo
   const NIVEL_RANK: Record<string, number> = { trainee: 0, junior: 1, pleno: 2 };
@@ -145,7 +155,8 @@ export default async function CursosPage({ searchParams }: Props) {
                 <button type="submit" className="sr-only">{t("Buscar")}</button>
               </form>
 
-              {/* Nível */}
+              {/* Nível — só no www (no aula livre não há trainee/junior/pleno) */}
+              {!isAula && (
               <div>
                 <p className="text-xs font-semibold text-muted-light uppercase tracking-wider mb-3">{t("Nível")}</p>
                 <div className="space-y-1">
@@ -163,12 +174,13 @@ export default async function CursosPage({ searchParams }: Props) {
                   })}
                 </div>
               </div>
+              )}
 
-              {/* Categoria */}
+              {/* Categoria (no aula = área: técnico/renda) */}
               <div>
-                <p className="text-xs font-semibold text-muted-light uppercase tracking-wider mb-3">{t("Categoria")}</p>
+                <p className="text-xs font-semibold text-muted-light uppercase tracking-wider mb-3">{isAula ? t("Área") : t("Categoria")}</p>
                 <div className="space-y-1">
-                  {CATEGORIAS.map((c) => {
+                  {CATS.map((c) => {
                     const params = new URLSearchParams({ ...(nivel ? { nivel } : {}), ...(tipo ? { tipo } : {}), ...(search ? { search } : {}), ...(c.value ? { categoria: c.value } : {}) });
                     return (
                       <Link
@@ -176,7 +188,7 @@ export default async function CursosPage({ searchParams }: Props) {
                         href={`/cursos?${params}`}
                         className={`block px-3 py-1.5 rounded-lg text-sm transition-colors ${categoria === c.value || (!categoria && !c.value) ? "bg-amber-500 text-white" : "text-muted hover:text-foreground hover:bg-hover"}`}
                       >
-                        {c.value && <span className="mr-1.5 inline-flex"><CategoryIcon category={c.value} size={14} /></span>}
+                        {!isAula && c.value && <span className="mr-1.5 inline-flex"><CategoryIcon category={c.value} size={14} /></span>}
                         {t(c.label)}
                       </Link>
                     );
@@ -184,7 +196,8 @@ export default async function CursosPage({ searchParams }: Props) {
                 </div>
               </div>
 
-              {/* Tipo */}
+              {/* Tipo — só no www (no aula livre todos são grátis) */}
+              {!isAula && (
               <div>
                 <p className="text-xs font-semibold text-muted-light uppercase tracking-wider mb-3">{t("Tipo")}</p>
                 <div className="space-y-1">
@@ -202,6 +215,7 @@ export default async function CursosPage({ searchParams }: Props) {
                   })}
                 </div>
               </div>
+              )}
             </div>
           </aside>
 
@@ -216,7 +230,7 @@ export default async function CursosPage({ searchParams }: Props) {
                 </p>
               </div>
             ) : (
-              <CoursesView courses={courses} />
+              <CoursesView courses={courses} isAula={isAula} />
             )}
           </main>
         </div>
