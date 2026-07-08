@@ -97,7 +97,7 @@ export default async function CategoryPage({ params }: Props) {
   const supabase = createAdminClient();
   const { data: courses } = await (supabase as any)
     .from("courses")
-    .select("id, titulo, slug, nivel, categoria, tipo, preco, thumbnail_url, carga_horaria, descricao_curta, total_alunos")
+    .select("id, titulo, slug, nivel, categoria, categorias, tipo, preco, thumbnail_url, carga_horaria, descricao_curta, total_alunos")
     .eq("ativo", true)
     .eq("categoria", slug)
     .order("nivel")

@@ -1,23 +1,16 @@
 import { headers } from "next/headers";
 
 /**
- * Portal "aula.smuproducoes.com" — catálogo SEPARADO e CURADO, com o mesmo layout do
- * site oficial, mas mostrando só os cursos desta lista. O site principal
- * (smuproducoes.com) continua com o catálogo completo, sem mudança.
+ * Portal "aula.smuproducoes.com" — catálogo dos cursos NOVOS (SMU Técnico + Renda em Casa).
+ * O www.smuproducoes.com continua só com os cursos de EVENTOS. É o MESMO app e o MESMO banco,
+ * servidos em dois domínios (a Vercel suporta); o que muda é o FILTRO por categoria conforme o host.
  *
- * Para adicionar/remover um curso do portal aula: coloque/tire o SLUG do curso aqui.
- * (Fase 2, se o Rick quiser gerenciar pelo admin: virar uma flag no banco + toggle.)
+ * Distinção no banco: os cursos de técnico/renda entram com a coluna `categorias` contendo
+ * 'tecnico' ou 'renda-em-casa'; os cursos de eventos têm `categorias` vazio.
+ *
+ * (Regra do dono, 08/07/2026: www = eventos, não mexer; aula = os cursos novos.)
  */
-export const AULA_COURSE_SLUGS: string[] = [
-  // Usado só quando AULA_INCLUDE_ALL = false (curadoria de um subconjunto).
-];
-
-/**
- * Rick pediu TODOS os cursos no portal aula. Com `true`, o aula mostra todos os cursos
- * ativos (mesmo catálogo do site principal, incluindo cursos futuros). Para curar um
- * subconjunto no futuro: ponha `false` e liste os slugs em AULA_COURSE_SLUGS.
- */
-export const AULA_INCLUDE_ALL = true;
+export const AULA_CATEGORIAS = ["tecnico", "renda-em-casa"];
 
 export type Portal = "aula" | "main";
 
@@ -31,9 +24,18 @@ export async function getPortal(): Promise<Portal> {
   return "main";
 }
 
-/** Filtra uma lista de cursos para o catálogo do portal (no aula, só os curados). */
-export function filterCoursesByPortal<T extends { slug?: string | null }>(courses: T[], portal: Portal): T[] {
-  if (portal !== "aula" || AULA_INCLUDE_ALL) return courses;
-  const set = new Set(AULA_COURSE_SLUGS);
-  return courses.filter((c) => !!c.slug && set.has(c.slug));
+/** Um curso é do portal "aula" se a lista `categorias` cruza com técnico/renda-em-casa. */
+function ehCursoAula(categorias?: string[] | null): boolean {
+  if (!Array.isArray(categorias)) return false;
+  return categorias.some((c) => AULA_CATEGORIAS.includes(c));
+}
+
+/**
+ * Filtra os cursos conforme o portal:
+ *  - aula → só os de técnico/renda em casa;
+ *  - main (www) → só os de eventos (exclui técnico/renda).
+ */
+export function filterCoursesByPortal<T extends { categorias?: string[] | null }>(courses: T[], portal: Portal): T[] {
+  if (portal === "aula") return courses.filter((c) => ehCursoAula(c.categorias));
+  return courses.filter((c) => !ehCursoAula(c.categorias));
 }
