@@ -7,6 +7,7 @@ import { HighlightInit } from "@highlight-run/next/client";
 import { ThemeProvider } from "@/components/theme-provider";
 import { LocaleProvider } from "@/lib/i18n/locale";
 import { getServerLocale } from "@/lib/i18n/server";
+import { getPortal } from "@/lib/portal";
 import { PageZoom } from "@/components/ui/page-zoom";
 import "./globals.css";
 
@@ -32,48 +33,91 @@ const instrumentSerif = Instrument_Serif({
   weight: "400",
 });
 
-export const metadata: Metadata = {
-  title: {
-    default: "Cursos de Sonorização e Iluminação para Eventos | SMU PRO",
-    template: "%s | SMU PRO",
-  },
-  description:
-    "Aprenda sonorização, iluminação, DJ e VJ com profissionais de shows ao vivo. Cursos online com certificado verificável. Comece grátis no nível Trainee.",
-  keywords: ["curso sonorização", "curso iluminação eventos", "escola de eventos ao vivo", "curso DJ profissional", "técnico de som curso", "certificado técnico eventos", "SMU PRO"],
-  authors: [{ name: "SMU PRO — Escola Profissional de Eventos" }],
-  metadataBase: new URL("https://smuproducoes.com"),
-  alternates: { languages: { "pt-BR": "https://smuproducoes.com" } },
-  icons: {
-    icon: [
-      { url: "/favicon.ico", sizes: "32x32" },
-      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
-    ],
-    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
-  },
-  manifest: "/site.webmanifest",
-  openGraph: {
-    type: "website",
-    locale: "pt_BR",
-    siteName: "SMU PRO",
-    title: "Cursos Técnicos para Eventos ao Vivo | SMU PRO",
-    description: "Sonorização, iluminação, DJ e VJ com certificado. Comece grátis.",
-    url: "https://smuproducoes.com",
-    images: [{ url: "https://smuproducoes.com/og-image.png", width: 1200, height: 630, alt: "SMU PRO — Escola Profissional de Eventos ao Vivo" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Cursos Técnicos para Eventos ao Vivo | SMU PRO",
-    description: "Sonorização, iluminação, DJ e VJ com certificado verificável.",
-    images: ["https://smuproducoes.com/og-image.png"],
-  },
-  robots: { index: true, follow: true },
-  other: {
-    "theme-color": "#F59E0B",
-    "apple-mobile-web-app-capable": "yes",
-    "apple-mobile-web-app-status-bar-style": "black-translucent",
-  },
-};
+// Metadata por portal: aula.smuproducoes.com (escola profissionalizante) × www (eventos).
+export async function generateMetadata(): Promise<Metadata> {
+  const isAula = (await getPortal()) === "aula";
+
+  // Comum aos dois portais (ícones/manifest/robots/PWA).
+  const shared: Metadata = {
+    icons: {
+      icon: [
+        { url: "/favicon.ico", sizes: "32x32" },
+        { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+        { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+      ],
+      apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
+    },
+    manifest: "/site.webmanifest",
+    robots: { index: true, follow: true },
+    other: {
+      "theme-color": "#F59E0B",
+      "apple-mobile-web-app-capable": "yes",
+      "apple-mobile-web-app-status-bar-style": "black-translucent",
+    },
+  };
+
+  if (isAula) {
+    const url = "https://aula.smuproducoes.com";
+    return {
+      ...shared,
+      title: {
+        default: "Cursos Profissionalizantes e de Renda em Casa | SMU PRO",
+        template: "%s | SMU PRO",
+      },
+      description:
+        "Escola profissionalizante online: cursos técnicos e de renda em casa (elétrica, marcenaria, confeitaria, informática e mais), do básico ao avançado, com certificado. Comece grátis.",
+      keywords: ["curso profissionalizante", "curso técnico online", "curso de renda em casa", "aprender uma profissão", "curso com certificado", "SMU PRO"],
+      authors: [{ name: "SMU PRO — Escola Profissionalizante" }],
+      metadataBase: new URL(url),
+      alternates: { languages: { "pt-BR": url } },
+      openGraph: {
+        type: "website",
+        locale: "pt_BR",
+        siteName: "SMU PRO",
+        title: "Cursos Profissionalizantes e de Renda em Casa | SMU PRO",
+        description: "Aprenda uma profissão no seu ritmo, do básico ao avançado, com certificado. Comece grátis.",
+        url,
+        images: [{ url: "https://smuproducoes.com/og-image.png", width: 1200, height: 630, alt: "SMU PRO — Escola Profissionalizante" }],
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: "Cursos Profissionalizantes e de Renda em Casa | SMU PRO",
+        description: "Aprenda uma profissão com certificado. Comece grátis.",
+        images: ["https://smuproducoes.com/og-image.png"],
+      },
+    };
+  }
+
+  // www (eventos) — inalterado.
+  return {
+    ...shared,
+    title: {
+      default: "Cursos de Sonorização e Iluminação para Eventos | SMU PRO",
+      template: "%s | SMU PRO",
+    },
+    description:
+      "Aprenda sonorização, iluminação, DJ e VJ com profissionais de shows ao vivo. Cursos online com certificado verificável. Comece grátis no nível Trainee.",
+    keywords: ["curso sonorização", "curso iluminação eventos", "escola de eventos ao vivo", "curso DJ profissional", "técnico de som curso", "certificado técnico eventos", "SMU PRO"],
+    authors: [{ name: "SMU PRO — Escola Profissional de Eventos" }],
+    metadataBase: new URL("https://smuproducoes.com"),
+    alternates: { languages: { "pt-BR": "https://smuproducoes.com" } },
+    openGraph: {
+      type: "website",
+      locale: "pt_BR",
+      siteName: "SMU PRO",
+      title: "Cursos Técnicos para Eventos ao Vivo | SMU PRO",
+      description: "Sonorização, iluminação, DJ e VJ com certificado. Comece grátis.",
+      url: "https://smuproducoes.com",
+      images: [{ url: "https://smuproducoes.com/og-image.png", width: 1200, height: 630, alt: "SMU PRO — Escola Profissional de Eventos ao Vivo" }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "Cursos Técnicos para Eventos ao Vivo | SMU PRO",
+      description: "Sonorização, iluminação, DJ e VJ com certificado verificável.",
+      images: ["https://smuproducoes.com/og-image.png"],
+    },
+  };
+}
 
 export default async function RootLayout({
   children,
