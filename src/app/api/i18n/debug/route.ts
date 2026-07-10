@@ -25,6 +25,21 @@ export async function GET() {
     out.rawOpenAIError = e?.status ? `HTTP ${e.status}: ${e.message}` : (e?.message ?? String(e));
   }
 
+  // 1b) Gemini (Google GenAI) — alternativa se a OpenAI estiver sem cota
+  out.hasGeminiKey = !!process.env.GOOGLE_GENAI_API_KEY;
+  try {
+    const { GoogleGenAI } = await import("@google/genai");
+    const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GENAI_API_KEY });
+    const r = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: 'Return ONLY JSON {"en":"..."} translating to English: "Fundamentos do Som e da Cadeia de Sinal"',
+      config: { responseMimeType: "application/json" },
+    });
+    out.gemini = r.text ?? null;
+  } catch (e: any) {
+    out.geminiError = e?.status ? `HTTP ${e.status}: ${e.message}` : (e?.message ?? String(e));
+  }
+
   // 2) via translateEntities (com cache/banco)
   try {
     const m = await translateEntities(
