@@ -29,15 +29,13 @@ const memCache = new Map<string, ContentFields>();
 
 const LANG_NAME: Record<string, string> = { en: "English", es: "Spanish (Spain)" };
 
-/** Traduz um lote via OpenAI. Retorna Map(id → campos traduzidos). */
-async function callOpenAI(entities: ContentEntity[], lang: Lang): Promise<Map<string, ContentFields>> {
+// Lote pequeno garante que a IA traduza TODOS os itens (lotes grandes truncavam
+// a resposta e deixavam módulos/aulas sem traduzir).
+const OAI_CHUNK = 12;
+
+/** Traduz UM lote (≤ OAI_CHUNK itens) via OpenAI. */
+async function callOpenAIChunk(openai: any, entities: ContentEntity[], lang: Lang): Promise<Map<string, ContentFields>> {
   const result = new Map<string, ContentFields>();
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return result;
-
-  const { default: OpenAI } = await import("openai");
-  const openai = new OpenAI({ apiKey, timeout: 20000, maxRetries: 1 });
-
   const payload = entities.map((e) => {
     const o: any = { id: e.id };
     if (e.titulo) o.titulo = e.titulo;
@@ -48,10 +46,10 @@ async function callOpenAI(entities: ContentEntity[], lang: Lang): Promise<Map<st
 
   const sys = `You are a professional localizer for an online school (technical/professional and live-events courses). Translate the given course/module/lesson texts from Brazilian Portuguese to ${LANG_NAME[lang] ?? lang}.
 RULES:
-- Translate ONLY the fields present in each item (titulo, descricao, descricao_curta). Keep the same field keys.
+- You MUST return EVERY item you receive, with the SAME id, and translate EVERY field present (titulo, descricao, descricao_curta). Never omit an item or leave a value in Portuguese.
 - Natural, concise, correct for a course catalog and syllabus. Keep technical terms/acronyms (CFTV, DVR, NVR, LGPD, LED, IP, PA, DMX, DJ, VJ, DAW, EQ, Gain Staging, Line Check, Soundcheck, SMU) as-is.
 - Keep numbers, units and punctuation. Do NOT add commentary.
-Return ONLY JSON: { "items": [ { "id": <same id>, "titulo": ..., "descricao": ..., "descricao_curta": ... } ] } with one entry per input, same ids, including only the fields you translated.`;
+Return ONLY JSON: { "items": [ { "id": <same id>, "titulo": ..., "descricao": ..., "descricao_curta": ... } ] } — one entry per input, same order, same ids.`;
 
   const resp = await openai.chat.completions.create({
     model: "gpt-4.1",
@@ -60,6 +58,7 @@ Return ONLY JSON: { "items": [ { "id": <same id>, "titulo": ..., "descricao": ..
       { role: "user", content: JSON.stringify({ items: payload }) },
     ],
     temperature: 0.2,
+    max_tokens: 4096,
     response_format: { type: "json_object" },
   });
 
@@ -71,6 +70,27 @@ Return ONLY JSON: { "items": [ { "id": <same id>, "titulo": ..., "descricao": ..
     if (typeof it.descricao === "string") f.descricao = it.descricao;
     if (typeof it.descricao_curta === "string") f.descricao_curta = it.descricao_curta;
     result.set(String(it.id), f);
+  }
+  return result;
+}
+
+/** Traduz via OpenAI em lotes pequenos (garante cobertura total). Map(id → campos). */
+async function callOpenAI(entities: ContentEntity[], lang: Lang): Promise<Map<string, ContentFields>> {
+  const result = new Map<string, ContentFields>();
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return result;
+
+  const { default: OpenAI } = await import("openai");
+  const openai = new OpenAI({ apiKey, timeout: 30000, maxRetries: 1 });
+
+  const chunks: ContentEntity[][] = [];
+  for (let i = 0; i < entities.length; i += OAI_CHUNK) chunks.push(entities.slice(i, i + OAI_CHUNK));
+
+  // Lotes em paralelo (limitado); se um lote falhar, os outros seguem (fail-safe parcial).
+  const settled = await Promise.allSettled(chunks.map((c) => callOpenAIChunk(openai, c, lang)));
+  for (const s of settled) {
+    if (s.status === "fulfilled") for (const [id, f] of s.value) result.set(id, f);
+    else console.error("[i18n/content] lote falhou:", (s.reason as any)?.message ?? s.reason);
   }
   return result;
 }
