@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getCategoryLabel, getLevelLabel, formatMinutes, formatCurrency } from "@/lib/utils";
 import { CategoryIcon } from "@/components/ui/category-icon";
-import { getServerT } from "@/lib/i18n/server";
+import { getServerT, getServerLocale } from "@/lib/i18n/server";
+import { translateEntities } from "@/lib/i18n/content";
 import { LanguageSelector } from "@/components/i18n/language-selector";
 import { Zap, Award, Users, PlayCircle, ChevronRight, Star, Shield, Mic, Lightbulb, Music, Film } from "lucide-react";
 
@@ -75,6 +76,21 @@ export default async function HomePage() {
     stats = realStats;
   } catch {
     // server not configured yet, show page without courses
+  }
+
+  // Traduz o nome/descrição dos cursos em destaque (conteúdo do banco). Fail-safe: PT.
+  const lang = await getServerLocale();
+  if (lang !== "pt" && featuredCourses.length > 0) {
+    const tr = await translateEntities(
+      featuredCourses.map((c) => ({ type: "course" as const, id: c.id, titulo: c.titulo, descricao: c.descricao, descricao_curta: c.descricao_curta })),
+      lang,
+    );
+    if (tr.size > 0) {
+      featuredCourses = featuredCourses.map((c) => {
+        const f = tr.get(c.id);
+        return f ? { ...c, titulo: f.titulo ?? c.titulo, descricao: f.descricao ?? c.descricao, descricao_curta: f.descricao_curta ?? c.descricao_curta } : c;
+      });
+    }
   }
 
   const STATS = [

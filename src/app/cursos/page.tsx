@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Search, SlidersHorizontal } from "lucide-react";
 import { CategoryIcon } from "@/components/ui/category-icon";
 import { CoursesView } from "@/components/cursos/courses-view";
-import { getServerT } from "@/lib/i18n/server";
+import { getServerT, getServerLocale } from "@/lib/i18n/server";
+import { translateEntities } from "@/lib/i18n/content";
 import { LanguageSelector } from "@/components/i18n/language-selector";
 import { getPortal, filterCoursesByPortal } from "@/lib/portal";
 import type { Metadata } from "next";
@@ -85,6 +86,22 @@ export default async function CursosPage({ searchParams }: Props) {
     if (ra !== rb) return ra - rb;
     return (a.titulo || "").localeCompare(b.titulo || "", "pt-BR");
   });
+
+  // Traduz nome/descrição dos cursos (conteúdo do banco) para o idioma atual.
+  // Fail-safe: se falhar, mantém PT. Cacheado por curso — só a 1ª carga paga.
+  const lang = await getServerLocale();
+  if (lang !== "pt" && courses.length > 0) {
+    const tr = await translateEntities(
+      courses.map((c) => ({ type: "course" as const, id: c.id, titulo: c.titulo, descricao: c.descricao, descricao_curta: c.descricao_curta })),
+      lang,
+    );
+    if (tr.size > 0) {
+      courses = courses.map((c) => {
+        const f = tr.get(c.id);
+        return f ? { ...c, titulo: f.titulo ?? c.titulo, descricao: f.descricao ?? c.descricao, descricao_curta: f.descricao_curta ?? c.descricao_curta } : c;
+      });
+    }
+  }
 
   const activeFilters = [nivel, categoria, tipo, search].filter(Boolean).length;
 
