@@ -661,6 +661,19 @@ export const DICT: Record<string, { en: string; es: string }> = {
   "Ocultar texto": { en: "Hide text", es: "Ocultar texto" },
   "Mostrar texto": { en: "Show text", es: "Mostrar texto" },
   "Erro na geração. Tente novamente.": { en: "Generation error. Please try again.", es: "Error en la generación. Inténtalo de nuevo." },
+  // ---- Áreas/filtros do portal aula (escola livre) — passadas a t() via variável ----
+  "Todas as áreas": { en: "All areas", es: "Todas las áreas" },
+  "Cursos técnicos": { en: "Technical courses", es: "Cursos técnicos" },
+  "Renda em casa": { en: "Income from home", es: "Ingresos desde casa" },
+  "Técnico": { en: "Technical", es: "Técnico" },
+  // ---- Home profissionalizante (hero + seções) ----
+  "Escola Profissionalizante": { en: "Professional Training School", es: "Escuela de Formación Profesional" },
+  "Aprenda uma": { en: "Learn a", es: "Aprende una" },
+  "profissão": { en: "profession", es: "profesión" },
+  "e conquiste sua": { en: "and build your", es: "y conquista tu" },
+  "carreira": { en: "career", es: "carrera" },
+  "Cursos técnicos e de renda em casa, do básico ao avançado — no seu ritmo e com certificado. Comece hoje, aprenda fazendo e transforme seu talento em trabalho.": { en: "Technical and work-from-home courses, from basics to advanced — at your own pace and with a certificate. Start today, learn by doing and turn your talent into work.", es: "Cursos técnicos y de ingresos desde casa, de lo básico a lo avanzado — a tu ritmo y con certificado. Empieza hoy, aprende haciendo y convierte tu talento en trabajo." },
+  "Cada detalhe foi pensado para quem quer aprender uma profissão e precisa de formação séria.": { en: "Every detail was designed for those who want to learn a profession and need serious training.", es: "Cada detalle fue pensado para quien quiere aprender una profesión y necesita una formación seria." },
 };
 
 /**
