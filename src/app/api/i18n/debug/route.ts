@@ -40,6 +40,21 @@ export async function GET() {
     out.geminiError = e?.status ? `HTTP ${e.status}: ${e.message}` : (e?.message ?? String(e));
   }
 
+  // 1c) Anthropic (Claude)
+  out.hasAnthropicKey = !!process.env.ANTHROPIC_API_KEY;
+  try {
+    const { default: Anthropic } = await import("@anthropic-ai/sdk");
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const r = await anthropic.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 200,
+      messages: [{ role: "user", content: 'Return ONLY JSON {"en":"..."} translating to English: "Fundamentos do Som e da Cadeia de Sinal"' }],
+    });
+    out.anthropic = (r.content?.[0] as any)?.text ?? JSON.stringify(r.content);
+  } catch (e: any) {
+    out.anthropicError = e?.status ? `HTTP ${e.status}: ${e.message}` : (e?.message ?? String(e));
+  }
+
   // 2) via translateEntities (com cache/banco)
   try {
     const m = await translateEntities(
