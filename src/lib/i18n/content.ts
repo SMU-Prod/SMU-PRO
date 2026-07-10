@@ -1,19 +1,15 @@
 /**
  * Tradutor de CONTEÚDO do banco (títulos/descrições de cursos, módulos e aulas)
- * para EN/ES — sob demanda, com cache na tabela `content_translations`.
+ * para EN/ES — sob demanda, com cache.
  *
- * Como funciona:
- *  1. Recebe as entidades já carregadas do banco (curso/módulo/aula) e o idioma.
- *  2. Lê o cache; o que já está traduzido (e com o MESMO texto de origem) volta na hora.
- *  3. O que falta é traduzido via OpenAI (mesmo modelo do app) e gravado no cache.
- *  4. Se o texto de origem mudar (edição), o hash muda → re-traduz automaticamente.
+ * Camadas de cache (nesta ordem):
+ *   1. Memória do processo (instantâneo; por instância do servidor).
+ *   2. Tabela `content_translations` no Supabase (persistente, compartilhada) —
+ *      usada SE a migration tiver sido rodada. Se a tabela não existir, é ignorada.
+ *   3. OpenAI (traduz o que faltar) → grava nas camadas acima.
  *
- * FAIL-SAFE: qualquer erro (sem chave, sem tabela, timeout, etc.) → devolve vazio;
- * quem chama usa o texto original em PT. NUNCA quebra a página.
- *
- * Uso (server component):
- *   const tr = await translateEntities(entities, lang);
- *   const titulo = tr.get(curso.id)?.titulo ?? curso.titulo;
+ * Re-traduz automaticamente quando o texto de origem muda (chave inclui o hash).
+ * FAIL-SAFE: qualquer erro (sem chave, timeout, etc.) → mantém PT. Nunca quebra a página.
  */
 import crypto from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/server";
@@ -26,6 +22,10 @@ function srcHash(e: ContentEntity): string {
   const s = `${e.titulo ?? ""}${e.descricao ?? ""}${e.descricao_curta ?? ""}`;
   return crypto.createHash("sha1").update(s).digest("hex").slice(0, 16);
 }
+const memKey = (id: string, lang: string, hash: string) => `${id}:${lang}:${hash}`;
+
+// Cache em memória do processo (persiste entre requisições numa instância quente).
+const memCache = new Map<string, ContentFields>();
 
 const LANG_NAME: Record<string, string> = { en: "English", es: "Spanish (Spain)" };
 
@@ -38,7 +38,6 @@ async function callOpenAI(entities: ContentEntity[], lang: Lang): Promise<Map<st
   const { default: OpenAI } = await import("openai");
   const openai = new OpenAI({ apiKey, timeout: 20000, maxRetries: 1 });
 
-  // Envia só os campos presentes, para não inventar tradução de campo vazio.
   const payload = entities.map((e) => {
     const o: any = { id: e.id };
     if (e.titulo) o.titulo = e.titulo;
@@ -47,10 +46,10 @@ async function callOpenAI(entities: ContentEntity[], lang: Lang): Promise<Map<st
     return o;
   });
 
-  const sys = `You are a professional localizer for an online professional-training school (technical courses and work-from-home skills). Translate the given course/module/lesson texts from Brazilian Portuguese to ${LANG_NAME[lang] ?? lang}.
+  const sys = `You are a professional localizer for an online school (technical/professional and live-events courses). Translate the given course/module/lesson texts from Brazilian Portuguese to ${LANG_NAME[lang] ?? lang}.
 RULES:
 - Translate ONLY the fields present in each item (titulo, descricao, descricao_curta). Keep the same field keys.
-- Natural, concise, correct for a course catalog. Keep technical terms/acronyms (CFTV, DVR, NVR, LGPD, LED, IP, PA, DMX, DJ, VJ, SMU) as-is.
+- Natural, concise, correct for a course catalog and syllabus. Keep technical terms/acronyms (CFTV, DVR, NVR, LGPD, LED, IP, PA, DMX, DJ, VJ, DAW, EQ, Gain Staging, Line Check, Soundcheck, SMU) as-is.
 - Keep numbers, units and punctuation. Do NOT add commentary.
 Return ONLY JSON: { "items": [ { "id": <same id>, "titulo": ..., "descricao": ..., "descricao_curta": ... } ] } with one entry per input, same ids, including only the fields you translated.`;
 
@@ -78,62 +77,82 @@ Return ONLY JSON: { "items": [ { "id": <same id>, "titulo": ..., "descricao": ..
 
 /**
  * Traduz um lote de entidades para o idioma dado. Devolve Map(id → campos).
- * PT (ou lista vazia) → Map vazio. Fail-safe: erro → Map vazio (chamador usa PT).
+ * PT (ou lista vazia) → Map vazio. Fail-safe: erro → o que já tiver (resto fica PT).
  */
 export async function translateEntities(entities: ContentEntity[], lang: Lang): Promise<Map<string, ContentFields>> {
   const out = new Map<string, ContentFields>();
   if (lang === "pt" || entities.length === 0) return out;
 
+  // 1) cache em memória
+  const misses: ContentEntity[] = [];
+  for (const e of entities) {
+    const hit = memCache.get(memKey(e.id, lang, srcHash(e)));
+    if (hit) out.set(e.id, hit);
+    else misses.push(e);
+  }
+  if (misses.length === 0) return out;
+
+  // 2) cache no banco (se a tabela existir)
+  let dbAvailable = false;
+  let toTranslate = misses;
   try {
     const supabase = createAdminClient();
-    const ids = [...new Set(entities.map((e) => e.id))];
-
-    // 1) lê o cache. Se a tabela não existir (migration não rodada) ou der erro,
-    //    aborta e mantém PT — SEM chamar a OpenAI (evita traduzir a cada visita).
-    const { data: cached, error: readErr } = await (supabase as any)
+    const ids = [...new Set(misses.map((e) => e.id))];
+    const { data, error } = await (supabase as any)
       .from("content_translations")
       .select("entity_id, source_hash, fields")
       .eq("lang", lang)
       .in("entity_id", ids);
-    if (readErr) {
-      console.error("[i18n/content] cache indisponível, mantém PT:", readErr.message);
-      return out;
+    if (!error) {
+      dbAvailable = true;
+      const cacheMap = new Map<string, any>((data ?? []).map((r: any) => [r.entity_id, r]));
+      const remaining: ContentEntity[] = [];
+      for (const e of misses) {
+        const c = cacheMap.get(e.id);
+        if (c && c.source_hash === srcHash(e)) {
+          const f = c.fields ?? {};
+          out.set(e.id, f);
+          memCache.set(memKey(e.id, lang, srcHash(e)), f);
+        } else remaining.push(e);
+      }
+      toTranslate = remaining;
     }
-    const cacheMap = new Map<string, any>((cached ?? []).map((r: any) => [r.entity_id, r]));
+  } catch {
+    // tabela indisponível → segue só com memória + OpenAI
+  }
 
-    // 2) separa o que já está válido do que precisa traduzir
-    const toTranslate: ContentEntity[] = [];
-    for (const e of entities) {
-      const c = cacheMap.get(e.id);
-      if (c && c.source_hash === srcHash(e)) out.set(e.id, c.fields ?? {});
-      else toTranslate.push(e);
-    }
-
-    // 3) traduz o que falta e grava no cache
-    if (toTranslate.length > 0) {
+  // 3) traduz o que faltar e grava nos caches
+  if (toTranslate.length > 0) {
+    try {
       const translated = await callOpenAI(toTranslate, lang);
       const rows: any[] = [];
       for (const e of toTranslate) {
-        const fields = translated.get(e.id);
-        if (!fields) continue;
-        out.set(e.id, fields);
+        const f = translated.get(e.id);
+        if (!f) continue;
+        out.set(e.id, f);
+        memCache.set(memKey(e.id, lang, srcHash(e)), f);
         rows.push({
           entity_type: e.type,
           entity_id: e.id,
           lang,
           source_hash: srcHash(e),
-          fields,
+          fields: f,
           updated_at: new Date().toISOString(),
         });
       }
-      if (rows.length > 0) {
-        await (supabase as any)
-          .from("content_translations")
-          .upsert(rows, { onConflict: "entity_type,entity_id,lang" });
+      if (dbAvailable && rows.length > 0) {
+        try {
+          const supabase = createAdminClient();
+          await (supabase as any)
+            .from("content_translations")
+            .upsert(rows, { onConflict: "entity_type,entity_id,lang" });
+        } catch {
+          // falha ao gravar no banco não impede a tradução (já está em memória)
+        }
       }
+    } catch (err) {
+      console.error("[i18n/content] fail-safe (mantém PT):", (err as any)?.message ?? err);
     }
-  } catch (err) {
-    console.error("[i18n/content] fail-safe (mantém PT):", (err as any)?.message ?? err);
   }
 
   return out;

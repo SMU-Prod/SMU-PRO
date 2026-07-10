@@ -79,9 +79,8 @@ export default async function HomePage() {
   }
 
   // Traduz o nome/descrição dos cursos em destaque (conteúdo do banco). Fail-safe: PT.
-  // Só no portal aula — o site de eventos (www) não é tocado.
   const lang = await getServerLocale();
-  if (isAula && lang !== "pt" && featuredCourses.length > 0) {
+  if (lang !== "pt" && featuredCourses.length > 0) {
     const tr = await translateEntities(
       featuredCourses.map((c) => ({ type: "course" as const, id: c.id, titulo: c.titulo, descricao: c.descricao, descricao_curta: c.descricao_curta })),
       lang,

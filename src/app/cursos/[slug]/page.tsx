@@ -14,7 +14,6 @@ import { getServerT, getServerLocale } from "@/lib/i18n/server";
 import { LanguageSelector } from "@/components/i18n/language-selector";
 import { courseMeta } from "@/lib/i18n/courses-meta";
 import { translateEntities, type ContentEntity } from "@/lib/i18n/content";
-import { getPortal } from "@/lib/portal";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic"; // renderiza por requisição p/ ler o cookie de idioma
@@ -87,9 +86,7 @@ export default async function CourseDetailPage({ params }: Props) {
 
   // Traduz o conteúdo do banco (curso + módulos + aulas) para o idioma atual.
   // Uma chamada cobre a árvore inteira; cacheada por entidade. Fail-safe: mantém PT.
-  // Só no portal aula — o site de eventos (www) não é tocado.
-  const isAula = (await getPortal()) === "aula";
-  if (isAula && lang !== "pt") {
+  if (lang !== "pt") {
     const entities: ContentEntity[] = [
       { type: "course", id: course.id, titulo: course.titulo, descricao: course.descricao, descricao_curta: course.descricao_curta },
       ...allModules.map((m: any) => ({ type: "module" as const, id: m.id, titulo: m.titulo })),
