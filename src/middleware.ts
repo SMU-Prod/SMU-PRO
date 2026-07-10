@@ -11,7 +11,6 @@ const isPublicRoute = createRouteMatcher([
   "/certificado(.*)",
   "/pagamento/sucesso",
   "/api/webhooks/(.*)",
-  "/api/i18n/debug", // TEMPORÁRIO: diagnóstico do tradutor de conteúdo (remover)
 ]);
 
 // Rotas exclusivas de admin
