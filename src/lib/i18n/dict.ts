@@ -3,6 +3,10 @@
  * Módulo NEUTRO (sem "use client") para ser usado tanto no client (useT)
  * quanto no server (getServerT). Chave = string em PT; valor = { en, es }.
  */
+// DICT_AUTO: preenchido pelo tradutor interno (`npm run i18n:sync`). É consultado
+// como fallback DEPOIS do DICT curado à mão — ver função tr() no fim do arquivo.
+import { DICT_AUTO } from "./dict.generated";
+
 export type Lang = "pt" | "en" | "es";
 
 export const DICT: Record<string, { en: string; es: string }> = {
@@ -659,8 +663,12 @@ export const DICT: Record<string, { en: string; es: string }> = {
   "Erro na geração. Tente novamente.": { en: "Generation error. Please try again.", es: "Error en la generación. Inténtalo de nuevo." },
 };
 
-/** Traduz uma string de interface para o idioma dado (PT devolve a própria string). */
+/**
+ * Traduz uma string de interface para o idioma dado (PT devolve a própria string).
+ * Ordem de busca: DICT (curado à mão) → DICT_AUTO (preenchido pelo tradutor interno,
+ * `npm run i18n:sync`). Fallback: a própria string em PT.
+ */
 export function tr(s: string, lang: Lang): string {
   if (lang === "pt") return s;
-  return DICT[s]?.[lang] ?? s;
+  return DICT[s]?.[lang] ?? DICT_AUTO[s]?.[lang] ?? s;
 }

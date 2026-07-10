@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Space_Grotesk, Inter, Instrument_Serif } from "next/font/google";
 import { Geist_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
-import { ptBR } from "@clerk/localizations";
+import { ptBR, enUS, esES } from "@clerk/localizations";
 import { HighlightInit } from "@highlight-run/next/client";
 import { ThemeProvider } from "@/components/theme-provider";
 import { LocaleProvider } from "@/lib/i18n/locale";
@@ -125,6 +125,8 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   const locale = await getServerLocale();
+  // Clerk (login, cadastro, menu do usuário) segue o idioma escolhido.
+  const clerkLocalization = locale === "en" ? enUS : locale === "es" ? esES : ptBR;
   return (
     <>
       <HighlightInit
@@ -133,7 +135,7 @@ export default async function RootLayout({
         tracingOrigins
         networkRecording={{ enabled: true, recordHeadersAndBody: true }}
       />
-      <ClerkProvider localization={ptBR}>
+      <ClerkProvider localization={clerkLocalization}>
         <html lang={locale === "pt" ? "pt-BR" : locale} className={`${spaceGrotesk.variable} ${inter.variable} ${geistMono.variable} ${instrumentSerif.variable}`} suppressHydrationWarning>
           <head>
             <script dangerouslySetInnerHTML={{ __html: `
