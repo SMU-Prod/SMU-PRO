@@ -33,11 +33,13 @@ const LANG_NAME: Record<string, string> = { en: "English", es: "Spanish (Spain)"
 // a resposta e deixavam módulos/aulas sem traduzir).
 const OAI_CHUNK = 12;
 
-/** Traduz UM lote (≤ OAI_CHUNK itens) via OpenAI. */
+/** Traduz UM lote (≤ OAI_CHUNK itens) via OpenAI. Usa índice numérico (não UUID). */
 async function callOpenAIChunk(openai: any, entities: ContentEntity[], lang: Lang): Promise<Map<string, ContentFields>> {
   const result = new Map<string, ContentFields>();
-  const payload = entities.map((e) => {
-    const o: any = { id: e.id };
+  // "i" = índice no lote. NUNCA mandamos UUID pra IA (ela corrompe ids longos);
+  // mapeamos o índice de volta pra entidade real aqui.
+  const payload = entities.map((e, i) => {
+    const o: any = { i };
     if (e.titulo) o.titulo = e.titulo;
     if (e.descricao) o.descricao = e.descricao;
     if (e.descricao_curta) o.descricao_curta = e.descricao_curta;
@@ -46,10 +48,10 @@ async function callOpenAIChunk(openai: any, entities: ContentEntity[], lang: Lan
 
   const sys = `You are a professional localizer for an online school (technical/professional and live-events courses). Translate the given course/module/lesson texts from Brazilian Portuguese to ${LANG_NAME[lang] ?? lang}.
 RULES:
-- You MUST return EVERY item you receive, with the SAME id, and translate EVERY field present (titulo, descricao, descricao_curta). Never omit an item or leave a value in Portuguese.
+- Return EVERY item, echoing its exact numeric "i", and translate EVERY field present (titulo, descricao, descricao_curta). Never omit an item or leave a value in Portuguese.
 - Natural, concise, correct for a course catalog and syllabus. Keep technical terms/acronyms (CFTV, DVR, NVR, LGPD, LED, IP, PA, DMX, DJ, VJ, DAW, EQ, Gain Staging, Line Check, Soundcheck, SMU) as-is.
 - Keep numbers, units and punctuation. Do NOT add commentary.
-Return ONLY JSON: { "items": [ { "id": <same id>, "titulo": ..., "descricao": ..., "descricao_curta": ... } ] } — one entry per input, same order, same ids.`;
+Return ONLY JSON: { "items": [ { "i": <same number>, "titulo": ..., "descricao": ..., "descricao_curta": ... } ] } — one entry per input.`;
 
   const resp = await openai.chat.completions.create({
     model: "gpt-4.1",
@@ -64,12 +66,14 @@ Return ONLY JSON: { "items": [ { "id": <same id>, "titulo": ..., "descricao": ..
 
   const json = JSON.parse(resp.choices[0]?.message?.content || "{}");
   for (const it of json.items ?? []) {
-    if (!it?.id) continue;
+    const idx = typeof it?.i === "number" ? it.i : parseInt(it?.i, 10);
+    const e = entities[idx];
+    if (!e) continue;
     const f: ContentFields = {};
     if (typeof it.titulo === "string") f.titulo = it.titulo;
     if (typeof it.descricao === "string") f.descricao = it.descricao;
     if (typeof it.descricao_curta === "string") f.descricao_curta = it.descricao_curta;
-    result.set(String(it.id), f);
+    result.set(e.id, f);
   }
   return result;
 }
