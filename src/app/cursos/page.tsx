@@ -90,7 +90,7 @@ export default async function CursosPage({ searchParams }: Props) {
   // Traduz nome/descrição dos cursos (conteúdo do banco) para o idioma atual.
   // Fail-safe: se falhar, mantém PT. Cacheado por curso — só a 1ª carga paga.
   const lang = await getServerLocale();
-  if (lang !== "pt" && courses.length > 0) {
+  if (isAula && lang !== "pt" && courses.length > 0) {
     const tr = await translateEntities(
       courses.map((c) => ({ type: "course" as const, id: c.id, titulo: c.titulo, descricao: c.descricao, descricao_curta: c.descricao_curta })),
       lang,

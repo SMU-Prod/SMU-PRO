@@ -26,16 +26,27 @@ export function getLocale(): Locale {
   return v === "en" || v === "es" ? v : "pt";
 }
 
-/** Grava o idioma no localStorage + cookie (com domínio compartilhado apex↔www em produção). */
+/**
+ * Grava o idioma. Cookie HOST-ONLY: cada site tem seu próprio idioma
+ * (aula.smuproducoes.com ≠ smuproducoes.com — não se misturam).
+ */
 function writeLocale(l: Locale) {
   if (typeof window === "undefined") return;
   try { window.localStorage.setItem(KEY, l); } catch {}
-  const base = `${KEY}=${l};path=/;max-age=31536000;samesite=lax`;
-  document.cookie = base;
-  // Compartilha o cookie entre smuproducoes.com e www.smuproducoes.com
+  document.cookie = `${KEY}=${l};path=/;max-age=31536000;samesite=lax`;
+  clearSharedCookie();
+}
+
+/**
+ * Expira o cookie ANTIGO compartilhado em `.smuproducoes.com`, que vazava o idioma
+ * entre aula e www (causava bandeira PT com conteúdo EN e vice-versa). Roda no boot
+ * e a cada troca, limpando o estado herdado dos usuários existentes.
+ */
+function clearSharedCookie() {
+  if (typeof window === "undefined") return;
   const host = window.location.hostname;
   if (host === "smuproducoes.com" || host.endsWith(".smuproducoes.com")) {
-    document.cookie = `${base};domain=.smuproducoes.com`;
+    document.cookie = `${KEY}=;path=/;domain=.smuproducoes.com;max-age=0;samesite=lax`;
   }
 }
 
@@ -71,6 +82,7 @@ export function LocaleProvider({ initial, children }: { initial: Locale; childre
   // Reconcilia com o estado real do cliente (cookie/localStorage) após montar
   // e garante que o cookie exista (ex.: escolha antiga salva só no localStorage).
   useEffect(() => {
+    clearSharedCookie(); // remove o cookie compartilhado antigo (vazava idioma entre aula e www)
     const actual = getLocale();
     if (actual !== locale) setLocaleState(actual);
     if (!readCookie()) writeLocale(actual);
