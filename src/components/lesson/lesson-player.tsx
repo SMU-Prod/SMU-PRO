@@ -31,6 +31,7 @@ import {
   PlayCircle, FileText, HelpCircle, StickyNote,
   Lock, CheckCheck, BookOpen, Clock, Star, ChevronLeft, List,
   Minimize2, Maximize2, Download, Eye, EyeOff, Menu,
+  PanelRightOpen, PanelRightClose,
 } from "lucide-react";
 import { useSidebar } from "@/components/layout/sidebar-context";
 
@@ -372,15 +373,16 @@ export function LessonPlayer({
             <button
               onClick={toggleContent}
               className={cn(
-                "hidden lg:inline-flex p-2 rounded-lg transition-colors shrink-0",
+                "hidden lg:inline-flex items-center gap-1.5 rounded-lg transition-colors shrink-0",
                 contentOpen
-                  ? "text-amber-400 bg-amber-500/10 hover:bg-amber-500/20"
-                  : "text-muted hover:text-foreground hover:bg-hover"
+                  ? "p-2 text-muted hover:text-foreground hover:bg-hover"
+                  : "px-2.5 py-2 text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 font-medium"
               )}
               aria-label={contentOpen ? t("Ocultar conteúdo do curso") : t("Mostrar conteúdo do curso")}
               title={contentOpen ? t("Ocultar conteúdo do curso") : t("Mostrar conteúdo do curso")}
             >
-              <List size={18} />
+              {contentOpen ? <PanelRightClose size={18} /> : <PanelRightOpen size={18} />}
+              {!contentOpen && <span className="text-xs">{t("Conteúdo")}</span>}
             </button>
             <LanguageSelector />
             {prevLesson && (
@@ -627,7 +629,7 @@ export function LessonPlayer({
               aria-label={t("Ocultar conteúdo do curso")}
               title={t("Ocultar conteúdo do curso")}
             >
-              <ChevronRight size={16} />
+              <PanelRightClose size={16} />
             </button>
           </div>
           <div className="flex items-center gap-2">
