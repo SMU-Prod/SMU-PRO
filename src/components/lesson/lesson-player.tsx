@@ -642,6 +642,22 @@ export function LessonPlayer({
           <CourseContentList />
         </div>
       </aside>
+
+      {/* Aba flutuante na borda direita para REABRIR o painel quando recolhido —
+          fica exatamente onde o painel estava, impossível de não ver. Desktop only. */}
+      {!contentOpen && (
+        <button
+          onClick={toggleContent}
+          className="hidden lg:flex fixed right-0 top-1/2 -translate-y-1/2 z-40 flex-col items-center gap-2 rounded-l-xl bg-amber-500 text-black shadow-lg hover:bg-amber-400 hover:pr-3 px-2 py-3 transition-all"
+          aria-label={t("Mostrar conteúdo do curso")}
+          title={t("Mostrar conteúdo do curso")}
+        >
+          <PanelRightOpen size={18} />
+          <span className="text-[11px] font-semibold tracking-wide" style={{ writingMode: "vertical-rl" }}>
+            {t("Conteúdo")}
+          </span>
+        </button>
+      )}
     </div>
   );
 }
