@@ -148,7 +148,7 @@ function SidebarContent({ role, isAdmin, isContentManager, isInstructor, navItem
               href={item.href}
               onClick={close}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-150 group",
+                "flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-sm transition-all duration-150 group",
                 active
                   ? "bg-amber-500/10 text-amber-400 font-medium"
                   : "text-muted hover:text-foreground hover:bg-hover"
@@ -227,7 +227,7 @@ export function Sidebar({ role = "trainee" }: SidebarProps) {
   return (
     <>
       {/* Desktop sidebar — always visible ≥ lg */}
-      <div className="hidden lg:flex fixed left-0 top-0 z-40 h-screen w-64 flex-col border-r border-border">
+      <div className="hidden lg:flex fixed left-0 top-0 z-40 h-screen w-56 flex-col border-r border-border">
         <SidebarContent {...contentProps} />
       </div>
 
