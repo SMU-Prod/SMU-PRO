@@ -39,3 +39,25 @@ export function filterCoursesByPortal<T extends { categorias?: string[] | null }
   if (portal === "aula") return courses.filter((c) => ehCursoAula(c.categorias));
   return courses.filter((c) => !ehCursoAula(c.categorias));
 }
+
+/**
+ * Um curso pertence à escola do portal informado?
+ * Regra do dono: cada domínio é uma escola; o admin só gerencia os cursos do domínio
+ * em que está logado (o login é o mesmo, o acervo é separado).
+ */
+export function courseBelongsToPortal(categorias: string[] | null | undefined, portal: Portal): boolean {
+  return portal === "aula" ? ehCursoAula(categorias) : !ehCursoAula(categorias);
+}
+
+/**
+ * Normaliza `categorias` para a escola do portal onde o curso está sendo criado:
+ *  - aula → garante ao menos uma área do aula (senão o curso cairia no backstage);
+ *  - main (backstage) → remove tags de aula.
+ */
+export function stampPortalCategorias(categorias: string[] | null | undefined, portal: Portal): string[] {
+  const cats = Array.isArray(categorias) ? [...categorias] : [];
+  if (portal === "aula") {
+    return cats.some((c) => AULA_CATEGORIAS.includes(c)) ? cats : [...cats, "tecnico"];
+  }
+  return cats.filter((c) => !AULA_CATEGORIAS.includes(c));
+}
