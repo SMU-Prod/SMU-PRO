@@ -9,6 +9,7 @@ import { Award, ExternalLink, Download, QrCode, Calendar } from "lucide-react";
 import { SignCertificateButton } from "@/components/certificate/sign-certificate-button";
 import { getServerT, getServerLocale } from "@/lib/i18n/server";
 import { courseMeta } from "@/lib/i18n/courses-meta";
+import { getPortal, courseBelongsToPortal } from "@/lib/portal";
 
 export default async function CertificadosPage() {
   const { userId } = await auth();
@@ -23,12 +24,16 @@ export default async function CertificadosPage() {
   const { data: certs } = userUuid
     ? await (supabase as any)
         .from("certificates")
-        .select(`*, courses(titulo, slug, categoria, nivel), certificate_signatures(tipo)`)
+        .select(`*, courses(titulo, slug, categoria, nivel, categorias), certificate_signatures(tipo)`)
         .eq("user_id", userUuid)
         .order("emitido_em", { ascending: false })
     : { data: [] };
 
-  const certificates = certs ?? [];
+  // Escolas independentes: cada domínio mostra só os certificados da sua escola.
+  const portal = await getPortal();
+  const certificates = (certs ?? []).filter(
+    (c: any) => c.courses && courseBelongsToPortal(c.courses.categorias, portal),
+  );
 
   return (
     <div className="animate-fade-in">

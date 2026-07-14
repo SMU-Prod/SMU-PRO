@@ -3,6 +3,7 @@ import { redirect, notFound } from "next/navigation";
 import { getCourseWithProgress } from "@/lib/actions/courses";
 import { createAdminClient } from "@/lib/supabase/server";
 import { LessonPlayer } from "@/components/lesson/lesson-player";
+import { getPortal, courseBelongsToPortal } from "@/lib/portal";
 
 interface Props {
   params: Promise<{ slug: string; lessonId: string }>;
@@ -15,6 +16,9 @@ export default async function LessonPage({ params }: Props) {
 
   try {
     const { course, enrollment, progressMap } = await getCourseWithProgress(slug);
+
+    // Escolas independentes: aula de curso da outra escola não abre neste domínio.
+    if (!courseBelongsToPortal(course?.categorias, await getPortal())) notFound();
 
     const supabase = createAdminClient();
     const { data: userRow } = await supabase.from("users").select("id, role").eq("clerk_id", userId).single();
