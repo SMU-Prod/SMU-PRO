@@ -1,6 +1,6 @@
 "use client";
 
-import { useEditor, EditorContent, Extension } from "@tiptap/react";
+import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import Link from "@tiptap/extension-link";
@@ -9,7 +9,6 @@ import TextAlign from "@tiptap/extension-text-align";
 import { TextStyle } from "@tiptap/extension-text-style";
 import { Color } from "@tiptap/extension-color";
 import FontFamily from "@tiptap/extension-font-family";
-import Image from "@tiptap/extension-image";
 import Highlight from "@tiptap/extension-highlight";
 import Superscript from "@tiptap/extension-superscript";
 import Subscript from "@tiptap/extension-subscript";
@@ -32,6 +31,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { adminUploadFile } from "@/lib/actions/courses";
 import { useT } from "@/lib/i18n/ui";
+import { FontSize, TabIndent, ResizableImage } from "./editor-extensions";
 
 // ── Constants ──
 
@@ -89,107 +89,6 @@ const FONT_FAMILIES = [
   { label: "Times New Roman", value: "Times New Roman, serif", description: "Serifada formal" },
   { label: "Courier New", value: "Courier New, monospace", description: "Monospace clássica" },
 ];
-
-// ── Custom Extensions ──
-
-// FontSize extension — adds fontSize as inline style via TextStyle
-const FontSize = Extension.create({
-  name: "fontSize",
-  addOptions() {
-    return { types: ["textStyle"] };
-  },
-  addGlobalAttributes() {
-    return [
-      {
-        types: this.options.types,
-        attributes: {
-          fontSize: {
-            default: null,
-            parseHTML: (element) => element.style.fontSize || null,
-            renderHTML: (attributes) => {
-              if (!attributes.fontSize) return {};
-              return { style: `font-size: ${attributes.fontSize}` };
-            },
-          },
-        },
-      },
-    ];
-  },
-  addCommands() {
-    return {
-      setFontSize:
-        (fontSize: string) =>
-        ({ chain }: any) =>
-          chain().setMark("textStyle", { fontSize }).run(),
-      unsetFontSize:
-        () =>
-        ({ chain }: any) =>
-          chain().setMark("textStyle", { fontSize: null }).removeEmptyTextStyle().run(),
-    } as any;
-  },
-});
-
-// Custom Tab indent extension — must be a proper Extension to capture Tab key
-const TabIndent = Extension.create({
-  name: "tabIndent",
-  addKeyboardShortcuts() {
-    return {
-      Tab: ({ editor }) => {
-        // Inside a list → indent the item
-        if (editor.isActive("listItem")) {
-          return editor.chain().sinkListItem("listItem").run();
-        }
-        // Otherwise → insert tab spaces (paragraph indent)
-        // Returning true prevents Tab from moving focus to next page element
-        editor.chain().insertContent("\u00A0\u00A0\u00A0\u00A0").run();
-        return true;
-      },
-      "Shift-Tab": ({ editor }) => {
-        if (editor.isActive("listItem")) {
-          return editor.chain().liftListItem("listItem").run();
-        }
-        // Return true to prevent Shift+Tab from moving focus out
-        return true;
-      },
-    };
-  },
-});
-
-// Resizable Image Extension — adds width/alignment attributes
-const ResizableImage = Image.extend({
-  addAttributes() {
-    return {
-      ...this.parent?.(),
-      width: {
-        default: null,
-        parseHTML: (el) => el.getAttribute("data-width") || el.style.width || null,
-        renderHTML: (attrs) => attrs.width ? { "data-width": attrs.width, style: `width: ${attrs.width}` } : {},
-      },
-      alignment: {
-        default: "center",
-        parseHTML: (el) => el.getAttribute("data-alignment") || "center",
-        renderHTML: (attrs) => ({ "data-alignment": attrs.alignment || "center" }),
-      },
-    };
-  },
-  renderHTML({ HTMLAttributes }) {
-    const alignment = HTMLAttributes["data-alignment"] || "center";
-    const alignMap: Record<string, string> = { left: "flex-start", center: "center", right: "flex-end" };
-    const justify = alignMap[alignment] || "center";
-    const { "data-alignment": _, ...imgAttrs } = HTMLAttributes;
-    return [
-      "figure",
-      { style: `display:flex;justify-content:${justify};margin:1rem 0;`, class: "editor-image-figure" },
-      ["img", { ...imgAttrs, class: "rounded-lg" }],
-    ];
-  },
-  parseHTML() {
-    return [
-      { tag: "figure.editor-image-figure img", getAttrs: (el: any) => ({ src: el.getAttribute("src") }) },
-      { tag: "img[src]" },
-    ];
-  },
-});
 
 // ── Component ──
 
