@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { ChevronDown, Check } from "lucide-react";
 import { useLocale, setLocale, type Locale } from "@/lib/i18n/locale";
 
@@ -32,15 +31,19 @@ function Flag({ cc, w = 22 }: { cc: string; w?: number }) {
  */
 export function LanguageSelector({ className = "" }: { className?: string }) {
   const locale = useLocale();
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
   const current = OPTIONS.find((o) => o.code === locale) ?? OPTIONS[0];
 
   function choose(code: Locale) {
-    setLocale(code);
     setOpen(false);
-    router.refresh(); // re-renderiza os server components no novo idioma
+    if (code === locale) return;
+    setLocale(code); // grava cookie + localStorage e avisa os componentes client
+    // Recarrega a página inteira para o SERVIDOR re-renderizar no novo idioma.
+    // Usamos reload() em vez de router.refresh() porque no Safari do iPad/iPhone
+    // o refresh do App Router nem sempre re-busca com o cookie novo — o reload
+    // garante a troca em qualquer dispositivo.
+    if (typeof window !== "undefined") window.location.reload();
   }
 
   useEffect(() => {

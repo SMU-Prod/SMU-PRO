@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { SignUp } from "@clerk/nextjs";
-import { KeyRound } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { getClerkAppearance } from "@/components/auth/clerk-theme";
 import { useT } from "@/lib/i18n/ui";
@@ -31,17 +31,17 @@ export default function CadastroPage() {
         <p className="mt-3 text-muted-light text-sm">{t("Crie sua conta profissional")}</p>
       </div>
 
-      {/* Ajuda de senha — critérios claros (o campo do Clerk não explica sozinho) */}
+      {/* Requisitos obrigatórios da senha (política do provedor de identidade) */}
       <div className="mb-4 w-full max-w-[400px] rounded-xl border border-border bg-surface p-4">
         <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-foreground">
-          <KeyRound size={14} className="text-amber-500" />
-          {t("Como criar sua senha")}
+          <ShieldCheck size={14} className="text-amber-500" />
+          {t("Requisitos da senha")}
         </p>
         <ul className="space-y-1 text-[13px] text-muted-light">
-          <li>• {t("Use pelo menos 8 caracteres")}</li>
-          <li>• {t("Combine letras e números (ex.: Palco2025)")}</li>
-          <li>• {t("Pode usar símbolos (! @ # $) para deixar mais forte")}</li>
-          <li>• {t("Evite senhas óbvias como 12345678 ou sua data de nascimento")}</li>
+          <li>• {t("Mínimo de 8 caracteres")}</li>
+          <li>• {t("Máximo de 72 caracteres")}</li>
+          <li>• {t("Deve conter letras e números")}</li>
+          <li>• {t("Não pode ser uma senha comum ou exposta em vazamentos de dados")}</li>
         </ul>
       </div>
 

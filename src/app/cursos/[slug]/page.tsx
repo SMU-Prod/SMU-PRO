@@ -13,6 +13,7 @@ import { EnrollButton } from "@/components/course/enroll-button";
 import { getServerT, getServerLocale } from "@/lib/i18n/server";
 import { LanguageSelector } from "@/components/i18n/language-selector";
 import { courseMeta } from "@/lib/i18n/courses-meta";
+import { translateEntities, type ContentEntity } from "@/lib/i18n/content";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic"; // renderiza por requisição p/ ler o cookie de idioma
@@ -80,6 +81,33 @@ export default async function CourseDetailPage({ params }: Props) {
       const list = childModsMap.get(m.parent_id) ?? [];
       list.push(m);
       childModsMap.set(m.parent_id, list.sort((a: any, b: any) => a.ordem - b.ordem));
+    }
+  }
+
+  // Traduz o conteúdo do banco (curso + módulos + aulas) para o idioma atual.
+  // Uma chamada cobre a árvore inteira; cacheada por entidade. Fail-safe: mantém PT.
+  if (lang !== "pt") {
+    const entities: ContentEntity[] = [
+      { type: "course", id: course.id, titulo: course.titulo, descricao: course.descricao, descricao_curta: course.descricao_curta },
+      ...allModules.map((m: any) => ({ type: "module" as const, id: m.id, titulo: m.titulo })),
+      ...allModules.flatMap((m: any) => (m.lessons ?? []).map((l: any) => ({ type: "lesson" as const, id: l.id, titulo: l.titulo }))),
+    ];
+    const tr = await translateEntities(entities, lang);
+    if (tr.size > 0) {
+      const cf = tr.get(course.id);
+      if (cf) {
+        course.titulo = cf.titulo ?? course.titulo;
+        course.descricao = cf.descricao ?? course.descricao;
+        course.descricao_curta = cf.descricao_curta ?? course.descricao_curta;
+      }
+      for (const m of allModules) {
+        const mf = tr.get(m.id);
+        if (mf?.titulo) m.titulo = mf.titulo;
+        for (const l of m.lessons ?? []) {
+          const lf = tr.get(l.id);
+          if (lf?.titulo) l.titulo = lf.titulo;
+        }
+      }
     }
   }
 

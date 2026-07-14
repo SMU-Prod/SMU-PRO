@@ -3,7 +3,34 @@
 import { auth } from "@clerk/nextjs/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath, updateTag } from "next/cache";
+import { getPortal, filterCoursesByPortal, courseBelongsToPortal, stampPortalCategorias } from "@/lib/portal";
 import type { CourseInsert, CourseUpdate, ModuleInsert, LessonInsert, Progress } from "@/types/database";
+
+/**
+ * Regra do dono: cada domínio é uma escola independente (www = backstage/eventos,
+ * aula.smuproducoes.com = cursos avulsos). O banco é o MESMO e o login de admin serve
+ * para os dois — mas o acervo de cursos/aulas é separado: só se gerencia, no painel,
+ * os cursos da escola do domínio em que se está logado.
+ */
+
+/** IDs dos cursos que pertencem à escola do portal atual. */
+async function portalCourseIds(supabase: any, portal: Awaited<ReturnType<typeof getPortal>>): Promise<string[]> {
+  const { data } = await supabase.from("courses").select("id, categorias");
+  return filterCoursesByPortal((data ?? []) as any[], portal).map((c: any) => c.id);
+}
+
+/** Bloqueia gerenciar um curso de outra escola (ex.: editar curso do aula estando no www). */
+async function assertCourseInPortal(supabase: any, courseId: string) {
+  const portal = await getPortal();
+  const { data } = await supabase.from("courses").select("categorias").eq("id", courseId).single();
+  if (data && !courseBelongsToPortal(data.categorias, portal)) {
+    throw new Error(
+      portal === "aula"
+        ? "Este curso é da escola Backstage — acesse pelo smuproducoes.com para editá-lo."
+        : "Este curso é da escola do aula — acesse pelo aula.smuproducoes.com para editá-lo.",
+    );
+  }
+}
 
 // ============================================================
 // Helper: resolve Clerk user ID → Supabase user UUID
@@ -191,9 +218,17 @@ export async function adminGetAllCourses(opts?: { page?: number; limit?: number;
   const page = opts?.page ?? 1;
   const limit = opts?.limit ?? 50;
 
+  // Escola do domínio: o painel só lista os cursos do portal atual (a view
+  // admin_course_stats não expõe `categorias`, então resolvemos os IDs na tabela courses
+  // e escopamos a query — assim paginação e total continuam corretos).
+  const portal = await getPortal();
+  const allowedIds = await portalCourseIds(supabase, portal);
+  if (allowedIds.length === 0) return { courses: [], total: 0 };
+
   let query = supabase
     .from("admin_course_stats")
     .select("*", { count: "exact" })
+    .in("id", allowedIds)
     .order("created_at", { ascending: false })
     .range((page - 1) * limit, page * limit - 1);
 
@@ -231,9 +266,14 @@ export async function adminCreateCourse(input: CourseInsert) {
   const { data: userRow } = await supabase
     .from("users").select("id").eq("clerk_id", clerkId).limit(1).single();
 
+  // O curso nasce na escola do domínio em que foi criado. Sem isto, um curso criado no
+  // aula recebia só a categoria do assunto (ex.: ['som']) e caía no backstage.
+  const portal = await getPortal();
+  const categorias = stampPortalCategorias((input as any).categorias, portal);
+
   const { data, error } = await supabase
     .from("courses")
-    .insert({ ...input, ...(userRow?.id ? { criado_por: userRow.id } : {}) })
+    .insert({ ...input, categorias, ...(userRow?.id ? { criado_por: userRow.id } : {}) })
     .select()
     .single();
   if (error) throw error;
@@ -247,6 +287,9 @@ export async function adminCreateCourse(input: CourseInsert) {
 export async function adminUpdateCourse(id: string, input: CourseUpdate) {
   const clerkId = await assertAdmin();
   const supabase = createAdminClient();
+
+  // Escolas separadas: só edita curso da escola do domínio atual.
+  await assertCourseInPortal(supabase, id);
 
   // Ownership check para instrutores
   const { data: userRow } = await supabase
@@ -280,6 +323,8 @@ export async function adminUpdateCourse(id: string, input: CourseUpdate) {
 export async function adminDeleteCourse(id: string) {
   await assertAdminOnly();
   const supabase = createAdminClient();
+  // Escolas separadas: só apaga curso da escola do domínio atual.
+  await assertCourseInPortal(supabase, id);
   const { error } = await supabase.from("courses").delete().eq("id", id);
   if (error) throw error;
 
@@ -692,10 +737,16 @@ export async function instructorGetMyCourses() {
   const { userUuid, role } = await assertInstructorOrAdmin();
   const supabase = createAdminClient();
 
-  // Admin/CM veem tudo; instrutor vê só os dele
+  // Escola do domínio atual (o acervo é separado por portal, mesmo com login único).
+  const portal = await getPortal();
+  const allowedIds = await portalCourseIds(supabase, portal);
+  if (allowedIds.length === 0) return [];
+
+  // Admin/CM veem tudo (da escola atual); instrutor vê só os dele
   let query = (supabase as any)
     .from("instructor_course_stats")
     .select("*")
+    .in("id", allowedIds)
     .order("created_at", { ascending: false });
 
   if (role === "instrutor") {
@@ -711,6 +762,9 @@ export async function instructorGetMyCourses() {
 export async function instructorUpdateCourse(id: string, input: CourseUpdate) {
   const { userUuid, role } = await assertInstructorOrAdmin();
   const supabase = createAdminClient();
+
+  // Escolas separadas: só edita curso da escola do domínio atual.
+  await assertCourseInPortal(supabase, id);
 
   // Instrutor: verificar ownership
   if (role === "instrutor") {

@@ -10,6 +10,7 @@ import { ArrowLeft, BookOpen, Clock, ChevronRight, Users } from "lucide-react";
 import { getServerT, getServerLocale } from "@/lib/i18n/server";
 import { LanguageSelector } from "@/components/i18n/language-selector";
 import { courseMeta } from "@/lib/i18n/courses-meta";
+import { getPortal, filterCoursesByPortal } from "@/lib/portal";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -96,13 +97,14 @@ export default async function CategoryPage({ params }: Props) {
   const supabase = createAdminClient();
   const { data: courses } = await (supabase as any)
     .from("courses")
-    .select("id, titulo, slug, nivel, categoria, tipo, preco, thumbnail_url, carga_horaria, descricao_curta, total_alunos")
+    .select("id, titulo, slug, nivel, categoria, categorias, tipo, preco, thumbnail_url, carga_horaria, descricao_curta, total_alunos")
     .eq("ativo", true)
     .eq("categoria", slug)
     .order("nivel")
     .order("titulo");
 
-  const list = courses ?? [];
+  const portal = await getPortal();
+  const list = filterCoursesByPortal(courses ?? [], portal);
 
   // Schema.org
   const categorySchema = {

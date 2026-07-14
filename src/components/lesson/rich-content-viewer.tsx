@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
+import { useDarkContentFix } from "@/lib/hooks/use-dark-content-fix";
 import {
   Target, BookOpen, MapPin, Users, Megaphone,
   AlertTriangle, Wrench, TrendingUp,
@@ -9,7 +10,6 @@ import {
 } from "lucide-react";
 import DOMPurify from "isomorphic-dompurify";
 import { Button } from "@/components/ui/button";
-import { useImageLightbox } from "@/components/ui/image-lightbox";
 
 interface RichContentViewerProps {
   html: string;
@@ -182,7 +182,6 @@ export function RichContentViewer({ html, lessonId, titulo, categoria, isAdmin =
   const [refinedHtml, setRefinedHtml] = useState<string | null>(null);
   const [refining, setRefining] = useState(false);
   const isTranslated = locale !== "pt";
-  const { onContentClick, lightbox } = useImageLightbox();
 
   // Carregar conteúdo refinado se existir (silencioso, sem gerar)
   // Em idioma traduzido NÃO busca refinado (o refinado é só em PT e sobreporia a tradução).
@@ -233,6 +232,12 @@ export function RichContentViewer({ html, lessonId, titulo, categoria, isAdmin =
 
   const sections = useMemo(() => parseIntoSections(sanitized), [sanitized]);
 
+  // Correção de contraste no MODO ESCURO: clareia as cores de texto escuras que o
+  // editor embutiu no conteúdo (somem no fundo escuro, só aparecem ao imprimir).
+  // Pula os infográficos <figure> (fundo branco próprio). Ver o hook.
+  const contentRootRef = useRef<HTMLDivElement>(null);
+  useDarkContentFix(contentRootRef, [sanitized]);
+
   // Botão admin de refinar (reutilizável) — DESATIVADO a pedido (flag abaixo)
   const AI_REFINE_ENABLED = false;
   const RefineButton = () => {
@@ -274,18 +279,16 @@ export function RichContentViewer({ html, lessonId, titulo, categoria, isAdmin =
 
   if (sections.length <= 1 && !sections[0]?.title) {
     return (
-      <div>
+      <div ref={contentRootRef}>
         <RefineButton />
-        <div className="prose-light max-w-none" onClick={onContentClick} dangerouslySetInnerHTML={{ __html: sanitized }} />
-        {lightbox}
+        <div className="prose-light max-w-none" dangerouslySetInnerHTML={{ __html: sanitized }} />
       </div>
     );
   }
 
   return (
-    <div className="space-y-2" onClick={onContentClick}>
+    <div ref={contentRootRef} className="space-y-2">
       <RefineButton />
-      {lightbox}
 
       {sections.map((section, idx) => {
         if (!section.title && !section.content) return null;

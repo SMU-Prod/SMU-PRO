@@ -15,6 +15,7 @@ import {
 import Link from "next/link";
 import { getServerT, getServerLocale } from "@/lib/i18n/server";
 import { courseMeta } from "@/lib/i18n/courses-meta";
+import { getPortal, filterCoursesByPortal } from "@/lib/portal";
 
 const LEARNING_PATH: {
   level: string;
@@ -65,7 +66,7 @@ export default async function TrilhaPage() {
   const [{ data: allCourses }, enrollmentsResult, certificatesResult] = await Promise.all([
     supabase
       .from("courses")
-      .select("id, titulo, slug, nivel, categoria, carga_horaria, thumbnail_url")
+      .select("id, titulo, slug, nivel, categoria, categorias, carga_horaria, thumbnail_url")
       .eq("ativo", true)
       .order("nivel")
       .order("titulo"),
@@ -89,7 +90,10 @@ export default async function TrilhaPage() {
     certificates.map((c: any) => [c.course_id, c.codigo_verificacao])
   );
 
-  const courses = allCourses ?? [];
+  // Cada domínio é uma escola independente: www (eventos/backstage) × aula (profissionalizante).
+  // Sem este filtro, a trilha lista cursos das DUAS escolas — os do aula "invadem" o técnico e vice-versa.
+  const portal = await getPortal();
+  const courses = filterCoursesByPortal(allCourses ?? [], portal);
   const enrollMap = new Map(
     (enrollments ?? []).map((e) => [e.course_id, e])
   );

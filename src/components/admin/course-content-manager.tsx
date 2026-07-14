@@ -66,7 +66,15 @@ const lessonSchema = z.object({
 
 export function CourseContentManager({ course }: { course: any }) {
   const t = useT();
-  const [modules, setModules] = useState<any[]>(course.modules ?? []);
+  // As aulas vêm do PostgREST sem ordem garantida (o select aninhado não ordena),
+  // o que embaralhava a lista no admin. Normaliza por `ordem` já na entrada, para
+  // que o estado e o render (e os índices do drag-and-drop) concordem.
+  const [modules, setModules] = useState<any[]>(() =>
+    (course.modules ?? []).map((m: any) => ({
+      ...m,
+      lessons: [...(m.lessons ?? [])].sort((a: any, b: any) => (a.ordem ?? 0) - (b.ordem ?? 0)),
+    }))
+  );
   const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({});
   const [editingModule, setEditingModule] = useState<string | null>(null);
   const [addingModule, setAddingModule] = useState(false);

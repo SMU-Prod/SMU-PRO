@@ -13,6 +13,7 @@ import { Edit, ArrowLeft, Layers, Info, ShieldCheck, BarChart3, Eye, Monitor } f
 import Link from "next/link";
 import { getServerT, getServerLocale } from "@/lib/i18n/server";
 import { courseMeta } from "@/lib/i18n/courses-meta";
+import { getPortal, courseBelongsToPortal } from "@/lib/portal";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -42,6 +43,10 @@ export default async function AdminCourseDetailPage({ params, searchParams }: Pr
     .single();
 
   if (!course) notFound();
+
+  // Escolas independentes: um curso só abre no painel do domínio a que pertence
+  // (www = backstage · aula.smuproducoes.com = cursos avulsos). Login é o mesmo; o acervo, não.
+  if (!courseBelongsToPortal(course.categorias, await getPortal())) notFound();
 
   const sortedCourse = {
     ...course,

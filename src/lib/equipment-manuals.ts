@@ -62,6 +62,48 @@ export const EQUIPMENT_MANUALS: EquipmentManual[] = [
     formato: "pdf",
     idioma: "en",
   },
+  {
+    slug: "shure-sm7b",
+    fabricante: "Shure",
+    modelo: "SM7B",
+    categoria: "som",
+    tipo: "Microfone dinâmico de estúdio",
+    url: "https://pubs.shure.com/view/guide/SM7B/en-US.pdf",
+    formato: "pdf",
+    idioma: "en",
+  },
+  {
+    slug: "allen-heath-sq5",
+    fabricante: "Allen & Heath",
+    modelo: "SQ-5",
+    categoria: "som",
+    tipo: "Mesa de som digital",
+    url: "https://www.allen-heath.com/content/uploads/2025/02/SQ_ReferenceGuide_V1_6_0_iss1.pdf",
+    formato: "pdf",
+    idioma: "en",
+  },
+  // ── LUZ ──
+  {
+    slug: "chauvet-rogue-r2x-wash",
+    fabricante: "Chauvet Professional",
+    modelo: "Rogue R2X Wash",
+    categoria: "luz",
+    tipo: "Moving head (wash)",
+    url: "https://www.chauvetprofessional.com/wp-content/uploads/2019/10/Rogue_R2X_Wash_UM_Rev8-1.pdf",
+    formato: "pdf",
+    idioma: "en",
+  },
+  // ── EFEITOS ──
+  {
+    slug: "antari-z1520",
+    fabricante: "Antari",
+    modelo: "Z-1520",
+    categoria: "efeitos",
+    tipo: "Máquina de fumaça (fog)",
+    url: "https://www.antari.com/usermanual/Z/Z-1520/Z-1520.pdf",
+    formato: "pdf",
+    idioma: "en",
+  },
 ];
 
 /** Manuais de uma categoria de curso (ex.: "som"). */

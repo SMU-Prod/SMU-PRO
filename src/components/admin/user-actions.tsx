@@ -1,22 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { adminUpdateUserRole, adminToggleMIT, adminEnrollUserManually } from "@/lib/actions/users";
+import { adminUpdateUserRole, adminToggleMIT, adminEnrollUserManually, ownerSetUserActive, ownerResetPassword } from "@/lib/actions/users";
 import { Button } from "@/components/ui/button";
 import type { User, UserRole } from "@/types/database";
 import { getLevelLabel } from "@/lib/utils";
-import { ChevronDown, UserCheck, BookPlus, X, Check } from "lucide-react";
+import { ChevronDown, UserCheck, BookPlus, X, Check, Power, KeyRound, Copy } from "lucide-react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 
 interface UserActionsProps {
   user: User;
   courses?: any[];
+  /** Só o Odin (dono) vê as ações de acesso/senha. */
+  isOwner?: boolean;
 }
 
-export function UserActions({ user, courses = [] }: UserActionsProps) {
+export function UserActions({ user, courses = [], isOwner = false }: UserActionsProps) {
   const [loading, setLoading] = useState(false);
   const [enrollOpen, setEnrollOpen] = useState(false);
   const [enrolling, setEnrolling] = useState<string | null>(null);
+  const [tempPass, setTempPass] = useState<string | null>(null);
 
   const handleRoleChange = async (role: UserRole) => {
     setLoading(true);
@@ -36,12 +39,36 @@ export function UserActions({ user, courses = [] }: UserActionsProps) {
     setEnrolling(null);
   };
 
+  const handleToggleActive = async () => {
+    const acao = user.ativo ? "DESATIVAR" : "reativar";
+    if (!confirm(`${acao === "DESATIVAR" ? "Desativar" : "Reativar"} o acesso de ${user.nome}?${user.ativo ? " A sessão dele será encerrada na hora." : ""}`)) return;
+    setLoading(true);
+    try {
+      await ownerSetUserActive(user.clerk_id, !user.ativo);
+    } catch (e) {
+      alert("Falhou: " + (e as Error).message);
+    }
+    setLoading(false);
+  };
+
+  const handleResetPassword = async () => {
+    if (!confirm(`Gerar uma nova senha para ${user.nome}? A senha atual dele deixa de funcionar imediatamente.`)) return;
+    setLoading(true);
+    try {
+      const { tempPassword } = await ownerResetPassword(user.clerk_id);
+      setTempPass(tempPassword);
+    } catch (e) {
+      alert("Falhou: " + (e as Error).message);
+    }
+    setLoading(false);
+  };
+
   const roles: { value: UserRole; label: string }[] = [
     { value: "trainee", label: "Trainee" },
     { value: "junior", label: "Junior" },
     { value: "pleno", label: "Pleno" },
     { value: "projeto_cultural", label: "MIT" },
-    { value: "content_manager", label: "Content Manager" },
+    { value: "content_manager", label: "Operador" },
     { value: "admin", label: "Admin" },
   ];
 
@@ -130,9 +157,66 @@ export function UserActions({ user, courses = [] }: UserActionsProps) {
               <UserCheck size={13} />
               {user.projeto_cultural ? "Remover do MIT" : "Adicionar ao MIT"}
             </DropdownMenu.Item>
+
+            {isOwner && (
+              <>
+                <DropdownMenu.Separator className="my-1.5 h-px bg-surface-3" />
+                <DropdownMenu.Label className="px-3 py-1.5 text-[10px] text-muted-light uppercase tracking-widest font-semibold">
+                  Odin — Acesso
+                </DropdownMenu.Label>
+                <DropdownMenu.Item
+                  className={`flex items-center gap-2 px-3 py-2 text-xs cursor-pointer rounded-lg outline-none transition-colors ${
+                    user.ativo
+                      ? "text-red-400 hover:bg-red-500/10"
+                      : "text-emerald-400 hover:bg-emerald-500/10"
+                  }`}
+                  onClick={handleToggleActive}
+                >
+                  <Power size={13} />
+                  {user.ativo ? "Desativar acesso" : "Reativar acesso"}
+                </DropdownMenu.Item>
+                <DropdownMenu.Item
+                  className="flex items-center gap-2 px-3 py-2 text-xs cursor-pointer rounded-lg hover:bg-amber-500/10 outline-none transition-colors text-foreground"
+                  onClick={handleResetPassword}
+                >
+                  <KeyRound size={13} />
+                  Redefinir senha
+                </DropdownMenu.Item>
+              </>
+            )}
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
       </DropdownMenu.Root>
+
+      {tempPass && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4" onClick={() => setTempPass(null)}>
+          <div className="w-full max-w-sm rounded-2xl border border-border bg-surface p-5 space-y-3" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-2">
+              <KeyRound size={16} className="text-amber-400" />
+              <h3 className="text-sm font-semibold text-foreground">Nova senha de {user.nome}</h3>
+            </div>
+            <p className="text-xs text-muted-light">
+              Anote e entregue em mãos. Ela <strong>não será mostrada de novo</strong> e nenhum e-mail foi enviado.
+            </p>
+            <div className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2">
+              <code className="flex-1 text-sm font-mono text-foreground break-all">{tempPass}</code>
+              <button
+                onClick={() => navigator.clipboard?.writeText(tempPass)}
+                className="shrink-0 text-muted-light hover:text-amber-400 transition-colors"
+                title="Copiar"
+              >
+                <Copy size={14} />
+              </button>
+            </div>
+            <button
+              onClick={() => setTempPass(null)}
+              className="w-full h-9 rounded-lg bg-amber-500 text-white text-sm font-semibold hover:bg-amber-400 transition-colors"
+            >
+              Guardei a senha
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

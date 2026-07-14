@@ -96,8 +96,8 @@ export default async function AdminCertificadosPage({ searchParams }: Props) {
               </div>
             )}
           </div>
-          {/* Desktop: table layout */}
-          <div className="hidden md:block">
+          {/* Desktop: table layout — overflow-x-auto para não estourar no tablet */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border/50 bg-surface-2">

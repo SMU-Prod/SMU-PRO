@@ -2,11 +2,13 @@ import Link from "next/link";
 import Image from "next/image";
 import { auth } from "@clerk/nextjs/server";
 import { getPublicCoursesCached, getLandingStatsCached } from "@/lib/cache/public-data";
+import { getPortal, filterCoursesByPortal } from "@/lib/portal";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getCategoryLabel, getLevelLabel, formatMinutes, formatCurrency } from "@/lib/utils";
 import { CategoryIcon } from "@/components/ui/category-icon";
-import { getServerT } from "@/lib/i18n/server";
+import { getServerT, getServerLocale } from "@/lib/i18n/server";
+import { translateEntities } from "@/lib/i18n/content";
 import { LanguageSelector } from "@/components/i18n/language-selector";
 import { Zap, Award, Users, PlayCircle, ChevronRight, Star, Shield, Mic, Lightbulb, Music, Film } from "lucide-react";
 
@@ -56,18 +58,38 @@ export default async function HomePage() {
   const { userId } = await auth();
   const isSignedIn = !!userId;
   const t = await getServerT();
+  // Portal: "aula" = aula.smuproducoes.com (escola profissionalizante) · "main" = www (eventos).
+  const portal = await getPortal();
+  const isAula = portal === "aula";
 
   let featuredCourses: any[] = [];
   let stats = { totalUsers: 0, totalCourses: 0, totalHours: 0, completionRate: 0 };
   try {
     const [courses, realStats] = await Promise.all([getPublicCoursesCached(), getLandingStatsCached()]);
-    featuredCourses = (courses ?? []).filter((c: any) => c.destaque).slice(0, 3);
+    // Portal aula.smuproducoes.com: só os cursos curados do portal (mantém o cache das páginas públicas).
+    const scoped = filterCoursesByPortal(courses ?? [], portal);
+    featuredCourses = scoped.filter((c: any) => c.destaque).slice(0, 3);
     if (featuredCourses.length === 0) {
-      featuredCourses = (courses ?? []).slice(0, 3);
+      featuredCourses = scoped.slice(0, 3);
     }
     stats = realStats;
   } catch {
     // server not configured yet, show page without courses
+  }
+
+  // Traduz o nome/descrição dos cursos em destaque (conteúdo do banco). Fail-safe: PT.
+  const lang = await getServerLocale();
+  if (lang !== "pt" && featuredCourses.length > 0) {
+    const tr = await translateEntities(
+      featuredCourses.map((c) => ({ type: "course" as const, id: c.id, titulo: c.titulo, descricao: c.descricao, descricao_curta: c.descricao_curta })),
+      lang,
+    );
+    if (tr.size > 0) {
+      featuredCourses = featuredCourses.map((c) => {
+        const f = tr.get(c.id);
+        return f ? { ...c, titulo: f.titulo ?? c.titulo, descricao: f.descricao ?? c.descricao, descricao_curta: f.descricao_curta ?? c.descricao_curta } : c;
+      });
+    }
   }
 
   const STATS = [
@@ -118,55 +140,107 @@ export default async function HomePage() {
       </nav>
 
       {/* Hero */}
-      <section className="relative flex min-h-[85vh] flex-col items-center justify-center px-6 pt-16 text-center overflow-hidden">
-        {/* Background grid + amber glow */}
-        <div className="absolute inset-0 -z-10">
-          <div className="absolute inset-0 bg-[linear-gradient(rgba(245,158,11,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(245,158,11,0.03)_1px,transparent_1px)] bg-[size:64px_64px]" />
-          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 h-[500px] w-[500px] rounded-full bg-amber-500/[0.08] blur-[150px]" />
-          <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/30 to-transparent" />
-        </div>
+      {isAula ? (
+        /* Hero do aula.smuproducoes.com — escola profissionalizante (fundo branco, preto + amarelo) */
+        <section className="relative flex min-h-[85vh] flex-col items-center justify-center px-6 pt-16 text-center overflow-hidden bg-white text-neutral-900">
+          <div className="absolute inset-0 -z-10">
+            <div className="absolute top-1/3 left-1/2 -translate-x-1/2 h-[500px] w-[500px] rounded-full bg-amber-400/10 blur-[150px]" />
+            <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-400/40 to-transparent" />
+          </div>
 
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 mb-8">
-          <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
-          <span className="text-xs font-semibold text-amber-400 uppercase tracking-widest">
-            {t("Escola Profissional de Eventos ao Vivo")}
-          </span>
-        </div>
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-400/15 border border-amber-500/30 mb-8">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+            <span className="text-xs font-semibold text-amber-600 uppercase tracking-widest">
+              {t("Escola Profissionalizante")}
+            </span>
+          </div>
 
-        <h1 className="max-w-5xl text-5xl md:text-7xl lg:text-8xl font-black leading-[0.9] tracking-tight text-foreground">
-          {t("Sua carreira no")}{" "}
-          <span className="text-amber-400">{t("backstage")}</span>
-          <br />
-          {t("começa aqui")}
-        </h1>
+          <h1 className="max-w-5xl text-5xl md:text-7xl lg:text-8xl font-black leading-[0.9] tracking-tight text-neutral-900">
+            {t("Aprenda uma")}{" "}
+            <span className="text-amber-500">{t("profissão")}</span>
+            <br />
+            {t("e conquiste sua")}{" "}
+            <span className="text-amber-500">{t("carreira")}</span>
+          </h1>
 
-        <p className="mt-8 max-w-2xl text-lg text-muted leading-relaxed">
-          {t("Cursos técnicos de sonorização, iluminação, DJ e VJ com profissionais em atividade. Certificados verificáveis. Trilha de carreira estruturada.")}
-        </p>
+          <p className="mt-8 max-w-2xl text-lg text-neutral-600 leading-relaxed">
+            {t("Cursos técnicos e de renda em casa, do básico ao avançado — no seu ritmo e com certificado. Comece hoje, aprenda fazendo e transforme seu talento em trabalho.")}
+          </p>
 
-        <div className="mt-10 flex flex-col sm:flex-row gap-4">
-          <Link href="/cadastro">
-            <Button size="xl" className="shadow-[0_0_30px_rgba(245,158,11,0.3)]">
-              {t("Criar conta grátis")} <ChevronRight size={18} />
-            </Button>
-          </Link>
-          <Link href="/cursos">
-            <Button size="xl" variant="outline">
-              {t("Ver cursos")}
-            </Button>
-          </Link>
-        </div>
+          <div className="mt-10 flex flex-col sm:flex-row gap-4">
+            <Link href="/cadastro">
+              <Button size="xl" className="shadow-[0_0_30px_rgba(245,158,11,0.3)]">
+                {t("Criar conta grátis")} <ChevronRight size={18} />
+              </Button>
+            </Link>
+            <Link href="/cursos">
+              <Button size="xl" variant="outline" className="border-neutral-300 text-neutral-900 hover:bg-neutral-100">
+                {t("Ver cursos")}
+              </Button>
+            </Link>
+          </div>
 
-        {/* Stats */}
-        <div className="mt-24 grid grid-cols-2 md:grid-cols-4 gap-0 w-full max-w-4xl border border-border rounded-2xl overflow-hidden divide-x divide-border">
-          {STATS.map((s) => (
-            <div key={s.label} className="p-6 text-center hover:bg-surface-2/50 transition-colors">
-              <div className="text-3xl font-black text-amber-400 tabular-nums">{s.value}</div>
-              <div className="text-xs text-muted-light mt-2 uppercase tracking-wider">{t(s.label)}</div>
-            </div>
-          ))}
-        </div>
-      </section>
+          {/* Stats */}
+          <div className="mt-24 grid grid-cols-2 md:grid-cols-4 gap-0 w-full max-w-4xl border border-neutral-200 rounded-2xl overflow-hidden divide-x divide-neutral-200">
+            {STATS.map((s) => (
+              <div key={s.label} className="p-6 text-center hover:bg-neutral-50 transition-colors">
+                <div className="text-3xl font-black text-amber-500 tabular-nums">{s.value}</div>
+                <div className="text-xs text-neutral-500 mt-2 uppercase tracking-wider">{t(s.label)}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : (
+        <section className="relative flex min-h-[85vh] flex-col items-center justify-center px-6 pt-16 text-center overflow-hidden">
+          {/* Background grid + amber glow */}
+          <div className="absolute inset-0 -z-10">
+            <div className="absolute inset-0 bg-[linear-gradient(rgba(245,158,11,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(245,158,11,0.03)_1px,transparent_1px)] bg-[size:64px_64px]" />
+            <div className="absolute top-1/3 left-1/2 -translate-x-1/2 h-[500px] w-[500px] rounded-full bg-amber-500/[0.08] blur-[150px]" />
+            <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/30 to-transparent" />
+          </div>
+
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 mb-8">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+            <span className="text-xs font-semibold text-amber-400 uppercase tracking-widest">
+              {t("Escola Profissional de Eventos ao Vivo")}
+            </span>
+          </div>
+
+          <h1 className="max-w-5xl text-5xl md:text-7xl lg:text-8xl font-black leading-[0.9] tracking-tight text-foreground">
+            {t("Sua carreira no")}{" "}
+            <span className="text-amber-400">{t("backstage")}</span>
+            <br />
+            {t("começa aqui")}
+          </h1>
+
+          <p className="mt-8 max-w-2xl text-lg text-muted leading-relaxed">
+            {t("Cursos técnicos de sonorização, iluminação, DJ e VJ com profissionais em atividade. Certificados verificáveis. Trilha de carreira estruturada.")}
+          </p>
+
+          <div className="mt-10 flex flex-col sm:flex-row gap-4">
+            <Link href="/cadastro">
+              <Button size="xl" className="shadow-[0_0_30px_rgba(245,158,11,0.3)]">
+                {t("Criar conta grátis")} <ChevronRight size={18} />
+              </Button>
+            </Link>
+            <Link href="/cursos">
+              <Button size="xl" variant="outline">
+                {t("Ver cursos")}
+              </Button>
+            </Link>
+          </div>
+
+          {/* Stats */}
+          <div className="mt-24 grid grid-cols-2 md:grid-cols-4 gap-0 w-full max-w-4xl border border-border rounded-2xl overflow-hidden divide-x divide-border">
+            {STATS.map((s) => (
+              <div key={s.label} className="p-6 text-center hover:bg-surface-2/50 transition-colors">
+                <div className="text-3xl font-black text-amber-400 tabular-nums">{s.value}</div>
+                <div className="text-xs text-muted-light mt-2 uppercase tracking-wider">{t(s.label)}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Cursos em destaque */}
       {featuredCourses.length > 0 && (
@@ -219,7 +293,8 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* Categorias */}
+      {/* Categorias — áreas de EVENTOS (só no www; o aula tem áreas próprias na página de cursos) */}
+      {!isAula && (
       <section id="categorias" className="py-24 px-6 border-t border-border/50">
         <div className="mx-auto max-w-7xl">
           <div className="text-center mb-16">
@@ -241,6 +316,7 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+      )}
 
       {/* Features */}
       <section id="sobre" className="py-24 px-6 border-t border-border/50">
@@ -249,7 +325,9 @@ export default async function HomePage() {
             <p className="text-amber-400 text-sm font-semibold uppercase tracking-widest mb-2">{t("Plataforma")}</p>
             <h2 className="text-4xl font-black text-foreground">{t("Feita para profissionais")}</h2>
             <p className="mt-4 text-muted-light max-w-xl mx-auto">
-              {t("Cada detalhe foi pensado para quem trabalha em palco e precisa de formação séria.")}
+              {isAula
+                ? t("Cada detalhe foi pensado para quem quer aprender uma profissão e precisa de formação séria.")
+                : t("Cada detalhe foi pensado para quem trabalha em palco e precisa de formação séria.")}
             </p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -259,7 +337,11 @@ export default async function HomePage() {
                   {f.icon}
                 </div>
                 <h3 className="font-bold text-foreground mb-2">{t(f.title)}</h3>
-                <p className="text-sm text-muted-light leading-relaxed">{t(f.desc)}</p>
+                <p className="text-sm text-muted-light leading-relaxed">
+                  {t(isAula && f.desc.includes("mercado de eventos")
+                    ? "Conteúdo gravado por profissionais em atividade na área."
+                    : f.desc)}
+                </p>
               </div>
             ))}
           </div>
@@ -301,7 +383,7 @@ export default async function HomePage() {
               <p className="text-[4.5px] font-medium tracking-[0.12em] text-muted-light leading-none mt-0.5" style={{ fontFamily: "var(--font-orbitron), sans-serif" }}>PRODUÇÕES</p>
             </div>
             <span className="text-muted-light">—</span>
-            <span>{t("Escola Profissional de Eventos")}</span>
+            <span>{isAula ? t("Escola Profissionalizante") : t("Escola Profissional de Eventos")}</span>
           </div>
           <div className="flex gap-6">
             <Link href="/cursos" className="hover:text-amber-400 transition-colors">{t("Cursos")}</Link>
@@ -316,8 +398,8 @@ export default async function HomePage() {
         "@context": "https://schema.org",
         "@type": "EducationalOrganization",
         "name": "SMU PRO",
-        "description": "Escola profissional de cursos técnicos para eventos ao vivo",
-        "url": "https://smuproducoes.com",
+        "description": isAula ? "Escola profissionalizante de cursos técnicos e de renda em casa" : "Escola profissional de cursos técnicos para eventos ao vivo",
+        "url": isAula ? "https://aula.smuproducoes.com" : "https://smuproducoes.com",
         "address": { "@type": "PostalAddress", "addressCountry": "BR" },
       }) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({

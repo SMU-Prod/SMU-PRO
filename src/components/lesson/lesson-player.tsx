@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import DOMPurify from "isomorphic-dompurify";
 import Link from "next/link";
 import Image from "next/image";
@@ -30,8 +30,10 @@ import {
   CheckCircle2, Circle, ChevronDown, ChevronRight, ChevronUp,
   PlayCircle, FileText, HelpCircle, StickyNote,
   Lock, CheckCheck, BookOpen, Clock, Star, ChevronLeft, List,
-  Minimize2, Maximize2, Download, Eye, EyeOff,
+  Minimize2, Maximize2, Download, Eye, EyeOff, Menu,
+  PanelRightOpen, PanelRightClose,
 } from "lucide-react";
+import { useSidebar } from "@/components/layout/sidebar-context";
 
 /** Extrai o ID puro do YouTube de qualquer formato (URL completa, watch?v=, etc.) */
 function extractYoutubeId(raw: string): string {
@@ -94,6 +96,22 @@ export function LessonPlayer({
     }
   );
   const [videoExpanded, setVideoExpanded] = useState(true);
+  // Painel "Conteúdo do Curso" (direita) recolhível — libera a tela principal.
+  // Inicia aberto no SSR (evita mismatch de hidratação) e aplica a preferência salva após montar.
+  const [contentOpen, setContentOpen] = useState(true);
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem("smu:lessonContentOpen");
+      if (v !== null) setContentOpen(v === "1");
+    } catch { /* localStorage indisponível */ }
+  }, []);
+  const toggleContent = useCallback(() => {
+    setContentOpen((prev) => {
+      const next = !prev;
+      try { localStorage.setItem("smu:lessonContentOpen", next ? "1" : "0"); } catch { /* noop */ }
+      return next;
+    });
+  }, []);
   const [marking, setMarking] = useState(false);
   const [isCompleted, setIsCompleted] = useState(
     progressMap[lesson.id]?.concluido ?? false
@@ -106,6 +124,7 @@ export function LessonPlayer({
   const locale = useLocale();
   const t = useT();
   const courseTr = useCourseTr(course.slug, locale);
+  const { toggle: toggleSidebar } = useSidebar();
   const tr = courseTr?.lessons?.[lesson.id] ?? null;
   const quizTr = courseTr?.quiz ?? null;
   const dispTitulo = tr?.titulo ?? lesson.titulo;
@@ -324,10 +343,18 @@ export function LessonPlayer({
   return (
     <div className="flex h-screen overflow-hidden bg-surface-2">
       {/* ── Main Content ── */}
-      <div className="flex flex-col overflow-hidden w-full lg:w-[65%]">
+      <div className={cn("flex flex-col overflow-hidden w-full", contentOpen ? "lg:w-[65%]" : "lg:w-full")}>
         {/* Top Bar */}
         <div className="flex items-center justify-between px-3 sm:px-5 py-2.5 border-b border-border bg-surface shrink-0 gap-2">
           <div className="flex items-center gap-1.5 text-sm text-muted-light min-w-0">
+            <button
+              onClick={toggleSidebar}
+              className="lg:hidden p-2 -ml-1 rounded-lg text-muted hover:text-foreground hover:bg-hover transition-colors shrink-0"
+              aria-label={t("Abrir menu")}
+              title={t("Menu")}
+            >
+              <Menu size={20} />
+            </button>
             <Link href="/dashboard/cursos" className="hover:text-foreground transition-colors shrink-0 hidden sm:block">
               {t("Meus Cursos")}
             </Link>
@@ -342,6 +369,21 @@ export function LessonPlayer({
             </span>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
+            {/* Recolher/mostrar o painel "Conteúdo do Curso" — só desktop (no mobile a lista vem pelo menu) */}
+            <button
+              onClick={toggleContent}
+              className={cn(
+                "hidden lg:inline-flex items-center gap-1.5 rounded-lg transition-colors shrink-0",
+                contentOpen
+                  ? "p-2 text-muted hover:text-foreground hover:bg-hover"
+                  : "px-2.5 py-2 text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 font-medium"
+              )}
+              aria-label={contentOpen ? t("Ocultar conteúdo do curso") : t("Mostrar conteúdo do curso")}
+              title={contentOpen ? t("Ocultar conteúdo do curso") : t("Mostrar conteúdo do curso")}
+            >
+              {contentOpen ? <PanelRightClose size={18} /> : <PanelRightOpen size={18} />}
+              {!contentOpen && <span className="text-xs">{t("Conteúdo")}</span>}
+            </button>
             <LanguageSelector />
             {prevLesson && (
               <Link href={`/dashboard/cursos/${course.slug}/aulas/${prevLesson.id}`}>
@@ -569,11 +611,27 @@ export function LessonPlayer({
         </div>
       </div>
 
-      {/* ── Right Sidebar — Course Content (35%) — desktop only ── */}
-      <aside className="hidden lg:flex border-l border-border bg-surface flex-col overflow-hidden shrink-0 w-[35%]" aria-label="Lista de aulas">
+      {/* ── Right Sidebar — Course Content (35%) — desktop only, recolhível ── */}
+      <aside
+        className={cn(
+          "border-l border-border bg-surface flex-col overflow-hidden shrink-0 w-[35%]",
+          contentOpen ? "hidden lg:flex" : "hidden"
+        )}
+        aria-label="Lista de aulas"
+      >
         {/* Header */}
         <div className="px-4 py-4 border-b border-border shrink-0">
-          <h3 className="font-semibold text-foreground text-sm mb-2">{t("Conteúdo do Curso")}</h3>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-semibold text-foreground text-sm">{t("Conteúdo do Curso")}</h3>
+            <button
+              onClick={toggleContent}
+              className="p-1 rounded text-muted hover:text-foreground hover:bg-hover transition-colors shrink-0"
+              aria-label={t("Ocultar conteúdo do curso")}
+              title={t("Ocultar conteúdo do curso")}
+            >
+              <PanelRightClose size={16} />
+            </button>
+          </div>
           <div className="flex items-center gap-2">
             <Progress value={courseProgress} className="flex-1 h-2" />
             <span className="text-xs text-amber-400 font-semibold shrink-0">{courseProgress}%</span>
@@ -584,6 +642,22 @@ export function LessonPlayer({
           <CourseContentList />
         </div>
       </aside>
+
+      {/* Aba flutuante na borda direita para REABRIR o painel quando recolhido —
+          fica exatamente onde o painel estava, impossível de não ver. Desktop only. */}
+      {!contentOpen && (
+        <button
+          onClick={toggleContent}
+          className="hidden lg:flex fixed right-0 top-1/2 -translate-y-1/2 z-40 flex-col items-center gap-2 rounded-l-xl bg-amber-500 text-black shadow-lg hover:bg-amber-400 hover:pr-3 px-2 py-3 transition-all"
+          aria-label={t("Mostrar conteúdo do curso")}
+          title={t("Mostrar conteúdo do curso")}
+        >
+          <PanelRightOpen size={18} />
+          <span className="text-[11px] font-semibold tracking-wide" style={{ writingMode: "vertical-rl" }}>
+            {t("Conteúdo")}
+          </span>
+        </button>
+      )}
     </div>
   );
 }

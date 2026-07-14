@@ -1,4 +1,5 @@
 import { adminGetUsers, requireAdminRole } from "@/lib/actions/users";
+import { isCurrentUserOwner } from "@/lib/auth/owner";
 import { adminGetAllCourses } from "@/lib/actions/courses";
 import { getServerT } from "@/lib/i18n/server";
 import { Header } from "@/components/layout/header";
@@ -21,7 +22,7 @@ const ROLES = [
   { value: "junior", label: "Junior" },
   { value: "pleno", label: "Pleno" },
   { value: "projeto_cultural", label: "MIT" },
-  { value: "content_manager", label: "Content Manager" },
+  { value: "content_manager", label: "Operador" },
   { value: "admin", label: "Admin" },
 ];
 
@@ -32,9 +33,10 @@ export default async function AdminUsersPage({ searchParams }: Props) {
   const currentPage = parseInt(page);
   const pageSize = 20;
 
-  const [{ users, total }, { courses }] = await Promise.all([
+  const [{ users, total }, { courses }, isOwner] = await Promise.all([
     adminGetUsers(currentPage, pageSize, q, role, mit),
     adminGetAllCourses({ limit: 200 }),
+    isCurrentUserOwner(),
   ]);
 
   const totalPages = Math.ceil(total / pageSize);
@@ -152,7 +154,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
                       <p className="text-sm text-foreground font-medium truncate">{u.nome}</p>
                       <p className="text-xs text-muted-light truncate">{u.email}</p>
                     </div>
-                    <UserActions user={u} courses={courses ?? []} />
+                    <UserActions user={u} courses={courses ?? []} isOwner={isOwner} />
                   </div>
                   <div className="flex items-center gap-2 flex-wrap pl-12">
                     <Badge
@@ -249,7 +251,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
                         {new Date(u.created_at).toLocaleDateString("pt-BR")}
                       </td>
                       <td className="px-4 py-3">
-                        <UserActions user={u} courses={courses ?? []} />
+                        <UserActions user={u} courses={courses ?? []} isOwner={isOwner} />
                       </td>
                     </tr>
                   ))}
