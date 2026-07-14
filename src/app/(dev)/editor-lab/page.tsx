@@ -6,6 +6,7 @@
 import { useState } from "react";
 import { notFound } from "next/navigation";
 import { RichTextEditor } from "@/components/admin/rich-text-editor";
+import { RichContentViewer } from "@/components/lesson/rich-content-viewer";
 
 export default function EditorLabPage() {
   if (process.env.NODE_ENV === "production") notFound();
@@ -41,6 +42,14 @@ function EditorLab() {
         >
           {html}
         </pre>
+      </div>
+      <div style={{ marginTop: 24 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
+          Visão do aluno (RichContentViewer):
+        </div>
+        <div style={{ border: "1px solid #333", borderRadius: 8, padding: 16 }}>
+          <RichContentViewer html={html} />
+        </div>
       </div>
     </div>
   );

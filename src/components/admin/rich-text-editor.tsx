@@ -26,12 +26,12 @@ import {
   SuperscriptIcon, SubscriptIcon, Table as TableIcon, Code2,
   RemoveFormatting, IndentIncrease, IndentDecrease,
   Loader2, ImageIcon, AlignHorizontalJustifyCenter,
-  Trash2, ChevronDown, Type,
+  Trash2, ChevronDown, Type, SquareStack,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { adminUploadFile } from "@/lib/actions/courses";
 import { useT } from "@/lib/i18n/ui";
-import { FontSize, TabIndent, ResizableImage } from "./editor-extensions";
+import { FontSize, TabIndent, ResizableImage, SectionBlock } from "./editor-extensions";
 
 // ── Constants ──
 
@@ -195,6 +195,7 @@ export function RichTextEditor({
       TableHeader,
       Typography,
       TabIndent,
+      SectionBlock,
     ],
     immediatelyRender: false,
     content: value,
@@ -599,6 +600,7 @@ export function RichTextEditor({
             <ToolBtn active={editor.isActive("blockquote")} onClick={() => editor.chain().focus().toggleBlockquote().run()} title={t("Citação")}><Quote size={13} /></ToolBtn>
             <ToolBtn active={editor.isActive("codeBlock")} onClick={() => editor.chain().focus().toggleCodeBlock().run()} title={t("Bloco de código")}><Code2 size={13} /></ToolBtn>
             <ToolBtn active={false} onClick={() => editor.chain().focus().setHorizontalRule().run()} title={t("Linha divisória")}><Minus size={13} /></ToolBtn>
+            <ToolBtn active={editor.isActive("sectionBlock")} onClick={() => (editor.commands as any).insertSection()} title={t("Inserir seção (card com ícone)")}><SquareStack size={13} /></ToolBtn>
           </ToolGroup>
 
           <Sep />

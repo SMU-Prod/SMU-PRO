@@ -2,14 +2,10 @@
 
 import { useMemo, useState, useEffect, useRef } from "react";
 import { useDarkContentFix } from "@/lib/hooks/use-dark-content-fix";
-import {
-  Target, BookOpen, MapPin, Users, Megaphone,
-  AlertTriangle, Wrench, TrendingUp,
-  Calendar, DollarSign, Shield, Zap, ChevronRight,
-  Sparkles, Loader2,
-} from "lucide-react";
+import { Sparkles, Loader2 } from "lucide-react";
 import DOMPurify from "isomorphic-dompurify";
 import { Button } from "@/components/ui/button";
+import { getIconForTitle, getIconForKey } from "@/lib/section-icons";
 
 interface RichContentViewerProps {
   html: string;
@@ -20,33 +16,43 @@ interface RichContentViewerProps {
   locale?: string;    // idioma do curso; != "pt" desativa o refinamento (que é só PT)
 }
 
-// Ícone por seção — cor âmbar SMU para todos
-const SECTION_ICONS: Array<{ keywords: string[]; icon: typeof Target }> = [
-  { keywords: ["objetivo", "propósito", "meta", "definir"], icon: Target },
-  { keywords: ["orçamento", "custo", "preço", "valor", "financeiro", "budget"], icon: DollarSign },
-  { keywords: ["local", "espaço", "venue", "seleção de local", "lugar"], icon: MapPin },
-  { keywords: ["data", "hora", "horário", "cronograma", "agenda", "tempo", "prazo"], icon: Calendar },
-  { keywords: ["equipe", "fornecedor", "pessoal", "staff", "profissional", "contrat"], icon: Users },
-  { keywords: ["marketing", "promoção", "divulgação", "comunicação", "mídia"], icon: Megaphone },
-  { keywords: ["segurança", "epi", "proteção", "risco", "emergência"], icon: Shield },
-  { keywords: ["logística", "transporte", "montagem", "técnico", "equipamento", "ferramenta"], icon: Wrench },
-  { keywords: ["avaliação", "feedback", "resultado", "análise", "relatório", "pós"], icon: TrendingUp },
-  { keywords: ["dica", "importante", "atenção", "lembre", "cuidado", "alerta"], icon: AlertTriangle },
-  { keywords: ["prática", "execução", "ação", "implementação", "aplicação"], icon: Zap },
-  { keywords: ["introdução", "conceito", "sobre", "visão geral", "apresentação", "programação", "conteúdo"], icon: BookOpen },
-];
-
-function getIconForTitle(title: string): typeof Target {
-  const lower = title.toLowerCase();
-  for (const item of SECTION_ICONS) {
-    if (item.keywords.some(kw => lower.includes(kw))) return item.icon;
-  }
-  return ChevronRight;
-}
+// Ícones de seção vêm de @/lib/section-icons (fonte única, compartilhada com o editor).
 
 interface Section {
   title: string;
   content: string;
+  iconKey?: string; // quando a seção é EXPLÍCITA (bloco do editor), o ícone é escolhido pelo autor
+}
+
+// Detecta se o conteúdo usa seções EXPLÍCITAS (bloco novo do editor) vs. legado
+function hasExplicitSections(html: string): boolean {
+  return /<section[^>]*data-section/i.test(html);
+}
+
+// Extrai seções explícitas: título (data-title/h3), ícone (data-icon) e corpo (data-section-body)
+function parseExplicitSections(html: string): Section[] {
+  if (typeof DOMParser === "undefined") return [{ title: "", content: html }];
+  const doc = new DOMParser().parseFromString(`<div>${html}</div>`, "text/html");
+  const container = doc.body.firstElementChild;
+  if (!container) return [{ title: "", content: html }];
+
+  const out: Section[] = [];
+  for (const child of Array.from(container.children)) {
+    if (child.tagName === "SECTION" && child.hasAttribute("data-section")) {
+      const title =
+        child.getAttribute("data-title") ||
+        child.querySelector("[data-section-title]")?.textContent?.trim() ||
+        "";
+      const iconKey = child.getAttribute("data-icon") || "arrow";
+      const body = child.querySelector("[data-section-body]")?.innerHTML ?? "";
+      out.push({ title, content: body.trim(), iconKey });
+    } else {
+      // conteúdo solto (fora de seção) — vira um bloco sem título
+      const htmlChunk = (child as HTMLElement).outerHTML;
+      if (htmlChunk.trim()) out.push({ title: "", content: htmlChunk });
+    }
+  }
+  return out;
 }
 
 function parseIntoSections(html: string): Section[] {
@@ -181,6 +187,11 @@ function neutralizeGenericColors(html: string): string {
 export function RichContentViewer({ html, lessonId, titulo, categoria, isAdmin = false, locale = "pt" }: RichContentViewerProps) {
   const [refinedHtml, setRefinedHtml] = useState<string | null>(null);
   const [refining, setRefining] = useState(false);
+  // O seccionamento usa DOMParser (só no cliente). Para o servidor e a 1ª
+  // renderização do cliente baterem (sem hydration mismatch), só seccionamos
+  // após montar — antes disso mostramos o HTML como bloco único.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const isTranslated = locale !== "pt";
 
   // Carregar conteúdo refinado se existir (silencioso, sem gerar)
@@ -225,12 +236,20 @@ export function RichContentViewer({ html, lessonId, titulo, categoria, isAdmin =
   // not here — otherwise editor-chosen colors would be stripped.
   const sanitized = useMemo(() => {
     return DOMPurify.sanitize(activeHtml, {
-      ADD_ATTR: ["style", "class", "target", "rel", "data-width", "data-alignment", "alt"],
-      ADD_TAGS: ["mark", "sup", "sub", "img", "table", "thead", "tbody", "tr", "td", "th", "colgroup", "col", "figure", "figcaption"],
+      ADD_ATTR: ["style", "class", "target", "rel", "data-width", "data-alignment", "alt", "data-section", "data-title", "data-icon", "data-section-title", "data-section-body"],
+      ADD_TAGS: ["mark", "sup", "sub", "img", "table", "thead", "tbody", "tr", "td", "th", "colgroup", "col", "figure", "figcaption", "section"],
     });
   }, [activeHtml]);
 
-  const sections = useMemo(() => parseIntoSections(sanitized), [sanitized]);
+  // Seções EXPLÍCITAS (bloco novo do editor) → render previsível. Senão, fallback legado.
+  // Antes de montar (SSR + 1ª render), bloco único → hydration bate.
+  const sections = useMemo(
+    () => {
+      if (!mounted) return [{ title: "", content: sanitized }];
+      return hasExplicitSections(sanitized) ? parseExplicitSections(sanitized) : parseIntoSections(sanitized);
+    },
+    [sanitized, mounted],
+  );
 
   // Correção de contraste no MODO ESCURO: clareia as cores de texto escuras que o
   // editor embutiu no conteúdo (somem no fundo escuro, só aparecem ao imprimir).
@@ -303,7 +322,8 @@ export function RichContentViewer({ html, lessonId, titulo, categoria, isAdmin =
           );
         }
 
-        const Icon = getIconForTitle(section.title);
+        // Seção explícita → ícone escolhido pelo autor; legado → detecta pelo título
+        const Icon = section.iconKey ? getIconForKey(section.iconKey) : getIconForTitle(section.title);
 
         return (
           <div
