@@ -26,12 +26,13 @@ import {
   SuperscriptIcon, SubscriptIcon, Table as TableIcon, Code2,
   RemoveFormatting, IndentIncrease, IndentDecrease,
   Loader2, ImageIcon, AlignHorizontalJustifyCenter,
-  Trash2, ChevronDown, Type, SquareStack,
+  Trash2, ChevronDown, Type, SquareStack, Eye,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { adminUploadFile } from "@/lib/actions/courses";
 import { useT } from "@/lib/i18n/ui";
 import { FontSize, TabIndent, ResizableImage, SectionBlock } from "./editor-extensions";
+import { EditorPreview } from "./editor-preview";
 
 // ── Constants ──
 
@@ -124,6 +125,7 @@ export function RichTextEditor({
   const [showFontFamilyPicker, setShowFontFamilyPicker] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [selectedImage, setSelectedImage] = useState<{ pos: number } | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   const colorRef = useRef<HTMLDivElement>(null);
   const highlightRef = useRef<HTMLDivElement>(null);
@@ -626,6 +628,13 @@ export function RichTextEditor({
             <ToolBtn active={false} onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} title={t("Desfazer (Ctrl+Z)")}><Undo2 size={13} /></ToolBtn>
             <ToolBtn active={false} onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()} title={t("Refazer (Ctrl+Y)")}><Redo2 size={13} /></ToolBtn>
           </ToolGroup>
+
+          <Sep />
+
+          {/* Preview — mostra exatamente o que o aluno verá */}
+          <ToolGroup>
+            <ToolBtn active={showPreview} onClick={() => setShowPreview(true)} title={t("Pré-visualizar (visão do aluno)")}><Eye size={13} /></ToolBtn>
+          </ToolGroup>
         </div>
       </div>
 
@@ -714,6 +723,9 @@ export function RichTextEditor({
           <button type="button" onClick={() => editor.chain().focus().deleteTable().run()} className="px-2 py-0.5 rounded text-red-400 hover:bg-red-500/10 transition-colors">{t("Remover tabela")}</button>
         </div>
       )}
+
+      {/* ── Pré-visualização (visão do aluno) ── */}
+      <EditorPreview html={showPreview ? editor.getHTML() : ""} open={showPreview} onClose={() => setShowPreview(false)} />
     </div>
   );
 }
