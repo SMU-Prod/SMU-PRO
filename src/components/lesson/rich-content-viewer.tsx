@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import { useDarkContentFix } from "@/lib/hooks/use-dark-content-fix";
 import { Sparkles, Loader2 } from "lucide-react";
 import DOMPurify from "isomorphic-dompurify";
+import katex from "katex";
 import { Button } from "@/components/ui/button";
 import { getIconForTitle, getIconForKey } from "@/lib/section-icons";
 
@@ -236,7 +237,7 @@ export function RichContentViewer({ html, lessonId, titulo, categoria, isAdmin =
   // not here — otherwise editor-chosen colors would be stripped.
   const sanitized = useMemo(() => {
     return DOMPurify.sanitize(activeHtml, {
-      ADD_ATTR: ["style", "class", "target", "rel", "data-width", "data-alignment", "alt", "data-section", "data-title", "data-icon", "data-section-title", "data-section-body"],
+      ADD_ATTR: ["style", "class", "target", "rel", "data-width", "data-alignment", "alt", "data-section", "data-title", "data-icon", "data-section-title", "data-section-body", "data-latex", "data-type"],
       ADD_TAGS: ["mark", "sup", "sub", "img", "table", "thead", "tbody", "tr", "td", "th", "colgroup", "col", "figure", "figcaption", "section"],
     });
   }, [activeHtml]);
@@ -256,6 +257,21 @@ export function RichContentViewer({ html, lessonId, titulo, categoria, isAdmin =
   // Pula os infográficos <figure> (fundo branco próprio). Ver o hook.
   const contentRootRef = useRef<HTMLDivElement>(null);
   useDarkContentFix(contentRootRef, [sanitized]);
+
+  // Renderiza as fórmulas KaTeX salvas pelo editor (<span data-latex data-type>).
+  // O HTML salvo tem só o data-latex; o KaTeX desenha a fórmula no cliente.
+  useEffect(() => {
+    if (!mounted) return;
+    const root = contentRootRef.current;
+    if (!root) return;
+    root.querySelectorAll<HTMLElement>('[data-latex]').forEach((el) => {
+      const latex = el.getAttribute("data-latex") || "";
+      const displayMode = el.getAttribute("data-type") === "block-math";
+      try {
+        katex.render(latex, el, { throwOnError: false, displayMode });
+      } catch { /* fórmula inválida → ignora */ }
+    });
+  }, [sanitized, mounted, sections]);
 
   // Botão admin de refinar (reutilizável) — DESATIVADO a pedido (flag abaixo)
   const AI_REFINE_ENABLED = false;

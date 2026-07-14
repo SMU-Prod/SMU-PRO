@@ -17,6 +17,7 @@ import TableRow from "@tiptap/extension-table-row";
 import TableCell from "@tiptap/extension-table-cell";
 import TableHeader from "@tiptap/extension-table-header";
 import Typography from "@tiptap/extension-typography";
+import { Mathematics } from "@tiptap/extension-mathematics";
 import { cn } from "@/lib/utils";
 import {
   Bold, Italic, UnderlineIcon, Strikethrough, Link2, List, ListOrdered,
@@ -26,7 +27,7 @@ import {
   SuperscriptIcon, SubscriptIcon, Table as TableIcon, Code2,
   RemoveFormatting, IndentIncrease, IndentDecrease,
   Loader2, ImageIcon, AlignHorizontalJustifyCenter,
-  Trash2, ChevronDown, Type, SquareStack, Eye,
+  Trash2, ChevronDown, Type, SquareStack, Eye, Sigma,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { adminUploadFile } from "@/lib/actions/courses";
@@ -198,6 +199,7 @@ export function RichTextEditor({
       Typography,
       TabIndent,
       SectionBlock,
+      Mathematics,
     ],
     immediatelyRender: false,
     content: value,
@@ -338,6 +340,14 @@ export function RichTextEditor({
     if (!editor) return;
     editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
   }, [editor]);
+
+  const insertMath = useCallback(() => {
+    if (!editor) return;
+    // Ex.: pH = -\log[H^+]  ·  \frac{1}{2}  ·  x^{2}  ·  1:1{,}5
+    const latex = window.prompt(t("Fórmula em LaTeX (ex.: \\frac{1}{2} ou x^{2}):"), "");
+    if (!latex) return;
+    (editor.chain().focus() as any).insertInlineMath({ latex }).run();
+  }, [editor, t]);
 
   const updateImageAttr = useCallback((attr: string, val: string) => {
     if (!editor || !selectedImage) return;
@@ -618,6 +628,7 @@ export function RichTextEditor({
             </ToolBtn>
             <ToolBtn active={false} onClick={addImageUrl} title={t("Inserir imagem (URL)")}><ImageIcon size={13} /></ToolBtn>
             <ToolBtn active={false} onClick={insertTable} title={t("Inserir tabela 3x3")}><TableIcon size={13} /></ToolBtn>
+            <ToolBtn active={editor.isActive("inlineMath")} onClick={insertMath} title={t("Inserir fórmula matemática (LaTeX)")}><Sigma size={13} /></ToolBtn>
           </ToolGroup>
 
           <Sep />
