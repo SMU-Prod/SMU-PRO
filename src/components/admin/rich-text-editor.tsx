@@ -90,6 +90,14 @@ const FONT_FAMILIES = [
   { label: "Courier New", value: "Courier New, monospace", description: "Monospace clássica" },
 ];
 
+// Impede que clicar num controle da toolbar tire a seleção/foco do editor.
+// O default do mousedown muda o foco; sem preventDefault, em contextos com
+// scroll/modal (como o admin) o comando pode aplicar a uma seleção já colapsada,
+// fazendo o botão "não funcionar". Delegado no container → cobre todos os botões.
+function preventEditorBlur(e: React.MouseEvent) {
+  if ((e.target as HTMLElement).closest("button")) e.preventDefault();
+}
+
 // ── Component ──
 
 interface RichTextEditorProps {
@@ -371,7 +379,7 @@ export function RichTextEditor({
   return (
     <div className={cn("rounded-xl border border-border bg-surface overflow-hidden flex flex-col", className)}>
       {/* ── Toolbar Row 1 — Font family + Font size + Text formatting ── */}
-      <div className="sticky top-0 z-20 border-b border-border/50 bg-surface-2 px-2 py-1.5">
+      <div className="sticky top-0 z-20 border-b border-border/50 bg-surface-2 px-2 py-1.5" onMouseDown={preventEditorBlur}>
         {/* Row 1: Font Family + Font Size */}
         <div className="flex flex-wrap items-center gap-1 mb-1">
           {/* Font Family Dropdown */}
@@ -627,7 +635,7 @@ export function RichTextEditor({
 
       {/* ── Image Controls Bar ── */}
       {selectedImage && currentImgNode && (
-        <div className="flex flex-wrap items-center gap-1.5 border-b border-border/50 bg-amber-500/5 px-3 py-1.5 text-xs">
+        <div className="flex flex-wrap items-center gap-1.5 border-b border-border/50 bg-amber-500/5 px-3 py-1.5 text-xs" onMouseDown={preventEditorBlur}>
           <span className="font-medium text-amber-400 mr-1 flex items-center gap-1">
             <ImageIcon size={12} /> {t("Imagem:")}
           </span>
@@ -698,7 +706,7 @@ export function RichTextEditor({
 
       {/* ── Table controls ── */}
       {editor.isActive("table") && (
-        <div className="flex flex-wrap items-center gap-1 border-t border-border/50 bg-surface-2 px-3 py-1.5 text-xs text-muted-light">
+        <div className="flex flex-wrap items-center gap-1 border-t border-border/50 bg-surface-2 px-3 py-1.5 text-xs text-muted-light" onMouseDown={preventEditorBlur}>
           <span className="font-medium text-foreground mr-2">{t("Tabela:")}</span>
           <button type="button" onClick={() => editor.chain().focus().addColumnBefore().run()} className="px-2 py-0.5 rounded hover:bg-hover transition-colors">{t("+ Coluna antes")}</button>
           <button type="button" onClick={() => editor.chain().focus().addColumnAfter().run()} className="px-2 py-0.5 rounded hover:bg-hover transition-colors">{t("+ Coluna depois")}</button>
