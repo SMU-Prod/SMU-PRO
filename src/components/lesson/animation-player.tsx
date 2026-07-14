@@ -556,9 +556,9 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
           <div className="flex items-center gap-2 pt-1 border-t border-purple-500/10">
             <Sparkles size={10} className="text-purple-400 shrink-0" />
             <span className="text-[10px] text-muted-light line-clamp-1">
-              {data.roteiro?.metadata.abordagem_didatica}
+              {data.roteiro?.metadata?.abordagem_didatica}
             </span>
-            {data.custo_usd !== undefined && (
+            {data.custo_usd != null && data.custo_usd > 0 && (
               <span className="text-[10px] text-muted-light ml-auto">
                 ~${data.custo_usd.toFixed(3)}
               </span>
