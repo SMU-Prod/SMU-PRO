@@ -281,7 +281,7 @@ export function RichContentViewer({ html, lessonId, titulo, categoria, isAdmin =
     return (
       <div ref={contentRootRef}>
         <RefineButton />
-        <div className="prose-light max-w-none" dangerouslySetInnerHTML={{ __html: sanitized }} />
+        <div className="smu-rich max-w-none" dangerouslySetInnerHTML={{ __html: sanitized }} />
       </div>
     );
   }
@@ -297,7 +297,7 @@ export function RichContentViewer({ html, lessonId, titulo, categoria, isAdmin =
           return (
             <div
               key={idx}
-              className="prose-light max-w-none text-sm text-muted leading-relaxed py-1"
+              className="smu-rich max-w-none text-sm text-muted leading-relaxed py-1"
               dangerouslySetInnerHTML={{ __html: section.content }}
             />
           );
@@ -319,7 +319,7 @@ export function RichContentViewer({ html, lessonId, titulo, categoria, isAdmin =
 
             {section.content && (
               <div
-                className="prose-light max-w-none text-[13px] text-muted leading-relaxed pl-[22px]"
+                className="smu-rich max-w-none text-[13px] text-muted leading-relaxed pl-[22px]"
                 dangerouslySetInnerHTML={{ __html: section.content }}
               />
             )}

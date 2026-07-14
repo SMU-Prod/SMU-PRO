@@ -200,15 +200,9 @@ export function RichTextEditor({
     content: value,
     editorProps: {
       attributes: {
-        class: cn(
-          "prose prose-sm max-w-none focus:outline-none px-4 py-3",
-          "prose-headings:text-foreground prose-p:text-muted prose-strong:text-foreground",
-          "prose-a:text-amber-400 prose-blockquote:border-l-amber-500 prose-blockquote:text-muted",
-          "prose-img:rounded-lg",
-          "prose-table:border-collapse prose-td:border prose-td:border-border prose-td:p-2",
-          "prose-th:border prose-th:border-border prose-th:p-2 prose-th:bg-surface-2 prose-th:font-semibold",
-          "prose-code:text-amber-400 prose-code:bg-surface-2 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs",
-        ),
+        // .smu-rich = MESMA fonte de estilo do viewer (globals.css). O projeto NÃO
+        // tem @tailwindcss/typography, então as classes `prose-*` eram inertes.
+        class: cn("smu-rich max-w-none focus:outline-none px-4 py-3"),
       },
       handlePaste(view, event) {
         const items = event.clipboardData?.items;
