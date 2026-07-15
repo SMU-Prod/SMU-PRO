@@ -529,7 +529,7 @@
       scrBtn(ix+halfW+3,bY,halfW,15,"S",ch.cue,()=>{ch.cue=!ch.cue;applyCue();},SC.amber,true);
       if(!ch.on){ ctx.fillStyle="rgba(30,6,10,.35)"; roundRect(x,y+13,cw,gh-31,5); ctx.fill(); }
       // fader drag
-      reg({x:capX-6,y:fzTop-4,w:capW+16,h:fzBot-fzTop+12,onDrag:p=>{ const v=pos2db(1-(p.y-fzTop)/(fzBot-fzTop)); if(sof){ ch.sends[state.sofBus]=v; if(v>FMIN)ch.sendOn[state.sofBus]=true; } else { ch.fader=v; applyChanAudio(ch.i); } checkMissions(); }});
+      reg({x:capX-6,y:fzTop-4,w:capW+16,h:fzBot-fzTop+12,onDrag:p=>{ const v=pos2db(1-(p.y-fzTop)/(fzBot-fzTop)); if(sof){ ch.sends[state.sofBus]=v; if(v>FMIN)ch.sendOn[state.sofBus]=true; } else { ch.fader=v; } applyChanAudio(ch.i); checkMissions(); }});
       // card tap → select + open Fat Channel
       reg({x,y:y,w:cw,h:eqH+17,onDown:()=>{ selectChannel(ci); setMode('selected'); }});
     });
@@ -653,13 +653,13 @@
     const cols=2,rows=12,top=26,cw=(W-20-10)/cols,rh=(H-top-6)/rows;
     for(let mn=0;mn<24;mn++){ const col=Math.floor(mn/rows),row=mn%rows; const x=10+col*(cw+10),yy=top+row*rh,on=ch.sendOn[mn];
       ctx.fillStyle=on?SC.amber:"#333a42"; ctx.beginPath();ctx.arc(x+8,yy+rh/2,5,0,7);ctx.fill();
-      reg({hit:'circle',cx:x+8,cy:yy+rh/2,rr:10,onDown:()=>{ch.sendOn[mn]=!ch.sendOn[mn];checkMissions();}});
+      reg({hit:'circle',cx:x+8,cy:yy+rh/2,rr:10,onDown:()=>{ch.sendOn[mn]=!ch.sendOn[mn];applyChanAudio(ch.i);checkMissions();}});
       ctx.fillStyle=on?SC.ink:SC.dim; ctx.font="700 9px Inter"; ctx.textAlign="left"; ctx.fillText(MIX_NAMES[mn],x+18,yy+rh/2-3);
       const bx=x+18,bw=cw-104,by=yy+rh/2+2,bh=6; ctx.fillStyle="#12151a"; roundRect(bx,by,bw,bh,3); ctx.fill();
       const t=clamp((ch.sends[mn]-FMIN)/(FMAX-FMIN),0,1); ctx.fillStyle=on?SC.amber:"#3d454e"; roundRect(bx,by,t*bw,bh,3); ctx.fill();
-      reg({x:bx-3,y:by-7,w:bw+6,h:bh+14,onDrag:p=>{ let tt=clamp((p.x-bx)/bw,0,1); ch.sends[mn]=Math.round(FMIN+tt*(FMAX-FMIN)); if(ch.sends[mn]>FMIN)ch.sendOn[mn]=true; checkMissions(); }});
+      reg({x:bx-3,y:by-7,w:bw+6,h:bh+14,onDrag:p=>{ let tt=clamp((p.x-bx)/bw,0,1); ch.sends[mn]=Math.round(FMIN+tt*(FMAX-FMIN)); if(ch.sends[mn]>FMIN)ch.sendOn[mn]=true; applyChanAudio(ch.i); checkMissions(); }});
       ctx.fillStyle=on?SC.ink:SC.dim; ctx.font="700 9px Inter"; ctx.textAlign="right"; ctx.fillText(faderTxt(ch.sends[mn]),x+cw-42,yy+rh/2+2);
-      scrBtn(x+cw-38,yy+rh/2-8,34,16,ch.sendPre[mn]?"PRE":"POST",ch.sendPre[mn],()=>{ch.sendPre[mn]=!ch.sendPre[mn];},SC.cyan,true);
+      scrBtn(x+cw-38,yy+rh/2-8,34,16,ch.sendPre[mn]?"PRE":"POST",ch.sendPre[mn],()=>{ch.sendPre[mn]=!ch.sendPre[mn];applyChanAudio(ch.i);},SC.cyan,true);
     }
   }
 
@@ -681,7 +681,7 @@
       yy+=30;
       scrParam(x+12,yy,pw-24,"RETURN (Main)",fxb.ret,0,1,v=>Math.round(v*100)+"%",v=>{fxb.ret=v;applyFX();},{col:SC.amber}); yy+=30;
       if(tp.kind==='reverb'){ scrParam(x+12,yy,pw-24,"DECAY / SIZE",fxb.size,0.3,4,v=>v.toFixed(1)+" s",v=>{fxb.size=v;rebuildImpulse(b);}); yy+=30;
-        scrParam(x+12,yy,pw-24,"PRE-DELAY",fxb.predelay,0,120,v=>v.toFixed(0)+" ms",v=>{fxb.predelay=v;}); yy+=28;
+        scrParam(x+12,yy,pw-24,"PRE-DELAY",fxb.predelay,0,120,v=>v.toFixed(0)+" ms",v=>{fxb.predelay=v;applyFX();}); yy+=28;
       } else { scrParam(x+12,yy,pw-24,"TIME",fxb.time,0.05,1.2,v=>Math.round(v*1000)+" ms",v=>{fxb.time=v;applyFX();}); yy+=30;
         scrParam(x+12,yy,pw-24,"FEEDBACK",fxb.fb,0,0.85,v=>Math.round(v*100)+"%",v=>{fxb.fb=v;applyFX();}); yy+=28;
       }
@@ -896,7 +896,7 @@
   })();
 
   let ac=null,masterGain=null,monoTrim=null,limM=null,masterAn=null,masterFreq=null,playing=false,loading=false,curSong=0,loadTok=0,realSources=[];
-  let fxBuses=[]; const bufCache={},aNodes=[];
+  let fxBuses=[],mixBuses=[]; const bufCache={},aNodes=[];
   function dbToLin(db){ return db<=FMIN?0:Math.pow(10,db/20); }
   function makeImpulse(seconds){ const rate=ac.sampleRate,len=Math.max(1,Math.floor(clamp(seconds,0.2,5)*rate)),buf=ac.createBuffer(2,len,rate);
     for(let ch=0;ch<2;ch++){ const d=buf.getChannelData(ch); for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,2.4); } return buf; }
@@ -913,12 +913,19 @@
     for(let b=0;b<N_FX;b++){ const fxb=state.flexfx[b];
       const inG=ac.createGain(); const ret=ac.createGain(); const an=ac.createAnalyser(); an.fftSize=256; an._buf=new Float32Array(an.fftSize);
       const conv=ac.createConvolver(); conv.buffer=makeImpulse(fxb.size); const convG=ac.createGain();
+      const pre=ac.createDelay(0.3); pre.delayTime.value=(fxb.predelay||0)/1000;  // reverb PRE-DELAY
       const dly=ac.createDelay(1.5); dly.delayTime.value=fxb.time; const dfb=ac.createGain(); dfb.gain.value=fxb.fb; const dlyG=ac.createGain();
-      inG.connect(convG); convG.connect(conv); conv.connect(ret);
+      inG.connect(convG); convG.connect(pre); pre.connect(conv); conv.connect(ret);
       inG.connect(dlyG); dlyG.connect(dly); dly.connect(dfb); dfb.connect(dly); dly.connect(ret);
       ret.connect(masterGain); ret.connect(an);
-      fxBuses[b]={inG,ret,an,conv,convG,dly,dfb,dlyG};
+      fxBuses[b]={inG,ret,an,conv,convG,pre,dly,dfb,dlyG};
     }
+    /* 24 FlexMix buses (monitor/IEM sends). Real console: these feed physical outs, NOT the Main —
+       so they carry an analyser for metering but are deliberately NOT connected to masterGain. */
+    mixBuses=[];
+    for(let b=0;b<N_MIX;b++){ const inG=ac.createGain(); const an=ac.createAnalyser(); an.fftSize=256; an._buf=new Float32Array(an.fftSize);
+      const out=ac.createGain(); out.gain.value=(state.mixOn[b]?dbToLin(state.mixMaster[b]):0);
+      inG.connect(out); out.connect(an); mixBuses[b]={inG,out,an}; }
     for(let i=0;i<NCH;i++){
       const trim=ac.createGain();
       const hpf=ac.createBiquadFilter();hpf.type="highpass";hpf.frequency.value=20;hpf.Q.value=0.707;
@@ -938,7 +945,10 @@
       mk.connect(eq0); eq0.connect(eq1); eq1.connect(eq2); eq2.connect(eq3); eq3.connect(lpf); lpf.connect(lim);
       lim.connect(fdr); fdr.connect(pan); pan.connect(masterGain); fdr.connect(an);
       fxS.forEach((g,b)=>{ fdr.connect(g); g.connect(fxBuses[b].inG); });
-      aNodes[i]={trim,hpf,preAn,preBuf:new Float32Array(preAn.fftSize),gate,comp,mk,eq:[eq0,eq1,eq2,eq3],lpf,lim,fdr,pan,an,buf:new Float32Array(an.fftSize),fxS};
+      // mxS/mxSrc: FlexMix send nodes are created lazily (first time a send opens) so a mixer with no
+      // monitor sends keeps exactly the graph it had before — 24x40 idle gain nodes would cost for nothing.
+      aNodes[i]={trim,hpf,preAn,preBuf:new Float32Array(preAn.fftSize),gate,comp,mk,eq:[eq0,eq1,eq2,eq3],lpf,lim,fdr,pan,an,buf:new Float32Array(an.fftSize),fxS,
+                 mxS:new Array(N_MIX).fill(null), mxSrc:new Array(N_MIX).fill(null)};
     }
     for(let i=0;i<NCH;i++) applyChanAudio(i);
     applyFX();
@@ -963,23 +973,43 @@
     const audible=c.on&&!muted&&!soloMuted&&c.fader>FMIN&&c.hasAudio;
     n.fdr.gain.setTargetAtTime(audible?dbToLin(c.fader)*dcaLin:0,t,0.02);
     for(let b=0;b<N_FX;b++){ n.fxS[b].gain.setTargetAtTime((c.hasAudio&&c.fxSendOn[b]&&c.fxSend[b]>FMIN)?dbToLin(c.fxSend[b]):0,t,0.02); }
+    applyChanSends(i);
   };
+  /* FlexMix sends — PRE taps the channel BEFORE the fader (lim = end of Fat Channel), so the fader
+     cannot move it; POST taps AFTER the fader, so it follows fader/mute/DCA. */
+  function applyChanSends(i){
+    if(!ac||!aNodes[i]||!mixBuses.length)return; const n=aNodes[i],c=CH[i],t=ac.currentTime;
+    for(let b=0;b<N_MIX;b++){
+      const want=c.hasAudio&&c.sendOn[b]&&c.sends[b]>FMIN;
+      if(!want&&!n.mxS[b])continue;                       // never opened -> no node to build or touch
+      if(!n.mxS[b]){ const g=ac.createGain(); g.gain.value=0; g.connect(mixBuses[b].inG); n.mxS[b]=g; }
+      const tap=c.sendPre[b]?n.lim:n.fdr;
+      if(n.mxSrc[b]!==tap){ if(n.mxSrc[b]){ try{ n.mxSrc[b].disconnect(n.mxS[b]); }catch(e){} } tap.connect(n.mxS[b]); n.mxSrc[b]=tap; }
+      n.mxS[b].gain.setTargetAtTime(want?dbToLin(c.sends[b]):0,t,0.02);
+    }
+  }
+  function applyMixMaster(b){ if(!ac||!mixBuses[b])return;
+    mixBuses[b].out.gain.setTargetAtTime(state.mixOn[b]?dbToLin(state.mixMaster[b]):0,ac.currentTime,0.02); }
   function applyFX(){ if(!ac||!fxBuses.length)return; const t=ac.currentTime;
     for(let b=0;b<N_FX;b++){ const fxb=state.flexfx[b], bus=fxBuses[b], kind=FX_TYPES[fxb.type].kind;
       const isRev=kind==='reverb';
       bus.convG.gain.setTargetAtTime(isRev?1:0,t,0.03);
       bus.dlyG.gain.setTargetAtTime(isRev?0:1,t,0.03);
       bus.dly.delayTime.setTargetAtTime(clamp(kind==='mod'?0.02+fxb.time*0.03:fxb.time,0,1.5),t,0.03);
+      bus.pre.delayTime.setTargetAtTime(clamp((fxb.predelay||0)/1000,0,0.3),t,0.03);
       bus.dfb.gain.setTargetAtTime(isRev?0:clamp(fxb.fb,0,0.9),t,0.03);
       bus.ret.gain.setTargetAtTime(fxb.on?fxb.ret:0,t,0.03);
     }
   }
   function processGates(){ if(!ac)return; const t=ac.currentTime;
     for(let i=0;i<NCH;i++){ const n=aNodes[i],c=CH[i]; if(!n)continue;
-      if(!c.gateOn||!playing||!c.hasAudio){ n.gate.gain.setTargetAtTime(1,t,0.01); c._gr=0; continue; }
+      if(!c.gateOn||!playing||!c.hasAudio){ n.gate.gain.setTargetAtTime(1,t,0.01); c._gr=0; c._hold=0; continue; }
       n.preAn.getFloatTimeDomainData(n.preBuf); let s=0; for(let k=0;k<n.preBuf.length;k++)s+=n.preBuf[k]*n.preBuf[k];
-      const rms=Math.sqrt(s/n.preBuf.length),db=rms>1e-5?20*Math.log10(rms):-90; const open=db>c.gateThr,target=open?1:dbToLin(c.gateRange);
-      const tc=Math.max(0.004,(open?c.gateAtk:c.gateDecay)/1000/3); n.gate.gain.setTargetAtTime(target,t,tc); c._gr=open?0:Math.max(0,-c.gateRange); }
+      const rms=Math.sqrt(s/n.preBuf.length),db=rms>1e-5?20*Math.log10(rms):-90;
+      // HOLD: once open, the gate stays open for gateHold ms after the signal drops below threshold.
+      const over=db>c.gateThr; if(over) c._hold=t+Math.max(0,c.gateHold||0)/1000;
+      const open=over||(t<(c._hold||0)); const target=open?1:dbToLin(c.gateRange);
+      const tc=Math.max(0.004,(over?c.gateAtk:c.gateDecay)/1000/3); n.gate.gain.setTargetAtTime(target,t,tc); c._gr=open?0:Math.max(0,-c.gateRange); }
   }
   function applyMasterAudio(){ if(ac&&masterGain){ masterGain.gain.setTargetAtTime(dbToLin(state.master),ac.currentTime,0.02); monoTrim.gain.setTargetAtTime(dbToLin(state.mono),ac.currentTime,0.02); } }
   applyMonitor=function(){};
@@ -1048,6 +1078,14 @@
     flexSendGain:(i,b)=>(aNodes[i]&&aNodes[i].fxS[b])?aNodes[i].fxS[b].gain.value:null,
     flexRetGain:b=>fxBuses[b]?fxBuses[b].ret.gain.value:null,
     flexBusDb:b=>fxBusDb(b),
+    flexPredelay:b=>fxBuses[b]?fxBuses[b].pre.delayTime.value:null,
+    flexPath:b=>fxBuses[b]?{convG:fxBuses[b].convG.gain.value,dlyG:fxBuses[b].dlyG.gain.value,fb:fxBuses[b].dfb.gain.value}:null,
+    N_MIX, mixSendGain:(i,b)=>(aNodes[i]&&aNodes[i].mxS[b])?aNodes[i].mxS[b].gain.value:null,
+    mixSendTap:(i,b)=>{ const n=aNodes[i]; if(!n||!n.mxSrc[b])return null; return n.mxSrc[b]===n.lim?'pre':(n.mxSrc[b]===n.fdr?'post':'?'); },
+    mixBusDb:b=>{ const n=mixBuses[b]; if(!n)return -90; const buf=n.an._buf; n.an.getFloatTimeDomainData(buf);
+      let s=0; for(let k=0;k<buf.length;k++)s+=buf[k]*buf[k]; const rms=Math.sqrt(s/buf.length); return rms>1e-5?20*Math.log10(rms):-90; },
+    mixMasterGain:b=>mixBuses[b]?mixBuses[b].out.gain.value:null, applyMixMaster,
+    gateHoldT:i=>CH[i]._hold||0,
     setFlexType:(b,t)=>{state.flexfx[b].type=t;applyFX();},
     assignDCA:(i,g,on)=>{CH[i].dca[g]=on;applyChanAudio(i);},
     setDCAgain:(g,db)=>{state.dcaGain[g]=db;for(let i=0;i<NCH;i++)if(CH[i].dca[g])applyChanAudio(i);},

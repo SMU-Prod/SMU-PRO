@@ -384,6 +384,7 @@
   const MIX_NAMES=["MIX 1 Mon","MIX 2 Mon","MIX 3 IEM","MIX 4 IEM","MIX 5 FX","MIX 6 FX","MIX 7 Sub","MIX 8 FB",
     "MIX 9","MIX 10","MIX 11","MIX 12","MIX 13","MIX 14","MIX 15","MIX 16","MIX 17","MIX 18","MIX 19","MIX 20","MIX 21","MIX 22","MIX 23","MIX 24"];
   const N_MIX=24,N_MTX=8,N_DCA=24,N_MUTE=8,N_SCENE=10;  // DiGiCo Quantum: 24 Control Groups (VCA-style)
+  const N_CH=96;   // Quantum 338 input capacity (spec). The console does 96 -> the simulator does 96.
   const COLORS=["#e0483f","#f97316","#22a8c0","#eab308","#3ad07a","#14b8a6","#39c0e6","#3b82f6","#6366f1","#a855f7","#ec4899","#f43f5e"];
   const NAMES=["Kick In","Snare","Hat","Tom 1","Tom 2","OH L","OH R","Bass DI","Gtr L","Gtr R","Keys L","Keys R","Lead Voc","Voc 2","Voc 3","Coro","Sax","Trumpet","Perc","Play L","Play R","Amb L","Amb R","Talk"];
   const RAWSRC=[-42,-40,-48,-44,-45,-47,-47,-38,-41,-41,-39,-39,-34,-40,-41,-43,-43,-44,-46,-36,-36,-52,-52,-30];
@@ -399,7 +400,7 @@
       dca:new Array(N_DCA).fill(false), mute:new Array(N_MUTE).fill(false), muteSafe:false,
       fxRev:-90, fxDly:-90, src:RAWSRC[i]||-42 };
   }
-  const CH=Array.from({length:24},(_,i)=>mkChannel(i));
+  const CH=Array.from({length:N_CH},(_,i)=>mkChannel(i));
   const state={ sel:12, mode:"overview", sof:-1, sofBus:0, sofType:'mix', master:-3, mono:-3, eqBand:3,
     knobMode:'gain', scene:0, monitor:-20, dim:false, talkback:false,
     dcaGain:new Array(N_DCA).fill(0), dcaOn:new Array(N_DCA).fill(true),
@@ -526,8 +527,13 @@
   function scrTag(){ const el=$("#scrLtag"); if(el) el.textContent=bankA.banks[bankA.cur].label; }
   // block layer configuration
   // Quantum 338 worksurface: 3 blocks of 12 faders (+ ST/MONO masters in the side section).
-  const bankA={cur:0, banks:[ {from:0,label:'IN 1-12'}, {from:12,label:'IN 13-24'} ]};
-  const bankB={cur:0, banks:[ {from:12,label:'IN 13-24'}, {from:0,label:'IN 1-12'} ]};
+  // Pages 3..8 of the input banks (IN 25-36 … IN 85-96). APPENDED to the two pages that already
+  // existed, in the same {from,label} shape and rendered by the same .bkey component — the first two
+  // entries of each list stay byte-for-byte what they were, so the TFT quick-selects that draw
+  // banks[0]/banks[1] keep painting exactly the same pixels.
+  const inPagesFrom24=()=>Array.from({length:Math.ceil(N_CH/12)-2},(_,j)=>{ const from=24+j*12; return {from,label:'IN '+(from+1)+'-'+(from+12)}; });
+  const bankA={cur:0, banks:[ {from:0,label:'IN 1-12'}, {from:12,label:'IN 13-24'}, ...inPagesFrom24() ]};
+  const bankB={cur:0, banks:[ {from:12,label:'IN 13-24'}, {from:0,label:'IN 1-12'}, ...inPagesFrom24() ]};
   const bankC={cur:0, layers:[ {t:'dca',from:0,n:12,label:'CG 1-12'}, {t:'dca',from:12,n:12,label:'CG 13-24'}, {t:'mix',from:0,n:12,label:'MIX 1-12'}, {t:'mix',from:12,n:12,label:'MIX 13-24'}, {t:'mtx',from:0,n:8,label:'MATRIX 1-8'} ]};
 
   function stripDesc(kind,idx){
@@ -536,9 +542,9 @@
       return { kind, get name(){return CH[idx].name;}, get color(){return CH[idx].color;}, get num(){return "CH"+(idx+1);},
         get sel(){return state.sel===idx;}, doSel(){ selectChannel(idx); }, get chIdx(){return idx;},
         get on(){ return state.sof>=0 ? CH[idx].sendOn[state.sofBus] : CH[idx].on; },
-        toggleOn(){ const c=CH[idx]; if(state.sof>=0){ c.sendOn[state.sofBus]=!c.sendOn[state.sofBus]; } else { c.on=!c.on; applyChanAudio(idx); } },
+        toggleOn(){ const c=CH[idx]; if(state.sof>=0){ c.sendOn[state.sofBus]=!c.sendOn[state.sofBus]; applyChanSends(idx); } else { c.on=!c.on; applyChanAudio(idx); } },
         get fdb(){ return state.sof>=0 ? CH[idx].sends[state.sofBus] : CH[idx].fader; },
-        setFdb(v){ const c=CH[idx]; if(state.sof>=0){ c.sends[state.sofBus]=v; if(v>FMIN)c.sendOn[state.sofBus]=true; } else { c.fader=v; applyChanAudio(idx); } },
+        setFdb(v){ const c=CH[idx]; if(state.sof>=0){ c.sends[state.sofBus]=v; if(v>FMIN)c.sendOn[state.sofBus]=true; applyChanSends(idx); } else { c.fader=v; applyChanAudio(idx); } },
         get knobVal(){ return state.knobMode==='pan'?CH[idx].pan:CH[idx].gain; },
         setKnob(dy){ const c=CH[idx]; if(state.knobMode==='pan'){ c.pan=clamp(Math.round(c.pan+dy),-63,63);} else { c.gain=clamp(c.gain+dy*0.4,-6,45);} applyChanAudio(idx); },
         meter(){ return meterDbOf(idx); }, sofActive(){return false;}, hasAudio(){return CH[idx].hasAudio;} };
@@ -546,16 +552,16 @@
     if(kind==='dca'){
       return { kind, get name(){return "CG "+(idx+1);}, get color(){return "#22a8c0";}, get num(){return "CG";},
         get sel(){return false;}, doSel(){ setMode('dca'); },
-        get on(){ return state.dcaOn[idx]; }, toggleOn(){ state.dcaOn[idx]=!state.dcaOn[idx]; for(let i=0;i<24;i++)if(CH[i].dca[idx])applyChanAudio(i); },
-        get fdb(){ return state.dcaGain[idx]; }, setFdb(v){ state.dcaGain[idx]=v; for(let i=0;i<24;i++)if(CH[i].dca[idx])applyChanAudio(i); },
+        get on(){ return state.dcaOn[idx]; }, toggleOn(){ state.dcaOn[idx]=!state.dcaOn[idx]; for(let i=0;i<N_CH;i++)if(CH[i].dca[idx])applyChanAudio(i); },
+        get fdb(){ return state.dcaGain[idx]; }, setFdb(v){ state.dcaGain[idx]=v; for(let i=0;i<N_CH;i++)if(CH[i].dca[idx])applyChanAudio(i); },
         get knobVal(){return 0;}, setKnob(){}, meter(){return -90;}, sofActive(){return false;}, hasAudio(){return true;} };
     }
     if(kind==='mix'){
       return { kind, get name(){return MIX_NAMES[idx];}, get color(){return "#39c0e6";}, get num(){return "MIX"+(idx+1);},
         get sel(){ return state.sof>=0&&state.sofType==='mix'&&state.sofBus===idx; },
         doSel(){ engageSof('mix',idx); },
-        get on(){ return state.mixOn[idx]; }, toggleOn(){ state.mixOn[idx]=!state.mixOn[idx]; },
-        get fdb(){ return state.mixMaster[idx]; }, setFdb(v){ state.mixMaster[idx]=v; },
+        get on(){ return state.mixOn[idx]; }, toggleOn(){ state.mixOn[idx]=!state.mixOn[idx]; applyMixMaster(idx); },
+        get fdb(){ return state.mixMaster[idx]; }, setFdb(v){ state.mixMaster[idx]=v; applyMixMaster(idx); },
         get knobVal(){return 0;}, setKnob(){}, meter(){return -90;}, sofActive(){return true;}, hasAudio(){return true;} };
     }
     if(kind==='mtx'){
@@ -588,9 +594,9 @@
   function currentDescriptors(){
     const list=[]; // {block, ctl}  — order: A(12) B(12) C(12) M(2) = 38 faders
     const a=bankA.banks[bankA.cur];
-    for(let s=0;s<12;s++){ const gi=a.from+s; list.push({block:'A',ctl: gi<24?stripDesc('ch',gi):stripDesc('empty')}); }
+    for(let s=0;s<12;s++){ const gi=a.from+s; list.push({block:'A',ctl: gi<N_CH?stripDesc('ch',gi):stripDesc('empty')}); }
     const b=bankB.banks[bankB.cur];
-    for(let s=0;s<12;s++){ const gi=b.from+s; list.push({block:'B',ctl: gi<24?stripDesc('ch',gi):stripDesc('empty')}); }
+    for(let s=0;s<12;s++){ const gi=b.from+s; list.push({block:'B',ctl: gi<N_CH?stripDesc('ch',gi):stripDesc('empty')}); }
     const c=bankC.layers[bankC.cur];
     for(let s=0;s<12;s++){ list.push({block:'C',ctl: s<c.n?stripDesc(c.t, c.from+s):stripDesc('empty')}); }
     list.push({block:'M',ctl:stripDesc('st')}); list.push({block:'M',ctl:stripDesc('mono')});
@@ -885,7 +891,7 @@
     const perRow=4, cellW=(gw-16)/perRow, cellH=(sendH-16)/2;
     for(let mixn=0;mixn<8;mixn++){ const col=mixn%perRow,row=Math.floor(mixn/perRow); const cxp=gx+8+col*cellW, cyp=sy+16+row*cellH;
       const ons=ch.sendOn[mixn]; ctx.fillStyle=ons?SC.cyan:"#333a42"; ctx.beginPath();ctx.arc(cxp+5,cyp+cellH/2,4,0,7);ctx.fill();
-      reg({hit:'circle',cx:cxp+5,cy:cyp+cellH/2,rr:9,onDown:()=>{ch.sendOn[mixn]=!ch.sendOn[mixn];checkMissions();}});
+      reg({hit:'circle',cx:cxp+5,cy:cyp+cellH/2,rr:9,onDown:()=>{ch.sendOn[mixn]=!ch.sendOn[mixn];applyChanSends(ch.i);checkMissions();}});
       ctx.fillStyle=ons?SC.ink:SC.dim; ctx.font="700 8px Inter"; ctx.textAlign="left"; ctx.fillText("MIX"+(mixn+1),cxp+13,cyp+cellH/2-1);
       ctx.fillStyle=ons?SC.cyan:SC.dim; ctx.fillText(ons?faderTxt(ch.sends[mixn]):"−∞",cxp+13,cyp+cellH/2+9);
     }
@@ -903,7 +909,7 @@
     ctx.textBaseline="alphabetic";
     ctx.fillStyle=SC.amber; ctx.font="800 10px Inter"; ctx.textAlign="left"; ctx.fillText("INPUTS · "+b.label,8,13);
     ctx.fillStyle=SC.dim; ctx.textAlign="right"; ctx.font="700 8px Inter"; ctx.fillText("TFT 2 · BANK B",W-8,13);
-    const idx=Array.from({length:12},(_,s)=>b.from+s).filter(i=>i<24);
+    const idx=Array.from({length:12},(_,s)=>b.from+s).filter(i=>i<N_CH);
     const n=Math.max(1,idx.length), top=20, botH=20, gh=H-top-botH-6, gap=3, cw=(W-12-(n-1)*gap)/n;
     idx.forEach((ci,s)=>{ const ch=CH[ci], x=6+s*(cw+gap), y=top;
       const g=ctx.createLinearGradient(0,y,0,y+gh); g.addColorStop(0,SC.panelHi); g.addColorStop(1,SC.panelLo);
@@ -1043,13 +1049,13 @@
     const cols=2,rows=12,top=26,cw=(W-20-10)/cols,rh=(H-top-6)/rows;
     for(let mn=0;mn<24;mn++){ const col=Math.floor(mn/rows),row=mn%rows; const x=10+col*(cw+10),yy=top+row*rh,on=ch.sendOn[mn];
       ctx.fillStyle=on?SC.cyan:"#333a42"; ctx.beginPath();ctx.arc(x+8,yy+rh/2,5,0,7);ctx.fill();
-      reg({hit:'circle',cx:x+8,cy:yy+rh/2,rr:10,onDown:()=>{ch.sendOn[mn]=!ch.sendOn[mn];checkMissions();}});
+      reg({hit:'circle',cx:x+8,cy:yy+rh/2,rr:10,onDown:()=>{ch.sendOn[mn]=!ch.sendOn[mn];applyChanSends(ch.i);checkMissions();}});
       ctx.fillStyle=on?SC.ink:SC.dim; ctx.font="700 9px Inter"; ctx.textAlign="left"; ctx.fillText(MIX_NAMES[mn],x+18,yy+rh/2-3);
       const bx=x+18,bw=cw-104,by=yy+rh/2+2,bh=6; ctx.fillStyle="#13161b"; roundRect(bx,by,bw,bh,3); ctx.fill();
       const t=clamp((ch.sends[mn]-FMIN)/(FMAX-FMIN),0,1); ctx.fillStyle=on?SC.cyan:"#3d454e"; roundRect(bx,by,t*bw,bh,3); ctx.fill();
-      reg({x:bx-3,y:by-7,w:bw+6,h:bh+14,onDrag:p=>{ let tt=clamp((p.x-bx)/bw,0,1); ch.sends[mn]=Math.round(FMIN+tt*(FMAX-FMIN)); if(ch.sends[mn]>FMIN)ch.sendOn[mn]=true; checkMissions(); }});
+      reg({x:bx-3,y:by-7,w:bw+6,h:bh+14,onDrag:p=>{ let tt=clamp((p.x-bx)/bw,0,1); ch.sends[mn]=Math.round(FMIN+tt*(FMAX-FMIN)); if(ch.sends[mn]>FMIN)ch.sendOn[mn]=true; applyChanSends(ch.i); checkMissions(); }});
       ctx.fillStyle=on?SC.ink:SC.dim; ctx.font="700 9px Inter"; ctx.textAlign="right"; ctx.fillText(faderTxt(ch.sends[mn]),x+cw-42,yy+rh/2+2);
-      scrBtn(x+cw-38,yy+rh/2-8,34,16,ch.sendPre[mn]?"PRE":"POST",ch.sendPre[mn],()=>{ch.sendPre[mn]=!ch.sendPre[mn];},SC.amber,true);
+      scrBtn(x+cw-38,yy+rh/2-8,34,16,ch.sendPre[mn]?"PRE":"POST",ch.sendPre[mn],()=>{ch.sendPre[mn]=!ch.sendPre[mn];applyChanSends(ch.i);},SC.amber,true);
     }
   }
 
@@ -1062,15 +1068,15 @@
       const nmem=CH.reduce((a,c)=>a+(c.dca[g]?1:0),0);
       ctx.fillStyle="#13161b"; roundRect(fcx-3,yy,6,fh,3); ctx.fill(); ctx.strokeStyle=nmem?SC.amber:SC.line; roundRect(fcx-3+.5,yy+.5,6,fh,3); ctx.stroke();
       const t=db2pos(state.dcaGain[g]),capY=yy+fh-t*fh; ctx.fillStyle=nmem?SC.amber:SC.dim; ctx.fillRect(fcx-6,capY-3,12,6);
-      reg({x,y:yy,w:fw,h:fh,onDrag:p=>{ state.dcaGain[g]=pos2db(clamp(1-(p.y-yy)/fh,0,1)); for(let i=0;i<24;i++)if(CH[i].dca[g])applyChanAudio(i); paintBay(); }});
+      reg({x,y:yy,w:fw,h:fh,onDrag:p=>{ state.dcaGain[g]=pos2db(clamp(1-(p.y-yy)/fh,0,1)); for(let i=0;i<N_CH;i++)if(CH[i].dca[g])applyChanAudio(i); paintBay(); }});
       ctx.fillStyle=nmem?SC.ink:SC.mut; ctx.font="700 7px Inter"; ctx.textAlign="center"; ctx.fillText((g+1),fcx,yy+fh+9);
-      scrBtn(x,yy+fh+11,fw,15,state.dcaOn[g]?"ON":"MUT",state.dcaOn[g],()=>{state.dcaOn[g]=!state.dcaOn[g];for(let i=0;i<24;i++)if(CH[i].dca[g])applyChanAudio(i);paintBay();},state.dcaOn[g]?SC.green:SC.red,true);
+      scrBtn(x,yy+fh+11,fw,15,state.dcaOn[g]?"ON":"MUT",state.dcaOn[g],()=>{state.dcaOn[g]=!state.dcaOn[g];for(let i=0;i<N_CH;i++)if(CH[i].dca[g])applyChanAudio(i);paintBay();},state.dcaOn[g]?SC.green:SC.red,true);
     }
     let yy=top+gh+8; ctx.fillStyle=ch.color; ctx.font="800 11px Inter"; ctx.textAlign="left"; ctx.fillText(ch.name+" → CONTROL GROUP assign (1–24)",10,yy);
     yy+=6; const bw=(W-20-23*2)/24; for(let g=0;g<24;g++) scrBtn(10+g*(bw+2),yy,bw,20,""+(g+1),ch.dca[g],()=>{ch.dca[g]=!ch.dca[g];applyChanAudio(ch.i);},SC.amber,true);
     yy+=30; ctx.fillStyle=SC.mut; ctx.font="700 10px Inter"; ctx.textAlign="left"; ctx.fillText("MUTE GROUPS 1–8 — mute-master (vermelho) · abaixo: pertinência do canal",10,yy); yy+=6;
     const mw=(W-20-7*6-70)/8; for(let g=0;g<8;g++){ const x=10+g*(mw+6);
-      scrBtn(x,yy,mw,20,"MG "+(g+1),state.muteActive[g],()=>{state.muteActive[g]=!state.muteActive[g];for(let i=0;i<24;i++)if(CH[i].mute[g])applyChanAudio(i);paintBay();},SC.red,true);
+      scrBtn(x,yy,mw,20,"MG "+(g+1),state.muteActive[g],()=>{state.muteActive[g]=!state.muteActive[g];for(let i=0;i<N_CH;i++)if(CH[i].mute[g])applyChanAudio(i);paintBay();},SC.red,true);
       scrBtn(x,yy+24,mw,16,ch.mute[g]?"IN":"—",ch.mute[g],()=>{ch.mute[g]=!ch.mute[g];applyChanAudio(ch.i);},"#4a6285",true); }
     // Mute Safe for the selected channel (excludes it from mute-group action)
     const sx=W-72; scrBtn(sx,yy,62,20,"SAFE",ch.muteSafe,()=>{ch.muteSafe=!ch.muteSafe;applyChanAudio(ch.i);paintBay();},SC.green,true);
@@ -1162,7 +1168,7 @@
     // header
     cx.fillStyle=SC.amber; cx.font="800 10px Inter"; cx.textAlign="left"; cx.textBaseline="alphabetic"; cx.fillText("INPUTS · "+a.label,8,13);
     cx.fillStyle=SC.dim; cx.textAlign="right"; cx.font="700 8px Inter"; cx.fillText("TFT 1 · BANK A",W-8,13);
-    const idx=Array.from({length:12},(_,s)=>a.from+s).filter(i=>i<24);
+    const idx=Array.from({length:12},(_,s)=>a.from+s).filter(i=>i<N_CH);
     const n=Math.max(1,idx.length), top=20, botH=20, gh=H-top-botH-6, gap=3, cw=(W-12-(n-1)*gap)/n;
     idx.forEach((ci,s)=>{ const ch=CH[ci], x=6+s*(cw+gap), y=top;
       const g=cx.createLinearGradient(0,y,0,y+gh); g.addColorStop(0,SC.panelHi); g.addColorStop(1,SC.panelLo);
@@ -1317,7 +1323,7 @@
     {label:"EQ", act:b=>{ setMode('eq'); }},
     {label:"DYN", act:b=>{ setMode('gate'); }},
     {label:"SOF MIX1", act:b=>{ engageSof('mix',0); }},
-    {label:"MUTE1", act:b=>{ state.muteActive[0]=!state.muteActive[0]; b.classList.toggle("on",state.muteActive[0]); for(let i=0;i<24;i++)if(CH[i].mute[0])applyChanAudio(i); paintBay(); }},
+    {label:"MUTE1", act:b=>{ state.muteActive[0]=!state.muteActive[0]; b.classList.toggle("on",state.muteActive[0]); for(let i=0;i<N_CH;i++)if(CH[i].mute[0])applyChanAudio(i); paintBay(); }},
     {label:"OSC", act:b=>{ b.classList.toggle("on"); toast("Oscilador (didático)"); }},
     {label:"TAP", act:b=>{ toast("TAP tempo"); }},
     {label:"CLR SOLO", act:b=>{ clearCue(); toast("Solo limpo"); }},
@@ -1395,7 +1401,7 @@
       sg("Sax","#fbbf24","13-SAX.mp3",10,true),sg("Voz","#ec4899","14-VOZ.mp3",0,true)]}
   ];
   let ac=null,masterGain=null,monoTrim=null,lim=null,masterAn=null,playing=false,curSong=0,loadTok=0,realSources=[];
-  let fxRack=null; const bufCache={},aNodes=[];
+  let fxRack=null,mixBuses=[]; const bufCache={},aNodes=[];
   function dbToLin(db){ return db<=FMIN?0:Math.pow(10,db/20); }
   function makeImpulse(seconds){ const rate=ac.sampleRate,len=Math.max(1,Math.floor(clamp(seconds,0.2,5)*rate)),buf=ac.createBuffer(2,len,rate);
     for(let ch=0;ch<2;ch++){ const d=buf.getChannelData(ch); for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,2.4); } return buf; }
@@ -1411,7 +1417,14 @@
     const dlyIn=ac.createGain(),dly=ac.createDelay(1.5),dfb=ac.createGain(),dlyRet=ac.createGain(); dly.delayTime.value=state.fx.dlyTime; dfb.gain.value=state.fx.dlyFb; dlyRet.gain.value=state.fx.dlyMix;
     dlyIn.connect(dly); dly.connect(dfb); dfb.connect(dly); dly.connect(dlyRet); dlyRet.connect(masterGain);
     fxRack={revIn,conv,revRet,dlyIn,dly,dfb,dlyRet};
-    for(let i=0;i<24;i++){
+    /* 24 MIX/AUX buses — the real barramento behind the PRE/POST switch. On the console these feed
+       physical outs (monitors/IEM), NOT the Stereo master, so each carries an analyser for metering
+       but is deliberately NOT connected to masterGain. */
+    mixBuses=[];
+    for(let b=0;b<N_MIX;b++){ const inG=ac.createGain(); const an=ac.createAnalyser(); an.fftSize=256; an._buf=new Float32Array(an.fftSize);
+      const out=ac.createGain(); out.gain.value=(state.mixOn[b]?dbToLin(state.mixMaster[b]):0);
+      inG.connect(out); out.connect(an); mixBuses[b]={inG,out,an}; }
+    for(let i=0;i<N_CH;i++){
       const trim=ac.createGain();
       const hpf=ac.createBiquadFilter();hpf.type="highpass";hpf.frequency.value=20;hpf.Q.value=0.707;
       const eq0=ac.createBiquadFilter();eq0.type="lowshelf";const eq1=ac.createBiquadFilter();eq1.type="peaking";
@@ -1426,9 +1439,12 @@
       lpf.connect(preAn);lpf.connect(gate);gate.connect(comp);comp.connect(mk);mk.connect(fdr);
       fdr.connect(pan);pan.connect(masterGain);fdr.connect(an);
       fdr.connect(revSend);revSend.connect(revIn);fdr.connect(dlySend);dlySend.connect(dlyIn);
-      aNodes[i]={trim,hpf,eq:[eq0,eq1,eq2,eq3],lpf,preAn,preBuf:new Float32Array(preAn.fftSize),gate,comp,mk,fdr,pan,an,buf:new Float32Array(an.fftSize),revSend,dlySend};
+      // mxS/mxSrc: the MIX/AUX send node per bus is created lazily (first time that send opens), so a
+      // show that uses no monitor sends keeps exactly the graph it had before.
+      aNodes[i]={trim,hpf,eq:[eq0,eq1,eq2,eq3],lpf,preAn,preBuf:new Float32Array(preAn.fftSize),gate,comp,mk,fdr,pan,an,buf:new Float32Array(an.fftSize),revSend,dlySend,
+                 mxS:new Array(N_MIX).fill(null), mxSrc:new Array(N_MIX).fill(null)};
     }
-    for(let i=0;i<24;i++) applyChanAudio(i);
+    for(let i=0;i<N_CH;i++) applyChanAudio(i);
   }
   applyChanAudio=function(i){
     if(!ac||!aNodes[i])return; const n=aNodes[i],c=CH[i],t=ac.currentTime;
@@ -1448,7 +1464,23 @@
     n.fdr.gain.setTargetAtTime(audible?dbToLin(c.fader)*dcaLin:0,t,0.02);
     n.revSend.gain.setTargetAtTime((c.hasAudio&&c.fxRev>FMIN)?dbToLin(c.fxRev):0,t,0.02);
     n.dlySend.gain.setTargetAtTime((c.hasAudio&&c.fxDly>FMIN)?dbToLin(c.fxDly):0,t,0.02);
+    applyChanSends(i);
   };
+  /* MIX/AUX sends — PRE taps the channel BEFORE the fader (mk = end of the dynamics chain), so the
+     fader cannot move it; POST taps AFTER the fader, so it follows fader / mute / Control Group. */
+  function applyChanSends(i){
+    if(!ac||!aNodes[i]||!mixBuses.length)return; const n=aNodes[i],c=CH[i],t=ac.currentTime;
+    for(let b=0;b<N_MIX;b++){
+      const want=c.hasAudio&&c.sendOn[b]&&c.sends[b]>FMIN;
+      if(!want&&!n.mxS[b])continue;                        // never opened -> no node to build or touch
+      if(!n.mxS[b]){ const g=ac.createGain(); g.gain.value=0; g.connect(mixBuses[b].inG); n.mxS[b]=g; }
+      const tap=c.sendPre[b]?n.mk:n.fdr;
+      if(n.mxSrc[b]!==tap){ if(n.mxSrc[b]){ try{ n.mxSrc[b].disconnect(n.mxS[b]); }catch(e){} } tap.connect(n.mxS[b]); n.mxSrc[b]=tap; }
+      n.mxS[b].gain.setTargetAtTime(want?dbToLin(c.sends[b]):0,t,0.02);
+    }
+  }
+  function applyMixMaster(b){ if(!ac||!mixBuses[b])return;
+    mixBuses[b].out.gain.setTargetAtTime(state.mixOn[b]?dbToLin(state.mixMaster[b]):0,ac.currentTime,0.02); }
   function applyFX(){ if(!ac||!fxRack)return; const t=ac.currentTime;
     fxRack.revRet.gain.setTargetAtTime(state.fx.revOn?state.fx.revMix:0,t,0.03);   // FX on/off gates the return in real time
     fxRack.dly.delayTime.setTargetAtTime(clamp(state.fx.dlyTime,0,1.5),t,0.03);
@@ -1460,7 +1492,7 @@
         else { state.fx.revSize=clamp(iv*2,0.3,4); if(fxRack)fxRack.conv.buffer=makeImpulse(state.fx.revSize); toast("Tap ▸ reverb <b>"+state.fx.revSize.toFixed(1)+" s</b>"); } } }
     else toast("Tap… toque de novo no tempo"); }
   function processGates(){ if(!ac)return; const t=ac.currentTime;
-    for(let i=0;i<24;i++){ const n=aNodes[i],c=CH[i]; if(!n)continue;
+    for(let i=0;i<N_CH;i++){ const n=aNodes[i],c=CH[i]; if(!n)continue;
       if(!c.gateOn||!playing||!c.hasAudio){ n.gate.gain.setTargetAtTime(1,t,0.01); c._gr=0; continue; }
       n.preAn.getFloatTimeDomainData(n.preBuf); let s=0; for(let k=0;k<n.preBuf.length;k++)s+=n.preBuf[k]*n.preBuf[k];
       const rms=Math.sqrt(s/n.preBuf.length),db=rms>1e-5?20*Math.log10(rms):-90; const open=db>c.gateThr,target=open?1:dbToLin(c.gateRange);
@@ -1474,24 +1506,24 @@
     s.ch.forEach((sc,i)=>Object.assign(CH[i],JSON.parse(JSON.stringify(sc)))); state.master=s.master; if(s.mono!=null)state.mono=s.mono;
     state.dcaGain=s.dcaGain.slice(); state.dcaOn=s.dcaOn.slice(); state.muteActive=s.muteActive.slice(); state.fx=JSON.parse(JSON.stringify(s.fx));
     if(fxRack)fxRack.conv.buffer=makeImpulse(state.fx.revSize);
-    for(let i=0;i<24;i++)applyChanAudio(i); applyMasterAudio(); applyFX();
+    for(let i=0;i<N_CH;i++)applyChanAudio(i); applyMasterAudio(); applyFX();
     paintBay(); paintSelected(); paintRightRack(); drawScreen(); toast("Cena "+(slot+1)+" <b>recuperada</b> ▸ faders atualizados"); }
   function chLevelDb(i){ if(!ac||!aNodes[i])return -90; const n=aNodes[i]; n.an.getFloatTimeDomainData(n.buf); let s=0; for(let k=0;k<n.buf.length;k++)s+=n.buf[k]*n.buf[k]; const rms=Math.sqrt(s/n.buf.length); return rms>1e-5?20*Math.log10(rms):-90; }
   function masterLevelDb(){ if(!masterAn)return -90; masterAn.getFloatTimeDomainData(masterAn._buf); let s=0; for(let k=0;k<masterAn._buf.length;k++)s+=masterAn._buf[k]*masterAn._buf[k]; const rms=Math.sqrt(s/masterAn._buf.length); return rms>1e-5?20*Math.log10(rms):-90; }
   async function loadBuf(url){ if(bufCache[url])return bufCache[url]; const r=await fetch(url); if(!r.ok)throw new Error("HTTP "+r.status); const ab=await r.arrayBuffer(); const b=await ac.decodeAudioData(ab); bufCache[url]=b; return b; }
   function setStatus(txt,col){ const el=$("#audioStatus"); if(el){ el.textContent="áudio: "+txt; el.style.color=col||"var(--muted)"; } }
   function loadSong(idx){ curSong=idx; const song=SONGS[idx];
-    for(let i=0;i<24;i++){ const st=song.stems[i],c=CH[i];
+    for(let i=0;i<N_CH;i++){ const st=song.stems[i],c=CH[i];
       if(st){ c.name=st.n; c.color=st.c; c.file=st.f; c.pan=st.p; c.hpfOn=st.h; c.hpf=st.h?100:80; c.hasAudio=true; c.on=true; c.fader=-3; c.gain=16; c.phase=false; c.phantom=false; }
       else { c.name="—"; c.color="#334155"; c.file=null; c.hasAudio=false; c.on=false; } }
-    buildBay(); paintBay(); paintSelected(); paintRightRack(); drawScreen(); if(ac){ for(let i=0;i<24;i++)applyChanAudio(i); } }
+    buildBay(); paintBay(); paintSelected(); paintRightRack(); drawScreen(); if(ac){ for(let i=0;i<N_CH;i++)applyChanAudio(i); } }
   function setPlayBtn(on){ const b=$("#playBtn"); if(b){ b.textContent=on?"⏸ Parar":"► Tocar base"; b.style.background=on?"#e0483f":"#22b866"; } }
   async function playSong(){ if(!ac)buildAudioGraph(); if(ac.state==="suspended"){ try{await ac.resume();}catch(e){} }
     const song=SONGS[curSong],base=SB+song.folder+"/",tok=++loadTok; setStatus("carregando "+song.label+"…","#22a8c0");
     let bufs; try{ bufs=await Promise.all(song.stems.map(st=>loadBuf(base+st.f))); }catch(e){ setStatus("erro: "+e.message,"#e0483f"); return; }
     if(tok!==loadTok)return; stopSong(true); const t0=ac.currentTime+0.12;
-    song.stems.forEach((st,i)=>{ if(i>=24||!aNodes[i])return; const src=ac.createBufferSource(); src.buffer=bufs[i]; src.loop=true; src.connect(aNodes[i].trim); src.start(t0); realSources.push(src); });
-    for(let i=0;i<24;i++)applyChanAudio(i); playing=true; setPlayBtn(true); setStatus("tocando ♪ "+song.label,"#3ad07a"); }
+    song.stems.forEach((st,i)=>{ if(i>=N_CH||!aNodes[i])return; const src=ac.createBufferSource(); src.buffer=bufs[i]; src.loop=true; src.connect(aNodes[i].trim); src.start(t0); realSources.push(src); });
+    for(let i=0;i<N_CH;i++)applyChanAudio(i); playing=true; setPlayBtn(true); setStatus("tocando ♪ "+song.label,"#3ad07a"); }
   function stopSong(keep){ realSources.forEach(s=>{try{s.stop();}catch(e){}}); realSources=[]; playing=false; setPlayBtn(false); if(!keep)setStatus("parado"); }
 
   /* ================= LOOP / METERS ================= */
@@ -1507,7 +1539,7 @@
     requestAnimationFrame(loop);
   }
   function CH_fromCtl(ctl){ // find channel index by name match (ch only)
-    for(let i=0;i<24;i++) if(CH[i].name===ctl.name) return CH[i]; return null; }
+    for(let i=0;i<N_CH;i++) if(CH[i].name===ctl.name) return CH[i]; return null; }
 
   /* ================= INIT ================= */
   buildEqBands(); wireSelectedKnobs(); buildRightRack();
@@ -1525,10 +1557,10 @@
     dlyRetGain:()=>fxRack?fxRack.dlyRet.gain.value:null,
     dlyTime:()=>fxRack?fxRack.dly.delayTime.value:null,
     assignCG:(i,g,on)=>{CH[i].dca[g]=on;applyChanAudio(i);},
-    setCGgain:(g,db)=>{state.dcaGain[g]=db;for(let i=0;i<24;i++)if(CH[i].dca[g])applyChanAudio(i);},
-    cgOn:(g,on)=>{state.dcaOn[g]=on;for(let i=0;i<24;i++)if(CH[i].dca[g])applyChanAudio(i);},
+    setCGgain:(g,db)=>{state.dcaGain[g]=db;for(let i=0;i<N_CH;i++)if(CH[i].dca[g])applyChanAudio(i);},
+    cgOn:(g,on)=>{state.dcaOn[g]=on;for(let i=0;i<N_CH;i++)if(CH[i].dca[g])applyChanAudio(i);},
     assignMute:(i,g,on)=>{CH[i].mute[g]=on;applyChanAudio(i);},
-    muteGroup:(g,on)=>{state.muteActive[g]=on;for(let i=0;i<24;i++)if(CH[i].mute[g])applyChanAudio(i);},
+    muteGroup:(g,on)=>{state.muteActive[g]=on;for(let i=0;i<N_CH;i++)if(CH[i].mute[g])applyChanAudio(i);},
     muteSafe:(i,on)=>{CH[i].muteSafe=on;applyChanAudio(i);},
     setSend:(i,which,db)=>{if(which==='rev')CH[i].fxRev=db;else CH[i].fxDly=db;applyChanAudio(i);},
     fxOn:(which,on)=>{if(which==='rev')state.fx.revOn=on;else state.fx.dlyOn=on;applyFX();},
@@ -1537,7 +1569,47 @@
     chGain:i=>CH[i]?CH[i].gain:null,                                   // selected-channel HA gain (dB)
     haTrim:i=>(aNodes[i]&&aNodes[i].trim)?aNodes[i].trim.gain.value:null, // audio: trim node = dbToLin(gain-16)
     curMode:()=>state.mode,
-    N_DCA, N_MUTE };
+    N_DCA, N_MUTE,
+    /* ===== QA measurement accessors (read-only; NO UI, layout or behaviour change) =====
+       Added so the automated suite can drive real pointer events and read the real Web Audio
+       node values instead of assuming them. Nothing here is called by the console itself. */
+    CH, state, N_MIX, N_MTX, N_SCENE, N_CH,
+    maxch:()=>CH.length, nScene:()=>N_SCENE, scenes:()=>scenes, sceneAt:s=>scenes[s],
+    /* MIX/AUX send bus (real nodes) */
+    mixSendGain:(i,b)=>(aNodes[i]&&aNodes[i].mxS[b])?aNodes[i].mxS[b].gain.value:null,
+    mixSendTap:(i,b)=>{ const n=aNodes[i]; if(!n||!n.mxSrc[b])return null; return n.mxSrc[b]===n.mk?'pre':(n.mxSrc[b]===n.fdr?'post':'?'); },
+    mixBusDb:b=>{ const n=mixBuses[b]; if(!n)return -90; const buf=n.an._buf; n.an.getFloatTimeDomainData(buf);
+      let s=0; for(let k=0;k<buf.length;k++)s+=buf[k]*buf[k]; const rms=Math.sqrt(s/buf.length); return rms>1e-5?20*Math.log10(rms):-90; },
+    mixMasterGain:b=>mixBuses[b]?mixBuses[b].out.gain.value:null,
+    applyMixMaster:b=>applyMixMaster(b), applySends:i=>applyChanSends(i),
+    ac:()=>ac, aN:i=>aNodes[i], aNodesLen:()=>aNodes.length,
+    apply:i=>applyChanAudio(i), applyFX:()=>applyFX(),
+    buildAudio:()=>{ if(!ac) buildAudioGraph(); },
+    resume:()=>{ try{ return ac?ac.resume():Promise.resolve(); }catch(e){ return Promise.resolve(); } },
+    hitRegions:()=>hitRegions, sideHitsL:()=>sideHitsL,
+    setMode:m=>setMode(m), selectChannel:i=>selectChannel(i),
+    storeScene:s=>storeScene(s), recallScene:s=>recallScene(s),
+    isPlaying:()=>playing, setPlaying:v=>{ playing=v; }, processGates:()=>processGates(),
+    play:()=>playSong(), stopIt:()=>stopSong(), loadSong:i=>loadSong(i),
+    songs:()=>SONGS, curSong:()=>curSong, realSrcCount:()=>realSources.length,
+    chLevelDb:i=>chLevelDb(i), masterDb:()=>masterLevelDb(),
+    getTrim:i=>(aNodes[i]?aNodes[i].trim.gain.value:null),
+    panVal:i=>(aNodes[i]?aNodes[i].pan.pan.value:null),
+    eqGain:(i,b)=>(aNodes[i]?aNodes[i].eq[b].gain.value:null),
+    eqFreq:(i,b)=>(aNodes[i]?aNodes[i].eq[b].frequency.value:null),
+    hpfFreq:i=>(aNodes[i]?aNodes[i].hpf.frequency.value:null),
+    gateGain:i=>(aNodes[i]?aNodes[i].gate.gain.value:null),
+    compReduction:i=>(aNodes[i]?aNodes[i].comp.reduction:null),
+    banksA:()=>bankA.banks.length, banksB:()=>bankB.banks.length, banksC:()=>bankC.layers.length,
+    bankLabels:()=>({A:bankA.banks.map(b=>b.label), B:bankB.banks.map(b=>b.label), C:bankC.layers.map(b=>b.label)}),
+    setBankA:v=>{ bankA.cur=v; buildBay(); paintBay(); drawBanks(); return bankA.cur; },
+    setBankB:v=>{ bankB.cur=v; buildBay(); paintBay(); drawBanks(); return bankB.cur; },
+    setBankC:v=>{ bankC.cur=v; buildBay(); paintBay(); drawBanks(); return bankC.cur; },
+    stripKinds:()=>currentDescriptors().map(d=>d.ctl.kind),
+    stripNames:()=>currentDescriptors().map(d=>d.ctl.name),
+    stripBlocks:()=>currentDescriptors().map(d=>d.block),
+    stripFdb:()=>currentDescriptors().map(d=>d.ctl.fdb),
+    canvasSizes:()=>({L:{w:cvL.width,h:cvL.height}, C:{w:cv.width,h:cv.height}, R:{w:cvR.width,h:cvR.height}}) };
   window.addEventListener("resize",sizeCanvas); setTimeout(sizeCanvas,30); requestAnimationFrame(loop);
   setInterval(()=>{ const l=$("#danteLed"); if(l){ l.classList.toggle("warn"); setTimeout(()=>l.classList.remove("warn"),120); } },4000);
 
