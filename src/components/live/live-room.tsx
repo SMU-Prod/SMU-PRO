@@ -1,6 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { LivePlayer } from "./live-player";
 import { AttendanceHeartbeat } from "./attendance-heartbeat";
 import { useT } from "@/lib/i18n/ui";
@@ -40,13 +42,20 @@ export function LiveRoom({ event, chatSlot }: { event: LiveEvent; chatSlot: Reac
 
         <div className="px-4 sm:px-6 py-3 border-b border-border">
           <div className="flex items-center gap-2">
+            <Link
+              href="/ao-vivo"
+              aria-label={t("Voltar para a agenda")}
+              className="-ml-2 flex size-11 shrink-0 items-center justify-center rounded-lg text-muted hover:text-foreground hover:bg-hover transition-colors"
+            >
+              <ArrowLeft size={20} />
+            </Link>
             {aoVivo && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/15 px-2 py-0.5 text-xs font-semibold text-red-500">
                 <span className="size-1.5 rounded-full bg-red-500 animate-pulse" />
                 {t("AO VIVO")}
               </span>
             )}
-            <h1 className="text-base sm:text-lg font-bold text-foreground truncate">{event.titulo}</h1>
+            <h1 className="min-w-0 flex-1 text-base sm:text-lg font-bold text-foreground truncate">{event.titulo}</h1>
           </div>
           {event.descricao && (
             <p className="mt-1 text-sm text-muted line-clamp-2 hidden sm:block">{event.descricao}</p>

@@ -3,7 +3,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/server";
-import { getPortal, liveBelongsToPortal } from "@/lib/portal";
+import { getPortal, liveBelongsToPortal, filterCoursesByPortal } from "@/lib/portal";
 import { deriveProvider, validateLiveEvent } from "@/lib/live/rules";
 import type { LiveEvent, LiveEventInsert, LiveEventUpdate, LiveStatus } from "@/types/database";
 
@@ -83,6 +83,24 @@ export async function listLivesForAdmin(): Promise<LiveEvent[]> {
   const { data } = await supabase
     .from("live_events").select("*").order("inicio_previsto", { ascending: false });
   return ((data ?? []) as LiveEvent[]).filter((l) => liveBelongsToPortal(l.portal, portal));
+}
+
+/**
+ * Cursos ativos da escola do portal atual — para o seletor de curso no
+ * formulário de live. Busca só id/titulo/categorias (nada do catálogo
+ * completo do outro portal vaza pra cá) e filtra em SQL/servidor, nunca
+ * no cliente.
+ */
+export async function listCoursesForPortalSelect(): Promise<{ id: string; titulo: string }[]> {
+  await assertAdmin();
+  const portal = await getPortal();
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("courses")
+    .select("id, titulo, categorias")
+    .eq("ativo", true)
+    .order("titulo");
+  return filterCoursesByPortal((data ?? []) as any[], portal).map((c: any) => ({ id: c.id, titulo: c.titulo }));
 }
 
 export async function createLive(input: LiveEventInsert) {

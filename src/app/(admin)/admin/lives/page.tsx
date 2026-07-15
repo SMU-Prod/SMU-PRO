@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ExternalLink } from "lucide-react";
 import { listLivesForAdmin } from "@/lib/actions/lives";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +33,12 @@ export default async function AdminLivesPage() {
               <Badge variant={l.status === "ao_vivo" ? "default" : "secondary"} className="shrink-0">
                 {l.status}
               </Badge>
+              <Button asChild variant="outline" size="sm" className="shrink-0">
+                <Link href={`/ao-vivo/${l.slug}`} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink size={14} />
+                  Ver sala
+                </Link>
+              </Button>
               <LiveStatusButton id={l.id} status={l.status} />
             </li>
           ))}

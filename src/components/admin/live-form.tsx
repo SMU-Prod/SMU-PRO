@@ -18,7 +18,7 @@ function paraInputLocal(iso: string): string {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 }
 
-export function LiveForm({ live }: { live?: LiveEvent }) {
+export function LiveForm({ live, courses }: { live?: LiveEvent; courses: { id: string; titulo: string }[] }) {
   const router = useRouter();
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
@@ -28,10 +28,21 @@ export function LiveForm({ live }: { live?: LiveEvent }) {
   const [descricao, setDescricao] = useState(live?.descricao ?? "");
   const [tipo, setTipo] = useState<LiveType>(live?.tipo ?? "palestra");
   const [portal, setPortal] = useState<LivePortalDb>(live?.portal ?? "main");
+  const [courseId, setCourseId] = useState(live?.course_id ?? "");
   const [youtubeId, setYoutubeId] = useState(live?.youtube_id ?? "");
   const [inicio, setInicio] = useState(
     live?.inicio_previsto ? paraInputLocal(live.inicio_previsto) : "",
   );
+
+  /**
+   * "Ambas as escolas" não pode ter curso — curso pertence a uma escola só
+   * (CHECK live_ambos_sem_curso no banco). Zera aqui pra não confiar só na
+   * rejeição do servidor: o campo já fica disabled visualmente também.
+   */
+  function alterarPortal(valor: LivePortalDb) {
+    setPortal(valor);
+    if (valor === "ambos") setCourseId("");
+  }
 
   async function salvar(e: React.FormEvent) {
     e.preventDefault();
@@ -42,6 +53,7 @@ export function LiveForm({ live }: { live?: LiveEvent }) {
         titulo, slug, descricao, tipo, portal,
         acesso: "aberto" as const,
         provider: "youtube" as const,
+        course_id: portal === "ambos" ? null : (courseId || null),
         youtube_id: youtubeId,
         inicio_previsto: new Date(inicio).toISOString(),
       };
@@ -94,7 +106,7 @@ export function LiveForm({ live }: { live?: LiveEvent }) {
         <span className="text-sm font-medium text-foreground">Escola</span>
         <select
           value={portal}
-          onChange={(e) => setPortal(e.target.value as LivePortalDb)}
+          onChange={(e) => alterarPortal(e.target.value as LivePortalDb)}
           className="mt-1 w-full rounded-lg bg-background border border-border px-3 py-2.5 text-sm text-foreground"
         >
           <option value="main">Backstage (eventos)</option>
@@ -103,6 +115,26 @@ export function LiveForm({ live }: { live?: LiveEvent }) {
         </select>
         <span className="mt-1 block text-xs text-muted">
           &quot;Ambas&quot; só para palestra/podcast de topo de funil — aula de curso pertence a uma escola só.
+        </span>
+      </label>
+
+      <label className="block">
+        <span className="text-sm font-medium text-foreground">Curso (opcional)</span>
+        <select
+          value={courseId}
+          onChange={(e) => setCourseId(e.target.value)}
+          disabled={portal === "ambos"}
+          className="mt-1 w-full rounded-lg bg-background border border-border px-3 py-2.5 text-sm text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <option value="">Nenhum (avulsa)</option>
+          {courses.map((c) => (
+            <option key={c.id} value={c.id}>{c.titulo}</option>
+          ))}
+        </select>
+        <span className="mt-1 block text-xs text-muted">
+          {portal === "ambos"
+            ? "Desabilitado: uma live de \"Ambas as escolas\" não pode ter curso — curso pertence a uma escola só."
+            : "Vincule a uma aula ao vivo de um curso específico. Deixe em branco para palestra/podcast avulso."}
         </span>
       </label>
 
