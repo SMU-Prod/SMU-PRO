@@ -402,10 +402,8 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
             {currentMode !== "widget" && (
             <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-3 py-2 bg-gradient-to-b from-black/50 to-transparent pointer-events-none">
               <div className="flex items-center gap-2">
-                <span className={`text-[10px] px-1.5 py-0.5 rounded text-white font-medium uppercase tracking-wider ${
-                  currentMode === "widget" ? "bg-cyan-600/80" : "bg-purple-500/80"
-                }`}>
-                  {currentMode === "widget" ? t("interativo") : currentMode === "image" ? t("imagem") : currentSceneData?.tipo?.replace(/_/g, " ") || t("cena")}
+                <span className="text-[10px] px-1.5 py-0.5 rounded text-white font-medium uppercase tracking-wider bg-purple-500/80">
+                  {currentMode === "image" ? t("imagem") : currentSceneData?.tipo?.replace(/_/g, " ") || t("cena")}
                 </span>
                 <span className="text-xs font-medium text-white/80 line-clamp-1">
                   {currentSceneData?.titulo}
