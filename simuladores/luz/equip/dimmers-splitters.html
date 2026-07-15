@@ -1,0 +1,159 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Simulador — Dimmers e splitters: a cadeia de potência e dados</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;-webkit-tap-highlight-color:transparent}
+html,body{background:#0a0c10;color:#e9edf2}body{padding:10px}
+.app{max-width:1010px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+h1{font-size:clamp(15px,4vw,20px);font-weight:800;color:#eaf0ff}
+.t{font-size:12px;color:#9daecb;line-height:1.45}
+.mission{background:#0e1626;border:1px solid #24406e;border-radius:11px;padding:10px 12px;font-size:12.5px;line-height:1.5}
+.mission b{color:#8fd0ff}
+.mrow{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap}
+.dot{width:14px;height:14px;border-radius:50%;border:2px solid #37507a;flex:none}.dot.ok{background:#39d98a;border-color:#39d98a}
+.btn{background:#1b2740;color:#dce7fb;border:1px solid #33507f;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer}
+.btn.go{background:#1e5a3a;border-color:#2f8f5b}.btn.warn{background:#5a2020;border-color:#8f2f2f}
+.gt{font-size:10px;font-weight:800;color:#8aa0c2;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
+.box{background:#10141d;border:1px solid #222c40;border-radius:12px;padding:10px}
+.chain{width:100%;height:210px;background:#04060a;border:1px solid #1c2740;border-radius:12px;overflow:hidden}
+.chain canvas{width:100%;height:100%;display:block}
+.fx{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:7px}
+.card{background:#0d1119;border:2px solid #26314a;border-radius:10px;padding:9px}
+.card.bad{border-color:#8f2f3f;background:#1a0d10}
+.card.good{border-color:#2f8f5b}
+.card h3{font-size:12px;font-weight:800;color:#eaf0ff;display:flex;justify-content:space-between;align-items:center}
+.card h3 .tag{font-size:8.5px;padding:2px 6px;border-radius:999px;background:#16233c;color:#9db6df;font-weight:800}
+.opt{display:flex;gap:5px;margin-top:7px}
+.opt .o{flex:1;background:#131a28;border:2px solid #2b3852;border-radius:7px;padding:6px 4px;font-size:9.5px;font-weight:800;color:#8fa4c4;cursor:pointer;text-align:center;line-height:1.25}
+.opt .o.on{border-color:#4d86e0;color:#bcd8ff;background:#0e1a30}
+.card .st{font-size:9.5px;margin-top:6px;font-weight:700;line-height:1.4}
+.dmxline{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.dmxline .lb{background:#131a28;border:2px solid #2b3852;border-radius:8px;padding:7px 10px;font-size:10.5px;font-weight:800;color:#8fa4c4;cursor:pointer}
+.dmxline .lb.on{border-color:#39d98a;color:#7fd0a0;background:#0d1f16}
+.info{font-size:11px;color:#a9bcd8;line-height:1.6;background:#0d1119;border:1px solid #1f2839;border-radius:9px;padding:8px 10px;margin-top:8px}
+.info b{color:#ffd24d}
+</style></head><body>
+<div class="app">
+ <h1>⚙ Dimmers e splitters — a cadeia de potência e dados</h1>
+ <div class="t">A pergunta que reprova ajudante: <b>o que vai no dimmer e o que vai direto na energia?</b> Ligar LED no canal de dimmer <b>queima a fonte</b>. E a linha DMX longa precisa de <b>splitter</b> para não cair. Monte a cadeia certa.</div>
+ <div class="mission" id="mission"></div>
+ <div class="chain"><canvas id="cv"></canvas></div>
+ <div class="box"><div class="gt">1 · Onde cada aparelho é ligado?</div>
+  <div class="fx" id="fx"></div>
+ </div>
+ <div class="box"><div class="gt">2 · A linha de dados (24 fixtures, 90 metros de cabo)</div>
+  <div class="dmxline" id="dl"></div>
+  <div class="info" id="dlinfo"></div>
+ </div>
+</div>
+<script>
+'use strict';
+// aparelhos: alguns são convencionais (vão no dimmer), outros eletrônicos (vão direto)
+const FIX=[
+ {n:'PAR 64 (lâmpada 1kW)',tipo:'conv',via:null,tag:'convencional'},
+ {n:'Elipsoidal (lâmpada)',tipo:'conv',via:null,tag:'convencional'},
+ {n:'PAR LED RGBW',tipo:'led',via:null,tag:'eletrônico'},
+ {n:'Moving head',tipo:'led',via:null,tag:'eletrônico'},
+ {n:'Máquina de fumaça',tipo:'led',via:null,tag:'eletrônico'},
+ {n:'Ribalta de LED',tipo:'led',via:null,tag:'eletrônico'},
+];
+let splitter=false, terminador=false, cabo='dmx';
+const fxEl=document.getElementById('fx');
+function buildFx(){fxEl.innerHTML='';
+ FIX.forEach((f,i)=>{const ok=(f.tipo==='conv'&&f.via==='dimmer')||(f.tipo==='led'&&f.via==='direto');
+  const bad=f.via&&!ok;
+  const d=document.createElement('div');d.className='card'+(ok?' good':(bad?' bad':''));
+  d.innerHTML='<h3>'+f.n+' <span class="tag">'+f.tag+'</span></h3>';
+  const o=document.createElement('div');o.className='opt';
+  [['dimmer','Canal do<br>RACK DE DIMMER'],['direto','Direto na<br>ENERGIA (+DMX)']].forEach(([v,t])=>{
+   const b=document.createElement('div');b.className='o'+(f.via===v?' on':'');b.innerHTML=t;
+   b.onclick=()=>{f.via=v;buildFx();check();};o.appendChild(b);});
+  d.appendChild(o);
+  const st=document.createElement('div');st.className='st';
+  if(!f.via)st.innerHTML='<span style="color:#7487a8">escolha onde ligar</span>';
+  else if(ok)st.innerHTML=f.tipo==='conv'?'<span style="color:#7fd0a0">✓ Certo — lâmpada não regula sozinha: quem varia a intensidade é o dimmer.</span>':'<span style="color:#7fd0a0">✓ Certo — tem dimmer eletrônico próprio: energia limpa + DMX.</span>';
+  else st.innerHTML=f.tipo==='led'?'<span style="color:#ff9a9a">✗ QUEIMOU! O dimmer corta a onda da rede e destrói a fonte chaveada do LED.</span>':'<span style="color:#ff9a9a">✗ Não regula. A lâmpada acende no talo — sem dimmer não há como variar.</span>';
+  d.appendChild(st);fxEl.appendChild(d);});}
+// linha de dados
+const dlEl=document.getElementById('dl');
+function buildDl(){dlEl.innerHTML='';
+ const opts=[
+  {k:'cabo',t:'Cabo DMX 120Ω',on:cabo==='dmx',fn:()=>cabo='dmx'},
+  {k:'cabo2',t:'Cabo de microfone',on:cabo==='mic',fn:()=>cabo='mic'},
+  {k:'sp',t:'Splitter/buffer óptico',on:splitter,fn:()=>splitter=!splitter},
+  {k:'tm',t:'Terminador 120Ω',on:terminador,fn:()=>terminador=!terminador},
+ ];
+ opts.forEach(o=>{const b=document.createElement('div');b.className='lb'+(o.on?' on':'');b.textContent=(o.on?'✓ ':'')+o.t;
+  b.onclick=()=>{o.fn();buildDl();check();};dlEl.appendChild(b);});
+ const probs=[];
+ if(cabo==='mic')probs.push('cabo de <b>microfone (75Ω)</b> em DMX: erros intermitentes — a luz pisca e trava sem explicação');
+ if(!splitter)probs.push('24 fixtures e 90 m numa linha só, <b>sem splitter</b>: o sinal degrada no fim da linha');
+ if(!terminador)probs.push('<b>sem terminador</b>: o sinal reflete na ponta e corrompe os pacotes');
+ document.getElementById('dlinfo').innerHTML=probs.length?
+  '<b style="color:#ff9a9a">Linha problemática:</b><br>• '+probs.join('<br>• ')+'<br><br><b>Limite prático:</b> ~32 fixtures por linha; acima disso (ou em tiradas longas) o splitter divide em ramos isolados — e cada ramo leva seu terminador.'
+  :'<span style="color:#7fd0a0"><b>✓ Linha impecável:</b> cabo DMX de 120Ω, splitter dividindo em ramos isolados e terminador na ponta. Sinal estável nas 24 fixtures.</span><br><br>Bônus do splitter: ele <b>isola</b> — um ramo com defeito não derruba os outros.';
+}
+// canvas da cadeia
+const cv=document.getElementById('cv');const ctx=cv.getContext('2d');
+function sizeC(){const r=cv.getBoundingClientRect();const dpr=Math.min(2,devicePixelRatio||1);cv.width=r.width*dpr;cv.height=r.height*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);}
+function paint(){const r=cv.getBoundingClientRect();const W=r.width,H=r.height;ctx.clearRect(0,0,W,H);
+ ctx.fillStyle='#04060a';ctx.fillRect(0,0,W,H);
+ const bad=cabo==='mic'||!terminador||!splitter;
+ // mesa
+ const mx=W*0.08,my=H*0.5;
+ ctx.fillStyle='#1a2740';ctx.strokeStyle='#3f7bd6';ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(mx-24,my-18,48,36,6);ctx.fill();ctx.stroke();
+ ctx.fillStyle='#cfe0ff';ctx.font='9px system-ui';ctx.textAlign='center';ctx.fillText('MESA',mx,my+3);
+ // splitter
+ const sx=W*0.32;
+ if(splitter){ctx.strokeStyle=cabo==='mic'?'#c9622e':'#3f7bd6';ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(mx+24,my);ctx.lineTo(sx-22,my);ctx.stroke();
+  ctx.fillStyle='#14301f';ctx.strokeStyle='#39d98a';ctx.beginPath();ctx.roundRect(sx-22,my-16,44,32,5);ctx.fill();ctx.stroke();
+  ctx.fillStyle='#7fd0a0';ctx.font='8px system-ui';ctx.fillText('SPLITTER',sx,my+2);}
+ // ramos
+ const branches=splitter?3:1;
+ for(let b=0;b<branches;b++){
+  const y=splitter?H*(0.22+b*0.28):my;
+  const x0=splitter?sx+22:mx+24;
+  ctx.strokeStyle=cabo==='mic'?'#c9622e':'#3f7bd6';ctx.lineWidth=2.5;
+  ctx.beginPath();ctx.moveTo(x0,splitter?my:my);ctx.lineTo(x0+18,y);ctx.lineTo(W*0.86,y);ctx.stroke();
+  const perBranch=splitter?8:24;
+  for(let i=0;i<Math.min(8,perBranch);i++){
+   const x=W*0.44+i*((W*0.42)/8);
+   // degradação: sem splitter, fixtures do fim piscam; cabo mic pisca aleatório
+   let okSig=true;
+   if(cabo==='mic')okSig=Math.random()>0.35;
+   else if(!splitter&&i>4)okSig=Math.random()>0.5;
+   else if(!terminador&&i>6)okSig=Math.random()>0.4;
+   ctx.fillStyle='#141b28';ctx.strokeStyle='#2a3446';ctx.lineWidth=1.5;
+   ctx.beginPath();ctx.roundRect(x-7,y-7,14,14,3);ctx.fill();ctx.stroke();
+   ctx.fillStyle=okSig?'rgba(120,190,255,0.95)':'rgba(255,90,90,0.9)';
+   ctx.beginPath();ctx.arc(x,y,3.4,0,7);ctx.fill();
+  }
+  // terminador
+  const tx=W*0.88;
+  if(terminador){ctx.strokeStyle='#39d98a';ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(W*0.86,y);ctx.lineTo(tx,y);ctx.stroke();
+   ctx.fillStyle='#39d98a';ctx.beginPath();ctx.arc(tx+4,y,4,0,7);ctx.fill();
+   ctx.fillStyle='#7fd0a0';ctx.font='7.5px system-ui';ctx.fillText('120Ω',tx+4,y+15);}
+  else{ctx.strokeStyle='#ff7b7b';ctx.setLineDash([4,3]);ctx.beginPath();ctx.moveTo(W*0.86,y);ctx.lineTo(tx+8,y);ctx.stroke();ctx.setLineDash([]);
+   ctx.fillStyle='#ff7b7b';ctx.font='7.5px system-ui';ctx.fillText('aberto',tx+2,y+15);}
+ }
+ ctx.textAlign='left';ctx.fillStyle=bad?'#ff9a9a':'#7fd0a0';ctx.font='9.5px system-ui';
+ ctx.fillText(bad?'⚠ sinal degradado — fixtures em vermelho não estão recebendo direito':'✓ sinal estável em todos os ramos',10,H-8);
+}
+(function loop(){paint();requestAnimationFrame(loop);})();
+// missões
+const convOK=()=>FIX.filter(f=>f.tipo==='conv').every(f=>f.via==='dimmer');
+const ledOK=()=>FIX.filter(f=>f.tipo==='led').every(f=>f.via==='direto');
+const M=[
+ {t:'<b>O erro que queima equipamento:</b> ligue o <b>PAR LED</b> no canal do rack de dimmer e leia o que acontece. Depois conserte — LED vai <b>direto na energia</b>.',
+  ok:()=>FIX[2].via==='direto'},
+ {t:'<b>Cadeia de potência correta:</b> os 2 convencionais (lâmpada) no <b>dimmer</b>; os 4 eletrônicos (LED/moving/fumaça/ribalta) <b>direto na energia</b>. Todos os 6 certos.',
+  ok:()=>convOK()&&ledOK()},
+ {t:'<b>Linha de dados profissional:</b> 24 fixtures e 90 m pedem <b>cabo DMX de 120Ω + splitter + terminador</b>. Deixe a linha impecável (nenhuma fixture vermelha).',
+  ok:()=>cabo==='dmx'&&splitter&&terminador},
+];
+let mi=0;
+function drawM(){document.getElementById('mission').innerHTML='<div><b>Cenário '+(mi+1)+'/'+M.length+':</b> '+M[mi].t+'</div><div class="mrow"><span class="dot" id="mdot"></span><span id="mstat">…</span><button class="btn go" id="mnext">Próximo ▸</button></div>';
+ document.getElementById('mnext').onclick=()=>{mi=(mi+1)%M.length;drawM();check();};check();}
+function check(){const dot=document.getElementById('mdot');if(!dot)return;let ok=false;try{ok=M[mi].ok();}catch(e){}
+ dot.classList.toggle('ok',ok);document.getElementById('mstat').textContent=ok?'✓ Cumprido!':'…';}
+buildFx();buildDl();drawM();sizeC();addEventListener('resize',sizeC);
+</script></body></html>

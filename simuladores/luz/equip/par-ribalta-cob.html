@@ -1,0 +1,160 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Simulador — PAR LED, ribalta e COB: fontes de banho</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;-webkit-tap-highlight-color:transparent}
+html,body{background:#0a0c10;color:#e9edf2}body{padding:10px}
+.app{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+h1{font-size:clamp(15px,4vw,20px);font-weight:800;color:#eaf0ff}
+.t{font-size:12px;color:#9daecb;line-height:1.45}
+.mission{background:#0e1626;border:1px solid #24406e;border-radius:11px;padding:10px 12px;font-size:12.5px;line-height:1.5}
+.mission b{color:#8fd0ff}
+.mrow{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap}
+.dot{width:14px;height:14px;border-radius:50%;border:2px solid #37507a;flex:none}.dot.ok{background:#39d98a;border-color:#39d98a}
+.btn{background:#1b2740;color:#dce7fb;border:1px solid #33507f;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer}
+.btn.go{background:#1e5a3a;border-color:#2f8f5b}
+.stage{width:100%;aspect-ratio:16/6.5;background:#04060a;border:1px solid #1c2740;border-radius:12px;overflow:hidden}
+@media(max-width:560px){.stage{aspect-ratio:4/2.5}}
+.stage canvas{width:100%;height:100%;display:block}
+.gt{font-size:10px;font-weight:800;color:#8aa0c2;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
+.box{background:#10141d;border:1px solid #222c40;border-radius:12px;padding:10px}
+.types{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.ty{background:#0d1119;border:2px solid #26314a;border-radius:10px;padding:9px 7px;cursor:pointer;text-align:center}
+.ty.on{border-color:#ffcf5a;background:#2a2415}
+.ty .n{font-size:12.5px;font-weight:800;color:#eaf0ff}
+.ty .s{font-size:9px;color:#7487a8;margin-top:3px;line-height:1.3}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.sl{display:flex;flex-direction:column;gap:3px;min-width:100px;flex:1}
+.sl label{display:flex;justify-content:space-between;font-size:10.5px;font-weight:700}
+.sl label span{color:#8aa0c2}
+input[type=range]{width:100%;height:22px;-webkit-appearance:none;background:transparent}
+input[type=range]::-webkit-slider-runnable-track{height:6px;background:#26303f;border-radius:4px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:19px;height:19px;border-radius:50%;background:#e7ecf3;margin-top:-6.5px}
+.cri{background:#0d1119;border:1px solid #1f2839;border-radius:9px;padding:9px 11px;margin-top:8px}
+.cri .lbl{font-size:10px;font-weight:800;color:#8aa0c2;text-transform:uppercase}
+.skin{display:flex;gap:10px;align-items:center;margin-top:6px}
+.skin .patch{width:56px;height:38px;border-radius:7px;border:1px solid #333}
+.skin .txt{font-size:11px;color:#a9bcd8;line-height:1.5}
+.skin .txt b{color:#ffd24d}
+.verdict{font-size:11.5px;font-weight:800;margin-top:5px}
+</style></head><body>
+<div class="app">
+ <h1>💡 PAR LED, ribalta e COB — as fontes de banho</h1>
+ <div class="t">As fontes que <b>pintam</b> o palco. Aqui você descobre na prática por que <b>RGB puro não faz um branco bom</b> — e para que serve o emissor <b>W</b> (branco) e o <b>âmbar</b>. Olhe a pele do artista: é ela que denuncia.</div>
+ <div class="mission" id="mission"></div>
+ <div class="stage"><canvas id="cv"></canvas></div>
+ <div class="box"><div class="gt">Fonte</div>
+  <div class="types" id="types"></div>
+  <div class="row" id="mix"></div>
+  <div class="cri">
+   <div class="lbl">Como a pele e o figurino aparecem (fidelidade de cor / CRI)</div>
+   <div class="skin"><div class="patch" id="skin"></div>
+    <div class="txt" id="skintxt"></div></div>
+   <div class="verdict" id="verdict"></div>
+  </div>
+ </div>
+</div>
+<script>
+'use strict';
+const TYPES=[
+ {id:'rgb', n:'PAR LED RGB', s:'3 emissores. Barato. Cor forte, mas branco "sujo".', ch:['r','g','b']},
+ {id:'rgbw',n:'PAR LED RGBW',s:'+ emissor BRANCO. Pastéis e branco limpo.', ch:['r','g','b','w']},
+ {id:'cob', n:'COB branco quente', s:'1 chip grande. Branco de alto CRI, dimeriza como lâmpada.', ch:['dim']},
+];
+let cur='rgb';
+const st={r:255,g:255,b:255,w:0,dim:255};
+const typesEl=document.getElementById('types'),mixEl=document.getElementById('mix');
+function T(){return TYPES.find(t=>t.id===cur);}
+function buildTypes(){typesEl.innerHTML='';
+ TYPES.forEach(t=>{const d=document.createElement('div');d.className='ty'+(cur===t.id?' on':'');
+  d.innerHTML='<div class="n">'+t.n+'</div><div class="s">'+t.s+'</div>';
+  d.onclick=()=>{cur=t.id;buildTypes();buildMix();upd();};typesEl.appendChild(d);});}
+function buildMix(){mixEl.innerHTML='';
+ const labels={r:['Vermelho','#ff6b6b'],g:['Verde','#6bd98a'],b:['Azul','#6b9bff'],w:['Branco (W)','#ffffff'],dim:['Dimmer','#ffd24d']};
+ T().ch.forEach(k=>{const d=document.createElement('div');d.className='sl';
+  d.innerHTML='<label style="color:'+labels[k][1]+'">'+labels[k][0]+' <span data-v></span></label><input type="range" min="0" max="255" value="'+st[k]+'">';
+  const i=d.querySelector('input'),v=d.querySelector('[data-v]');
+  const u=()=>{v.textContent=k==='dim'?Math.round(st[k]/2.55)+'%':st[k];};u();
+  i.addEventListener('input',()=>{st[k]=+i.value;u();upd();});mixEl.appendChild(d);});}
+// cor emitida + qualidade (CRI simulado)
+function light(){
+ if(cur==='cob'){const d=st.dim/255;return {r:255*d,g:200*d,b:150*d,cri:96,dim:d};}
+ let r=st.r,g=st.g,b=st.b;
+ if(cur==='rgbw'){r=Math.min(255,r+st.w);g=Math.min(255,g+st.w);b=Math.min(255,b+st.w);}
+ const dim=Math.max(r,g,b)/255;
+ // CRI: RGB puro tem buracos no espectro → pior quanto mais "branco" você tenta fazer só com RGB
+ const isWhiteAttempt=Math.min(r,g,b)>150;
+ let cri= cur==='rgbw' ? (st.w>120?92:(isWhiteAttempt?72:80)) : (isWhiteAttempt?58:74);
+ return {r,g,b,cri,dim};
+}
+// pele sob a luz: com CRI baixo a pele fica esverdeada/acinzentada
+function skinUnder(L){
+ const base={r:222,g:172,b:140};
+ const t=(L.cri-55)/45; // 0 ruim, 1 bom
+ let r=base.r*(L.r/255), g=base.g*(L.g/255), b=base.b*(L.b/255);
+ // CRI baixo: desloca p/ verde e lava a saturação
+ const greenCast=(1-t)*0.35;
+ r=r*(1-greenCast*0.5); g=g*(1+greenCast*0.25); b=b*(1-greenCast*0.35);
+ const gray=(r+g+b)/3; const lav=(1-t)*0.45;
+ r=r+(gray-r)*lav; g=g+(gray-g)*lav; b=b+(gray-b)*lav;
+ return {r:Math.min(255,r),g:Math.min(255,g),b:Math.min(255,b)};
+}
+function upd(){
+ const L=light(),S=skinUnder(L);
+ document.getElementById('skin').style.background='rgb('+Math.round(S.r)+','+Math.round(S.g)+','+Math.round(S.b)+')';
+ const good=L.cri>=88, mid=L.cri>=72;
+ document.getElementById('skintxt').innerHTML='CRI estimado: <b>'+Math.round(L.cri)+'</b><br>'+
+  (good?'Pele natural — TV e foto aprovam.':mid?'Aceitável para show, mas a pele já perde vida.':'Pele <b>esverdeada e lavada</b> — o artista fica doente na câmera.');
+ const v=document.getElementById('verdict');
+ v.innerHTML=good?'<span style="color:#7fd0a0">✓ Fonte de qualidade para luz de rosto</span>':
+  mid?'<span style="color:#ffcf6b">◐ Serve para banho de cor, não para rosto</span>':
+  '<span style="color:#ff9a9a">✗ Branco "sujo" — é o limite do RGB puro</span>';
+ check();
+}
+// canvas
+const cv=document.getElementById('cv');const ctx=cv.getContext('2d');
+function sizeC(){const r=cv.getBoundingClientRect();const dpr=Math.min(2,devicePixelRatio||1);cv.width=r.width*dpr;cv.height=r.height*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);}
+function paint(){const r=cv.getBoundingClientRect();const W=r.width,H=r.height;ctx.clearRect(0,0,W,H);
+ ctx.fillStyle='#04060a';ctx.fillRect(0,0,W,H);
+ const L=light(),S=skinUnder(L);
+ const R=Math.round(L.r),G=Math.round(L.g),B=Math.round(L.b);
+ const n=cur==='cob'?3:6, gap=W/(n+1);
+ // fixtures + facho
+ for(let i=0;i<n;i++){const x=gap*(i+1),y=H*0.1;
+  ctx.fillStyle='#161b26';ctx.fillRect(x-13,y,26,11);
+  if(L.dim>0.02){const g=ctx.createLinearGradient(x,y+11,x,H*0.9);
+   g.addColorStop(0,'rgba('+R+','+G+','+B+','+Math.min(0.75,0.5*L.dim)+')');g.addColorStop(1,'rgba('+R+','+G+','+B+',0)');
+   ctx.beginPath();ctx.moveTo(x-8,y+11);ctx.lineTo(x-gap*0.5,H*0.9);ctx.lineTo(x+gap*0.5,H*0.9);ctx.lineTo(x+8,y+11);ctx.closePath();ctx.fillStyle=g;ctx.fill();}
+  // emissores (mostra RGB/W separados no PAR LED)
+  if(cur!=='cob'){const em=cur==='rgbw'?[['r',st.r],['g',st.g],['b',st.b],['w',st.w]]:[['r',st.r],['g',st.g],['b',st.b]];
+   em.forEach((e,k)=>{const col={r:[255,40,40],g:[40,255,40],b:[40,90,255],w:[255,250,240]}[e[0]];
+    const a=e[1]/255;ctx.fillStyle='rgba('+col[0]+','+col[1]+','+col[2]+','+(0.15+0.85*a)+')';
+    ctx.beginPath();ctx.arc(x-9+k*6,y+16,2.3,0,7);ctx.fill();});}
+  else{ctx.fillStyle='rgba(255,220,180,'+(0.2+0.8*L.dim)+')';ctx.beginPath();ctx.arc(x,y+17,5,0,7);ctx.fill();}
+ }
+ // artista com a pele calculada
+ const cx=W*0.5,gy=H*0.93;
+ ctx.fillStyle='rgb('+Math.round(S.r)+','+Math.round(S.g)+','+Math.round(S.b)+')';
+ ctx.beginPath();ctx.ellipse(cx,gy-H*0.36,W*0.021,H*0.085,0,0,7);ctx.fill();
+ ctx.beginPath();ctx.moveTo(cx-W*0.032,gy);ctx.lineTo(cx-W*0.021,gy-H*0.3);ctx.lineTo(cx+W*0.021,gy-H*0.3);ctx.lineTo(cx+W*0.032,gy);ctx.closePath();ctx.fill();
+ ctx.fillStyle='#5f7392';ctx.font='9.5px system-ui';ctx.textAlign='center';ctx.fillText('a pele do artista sob esta fonte',cx,gy-H*0.44);
+ ctx.textAlign='left';ctx.fillText(T().n+' · CRI ~'+Math.round(L.cri),10,H-8);
+}
+(function loop(){paint();requestAnimationFrame(loop);})();
+// missões
+const M=[
+ {t:'<b>O problema do RGB:</b> no <b>PAR LED RGB</b>, suba R, G e B no máximo para tentar fazer branco. Olhe a pele do artista e o CRI — vai ficar <b>esverdeada e lavada</b>. Esse é o limite do RGB puro.',
+  ok:()=>cur==='rgb'&&st.r>240&&st.g>240&&st.b>240},
+ {t:'<b>A solução:</b> troque para <b>RGBW</b> e use o emissor <b>W</b> (branco) acima de 200 para limpar o branco. Veja o CRI subir e a pele voltar ao natural.',
+  ok:()=>cur==='rgbw'&&st.w>200},
+ {t:'<b>A referência:</b> ligue o <b>COB branco quente</b> a 100%. É a fonte de <b>maior CRI</b> — por isso ela é a escolha para luz de rosto em TV e corporativo.',
+  ok:()=>cur==='cob'&&st.dim>240},
+ {t:'<b>Conclusão de profissional:</b> volte ao <b>RGB</b> e faça uma cor <b>saturada</b> (ex.: só azul no máximo, R e G em 0). Repare: para <b>cor</b> o RGB é ótimo e barato — o problema dele é só o branco. Cada fonte tem seu lugar.',
+  ok:()=>cur==='rgb'&&st.b>240&&st.r<40&&st.g<40},
+];
+let mi=0;
+function drawM(){document.getElementById('mission').innerHTML='<div><b>Cenário '+(mi+1)+'/'+M.length+':</b> '+M[mi].t+'</div><div class="mrow"><span class="dot" id="mdot"></span><span id="mstat">…</span><button class="btn go" id="mnext">Próximo ▸</button></div>';
+ document.getElementById('mnext').onclick=()=>{mi=(mi+1)%M.length;drawM();check();};check();}
+function check(){const dot=document.getElementById('mdot');if(!dot)return;let ok=false;try{ok=M[mi].ok();}catch(e){}
+ dot.classList.toggle('ok',ok);document.getElementById('mstat').textContent=ok?'✓ Cumprido!':'…';}
+buildTypes();buildMix();drawM();sizeC();upd();addEventListener('resize',sizeC);
+</script></body></html>

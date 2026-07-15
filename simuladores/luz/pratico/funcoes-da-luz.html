@@ -1,0 +1,143 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Simulador — As 5 funções da luz (o que o LD realmente faz)</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;-webkit-tap-highlight-color:transparent}
+html,body{background:#0a0c10;color:#e9edf2}body{padding:10px}
+.app{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+h1{font-size:clamp(15px,4vw,20px);font-weight:800;color:#eaf0ff}
+.t{font-size:12px;color:#9daecb;line-height:1.45}
+.mission{background:#0e1626;border:1px solid #24406e;border-radius:11px;padding:10px 12px;font-size:12.5px;line-height:1.5}
+.mission b{color:#8fd0ff}
+.mrow{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap}
+.dot{width:14px;height:14px;border-radius:50%;border:2px solid #37507a;flex:none}.dot.ok{background:#39d98a;border-color:#39d98a}
+.btn{background:#1b2740;color:#dce7fb;border:1px solid #33507f;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer}
+.btn.go{background:#1e5a3a;border-color:#2f8f5b}
+.stage{width:100%;aspect-ratio:16/7;background:#04060a;border:1px solid #1c2740;border-radius:12px;overflow:hidden}
+@media(max-width:560px){.stage{aspect-ratio:4/2.7}}
+.stage canvas{width:100%;height:100%;display:block}
+.gt{font-size:10px;font-weight:800;color:#8aa0c2;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
+.box{background:#10141d;border:1px solid #222c40;border-radius:12px;padding:10px}
+.funcs{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:7px}
+.fn{background:#0d1119;border:2px solid #26314a;border-radius:10px;padding:9px;cursor:pointer}
+.fn.on{border-color:#39d98a;background:#0d2016}
+.fn h3{font-size:12px;font-weight:800;color:#eaf0ff;display:flex;justify-content:space-between;align-items:center}
+.fn h3 .sw{width:36px;height:20px;border-radius:999px;background:#2a3550;position:relative;flex:none}
+.fn.on h3 .sw{background:#39d98a}
+.fn h3 .sw i{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.15s}
+.fn.on h3 .sw i{left:18px}
+.fn .d{font-size:9.5px;color:#7fa0d0;font-weight:700;margin-top:3px}
+.fn .s{font-size:9px;color:#7487a8;margin-top:3px;line-height:1.35}
+.verdict{font-size:12px;line-height:1.6;margin-top:8px;padding:9px 11px;border-radius:9px;background:#0d1119;border:1px solid #1f2839;color:#a9bcd8}
+.verdict b{color:#ffd24d}
+.role{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}
+.role .r{background:#0d1421;border:1px solid #26314a;border-radius:9px;padding:9px;font-size:10.5px;line-height:1.5;color:#bcd0ec}
+.role .r b{color:#7fb2ff;display:block;font-size:11px;margin-bottom:3px}
+</style></head><body>
+<div class="app">
+ <h1>🎭 As 5 funções da luz — o que o LD realmente faz</h1>
+ <div class="t">Luz não é "acender o palco". O light designer usa a luz para <b>5 funções</b> distintas. Ligue e desligue cada uma e veja o que se perde — é assim que se entende o ofício.</div>
+ <div class="mission" id="mission"></div>
+ <div class="stage"><canvas id="cv"></canvas></div>
+ <div class="box"><div class="gt">As 5 funções (toque para ligar/desligar)</div>
+  <div class="funcs" id="funcs"></div>
+  <div class="verdict" id="verdict"></div>
+ </div>
+ <div class="box"><div class="gt">Quem faz o quê</div>
+  <div class="role">
+   <div class="r"><b>Light Designer (LD)</b>Concebe: decide o desenho, as cores, o clima de cada música. Faz o projeto e o rider. Pensa o "como vai ser".</div>
+   <div class="r"><b>Operador de luz</b>Executa: monta, endereça, programa a mesa e opera o show ao vivo. Em eventos menores, a mesma pessoa faz os dois papéis.</div>
+  </div>
+ </div>
+</div>
+<script>
+'use strict';
+const FN=[
+ {id:'vis', n:'1 · VISIBILIDADE', d:'deixar VER', s:'A plateia precisa ver o rosto. Sem frontal, o artista vira silhueta.', on:false},
+ {id:'foco',n:'2 · FOCO', d:'guiar o olhar', s:'Destaca quem importa. O olho vai para o ponto mais claro do palco.', on:false},
+ {id:'cor', n:'3 · COR', d:'emoção', s:'Cor cria o clima: quente acolhe, fria distancia, saturada agita.', on:false},
+ {id:'atm', n:'4 · ATMOSFERA', d:'o ar', s:'Fumaça + contraluz criam profundidade e revelam o facho.', on:false},
+ {id:'rit', n:'5 · RITMO', d:'tempo', s:'A luz pulsa com a música: chase, strobe, blackout na virada.', on:false},
+];
+const F=(id)=>FN.find(f=>f.id===id).on;
+const funcsEl=document.getElementById('funcs');
+function build(){funcsEl.innerHTML='';
+ FN.forEach(f=>{const d=document.createElement('div');d.className='fn'+(f.on?' on':'');
+  d.innerHTML='<h3>'+f.n+'<span class="sw"><i></i></span></h3><div class="d">'+f.d+'</div><div class="s">'+f.s+'</div>';
+  d.onclick=()=>{f.on=!f.on;build();upd();};funcsEl.appendChild(d);});}
+function upd(){
+ const n=FN.filter(f=>f.on).length;
+ const v=document.getElementById('verdict');
+ let msg;
+ if(n===0)msg='<b>Palco apagado.</b> Nenhuma função ligada — é só um palco escuro.';
+ else if(!F('vis'))msg='<span style="color:#ffb066"><b>⚠ Falta VISIBILIDADE.</b></span> Pode estar lindo, mas a plateia não vê o rosto do artista. É o erro nº 1 do iniciante: fazer efeito e esquecer que alguém precisa ser visto.';
+ else if(n===1)msg='<b>Só visibilidade:</b> o artista aparece, mas está <b>chapado</b> — sem destaque, sem clima, sem profundidade. É luz de reunião, não de show.';
+ else if(n===5)msg='<span style="color:#7fd0a0"><b>✓ As 5 funções juntas.</b></span> Isso é design de luz: o público vê, sabe para onde olhar, sente a emoção da cor, percebe a profundidade do ar e acompanha o ritmo da música. Cada função resolve um problema diferente.';
+ else msg='<b>'+n+'/5 funções ativas.</b> Repare no que ainda falta: '+FN.filter(f=>!f.on).map(f=>f.d).join(' · ')+'.';
+ v.innerHTML=msg;
+ check();
+}
+const cv=document.getElementById('cv');const ctx=cv.getContext('2d');
+function sizeC(){const r=cv.getBoundingClientRect();const dpr=Math.min(2,devicePixelRatio||1);cv.width=r.width*dpr;cv.height=r.height*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);}
+function paint(){const r=cv.getBoundingClientRect();const W=r.width,H=r.height;ctx.clearRect(0,0,W,H);
+ const t=performance.now();
+ ctx.fillStyle='#04060a';ctx.fillRect(0,0,W,H);
+ // ritmo: pulsa
+ const pulse=F('rit')?(0.55+0.45*Math.abs(Math.sin(t/380))):1;
+ // cor
+ const col=F('cor')?{r:255,g:60,b:170}:{r:255,g:240,b:220};
+ const cyc=F('cor')?{r:40,g:60,b:255}:{r:60,g:60,b:70};
+ // ciclorama
+ if(F('cor')){const g=ctx.createLinearGradient(0,H*0.82,0,H*0.05);g.addColorStop(0,'rgba('+cyc.r+','+cyc.g+','+cyc.b+',0.5)');g.addColorStop(1,'rgba('+cyc.r+','+cyc.g+','+cyc.b+',0)');ctx.fillStyle=g;ctx.fillRect(0,H*0.05,W,H*0.77);}
+ // atmosfera (haze + contraluz)
+ if(F('atm')){
+  ctx.fillStyle='rgba(130,160,200,0.05)';ctx.fillRect(0,0,W,H);
+  for(let i=0;i<4;i++){const x=W*(0.22+i*0.19),y=H*0.1;
+   const g=ctx.createLinearGradient(x,y,x,H*0.85);
+   g.addColorStop(0,'rgba('+col.r+','+col.g+','+col.b+','+(0.5*pulse)+')');g.addColorStop(1,'rgba('+col.r+','+col.g+','+col.b+',0)');
+   ctx.beginPath();ctx.moveTo(x-4,y);ctx.lineTo(x-W*0.03,H*0.85);ctx.lineTo(x+W*0.03,H*0.85);ctx.lineTo(x+4,y);ctx.closePath();ctx.fillStyle=g;ctx.fill();}}
+ const cx=W*0.5, gy=H*0.9;
+ // foco: pool destacando o artista
+ if(F('foco')){const pg=ctx.createRadialGradient(cx,gy,4,cx,gy,W*0.15);
+  pg.addColorStop(0,'rgba(255,250,230,'+(0.5*pulse)+')');pg.addColorStop(1,'rgba(255,250,230,0)');
+  ctx.fillStyle=pg;ctx.beginPath();ctx.ellipse(cx,gy,W*0.15,H*0.09,0,0,7);ctx.fill();}
+ // visibilidade: frontal ilumina o rosto
+ const lit=F('vis')?(0.95*pulse):0.06;
+ // figurantes (contexto)
+ [W*0.22,W*0.78].forEach(x=>{
+  const l=F('vis')?0.4*pulse:0.05;
+  ctx.fillStyle='rgb('+Math.round(28+150*l)+','+Math.round(26+130*l)+','+Math.round(26+120*l)+')';
+  ctx.beginPath();ctx.ellipse(x,gy-H*0.3,W*0.014,H*0.055,0,0,7);ctx.fill();
+  ctx.beginPath();ctx.moveTo(x-W*0.021,gy);ctx.lineTo(x-W*0.014,gy-H*0.25);ctx.lineTo(x+W*0.014,gy-H*0.25);ctx.lineTo(x+W*0.021,gy);ctx.closePath();ctx.fill();});
+ // artista principal
+ const R=Math.round(30+200*lit), G=Math.round(28+170*lit), B=Math.round(28+150*lit);
+ ctx.fillStyle='rgb('+R+','+G+','+B+')';
+ ctx.beginPath();ctx.ellipse(cx,gy-H*0.38,W*0.021,H*0.08,0,0,7);ctx.fill();
+ ctx.beginPath();ctx.moveTo(cx-W*0.031,gy);ctx.lineTo(cx-W*0.021,gy-H*0.32);ctx.lineTo(cx+W*0.021,gy-H*0.32);ctx.lineTo(cx+W*0.031,gy);ctx.closePath();ctx.fill();
+ // rosto visível?
+ if(F('vis')){ctx.fillStyle='rgba(0,0,0,0.45)';ctx.beginPath();ctx.arc(cx-W*0.008,gy-H*0.39,W*0.0035,0,7);ctx.arc(cx+W*0.008,gy-H*0.39,W*0.0035,0,7);ctx.fill();}
+ // contraluz rim (atmosfera)
+ if(F('atm')){ctx.strokeStyle='rgba('+col.r+','+col.g+','+col.b+',0.9)';ctx.lineWidth=2;
+  ctx.beginPath();ctx.ellipse(cx,gy-H*0.38,W*0.021,H*0.08,0,-2.2,-0.4);ctx.stroke();}
+ // rótulo
+ ctx.fillStyle='#5f7392';ctx.font='9.5px system-ui';ctx.textAlign='left';
+ const on=FN.filter(f=>f.on).map(f=>f.d);
+ ctx.fillText(on.length?('funções ativas: '+on.join(' · ')):'palco apagado',10,H-8);
+ if(!F('vis')&&FN.some(f=>f.on)){ctx.fillStyle='#ffb066';ctx.font='bold 10px system-ui';ctx.textAlign='center';
+  ctx.fillText('a plateia não vê o rosto do artista',cx,H*0.2);}
+}
+(function loop(){paint();requestAnimationFrame(loop);})();
+const M=[
+ {t:'<b>O erro nº 1:</b> ligue <b>cor + atmosfera + ritmo</b> mas deixe a <b>visibilidade DESLIGADA</b>. Fica lindo… e o público não vê o rosto do artista. Todo iniciante faz isso.',
+  ok:()=>!F('vis')&&F('cor')&&F('atm')&&F('rit')},
+ {t:'<b>O básico primeiro:</b> ligue a <b>visibilidade</b> sozinha (desligue as outras). Agora vê-se o rosto — mas está chapado, sem graça. Visibilidade é o piso, não o teto.',
+  ok:()=>F('vis')&&FN.filter(f=>f.on).length===1},
+ {t:'<b>O ofício completo:</b> ligue <b>as 5 funções</b>. Cada uma resolve um problema diferente — juntas, viram design de luz.',
+  ok:()=>FN.every(f=>f.on)},
+];
+let mi=0;
+function drawM(){document.getElementById('mission').innerHTML='<div><b>Cenário '+(mi+1)+'/'+M.length+':</b> '+M[mi].t+'</div><div class="mrow"><span class="dot" id="mdot"></span><span id="mstat">…</span><button class="btn go" id="mnext">Próximo ▸</button></div>';
+ document.getElementById('mnext').onclick=()=>{mi=(mi+1)%M.length;drawM();check();};check();}
+function check(){const dot=document.getElementById('mdot');if(!dot)return;let ok=false;try{ok=M[mi].ok();}catch(e){}
+ dot.classList.toggle('ok',ok);document.getElementById('mstat').textContent=ok?'✓ Entendeu o ofício!':'…';}
+build();drawM();sizeC();upd();addEventListener('resize',sizeC);
+</script></body></html>
