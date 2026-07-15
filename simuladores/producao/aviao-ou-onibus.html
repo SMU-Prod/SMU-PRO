@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>SMU PRO · Avião ou ônibus? A conta que decide</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0c1017;--panel:#161c26;--panel2:#1b2230;--line:#2a3444;--ink:#e7edf5;--dim:#8794a8;
+        --accent:#f59e0b;--ok:#22c55e;--err:#ef4444;--warn:#f59e0b;--cyan:#38bdf8;}
+  html,body{background:var(--bg);color:var(--ink);
+    font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased;}
+  body{padding:12px;}
+  .app{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:12px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  h1{font-size:15px;margin-bottom:3px;}
+  h2{font-size:12px;letter-spacing:.5px;text-transform:uppercase;color:var(--dim);margin-bottom:8px;}
+  .sub{font-size:12px;color:var(--dim);margin-bottom:12px;line-height:1.5;}
+  .brief{background:#0d1622;border:1px solid #1e3a5f;border-radius:9px;padding:11px 12px;font-size:12px;line-height:1.6;color:#c7dcf5;}
+  .brief b{color:#7dd3fc;}
+  /* min-width:0 obrigatório: item de grid tem min-width:auto e a tabela empurraria a coluna no celular. */
+  .layout{display:grid;grid-template-columns:1fr;gap:12px;}
+  .layout>*{min-width:0;}
+  @media(min-width:660px){.layout{grid-template-columns:1fr 272px;align-items:start;}}
+  .bloco{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:10px;margin-bottom:9px;}
+  .bloco .bt{font-size:12px;font-weight:700;margin-bottom:2px;}
+  .bloco .bd{font-size:10.5px;color:#5f6b7d;line-height:1.45;margin-bottom:8px;}
+  .fld{display:flex;align-items:center;gap:7px;margin-top:6px;min-height:34px;}
+  .fld>span{font-size:10.5px;color:var(--dim);width:74px;flex:none;}
+  select,input[type=number]{background:#0f1520;border:1px solid var(--line);color:var(--ink);border-radius:6px;
+    padding:6px;font:inherit;font-size:11.5px;min-height:34px;width:100%;}
+  select:focus,input:focus{outline:0;border-color:var(--accent);}
+  input[type=number]{width:56px;flex:none;text-align:right;font-variant-numeric:tabular-nums;}
+  .tl{font-size:10.5px;color:var(--dim);margin-top:7px;line-height:1.5;border-top:1px dashed #263041;padding-top:6px;}
+  .tl b{color:#cbd5e1;font-variant-numeric:tabular-nums;}
+  .tl .late{color:#fca5a5;font-weight:700;} .tl .fine{color:#86efac;font-weight:700;}
+  .sheetwrap{overflow-x:auto;border:1px solid var(--line);border-radius:9px;background:#0a0e15;}
+  table{border-collapse:collapse;width:100%;min-width:470px;font-size:11.5px;}
+  th{background:#111827;color:var(--dim);font-size:9.5px;letter-spacing:.6px;text-transform:uppercase;
+    padding:7px 8px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap;font-weight:600;}
+  td{padding:6px 8px;border-bottom:1px solid #1a2130;vertical-align:middle;}
+  tr:last-child td{border-bottom:0;}
+  td select{min-width:120px;font-size:10.5px;}
+  .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
+  .desc small{display:block;color:#5f6b7d;font-size:9.5px;margin-top:1px;}
+  .tot{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:10px 11px;}
+  .tline{display:flex;justify-content:space-between;align-items:baseline;font-size:11.5px;padding:3px 0;gap:8px;}
+  .tline span:first-child{color:var(--dim);}
+  .tline .v{font-variant-numeric:tabular-nums;font-weight:700;}
+  .tline.big{border-top:1px solid var(--line);margin-top:6px;padding-top:8px;font-size:13px;}
+  .tline.big .v{font-size:16px;font-weight:800;color:var(--accent);}
+  .tline.neg .v{color:#fca5a5;} .tline.pos .v{color:#86efac;}
+  .verdict{font-size:12.5px;font-weight:700;padding:10px 12px;border-radius:8px;text-align:center;line-height:1.45;}
+  .verdict.ok{background:#14532d;color:#bbf7d0;} .verdict.bad{background:#450a0a;color:#fca5a5;}
+  .verdict.warn{background:#422006;color:#fde68a;}
+  .btn{border:1px solid var(--line);background:#0f1520;color:var(--ink);border-radius:7px;
+       padding:9px 10px;font-size:11.5px;font-weight:700;width:100%;min-height:38px;}
+  .btn.go{background:#42200680;border-color:var(--accent);color:#fde68a;}
+  .findings{display:flex;flex-direction:column;gap:7px;}
+  .fx{border-radius:8px;padding:9px 11px;font-size:11.5px;line-height:1.55;border:1px solid;}
+  .fx.miss{background:#2b1013;border-color:#7f2c2c;color:#fbcfcf;}
+  .fx.warnx{background:#241a08;border-color:#5a4416;color:#fde3b0;}
+  .fx.good{background:#0d2114;border-color:#2b6b45;color:#b7ecc9;}
+  .fx b{color:#fff;}
+  .src{font-size:9.5px;color:#5f6b7d;line-height:1.5;margin-top:7px;border-top:1px solid #1a2130;padding-top:6px;}
+  .src b{color:#8794a8;}
+  .note{font-size:11.5px;color:var(--dim);line-height:1.6;} .note b{color:#cbd5e1;}
+  .prem{font-size:10.5px;color:var(--dim);line-height:1.65;} .prem b{color:#fbbf24;}
+  .foot{background:#241a08;border:1px solid #5a4416;color:#fde3b0;border-radius:8px;padding:9px 11px;
+        font-size:10.5px;line-height:1.5;text-align:center;font-weight:600;}
+  button{font:inherit;cursor:pointer;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="card">
+    <h1>Avião ou ônibus? A conta que decide</h1>
+    <div class="sub">Você tem orçamento fechado e uma comitiva para pôr em Porto Alegre. Monte a solução, olhe a linha do tempo e depois <b>Conferir</b>.</div>
+    <div class="brief" id="brief"></div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="card" style="margin-bottom:12px">
+        <h2>Como cada bloco viaja</h2>
+        <div id="blocos"></div>
+        <label class="fld"><span>Companhia</span>
+          <select id="cia"><option value="GOL">GOL</option><option value="AZUL">Azul</option></select></label>
+        <label class="fld"><span>Bagagem comprada</span>
+          <select id="ant">
+            <option value="p48">Mais de 48 h antes do voo</option>
+            <option value="m48">Menos de 48 h antes do voo</option>
+            <option value="apt">No balcão do aeroporto</option>
+          </select></label>
+        <div class="src" id="srcAereo"></div>
+      </div>
+
+      <div class="card">
+        <h2>Carga técnica — 10 volumes</h2>
+        <div class="sub" style="margin-bottom:9px">Escolha o destino de cada linha e o peso de cada volume. As <b>malas pessoais (2 por pessoa: mala de 18 kg + case de ferramenta de 14 kg)</b> viajam sempre com o dono.</div>
+        <div class="sheetwrap">
+          <table>
+            <thead><tr>
+              <th style="width:42%">Volume</th><th class="num">Qtd</th><th class="num">kg/vol</th><th>Destino</th>
+            </tr></thead>
+            <tbody id="carga"></tbody>
+          </table>
+        </div>
+        <div class="src" id="srcTerra"></div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:9px">
+      <div class="tot" id="totals"></div>
+      <div class="tot" id="modais"></div>
+      <button class="btn go" id="check">Conferir a solução</button>
+      <button class="btn" id="reset">Reiniciar</button>
+      <div class="note" id="hint"></div>
+    </div>
+  </div>
+
+  <div class="card" id="result" style="display:none">
+    <h1 style="margin-bottom:9px">Conferência</h1>
+    <div class="verdict" id="verdict" style="margin-bottom:11px"></div>
+    <div class="findings" id="findings"></div>
+  </div>
+
+  <div class="card">
+    <h2>Premissas do cenário — o que é estimativa e o que é norma</h2>
+    <div class="prem" id="premBox"></div>
+  </div>
+
+  <div class="foot">Preços de bagagem são livres e mudam sem aviso. Snapshot de 15/07/2026. Confira no checkout antes de orçar.</div>
+
+</div>
+<script>
+(function(){
+var $=function(s){return document.querySelector(s);};
+
+/* PREMISSAS — todo valor deste objeto é
+   ⚠️ ESTIMADO — premissa do exercício, não é dado oficial.
+   Nenhum tem fonte publicada: são o cenário que o exercício define. Os números de
+   NORMA e de TABELA DE CIA estão em TABELAS, logo abaixo, e esses sim têm fonte. */
+var PREMISSAS={
+  orcamento:25500,      // verba fechada do contratante para deslocar a comitiva (ida)
+  tarifaAerea:890,      // tarifa aérea por pessoa, SP→POA, só ida
+  onibusLinha:340,      // passagem rodoviária de linha, leito, por pessoa
+  fretamento:6900,      // fretamento eventual, ônibus executivo, ida, porta a porta
+  trasladoAereo:820, trasladoRodo:380, // do aeroporto / da rodoviária ao venue, por bloco
+  freteAvulso:520,      // frete de carga porta a porta, por volume
+  diariaMontagem:480,   // diária por pessoa/dia do bloco de montagem
+  diariaChave:1800,     // diária contratual por pessoa/dia do artista e dos técnicos-chave
+  hotelNoite:170,       // hotel por pessoa/noite em Porto Alegre
+  horasAereo:5,         // porta a porta: check-in, voo, retirada de bagagem
+  horasLinha:18, horasFret:16, // SP→POA de linha (com paradas) e fretado (sem baldeação)
+  distanciaKm:1100      // distância aproximada do trecho
+};
+
+/* TABELAS — FATOS. Tudo aqui tem fonte, citada na tela.
+   p48/m48/apt = preço da 1ª / 2ª / 3ª–5ª bagagem, por antecedência de compra. */
+var TABELAS={
+  GOL:{ nome:'GOL', p48:[130,155,210,210,210], m48:[165,200,280,280,280], apt:[180,200,280,280,280],
+    exc32a45:350,            // excesso 32→45 kg
+    especial:195,            // diferenciada: mesmo preço em qualquer antecedência, limite 292 cm
+    especialNome:'diferenciada', maxPecas:5, limitePeso:45, especialCm:0 },
+  AZUL:{ nome:'Azul', p48:[175,200,220,220,220], m48:[200,220,280,280,280],
+    apt:null,                // a Azul não publica coluna de aeroporto
+    exc32a45:null,           // excesso de peso não publicado
+    especial:250, especialNome:'especial', maxPecas:5, limitePeso:45, especialCm:158, perigosoCm:95 }
+};
+
+var CARGA=[
+ {id:'rack',n:'Rack de multicabo, cabos e stands',   q:3,kg:30,cm:145,cls:'normal'},
+ {id:'mic', n:'Case rígido de microfones e DIs',      q:1,kg:22,cm:118,cls:'normal'},
+ {id:'wed', n:'Retorno de palco (caixa acústica)',    q:4,kg:21,cm:132,cls:'perigoso'},
+ {id:'amp', n:'Cabeçote de baixo (amplificador)',     q:1,kg:24,cm:118,cls:'perigoso'},
+ {id:'bum', n:'Bumbo em case rígido',                 q:1,kg:19,cm:180,cls:'especial'}
+];
+var DEPS=[{v:-34,n:'Antevéspera, 14:00'},{v:-10,n:'Véspera, 14:00'},{v:5,n:'Dia do show, 05:00'}];
+var MODAIS=[{v:'aereo',n:'Aéreo'},{v:'linha',n:'Ônibus de linha'},{v:'fret',n:'Fretamento eventual'}];
+var BLOCOS={
+  mont: {pax:5,tit:'Montagem e carga — 5 pessoas',deadline:8,
+         desc:'Rigger, 2 roadies, técnico de palco, eletricista. Levam a carga técnica. Precisam estar no venue no <b>load-in: dia do show, 08:00</b>.'},
+  chave:{pax:4,tit:'Artista e técnicos-chave — 4 pessoas',deadline:16,
+         desc:'Artista, diretor musical, FOH e monitor. Precisam estar no venue na <b>passagem de som: dia do show, 16:00</b>. Show às 22:00.'}
+};
+
+// estado inicial de propósito errado: tudo de avião, backline junto, rack em peso sem preço orçável
+var S,ini=function(){return{ mont:{modal:'aereo',dep:-10}, chave:{modal:'aereo',dep:-10}, cia:'GOL', ant:'p48',
+  destino:{rack:'bloco',mic:'bloco',wed:'bloco',amp:'bloco',bum:'bloco'}, kg:{rack:30,mic:22,wed:21,amp:24,bum:19} };};
+S=ini();
+
+var money=function(v){return 'R$ '+Math.round(v).toLocaleString('pt-BR');};
+function fmtT(h){ // h = horas relativas a 00:00 do dia do show
+  var d=Math.floor(h/24), hh=((h%24)+24)%24;
+  return (d===0?'dia do show':(d===-1?'véspera':(d===-2?'antevéspera':'D'+d)))+' '+(hh<10?'0':'')+hh+':00';
+}
+
+/* ---------- MODELO ------------------------------------------------------- */
+function fretCount(){
+  var n=(S.mont.modal==='fret'?1:0)+(S.chave.modal==='fret'?1:0);
+  if(n===2 && S.mont.dep===S.chave.dep) n=1; // mesmo veículo, mesma partida = um fretamento
+  return n;
+}
+function blocoCalc(b){
+  var cfg=S[b], pax=BLOCOS[b].pax;
+  var dur=cfg.modal==='aereo'?PREMISSAS.horasAereo:(cfg.modal==='linha'?PREMISSAS.horasLinha:PREMISSAS.horasFret);
+  var arr=cfg.dep+dur;
+  var dias=cfg.dep<-24?3:(cfg.dep<0?2:1);        // dias engajados, da partida até o dia do show
+  var noites=arr<-24?2:(arr<0?1:0);              // noites de hotel antes do show
+  var diaria=(b==='mont')?PREMISSAS.diariaMontagem:PREMISSAS.diariaChave;
+  return {b:b,pax:pax,dep:cfg.dep,dur:dur,arr:arr,dias:dias,noites:noites,deadline:BLOCOS[b].deadline,
+    transporte:cfg.modal==='aereo'?pax*PREMISSAS.tarifaAerea:(cfg.modal==='linha'?pax*PREMISSAS.onibusLinha:0),
+    traslado:cfg.modal==='aereo'?PREMISSAS.trasladoAereo:(cfg.modal==='linha'?PREMISSAS.trasladoRodo:0),
+    diarias:pax*dias*diaria, hotel:pax*noites*PREMISSAS.hotelNoite, margem:BLOCOS[b].deadline-arr};
+}
+function despacho(V,P,tab){ // V volumes distribuídos entre P passageiros, cobrados por ordem
+  var c=0,i,j,k;
+  for(i=0;i<P;i++){ k=Math.floor(V/P)+(i<(V%P)?1:0);
+    for(j=0;j<k && j<tab.length;j++) c+=tab[j]; }
+  return c;
+}
+function bag(b,antForce){
+  var T=TABELAS[S.cia], ant=antForce||S.ant, out={custo:0,vols:0,esp:0,exc:0,E:[],W:[]};
+  if(S[b].modal!=='aereo') return out;
+  var pax=BLOCOS[b].pax, list=[
+    {n:'Mala pessoal',q:pax,kg:18,cm:120,cls:'normal'},
+    {n:'Case de ferramenta',q:pax,kg:14,cm:105,cls:'normal'}];
+  if(b==='mont') CARGA.forEach(function(c){ if(S.destino[c.id]==='bloco') list.push({n:c.n,q:c.q,kg:S.kg[c.id],cm:c.cm,cls:c.cls}); });
+  var tab=T[ant]||T.m48; // Azul não publica coluna de aeroporto: cai em −48h
+  var normais=0;
+  list.forEach(function(x){
+    if(x.cls==='perigoso'){ // backline não viaja como bagagem: sai do cálculo e vira erro
+      if(S.cia==='AZUL') out.E.push({h:'Azul recusa '+x.q+'× '+x.n+' como bagagem.',
+        m:'Alto-falante, amplificador e caixa acústica são <b>artigos perigosos</b> (objetos magnéticos): só até <b>95 cm somados</b> e <b>1 por passageiro</b>. Este volume tem <b>'+x.cm+' cm</b>. Acima disso vai para a <b>Azul Cargo</b> — é frete, não é bagagem. <i>Azul, política de bagagem e artigos perigosos, snapshot 15/07/2026.</i>'});
+      else out.E.push({h:'Backline como bagagem na GOL: você não tem número para orçar.',
+        m:'A GOL não publica regra de objeto magnético nesta base de fatos, e a <b>Azul classifica alto-falante, amplificador e caixa acústica como artigo perigoso</b>. A ANAC ainda permite que a cia recuse: bagagem fora das regras "poderão ser recusadas ou submetidas a contrato de transporte de carga" (<b>Res. ANAC 400/2016, art. 15</b>). Orçar backline pesado como bagagem é apostar o show num item que a cia pode deixar no balcão.'});
+      return;
+    }
+    if(x.cls==='especial'||(T.especialCm && x.cm>T.especialCm)){ out.esp+=x.q*T.especial; out.custo+=x.q*T.especial; out.vols+=x.q; return; }
+    normais+=x.q;
+    if(x.kg>T.limitePeso) out.E.push({h:x.n+': '+x.kg+' kg por volume — a cia não transporta.',
+      m:'Acima de <b>45 kg</b> o volume não é aceito no doméstico brasileiro. <i>GOL e Azul, políticas publicadas, snapshot 15/07/2026.</i>'});
+    else if(x.kg>32){
+      if(T.exc32a45!==null){ out.exc+=x.q*T.exc32a45; out.custo+=x.q*T.exc32a45; }
+      else out.E.push({h:x.n+': '+x.kg+' kg — a Azul não publica preço de excesso de peso.',
+        m:'Sem número publicado não existe orçamento. Ou você reembala para <b>23 kg</b>, ou muda de cia, ou pega o preço por escrito antes de fechar o show.'});
+    }
+    else if(x.kg>23) out.E.push({h:x.n+': '+x.kg+' kg — zona sem preço confiável.',
+      m:'O excesso de <b>23→32 kg</b> aparece com <b>dois valores divergentes em páginas oficiais da própria GOL (R$ 170 e R$ 275)</b>. Fonte que se contradiz não vira linha de orçamento. Reembale para <b>23 kg</b> (a franquia por volume das três cias) ou consolide em volume de <b>32–45 kg</b>, que tem preço publicado (GOL, excesso R$ 350/volume).'});
+  });
+  out.vols+=normais;
+  if(normais>pax*T.maxPecas) out.E.push({h:normais+' volumes despachados para '+pax+' passageiros.',
+    m:'O limite é <b>5 peças de 23 kg por passageiro por trecho</b>. Acima disso o excedente vira carga, não bagagem.'});
+  out.custo+=despacho(normais,pax,tab);
+  return out;
+}
+function totals(){
+  var m=blocoCalc('mont'), c=blocoCalc('chave'), bm=bag('mont'), bc=bag('chave');
+  m.bagagem=bm.custo; c.bagagem=bc.custo;
+  var fret=fretCount()*PREMISSAS.fretamento, frete=0;
+  CARGA.forEach(function(x){ if(S.destino[x.id]==='frete') frete+=x.q*PREMISSAS.freteAvulso; });
+  var t={passagens:m.transporte+c.transporte+fret, bagagem:bm.custo+bc.custo, frete:frete,
+         traslado:m.traslado+c.traslado, diarias:m.diarias+c.diarias, hotel:m.hotel+c.hotel};
+  t.total=t.passagens+t.bagagem+t.frete+t.traslado+t.diarias+t.hotel;
+  t.folga=PREMISSAS.orcamento-t.total;
+  return {m:m,c:c,bm:bm,bc:bc,fret:fret,t:t};
+}
+
+/* ---------- RENDER ------------------------------------------------------- */
+$('#brief').innerHTML='<b>Briefing.</b> Comitiva técnica de <b>9 pessoas</b> mais a carga técnica, <b>São Paulo → Porto Alegre</b> (~'+PREMISSAS.distanciaKm+' km), só a ida. '+
+  '<b>Load-in no dia do show às 08:00</b>, passagem de som às 16:00, show às 22:00. Verba fechada do contratante: <b>'+money(PREMISSAS.orcamento)+'</b>. '+
+  'A comitiva não é intercambiável — quem sobe grid não é quem mixa. Os dois blocos são fixos; o que você escolhe é <b>como cada um viaja</b> e <b>por onde a carga vai</b>.';
+
+function renderBlocos(){
+  var el=$('#blocos'); el.innerHTML='';
+  var opt=function(arr,cur){return arr.map(function(o){return '<option value="'+o.v+'"'+(String(o.v)===String(cur)?' selected':'')+'>'+o.n+'</option>';}).join('');};
+  ['mont','chave'].forEach(function(b){
+    var d=document.createElement('div'); d.className='bloco';
+    d.innerHTML='<div class="bt">'+BLOCOS[b].tit+'</div><div class="bd">'+BLOCOS[b].desc+'</div>'+
+      '<label class="fld"><span>Modal</span><select data-b="'+b+'" data-k="modal">'+opt(MODAIS,S[b].modal)+'</select></label>'+
+      '<label class="fld"><span>Partida</span><select data-b="'+b+'" data-k="dep">'+opt(DEPS,S[b].dep)+'</select></label>'+
+      '<div class="tl" id="tl-'+b+'"></div>';
+    el.appendChild(d);
+  });
+  Array.prototype.slice.call(el.querySelectorAll('select')).forEach(function(s){
+    s.onchange=function(){ var k=this.dataset.k; S[this.dataset.b][k]=(k==='dep')?+this.value:this.value; renderAll(); }; });
+}
+function renderTL(){
+  ['mont','chave'].forEach(function(b){
+    var r=blocoCalc(b), ok=r.margem>0;
+    $('#tl-'+b).innerHTML='Sai <b>'+fmtT(r.dep)+'</b> · <b>'+r.dur+' h</b> de viagem · chega <b>'+fmtT(r.arr)+'</b><br>Prazo <b>'+fmtT(r.deadline)+'</b> → '+
+      '<span class="'+(ok?'fine':'late')+'">'+(ok?'margem de '+r.margem+' h':(r.margem===0?'chega em cima da hora':'atrasa '+(-r.margem)+' h'))+'</span> · '+
+      r.dias+' diária(s), '+r.noites+' noite(s) de hotel';
+  });
+}
+function renderCarga(){
+  var tb=$('#carga'); tb.innerHTML='';
+  CARGA.forEach(function(c){
+    var tr=document.createElement('tr');
+    tr.innerHTML='<td><div class="desc">'+c.n+'<small>'+c.cm+' cm somados</small></div></td><td class="num">'+c.q+'</td>'+
+      '<td class="num"><input type="number" min="5" max="60" step="1" value="'+S.kg[c.id]+'" data-id="'+c.id+'"></td>'+
+      '<td><select data-d="'+c.id+'"><option value="bloco"'+(S.destino[c.id]==='bloco'?' selected':'')+'>Com o bloco de montagem</option>'+
+        '<option value="frete"'+(S.destino[c.id]==='frete'?' selected':'')+'>Frete à parte (cargo)</option></select></td>';
+    tb.appendChild(tr);
+  });
+  Array.prototype.slice.call(tb.querySelectorAll('input')).forEach(function(i){
+    i.onchange=function(){ S.kg[this.dataset.id]=Math.max(5,Math.min(60,+this.value||5)); renderAll(); };});
+  Array.prototype.slice.call(tb.querySelectorAll('select')).forEach(function(s){
+    s.onchange=function(){ S.destino[this.dataset.d]=this.value; renderAll(); };});
+}
+function tline(k,v,cls){ return '<div class="tline '+(cls||'')+'"><span>'+k+'</span><span class="v">'+v+'</span></div>'; }
+function renderTotals(){
+  var R=totals(), t=R.t, hard=R.bm.E.length+R.bc.E.length;
+  $('#totals').innerHTML=
+    tline('Passagens e fretamento',money(t.passagens))+tline('Bagagem despachada',money(t.bagagem))+
+    tline('Frete de carga à parte',money(t.frete))+tline('Traslados',money(t.traslado))+
+    tline('Diárias da equipe',money(t.diarias))+tline('Hotel',money(t.hotel))+
+    tline('Custo total',money(t.total)+(hard?' *':''),'big')+
+    tline('Verba '+money(PREMISSAS.orcamento),(t.folga<0?'estourou '+money(-t.folga):'folga '+money(t.folga)),t.folga<0?'neg':'pos')+
+    (hard?'<div class="src" style="color:#fca5a5">* '+hard+' volume(s) do plano não têm preço orçável ou não viajam como bagagem. Este total é ficção até você resolver isso.</div>':'');
+  var conta={aereo:0,linha:0,fret:0};
+  ['mont','chave'].forEach(function(b){ conta[S[b].modal]+=BLOCOS[b].pax; });
+  $('#modais').innerHTML=tline('Pessoas de avião',conta.aereo)+tline('Pessoas de ônibus de linha',conta.linha)+
+    tline('Pessoas no fretamento',conta.fret)+tline('Volumes despachados',R.bm.vols+R.bc.vols);
+  $('#hint').innerHTML='<b>'+(t.total?Math.round(t.diarias/t.total*100):0)+'% deste custo é diária de equipe</b>, não passagem. '+
+    'A passagem é a parte que aparece na cotação; a hora da equipe é a que aparece na fatura.';
+}
+function renderSrc(){
+  $('#srcAereo').innerHTML='<b>'+TABELAS[S.cia].nome+'</b>, tabela nacional publicada — snapshot 15/07/2026. Preço de bagagem é <b>livre e muda sem aviso</b>. '+
+    'Franquia grátis não é obrigatória: a despachada "configurará contrato acessório" (ANAC, Res. 400/2016, art. 13). Bagagem de mão: franquia mínima de 10 kg, '+
+    'dimensões definidas no contrato de transporte (art. 14) — <b>55×35×25 cm não é "padrão ANAC"</b>. O PL 5041/2025 (despacho grátis) <b>não é lei</b>: '+
+    'aprovado na Câmara em 28/10/2025, parado no Senado desde 05/11/2025.';
+  $('#srcTerra').innerHTML='<b>Ônibus de linha:</b> ANTT, Res. 6.033/2023, vigente desde 01/02/2024 — franquia mínima de bagageiro <b>30 kg / 300 dm³ / maior dimensão 1 m</b>; '+
+    'porta-embrulhos 5 kg, sem indenização. Excesso é <b>serviço acessório de oferta facultativa e preço livre</b> — a empresa pode simplesmente recusar. Equipamento fora do padrão: '+
+    'avisar com <b>≥ 24 h</b> e ainda assim ela não é obrigada a aceitar. A Res. 1.432/2006, que quase todo blog cita, <b>está revogada</b>.<br>'+
+    '<b>Fretamento eventual:</b> ANTT, Res. 4.777/2015 — modalidade de congresso, competição e comitiva de evento; circuito fechado; proibida a venda de bilhete individual.';
+}
+function renderAll(){ renderBlocos(); renderTL(); renderCarga(); renderTotals(); renderSrc(); }
+
+/* ---------- PREMISSAS NA TELA -------------------------------------------- */
+$('#premBox').innerHTML=
+  '<b>⚠️ Premissa do exercício — não é dado oficial.</b> Nenhum destes valores tem fonte publicada; eles são o cenário. '+
+  'Tarifa aérea <b>'+money(PREMISSAS.tarifaAerea)+'</b>/pessoa · passagem de linha <b>'+money(PREMISSAS.onibusLinha)+'</b>/pessoa · '+
+  'fretamento eventual <b>'+money(PREMISSAS.fretamento)+'</b> por ônibus · frete de carga <b>'+money(PREMISSAS.freteAvulso)+'</b>/volume · '+
+  'traslado aéreo <b>'+money(PREMISSAS.trasladoAereo)+'</b> e rodoviário <b>'+money(PREMISSAS.trasladoRodo)+'</b> por bloco · diária de montagem <b>'+money(PREMISSAS.diariaMontagem)+'</b>/pessoa/dia · '+
+  'diária de artista e técnico-chave <b>'+money(PREMISSAS.diariaChave)+'</b>/pessoa/dia · hotel <b>'+money(PREMISSAS.hotelNoite)+'</b>/pessoa/noite · aéreo <b>'+PREMISSAS.horasAereo+' h</b> porta a porta, '+
+  'linha <b>'+PREMISSAS.horasLinha+' h</b>, fretado <b>'+PREMISSAS.horasFret+' h</b> · trecho <b>~'+PREMISSAS.distanciaKm+' km</b> · verba <b>'+money(PREMISSAS.orcamento)+'</b>. '+
+  'Regra de contagem, também premissa: <b>diária = dias de calendário da partida até o dia do show</b>; <b>hotel = noites em Porto Alegre antes do show</b>.<br><br>'+
+  '<span style="color:#86efac">São FATOS com fonte, e só eles:</span> as tabelas de bagagem GOL e Azul, o excesso 32→45 kg da GOL (R$ 350), a bagagem diferenciada GOL (R$ 195, limite 292 cm) '+
+  'e especial Azul (R$ 250, acima de 158 cm), o limite de 45 kg por volume, o máximo de 5 peças por passageiro, a regra de artigo perigoso da Azul (95 cm, 1 por passageiro), '+
+  'a Res. ANAC 400/2016, a Res. ANTT 6.033/2023 e a Res. ANTT 4.777/2015.';
+
+/* ---------- CONFERÊNCIA -------------------------------------------------- */
+function check(){
+  var R=totals(), f=[], hard=0, T=TABELAS[S.cia];
+  var push=function(k,h,m){ f.push({k:k,h:h,m:m}); if(k==='miss') hard++; };
+
+  // 1) tempo
+  ['mont','chave'].forEach(function(b){
+    var r=R[b==='mont'?'m':'c'], nome=(b==='mont'?'Montagem':'Artista e técnicos-chave');
+    if(r.margem<0) push('miss',nome+' chega '+(-r.margem)+' h depois do prazo ('+fmtT(r.arr)+' contra '+fmtT(r.deadline)+').','Não é atraso, é ausência. '+(b==='mont'?'Sem load-in às 08:00 não há PA de pé às 16:00, e o show de 22:00 já morreu de manhã.':'Passagem de som não se remarca: o público entra na hora que está no ingresso.')+' '+r.dur+' h de viagem contra um prazo que não se move — a conta de tempo é anterior à conta de dinheiro.');
+    else if(r.margem===0) push('miss',nome+' chega exatamente em cima do prazo ('+fmtT(r.arr)+').','Chegar na hora é chegar atrasado. Um pneu, uma fila na BR-116, uma parada a mais e você perde o prazo sem plano B — e não existe segundo ônibus saindo de São Paulo que chegue a tempo.');
+    else if(r.margem<2) push('warnx',nome+' chega com apenas '+r.margem+' h de margem.','Margem abaixo de 2 h em '+PREMISSAS.distanciaKm+' km de estrada é aposta. ⚠️ ESTIMADO — a duração é premissa do exercício; no real você mede o histórico da empresa.');
+  });
+
+  // 2) carga no ônibus de linha
+  var noBloco=CARGA.filter(function(c){return S.destino[c.id]==='bloco';});
+  var kgBloco=noBloco.reduce(function(a,c){return a+c.q*S.kg[c.id];},0);
+  if(S.mont.modal==='linha' && noBloco.length) push('miss','Carga técnica no bagageiro de ônibus de linha: '+kgBloco+' kg em '+noBloco.reduce(function(a,c){return a+c.q;},0)+' volumes.',
+    'A franquia mínima é <b>30 kg por passageiro, 300 dm³, maior dimensão de 1 m</b> — 5 pessoas dão 150 kg, e o rack de multicabo já estoura o metro sozinho. O que passa disso é <b>serviço acessório: oferta facultativa e preço livre</b>, ou seja, a empresa <b>pode simplesmente recusar</b> na plataforma, com o show amanhã. A norma ainda manda você avisar com ≥ 24 h — e mesmo assim ela não é obrigada a aceitar. <i>ANTT, Res. 6.033/2023.</i> Linha não é solução de carga. É solução de gente.');
+  if(S.chave.modal==='linha'||S.mont.modal==='linha') push('warnx','Malas pessoais no ônibus de linha: 32 kg por pessoa (mala 18 kg + case de ferramenta 14 kg).',
+    'A franquia mínima é 30 kg. Os 2 kg de sobra por pessoa também são serviço acessório de preço livre. Detalhe pequeno, mas é o tipo de coisa que vira discussão no guichê às 5 da manhã. <i>ANTT, Res. 6.033/2023.</i>');
+
+  // 3) bagagem — erros herdados do cálculo
+  R.bm.E.concat(R.bc.E).forEach(function(e){ push('miss',e.h,e.m); });
+
+  // 4) antecedência
+  if(S.mont.modal==='aereo'||S.chave.modal==='aereo'){
+    var atual=R.bm.custo+R.bc.custo, base=bag('mont','p48').custo+bag('chave','p48').custo;
+    if(S.ant==='p48') push('good','Bagagem comprada com mais de 48 h de antecedência.',
+      'É a coluna mais barata da tabela e é a única que depende só de você lembrar. <i>'+T.nome+', tabela nacional publicada, snapshot 15/07/2026 — preço é livre e muda sem aviso.</i>');
+    else if(S.cia==='AZUL'&&S.ant==='apt') push('warnx','Você escolheu comprar no balcão, mas a Azul não publica coluna de aeroporto.',
+      'A tabela publicada da Azul tem <b>+48 h</b> e <b>−48 h</b>, e só. Sem número publicado, você não sabe o que vai pagar no balcão — o simulador cobrou a coluna de −48 h para não inventar. Orçamento com número que você não tem é chute com aparência de planilha.');
+    else push('warnx','Bagagem comprada '+(S.ant==='apt'?'no balcão do aeroporto':'com menos de 48 h')+': '+money(atual)+'. Com mais de 48 h seria '+money(base)+'.',
+      '<b>'+money(atual-base)+' jogados fora</b> por uma decisão que não é logística, é calendário. Despachar é <b>contrato acessório</b> (ANAC, Res. 400/2016, art. 13): a cia precifica quando quiser, e a coluna de aeroporto existe justamente para cobrar de quem não se organizou. <i>'+T.nome+', tabela nacional publicada, snapshot 15/07/2026.</i>');
+  }
+
+  // 5) especial / diferenciada
+  if(S.mont.modal==='aereo'&&S.destino.bum==='bloco') push('warnx','O bumbo em case rígido é bagagem '+T.especialNome+': '+money(T.especial)+'.',
+    (S.cia==='GOL'?'Limite de <b>292 cm</b> somados, até 23 kg, <b>R$ 195 por volume — o mesmo preço com +48 h, com −48 h ou no aeroporto</b>. Não adianta se antecipar aqui. Tarifas com despacho grátis <b>não cobrem</b> a diferenciada, e cliente Smiles não tem gratuidade. E o texto oficial: <b>"A GOL não se responsabiliza por danos causados a bagagem diferenciada"</b> — ou seja, você paga R$ 195 para transportar um bumbo por conta e risco seu.'
+      :'Acima de <b>158 cm</b> somados a Azul classifica como especial: <b>R$ 250</b> no Brasil. O bumbo tem 180 cm.')+' <i>'+T.nome+', política publicada, snapshot 15/07/2026.</i>');
+
+  // 6) fretamento
+  if(S.mont.modal==='fret'||S.chave.modal==='fret'){
+    var paxF=(S.mont.modal==='fret'?5:0)+(S.chave.modal==='fret'?4:0);
+    push('good','Fretamento eventual: '+fretCount()+' veículo(s), '+money(R.fret)+' — e nenhuma franquia de bagagem.',
+      'É a modalidade certa: a <b>Res. ANTT 4.777/2015</b> define o eventual como o de congresso, competição e comitiva — circuito fechado, sai da origem e volta no mesmo veículo. Custo fixo alto, mas leva <b>gente e equipamento juntos, porta a porta</b>: some o traslado ('+money(PREMISSAS.trasladoAereo)+') e some a conta de bagagem. '+
+      'O que você tem que exigir: <b>Licença de Viagem</b> e a <b>relação de passageiros a bordo</b> (art. 23) — sem isso a fiscalização para o ônibus na estrada com a sua equipe dentro. A relação leva nome, ao menos um sobrenome, documento e órgão emissor (art. 36), e admite <b>substituição de até 20% dos passageiros</b> antes da partida: nos seus '+paxF+' passageiros isso são <b>'+Math.floor(paxF*0.2)+' trocas</b> — a margem real que você tem quando um roadie cai na véspera. '+
+      'Antes de fechar: consulte o Termo de Autorização por CNPJ no site da ANTT e cheque a apólice de RC. É <b>proibida a venda de bilhete individual</b> — se te venderem "uma poltrona", não é fretamento.');
+    var pagosAToa=CARGA.filter(function(c){return S.destino[c.id]==='frete';}).reduce(function(a,c){return a+c.q;},0);
+    if(S.mont.modal==='fret'&&pagosAToa) push('warnx',pagosAToa+' volume(s) por frete à parte ('+money(pagosAToa*PREMISSAS.freteAvulso)+') com o bagageiro do fretado vazio.',
+      'O bagageiro já está pago e não tem franquia tarifada. Frete de carga que caberia ali é dinheiro gasto duas vezes.');
+  }
+
+  // 7) o técnico-chave por terra
+  if(S.chave.modal!=='aereo'){
+    var extra=(R.c.dias-1)*4*PREMISSAS.diariaChave+R.c.hotel, econ=4*PREMISSAS.tarifaAerea+PREMISSAS.trasladoAereo+bag('chave','p48').custo;
+    push('miss','Artista e técnicos-chave por terra: '+R.c.dur+' h de estrada e '+R.c.dias+' diárias.',
+      'Você economizou até '+money(econ)+' de passagem, traslado e bagagem e comprou <b>'+money(extra)+'</b> de diária e hotel. A diária desse bloco é '+money(PREMISSAS.diariaChave)+' por pessoa por dia (⚠️ ESTIMADO — premissa do exercício): todo dia a mais que o artista e o FOH passam fora custa mais que a passagem que você cortou. É a conta que o produtor iniciante não faz porque ela não está na cotação da agência — está no contrato do artista.');
+  }
+
+  // 8) diárias × passagem
+  var t=R.t;
+  push(t.diarias>t.passagens?'warnx':'good','Passagens e fretamento '+money(t.passagens)+' contra diárias e hotel '+money(t.diarias+t.hotel)+'.',
+    t.diarias>t.passagens?'A parte cara do seu plano não é o transporte — é o tempo. Cada dia que a comitiva passa em trânsito é diária, hotel e alimentação, e nada disso aparece na cotação que a agência te manda. O ônibus é barato na passagem e caro no relógio.'
+      :'Você está pagando transporte para não pagar tempo. É o trade certo quando a diária da comitiva vale mais que a tarifa — e nesta comitiva vale.');
+
+  // 9) orçamento
+  if(t.folga<0) push('miss','Estourou a verba em '+money(-t.folga)+'.',
+    'Orçamento fechado é fechado. O caminho não é cortar equipe nem carga: é trocar o modal de quem custa caro parado e o modal de quem carrega peso. Cada bloco tem um gargalo diferente — um é <b>carga</b>, o outro é <b>diária</b>. Resolver os dois com o mesmo modal é o erro.');
+  else push('good','Dentro da verba, com folga de '+money(t.folga)+'.','Sobra '+Math.round(t.folga/PREMISSAS.orcamento*100)+'% da verba. É a sua margem para o imprevisto que ainda vai acontecer.');
+
+  // 10) reconhecimento do misto
+  if(S.mont.modal==='fret'&&S.chave.modal==='aereo'&&t.folga>=0&&R.m.margem>0&&R.c.margem>0&&hard===0)
+    push('good','Você chegou no misto.','Montagem e carga por terra na véspera, no fretado, que leva gente e equipamento juntos sem franquia e sem traslado. Artista e técnicos-chave de avião no dia, pagando uma diária cada em vez de duas. Nenhum modal ganha sozinho: o que fecha a conta é cada bloco no modal em que ele é barato.');
+
+  var v=$('#verdict');
+  if(hard===0&&t.folga>=0){ v.className='verdict ok'; v.innerHTML='Solução fecha. Custo '+money(t.total)+' contra verba '+money(PREMISSAS.orcamento)+', folga '+money(t.folga)+'.<br>Montagem chega '+fmtT(R.m.arr)+' ('+R.m.margem+' h antes do load-in), chave chega '+fmtT(R.c.arr)+' ('+R.c.margem+' h antes da passagem de som).'; }
+  else if(hard===0){ v.className='verdict warn'; v.innerHTML='Operacionalmente possível, financeiramente não. Estourou '+money(-t.folga)+'.<br>Alguém vai pagar essa diferença, e o contratante já disse que não é ele.'; }
+  else { v.className='verdict bad'; v.innerHTML=hard+' falha(s) que derrubam o plano.<br>Isto não é um orçamento de viagem — é uma lista de coisas que só se descobre no balcão.'; }
+
+  var fe=$('#findings'), ord={miss:0,warnx:1,good:2}; fe.innerHTML='';
+  f.sort(function(a,b){return ord[a.k]-ord[b.k];}).forEach(function(x){
+    var d=document.createElement('div'); d.className='fx '+x.k;
+    d.innerHTML='<b>'+x.h+'</b><br>'+x.m; fe.appendChild(d); });
+  $('#result').style.display=''; $('#result').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+$('#cia').onchange=function(){ S.cia=this.value; renderAll(); };
+$('#ant').onchange=function(){ S.ant=this.value; renderAll(); };
+$('#check').onclick=check;
+$('#reset').onclick=function(){ S=ini(); $('#cia').value=S.cia; $('#ant').value=S.ant; $('#result').style.display='none'; renderAll(); };
+renderAll();
+})();
+</script>
+</body>
+</html>

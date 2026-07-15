@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>SMU PRO · Check-in, no-show e remarcação</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0c1017;--panel:#161c26;--panel2:#1b2230;--line:#2a3444;--ink:#e7edf5;--dim:#8794a8;
+        --accent:#f59e0b;--ok:#22c55e;--err:#ef4444;--warn:#f59e0b;--cyan:#38bdf8;}
+  html,body{background:var(--bg);color:var(--ink);
+    font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased;}
+  body{padding:12px;}
+  .app{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:12px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  h1{font-size:15px;margin-bottom:3px;}
+  .sub{font-size:12px;color:var(--dim);margin-bottom:12px;line-height:1.5;}
+  .verdict{font-size:13px;font-weight:700;padding:9px 12px;border-radius:8px;text-align:center;}
+  .verdict.ok{background:#14532d;color:#bbf7d0;}
+  .verdict.bad{background:#450a0a;color:#fca5a5;}
+  .verdict.warn{background:#422006;color:#fde68a;}
+  .note{font-size:12px;color:var(--dim);line-height:1.55;}
+  button{font:inherit;cursor:pointer;}
+  .bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .bar .pill{font-size:10.5px;color:var(--dim);background:var(--panel2);border:1px solid var(--line);
+    border-radius:14px;padding:4px 9px;white-space:nowrap;}
+  .bar .pill b{color:var(--ink);}
+  .spacer{flex:1;}
+  .prog{display:flex;gap:4px;flex-wrap:wrap;}
+  .pdot{width:16px;height:6px;border-radius:3px;background:#243040;}
+  .pdot.done{background:var(--ok);} .pdot.half{background:var(--err);} .pdot.cur{background:var(--cyan);}
+  .btnp{font-size:11px;font-weight:700;border:1px solid var(--line);border-radius:8px;padding:7px 12px;
+    background:transparent;color:var(--dim);min-height:34px;}
+  .mod{font-size:9px;letter-spacing:1.2px;font-weight:800;border-radius:5px;padding:3px 6px;margin-right:6px;}
+  .mod.ar{background:#0b3a52;color:#9adcff;}
+  .mod.ro{background:#3d2a08;color:#fbd38d;}
+  .tag{font-size:9.5px;letter-spacing:1.4px;color:var(--cyan);font-weight:800;}
+  .tit{font-size:16px;font-weight:900;line-height:1.3;margin:5px 0 6px;}
+  .ctx{font-size:12px;color:#a9b7cc;line-height:1.6;background:var(--panel2);border-left:3px solid var(--line);
+    border-radius:0 8px 8px 0;padding:9px 11px;}
+  .prem{font-size:10.5px;color:#c8a55e;line-height:1.5;margin-top:7px;border:1px dashed #4a3a14;
+    border-radius:7px;padding:6px 9px;background:#1a1408;}
+  .step{font-size:10px;letter-spacing:1.2px;color:var(--accent);font-weight:800;margin:13px 0 7px;}
+  .opts{display:flex;flex-direction:column;gap:7px;}
+  .op{background:#0c1420;border:1px solid #223349;border-radius:9px;padding:10px 12px;cursor:pointer;
+    font-size:11.5px;line-height:1.5;color:#dfe8f5;min-height:38px;}
+  .op.good{background:#0d2114;border-color:var(--ok);color:#c9f0d8;}
+  .op.badx{background:#241012;border-color:var(--err);color:#f0cdc9;}
+  .op.off{opacity:.4;}
+  .fb{border-radius:9px;padding:10px 12px;font-size:11.5px;line-height:1.6;margin-top:9px;display:none;}
+  .fb.show{display:block;}
+  .fb.hit{background:#0d2114;border:1px solid #1e4a2c;color:#a8ecc4;}
+  .fb.miss{background:#241a08;border:1px solid #4a3a14;color:#ffd9a0;}
+  .fb b{color:#fff;}
+  .art{display:inline-block;font-size:9.5px;font-weight:800;letter-spacing:.6px;background:#0b2b3d;
+    color:#7fd4ff;border:1px solid #17475f;border-radius:5px;padding:2px 6px;margin-bottom:6px;}
+  .nxt{display:none;margin:10px 0 0 auto;font-size:11.5px;font-weight:800;color:#07120b;
+    background:linear-gradient(180deg,#5be59a,#27b566);border:0;border-radius:8px;padding:10px 20px;min-height:38px;}
+  .nxt.show{display:block;}
+  .fin{display:flex;flex-direction:column;gap:11px;}
+  .fin .big{font-size:19px;font-weight:900;line-height:1.3;}
+  .rules{font-size:11.5px;color:#a9b7cc;line-height:1.75;padding-left:16px;}
+  .rules b{color:var(--ink);}
+  .alerta{background:#2a0f0f;border:1px solid #5b1d1d;border-radius:10px;padding:10px 12px;
+    font-size:11.5px;line-height:1.6;color:#ffc9c9;}
+  .alerta b{color:#fff;}
+  .bonus li{margin-bottom:5px;}
+  .selo{font-size:9.5px;letter-spacing:1px;font-weight:800;color:#fbd38d;background:#3d2a08;
+    border-radius:5px;padding:3px 7px;display:inline-block;margin-bottom:8px;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="card">
+    <h1>Check-in, no-show e remarcação — os direitos que o produtor não sabe que tem</h1>
+    <div class="sub">Dez situações de aeroporto e rodoviária com a equipe em trânsito. Em cada uma você decide o que fazer. Cada feedback cita a norma: <b>Resolução ANAC nº 400/2016</b> (aéreo) e <b>Resolução ANTT nº 6.033/2023</b> (rodoviário). Acerto de primeira vale ponto.</div>
+    <div class="bar">
+      <span class="pill">Cenário <b id="pNow">1</b>/<b>10</b></span>
+      <span class="pill">Acertos de primeira: <b id="pScore">0</b>/10</span>
+      <span class="spacer"></span>
+      <div class="prog" id="prog"></div>
+      <button class="btnp" id="btnReset">Reiniciar</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="alerta">⚠️ <b>Antes de começar — o mito que derruba produtor:</b> o <b>PL 5041/2025</b> (bagagem de mão de 12 kg + 23 kg despachados grátis) <b>NÃO é lei</b>. Foi aprovado na Câmara em 28/10/2025 e está <b>parado no Senado desde 05/11/2025</b>. Quem chega no balcão citando "a nova lei da bagagem" paga a bagagem do mesmo jeito, na frente da equipe. Bagagem despachada continua sendo <b>contrato acessório</b> (ANAC 400/2016, art. 13): franquia grátis não é obrigatória.</div>
+  </div>
+
+  <div class="card" id="card"></div>
+
+  <div class="card">
+    <span class="selo">BÔNUS · PRÁTICA DE MERCADO — NÃO É NORMA</span>
+    <h1>Check-in de comitiva: como se faz na prática</h1>
+    <div class="sub">A Resolução ANAC 400/2016 <b>não regula procedimento de check-in de grupo</b>. O que segue é prática de mercado e premissa de cenário — o que vale de verdade é o <b>contrato de transporte de cada companhia</b>, que você tem obrigação de ler antes de comprar.</div>
+    <ul class="rules bonus">
+      <li><b>Janela do web check-in ⚠️ ESTIMADO:</b> a premissa deste simulador é que abre <b>48 h antes</b> e fecha <b>60 min antes</b> do voo doméstico. <b>A norma não fixa isso</b> — cada cia define no contrato de transporte. Confira o seu antes de montar o cronograma da viagem.</li>
+      <li><b>Web check-in resolve só quem viaja de mão.</b> Serve para escolher assento e adiantar o embarque de quem não despacha nada.</li>
+      <li><b>Comitiva com bagagem despachada vai ao balcão.</b> Peso, excesso e recusa por dimensão são decididos ali, com a mala na balança — não pelo app.</li>
+      <li><b>Bagagem diferenciada/especial vai ao balcão, sempre e mais cedo.</b> Case rígido de bumbo, contrabaixo, tuba, violoncelo passa por medição, pagamento à parte e esteira especial. A norma permite que bagagem fora das regras seja <b>recusada ou mandada como carga</b> (ANAC 400/2016, art. 15) — a decisão é no balcão, e ela leva tempo.</li>
+      <li><b>Um responsável com a lista.</b> Uma pessoa com a relação nominal, os localizadores e os documentos conferidos. Dez técnicos negociando cada um a sua mala com dez atendentes diferentes é como se perde um voo.</li>
+      <li><b>Confira que todos os bilhetes estão no mesmo localizador/reserva.</b> Se a comitiva foi comprada em compras separadas, a cia <b>não trata como grupo</b>: cada um é um passageiro isolado, com franquia isolada e reacomodação isolada. Em irregularidade de voo, isso significa a equipe rachada em três voos diferentes.</li>
+      <li><b>Chegar mais cedo não é zelo, é cálculo.</b> A norma só liga o cronômetro da assistência material depois que o atraso é da companhia (art. 27). O tempo que você perde por chegar em cima da hora é seu.</li>
+    </ul>
+  </div>
+</div>
+<script>
+(function(){
+var $=function(s){return document.querySelector(s);};
+var $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s));};
+
+/* ── Premissas de cenário. Não estão na norma: são números do enredo. ───────────── */
+var P={
+  tarifa:      420,   // ⚠️ ESTIMADO — valor pago no bilhete promocional. Enredo.
+  tarifaHoje:  980,   // ⚠️ ESTIMADO — valor ofertado no ato da remarcação. Enredo.
+  multa:       180,   // ⚠️ ESTIMADO — multa contratual de remarcação. Enredo.
+  onibus:      260    // ⚠️ ESTIMADO — preço do bilhete rodoviário. Enredo.
+};
+/* Preço de passagem é livre e muda sem aviso. Nenhum número acima vem de norma. */
+
+var CEN=[
+ {
+  mod:'ar', tag:'06h50 · AEROPORTO DE GUARULHOS · DIA DA MONTAGEM',
+  tit:'O técnico perdeu o voo de ida — e a volta está prestes a evaporar',
+  ctx:'Rafael, técnico de monitor, dormiu no ponto. O voo de ida (SP→Recife) fecha o embarque às 07h10 e ele está na Marginal. A ida já era perda; o problema é outro: o bilhete é ida e volta, e o retorno é depois do show, no domingo. São <b>06h50</b>. Você tem o telefone da companhia na mão.',
+  prem:'Premissa de enredo: outro técnico já cobre a montagem; a decisão aqui é só sobre o bilhete. ⚠️ ESTIMADO — passagem de última hora no domingo: enredo, não norma.',
+  ops:[
+   {t:'Deixar quieto. Ele perdeu só a ida — a volta é um trecho comprado e pago, ninguém pode tirar.',g:0,
+    art:'ANAC 400/2016 · art. 19',
+    fb:'<b>Errado, e é o erro mais caro do módulo.</b> O art. 19 é explícito: quem não se apresenta para o embarque da ida <b>pode ter os demais trechos cancelados pela companhia</b>. Isso é legal. "Já paguei" não é argumento — o bilhete é um contrato de transporte com trechos encadeados, e a norma autoriza o cancelamento. Domingo, no balcão, ele descobre que não tem volta. Agora leia a próxima opção: são 06h50, o voo era 07h10, e a janela ainda está aberta por 20 minutos.'},
+   {t:'Ligar agora, antes das 07h10, declarar que ele perderá a ida mas <b>quer usar o trecho de volta</b>, e recusar qualquer cobrança de multa por esse aviso. Anotar protocolo, hora e nome do atendente.',g:1,
+    art:'ANAC 400/2016 · art. 19, parágrafo único',
+    fb:'<b>Esta é a exceção de ouro.</b> O art. 19 deixa a companhia cancelar os trechos seguintes — <b>mas o parágrafo único diz que isso não se aplica</b> se o passageiro comunicar, <b>até o horário originalmente contratado da ida</b>, que quer utilizar o trecho de volta. E mais: é <b>vedada a cobrança de multa</b> para fazer esse aviso. A janela é o horário da ida — 07h10. Depois disso, acabou. Quinze minutos de telefone acabaram de salvar a passagem de volta, sem multa. É por isso que o produtor precisa saber quando o voo da equipe sai: não para chegar na hora, para saber quando o direito expira.'},
+   {t:'Comprar já uma passagem nova de volta para domingo e embutir no fechamento do evento.',g:0,
+    art:'ANAC 400/2016 · art. 19, parágrafo único',
+    fb:'<b>Você gastou dinheiro que a norma não pediu.</b> O parágrafo único do art. 19 garante o trecho de volta se você avisar até o horário originalmente contratado da ida — e <b>vedada a cobrança de multa</b> para esse aviso. São 06h50 e o voo era 07h10: a ligação era grátis e o direito estava aberto. Você comprou uma passagem de domingo de última hora para não fazer uma ligação de quinze minutos.'}
+  ]
+ },
+ {
+  mod:'ar', tag:'22h10 · ESCRITÓRIO · COMPRA RECÉM-FECHADA',
+  tit:'Comprou o bilhete com a data errada — e acha que tem 24 horas',
+  ctx:'Você fechou agora a passagem do iluminador. Percebe, com o comprovante ainda aberto no e-mail, que emitiu para o voo errado. O embarque correto é <b>depois de amanhã</b>. Sua assistente diz: "relaxa, todo mundo tem 24h pra desistir sem pagar nada".',
+  prem:'Premissa de enredo: bilhete de R$ '+P.tarifa+' ⚠️ ESTIMADO. Preço de passagem é livre e muda sem aviso — não vem de norma.',
+  ops:[
+   {t:'Acionar o arrependimento: comprovante recebido há 10 minutos, dentro das 24h, cancelamento sem ônus.',g:0,
+    art:'ANAC 400/2016 · art. 11',
+    fb:'<b>Não vale — e é aqui que quase todo mundo cai.</b> O art. 11 dá 24 h contadas do recebimento do comprovante para desistir <b>sem ônus</b>, mas tem uma condição que ninguém lê: <b>só para compras feitas com 7 dias ou mais de antecedência do embarque</b>. Seu embarque é depois de amanhã — dois dias. O arrependimento <b>não se aplica</b>. As 24h existem, o prazo dos 7 dias também, e é o segundo que manda.'},
+   {t:'Reconhecer que não há arrependimento neste caso e tratar como remarcação: multa contratual + diferença tarifária.',g:1,
+    art:'ANAC 400/2016 · arts. 11, 9º e 10',
+    fb:'<b>Correto.</b> O art. 11 exige <b>≥ 7 dias entre a compra e o embarque</b> para o arrependimento sem ônus; comprando para depois de amanhã, esse direito não nasce. Sobra a remarcação, que tem regra própria: a multa <b>não pode ultrapassar o valor dos serviços de transporte aéreo</b> (art. 9º) e você paga a <b>diferença entre o valor pago e o ofertado no ato</b> (art. 10). Lição de compra: comprar em cima da hora não custa só a tarifa mais cara — custa também o direito de errar.'},
+   {t:'Ligar e exigir o cancelamento sem ônus alegando que a cia tem que dar 24h por lei em qualquer compra.',g:0,
+    art:'ANAC 400/2016 · art. 11',
+    fb:'<b>Você vai brigar por um direito que não tem.</b> O art. 11 condiciona o arrependimento a compras feitas com <b>≥ 7 dias de antecedência do embarque</b>. Exigir o que a norma não dá queima a sua credibilidade justamente onde ela vale: no próximo caso, quando você tiver razão de verdade, o atendente já te catalogou.'}
+  ]
+ },
+ {
+  mod:'ar', tag:'11h30 · D-9 · O SHOW MUDOU DE DATA',
+  tit:'"É só pagar a multa de remarcação" — não, não é',
+  ctx:'O contratante empurrou o show em duas semanas. Você tem seis bilhetes promocionais comprados baratos e precisa remarcar todos. O financeiro pergunta quanto vai custar. Você abre o app e vê a multa de remarcação: <b>R$ '+P.multa+' por bilhete</b>. Parece barato.',
+  prem:'Premissa de enredo ⚠️ ESTIMADO: pago R$ '+P.tarifa+' · multa contratual R$ '+P.multa+' · mesmo voo, hoje, ofertado a R$ '+P.tarifaHoje+'. Nenhum desses números vem de norma — preço aéreo é livre.',
+  ops:[
+   {t:'Informar R$ 180 × 6 = R$ 1.080. É o custo da remarcação.',g:0,
+    art:'ANAC 400/2016 · art. 10, II',
+    fb:'<b>Faltou a metade maior da conta.</b> O art. 10 diz que na remarcação o passageiro paga (ou recebe) <b>a diferença entre o valor pago e o valor ofertado no ato</b> — além da multa. Você pagou R$ 420 e hoje o voo custa R$ 980: são <b>R$ 560 de diferença tarifária por pessoa</b>, mais os R$ 180 de multa. R$ 740 × 6 = R$ 4.440, não R$ 1.080. Remarcar <b>não é "pagar a multa"</b>: é multa + diferença, e a diferença quase sempre é maior. Foi por isso que a passagem promocional era barata.'},
+   {t:'Informar multa + diferença tarifária: R$ 180 + R$ 560 = R$ 740 por bilhete, R$ 4.440 no total — e conferir que a tarifa aeroportuária não foi jogada na base da multa.',g:1,
+    art:'ANAC 400/2016 · arts. 9º e 10',
+    fb:'<b>Correto, e você olhou onde ninguém olha.</b> Duas regras trabalham juntas. <b>Art. 9º:</b> as multas de remarcação <b>não podem ultrapassar o valor dos serviços de transporte aéreo</b>, e a <b>tarifa aeroportuária não entra na base de cálculo da multa</b> — é o teto que impede a cia de inventar. <b>Art. 10:</b> na remarcação o passageiro paga/recebe a variação da tarifa aeroportuária e a <b>diferença entre o valor pago e o ofertado no ato</b>. Multa tem teto; diferença tarifária não tem — ela é o preço de hoje. Por isso remarcação de bilhete promocional próximo da data é o item que estoura o orçamento de viagem da produção.'},
+   {t:'Ligar e pedir que a cia isente a diferença, já que a mudança de data não foi culpa da equipe.',g:0,
+    art:'ANAC 400/2016 · art. 10, II',
+    fb:'<b>De quem foi a culpa não é critério do art. 10.</b> A norma manda o passageiro pagar a diferença entre o valor pago e o ofertado no ato quando <b>ele</b> remarca — o motivo é irrelevante. Isenção só se a cia quiser dar, por política comercial. A lição é contratual, não regulatória: <b>quem muda a data do show é quem tem que pagar a remarcação</b>, e isso se escreve no contrato antes, não se implora à companhia depois.'}
+  ]
+ },
+ {
+  mod:'ar', tag:'13h40 · SALA DE EMBARQUE · ATRASO ANUNCIADO',
+  tit:'Atraso de 4h30 e o balcão já decidiu por você',
+  ctx:'O voo das 12h saiu do painel. O atendente anuncia: "reacomodamos todos vocês no voo das 21h50". Isso chega no destino depois da passagem de som. Você pergunta sobre reembolso e ele responde que "a reacomodação já foi feita, não tem mais o que fazer". Já se passaram <b>4h30</b>.',
+  ops:[
+   {t:'Aceitar. A companhia reacomodou, e reacomodação é a solução prevista na norma.',g:0,
+    art:'ANAC 400/2016 · art. 21',
+    fb:'<b>Você entregou uma escolha que era sua.</b> Passadas 4 horas de atraso, o art. 21 abre três alternativas — <b>reacomodação, reembolso ou execução do serviço por outra modalidade de transporte</b> — e a norma põe essa escolha nas mãos <b>do passageiro</b>. A companhia não decide por você; ela oferece. Quando o atendente diz "já reacomodamos", ele executou uma das três e apagou as outras duas.'},
+   {t:'Dizer que a escolha é do passageiro e escolher: os 6 vão por outra modalidade de transporte, que chega a tempo do show.',g:1,
+    art:'ANAC 400/2016 · arts. 21, 27 e 20 §1º',
+    fb:'<b>Correto.</b> Atraso superior a 4 h: o art. 21 dá <b>reacomodação / reembolso / execução por outra modalidade de transporte</b>, <b>à escolha do passageiro</b> — não do balcão. Para o produtor, a terceira é a que salva o show: ela é o que faz a companhia colocar a equipe onde o trabalho está. Duas coisas correm em paralelo: a <b>assistência material</b> do art. 27 continua devida enquanto você espera, e o art. 20, §1º obriga a cia a informar o novo horário <b>a cada 30 minutos, no máximo</b> — não é você que tem que ficar caçando informação no painel.'},
+   {t:'Comprar por conta própria seis lugares em outra companhia agora e cobrar da cia depois.',g:0,
+    art:'ANAC 400/2016 · art. 21',
+    fb:'<b>Você gastou antes de usar o direito.</b> O art. 21 já te dá o poder de exigir a <b>execução do serviço por outra modalidade de transporte</b> — a escolha é do passageiro, e ela é gratuita porque é obrigação da cia. Primeiro se exige o art. 21 no balcão; comprar do próprio bolso e discutir reembolso depois é trocar um direito líquido por uma discussão.'}
+  ]
+ },
+ {
+  mod:'ar', tag:'15h20 · TRÊS HORAS DE ATRASO · EQUIPE DE 6',
+  tit:'Três horas parados: o que exigir agora e o que ainda não é seu',
+  ctx:'Seis pessoas da sua equipe estão no aeroporto há <b>3 horas</b> por atraso da companhia. Ninguém comeu, os celulares estão morrendo e o painel não atualiza. Um técnico quer partir para cima do balcão exigindo hotel. O voo ainda deve sair hoje.',
+  ops:[
+   {t:'Exigir hotel e traslado para os seis agora — três horas de atraso já é abuso.',g:0,
+    art:'ANAC 400/2016 · art. 27',
+    fb:'<b>Você exigiu o degrau errado da escada.</b> O art. 27 escalona a assistência material por tempo de espera: <b>mais de 1 h → comunicação</b>; <b>mais de 2 h → alimentação</b>; <b>mais de 4 h → hospedagem e traslado</b> — e a hospedagem só entra <b>se houver pernoite</b>. Você está em 3 h e o voo sai hoje: hotel ainda não é seu. Pedir o que a norma não dá é o jeito mais rápido de não receber o que ela dá.'},
+   {t:'Exigir agora comunicação e alimentação para os seis; hospedagem e traslado só entram se passar de 4h e houver pernoite.',g:1,
+    art:'ANAC 400/2016 · arts. 27 e 20 §1º',
+    fb:'<b>Correto, degrau por degrau.</b> Art. 27: <b>&gt;1 h comunicação</b> (a ligação e a internet que a equipe usa para avisar o contratante são obrigação da cia), <b>&gt;2 h alimentação</b> (em 3 h os seis vouchers já são devidos, e não é cortesia), <b>&gt;4 h hospedagem se houver pernoite, mais o traslado</b>. Duas coisas que separam o produtor do passageiro comum: o pedido é <b>por passageiro</b> — seis pessoas, seis assistências, não uma para o grupo — e o art. 20, §1º obriga a cia a informar o novo horário <b>a cada 30 min, no máximo</b>. Marque a hora em que o atraso começou: sem hora anotada você não prova em que degrau está.'},
+   {t:'Esperar. Assistência material só começa depois de 4 horas de atraso.',g:0,
+    art:'ANAC 400/2016 · art. 27',
+    fb:'<b>Você deixou dois degraus na mesa.</b> O art. 27 começa em <b>1 hora</b>: comunicação. Em <b>2 horas</b>, alimentação. As 4 horas são só o degrau da <b>hospedagem — e ainda condicionada a haver pernoite</b> — mais o traslado. Sua equipe está há 3 h sem comer com direito a voucher desde a segunda hora, porque o produtor achou que a conta começava depois.'}
+  ]
+ },
+ {
+  mod:'ar', tag:'12h05 · ESTEIRA · SHOW HOJE ÀS 21H',
+  tit:'O case de microfones não chegou e o show é hoje',
+  ctx:'Voo doméstico, esteira vazia. O case com os microfones e os in-ears não desembarcou. São <b>12h05</b>, a passagem de som é às 17h e o show às 21h. O atendente da cia registra a ocorrência e diz, com toda a razão, que "a norma dá o prazo de sete dias".',
+  ops:[
+   {t:'Registrar o extravio e aguardar. A norma garante a bagagem em até 7 dias — a cia vai resolver.',g:0,
+    art:'ANAC 400/2016 · art. 32',
+    fb:'<b>O prazo é real e é inútil para você.</b> O art. 32 obriga a cia a devolver a bagagem extraviada em <b>até 7 dias no voo doméstico</b> (21 dias no internacional) e, se não localizar, a indenizar em até 7 dias. Sete dias. Seu show é <b>daqui a nove horas</b>. Este é o ponto do módulo: <b>a norma protege o seu dinheiro, ela não faz o show acontecer</b>. Registrar é obrigatório e é insuficiente — enquanto você espera pelo art. 32, ninguém está atrás de microfone em Recife.'},
+   {t:'Registrar formalmente agora <b>e</b>, no mesmo minuto, acionar locação local dos microfones e in-ears. As duas coisas correm em paralelo.',g:1,
+    art:'ANAC 400/2016 · arts. 32 e 17',
+    fb:'<b>Correto — e é a única resposta que entrega o show.</b> O registro alimenta o art. 32: <b>devolução em até 7 dias (doméstico), 21 (internacional)</b>; não localizada, <b>indenização em até 7 dias</b>. E o art. 17 fixa o limite da indenização doméstica em <b>1.131 DES</b> — DES é a unidade de conta do FMI, com cotação variável, então <b>este é o teto do que você recupera</b>, não o valor do seu case. Repare no que a norma <b>não</b> faz: não coloca microfone no palco às 21h, não paga a multa do seu contrato de show, não repõe a sua reputação. Por isso o plano B é do produtor, e a hora dele é 12h05 — não 18h.'},
+   {t:'Exigir da companhia, no balcão, que ela pague a locação de emergência dos microfones agora.',g:0,
+    art:'ANAC 400/2016 · arts. 32 e 17',
+    fb:'<b>Você está exigindo o que a norma não escreveu.</b> O que o art. 32 prevê é <b>devolução em até 7 dias</b> ou <b>indenização em até 7 dias</b>, e o art. 17 põe o teto doméstico em <b>1.131 DES</b>. Não há no texto obrigação de a cia custear locação imediata no balcão. Isso não quer dizer que você não possa cobrar prejuízo — quer dizer que isso é <b>discussão de indenização</b>, com prazo e teto, e não solução de hoje. Se o argumento no balcão fosse a única cartada, a passagem de som às 17h estava perdida.'}
+  ]
+ },
+ {
+  mod:'ro', tag:'16h00 · RODOVIÁRIA · ÔNIBUS SAI ÀS 22H',
+  tit:'Dois da equipe não vão mais — e o ônibus não é o avião',
+  ctx:'O cliente cortou a equipe de cenografia. Dois bilhetes rodoviários já emitidos, ônibus marcado para <b>22h</b>. São <b>16h</b>. Seu assistente sugere: "a gente avisa lá no embarque que eles não vão, ou liga depois pra usar a volta, igual você fez com o avião".',
+  prem:'Premissa de enredo ⚠️ ESTIMADO: bilhete de R$ '+P.onibus+' cada. Preço não vem de norma.',
+  ops:[
+   {t:'Avisar no embarque, às 22h, que os dois não vão. É o mesmo bilhete, o dinheiro volta.',g:0,
+    art:'Res. ANTT 6.033/2023',
+    fb:'<b>Isso é perda total.</b> Na Res. ANTT 6.033/2023, o cancelamento é feito <b>por simples declaração do passageiro até 3 h antes</b> da viagem. Não cancelou nessa janela? <b>No-show rodoviário = perda total do reembolso.</b> Às 22h não existe mais nada a fazer. E note o horário: às 16h você tinha seis horas de folga e jogou fora por não conhecer a regra do modal que estava usando.'},
+   {t:'Cancelar agora, por simples declaração — falta muito mais de 3h. Aceitar a retenção de até 5% e cobrar a devolução em 30 dias.',g:1,
+    art:'Res. ANTT 6.033/2023',
+    fb:'<b>Correto.</b> A Res. ANTT 6.033/2023 permite o cancelamento por <b>simples declaração do passageiro até 3 h antes</b> da viagem, com <b>retenção de até 5%</b> e <b>devolução em até 30 dias</b>. Você está a 6 h da partida: janela aberta. Retenção de até 5% é o preço de cancelar, e é barato — a alternativa era perder 100%. E anote a diferença que estrutura este módulo: <b>no aéreo, o art. 19 da ANAC 400/2016 tem a exceção do parágrafo único que salva a volta; no rodoviário, essa exceção não existe.</b> Não são normas parecidas, são normas diferentes. O produtor precisa saber qual das duas está usando antes de abrir a boca.'},
+   {t:'Ligar para a viação e avisar que eles perderão a ida mas usarão a volta, sem multa — como no art. 19 da ANAC.',g:0,
+    art:'Res. ANTT 6.033/2023 × ANAC 400/2016, art. 19',
+    fb:'<b>Você aplicou a norma do modal errado.</b> A exceção do parágrafo único do art. 19 — avisar até o horário da ida e garantir a volta, <b>vedada a cobrança de multa</b> — é da <b>Resolução ANAC 400/2016, e vale para o aéreo</b>. A Res. ANTT 6.033/2023 não tem equivalente: no rodoviário o que existe é o cancelamento <b>até 3 h antes</b>, com retenção de até 5%, e <b>no-show é perda total</b>. Citar artigo de aviação no guichê da rodoviária não te dá direito nenhum — só avisa o atendente de que você não leu a norma dele.'}
+  ]
+ },
+ {
+  mod:'ro', tag:'15h00 · D-1 · COMPRA FEITA HÁ DOIS DIAS',
+  tit:'Arrependimento rodoviário: o canal é parte da regra',
+  ctx:'Você comprou <b>há dois dias, pelo aplicativo da viação</b>, quatro bilhetes para amanhã às <b>08h</b>. A produção mudou e ninguém mais vai de ônibus. São <b>15h</b>. Você está passando na frente da rodoviária e pensa em resolver no guichê, olho no olho, que "sempre é mais rápido".',
+  ops:[
+   {t:'Entrar no guichê e pedir o reembolso integral pelo arrependimento. É o mesmo direito, o canal não muda nada.',g:0,
+    art:'Res. ANTT 6.033/2023',
+    fb:'<b>O canal é parte da regra — e você acabou de sair dele.</b> Na Res. ANTT 6.033/2023 o arrependimento existe <b>para compras feitas em canal não presencial</b> e o pedido tem que ser feito <b>pelo mesmo canal da compra</b>. Você comprou no app: é no app que se desiste. No guichê o atendente não tem o botão, e o tempo que você perde ali corre contra os seus prazos.'},
+   {t:'Pedir pelo próprio aplicativo: compra há 2 dias (dentro dos 7), viagem só amanhã às 08h (muito mais de 3h) — reembolso integral, mesmo canal.',g:1,
+    art:'Res. ANTT 6.033/2023',
+    fb:'<b>Correto, e os três requisitos foram conferidos.</b> A Res. ANTT 6.033/2023 dá o arrependimento para compra em <b>canal não presencial</b>, com <b>reembolso integral</b>, desde que pedido <b>em até 7 dias da compra</b> <b>E</b> <b>até 3 h antes da viagem</b>, <b>pelo mesmo canal</b>. Repare que são condições cumulativas: 2 dias de compra ✓, 17 h de antecedência ✓, app ✓. E repare no contraste com o aéreo: no ar, o art. 11 da ANAC 400/2016 dá <b>24 h do comprovante e só se a compra foi feita com ≥ 7 dias do embarque</b>; no chão são <b>7 dias da compra e até 3 h antes</b>. Prazos diferentes, gatilhos diferentes, modais diferentes.'},
+   {t:'Nem tentar: arrependimento é coisa de passagem aérea, o rodoviário não tem isso.',g:0,
+    art:'Res. ANTT 6.033/2023',
+    fb:'<b>Tem, e é mais generoso que o do avião neste caso.</b> A Res. ANTT 6.033/2023 prevê arrependimento para compra em <b>canal não presencial</b>: <b>reembolso integral</b>, em até <b>7 dias da compra</b> e até <b>3 h antes da viagem</b>, <b>pelo mesmo canal</b>. Comprando há dois dias para amanhã, você tinha reembolso integral e deixou quatro bilhetes na mesa por achar que direito é tudo igual. Cada modal tem a sua norma; ignorar isso custa exatamente o preço dos bilhetes.'}
+  ]
+ },
+ {
+  mod:'ro', tag:'10h30 · O SHOW MUDOU DE SÁBADO PARA DOMINGO',
+  tit:'Remarcar no ônibus: aqui a norma te deixa sozinho',
+  ctx:'Show adiado em um dia. Cinco bilhetes rodoviários para sábado precisam virar domingo. Você já sabe o teto da multa aérea de cor e vai para o telefone confiante. A atendente informa: "a nossa taxa de remarcação é essa, e só remarcamos até 6 h antes; é a política da empresa".',
+  prem:'Premissa de enredo ⚠️ ESTIMADO: bilhete de R$ '+P.onibus+'. A "política da empresa" citada é enredo — cada viação tem a sua.',
+  ops:[
+   {t:'Contestar: existe prazo e teto de multa na norma, igual ao aéreo. A empresa está inventando regra.',g:0,
+    art:'Res. ANTT 6.033/2023',
+    fb:'<b>Quem está inventando é você.</b> Na Res. ANTT 6.033/2023 a remarcação <b>não tem prazo nem multa fixados na norma</b> — é <b>política da empresa</b>. Você está aplicando no ônibus a lógica dos arts. 9º e 10 da ANAC 400/2016, que é de <b>aviação civil</b>. Discutir com a atendente citando teto que não existe no modal dela não remarca bilhete nenhum, e ainda queima os 6 h de janela que a política dela dava.'},
+   {t:'Aceitar que remarcação rodoviária é política da empresa — sem prazo nem multa na norma — e conferir só o único teto que existe: a taxa não pode ultrapassar o preço do serviço. Se não remarcar, lembrar que o bilhete vale 1 ano.',g:1,
+    art:'Res. ANTT 6.033/2023',
+    fb:'<b>Correto, e é uma lição desconfortável.</b> Na Res. ANTT 6.033/2023 <b>não há prazo nem multa de remarcação</b>: quem define é a empresa. O <b>único teto</b> da norma é que <b>a taxa não pode ultrapassar o preço do serviço</b> — ou seja, remarcar não pode custar mais que o bilhete. E existe a saída que quase ninguém usa: o <b>bilhete rodoviário vale 1 ano</b>, então um bilhete não usado não é papel morto. A conclusão do cenário é o ponto do módulo: <b>no ônibus você não tem a proteção que tem no avião.</b> No ar, art. 9º da ANAC 400/2016 põe teto na multa e o art. 10 define quem paga a diferença. No chão, a norma cala e o contrato manda. Onde a norma cala, quem protege a produção é o cronograma de compra — não o direito.'},
+   {t:'Cobrar taxa de remarcação é abusivo no rodoviário. Exigir remarcação gratuita.',g:0,
+    art:'Res. ANTT 6.033/2023',
+    fb:'<b>Não é abusivo, é permitido.</b> A Res. ANTT 6.033/2023 <b>não proíbe</b> a cobrança nem fixa multa: a remarcação é política da empresa. O que a norma faz é pôr <b>um único teto: a taxa não pode ultrapassar o preço do serviço</b>. Ou seja, só existe abuso se a taxa passar do valor do próprio bilhete. Exigir gratuidade é chutar a porta de um direito que não está lá.'}
+  ]
+ },
+ {
+  mod:'ro', tag:'05h50 · TERMINAL RODOVIÁRIO · CHEGADA',
+  tit:'Falta um volume no bagageiro — e a janela para reclamar é agora',
+  ctx:'Doze horas de estrada, a equipe desce moída às 05h50. Falta um volume: o case com os cabos e as garras. O agente da viação diz que "isso a gente resolve depois, manda um e-mail" e estende a mão pedindo o seu bilhete e o tíquete de bagagem para "abrir o processo". A van do hotel já está buzinando.',
+  ops:[
+   {t:'Pegar a van, dormir três horas e ligar para a viação depois do meio-dia para abrir a reclamação.',g:0,
+    art:'Res. ANTT 6.033/2023',
+    fb:'<b>Você acabou de perder a reclamação no portão do terminal.</b> A Res. ANTT 6.033/2023 é dura nisso: a reclamação de bagagem tem que ser feita <b>obrigatoriamente no desembarque</b>, com <b>tíquete de bagagem + bilhete + documento de identificação</b>. Saiu do terminal sem reclamar, acabou. Não é burocracia à toa: depois do desembarque ninguém consegue mais provar que o volume não desceu com você. A van espera dez minutos; o case não volta nunca.'},
+   {t:'Reclamar ali, no desembarque, com tíquete de bagagem + bilhete + documento — e não entregar os originais: a empresa não pode reter bilhete nem tíquete.',g:1,
+    art:'Res. ANTT 6.033/2023',
+    fb:'<b>Correto, nos dois movimentos.</b> Primeiro: a Res. ANTT 6.033/2023 exige que a reclamação seja feita <b>no desembarque</b>, apresentando <b>tíquete + bilhete + documento</b> — é o único momento em que a reclamação existe. Segundo, e é o detalhe que o agente conta que você não sabe: <b>a empresa não pode reter o bilhete nem o tíquete de bagagem.</b> Apresentar é obrigação sua; entregar não é. Sem esses dois papéis na sua mão você perde a prova de que despachou e a base de qualquer indenização depois. Apresente, deixe fotografar ou copiar, guarde os originais — e só então pegue a van.'},
+   {t:'Reclamar no desembarque e entregar bilhete e tíquete para o agente abrir o processo interno.',g:0,
+    art:'Res. ANTT 6.033/2023',
+    fb:'<b>Metade certa, metade fatal.</b> Reclamar no desembarque é exatamente o que a Res. ANTT 6.033/2023 exige — com <b>tíquete + bilhete + documento</b>. Mas a mesma norma diz que <b>a empresa não pode reter o bilhete nem o tíquete</b>. Se você entrega os originais, fica sem a prova de que despachou aquele volume, e a discussão de indenização passa a ser a palavra da equipe contra o sistema deles. Apresentar sim, entregar não.'}
+  ]
+ }
+];
+
+var TOT=CEN.length, i=0, score=0, first=true, done=false, st=[];
+
+function prog(){
+  var p=$('#prog'); p.innerHTML='';
+  for(var k=0;k<TOT;k++){
+    var d=document.createElement('div'), c='pdot';
+    if(k<i){ c+= st[k]===1?' done':' half'; }
+    else if(k===i){ c+=' cur'; }
+    d.className=c; p.appendChild(d);
+  }
+  $('#pNow').textContent=Math.min(i+1,TOT);
+  $('#pScore').textContent=score;
+}
+
+function verdict(){
+  if(score>=9) return {c:'ok',t:'Você viaja sabendo o que é seu',d:'Conhece a janela do art. 19, sabe que remarcação é multa mais diferença, e sabe que a regra do ônibus não é a regra do avião. É esse produtor que não perde passagem de volta nem reclamação de bagagem.'};
+  if(score>=7) return {c:'warn',t:'Sabe os direitos, erra os gatilhos',d:'Você conhece os institutos — arrependimento, assistência, cancelamento — mas escorrega no que os liga: 7 dias de antecedência, 4 horas de espera, 3 horas antes da partida, mesmo canal. O direito existe; o gatilho é que o entrega.'};
+  if(score>=4) return {c:'warn',t:'Você mistura os dois modais',d:'Aplica ANAC no ônibus e ANTT no avião. São normas independentes, com prazos diferentes e proteções diferentes. Antes de abrir a boca no balcão, defina qual norma está valendo.'};
+  return {c:'bad',t:'Você paga o que não devia e perde o que era seu',d:'No-show sem ligação, arrependimento fora do prazo dos 7 dias, hotel exigido às 3h, bagagem reclamada fora do terminal. Refaça: em cada cenário, primeiro identifique o modal, depois o prazo, e só então o direito.'};
+}
+
+function fim(){
+  var v=verdict();
+  $('#card').innerHTML=
+   '<div class="fin"><div class="verdict '+v.c+'">PLACAR: '+score+'/10 acertos de primeira</div>'+
+   '<div class="big">'+v.t+'</div>'+
+   '<div class="note">'+v.d+'</div>'+
+   '<div class="step">O QUE ISSO TREINOU — E ONDE ESTÁ ESCRITO</div>'+
+   '<ul class="rules">'+
+   '<li><b>No-show, a exceção de ouro (ANAC 400/2016, art. 19, parágrafo único).</b> Perdeu a ida? A cia pode cancelar a volta — <b>salvo</b> se você avisar, até o horário originalmente contratado da ida, que quer usar o retorno. <b>Vedada a cobrança de multa</b> por esse aviso. Uma ligação dentro da janela vale uma passagem.</li>'+
+   '<li><b>Arrependimento aéreo (art. 11).</b> 24 h do recebimento do comprovante — <b>só se a compra foi feita com ≥ 7 dias do embarque</b>. Comprou em cima da hora, não tem arrependimento.</li>'+
+   '<li><b>Remarcação (arts. 9º e 10).</b> Multa <b>não pode ultrapassar o valor dos serviços de transporte aéreo</b> e a <b>tarifa aeroportuária não entra na base</b>. Mas você ainda paga a <b>diferença entre o valor pago e o ofertado no ato</b> — e ela costuma ser maior que a multa.</li>'+
+   '<li><b>Atraso &gt; 4 h (art. 21).</b> Reacomodação, reembolso ou <b>outra modalidade de transporte</b>, <b>à escolha do passageiro</b>. O balcão não escolhe por você. Novo horário informado <b>a cada 30 min, no máximo</b> (art. 20, §1º).</li>'+
+   '<li><b>Assistência material (art. 27).</b> &gt;1 h comunicação · &gt;2 h alimentação · &gt;4 h hospedagem <b>se houver pernoite</b> + traslado. Por passageiro, não por grupo. Anote a hora em que o atraso começou.</li>'+
+   '<li><b>Extravio (art. 32).</b> 7 dias no doméstico, 21 no internacional; não achou, indeniza em até 7 dias, com <b>teto de 1.131 DES</b> (art. 17). <b>A norma protege o seu dinheiro; ela não faz o show acontecer.</b> Plano B é seu.</li>'+
+   '<li><b>Rodoviário — cancelamento (Res. ANTT 6.033/2023).</b> Até <b>3 h antes</b>, por simples declaração, retenção de até <b>5%</b>, devolução em <b>30 dias</b>. <b>No-show rodoviário é perda total</b> — não existe a exceção do art. 19 aqui.</li>'+
+   '<li><b>Rodoviário — arrependimento.</b> Só em <b>canal não presencial</b>: integral, em até <b>7 dias da compra</b> <b>E</b> até <b>3 h antes</b>, <b>pelo mesmo canal</b>. Comprou no app, desiste no app.</li>'+
+   '<li><b>Rodoviário — remarcação.</b> <b>Não há prazo nem multa na norma</b>: é política da empresa. Único teto: a taxa <b>não pode ultrapassar o preço do serviço</b>. Bilhete vale <b>1 ano</b>. No ônibus você não tem a proteção que tem no avião.</li>'+
+   '<li><b>Rodoviário — bagagem.</b> Reclamação <b>obrigatoriamente no desembarque</b>, com <b>tíquete + bilhete + documento</b>. A empresa <b>não pode reter</b> bilhete nem tíquete. Saiu do terminal, perdeu.</li>'+
+   '<li><b>Modal define norma.</b> ANAC 400/2016 no ar, ANTT 6.033/2023 no chão. Prazos diferentes, gatilhos diferentes, proteções diferentes. Misturar os dois é o erro que este simulador existe para tirar de você.</li>'+
+   '</ul>'+
+   '<button class="nxt show" id="nxt" style="margin-left:0">REINICIAR ▶</button></div>';
+  $('#nxt').addEventListener('click',reset);
+}
+
+function render(){
+  prog();
+  if(i>=TOT){ fim(); return; }
+  var c=CEN[i], h='';
+  h+='<div class="tag"><span class="mod '+c.mod+'">'+(c.mod==='ar'?'AÉREO · ANAC 400/2016':'RODOVIÁRIO · ANTT 6.033/2023')+'</span>'+c.tag+'</div>';
+  h+='<div class="tit">'+c.tit+'</div><div class="ctx">'+c.ctx+'</div>';
+  if(c.prem) h+='<div class="prem">'+c.prem+'</div>';
+  h+='<div class="step">O QUE VOCÊ FAZ?</div>';
+  h+='<div class="opts">'+c.ops.map(function(o,k){
+    return '<div class="op" data-k="'+k+'">'+o.t+'</div>';
+  }).join('')+'</div>';
+  h+='<div class="fb" id="fb"></div><button class="nxt" id="nxt">PRÓXIMO CENÁRIO ▶</button>';
+  $('#card').innerHTML=h;
+  var fb=$('#fb'), nxt=$('#nxt');
+  $$('.op').forEach(function(el){ el.addEventListener('click',function(){
+    if(done) return;
+    var o=c.ops[+el.dataset.k];
+    if(o.g){
+      el.classList.add('good'); done=true;
+      $$('.op').forEach(function(x){ if(x!==el) x.classList.add('off'); });
+      fb.className='fb show hit'; fb.innerHTML='<span class="art">'+o.art+'</span><br>✓ '+o.fb;
+      if(first){ score++; $('#pScore').textContent=score; }
+      st[i]=first?1:0;
+      nxt.classList.add('show');
+    } else {
+      el.classList.add('badx'); first=false;
+      fb.className='fb show miss'; fb.innerHTML='<span class="art">'+o.art+'</span><br>✗ '+o.fb;
+    }
+  }); });
+  nxt.addEventListener('click',function(){ i++; first=true; done=false; render(); });
+}
+
+function reset(){ i=0; score=0; first=true; done=false; st=[]; render(); }
+$('#btnReset').addEventListener('click',reset);
+reset();
+})();
+</script>
+</body>
+</html>
