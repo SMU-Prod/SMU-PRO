@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMU PRO · Montagem e Checklist (capstone)</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0c1017;--panel:#161c26;--panel2:#1d2431;--line:#2a3444;--ink:#e7edf5;--dim:#8794a8;--accent:#3b82f6;--ok:#22c55e;--err:#ef4444;--warn:#f59e0b;}
+  html,body{background:var(--bg);color:var(--ink);font-family:'Segoe UI',system-ui,Arial,sans-serif;}
+  body{padding:12px;}
+  .app{max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:12px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  h1{font-size:15px;margin-bottom:3px;} .sub{font-size:12px;color:var(--dim);margin-bottom:12px;}
+  .stage{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+  .pill{font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;background:var(--panel2);border:1px solid var(--line);color:var(--dim);}
+  .pill.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .pill.done{background:#14532d;border-color:var(--ok);color:#bbf7d0;}
+  .steps{display:flex;flex-direction:column;gap:7px;}
+  .step{display:flex;align-items:center;gap:10px;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:11px 12px;cursor:pointer;transition:.12s;}
+  .step:hover{border-color:var(--accent);}
+  .step .n{width:24px;height:24px;border-radius:50%;background:#2a3444;color:#cbd5e1;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .step .t{font-size:12.5px;} .step .t small{display:block;color:var(--dim);font-size:10.5px;margin-top:2px;}
+  .step.done{border-color:var(--ok);} .step.done .n{background:var(--ok);color:#04120d;}
+  .chk{display:flex;flex-direction:column;gap:6px;}
+  .ci{display:flex;align-items:flex-start;gap:9px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px 11px;cursor:pointer;}
+  .ci .bx{width:17px;height:17px;border-radius:4px;border:1px solid var(--line);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:11px;}
+  .ci.on{border-color:var(--ok);} .ci.on .bx{background:var(--ok);border-color:var(--ok);color:#04120d;}
+  .ci .txt{font-size:12px;line-height:1.4;} .ci .txt small{color:var(--dim);display:block;font-size:10.5px;}
+  .ci.trap.on{border-color:var(--err);} .ci.trap.on .bx{background:var(--err);border-color:var(--err);color:#fff;}
+  .verdict{font-size:13px;font-weight:700;padding:10px;border-radius:9px;text-align:center;margin-top:12px;}
+  .verdict.ok{background:#14532d;color:#bbf7d0;} .verdict.bad{background:#450a0a;color:#fca5a5;} .verdict.idle{background:var(--panel2);color:var(--dim);}
+  .note{font-size:12px;color:var(--dim);line-height:1.55;margin-top:10px;} .note b{color:var(--ink);}
+  .btn{font-size:11.5px;padding:7px 12px;border:1px solid var(--line);border-radius:7px;background:#0c1119;color:var(--ink);cursor:pointer;margin-top:10px;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="card">
+    <h1>Montagem do evento — ordem de ligar e checklist</h1>
+    <div class="sub">Capstone: energize a cadeia na <b>ordem certa</b> e depois feche o <b>checklist de passagem</b> antes de abrir a casa. Cuidado com as pegadinhas.</div>
+    <div class="stage"><span class="pill on" id="p1">1 · Ordem de ligar</span><span class="pill" id="p2">2 · Checklist de passagem</span></div>
+
+    <div id="fase1">
+      <div class="steps" id="steps"></div>
+      <div class="verdict idle" id="v1">Clique na ordem correta.</div>
+    </div>
+
+    <div id="fase2" style="display:none">
+      <div class="chk" id="chk"></div>
+      <div class="verdict idle" id="v2">Marque só o que deve ser conferido.</div>
+      <button class="btn" id="finish">Encerrar checklist e abrir a casa</button>
+    </div>
+    <div class="note" id="note"></div>
+    <button class="btn" id="reset">Recomeçar</button>
+  </div>
+</div>
+<script>
+(function(){
+var $=function(s){return document.querySelector(s);};
+var ORDER=[
+  {id:'energia', t:'Energia / no-break', s:'fonte estável primeiro — nada reinicia no boot'},
+  {id:'telao', t:'Processadora e telão (cabinets)', s:'os equipamentos de saída acordam e ficam prontos'},
+  {id:'fonte', t:'Computador / fontes de vídeo', s:'a fonte por último: a processadora já reconhece o sinal (EDID)'},
+  {id:'teste', t:'Enviar imagem e conferir', s:'padrão de teste e conteúdo real na parede'}
+];
+var CHECK=[
+  {id:'res', t:'A resolução chega certa na tela?', s:'nativa da tela, sem borrar nem cortar', good:true},
+  {id:'todos', t:'Todos os cabinets/telas estão acesos?', s:'nenhum preto = nenhum cabo solto', good:true},
+  {id:'cabo', t:'Cabos identificados e com folga, fora do caminho?', s:'ninguém tropeça, nada arranca', good:true},
+  {id:'planob', t:'Existe plano B (cabo e fonte reserva)?', s:'o que fazer se cair no meio', good:true},
+  {id:'brilho', t:'Brilho ajustado ao ambiente/câmera?', s:'não estoura nem some no vídeo', good:true},
+  {id:'volume', t:'Ajustar o volume do PA principal', s:'…isso é do som, não do vídeo', good:false},
+  {id:'gel', t:'Trocar o gel de cor dos refletores', s:'…isso é da luz, não do vídeo', good:false}
+];
+var picked=[], marks={}, fase=1;
+function build(){
+  picked=[]; marks={}; fase=1;
+  $('#fase1').style.display='block'; $('#fase2').style.display='none';
+  $('#p1').className='pill on'; $('#p2').className='pill';
+  var se=$('#steps'); se.innerHTML='';
+  // shuffled display
+  [ORDER[2],ORDER[0],ORDER[3],ORDER[1]].forEach(function(o){
+    var d=document.createElement('div'); d.className='step'; d.id='st-'+o.id;
+    d.innerHTML='<div class="n">?</div><div class="t">'+o.t+'<small>'+o.s+'</small></div>';
+    d.onclick=function(){ pick(o.id); }; se.appendChild(d);
+  });
+  $('#v1').className='verdict idle'; $('#v1').textContent='Clique na ordem correta.';
+  $('#note').innerHTML='';
+}
+function pick(id){
+  if(picked.indexOf(id)>=0) return;
+  var expected=ORDER[picked.length];
+  if(expected.id!==id){ var v=$('#v1'); v.className='verdict bad'; v.textContent='✗ Ordem errada. Pense: o que precisa estar ESTÁVEL antes de tudo? E a fonte, quando entra?'; return; }
+  picked.push(id); var d=$('#st-'+id); d.classList.add('done'); d.querySelector('.n').textContent=picked.length;
+  var v=$('#v1');
+  if(picked.length===ORDER.length){ v.className='verdict ok'; v.textContent='✓ Ordem correta! (Para desligar, faça o inverso: fonte → telão → energia.)';
+    $('#note').innerHTML='<b>Por que essa ordem:</b> a energia estável evita que algo reinicie no boot; a processadora e o telão prontos antes fazem o <b>handshake</b> com a fonte sair limpo; por isso o <b>PC entra por último</b>.';
+    setTimeout(function(){ fase=2; $('#fase1').style.display='none'; $('#fase2').style.display='block'; $('#p1').className='pill done'; $('#p2').className='pill on'; buildChk(); },1600);
+  } else { v.className='verdict idle'; v.textContent='Boa — próximo passo ('+(picked.length+1)+'º).'; }
+}
+function buildChk(){
+  var ce=$('#chk'); ce.innerHTML='';
+  CHECK.forEach(function(c){ var d=document.createElement('div'); d.className='ci'+(c.good?'':' trap'); d.id='ck-'+c.id;
+    d.innerHTML='<div class="bx"></div><div class="txt">'+c.t+'<small>'+c.s+'</small></div>';
+    d.onclick=function(){ marks[c.id]=!marks[c.id]; d.classList.toggle('on',marks[c.id]); d.querySelector('.bx').textContent=marks[c.id]?(c.good?'✓':'✗'):''; };
+    ce.appendChild(d); });
+  $('#v2').className='verdict idle'; $('#v2').textContent='Marque só o que deve ser conferido.';
+}
+$('#finish').onclick=function(){
+  var goods=CHECK.filter(function(c){return c.good;});
+  var missing=goods.filter(function(c){return !marks[c.id];});
+  var wrong=CHECK.filter(function(c){return !c.good && marks[c.id];});
+  var v=$('#v2');
+  if(missing.length===0 && wrong.length===0){ v.className='verdict ok'; v.textContent='✓ Checklist completo — pode abrir a casa com segurança!';
+    $('#note').innerHTML='<b>Você fechou a montagem.</b> Cadeia ligada na ordem, imagem conferida elo a elo, cabos seguros e plano B pronto. É exatamente essa disciplina que separa o técnico que dorme tranquilo do que apanha no show. <b>No Pleno</b> você vai a fundo em cada equipamento: processadora NovaStar, mesa de corte e Resolume.';
+  }
+  else if(wrong.length){ v.className='verdict bad'; v.textContent='✗ Você marcou item que não é do vídeo ('+wrong[0].t.toLowerCase()+'). Cheque o seu escopo.'; }
+  else { v.className='verdict bad'; v.textContent='✗ Faltou conferir '+missing.length+' item(ns) essencial(is) do vídeo.'; }
+};
+$('#reset').onclick=build;
+window.__cm={build:build, pick:pick, get picked(){return picked;}, marks:marks};
+build();
+})();
+</script>
+</body>
+</html>

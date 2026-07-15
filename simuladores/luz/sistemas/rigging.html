@@ -1,0 +1,122 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Simulador — Rigging Seguro (Truss e Motores)</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;-webkit-tap-highlight-color:transparent}
+html,body{background:#0a0c10;color:#e9edf2}body{padding:10px}
+.app{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+h1{font-size:clamp(15px,4vw,20px);font-weight:800;color:#eaf0ff}
+.t{font-size:12px;color:#9daecb;line-height:1.45}
+.mission{background:#0e1626;border:1px solid #24406e;border-radius:11px;padding:10px 12px;font-size:12.5px;line-height:1.5}
+.mission b{color:#8fd0ff}
+.mrow{display:flex;align-items:center;gap:8px;margin-top:6px}
+.dot{width:14px;height:14px;border-radius:50%;border:2px solid #37507a;flex:none}.dot.ok{background:#39d98a;border-color:#39d98a}
+.btn{background:#1b2740;color:#dce7fb;border:1px solid #33507f;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;margin-top:8px}
+.truss{position:relative;width:100%;height:190px;background:#0d1119;border:1px solid #1f2839;border-radius:12px;overflow:hidden}
+.truss canvas{width:100%;height:100%;display:block}
+.slots{display:grid;grid-template-columns:repeat(8,1fr);gap:5px}
+.slot{background:#10141d;border:2px dashed #26314a;border-radius:9px;min-height:56px;padding:4px;display:flex;flex-direction:column;gap:3px;align-items:center;justify-content:center;cursor:pointer;font-size:9px;color:#5f7392}
+.slot.tgt{border-color:#ffcf5a;border-style:solid}
+.slot .fxc{background:#1a2233;border:1px solid #2c3a58;border-radius:6px;padding:3px 5px;font-size:9.5px;font-weight:700;color:#cfe0ff;width:100%;text-align:center;cursor:pointer}
+.pool{background:#10141d;border:1px solid #222c40;border-radius:12px;padding:10px}
+.pool .gt{font-size:10px;font-weight:800;color:#8aa0c2;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
+.pool .loads{display:flex;flex-wrap:wrap;gap:6px;min-height:30px}
+.chip{background:#1a2233;border:1px solid #2c3a58;border-radius:999px;padding:5px 10px;font-size:10.5px;font-weight:700;color:#cfe0ff;cursor:pointer}
+.chip.sel{border-color:#ffcf5a;background:#2a2415;color:#ffe9b0}
+.chip small{color:#7fa0d0}
+.meters{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mt{background:#10141d;border:2px solid #26314a;border-radius:12px;padding:10px}
+.mt.trip{border-color:#ff5a5a}
+.mt h3{font-size:12px;font-weight:800}
+.mt .kg{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;margin:3px 0}
+.mt .bar{height:9px;background:#0c1017;border-radius:6px;overflow:hidden}
+.mt .bar i{display:block;height:100%;border-radius:6px;transition:.2s}
+.mt .w{font-size:10px;color:#8aa0c2;margin-top:3px}
+.calc{background:#0d1119;border:1px solid #1f2839;border-radius:9px;padding:8px 10px;font-size:11px;color:#a9bcd8;line-height:1.5}
+</style></head><body>
+<div class="app">
+ <h1>🏗 Rigging Seguro — pendure o rig sem passar da carga</h1>
+ <div class="t">Truss de 8 m em <b>2 motores de corrente de 150 kg (SWL)</b> nas pontas. A truss pesa <b>80 kg</b> (40 kg em cada motor). Quanto mais perto de um motor a fixture está, mais peso ELE recebe (alavanca). Toque numa <b>peça</b> e depois na <b>posição</b> da truss.</div>
+ <div class="mission" id="mission"></div>
+ <div class="truss"><canvas id="cv"></canvas></div>
+ <div class="meters" id="meters"></div>
+ <div class="pool"><div class="gt">Peças para pendurar (peso real + garra e safety já somados)</div><div class="loads" id="pool"></div></div>
+ <div class="slots" id="slots"></div>
+ <div class="calc" id="calc"></div>
+</div>
+<script>
+'use strict';
+const SWL=150, TRUSS_KG=80, N=8;
+const ITEMS=[
+ {id:1,nome:'MegaPointe',kg:24},{id:2,nome:'MegaPointe',kg:24},
+ {id:3,nome:'Sharpy',kg:19},{id:4,nome:'Sharpy',kg:19},
+ {id:5,nome:'MAC Aura',kg:15},{id:6,nome:'MAC Aura',kg:15},
+ {id:7,nome:'Barra 6× PAR LED',kg:32},{id:8,nome:'Barra 6× PAR LED',kg:32},
+ {id:9,nome:'Máq. fumaça + suporte',kg:18},{id:10,nome:'Refletor COB',kg:9},
+];
+let slot={}; // itemId -> slotIdx (0..7)
+let picked=null;
+function posX(i){return (i+0.5)/N;} // fração do vão
+function loads(){let A=TRUSS_KG/2,B=TRUSS_KG/2;
+ for(const it of ITEMS){const s=slot[it.id];if(s==null)continue;const x=posX(s);A+=it.kg*(1-x);B+=it.kg*x;}
+ return {A,B};}
+const poolEl=document.getElementById('pool'),slotsEl=document.getElementById('slots'),metersEl=document.getElementById('meters');
+function build(){
+ poolEl.innerHTML='';
+ ITEMS.filter(it=>slot[it.id]==null).forEach(it=>{const c=document.createElement('div');c.className='chip'+(picked===it.id?' sel':'');
+  c.innerHTML=it.nome+' <small>'+it.kg+'kg</small>';c.onclick=()=>{picked=picked===it.id?null:it.id;build();};poolEl.appendChild(c);});
+ if(!ITEMS.some(it=>slot[it.id]==null))poolEl.innerHTML='<span style="font-size:11px;color:#7fd0a0;font-weight:700">✓ Tudo pendurado (com garra + safety)</span>';
+ slotsEl.innerHTML='';
+ for(let i=0;i<N;i++){const d=document.createElement('div');d.className='slot'+(picked?' tgt':'');
+  d.innerHTML='<span>P'+(i+1)+'</span>';
+  ITEMS.filter(it=>slot[it.id]===i).forEach(it=>{const f=document.createElement('div');f.className='fxc';f.textContent=it.nome+' '+it.kg+'kg ✕';
+   f.onclick=(e)=>{e.stopPropagation();delete slot[it.id];build();check();};d.appendChild(f);});
+  d.onclick=()=>{if(picked==null)return;slot[picked]=i;picked=null;build();check();draw();};
+  slotsEl.appendChild(d);}
+ const L=loads();
+ metersEl.innerHTML='';
+ [['Motor A (esquerda)',L.A],['Motor B (direita)',L.B]].forEach(([nm,kg])=>{const over=kg>SWL;const pct=Math.min(100,kg/SWL*100);
+  const d=document.createElement('div');d.className='mt'+(over?' trip':'');
+  d.innerHTML='<h3>'+nm+'</h3><div class="kg" style="color:'+(over?'#ff7b7b':kg>SWL*0.85?'#ffcf6b':'#7fd0a0')+'">'+kg.toFixed(0)+' kg</div><div class="bar"><i style="width:'+pct+'%;background:'+(over?'#ff5a5a':kg>SWL*0.85?'#e0b93a':'#39d98a')+'"></i></div><div class="w">SWL '+SWL+' kg · '+(over?'⚠ SOBRECARGA — NÃO içar!':'ok')+'</div>';
+  metersEl.appendChild(d);});
+ const tot=ITEMS.reduce((a,it)=>a+(slot[it.id]!=null?it.kg:0),0);
+ document.getElementById('calc').innerHTML='<b>Conta ao vivo:</b> carga no motor = truss/2 + Σ peso×distância-relativa. Pendurado: <b>'+tot+' kg</b> + truss '+TRUSS_KG+' kg = <b>'+(tot+TRUSS_KG)+' kg</b> no ar sobre a cabeça de todo mundo. Motor A <b>'+L.A.toFixed(0)+'kg</b> · Motor B <b>'+L.B.toFixed(0)+'kg</b> · Diferença <b>'+Math.abs(L.A-L.B).toFixed(0)+'kg</b>. Regra de ouro: NUNCA passe da SWL e nunca fique embaixo durante o içamento.';
+ draw();
+}
+// canvas: truss + motores + fixtures
+const cv=document.getElementById('cv');const ctx=cv.getContext('2d');
+function sizeC(){const r=cv.getBoundingClientRect();const dpr=Math.min(2,devicePixelRatio||1);cv.width=r.width*dpr;cv.height=r.height*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);draw();}
+let _raf=0;function draw(){if(_raf)return;_raf=requestAnimationFrame(()=>{_raf=0;paint();});}
+function paint(){const r=cv.getBoundingClientRect();const W=r.width,H=r.height;ctx.clearRect(0,0,W,H);
+ const L=loads();const y=H*0.52,x0=W*0.09,x1=W*0.91;
+ // corrente + motores
+ ['A','B'].forEach((m,i)=>{const x=i?x1:x0;const kg=i?L.B:L.A;const over=kg>SWL;
+  ctx.strokeStyle='#3a4658';ctx.lineWidth=2;ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(x,8);ctx.lineTo(x,y-26);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle=over?'#7a2020':'#1b212e';ctx.strokeStyle=over?'#ff5a5a':'#3a4658';ctx.lineWidth=2;
+  ctx.beginPath();ctx.roundRect(x-16,y-28,32,22,5);ctx.fill();ctx.stroke();
+  ctx.fillStyle=over?'#ff9a9a':'#8aa0c2';ctx.font='bold 10px system-ui';ctx.textAlign='center';ctx.fillText(m+' '+kg.toFixed(0)+'kg',x,y-13);});
+ // truss (2 banzos + diagonais)
+ ctx.strokeStyle='#5a6a80';ctx.lineWidth=3;
+ ctx.beginPath();ctx.moveTo(x0-10,y);ctx.lineTo(x1+10,y);ctx.stroke();
+ ctx.beginPath();ctx.moveTo(x0-10,y+14);ctx.lineTo(x1+10,y+14);ctx.stroke();
+ ctx.lineWidth=1.5;for(let x=x0-10;x<x1+10;x+=18){ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+9,y+14);ctx.lineTo(x+18,y);ctx.stroke();}
+ // fixtures penduradas
+ for(const it of ITEMS){const s=slot[it.id];if(s==null)continue;const x=x0+(x1-x0)*posX(s);
+  ctx.strokeStyle='#8aa0c2';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,y+14);ctx.lineTo(x,y+26);ctx.stroke(); // garra
+  ctx.strokeStyle='#39d98a';ctx.beginPath();ctx.arc(x+5,y+20,4,0,7);ctx.stroke(); // safety
+  ctx.fillStyle='#1b212e';ctx.strokeStyle='#3a4658';ctx.beginPath();ctx.roundRect(x-11,y+26,22,16,4);ctx.fill();ctx.stroke();
+  ctx.fillStyle='#9db2cc';ctx.font='8px system-ui';ctx.textAlign='center';ctx.fillText(it.kg+'kg',x,y+52);}
+ ctx.fillStyle='#5f7392';ctx.font='9.5px system-ui';ctx.textAlign='left';ctx.fillText('Vão de 8 m · truss 80 kg · garra + cabo de safety em toda peça (círculo verde)',10,H-8);
+}
+// missões
+const M=[
+ {t:'<b>Pendure as 10 peças</b> (207 kg no total) sem NENHUM motor passar dos <b>150 kg de SWL</b>. Cuidado: amontoar tudo num lado sobrecarrega aquele motor!',ok:()=>{const L=loads();return ITEMS.every(it=>slot[it.id]!=null)&&L.A<=SWL&&L.B<=SWL;}},
+ {t:'<b>Balanceie como um rigger:</b> tudo pendurado, motores dentro da SWL e <b>diferença entre A e B menor que 25 kg</b> — truss nivelada sobe reta.',ok:()=>{const L=loads();return ITEMS.every(it=>slot[it.id]!=null)&&L.A<=SWL&&L.B<=SWL&&Math.abs(L.A-L.B)<25;}},
+ {t:'<b>Pedido do produtor:</b> os 2 MegaPointe JUNTOS no centro (posições P4 e P5) para o efeito — e ainda assim tudo dentro da SWL e diferença < 25 kg. Redistribua o resto!',ok:()=>{const L=loads();const megas=[1,2].map(id=>slot[id]);return ITEMS.every(it=>slot[it.id]!=null)&&megas.every(s=>s===3||s===4)&&L.A<=SWL&&L.B<=SWL&&Math.abs(L.A-L.B)<25;}},
+];
+let mi=0;
+function drawM(){document.getElementById('mission').innerHTML='<div><b>Cenário '+(mi+1)+'/'+M.length+':</b> '+M[mi].t+'</div><div class="mrow"><span class="dot" id="mdot"></span><span id="mstat">Monte o rig…</span></div><button class="btn" id="mnext">Próximo ▸</button>';
+ document.getElementById('mnext').onclick=()=>{mi=(mi+1)%M.length;drawM();check();};check();}
+function check(){const dot=document.getElementById('mdot');if(!dot)return;let ok=false;try{ok=M[mi].ok();}catch(e){}
+ dot.classList.toggle('ok',ok);document.getElementById('mstat').textContent=ok?'✓ Rig aprovado pelo rigger!':'Monte o rig…';}
+build();drawM();sizeC();addEventListener('resize',sizeC);
+</script></body></html>

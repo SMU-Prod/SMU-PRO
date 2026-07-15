@@ -1,0 +1,129 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Simulador — Mesa de Luz Básica</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#0b0e14;color:#e7ecf3;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;overflow:hidden}
+body{display:flex;align-items:center;justify-content:center}
+.console{width:1020px;height:625px;background:linear-gradient(180deg,#141a26,#0c1018);border:1px solid #223049;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:11px;box-shadow:0 10px 40px #0008}
+h1{font-size:15px;font-weight:700;color:#cfe0ff}
+.sub{font-size:11.5px;color:#8aa0c2;line-height:1.4}
+.stage{height:150px;background:#04060a;border:1px solid #1c2740;border-radius:10px;overflow:hidden}
+.stage canvas{width:100%;height:100%;display:block}
+.mid{display:grid;grid-template-columns:1fr 300px;gap:14px;flex:1;min-height:0}
+.bank{display:flex;gap:8px;align-items:end;background:#0e1421;border:1px solid #22314c;border-radius:10px;padding:10px 8px}
+.chan{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;height:100%;justify-content:end}
+.track{position:relative;width:100%;max-width:30px;flex:1;min-height:120px;background:#0c1220;border:1px solid #263449;border-radius:7px;touch-action:none;cursor:pointer}
+.fill{position:absolute;left:0;right:0;bottom:0;border-radius:0 0 6px 6px;background:linear-gradient(0deg,#2b5aa8,#5aa0ff)}
+.knob{position:absolute;left:-2px;right:-2px;height:12px;background:#e7ecf3;border-radius:4px}
+.clbl{font-size:10px;color:#9fb4d6;font-weight:700}.cval{font-size:9.5px;color:#7f96bb;font-variant-numeric:tabular-nums}
+.side{display:flex;flex-direction:column;gap:9px;min-width:0}
+.gm{display:flex;gap:9px;background:#0e1421;border:1px solid #22314c;border-radius:10px;padding:9px}
+.gm .track{min-height:0;height:70px;max-width:26px}
+.pb{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.pbtn{background:#141d30;border:1px solid #2a3a58;border-radius:8px;padding:7px 3px;text-align:center;cursor:pointer}
+.pbtn.act{border-color:#39d98a;box-shadow:0 0 0 1px #39d98a}
+.pbtn .t{font-size:10px;font-weight:700}.pbtn .s{font-size:9px;color:#8298bd}
+.row{display:flex;gap:7px;flex-wrap:wrap}
+button{background:#1b2740;color:#dce7fb;border:1px solid #33507f;border-radius:8px;padding:7px 9px;font-size:11px;font-weight:600;cursor:pointer}
+button:hover{background:#233459}button.on{background:#7a2740;border-color:#c04d6e}button.rec{background:#8a6a1e;border-color:#caa23a}
+.mission{background:#0e1626;border:1px solid #24406e;border-radius:10px;padding:8px 10px;font-size:11px;line-height:1.4}
+.mrow{display:flex;align-items:center;gap:7px;margin-top:3px}.dot{width:12px;height:12px;border-radius:50%;border:2px solid #37507a;flex:none}.dot.ok{background:#39d98a;border-color:#39d98a}
+</style></head>
+<body>
+<div class="console" id="console">
+  <div><h1>Mesa de Luz — Canais, Cenas e Chase</h1>
+    <div class="sub">Suba os <b>faders de canal</b> para montar um look. <b>REC</b> + um playback grava a cena. O <b>Grand Master</b> limita tudo; <b>Blackout</b> apaga; <b>Chase</b> alterna cenas no ritmo.</div></div>
+  <div class="stage"><canvas id="cv"></canvas></div>
+  <div class="mid">
+    <div class="bank" id="bank"></div>
+    <div class="side">
+      <div class="gm">
+        <div class="chan" style="max-width:34px"><div class="cval" id="gmval">100</div><div class="track" id="gmtrack" style="width:26px"><div class="fill" style="height:100%;background:linear-gradient(0deg,#8a6a1e,#e0b93a)"></div><div class="knob" style="bottom:100%"></div></div><div class="clbl">GM</div></div>
+        <div style="display:flex;flex-direction:column;gap:6px;justify-content:center;flex:1">
+          <button id="blackout">BLACKOUT (DBO)</button>
+          <button id="rec" class="">REC — gravar cena</button>
+          <button id="chase">▶ CHASE</button>
+        </div>
+      </div>
+      <div><div class="clbl" style="margin-bottom:5px">PLAYBACKS / SUBMASTERS</div><div class="pb" id="pb"></div></div>
+      <div class="mission" id="mission"></div>
+      <div class="row"><button id="next">Próxima missão ▸</button><button id="clear">Zerar canais</button></div>
+    </div>
+  </div>
+</div>
+<script>
+const NCH=8;
+const ch=new Array(NCH).fill(0);      // 0..255
+let gm=255, blackout=false, recMode=false, chaseOn=false, chaseIdx=0, chaseT=null;
+const scenes=[null,null,null,null];   // 4 playbacks
+let activePB=-1;
+const COLORS=['#ff5a5a','#ff9a3a','#ffe08a','#48e06a','#3ad1c2','#4d8bff','#9b6bff','#ff6bd0'];
+// bank
+const bank=document.getElementById('bank');
+for(let i=0;i<NCH;i++){const el=document.createElement('div');el.className='chan';
+ el.innerHTML=`<div class="cval" data-v>0</div><div class="track" data-i="${i}"><div class="fill" data-fill style="height:0%"></div><div class="knob" data-knob style="bottom:0%"></div></div><div class="clbl" style="color:${COLORS[i]}">C${i+1}</div>`;
+ bank.appendChild(el);const track=el.querySelector('.track');
+ const set=cy=>{const r=track.getBoundingClientRect();let p=1-(cy-r.top)/r.height;p=Math.max(0,Math.min(1,p));ch[i]=Math.round(p*255);activePB=-1;render();};
+ track.addEventListener('pointerdown',e=>{try{track.setPointerCapture(e.pointerId);}catch(_){}set(e.clientY);});
+ track.addEventListener('pointermove',e=>{if(e.buttons)set(e.clientY);});
+}
+// grand master fader
+const gmt=document.getElementById('gmtrack');
+const setGM=cy=>{const r=gmt.getBoundingClientRect();let p=1-(cy-r.top)/r.height;p=Math.max(0,Math.min(1,p));gm=Math.round(p*255);render();};
+gmt.addEventListener('pointerdown',e=>{try{gmt.setPointerCapture(e.pointerId);}catch(_){}setGM(e.clientY);});
+gmt.addEventListener('pointermove',e=>{if(e.buttons)setGM(e.clientY);});
+// playbacks
+const pb=document.getElementById('pb');
+for(let i=0;i<4;i++){const el=document.createElement('div');el.className='pbtn';el.dataset.i=i;
+ el.innerHTML=`<div class="t">PB ${i+1}</div><div class="s" data-s>vazio</div>`;
+ el.onclick=()=>{if(recMode){scenes[i]=ch.slice();recMode=false;document.getElementById('rec').classList.remove('rec');render();}
+   else if(scenes[i]){for(let k=0;k<NCH;k++)ch[k]=scenes[i][k];activePB=i;chaseOn=false;stopChase();render();}};
+ pb.appendChild(el);}
+// buttons
+document.getElementById('blackout').onclick=e=>{blackout=!blackout;e.target.classList.toggle('on',blackout);render();};
+document.getElementById('rec').onclick=e=>{recMode=!recMode;e.target.classList.toggle('rec',recMode);};
+document.getElementById('clear').onclick=()=>{for(let i=0;i<NCH;i++)ch[i]=0;activePB=-1;render();};
+document.getElementById('chase').onclick=e=>{chaseOn=!chaseOn;e.target.classList.toggle('on',chaseOn);if(chaseOn)startChase();else stopChase();render();};
+function startChase(){stopChase();const have=scenes.filter(Boolean);if(have.length<2){/* usa canais isolados */}
+ chaseT=setInterval(()=>{const filled=scenes.map((s,i)=>s?i:-1).filter(i=>i>=0);
+   if(filled.length>=2){chaseIdx=(chaseIdx+1)%filled.length;const s=scenes[filled[chaseIdx]];for(let k=0;k<NCH;k++)ch[k]=s[k];}
+   else{chaseIdx=(chaseIdx+1)%NCH;for(let k=0;k<NCH;k++)ch[k]=(k===chaseIdx?255:0);}
+   render();},420);}
+function stopChase(){if(chaseT){clearInterval(chaseT);chaseT=null;}}
+// render
+const cv=document.getElementById('cv');const ctx=cv.getContext('2d');
+function sizeCanvas(){const r=cv.getBoundingClientRect();const dpr=Math.min(2,devicePixelRatio||1);cv.width=r.width*dpr;cv.height=r.height*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);drawStage();}
+function out(i){return blackout?0:Math.round(ch[i]*(gm/255));}
+function drawStage(){const r=cv.getBoundingClientRect();const W=r.width,H=r.height;ctx.clearRect(0,0,W,H);ctx.fillStyle='#04060a';ctx.fillRect(0,0,W,H);
+ const gap=W/(NCH+1);
+ for(let i=0;i<NCH;i++){const x=gap*(i+1);const v=out(i)/255;
+  // fixture
+  ctx.fillStyle='#161b26';ctx.fillRect(x-13,8,26,10);
+  if(v>0.01){const bg=ctx.createLinearGradient(0,18,0,H);bg.addColorStop(0,hex(COLORS[i],Math.min(0.9,v)));bg.addColorStop(1,hex(COLORS[i],0));
+   ctx.beginPath();ctx.moveTo(x-6,18);ctx.lineTo(x-gap*0.42,H);ctx.lineTo(x+gap*0.42,H);ctx.lineTo(x+6,18);ctx.closePath();ctx.fillStyle=bg;ctx.fill();
+   ctx.fillStyle=hex(COLORS[i],v);ctx.beginPath();ctx.arc(x,14,4,0,7);ctx.fill();}
+ }
+ ctx.fillStyle='#7f96bb';ctx.font='10px system-ui';ctx.textAlign='left';
+ let tag=blackout?'BLACKOUT':(chaseOn?'CHASE rodando':(activePB>=0?('Playback '+(activePB+1)):'ao vivo'));
+ ctx.fillText('Saída DMX · '+tag+' · GM '+Math.round(gm/255*100)+'%',10,H-10);
+}
+function hex(h,a){const c=h.replace('#','');return `rgba(${parseInt(c.substr(0,2),16)},${parseInt(c.substr(2,2),16)},${parseInt(c.substr(4,2),16)},${a})`;}
+function render(){for(let i=0;i<NCH;i++){const el=bank.children[i];const p=ch[i]/255*100;el.querySelector('[data-fill]').style.height=p+'%';el.querySelector('[data-knob]').style.bottom=p+'%';el.querySelector('[data-v]').textContent=Math.round(ch[i]/255*100);}
+ document.getElementById('gmval').textContent=Math.round(gm/255*100);gmt.querySelector('.fill').style.height=(gm/255*100)+'%';gmt.querySelector('.knob').style.bottom=(gm/255*100)+'%';
+ pb.querySelectorAll('.pbtn').forEach((el,i)=>{el.classList.toggle('act',activePB===i);el.querySelector('[data-s]').textContent=scenes[i]?'gravada':'vazio';});
+ drawStage();check();}
+// missões
+const M=[
+ {t:'Monte um look (suba ao menos 3 canais) e grave em <b>PB 1</b>: aperte <b>REC</b> e depois <b>PB 1</b>.',ok:()=>scenes[0]&&scenes[0].filter(v=>v>50).length>=3},
+ {t:'Grave um <b>segundo look diferente</b> em <b>PB 2</b>.',ok:()=>scenes[0]&&scenes[1]&&JSON.stringify(scenes[0])!==JSON.stringify(scenes[1])},
+ {t:'Teste o <b>Blackout</b>: apague tudo instantâneo com o botão DBO.',ok:()=>blackout===true},
+ {t:'Rode um <b>Chase</b> (precisa de 2 playbacks gravados) e veja as cenas alternando.',ok:()=>chaseOn&&scenes.filter(Boolean).length>=2},
+ {t:'Erro clássico: com o <b>Grand Master abaixado</b> nada acende. Deixe o GM em 100% de novo.',ok:()=>gm>=250&&!blackout},
+];
+let mi=0;
+function drawMission(){document.getElementById('mission').innerHTML=`<div><b>Missão ${mi+1}/${M.length}:</b> ${M[mi].t}</div><div class="mrow"><span class="dot" id="mdot"></span><span id="mstat">…</span></div>`;}
+function check(){const dot=document.getElementById('mdot');if(!dot)return;let ok=false;try{ok=M[mi].ok();}catch(e){}if(ok){dot.classList.add('ok');document.getElementById('mstat').textContent='✓ Feito! Próxima missão.';}else{dot.classList.remove('ok');document.getElementById('mstat').textContent='…';}}
+document.getElementById('next').onclick=()=>{mi=(mi+1)%M.length;drawMission();render();};
+function fit(){const DW=1020,DH=625;const vw=innerWidth,vh=innerHeight;const scrH=(window.screen&&screen.height)||vh;const iframeTaller=vh>scrH+8;const visH=Math.min(vh,scrH);const headerAllow=iframeTaller?84:(vh>700?24:6);const effVh=Math.max(240,visH-headerAllow);const z=Math.min(vw/DW,effVh/DH);document.getElementById('console').style.zoom=z;requestAnimationFrame(sizeCanvas);}
+addEventListener('resize',fit);drawMission();render();fit();setTimeout(fit,60);
+</script></body></html>

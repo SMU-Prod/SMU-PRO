@@ -1,0 +1,161 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Simulador — Spot × Beam × Wash: a ferramenta certa</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;-webkit-tap-highlight-color:transparent}
+html,body{background:#0a0c10;color:#e9edf2}body{padding:10px}
+.app{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+h1{font-size:clamp(15px,4vw,20px);font-weight:800;color:#eaf0ff}
+.t{font-size:12px;color:#9daecb;line-height:1.45}
+.mission{background:#0e1626;border:1px solid #24406e;border-radius:11px;padding:10px 12px;font-size:12.5px;line-height:1.5}
+.mission b{color:#8fd0ff}
+.mrow{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap}
+.dot{width:14px;height:14px;border-radius:50%;border:2px solid #37507a;flex:none}.dot.ok{background:#39d98a;border-color:#39d98a}
+.btn{background:#1b2740;color:#dce7fb;border:1px solid #33507f;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer}
+.btn.go{background:#1e5a3a;border-color:#2f8f5b}
+.stage{width:100%;aspect-ratio:16/7;background:#04060a;border:1px solid #1c2740;border-radius:12px;overflow:hidden}
+@media(max-width:560px){.stage{aspect-ratio:4/2.6}}
+.stage canvas{width:100%;height:100%;display:block}
+.gt{font-size:10px;font-weight:800;color:#8aa0c2;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
+.box{background:#10141d;border:1px solid #222c40;border-radius:12px;padding:10px}
+.types{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.ty{background:#0d1119;border:2px solid #26314a;border-radius:10px;padding:9px 7px;cursor:pointer;text-align:center}
+.ty.on{border-color:#ffcf5a;background:#2a2415}
+.ty .n{font-size:13px;font-weight:800;color:#eaf0ff}
+.ty .d{font-size:9.5px;color:#7fa0d0;font-weight:700;margin-top:2px}
+.ty .s{font-size:9px;color:#7487a8;margin-top:3px;line-height:1.3}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.sl{display:flex;flex-direction:column;gap:3px;min-width:120px;flex:1}
+.sl label{display:flex;justify-content:space-between;font-size:10.5px;font-weight:700;color:#cfe0ff}
+.sl label span{color:#8aa0c2}
+input[type=range]{width:100%;height:22px;-webkit-appearance:none;background:transparent}
+input[type=range]::-webkit-slider-runnable-track{height:6px;background:#26303f;border-radius:4px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:19px;height:19px;border-radius:50%;background:#e7ecf3;margin-top:-6.5px}
+.haze{display:flex;align-items:center;gap:8px;font-size:11px;color:#cfe0ff;font-weight:700}
+.sw{width:44px;height:24px;border-radius:999px;background:#2a3550;position:relative;cursor:pointer;flex:none}
+.sw.on{background:#39d98a}.sw i{position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.15s}.sw.on i{left:22px}
+.specs{font-size:11px;color:#a9bcd8;line-height:1.7;background:#0d1119;border:1px solid #1f2839;border-radius:9px;padding:8px 10px;margin-top:8px}
+.specs b{color:#ffd24d}
+.job{background:#0d1421;border:1px solid #26314a;border-radius:10px;padding:10px 12px;font-size:12.5px;color:#cfe0ff;line-height:1.5}
+.job .cli{font-size:10px;font-weight:800;color:#7fb2ff;text-transform:uppercase;letter-spacing:.5px}
+.fb{font-size:11.5px;line-height:1.6;margin-top:7px;padding:8px 10px;border-radius:8px;display:none}
+.fb.show{display:block}.fb.ok{background:#0d2016;border:1px solid #2f8f5b;color:#a8e6c0}.fb.no{background:#200d10;border:1px solid #8f2f3f;color:#ffb8c0}
+</style></head><body>
+<div class="app">
+ <h1>🔦 Spot × Beam × Wash — a ferramenta certa para cada função</h1>
+ <div class="t">Os três fazem luz, mas <b>servem para coisas diferentes</b>. Regra de ouro: <b>WASH pinta · SPOT desenha · BEAM risca o ar</b>. Troque o tipo, mexa no zoom e ligue a fumaça para ver a diferença no palco.</div>
+ <div class="mission" id="mission"></div>
+ <div class="stage"><canvas id="cv"></canvas></div>
+ <div class="box"><div class="gt">Tipo de moving head</div>
+  <div class="types" id="types"></div>
+  <div class="row">
+   <div class="sl"><label>Zoom / abertura <span id="zv">—</span></label><input id="zoom" type="range" min="0" max="255" value="128"></div>
+   <div class="sl"><label>Dimmer <span id="dv">100%</span></label><input id="dim" type="range" min="0" max="255" value="255"></div>
+   <div class="haze"><span>Fumaça / haze</span><div class="sw on" id="haze"><i></i></div></div>
+  </div>
+  <div class="specs" id="specs"></div>
+ </div>
+ <div class="box"><div class="gt">Qual você usa? <span id="prog" style="color:#ffd24d;font-weight:700"></span></div>
+  <div class="job" id="job"></div>
+  <div class="row" id="ans"></div>
+  <div class="fb" id="fb"></div>
+  <div class="mrow"><button class="btn go" id="next" style="display:none">Próxima situação ▸</button></div>
+ </div>
+</div>
+<script>
+'use strict';
+const TYPES=[
+ {id:'spot',n:'SPOT',d:'desenha',s:'Facho definido · gobos · íris · foco. Projeta desenho e recorta.',ang:[8,26],dens:0.55,gobo:true},
+ {id:'beam',n:'BEAM',d:'risca o ar',s:'Facho ESTREITO e denso, quase paralelo. O tubo de luz no ar.',ang:[2,6],dens:1.0,gobo:false},
+ {id:'wash',n:'WASH',d:'pinta',s:'Facho largo e suave, sem borda. Banha de cor grandes áreas.',ang:[14,55],dens:0.22,gobo:false},
+];
+let cur='spot', haze=true;
+const typesEl=document.getElementById('types');
+function buildTypes(){typesEl.innerHTML='';
+ TYPES.forEach(t=>{const d=document.createElement('div');d.className='ty'+(cur===t.id?' on':'');
+  d.innerHTML='<div class="n">'+t.n+'</div><div class="d">'+t.d+'</div><div class="s">'+t.s+'</div>';
+  d.onclick=()=>{cur=t.id;buildTypes();upd();};typesEl.appendChild(d);});}
+const zI=document.getElementById('zoom'),dI=document.getElementById('dim');
+zI.addEventListener('input',upd);dI.addEventListener('input',upd);
+document.getElementById('haze').onclick=(e)=>{haze=!haze;e.currentTarget.classList.toggle('on',haze);upd();};
+function T(){return TYPES.find(t=>t.id===cur);}
+function angle(){const t=T();return t.ang[0]+(zI.value/255)*(t.ang[1]-t.ang[0]);}
+function upd(){
+ const t=T(),a=angle();
+ document.getElementById('zv').textContent=a.toFixed(1)+'°';
+ document.getElementById('dv').textContent=Math.round(dI.value/2.55)+'%';
+ document.getElementById('specs').innerHTML='<b>'+t.n+'</b> — abertura atual <b>'+a.toFixed(1)+'°</b> (faixa '+t.ang[0]+'–'+t.ang[1]+'°) · densidade do facho no ar: <b>'+Math.round(t.dens*100)+'%</b>'+
+  (t.gobo?' · <b>projeta gobo</b>':' · não projeta gobo')+(haze?'':' · <b style="color:#ffb066">sem fumaça o facho quase não aparece no ar!</b>');
+ check();}
+// canvas
+const cv=document.getElementById('cv');const ctx=cv.getContext('2d');
+function sizeC(){const r=cv.getBoundingClientRect();const dpr=Math.min(2,devicePixelRatio||1);cv.width=r.width*dpr;cv.height=r.height*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);}
+function paint(){const r=cv.getBoundingClientRect();const W=r.width,H=r.height;ctx.clearRect(0,0,W,H);
+ ctx.fillStyle='#04060a';ctx.fillRect(0,0,W,H);
+ const t=T(),a=angle(),d=dI.value/255;
+ const fx=W*0.5,fy=H*0.1, ty=H*0.88;
+ const spread=Math.tan(a*Math.PI/180)*(ty-fy)*0.5+4;
+ // fixture
+ ctx.fillStyle='#161b26';ctx.fillRect(fx-16,fy-10,32,12);
+ ctx.fillStyle='#1b212e';ctx.beginPath();ctx.roundRect(fx-11,fy+2,22,18,4);ctx.fill();
+ if(d>0.02){
+  // volume do facho no ar (depende da fumaça e da densidade do tipo)
+  const airA=(haze?1:0.14)*t.dens*d;
+  if(airA>0.01){const g=ctx.createLinearGradient(fx,fy,fx,ty);
+   g.addColorStop(0,'rgba(150,210,255,'+Math.min(0.9,airA*0.85)+')');g.addColorStop(1,'rgba(150,210,255,'+Math.min(0.5,airA*0.3)+')');
+   ctx.beginPath();ctx.moveTo(fx-5,fy+18);ctx.lineTo(fx-spread,ty);ctx.lineTo(fx+spread,ty);ctx.lineTo(fx+5,fy+18);ctx.closePath();ctx.fillStyle=g;ctx.fill();}
+  // pool no chão
+  const pool=ctx.createRadialGradient(fx,ty,1,fx,ty,spread);
+  const poolA=Math.min(0.95,d*(t.id==='wash'?0.5:0.85));
+  pool.addColorStop(0,'rgba(190,230,255,'+poolA+')');pool.addColorStop(1,'rgba(190,230,255,0)');
+  ctx.fillStyle=pool;ctx.beginPath();ctx.ellipse(fx,ty,spread,spread*0.3,0,0,7);ctx.fill();
+  // gobo no pool (só spot)
+  if(t.gobo){ctx.save();ctx.beginPath();ctx.ellipse(fx,ty,spread*0.92,spread*0.28,0,0,7);ctx.clip();
+   ctx.globalCompositeOperation='destination-out';ctx.globalAlpha=0.5;ctx.fillStyle='#000';
+   for(let i=0;i<10;i++){ctx.save();ctx.translate(fx,ty);ctx.scale(1,0.3);ctx.rotate(i/10*7);ctx.fillRect(-spread*0.02,0,spread*0.04,spread*0.9);ctx.restore();}
+   ctx.restore();}
+ }
+ // legenda
+ ctx.fillStyle='#5f7392';ctx.font='9.5px system-ui';ctx.textAlign='left';
+ ctx.fillText(t.n+' · '+a.toFixed(1)+'° · '+(haze?'com fumaça':'SEM fumaça — o facho some no ar')+(t.gobo?' · gobo projetado':''),10,H-8);
+ ctx.textAlign='center';ctx.fillStyle='#44536e';ctx.font='8px system-ui';ctx.fillText('chão / plateia',fx,ty+16);
+}
+(function loop(){paint();requestAnimationFrame(loop);})();
+// ── situações ──
+const JOBS=[
+ {cli:'Show de rock — arena',txt:'O produtor quer aquele <b>efeito de tubos de luz cortando a fumaça</b> acima da plateia, bem denso e visível.',a:'beam',
+  fb:{ok:'É o BEAM. Facho quase paralelo (2–6°) e denso: é ele que "risca o ar". Com haze, vira o visual clássico de arena.',no:'Pense: "tubo de luz denso no ar" = facho estreitíssimo. Wash abre demais e some; spot é intermediário. O certo é o <b>BEAM</b>.'}},
+ {cli:'Teatro — logo da peça no cenário',txt:'Precisa <b>projetar o logo</b> (um gobo) nítido no fundo, com recorte definido.',a:'spot',
+  fb:{ok:'É o SPOT. Só ele tem roda de gobo + foco + íris para projetar desenho com nitidez.',no:'Projetar desenho nítido = <b>gobo + foco</b>. Beam e wash não fazem isso. É o <b>SPOT</b>.'}},
+ {cli:'TV — banhar o ciclorama',txt:'Precisa <b>cobrir todo o fundo</b> de azul, uniforme, sem marcar borda de facho.',a:'wash',
+  fb:{ok:'É o WASH. Facho largo (até 55°) e sem borda: pinta a área inteira uniforme. É o que "pinta".',no:'Cobrir área grande e uniforme, sem borda = <b>WASH</b>. Beam faria um pontinho; spot marcaria a borda.'}},
+ {cli:'Igreja — luz de rosto do pastor',txt:'Precisa iluminar <b>só a pessoa</b>, com um recorte controlado, sem espalhar luz na plateia.',a:'spot',
+  fb:{ok:'SPOT. Facho controlado com íris/foco recorta a pessoa sem vazar. Wash espalharia na plateia.',no:'Iluminar só a pessoa, com recorte e sem vazar = <b>SPOT</b> (íris e foco controlam). Wash espalha demais.'}},
+];
+let ji=0,answered=false,score=0,done=[];
+function buildJob(){const j=JOBS[ji];
+ document.getElementById('job').innerHTML='<div class="cli">'+j.cli+'</div>'+j.txt;
+ document.getElementById('prog').textContent='· '+(ji+1)+'/'+JOBS.length+' · acertos: '+score;
+ const el=document.getElementById('ans');el.innerHTML='';
+ TYPES.forEach(t=>{const b=document.createElement('button');b.className='btn';b.textContent='Usar '+t.n;
+  b.onclick=()=>{if(answered)return;answered=true;const ok=t.id===j.a;if(ok&&!done.includes(ji)){score++;done.push(ji);}
+   cur=t.id;buildTypes();upd();
+   const fb=document.getElementById('fb');fb.className='fb show '+(ok?'ok':'no');
+   fb.innerHTML=(ok?'✓ <b>Certo.</b> ':'✗ <b>Não.</b> ')+(ok?j.fb.ok:j.fb.no);
+   document.getElementById('next').style.display='';buildJob();check();};
+  el.appendChild(b);});}
+document.getElementById('next').onclick=()=>{ji=(ji+1)%JOBS.length;answered=false;document.getElementById('fb').className='fb';
+ document.getElementById('next').style.display='none';buildJob();check();};
+const M=[
+ {t:'<b>Sinta a diferença:</b> com a fumaça ligada, troque entre SPOT, BEAM e WASH no zoom máximo fechado. Depois <b>desligue a fumaça</b> e veja o facho sumir do ar — é a fumaça que revela a luz.',
+  ok:()=>haze===false},
+ {t:'<b>Escolha certo:</b> resolva as 4 situações — acerte pelo menos <b>3 de 4</b>. Lembre: wash pinta · spot desenha · beam risca o ar.',
+  ok:()=>score>=3},
+ {t:'<b>Gabarito:</b> acerte <b>as 4</b> situações.',ok:()=>score===4},
+];
+let mi=0;
+function drawM(){document.getElementById('mission').innerHTML='<div><b>Cenário '+(mi+1)+'/'+M.length+':</b> '+M[mi].t+'</div><div class="mrow"><span class="dot" id="mdot"></span><span id="mstat">…</span><button class="btn go" id="mnext">Próximo ▸</button></div>';
+ document.getElementById('mnext').onclick=()=>{mi=(mi+1)%M.length;drawM();check();};check();}
+function check(){const dot=document.getElementById('mdot');if(!dot)return;let ok=false;try{ok=M[mi].ok();}catch(e){}
+ dot.classList.toggle('ok',ok);document.getElementById('mstat').textContent=ok?'✓ Cumprido!':'…';}
+buildTypes();buildJob();drawM();sizeC();upd();addEventListener('resize',sizeC);
+</script></body></html>

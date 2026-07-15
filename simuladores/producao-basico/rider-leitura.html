@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>SMU PRO · Lendo um rider técnico</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0c1017;--panel:#161c26;--panel2:#1b2230;--line:#2a3444;--ink:#e7edf5;--dim:#8794a8;
+        --accent:#f59e0b;--ok:#22c55e;--err:#ef4444;--warn:#f59e0b;--cyan:#38bdf8;}
+  html,body{background:var(--bg);color:var(--ink);
+    font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased;}
+  body{padding:12px;}
+  .app{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:12px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  h1{font-size:15px;margin-bottom:3px;}
+  .sub{font-size:12px;color:var(--dim);margin-bottom:12px;line-height:1.5;}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px;}
+  .stat .k{font-size:10px;color:var(--dim);letter-spacing:.5px;}
+  .stat .val{font-size:15px;font-weight:800;margin-top:2px;}
+  .verdict{font-size:13px;font-weight:700;padding:9px 12px;border-radius:8px;text-align:center;}
+  .verdict.ok{background:#14532d;color:#bbf7d0;}
+  .verdict.bad{background:#450a0a;color:#fca5a5;}
+  .verdict.warn{background:#422006;color:#fde68a;}
+  .note{font-size:12px;color:var(--dim);line-height:1.55;}
+  button{font:inherit;cursor:pointer;}
+
+  .layout{display:grid;grid-template-columns:1fr;gap:12px;align-items:start;}
+  @media(min-width:840px){ .layout{grid-template-columns:1fr 330px;} .qpanel{position:sticky;top:12px;} }
+
+  /* documento */
+  .doc{background:#f4f1e9;color:#1a1a1a;border-radius:10px;padding:16px;max-height:74vh;overflow-y:auto;
+       font-family:'Courier New',ui-monospace,monospace;font-size:12px;line-height:1.6;}
+  .doc h2{font-size:13px;letter-spacing:1px;border-bottom:1.5px solid #1a1a1a;padding-bottom:3px;margin-bottom:7px;}
+  .dochead{text-align:center;border:2px solid #1a1a1a;padding:9px;margin-bottom:14px;}
+  .dochead .b{font-size:16px;font-weight:800;letter-spacing:2px;}
+  .dochead .v{font-size:11px;color:#555;margin-top:3px;}
+  .sec{border:2px dashed transparent;border-radius:6px;padding:8px;margin-bottom:10px;cursor:pointer;transition:background .12s;}
+  .sec:hover{background:#e6e1d4;}
+  .sec.pick{border-color:#c2410c;background:#fde8d0;}
+  .sec.hit{border-color:#15803d;background:#dcf5e2;}
+  .sec.locked{cursor:default;}
+  .sec.locked:hover{background:transparent;}
+  .doc table{width:100%;border-collapse:collapse;font-size:11px;}
+  .doc td{border-bottom:1px solid #d6d0c0;padding:2px 4px;vertical-align:top;}
+  .doc td:first-child{width:26px;font-weight:700;color:#7c2d12;}
+  .doc td:nth-child(3){width:78px;color:#155e75;}
+  .doc ul{margin-left:16px;}
+  .doc .cl{font-size:11px;color:#3a3a3a;line-height:1.7;}
+  .doc .hi{background:#fde68a;padding:0 2px;}
+  .plan{background:#fff;border:1px solid #1a1a1a;border-radius:4px;}
+
+  /* painel de perguntas */
+  .qpanel{display:flex;flex-direction:column;gap:10px;}
+  .prog{display:flex;align-items:center;gap:8px;}
+  .prog .pb{flex:1;height:5px;border-radius:3px;background:#0a0e15;border:1px solid var(--line);overflow:hidden;}
+  .prog .pb i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s;}
+  .prog .n{font-size:11px;color:var(--dim);font-weight:700;}
+  .qtxt{font-size:13.5px;font-weight:700;line-height:1.45;}
+  .step{font-size:10px;letter-spacing:.7px;font-weight:800;color:var(--cyan);}
+  .opts{display:flex;flex-direction:column;gap:6px;}
+  .opts button{text-align:left;padding:9px 11px;min-height:34px;border-radius:8px;border:1px solid var(--line);
+    background:var(--panel2);color:var(--ink);font-size:12px;line-height:1.45;}
+  .opts button:hover:not(:disabled){border-color:#4b5a70;}
+  .opts button.ok{border-color:var(--ok);background:#14532d66;}
+  .opts button.no{border-color:var(--err);background:#450a0a66;}
+  .opts button:disabled{cursor:default;}
+  .fb{font-size:12px;line-height:1.6;padding:9px 11px;border-radius:8px;border-left:3px solid var(--line);background:var(--panel2);color:var(--dim);}
+  .fb.ok{border-left-color:var(--ok);} .fb.no{border-left-color:var(--err);}
+  .fb b{color:#fde68a;}
+  .acts{display:flex;gap:6px;}
+  .acts button{flex:1;padding:9px 12px;min-height:36px;border-radius:8px;border:1px solid var(--line);
+    background:var(--panel2);color:var(--ink);font-size:12px;font-weight:700;}
+  .acts button.go{background:#42200680;border-color:var(--accent);color:#fde68a;}
+  .hide{display:none!important;}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .lic{font-size:12px;line-height:1.65;color:var(--dim);}
+  .lic b{color:#fde68a;}
+  .lic li{margin-left:16px;margin-bottom:5px;}
+  .h3{font-size:11px;letter-spacing:.7px;color:var(--cyan);font-weight:800;margin-bottom:7px;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="card">
+    <h1>Lendo um rider técnico pela primeira vez</h1>
+    <div class="sub">O rider da banda chegou. Antes de responder ao contratante, você precisa <b>entender o documento</b>. Para cada pergunta: clique na seção do rider que responde e depois escolha a interpretação correta.</div>
+
+    <div class="layout">
+      <!-- ================= DOCUMENTO ================= -->
+      <div class="doc" id="doc">
+        <div class="dochead">
+          <div class="b">CAJU ELÉTRICO</div>
+          <div class="v">RIDER TÉCNICO E DE HOSPITALIDADE · Turnê “Sereno” 2026 · v3.2 — 04/03/2026</div>
+        </div>
+
+        <div class="sec" data-sec="cab">
+          <h2>0. CONTATOS</h2>
+          Produção da banda: Rita Sampaio · (81) 9xxxx-xxxx<br>
+          Técnico de FOH: Deko Fernandes · (81) 9xxxx-xxxx<br>
+          Técnico de monitor: Val Correia<br>
+          <span class="cl">Toda dúvida técnica deve ser tratada com o FOH <u>até 72h antes</u> do evento.</span>
+        </div>
+
+        <div class="sec" data-sec="comitiva">
+          <h2>1. COMITIVA — 12 PESSOAS</h2>
+          6 músicos (voz/sanfona, guitarra, baixo, teclado, bateria, percussão)<br>
+          1 técnico de FOH · 1 técnico de monitor · 1 iluminador<br>
+          1 roadie de backline · 1 produtora · 1 motorista<br>
+          <span class="cl">Todos precisam de credencial de acesso, transporte local e refeição quente.</span>
+        </div>
+
+        <div class="sec" data-sec="pa">
+          <h2>2. PA E ENERGIA</h2>
+          Sistema line array de marca reconhecida (L-Acoustics, d&amp;b, Adamson ou similar),
+          cobertura homogênea em toda a área de público, ±3 dB, com subgrave em arranjo cardioide.<br>
+          Processamento e alinhamento <u>concluídos antes</u> da chegada da equipe.<br>
+          <span class="cl"><span class="hi">ENERGIA: 63A trifásico + neutro + aterramento isolado (&lt; 5Ω), em quadro exclusivo do palco,
+          separado da iluminação decorativa e da cozinha.</span> Não aceitamos ligação em quadro compartilhado.</span>
+        </div>
+
+        <div class="sec" data-sec="foh">
+          <h2>3. CONSOLE FOH</h2>
+          <span class="hi">DiGiCo SD12 (96 kHz) ou Yamaha CL5.</span> Nenhum outro modelo sem consulta prévia ao FOH.<br>
+          Posição de FOH centralizada, no eixo do palco, entre 2/3 e 3/4 da área de público, nunca sob mezanino
+          ou dentro de cabine fechada.<br>
+          <span class="cl">O console é operado pelo <u>técnico de FOH da banda</u>. A contratante deve disponibilizar
+          um técnico de casa para apoio durante montagem e show.</span>
+        </div>
+
+        <div class="sec" data-sec="mon">
+          <h2>4. MONITORAÇÃO — 8 VIAS</h2>
+          <table>
+            <tr><td>M1</td><td>Voz principal — 2 wedges 12"</td><td>via 1</td></tr>
+            <tr><td>M2</td><td>Guitarra</td><td>via 2</td></tr>
+            <tr><td>M3</td><td>Baixo</td><td>via 3</td></tr>
+            <tr><td>M4</td><td>Teclado</td><td>via 4</td></tr>
+            <tr><td>M5</td><td>Percussão</td><td>via 5</td></tr>
+            <tr><td>M6</td><td>Bateria (wedge + throne)</td><td>via 6</td></tr>
+            <tr><td>SF</td><td>Sidefill L/R (par estéreo)</td><td>via 7</td></tr>
+            <tr><td>DS</td><td>Drum sub / subgrave de palco</td><td>via 8</td></tr>
+          </table>
+          <span class="cl">Console de monitor próprio, com split analógico ou digital do palco.</span>
+        </div>
+
+        <div class="sec" data-sec="input">
+          <h2>5. INPUT LIST</h2>
+          <table id="ilist"></table>
+          <span class="cl">Todas as fontes de nível de instrumento (baixo, violão, teclados, sanfona e playback)
+          entram por <u>DI</u>. Microfones e DIs por conta da contratante.</span>
+        </div>
+
+        <div class="sec" data-sec="backline">
+          <h2>6. BACKLINE</h2>
+          <b>Fornecido pela CONTRATANTE:</b>
+          <ul>
+            <li>Bateria completa (bumbo 20", tons 12"/14", surdo 16", ferragens, banco) — <u>sem pratos e sem caixa</u></li>
+            <li>1 amplificador de guitarra valvulado 2×12" (Fender Twin, Vox AC30 ou similar)</li>
+            <li>1 amplificador de baixo 500 W + caixa 4×10"</li>
+            <li>6 estantes de microfone girafa · 4 estantes pequenas · 12 réguas de tomada aterradas no palco</li>
+          </ul>
+          <b>A banda traz:</b> guitarras, baixos, pratos, caixa, pedaleiras, sanfona, teclado e notebook de playback.
+        </div>
+
+        <div class="sec" data-sec="stage">
+          <h2>7. STAGE PLAN</h2>
+          <svg class="plan" viewBox="0 0 460 170" width="100%" role="img" aria-label="Planta de palco">
+            <rect x="2" y="2" width="456" height="166" fill="none" stroke="#1a1a1a"/>
+            <rect x="180" y="8" width="100" height="46" fill="#e5e0d0" stroke="#1a1a1a"/><text x="230" y="36" font-size="11" text-anchor="middle" fill="#1a1a1a">BATERIA</text>
+            <rect x="30" y="20" width="86" height="34" fill="#e5e0d0" stroke="#1a1a1a"/><text x="73" y="41" font-size="10" text-anchor="middle" fill="#1a1a1a">PERCUSSÃO</text>
+            <rect x="344" y="20" width="86" height="34" fill="#e5e0d0" stroke="#1a1a1a"/><text x="387" y="41" font-size="10" text-anchor="middle" fill="#1a1a1a">TECLADO</text>
+            <rect x="60" y="86" width="76" height="30" fill="#e5e0d0" stroke="#1a1a1a"/><text x="98" y="105" font-size="10" text-anchor="middle" fill="#1a1a1a">BAIXO</text>
+            <rect x="324" y="86" width="76" height="30" fill="#e5e0d0" stroke="#1a1a1a"/><text x="362" y="105" font-size="10" text-anchor="middle" fill="#1a1a1a">GUITARRA</text>
+            <circle cx="230" cy="112" r="15" fill="#fde68a" stroke="#1a1a1a"/><text x="230" y="116" font-size="9" text-anchor="middle" fill="#1a1a1a">VOZ</text>
+            <rect x="196" y="140" width="68" height="12" fill="#cbd5e1" stroke="#1a1a1a"/><text x="230" y="149" font-size="8" text-anchor="middle" fill="#1a1a1a">M1</text>
+            <rect x="70" y="140" width="56" height="12" fill="#cbd5e1" stroke="#1a1a1a"/><text x="98" y="149" font-size="8" text-anchor="middle" fill="#1a1a1a">M3</text>
+            <rect x="334" y="140" width="56" height="12" fill="#cbd5e1" stroke="#1a1a1a"/><text x="362" y="149" font-size="8" text-anchor="middle" fill="#1a1a1a">M2</text>
+            <text x="12" y="163" font-size="9" fill="#555">PALCO MÍNIMO 10 m × 8 m · ALTURA LIVRE 5 m · SPLIT NO CANTO SR</text>
+          </svg>
+        </div>
+
+        <div class="sec" data-sec="crono">
+          <h2>8. CRONOGRAMA DE MONTAGEM</h2>
+          <table>
+            <tr><td>08:00</td><td>Load-in da estrutura, PA e luz (equipe da contratante)</td><td></td></tr>
+            <tr><td>13:00</td><td><u>PA voado, alinhado e processado</u>; monitores em posição; backline montado e testado; energia do palco aterrada e medida; canais do input list já mapeados e identificados no palco e no multicabo</td><td></td></tr>
+            <tr><td>14:00</td><td>Chegada da equipe técnica da banda</td><td></td></tr>
+            <tr><td>16:00</td><td>Passagem de som (2h, palco fechado ao público)</td><td></td></tr>
+            <tr><td>21:00</td><td>Show — 90 min</td><td></td></tr>
+          </table>
+          <span class="cl">A banda não faz passagem de som em sistema incompleto. Atraso na entrega das 13:00
+          reduz a passagem, não o horário do show.</span>
+        </div>
+
+        <div class="sec" data-sec="camarim">
+          <h2>9. CAMARIM E HOSPITALIDADE</h2>
+          1 camarim exclusivo com chave, espelho, ar-condicionado e banheiro privativo.<br>
+          12 refeições quentes servidas até 2h antes do show (2 opções vegetarianas).<br>
+          24 águas sem gás geladas · 12 toalhas de rosto brancas · frutas · café.<br>
+          Van 15 lugares para deslocamento hotel–local–hotel.
+        </div>
+
+        <div class="sec" data-sec="clausulas">
+          <h2>10. OBSERVAÇÕES E CLÁUSULAS</h2>
+          <span class="cl">
+          10.1 — Este rider é <u>parte integrante do contrato</u>. Sua assinatura implica aceite integral dos itens técnicos.<br>
+          10.2 — Qualquer alteração ou substituição de item deve ser <u>comunicada e aprovada por escrito pelo FOH com no mínimo 72h de antecedência</u>.
+          Substituição não aprovada será tratada como descumprimento.<br>
+          10.3 — <span class="hi">O descumprimento dos itens técnicos não isenta a CONTRATANTE do pagamento integral do cachê
+          e faculta à banda reduzir o repertório ou não se apresentar, sem devolução de valores.</span><br>
+          10.4 — Custos de locação, transporte ou mão de obra decorrentes de item não fornecido correm por conta da CONTRATANTE.
+          </span>
+        </div>
+      </div>
+
+      <!-- ================= PAINEL ================= -->
+      <div class="qpanel">
+        <div class="card" id="quiz">
+          <div class="prog"><div class="pb"><i id="pbi"></i></div><div class="n" id="pn">1 / 10</div></div>
+          <div class="step" id="step" style="margin:10px 0 5px;">PASSO 1 — LOCALIZE NO RIDER</div>
+          <div class="qtxt" id="qtxt"></div>
+          <div class="opts hide" id="opts" style="margin-top:10px;"></div>
+          <div class="fb hide" id="fb" style="margin-top:10px;"></div>
+          <div class="acts hide" id="next" style="margin-top:10px;"><button class="go" id="bNext">Próxima →</button></div>
+        </div>
+        <div class="card hide" id="res">
+          <div class="verdict" id="verdict" style="margin-bottom:10px;"></div>
+          <div class="stats">
+            <div class="stat"><div class="k">INTERPRETAÇÃO</div><div class="val" id="sA">—</div></div>
+            <div class="stat"><div class="k">ACHOU DE PRIMEIRA</div><div class="val" id="sL">—</div></div>
+          </div>
+          <div style="margin-top:12px;">
+            <div class="h3">O QUE ISSO ENSINA</div>
+            <div class="lic"><ul>
+              <li><b>Rider é um pedido, não uma lei</b> — quase tudo se negocia com o técnico da banda. Mas o que é inegociável está escrito lá, e seu trabalho é saber ler qual é: show file do console, energia aterrada, o que já tem que estar pronto às 13:00.</li>
+              <li><b>Input list = tamanho da mesa e do multicabo.</b> 32 canais não é uma mesa de 32: é multicabo de 32 vias, split pro monitor, 32 microfones/DIs e gente pra passar cabo.</li>
+              <li><b>Comitiva = transporte + camarim + comida.</b> 12 pessoas viram van, credencial, 12 refeições e um camarim com chave. Isso é orçamento, não hospitalidade.</li>
+              <li><b>O que você não leu, você vai descobrir no dia</b> — na frente do cliente, com a banda no palco e sem tempo de resolver.</li>
+            </ul></div>
+          </div>
+          <div class="acts" style="margin-top:12px;"><button id="bReset">Reiniciar</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var $=function(s){return document.querySelector(s);};
+  var $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s));};
+
+  var INPUTS=['Bumbo In|D112','Bumbo Out|Cond.','Caixa Top|SM57','Caixa Bottom|SM57','Hi-Hat|Cond.','Tom 1|Clip',
+    'Tom 2|Clip','Surdo|Clip','OH L|Cond.','OH R|Cond.','Baixo|DI','Baixo Mic|Dinâmico','Guitarra 1|SM57',
+    'Guitarra 2|SM57','Violão|DI','Teclado L|DI','Teclado R|DI','Sanfona|DI','Timbal|Dinâmico','Triângulo|Cond.',
+    'Percussão OH|Cond.','Vocal Principal|Vocal s/ fio','Vocal 2 (guit)|SM58','Vocal 3 (baixo)|SM58',
+    'Vocal 4 (tecl)|SM58','Vocal 5 (perc)|SM58','Playback L|DI','Playback R|DI','Talkback FOH|SM58',
+    'Ambiente L|Cond.','Ambiente R|Cond.','Spare|—'];
+  (function(){ var t=$('#ilist'),h='';
+    INPUTS.forEach(function(s,i){ var p=s.split('|');
+      h+='<tr><td>'+(i+1)+'</td><td>'+p[0]+'</td><td>'+p[1]+'</td></tr>'; });
+    t.innerHTML=h; })();
+
+  var SECN={cab:'os contatos da produção da banda',comitiva:'a comitiva',pa:'o PA e a energia',
+    foh:'o console de FOH',mon:'a monitoração',input:'o input list',backline:'o backline',
+    stage:'a planta de palco',crono:'o cronograma de montagem',camarim:'o camarim e a hospitalidade',
+    clausulas:'as cláusulas contratuais'};
+
+  var QS=[
+   {q:'Quantos canais de entrada a banda precisa?',sec:['input'],
+    o:['24 canais','28 canais','32 canais','40 canais'],c:2,
+    e:'O input list tem <b>32 linhas</b> — é isso que você conta, linha por linha, sempre. Mas 32 canais não é “uma mesa de 32”: é <b>multicabo de 32 vias</b> (na prática você leva 40 pra ter folga), split pro console de monitor, 32 microfones/DIs e gente pra passar e identificar cabo. Nunca feche uma mesa no limite exato do input list.'},
+   {q:'Quantas vias de monitor a banda pede?',sec:['mon'],
+    o:['6 vias','8 vias','10 vias','12 vias'],c:1,
+    e:'<b>8 vias:</b> M1 a M6 (wedges) + sidefill + drum sub. Cuidado com a pegadinha: o sidefill é um <b>par estéreo</b> mas conta como <b>uma via</b> de mix, e a voz principal tem <b>dois wedges na mesma via</b>. Via de monitor = mistura independente, não caixa. Isso define o número de saídas do console e de amplificação de palco.'},
+   {q:'O que é “DI” e para que serve neste rider?',sec:['input'],
+    o:['Um tipo de microfone de contato usado em instrumentos acústicos',
+       'Caixa de injeção direta: converte o sinal desbalanceado e de alta impedância do instrumento em sinal balanceado de baixa impedância, que viaja no multicabo sem ruído',
+       'Um pré-amplificador que aumenta o volume do instrumento no palco',
+       'Sigla de “Direct Input”, um canal reservado no console'],c:1,
+    e:'<b>DI = caixa de injeção direta.</b> Instrumento com saída de linha/instrumento (baixo, violão, teclado, sanfona, playback) não pode ir direto no multicabo: o sinal é desbalanceado, de alta impedância, e capta ruído em cabo longo. A DI balanceia, casa a impedância e ainda isola o terra (chave ground lift) contra ronco. Conte as DIs no input list: <b>Baixo, Violão, Teclado L, Teclado R, Sanfona, Playback L e Playback R = 7 DIs</b> (mais 1 ou 2 de reserva). Isso é item de lista de carga.'},
+   {q:'A banda traz o técnico de som dela?',sec:['comitiva','foh'],
+    o:['Não — a contratante opera FOH e monitor',
+       'Sim — FOH e monitor são da banda; a contratante fornece sistema e um técnico de casa para apoio',
+       'Sim, mas só o de monitor; o FOH é da casa',
+       'O rider não diz'],c:1,
+    e:'A comitiva lista <b>técnico de FOH e técnico de monitor</b>, e a seção do console confirma: o console é operado pelo técnico da banda. Você <b>não vende operação</b> — vende sistema, infraestrutura e um <b>técnico de casa</b> que conhece o equipamento, acompanha a montagem e resolve problema durante o show. Esse técnico de apoio é obrigação sua e tem que estar no orçamento.'},
+   {q:'Quem fornece o backline: nós ou eles?',sec:['backline'],
+    o:['A banda traz tudo; nós só fornecemos PA e luz',
+       'Nós fornecemos tudo, inclusive pratos e caixa',
+       'Misto: nós fornecemos bateria (sem pratos e sem caixa), amp de guitarra valvulado, amp de baixo e estantes; a banda traz guitarras, baixos, pratos, caixa, pedais, sanfona e playback',
+       'O rider não define, fica a combinar'],c:2,
+    e:'Backline quase sempre é <b>misto</b>, e o detalhe é onde mora o problema: pratos, caixa e pedais são pessoais — o músico traz. O resto é seu, com especificação: “valvulado 2×12” não se resolve com um combo transistorizado qualquer. Locar bateria e amps <b>não é opcional</b>: está no rider, virou contrato. Some isso ao orçamento antes de dar o preço.'},
+   {q:'O rider pede DiGiCo SD12 ou Yamaha CL5. Isso é inegociável? Por quê?',sec:['foh'],
+    o:['Sim, absolutamente — trocar o console anula o contrato',
+       'Não, qualquer mesa digital serve; console é tudo igual',
+       'Na prática quase sempre é: o técnico traz o show file com as cenas, o roteamento e o processamento prontos. Em outro console isso não abre — ele reconstrói tudo na hora, no lugar de passar som. Só se negocia consultando o FOH com antecedência',
+       'É negociável e barato: basta exportar as cenas para qualquer modelo'],c:2,
+    e:'Rider é um <b>pedido</b>, não uma lei — mas este item é o que mais se aproxima de uma. O show file (cenas, roteamento, EQ, dinâmica, snapshots por música) é o trabalho de meses do técnico e <b>só abre no console da mesma família</b>. Trocar SD12 por outra marca é apagar tudo. Negociação real: você liga pro FOH <u>na semana da proposta</u> (a cláusula 10.2 dá 72h) e oferece uma alternativa que ele aceite — nunca decide sozinho e avisa no dia.'},
+   {q:'Quantas pessoas vêm na comitiva? O que isso significa pra produção?',sec:['comitiva'],
+    o:['6 pessoas — só os músicos','9 pessoas','12 pessoas','15 pessoas'],c:2,
+    e:'<b>12 pessoas.</b> Esse número não é curiosidade, é orçamento: van de 15 lugares hotel–local–hotel, <b>12 credenciais</b>, 12 refeições quentes (2 vegetarianas) até 2h antes do show, camarim com chave e ar-condicionado, 24 águas. Comitiva é a linha que o iniciante esquece e que aparece como despesa no dia — na hora em que 12 pessoas com fome chegam num camarim que não existe.'},
+   {q:'O que precisa estar pronto ANTES da equipe da banda chegar?',sec:['crono'],
+    o:['Só o palco montado; o resto se faz junto com eles',
+       'PA voado, alinhado e processado; monitores em posição; backline montado e testado; energia do palco aterrada e medida; canais do input list mapeados e identificados — tudo às 13:00, uma hora antes de eles chegarem',
+       'Nada — a montagem é feita em conjunto a partir das 14:00',
+       'Apenas o console de FOH ligado'],c:1,
+    e:'O cronograma tem <b>hora de entrega</b>, não sugestão. Às 13:00 o sistema tem que estar pronto e medido; às 14:00 chega a equipe deles; às 16:00 passa som. E a linha mais dura está no fim da seção: <b>atraso na entrega das 13:00 reduz a passagem, não o horário do show</b>. Quem monta “enquanto a banda chega” entrega um show sem passagem de som.'},
+   {q:'Tem algum item aqui que o local pode não ter?',sec:['pa'],
+    o:['O sistema line array — nenhuma casa tem',
+       'A energia: 63A trifásico com aterramento isolado (&lt; 5Ω) em quadro exclusivo do palco. Salão de festas costuma ter monofásico compartilhado com cozinha e decoração, e aterramento nenhum',
+       'As estantes de microfone','O camarim com chave'],c:1,
+    e:'Line array você loca. <b>Energia você não loca do salão</b> — ou o local tem, ou entra gerador e quadro de distribuição no seu custo. Quadro compartilhado com cozinha e luz decorativa dá ronco, queda e risco de choque no palco; aterramento fora de especificação é problema de <b>segurança</b>, não de qualidade sonora. Esse é o item nº 1 pra checar em visita técnica, antes de qualquer preço.'},
+   {q:'Onde no rider está escrito o que acontece se algo não for cumprido?',sec:['clausulas'],
+    o:['No cronograma de montagem','Nos contatos, no aviso das 72h',
+       'Na seção de observações e cláusulas: o rider é parte do contrato; item não cumprido não isenta a contratante do cachê integral e a banda pode reduzir repertório ou não tocar, sem devolução',
+       'Em lugar nenhum — rider não tem valor contratual'],c:2,
+    e:'É a seção que ninguém lê e que decide tudo. <b>O rider é parte integrante do contrato</b> (10.1): assinou, aceitou. Item não fornecido <b>não reduz o cachê</b> e ainda autoriza a banda a cortar repertório ou não subir ao palco (10.3) — e os custos de resolver na hora são seus (10.4). Por isso rider se lê <b>antes de assinar</b>: é o momento em que ele ainda é negociável (10.2 exige aviso por escrito com 72h). Depois, é obrigação.'}
+  ];
+
+  var i=0, score=0, loc=0, locOk=true, phase=1;
+
+  function reset(){
+    i=0;score=0;loc=0;
+    $('#res').classList.add('hide'); $('#quiz').classList.remove('hide');
+    show();
+  }
+  function clearSecs(){ $$('.sec').forEach(function(s){ s.className='sec'; }); }
+
+  function show(){
+    var q=QS[i]; phase=1; locOk=true;
+    clearSecs();
+    $('#pn').textContent=(i+1)+' / '+QS.length;
+    $('#pbi').style.width=(i/QS.length*100)+'%';
+    $('#qtxt').innerHTML=q.q;
+    $('#step').textContent='PASSO 1 — CLIQUE NA SEÇÃO DO RIDER QUE RESPONDE';
+    $('#opts').classList.add('hide'); $('#opts').innerHTML='';
+    $('#fb').classList.add('hide'); $('#next').classList.add('hide');
+  }
+
+  function onSec(el){
+    if(phase!==1) return;
+    var q=QS[i], id=el.dataset.sec;
+    if(q.sec.indexOf(id)>=0){
+      el.classList.add('hit');
+      if(locOk) loc++;
+      phase=2;
+      $('#fb').classList.add('hide');
+      $('#step').textContent='PASSO 2 — O QUE ESSA SEÇÃO QUER DIZER';
+      var box=$('#opts'); box.innerHTML=''; box.classList.remove('hide');
+      q.o.forEach(function(t,k){
+        var b=document.createElement('button'); b.innerHTML=t;
+        b.onclick=function(){ answer(k,b); }; box.appendChild(b);
+      });
+    } else {
+      el.classList.add('pick'); locOk=false;
+      var f=$('#fb'); f.className='fb no'; f.classList.remove('hide');
+      f.innerHTML='Essa seção fala sobre '+SECN[id]+'. Não é onde essa resposta está — continue procurando.';
+    }
+  }
+
+  function answer(k,b){
+    if(phase!==2) return; phase=3;
+    var q=QS[i], f=$('#fb');
+    $$('#opts button').forEach(function(x,n){ x.disabled=true; if(n===q.c) x.classList.add('ok'); });
+    if(k===q.c){ score++; f.className='fb ok'; f.innerHTML='<b>Correto.</b> '+q.e; }
+    else { b.classList.add('no'); f.className='fb no'; f.innerHTML='<b>Errado.</b> '+q.e; }
+    f.classList.remove('hide');
+    $('#step').textContent='LEITURA TÉCNICA';
+    $('#bNext').textContent=(i===QS.length-1)?'Ver resultado →':'Próxima →';
+    $('#next').classList.remove('hide');
+    $$('.sec').forEach(function(s){ s.classList.add('locked'); });
+  }
+
+  $('#bNext').onclick=function(){
+    i++;
+    if(i>=QS.length) finish(); else show();
+  };
+
+  function finish(){
+    $('#pbi').style.width='100%';
+    $('#quiz').classList.add('hide');
+    $('#res').classList.remove('hide');
+    $('#sA').innerHTML=score+' <small style="font-size:10px;color:var(--dim);font-weight:400;">/ '+QS.length+'</small>';
+    $('#sL').innerHTML=loc+' <small style="font-size:10px;color:var(--dim);font-weight:400;">/ '+QS.length+'</small>';
+    var v=$('#verdict');
+    if(score>=9){ v.className='verdict ok'; v.textContent='✓ Você lê rider. Dá pra montar a lista de carga e a proposta sem telefonar pra banda.'; }
+    else if(score>=6){ v.className='verdict warn'; v.textContent='◐ Leu o documento, mas escapou detalhe que vira custo ou briga no dia. Releia as seções que você errou.'; }
+    else { v.className='verdict bad'; v.textContent='✗ Rider lido por cima. Nesse nível, você fecha o contrato sem saber o que assinou.'; }
+  }
+
+  $$('.sec').forEach(function(s){ s.onclick=function(){ onSec(s); }; });
+  $('#bReset').onclick=reset;
+  show();
+})();
+</script>
+</body>
+</html>

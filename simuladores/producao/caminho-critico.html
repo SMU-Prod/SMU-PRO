@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>SMU PRO · Caminho crítico e marcos</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0c1017;--panel:#161c26;--panel2:#1b2230;--line:#2a3444;--ink:#e7edf5;--dim:#8794a8;
+        --accent:#f59e0b;--ok:#22c55e;--err:#ef4444;--warn:#f59e0b;--cyan:#38bdf8;}
+  html,body{background:var(--bg);color:var(--ink);
+    font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased;}
+  body{padding:12px;}
+  .app{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:12px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  h1{font-size:15px;margin-bottom:3px;}
+  .sub{font-size:12px;color:var(--dim);margin-bottom:12px;line-height:1.5;}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px;}
+  .stat .k{font-size:10px;color:var(--dim);letter-spacing:.5px;}
+  .stat .val{font-size:15px;font-weight:800;margin-top:2px;}
+  .verdict{font-size:13px;font-weight:700;padding:9px 12px;border-radius:8px;text-align:center;}
+  .verdict.ok{background:#14532d;color:#bbf7d0;}
+  .verdict.bad{background:#450a0a;color:#fca5a5;}
+  .verdict.warn{background:#422006;color:#fde68a;}
+  .note{font-size:12px;color:var(--dim);line-height:1.55;}
+  button{font:inherit;cursor:pointer;}
+
+  .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-bottom:10px;}
+  @media(min-width:640px){.stats{grid-template-columns:repeat(5,1fr);}}
+  .stat .val small{font-size:10px;font-weight:400;color:var(--dim);}
+  .stat.hot{border-color:var(--err);} .stat.hot .val{color:#fca5a5;}
+  .stat.good .val{color:#86efac;}
+
+  .gantt{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:10px;background:#0a0e15;padding:8px 8px 10px;}
+  .grow{display:flex;align-items:center;height:40px;}
+  .gname{position:sticky;left:0;z-index:3;flex:0 0 208px;width:208px;display:flex;align-items:center;gap:6px;
+         background:#0a0e15;padding-right:8px;border-right:1px solid var(--line);}
+  .gname .nm{flex:1;font-size:11px;line-height:1.15;color:var(--dim);overflow:hidden;}
+  .grow.crit .gname .nm{color:#fde68a;font-weight:600;}
+  .gname input{width:46px;height:34px;font:inherit;font-size:11px;text-align:center;background:#111826;
+               color:var(--ink);border:1px solid var(--line);border-radius:5px;padding:0;}
+  .gname input:disabled{background:#0d1219;color:#64748b;border-style:dashed;}
+  .gtrack{position:relative;height:40px;flex:0 0 auto;}
+  .bar{position:absolute;top:10px;height:20px;border-radius:4px;background:#334155;border:1px solid #475569;
+       font-size:10px;color:#cbd5e1;line-height:18px;padding:0 4px;overflow:hidden;white-space:nowrap;}
+  .grow.crit .bar{background:#7c2d12;border-color:var(--accent);color:#fde68a;font-weight:700;}
+  .slk{position:absolute;top:15px;height:10px;border:1px dashed #475569;border-radius:3px;background:#1e293b40;}
+  .ms{position:absolute;top:14px;width:12px;height:12px;background:var(--cyan);transform:rotate(45deg);border-radius:2px;}
+  .grow.crit .ms{background:var(--err);}
+  .ghead{display:flex;height:18px;}
+  .gvline{position:absolute;top:0;bottom:0;width:1px;background:#1a2331;}
+  .gd0{position:absolute;top:0;bottom:0;width:2px;background:var(--err);opacity:.7;}
+  .gtick{position:absolute;top:0;font-size:9px;color:#5b6a80;transform:translateX(-50%);}
+
+  .legend{display:flex;flex-wrap:wrap;gap:10px;font-size:10px;color:var(--dim);margin-top:8px;}
+  .legend i{display:inline-block;width:11px;height:9px;border-radius:2px;margin-right:4px;vertical-align:middle;}
+
+  .btns{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+  .btns button{font-size:11px;padding:8px 10px;min-height:34px;border:1px solid var(--line);border-radius:7px;
+               background:#0c1119;color:var(--dim);}
+  .btns button.pri{background:#422006;border-color:var(--accent);color:#fde68a;font-weight:700;}
+
+  .q{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:10px;margin-bottom:8px;}
+  .qt{font-size:12px;line-height:1.45;margin-bottom:8px;}
+  .qt b{color:var(--cyan);}
+  .qa{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+  .yn{font-size:11px;padding:0 10px;height:34px;border:1px solid var(--line);border-radius:7px;background:#0c1119;color:var(--dim);}
+  .yn.on[data-v="1"]{background:#450a0a;border-color:var(--err);color:#fca5a5;}
+  .yn.on[data-v="0"]{background:#14532d;border-color:var(--ok);color:#bbf7d0;}
+  .qa .days{width:74px;height:34px;font:inherit;font-size:11px;text-align:center;background:#111826;color:var(--ink);
+            border:1px solid var(--line);border-radius:7px;}
+  .fb{font-size:11px;line-height:1.5;margin-top:8px;padding:7px 9px;border-radius:6px;display:none;}
+  .fb.s{display:block;background:#14532d;color:#bbf7d0;}
+  .fb.f{display:block;background:#450a0a;color:#fca5a5;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="card">
+    <h1>Caminho crítico e marcos — pré-produção de um show</h1>
+    <div class="sub">90 dias corridos até o show. Ajuste as <b>durações</b> (em dias) e veja o <b>caminho crítico</b> recalcular.
+      Barras <b style="color:#fde68a">âmbar</b> = crítico (folga zero). Barras cinza = têm folga. Depois responda os cenários de atraso.</div>
+
+    <div class="stats">
+      <div class="stat"><div class="k">SHOW (D-0)</div><div class="val" id="sShow">—</div></div>
+      <div class="stat"><div class="k">FIM DO PLANO</div><div class="val" id="sFim">—</div></div>
+      <div class="stat" id="sFolgaBox"><div class="k">FOLGA ATÉ O SHOW</div><div class="val" id="sFolga">—</div></div>
+      <div class="stat"><div class="k">TAREFAS CRÍTICAS</div><div class="val" id="sCrit">—</div></div>
+      <div class="stat" id="sAtrasoBox"><div class="k">ATRASO PROJETADO</div><div class="val" id="sAtraso">—</div></div>
+    </div>
+
+    <div class="gantt" id="gantt"></div>
+    <div class="legend">
+      <span><i style="background:#7c2d12;border:1px solid #f59e0b"></i>caminho crítico</span>
+      <span><i style="background:#334155;border:1px solid #475569"></i>tem folga</span>
+      <span><i style="border:1px dashed #475569;background:#1e293b"></i>folga (slack)</span>
+      <span><i style="background:#38bdf8;border-radius:1px"></i>marco (data de não-retorno)</span>
+      <span><i style="background:#ef4444;width:3px"></i>D-0 / show</span>
+    </div>
+
+    <div class="btns">
+      <button class="pri" id="bReset">Plano base</button>
+      <button data-sc="recesso">Prefeitura em recesso</button>
+      <button data-sc="rider">Rider travado 10 dias</button>
+      <button data-sc="enxuga">Enxugar o não-crítico</button>
+      <button data-sc="agil">Artista fecha em 7 dias</button>
+    </div>
+    <div class="note" id="critNote" style="margin-top:9px;"></div>
+  </div>
+
+  <div class="card">
+    <h1>Cenários de atraso — isso atrasa o show?</h1>
+    <div class="sub">Para cada ocorrência: o show <b>anda de data</b>? Se sim, <b>quantos dias</b>? Compare o atraso com a
+      <b>folga</b> da tarefa. As respostas são conferidas contra o cronograma que está na tela agora.</div>
+    <div id="quiz"></div>
+    <div class="btns">
+      <button class="pri" id="bCheck">Conferir</button>
+      <button id="bClear">Limpar respostas</button>
+    </div>
+    <div class="verdict" id="score" style="margin-top:10px;display:none;"></div>
+  </div>
+
+</div>
+<script>
+(function(){
+var $=function(s){return document.querySelector(s);};
+var $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s));};
+
+/* ---------- plano base: 90 dias corridos, início 05/01/2026 ---------- */
+var PRAZO=90, PX=6, START=new Date(2026,0,5);
+
+/* Ordem topológica garantida: toda dep aparece antes. */
+var TASKS=[
+ {id:'T1', nm:'Fechar contrato do artista',        d:14, deps:[]},
+ {id:'T2', nm:'Receber rider técnico + hospitality',d:8, deps:['T1'], ms:1},
+ {id:'T3', nm:'Aprovar planta e stage plan',        d:9, deps:['T2'], ms:1},
+ {id:'T4', nm:'ART + laudo estrutural (palco)',    d:12, deps:['T3']},
+ {id:'T5', nm:'Contratar seguro (RC evento)',       d:6, deps:['T3']},
+ {id:'T6', nm:'Licenças / alvará — prazo do órgão',d:45, deps:['T4','T5'], ms:1, lock:1},
+ {id:'T7', nm:'Cotar fornecedores (som/luz/vídeo)',d:10, deps:['T2']},
+ {id:'T8', nm:'Fechar locação de som e luz',        d:8, deps:['T7']},
+ {id:'T9', nm:'Contratar equipe técnica',           d:7, deps:['T8']},
+ {id:'T10',nm:'Emitir e pagar ECAD',                d:5, deps:['T2']},
+ {id:'T11',nm:'Confirmar transporte e hospedagem',  d:6, deps:['T9']},
+ {id:'T12',nm:'Enviar Run of Show à equipe',        d:4, deps:['T9','T11'], ms:1},
+ {id:'T13',nm:'Load-in / montagem',                 d:2, deps:['T6','T10','T12'], ms:1}
+];
+var BASE={}; TASKS.forEach(function(t){BASE[t.id]=t.d;});
+var durs={}; TASKS.forEach(function(t){durs[t.id]=t.d;});
+var SUCC={}; TASKS.forEach(function(t){SUCC[t.id]=[];});
+TASKS.forEach(function(t){ t.deps.forEach(function(d){ SUCC[d].push(t.id); }); });
+
+/* ---------- CPM: forward pass + backward pass ---------- */
+function cpm(D){
+  var es={},ef={},ls={},lf={},sl={},i,t;
+  for(i=0;i<TASKS.length;i++){                       // forward
+    t=TASKS[i]; var s=0;
+    for(var j=0;j<t.deps.length;j++) s=Math.max(s, ef[t.deps[j]]);
+    es[t.id]=s; ef[t.id]=s+D[t.id];
+  }
+  var dur=0; TASKS.forEach(function(x){ dur=Math.max(dur, ef[x.id]); });
+  for(i=TASKS.length-1;i>=0;i--){                    // backward
+    t=TASKS[i]; var f;
+    if(SUCC[t.id].length===0) f=dur;
+    else { f=Infinity; SUCC[t.id].forEach(function(s){ f=Math.min(f, ls[s]); }); }
+    lf[t.id]=f; ls[t.id]=f-D[t.id]; sl[t.id]=ls[t.id]-es[t.id];
+  }
+  var path=TASKS.filter(function(x){return sl[x.id]===0;});
+  return {es:es,ef:ef,ls:ls,lf:lf,sl:sl,dur:dur,path:path};
+}
+function durAlt(id,extra){ var D={}; TASKS.forEach(function(t){D[t.id]=durs[t.id];}); D[id]+=extra; return cpm(D).dur; }
+function nameOf(id){ for(var i=0;i<TASKS.length;i++) if(TASKS[i].id===id) return TASKS[i].nm; return id; }
+function dt(off){ var d=new Date(START.getTime()); d.setDate(d.getDate()+off);
+  return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+'/'+String(d.getFullYear()).slice(-2); }
+
+/* ---------- Gantt em DOM ---------- */
+function drawGantt(r){
+  var maxDay=Math.max(r.dur, PRAZO)+3, W=maxDay*PX, g=$('#gantt'), h='';
+  var ticks='';
+  for(var d=0; d<=maxDay; d+=15){
+    ticks+='<div class="gvline" style="left:'+(d*PX)+'px"></div>';
+    ticks+='<div class="gtick" style="left:'+(d*PX)+'px">'+(d<=PRAZO?'D-'+(PRAZO-d):'D+'+(d-PRAZO))+'</div>';
+  }
+  ticks+='<div class="gd0" style="left:'+(PRAZO*PX)+'px"></div>';
+  h+='<div class="grow ghead"><div class="gname" style="height:18px"><span class="nm">TAREFA / dias</span></div>'+
+     '<div class="gtrack" style="width:'+W+'px;height:18px">'+ticks+'</div></div>';
+
+  TASKS.forEach(function(t){
+    var crit=r.sl[t.id]===0, es=r.es[t.id], ef=r.ef[t.id], sl=r.sl[t.id];
+    var bw=Math.max(4, durs[t.id]*PX);
+    var s='<div class="grow'+(crit?' crit':'')+'">';
+    s+='<div class="gname"><span class="nm">'+(t.lock?'🔒 ':'')+t.nm+'</span>'+
+       '<input type="number" min="1" max="120" step="1" value="'+durs[t.id]+'" data-id="'+t.id+'"'+(t.lock?' disabled':'')+'></div>';
+    s+='<div class="gtrack" style="width:'+W+'px">'+ticks;
+    if(sl>0) s+='<div class="slk" style="left:'+(ef*PX)+'px;width:'+(sl*PX)+'px"></div>';
+    s+='<div class="bar" style="left:'+(es*PX)+'px;width:'+bw+'px">'+(bw>34?durs[t.id]+'d':'')+'</div>';
+    if(t.ms) s+='<div class="ms" style="left:'+(ef*PX-6)+'px" title="marco"></div>';
+    s+='</div></div>';
+    h+=s;
+  });
+  g.innerHTML=h;
+  $$('#gantt input').forEach(function(inp){
+    inp.onchange=function(){
+      var v=Math.round(+this.value); if(!isFinite(v)||v<1) v=1; if(v>120) v=120;
+      durs[this.dataset.id]=v; render();
+    };
+  });
+}
+
+/* ---------- quiz ---------- */
+var QZ=[
+ {id:'T2', add:10, q:'O empresário do artista <b>demorou 10 dias a mais</b> para mandar o rider técnico.'},
+ {id:'T6', add:15, q:'A prefeitura travou o processo: o <b>alvará saiu 15 dias depois</b> do previsto.'},
+ {id:'T7', add:3,  q:'O fornecedor de luz <b>atrasou 3 dias</b> para enviar a proposta na fase de cotação.'},
+ {id:'T5', add:10, q:'A seguradora pediu vistoria extra e a <b>apólice de RC saiu 10 dias depois</b>.'},
+ {id:'T10',add:20, q:'O <b>ECAD ficou 20 dias parado</b> porque o setlist não foi enviado.'},
+ {id:'T9', add:40, q:'A <b>contratação da equipe travou 40 dias</b> — os freelas de confiança estavam em outro job.'}
+];
+var ans=QZ.map(function(){return {yn:null, d:''};});
+
+function buildQuiz(){
+  var h='';
+  QZ.forEach(function(q,i){
+    h+='<div class="q" data-i="'+i+'"><div class="qt">'+(i+1)+'. '+q.q+'</div><div class="qa">'+
+       '<button class="yn" data-v="1">Atrasa o show</button>'+
+       '<button class="yn" data-v="0">Não atrasa</button>'+
+       '<input type="number" class="days" min="0" max="99" placeholder="dias"></div><div class="fb"></div></div>';
+  });
+  $('#quiz').innerHTML=h;
+  $$('#quiz .yn').forEach(function(b){
+    b.onclick=function(){
+      var i=+this.closest('.q').dataset.i;
+      this.closest('.qa').querySelectorAll('.yn').forEach(function(x){x.classList.remove('on');});
+      this.classList.add('on'); ans[i].yn=+this.dataset.v;
+    };
+  });
+  $$('#quiz .days').forEach(function(inp){
+    inp.oninput=function(){ ans[+this.closest('.q').dataset.i].d=this.value; };
+  });
+}
+
+function check(){
+  var r=cpm(durs), acertos=0;
+  QZ.forEach(function(q,i){
+    var novo=durAlt(q.id, q.add), delta=novo-r.dur;
+    var fb=$$('#quiz .q')[i].querySelector('.fb');
+    var folga=r.sl[q.id];
+    var dado=ans[i].d===''?null:Math.round(+ans[i].d);
+    var okYn = ans[i].yn!==null && ans[i].yn===(delta>0?1:0);
+    var okD  = delta>0 ? dado===delta : (dado===null||dado===0);
+    var certo = okYn && okD;
+    if(certo) acertos++;
+    var exp='<b>'+nameOf(q.id)+'</b> tem <b>'+folga+' dia(s) de folga</b>. ';
+    if(delta>0){
+      exp += folga===0
+        ? 'Está no caminho crítico: folga zero, então atraso de '+q.add+' dias empurra o show <b>dia a dia</b> → <b>+'+delta+' dias</b>.'
+        : 'O atraso de '+q.add+' dias <b>come a folga</b> ('+folga+') e ainda sobra: '+q.add+' − '+folga+' = <b>+'+delta+' dias</b> no show. A tarefa entra no caminho crítico.';
+      exp += ' Fim do plano vai de '+r.dur+' para '+novo+' dias.';
+    } else {
+      exp += 'O atraso de '+q.add+' dias cabe dentro da folga → o caminho crítico não se move. Fim do plano continua em '+r.dur+' dias. <b>O show não anda.</b>';
+    }
+    if(!certo){
+      var seu = ans[i].yn===null ? 'não respondeu' : (ans[i].yn===1?('"atrasa"'+(dado!==null?' / '+dado+' dias':'')):'"não atrasa"');
+      exp = 'Errado — você disse '+seu+'. Correto: <b>'+(delta>0?'atrasa '+delta+' dia(s)':'não atrasa')+'</b>. '+exp;
+    }
+    fb.className='fb '+(certo?'s':'f'); fb.innerHTML=exp;
+  });
+  var sc=$('#score'); sc.style.display='block';
+  sc.className='verdict '+(acertos===QZ.length?'ok':(acertos>=4?'warn':'bad'));
+  sc.textContent=acertos+'/'+QZ.length+' — '+(acertos===QZ.length
+    ? 'Você separou folga de caminho crítico.'
+    : 'Compare o atraso com a folga da tarefa antes de responder. Folga ≥ atraso → o show não anda.');
+}
+
+function clearQuiz(){
+  ans=QZ.map(function(){return {yn:null,d:''};});
+  $$('#quiz .yn').forEach(function(b){b.classList.remove('on');});
+  $$('#quiz .days').forEach(function(i){i.value='';});
+  $$('#quiz .fb').forEach(function(f){f.className='fb';f.innerHTML='';});
+  $('#score').style.display='none';
+}
+
+/* ---------- cenários prontos ---------- */
+var SC={
+  recesso:{T6:65}, rider:{T2:18}, agil:{T1:7},
+  enxuga:{T7:5, T8:5, T9:4, T11:3, T12:2}
+};
+function applySc(k){
+  TASKS.forEach(function(t){durs[t.id]=BASE[t.id];});
+  var s=SC[k]; for(var id in s) durs[id]=s[id];
+  render();
+}
+
+/* ---------- render ---------- */
+function render(){
+  var r=cpm(durs);
+  drawGantt(r);
+  var folga=PRAZO-r.dur, atraso=Math.max(0, r.dur-PRAZO);
+  var showDay=Math.max(PRAZO, r.dur);
+  $('#sShow').innerHTML=dt(showDay)+(atraso>0?' <small>adiado</small>':' <small>firme</small>');
+  $('#sFim').innerHTML=dt(r.dur)+' <small>'+r.dur+'d</small>';
+  $('#sFolga').innerHTML=(folga>=0?folga:0)+' <small>dias</small>';
+  $('#sFolgaBox').className='stat'+(folga>0?' good':(folga<0?' hot':''));
+  $('#sCrit').innerHTML=r.path.length+' <small>de '+TASKS.length+'</small>';
+  $('#sAtraso').innerHTML=atraso+' <small>dias</small>';
+  $('#sAtrasoBox').className='stat'+(atraso>0?' hot':'');
+  $('#critNote').innerHTML=
+    '<b style="color:#fde68a">Caminho crítico ('+r.dur+' dias):</b> '+
+    r.path.map(function(t){return t.nm+' ('+durs[t.id]+'d)';}).join(' → ')+'.<br>'+
+    'Encurtar qualquer tarefa <b>fora</b> desse encadeamento não antecipa nada — só aumenta a folga dela. '+
+    'O <b>alvará está travado (🔒)</b>: prazo de órgão público não se comprime com dinheiro nem com esforço, '+
+    'e por isso ele costuma ser o assassino silencioso do cronograma. Os losangos são <b>marcos</b>: '+
+    'passou da data, não tem volta.';
+}
+
+$('#bReset').onclick=function(){ TASKS.forEach(function(t){durs[t.id]=BASE[t.id];}); render(); };
+$$('.btns button[data-sc]').forEach(function(b){ b.onclick=function(){ applySc(this.dataset.sc); }; });
+$('#bCheck').onclick=check;
+$('#bClear').onclick=clearQuiz;
+
+buildQuiz(); render();
+window.__cc={cpm:cpm,durs:durs,TASKS:TASKS};
+})();
+</script>
+</body>
+</html>

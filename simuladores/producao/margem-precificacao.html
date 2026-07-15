@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>SMU PRO · Do custo ao preço de venda</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0c1017;--panel:#161c26;--panel2:#1b2230;--line:#2a3444;--ink:#e7edf5;--dim:#8794a8;
+        --accent:#f59e0b;--ok:#22c55e;--err:#ef4444;--warn:#f59e0b;--cyan:#38bdf8;}
+  html,body{background:var(--bg);color:var(--ink);
+    font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased;}
+  body{padding:12px;}
+  .app{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:12px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  h1{font-size:15px;margin-bottom:3px;}
+  h2{font-size:12px;letter-spacing:.6px;color:var(--dim);text-transform:uppercase;margin-bottom:9px;}
+  .sub{font-size:12px;color:var(--dim);margin-bottom:12px;line-height:1.5;}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px;}
+  .stat .k{font-size:10px;color:var(--dim);letter-spacing:.5px;}
+  .stat .val{font-size:15px;font-weight:800;margin-top:2px;}
+  .stat .val small{font-size:10px;color:var(--dim);font-weight:400;}
+  .verdict{font-size:13px;font-weight:700;padding:9px 12px;border-radius:8px;text-align:center;}
+  .verdict.ok{background:#14532d;color:#bbf7d0;}
+  .verdict.bad{background:#450a0a;color:#fca5a5;}
+  .verdict.warn{background:#422006;color:#fde68a;}
+  .note{font-size:12px;color:var(--dim);line-height:1.55;}
+  button{font:inherit;cursor:pointer;}
+  .grid2{display:grid;grid-template-columns:1fr;gap:14px;}
+  @media(min-width:720px){.grid2{grid-template-columns:1fr 1fr;}}
+  .cat{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+  .cat label{font-size:12px;color:var(--dim);flex:1;}
+  .cat input{width:96px;min-height:34px;background:#0c1119;border:1px solid var(--line);border-radius:7px;
+    color:var(--ink);font:inherit;font-size:12px;font-weight:700;text-align:right;padding:4px 7px;}
+  .cat input:focus{outline:none;border-color:var(--accent);}
+  .row{display:flex;align-items:center;gap:8px;min-height:34px;}
+  .row label{font-size:12px;color:var(--dim);width:104px;flex-shrink:0;}
+  .row .v{margin-left:auto;font-size:12px;font-weight:700;color:var(--accent);min-width:52px;text-align:right;}
+  input[type=range]{flex:1;accent-color:var(--accent);min-height:34px;}
+  .seg{display:flex;gap:5px;flex-wrap:wrap;}
+  .seg button{flex:1;min-width:120px;min-height:36px;font-size:11px;font-weight:700;padding:6px 5px;
+    border:1px solid var(--line);border-radius:7px;background:#0c1119;color:var(--dim);}
+  .seg button.on{background:#42200680;border-color:var(--accent);color:#fde68a;}
+  .stress button{min-width:96px;}
+  .stress button.on{background:#450a0a80;border-color:var(--err);color:#fca5a5;}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  @media(min-width:600px){.stats{grid-template-columns:repeat(5,1fr);}}
+  .bar{display:flex;width:100%;height:34px;border-radius:7px;overflow:hidden;border:1px solid var(--line);background:#05070b;position:relative;}
+  .bar span{height:100%;display:block;flex-shrink:0;transition:width .18s;}
+  .mark{position:absolute;top:-3px;bottom:-3px;width:2px;background:#fff;box-shadow:0 0 0 1px #000;z-index:2;}
+  .gap{position:absolute;top:0;bottom:0;right:0;z-index:1;border-left:2px solid var(--err);
+    background:repeating-linear-gradient(45deg,rgba(239,68,68,.45) 0 5px,rgba(127,29,29,.55) 5px 10px);}
+  .lg{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:8px;}
+  .lg div{font-size:11px;color:var(--dim);display:flex;align-items:center;gap:5px;}
+  .lg i{width:9px;height:9px;border-radius:2px;display:inline-block;}
+  .lg b{color:var(--ink);}
+  .vs{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .vs .box{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:10px;}
+  .vs .box.on{border-color:var(--accent);}
+  .vs .t{font-size:11px;font-weight:800;color:var(--accent);margin-bottom:5px;}
+  .vs .f{font-size:10px;color:var(--dim);font-family:ui-monospace,Consolas,monospace;margin-bottom:7px;}
+  .vs .l{font-size:11px;color:var(--dim);display:flex;justify-content:space-between;gap:6px;margin-top:3px;}
+  .vs .l b{color:var(--ink);font-size:12px;}
+  .chk{font-size:12px;line-height:1.5;padding:6px 0;border-bottom:1px solid var(--line);display:flex;gap:7px;}
+  .chk:last-child{border-bottom:none;}
+  .chk .m{font-weight:800;flex-shrink:0;}
+  .chk.p .m{color:var(--ok);} .chk.f .m{color:var(--err);}
+  .chk .tx b{color:var(--ink);} .chk .tx{color:var(--dim);}
+  .act{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+  .act button{flex:1;min-width:120px;min-height:38px;border-radius:8px;border:1px solid var(--line);
+    background:#0c1119;color:var(--ink);font-size:12px;font-weight:700;}
+  .act button.pri{background:#422006;border-color:var(--accent);color:#fde68a;}
+  .tag{display:inline-block;font-size:10px;font-weight:800;padding:2px 7px;border-radius:5px;
+    background:#450a0a;color:#fca5a5;margin-left:6px;}
+  .hr{height:1px;background:var(--line);margin:12px 0;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="card">
+    <h1>Do custo ao preço de venda — markup × margem</h1>
+    <div class="sub">Monte o custo do evento, escolha o método de precificação e veja para onde vai cada real do preço.
+      <b>Imposto e comissão saem do preço, não do custo</b> — quem soma imposto ao custo e depois aplica margem entrega o evento no prejuízo.</div>
+
+    <div class="grid2">
+      <div>
+        <h2>Custo direto do evento (R$)</h2>
+        <div class="cat"><label>Som (PA + monitor + operador)</label><input id="som" type="text" inputmode="numeric" value="8000"></div>
+        <div class="cat"><label>Luz (fixtures + mesa + rigging)</label><input id="luz" type="text" inputmode="numeric" value="6500"></div>
+        <div class="cat"><label>Palco / estrutura / geradores</label><input id="palco" type="text" inputmode="numeric" value="4200"></div>
+        <div class="cat"><label>Equipe (cachês do período)</label><input id="equipe" type="text" inputmode="numeric" value="5600"></div>
+        <div class="cat"><label>Transporte / frete</label><input id="transp" type="text" inputmode="numeric" value="1800"></div>
+        <div class="cat"><label>Alimentação / hospedagem</label><input id="alim" type="text" inputmode="numeric" value="900"></div>
+        <div class="cat"><label>Dias de operação (montagem→desmonte)</label><input id="dias" type="text" inputmode="numeric" value="3"></div>
+        <div class="note" id="cdNote"></div>
+      </div>
+      <div>
+        <h2>Parâmetros da produtora</h2>
+        <div class="row"><label>Overhead</label><input type="range" id="oh" min="0" max="40" step="1" value="12"><span class="v" id="ohV"></span></div>
+        <div class="row"><label>Contingência</label><input type="range" id="ct" min="0" max="20" step="1" value="0"><span class="v" id="ctV"></span></div>
+        <div class="row"><label>Impostos (NF)</label><input type="range" id="tax" min="0" max="20" step="0.5" value="10"><span class="v" id="taxV"></span></div>
+        <div class="row"><label>Comissão</label><input type="range" id="com" min="0" max="25" step="1" value="10"><span class="v" id="comV"></span></div>
+        <div class="row"><label>Margem desejada</label><input type="range" id="marg" min="0" max="45" step="1" value="15"><span class="v" id="margV"></span></div>
+        <div class="hr"></div>
+        <div class="seg" id="metSeg">
+          <button data-m="markup" class="on">Estou calculando por MARKUP</button>
+          <button data-m="margem">Estou calculando por MARGEM</button>
+        </div>
+        <div class="note" style="margin-top:8px" id="ohNote"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Para onde vai cada real do preço<span class="tag" id="stressTag" style="display:none">CENÁRIO DE ESTRESSE</span></h2>
+    <div class="bar" id="bar"><div class="mark" id="mark"></div></div>
+    <div class="lg" id="lg"></div>
+    <div class="hr"></div>
+    <div class="stats">
+      <div class="stat"><div class="k">PREÇO DE VENDA</div><div class="val" id="sPreco">—</div></div>
+      <div class="stat"><div class="k">LUCRO (R$)</div><div class="val" id="sLucro">—</div></div>
+      <div class="stat"><div class="k">MARGEM REAL</div><div class="val" id="sMarg">—</div></div>
+      <div class="stat"><div class="k">MARKUP APLICADO</div><div class="val" id="sMkup">—</div></div>
+      <div class="stat"><div class="k">PONTO DE EQUILÍBRIO</div><div class="val" id="sBe">—</div></div>
+    </div>
+    <div class="verdict" id="verd" style="margin-top:10px"></div>
+    <div class="note" id="beNote" style="margin-top:8px"></div>
+  </div>
+
+  <div class="card">
+    <h2>Markup × margem — a conta que quebra produtora</h2>
+    <div class="vs">
+      <div class="box" id="boxMk">
+        <div class="t">MARKUP</div><div class="f">preço = custo × (1 + m)</div>
+        <div class="l"><span>Preço</span><b id="mkP">—</b></div>
+        <div class="l"><span>Lucro</span><b id="mkL">—</b></div>
+        <div class="l"><span>Margem REAL</span><b id="mkM">—</b></div>
+      </div>
+      <div class="box" id="boxMg">
+        <div class="t">MARGEM (divisor)</div><div class="f">preço = custo ÷ (1 − m − imp − com)</div>
+        <div class="l"><span>Preço</span><b id="mgP">—</b></div>
+        <div class="l"><span>Lucro</span><b id="mgL">—</b></div>
+        <div class="l"><span>Margem REAL</span><b id="mgM">—</b></div>
+      </div>
+    </div>
+    <div class="note" style="margin-top:9px" id="vsNote"></div>
+  </div>
+
+  <div class="card">
+    <h2>Cenários de estresse (o preço já foi fechado — o custo é que mudou)</h2>
+    <div class="seg stress" id="stSeg">
+      <button data-s="desc">Cliente pediu 10% de desconto</button>
+      <button data-s="dolar">Dólar subiu: locação +15%</button>
+      <button data-s="chuva">Choveu: +1 dia de equipe</button>
+    </div>
+    <div class="note" style="margin-top:10px" id="stNote"></div>
+  </div>
+
+  <div class="card">
+    <h2>Desafio — feche o orçamento sem entregar prejuízo</h2>
+    <div class="sub">Ajuste os parâmetros até passar nos quatro itens. O estado inicial é o erro clássico:
+      markup de 15% com 20% de imposto+comissão saindo do preço.</div>
+    <div id="checks"></div>
+    <div class="act">
+      <button class="pri" id="btnGo">Conferir</button>
+      <button id="btnReset">Reiniciar cenário</button>
+    </div>
+    <div class="verdict" id="cVerd" style="margin-top:10px;display:none"></div>
+  </div>
+
+</div>
+<script>
+(function(){
+  var $=function(s){return document.querySelector(s);};
+  var $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s));};
+
+  var INIT={som:8000,luz:6500,palco:4200,equipe:5600,transp:1800,alim:900,dias:3,
+            oh:12,ct:0,tax:10,com:10,marg:15,met:'markup'};
+  var S={},ST={desc:false,dolar:false,chuva:false};
+
+  function brl(v){return 'R$ '+(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+  function pct(v){return (v*100).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%';}
+  function num(id){var v=parseFloat(String($('#'+id).value).replace(/\./g,'').replace(',','.'));return isFinite(v)&&v>=0?v:0;}
+
+  /* Custos. applyStress=true aplica dólar e chuva. */
+  function custos(applyStress){
+    var som=S.som,luz=S.luz,palco=S.palco,equipe=S.equipe,alim=S.alim;
+    if(applyStress&&ST.dolar){som*=1.15;luz*=1.15;palco*=1.15;}
+    if(applyStress&&ST.chuva){var d=Math.max(1,S.dias);equipe+=S.equipe/d;alim+=S.alim/d;}
+    var cd=som+luz+palco+equipe+S.transp+alim;
+    var oh=cd*S.oh/100;
+    var ct=(cd+oh)*S.ct/100;
+    return {cd:cd,oh:oh,ct:ct,C:cd+oh+ct};
+  }
+  /* Preço pelo método escolhido. t e c são frações. */
+  function preco(C,metodo){
+    var m=S.marg/100,t=S.tax/100,c=S.com/100;
+    if(metodo==='markup') return C*(1+m);           /* imposto e comissão ignorados: o erro */
+    var div=1-m-t-c;
+    if(div<=0.02) return NaN;                        /* margem+imposto+comissão >= 98% do preço */
+    return C/div;
+  }
+  /* Resultado de um preço contra um custo. */
+  function res(P,C){
+    var t=S.tax/100,c=S.com/100;
+    var imp=P*t,com=P*c,lucro=P-C-imp-com;
+    return {P:P,C:C,imp:imp,com:com,lucro:lucro,
+            margReal:P>0?lucro/P:0, markup:C>0?(P-C)/C:0,
+            be:(1-t-c)>0?C/(1-t-c):NaN};
+  }
+  /* Desconto máximo antes do lucro zerar. */
+  function descMax(P,C){var f=1-S.tax/100-S.com/100;return (P*f>0)?1-C/(P*f):0;}
+
+  function veredito(mr){
+    if(!isFinite(mr)) return {cl:'bad',tx:'Margem + imposto + comissão passam de 98% do preço — não existe preço que feche essa conta.'};
+    if(mr<0)     return {cl:'bad', tx:'✗ PREJUÍZO — margem real '+pct(mr)+'. Você está pagando para trabalhar.'};
+    if(mr<0.05)  return {cl:'bad', tx:'✗ Margem real '+pct(mr)+' — abaixo de 5% qualquer atraso de fornecedor zera o lucro.'};
+    if(mr<0.12)  return {cl:'warn',tx:'◐ Margem apertada ('+pct(mr)+') — sem folga para imprevisto nem para inadimplência.'};
+    if(mr<=0.32) return {cl:'ok',  tx:'✓ Margem saudável ('+pct(mr)+') — dentro da faixa de mercado de produção (12% a 32%).'};
+    return {cl:'warn',tx:'◐ Margem de '+pct(mr)+' — acima da faixa de mercado. Confira se o preço não está fora da concorrência.'};
+  }
+
+  var COLORS=[['cd','#38bdf8','Custo direto'],['oh','#818cf8','Overhead'],['ct','#a78bfa','Contingência'],
+              ['imp','#f59e0b','Impostos'],['com','#fb923c','Comissão']];
+
+  function render(){
+    ['som','luz','palco','equipe','transp','alim','dias'].forEach(function(k){S[k]=num(k);});
+    S.oh=+$('#oh').value; S.ct=+$('#ct').value; S.tax=+$('#tax').value; S.com=+$('#com').value; S.marg=+$('#marg').value;
+    $('#ohV').textContent=S.oh+'%'; $('#ctV').textContent=S.ct+'%';
+    $('#taxV').textContent=S.tax.toLocaleString('pt-BR')+'%'; $('#comV').textContent=S.com+'%'; $('#margV').textContent=S.marg+'%';
+
+    var c0=custos(false), P0=preco(c0.C,S.met), R0=res(P0,c0.C);
+    var anyST=ST.desc||ST.dolar||ST.chuva;
+    var cS=custos(true), PS=ST.desc?P0*0.9:P0, RS=res(PS,cS.C);
+    var V=anyST?RS:R0, CV=anyST?cS:c0;
+
+    $('#cdNote').innerHTML='Custo direto <b>'+brl(c0.cd)+'</b> + overhead <b>'+brl(c0.oh)+'</b> + contingência <b>'+brl(c0.ct)+
+      '</b> = <b style="color:var(--cyan)">'+brl(c0.C)+'</b> de custo total antes de imposto, comissão e lucro.';
+    $('#ohNote').innerHTML='<b>Overhead</b>: escritório, seguro, contador, galpão e o seu pró-labore, rateados sobre o custo direto. '+
+      '<b>Contingência</b>: reserva do próprio orçamento para imprevisto (chuva, cabo queimado, hora extra) — não é lucro. '+
+      '<b>Impostos</b>: Simples Nacional (6% a 16% conforme a faixa de receita) mais ISS retido em alguns municípios. '+
+      '<b>Comissão</b>: agenciador ou captador, sempre percentual sobre o valor da nota.';
+
+    /* Waterfall */
+    var parts=[{k:'cd',v:CV.cd},{k:'oh',v:CV.oh},{k:'ct',v:CV.ct},{k:'imp',v:V.imp},{k:'com',v:V.com}];
+    var saida=parts.reduce(function(a,p){return a+p.v;},0);
+    var base=Math.max(V.P,saida)||1;
+    var html='';
+    COLORS.forEach(function(c){
+      var v=parts.filter(function(p){return p.k===c[0];})[0].v;
+      html+='<span style="width:'+(v/base*100)+'%;background:'+c[1]+'"></span>';
+    });
+    /* Lucro>=0: base=preço, os segmentos somam 100% e a sobra verde é o lucro.
+       Lucro<0: base=saída total, os custos ocupam 100% da barra e a faixa hachurada
+       à direita do preço é o que falta entrar — não é uma saída a mais, é o buraco. */
+    if(V.lucro>=0) html+='<span style="width:'+(V.lucro/base*100)+'%;background:var(--ok)"></span>';
+    else html+='<div class="gap" style="left:'+(V.P/base*100)+'%"></div>';
+    $('#bar').innerHTML=html+'<div class="mark" style="left:'+(V.P/base*100)+'%"></div>';
+
+    var lg='';
+    COLORS.forEach(function(c){
+      var v=parts.filter(function(p){return p.k===c[0];})[0].v;
+      lg+='<div><i style="background:'+c[1]+'"></i>'+c[2]+' <b>'+brl(v)+'</b></div>';
+    });
+    lg+='<div><i style="background:'+(V.lucro>=0?'var(--ok)'
+        :'repeating-linear-gradient(45deg,rgba(239,68,68,.9) 0 3px,rgba(127,29,29,1) 3px 6px)')+'"></i>'+
+        (V.lucro>=0?'Lucro':'Falta para fechar')+' <b>'+brl(Math.abs(V.lucro))+'</b></div>'+
+        '<div><i style="background:#fff"></i>linha branca = preço de venda</div>';
+    $('#lg').innerHTML=lg;
+
+    $('#sPreco').innerHTML=isFinite(V.P)?brl(V.P):'—';
+    $('#sLucro').innerHTML=isFinite(V.lucro)?'<span style="color:'+(V.lucro>=0?'var(--ok)':'var(--err)')+'">'+brl(V.lucro)+'</span>':'—';
+    $('#sMarg').innerHTML=isFinite(V.margReal)?pct(V.margReal):'—';
+    $('#sMkup').innerHTML=isFinite(V.markup)?pct(V.markup):'—';
+    $('#sBe').innerHTML=isFinite(V.be)?brl(V.be)+' <small>preço mínimo</small>':'—';
+    $('#stressTag').style.display=anyST?'inline-block':'none';
+
+    var vd=veredito(V.margReal); var ve=$('#verd'); ve.className='verdict '+vd.cl; ve.textContent=vd.tx;
+    var dm=descMax(V.P,V.C);
+    $('#beNote').innerHTML=isFinite(V.be)?
+      'Abaixo de <b>'+brl(V.be)+'</b> o evento não paga nem o custo, porque imposto e comissão continuam saindo do preço: '+
+      'ponto de equilíbrio = custo ÷ (1 − '+S.tax+'% − '+S.com+'%). '+
+      'Desconto máximo antes de zerar o lucro: <b style="color:var(--accent)">'+pct(Math.max(0,dm))+'</b>.' : '';
+
+    /* Markup × margem lado a lado, sempre com o mesmo custo base c0.C */
+    var Pmk=preco(c0.C,'markup'), Rmk=res(Pmk,c0.C);
+    var Pmg=preco(c0.C,'margem'), Rmg=res(Pmg,c0.C);
+    $('#mkP').textContent=brl(Pmk); $('#mkL').innerHTML='<span style="color:'+(Rmk.lucro>=0?'var(--ok)':'var(--err)')+'">'+brl(Rmk.lucro)+'</span>';
+    $('#mkM').textContent=pct(Rmk.margReal);
+    if(isFinite(Pmg)){
+      $('#mgP').textContent=brl(Pmg); $('#mgL').innerHTML='<span style="color:'+(Rmg.lucro>=0?'var(--ok)':'var(--err)')+'">'+brl(Rmg.lucro)+'</span>';
+      $('#mgM').textContent=pct(Rmg.margReal);
+    } else { $('#mgP').textContent='impossível'; $('#mgL').textContent='—'; $('#mgM').textContent='—'; }
+    $('#boxMk').className='box'+(S.met==='markup'?' on':''); $('#boxMg').className='box'+(S.met==='margem'?' on':'');
+    $('#vsNote').innerHTML='Com custo de <b>'+brl(c0.C)+'</b> e margem desejada de <b>'+S.marg+'%</b>: o markup entrega o preço de <b>'+brl(Pmk)+
+      '</b> e uma margem real de <b>'+pct(Rmk.margReal)+'</b> — a conta pelo divisor entrega <b>'+(isFinite(Pmg)?brl(Pmg):'—')+
+      '</b> e margem real de <b>'+(isFinite(Pmg)?pct(Rmg.margReal):'—')+'</b>. '+
+      (isFinite(Pmg)?'Diferença de <b style="color:var(--accent)">'+brl(Pmg-Pmk)+'</b> no mesmo evento. ':'')+
+      'Multiplicar por (1+m) divide o lucro pelo preço maior, e ainda deixa imposto e comissão descobertos.';
+
+    /* Estresse */
+    if(!anyST){
+      $('#stNote').innerHTML='Nenhum cenário ativo. O preço fica travado no orçamento aprovado (<b>'+brl(P0)+
+        '</b>) e só o custo muda — é assim na vida real: o contrato já foi assinado.';
+    } else {
+      var dL=RS.lucro-R0.lucro;
+      var perda=R0.lucro>0?Math.abs(dL)/R0.lucro:1;
+      var lista=[]; if(ST.desc)lista.push('desconto de 10%'); if(ST.dolar)lista.push('locação +15%'); if(ST.chuva)lista.push('+1 dia de equipe');
+      $('#stNote').innerHTML='Cenário: <b>'+lista.join(' + ')+'</b>. Preço passou de <b>'+brl(P0)+'</b> para <b>'+brl(PS)+
+        '</b> e o custo de <b>'+brl(c0.C)+'</b> para <b>'+brl(cS.C)+'</b>. '+
+        'O lucro caiu de <b>'+brl(R0.lucro)+'</b> para <b style="color:'+(RS.lucro>=0?'var(--ok)':'var(--err)')+'">'+brl(RS.lucro)+
+        '</b> — '+(R0.lucro>0?'<b>'+pct(perda)+' do lucro</b>':'<b>'+brl(Math.abs(dL))+'</b>')+' evaporou'+
+        (RS.lucro<0?' e o evento virou <b style="color:var(--err)">prejuízo</b>':'')+'. '+
+        (ST.desc?'O desconto incide sobre o <b>preço</b>, mas o custo não caiu 1 real — ele sai quase inteiro do lucro. '+
+          'A regra: perda do lucro = desconto × (1 − imposto − comissão) ÷ margem real. '+
+          'Sem imposto nem comissão no meio, vira desconto ÷ margem: num evento de 20% de margem, '+
+          '10% de desconto come <b>metade</b> do lucro.':'');
+    }
+  }
+
+  /* ---- Desafio ---- */
+  function conferir(){
+    var c0=custos(false), P0=preco(c0.C,S.met), R0=res(P0,c0.C);
+    var old={d:ST.desc,x:ST.dolar,c:ST.chuva};
+    ST.desc=true;ST.dolar=true;ST.chuva=false;
+    var cS=custos(true), RS=res(P0*0.9,cS.C);
+    ST.desc=old.d;ST.dolar=old.x;ST.chuva=old.c;
+    var it=[
+      {ok:S.met==='margem',
+       t:'<b>Método pelo divisor.</b> '+(S.met==='margem'?'Preço = custo ÷ (1 − margem − imposto − comissão): a margem sai como você pediu.'
+        :'Você está no markup. Multiplicar o custo por (1+m) não reserva nada para imposto nem comissão — a margem real cai para '+pct(R0.margReal)+'.')},
+      {ok:S.ct>=5,
+       t:'<b>Contingência ≥ 5%.</b> '+(S.ct>=5?'Reserva de '+brl(c0.ct)+' dentro do orçamento.'
+        :'Está em '+S.ct+'%. Sem contingência, o primeiro cabo queimado ou hora extra de estivador sai do seu lucro.')},
+      {ok:isFinite(R0.margReal)&&R0.margReal>=0.18,
+       t:'<b>Margem real ≥ 18%.</b> '+(isFinite(R0.margReal)&&R0.margReal>=0.18?'Fechou em '+pct(R0.margReal)+'.'
+        :'Está em '+(isFinite(R0.margReal)?pct(R0.margReal):'—')+'. Margem real é lucro ÷ preço, não o percentual que você digitou no markup.')},
+      {ok:RS.lucro>0,
+       t:'<b>Sobrevive a 10% de desconto + locação 15% mais cara.</b> '+(RS.lucro>0?'Ainda sobra '+brl(RS.lucro)+' no settlement.'
+        :'Lucro de '+brl(RS.lucro)+'. O orçamento aprovado não aguenta um imprevisto — reveja margem e contingência.')}
+    ];
+    $('#checks').innerHTML=it.map(function(i){
+      return '<div class="chk '+(i.ok?'p':'f')+'"><span class="m">'+(i.ok?'✓':'✗')+'</span><span class="tx">'+i.t+'</span></div>';
+    }).join('');
+    var n=it.filter(function(i){return i.ok;}).length;
+    var v=$('#cVerd'); v.style.display='block';
+    v.className='verdict '+(n===4?'ok':n>=2?'warn':'bad');
+    v.textContent=n===4?'✓ 4/4 — orçamento fecha com margem defensável e resiste ao estresse.'
+      :n+'/4 — corrija os itens marcados com ✗ e confira de novo.';
+  }
+
+  function reset(){
+    ['som','luz','palco','equipe','transp','alim','dias'].forEach(function(k){$('#'+k).value=INIT[k];});
+    $('#oh').value=INIT.oh; $('#ct').value=INIT.ct; $('#tax').value=INIT.tax; $('#com').value=INIT.com; $('#marg').value=INIT.marg;
+    S.met=INIT.met;
+    $$('#metSeg button').forEach(function(b){b.classList.toggle('on',b.dataset.m===INIT.met);});
+    ST={desc:false,dolar:false,chuva:false};
+    $$('#stSeg button').forEach(function(b){b.classList.remove('on');});
+    $('#cVerd').style.display='none'; $('#checks').innerHTML='';
+    render();
+  }
+
+  $$('input[type=range]').forEach(function(r){r.addEventListener('input',render);});
+  $$('.cat input').forEach(function(i){i.addEventListener('input',render);i.addEventListener('blur',render);});
+  $$('#metSeg button').forEach(function(b){b.addEventListener('click',function(){
+    $$('#metSeg button').forEach(function(x){x.classList.remove('on');}); b.classList.add('on'); S.met=b.dataset.m; render();});});
+  $$('#stSeg button').forEach(function(b){b.addEventListener('click',function(){
+    ST[b.dataset.s]=!ST[b.dataset.s]; b.classList.toggle('on',ST[b.dataset.s]); render();});});
+  $('#btnGo').addEventListener('click',conferir);
+  $('#btnReset').addEventListener('click',reset);
+
+  S.met=INIT.met;
+  render();
+})();
+</script>
+</body>
+</html>

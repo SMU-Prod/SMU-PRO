@@ -1,0 +1,206 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Simulador — Clay Paky Mythos 2</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif}
+html,body{background:#0b0d12;color:#e9edf2}
+body{padding:10px}
+.fx{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+.hdr .b{font-size:12px;color:#7fb2ff;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+.hdr h1{font-size:clamp(16px,4.5vw,22px);font-weight:800;color:#eaf0ff}
+.hdr .m{font-size:12px;color:#8aa0c2;display:block;margin:2px 0}
+.hdr .t{font-size:12.5px;color:#aeb9cc;line-height:1.4}
+.stage{position:relative;width:100%;aspect-ratio:16/10;background:#04060a;border:1px solid #1c2740;border-radius:12px;overflow:hidden}
+@media(max-width:520px){.stage{aspect-ratio:4/3}}
+.stage canvas{width:100%;height:100%;display:block}
+.stage .badge{position:absolute;top:8px;left:10px;font-size:10px;color:#8aa0c2;background:rgba(11,17,26,.7);padding:3px 7px;border-radius:6px}
+.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.ctl{background:#12151c;border:1px solid #232a36;border-radius:10px;padding:9px 11px}
+.ctl label{display:flex;justify-content:space-between;font-size:11.5px;font-weight:700;color:#cfe0ff;margin-bottom:7px}
+.ctl label .v{color:#8aa0c2;font-weight:600;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;height:26px;-webkit-appearance:none;background:transparent;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:7px;background:#26303f;border-radius:4px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:#e7ecf3;margin-top:-8px;box-shadow:0 1px 4px #0009}
+input[type=range]::-moz-range-track{height:7px;background:#26303f;border-radius:4px}
+input[type=range]::-moz-range-thumb{width:22px;height:22px;border:none;border-radius:50%;background:#e7ecf3}
+.seg{display:flex;flex-wrap:wrap;gap:5px}
+.seg button{flex:1;min-width:44px;background:#1a1f2b;border:1px solid #2b3444;border-radius:7px;color:#cfe0ff;font-size:11px;font-weight:700;padding:8px 4px;cursor:pointer}
+.seg button.on{background:#2b5aa8;border-color:#4d86e0;color:#fff}
+.toggle{display:flex;align-items:center;justify-content:space-between}
+.sw{width:46px;height:26px;border-radius:999px;background:#2a3550;position:relative;flex:none;cursor:pointer;transition:.15s}
+.sw.on{background:#39d98a}.sw i{position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.15s}.sw.on i{left:22px}
+details.dmx{background:#0e1220;border:1px solid #22314c;border-radius:10px;overflow:hidden}
+details.dmx summary{padding:9px 12px;font-size:12px;font-weight:700;color:#9db6df;cursor:pointer;list-style:none}
+details.dmx summary::-webkit-details-marker{display:none}
+.dmxgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:4px;padding:8px 10px 12px;max-height:240px;overflow:auto}
+.dmxrow{display:flex;justify-content:space-between;font-size:10.5px;padding:3px 6px;border-radius:5px;background:#0c1120}
+.dmxrow .cn{color:#6b7f9e}.dmxrow .cv{color:#e0c040;font-weight:700;font-variant-numeric:tabular-nums}
+.dmxrow.act{background:#16223a}.dmxrow.act .cv{color:#ffd24d}
+.mission{background:#0e1626;border:1px solid #24406e;border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.45}
+.mission b{color:#8fd0ff}
+.mrow{display:flex;align-items:center;gap:8px;margin-top:5px}.dot{width:14px;height:14px;border-radius:50%;border:2px solid #37507a;flex:none}.dot.ok{background:#39d98a;border-color:#39d98a}
+.mission button{margin-top:8px;background:#1b2740;color:#dce7fb;border:1px solid #33507f;border-radius:7px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer}
+.src{font-size:10px;color:#5b6880}
+</style></head>
+<body>
+<div class="fx">
+  <div class="hdr"><span class="b">Clay Paky</span><h1>Mythos 2</h1><span class="m">Standard - Lamp On — 30 canais (perfil oficial) · Híbrido (beam+spot+wash)</span><span class="t">Híbrido 470W: beam cortante e spot com CMY, gobos e roda de animação. Mexa nos controles e veja o facho e o <b>mapa DMX oficial</b> responderem como na fixture real.</span></div>
+  <div class="stage"><canvas id="cv"></canvas><div class="badge" id="badge"></div></div>
+  <div class="controls" id="controls"></div>
+  <details class="dmx"><summary>▾ Mapa DMX oficial — 30 canais (valores ao vivo 0–255)</summary><div class="dmxgrid" id="dmxgrid"></div><div class="src" style="padding:0 12px 10px">Fonte do perfil: biblioteca oficial grandMA2 (MA Lighting) — mesmo mapa usado no console real.</div></details>
+  <div class="mission" id="mission"></div>
+</div>
+<script>
+const MODEL={"slug":"claypaky-mythos2","brand":"Clay Paky","model":"Mythos 2","type":"hybrid","channels":[[1,"Cor 1","c"],[2,"Cor 2","m"],[3,"Cor 3","y"],[4,"Roda de cor 1","colorwheel"],[5,"Roda de cor 2",null],[6,"Roda de cor 3",null],[7,"Shutter/Strobo","strobe"],[8,"Dimmer","dim"],[9,"Dimmer (fino)","dimF"],[10,"Roda de gobo 1","gobo"],[11,"Roda de animação",null],[12,"Rotação animação",null],[13,"Roda de gobo 2","gobo2"],[14,"Rotação gobo 2","goboRot"],[15,"Rotação gobo 2 (fino)","goboRotF"],[16,"Prisma","prism"],[17,"Rotação do prisma","prismRot"],[18,"Frost","frost"],[19,"Zoom","zoom"],[20,"Foco","focus"],[21,"Foco (fino)","focusF"],[22,"Modo do zoom",null],[23,"Pan","pan"],[24,"Pan (fino)","panF"],[25,"Tilt","tilt"],[26,"Tilt (fino)","tiltF"],[27,"Curva do dimmer",null],[28,"Função/Reset",null],[29,"Controle da lâmpada",null],[30,"Macros de efeito",null]],"colorWheel":null,"gobos":["Aberto","Gobo 1","Gobo 2","Gobo 3","Gobo 4","Gobo 5","Gobo 6","Gobo 7"],"features":{"color":"cmy","white":false,"gobo":true,"gobo2":true,"goboRot":true,"prism":true,"zoom":true,"focus":true,"iris":false,"frost":true,"strobe":true,"cto":false}};
+const F=MODEL.features;
+const st={pan:128,tilt:128,dim:0,strobe:0,colorIdx:0,r:255,g:255,b:255,w:0,c:0,m:0,y:0,cto:0,gobo:0,gobo2:0,goboRot:0,prism:false,prismRot:0,zoom:128,focus:128,iris:255,frost:0};
+// ── controles ──
+const controlsEl=document.getElementById('controls');
+function slider(key,label,min,max,fmt){const c=document.createElement('div');c.className='ctl';
+ c.innerHTML='<label>'+label+' <span class="v" data-v></span></label><input type="range" min="'+min+'" max="'+max+'" value="'+st[key]+'">';
+ const inp=c.querySelector('input');const v=c.querySelector('[data-v]');const upd=()=>{v.textContent=(fmt?fmt(st[key]):st[key]);};upd();
+ inp.addEventListener('input',()=>{st[key]=+inp.value;upd();draw();buildDmx();check();});controlsEl.appendChild(c);}
+function toggle(key,label){const c=document.createElement('div');c.className='ctl';
+ c.innerHTML='<label>'+label+'</label><div class="toggle"><span style="font-size:11px;color:#8aa0c2">Inserir</span><div class="sw'+(st[key]?' on':'')+'"><i></i></div></div>';
+ c.querySelector('.sw').onclick=(e)=>{st[key]=!st[key];e.currentTarget.classList.toggle('on',st[key]);draw();buildDmx();check();};controlsEl.appendChild(c);}
+function segChoice(key,label,items,colored){const c=document.createElement('div');c.className='ctl';
+ c.innerHTML='<label>'+label+' <span class="v" data-v></span></label><div class="seg"></div>';
+ const seg=c.querySelector('.seg');const v=c.querySelector('[data-v]');
+ items.forEach((it,i)=>{const b=document.createElement('button');
+   if(colored){b.style.background='rgb('+it[1]+','+it[2]+','+it[3]+')';b.style.minWidth='30px';b.style.height='30px';b.title=it[0];b.textContent='';}
+   else b.textContent=it;
+   b.onclick=()=>{st[key]=i;[...seg.children].forEach(x=>x.classList.remove('on'));b.classList.add('on');v.textContent=colored?it[0]:it;draw();buildDmx();check();};
+   seg.appendChild(b);});
+ seg.children[st[key]].classList.add('on');v.textContent=colored?items[st[key]][0]:items[st[key]];controlsEl.appendChild(c);}
+function buildControls(){controlsEl.innerHTML='';
+ slider('pan','Pan',0,255,v=>Math.round(v/255*540-270)+'°');
+ slider('tilt','Tilt',0,255,v=>Math.round(v/255*270-135)+'°');
+ slider('dim','Dimmer',0,255,v=>Math.round(v/2.55)+'%');
+ if(F.strobe)slider('strobe','Strobo',0,255,v=>v<8?'off':Math.round(v/255*20)+'Hz');
+ if(F.color==='wheel'&&MODEL.colorWheel)segChoice('colorIdx','Roda de cor',MODEL.colorWheel,true);
+ if(F.color==='rgb'){slider('r','Vermelho',0,255);slider('g','Verde',0,255);slider('b','Azul',0,255);if(F.white)slider('w','Branco (W)',0,255);}
+ if(F.color==='cmy'){slider('c','Ciano',0,255);slider('m','Magenta',0,255);slider('y','Amarelo',0,255);}
+ if(F.cto)slider('cto','CTO/CTC (quente)',0,255,v=>Math.round(v/2.55)+'%');
+ if(F.gobo&&MODEL.gobos)segChoice('gobo','Gobo (roda 1)',MODEL.gobos,false);
+ if(F.goboRot)slider('goboRot','Rotação do gobo',0,255,v=>v<128?('← '+Math.round((128-v)/1.28)+'%'):('→ '+Math.round((v-128)/1.27)+'%'));
+ if(F.prism)toggle('prism','Prisma');
+ if(F.prism)slider('prismRot','Rotação do prisma',0,255);
+ if(F.zoom)slider('zoom','Zoom',0,255,v=>Math.round(6+v/255*44)+'°');
+ if(F.focus)slider('focus','Foco',0,255);
+ if(F.iris)slider('iris','Íris',0,255,v=>Math.round(v/2.55)+'%');
+ if(F.frost)slider('frost','Frost',0,255);
+}
+// ── cor efetiva ──
+function color(){
+ let r,g,b;
+ if(F.color==='rgb'){r=st.r;g=st.g;b=st.b; if(F.white){r=Math.min(255,r+st.w);g=Math.min(255,g+st.w);b=Math.min(255,b+st.w);} }
+ else if(F.color==='cmy'){r=255-st.c;g=255-st.m;b=255-st.y;}
+ else {const s=MODEL.colorWheel[st.colorIdx];r=s[1];g=s[2];b=s[3];}
+ if(F.cto&&st.cto>0){const t=st.cto/255;r=Math.min(255,r+(255-r)*0.1);g=Math.round(g*(1-t*0.18));b=Math.round(b*(1-t*0.45));}
+ return {r,g,b};
+}
+// ── DMX ao vivo (mapa oficial; bind por KEY) ──
+function fineOf(v){return Math.round(v*257)%256;}
+function dmxValues(){
+ const V={};
+ for(const [n,label,key] of MODEL.channels){
+   let v=0;
+   switch(key){
+     case 'pan':v=st.pan;break; case 'panF':v=fineOf(st.pan);break;
+     case 'tilt':v=st.tilt;break; case 'tiltF':v=fineOf(st.tilt);break;
+     case 'dim':v=st.dim;break; case 'dimF':v=fineOf(st.dim);break;
+     case 'strobe':v=st.strobe<8?255:st.strobe;break;
+     case 'colorwheel':v=MODEL.colorWheel?Math.round(st.colorIdx*(255/Math.max(1,MODEL.colorWheel.length))):0;break;
+     case 'colorwheelF':v=0;break;
+     case 'r':v=st.r;break;case 'g':v=st.g;break;case 'b':v=st.b;break;case 'w':v=st.w;break;
+     case 'c':v=st.c;break;case 'm':v=st.m;break;case 'y':v=st.y;break;case 'cto':v=st.cto;break;
+     case 'gobo':v=MODEL.gobos?Math.round(st.gobo*(255/Math.max(1,MODEL.gobos.length))):0;break;
+     case 'gobo2':v=st.gobo2;break;
+     case 'goboRot':v=st.goboRot;break; case 'goboRotF':v=fineOf(st.goboRot);break;
+     case 'prism':v=st.prism?32:0;break; case 'prismRot':v=st.prism?st.prismRot:0;break;
+     case 'zoom':v=st.zoom;break; case 'zoomF':v=fineOf(st.zoom);break;
+     case 'focus':v=st.focus;break; case 'focusF':v=fineOf(st.focus);break;
+     case 'iris':v=st.iris;break; case 'frost':v=st.frost;break;
+     default:v=0;
+   }
+   V[n]={v:Math.max(0,Math.min(255,Math.round(v))),label,key};
+ }
+ return V;
+}
+function buildDmx(){const V=dmxValues();const g=document.getElementById('dmxgrid');
+ g.innerHTML=Object.entries(V).map(([n,o])=>'<div class="dmxrow'+(o.v>0?' act':'')+'"><span class="cn">'+n+'. '+o.label+'</span><span class="cv">'+o.v+'</span></div>').join('');}
+// ── render do palco ──
+const cv=document.getElementById('cv');const ctx=cv.getContext('2d');
+function sizeCanvas(){const r=cv.getBoundingClientRect();const dpr=Math.min(2,devicePixelRatio||1);cv.width=Math.max(1,r.width*dpr);cv.height=Math.max(1,r.height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);draw();}
+let _raf=0;function draw(){if(_raf)return;_raf=requestAnimationFrame(()=>{_raf=0;render();});}
+function render(){const r=cv.getBoundingClientRect();const W=r.width,H=r.height;ctx.clearRect(0,0,W,H);
+ const bgg=ctx.createLinearGradient(0,0,0,H);bgg.addColorStop(0,'#05070c');bgg.addColorStop(1,'#0a0e16');ctx.fillStyle=bgg;ctx.fillRect(0,0,W,H);
+ const fx=W*0.5, fy=H*0.12;
+ const panDeg=(st.pan/255*540-270), tiltN=st.tilt/255;
+ const targetX=fx+Math.sin(panDeg*Math.PI/180)*W*0.42;
+ const targetY=H*0.45+tiltN*H*0.5;
+ const col=color();
+ let intensity=st.dim/255;
+ if(F.strobe&&st.strobe>=8){intensity*=(Math.floor(performance.now()*(st.strobe/255*18+2)/500)%2)?1:0.05;}
+ const zoomN=F.zoom?(0.25+st.zoom/255*1.0):(MODEL.type==='beam'?0.24:MODEL.type==='wash'?1.0:0.55);
+ const beamBase=MODEL.type==='beam'?7:MODEL.type==='wash'?26:15;
+ const poolR=(beamBase+zoomN*46)*(F.iris?(0.3+st.iris/255*0.7):1);
+ ctx.fillStyle='#161b26';ctx.fillRect(fx-24,fy-14,48,16);
+ ctx.save();ctx.translate(fx,fy);ctx.rotate(panDeg*Math.PI/180*0.25);
+ ctx.fillStyle='#1b212e';ctx.beginPath();ctx.roundRect(-13,-2,26,26,5);ctx.fill();
+ ctx.fillStyle='rgb('+col.r+','+col.g+','+col.b+')';ctx.globalAlpha=0.4+0.6*intensity;ctx.beginPath();ctx.arc(0,12,6,0,7);ctx.fill();ctx.globalAlpha=1;ctx.restore();
+ function drawBeam(tx,ty,mult){
+  if(intensity<=0.01)return;
+  const soft=(F.frost?st.frost/255:0)*0.5+(F.focus?Math.abs(st.focus-160)/255*0.15:0);
+  const grad=ctx.createLinearGradient(fx,fy,tx,ty);
+  const a=Math.min(0.85,0.10+0.6*intensity)*mult;
+  grad.addColorStop(0,'rgba('+col.r+','+col.g+','+col.b+','+Math.min(0.95,a+0.15)+')');
+  grad.addColorStop(1,'rgba('+col.r+','+col.g+','+col.b+',0)');
+  const ang=Math.atan2(ty-fy,tx-fx),perp=ang+Math.PI/2;
+  const w0=beamBase*0.5,w1=poolR;
+  ctx.beginPath();
+  ctx.moveTo(fx+Math.cos(perp)*w0,fy+Math.sin(perp)*w0);
+  ctx.lineTo(tx+Math.cos(perp)*w1,ty+Math.sin(perp)*w1);
+  ctx.lineTo(tx-Math.cos(perp)*w1,ty-Math.sin(perp)*w1);
+  ctx.lineTo(fx-Math.cos(perp)*w0,fy-Math.sin(perp)*w0);
+  ctx.closePath();ctx.fillStyle=grad;ctx.fill();
+  const pg=ctx.createRadialGradient(tx,ty,1,tx,ty,poolR);
+  pg.addColorStop(0,'rgba('+col.r+','+col.g+','+col.b+','+Math.min(0.95,a+0.25)+')');
+  pg.addColorStop(1,'rgba('+col.r+','+col.g+','+col.b+',0)');
+  ctx.fillStyle=pg;ctx.beginPath();ctx.arc(tx,ty,poolR,0,7);ctx.fill();
+  if(F.gobo&&st.gobo>0)drawGobo(tx,ty,poolR,st.gobo,soft);
+ }
+ if(F.prism&&st.prism){const spread=poolR*1.6;drawBeam(targetX-spread,targetY,0.7);drawBeam(targetX+spread,targetY,0.7);drawBeam(targetX,targetY,0.85);}
+ else drawBeam(targetX,targetY,1);
+ document.getElementById('badge').textContent=MODEL.type.toUpperCase()+' · Pan '+Math.round(panDeg)+'° · Tilt '+Math.round(tiltN*270-135)+'° · Dim '+Math.round(st.dim/2.55)+'%';
+}
+function drawGobo(cx,cy,R,idx,soft){ctx.save();ctx.beginPath();ctx.arc(cx,cy,R*0.92,0,7);ctx.clip();
+ ctx.globalCompositeOperation='destination-out';ctx.globalAlpha=0.55-soft*0.4;ctx.fillStyle='#000';
+ const rot=(st.goboRot-128)/128*Math.PI;
+ ctx.translate(cx,cy);ctx.rotate(rot);
+ const pat=idx%7;
+ if(pat===1){for(let i=0;i<14;i++){const a=i/14*7,rr=R*0.6;ctx.beginPath();ctx.arc(Math.cos(a)*rr,Math.sin(a)*rr,R*0.09,0,7);ctx.fill();}}
+ else if(pat===2){ctx.beginPath();for(let i=0;i<10;i++){const a=i/10*7,rr=i%2?R*0.9:R*0.35;ctx.lineTo(Math.cos(a)*rr,Math.sin(a)*rr);}ctx.closePath();ctx.fill();}
+ else if(pat===3){for(let i=0;i<12;i++){ctx.save();ctx.rotate(i/12*7);ctx.fillRect(-R*0.02,0,R*0.04,R*0.9);ctx.restore();}}
+ else if(pat===4){ctx.lineWidth=R*0.06;ctx.strokeStyle='#000';for(let i=0;i<40;i++){const a=i*0.5,rr=i/40*R;ctx.beginPath();ctx.arc(0,0,rr,a,a+0.5);ctx.stroke();}}
+ else if(pat===5){for(let i=0;i<6;i++){ctx.save();ctx.rotate(i/6*7);ctx.beginPath();ctx.ellipse(R*0.4,0,R*0.28,R*0.12,0,0,7);ctx.fill();ctx.restore();}}
+ else if(pat===6){for(let i=0;i<8;i++){ctx.save();ctx.rotate(i/8*7);ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(R*0.5,R*0.15);ctx.lineTo(R*0.5,-R*0.15);ctx.closePath();ctx.fill();ctx.restore();}}
+ else{for(let i=0;i<20;i++){const x=(Math.sin(i*12.9)*0.5)*R*1.4,y=(Math.cos(i*7.7)*0.5)*R*1.4;ctx.beginPath();ctx.arc(x,y,R*0.12,0,7);ctx.fill();}}
+ ctx.restore();}
+function loop(){if(F.strobe&&st.strobe>=8&&st.dim>0)render();requestAnimationFrame(loop);}
+// ── missões ──
+const M_=(function(){const ms=[{t:'Acenda o fixture: suba o <b>Dimmer</b> a 100% e mire com <b>Pan</b> e <b>Tilt</b>.',ok:s=>s.dim>240}];
+ if(F.color==='wheel')ms.push({t:'Escolha uma cor <b>saturada</b> na roda de cor oficial.',ok:s=>{const w=MODEL.colorWheel[s.colorIdx];return s.colorIdx>0&&(w[1]<200||w[2]<200||w[3]<200);}});
+ if(F.color==='rgb')ms.push({t:'Faça <b>azul</b> com os canais RGB.',ok:s=>s.b>200&&s.r<80&&s.g<80});
+ if(F.color==='cmy')ms.push({t:'Feche <b>Magenta</b> e <b>Amarelo</b> para obter <b>vermelho</b> (mistura CMY real).',ok:s=>s.m>180&&s.y>180&&s.c<60});
+ if(F.gobo)ms.push({t:'Projete um <b>gobo</b> (diferente de Aberto).',ok:s=>s.gobo>0&&s.dim>100});
+ if(F.prism)ms.push({t:'Insira o <b>prisma</b> e veja o facho multiplicar.',ok:s=>s.prism===true&&s.dim>100});
+ if(F.iris)ms.push({t:'Feche a <b>íris</b> pela metade (facho mais fino).',ok:s=>s.iris<140&&s.dim>100});
+ if(F.zoom)ms.push({t:'Abra o <b>zoom</b> ao máximo.',ok:s=>s.zoom>220&&s.dim>100});
+ if(F.strobe)ms.push({t:'Ative o <b>strobo</b>.',ok:s=>s.strobe>=8&&s.dim>100});
+ return ms;})();
+let mi=0;
+function drawM(){document.getElementById('mission').innerHTML='<div><b>Missão '+(mi+1)+'/'+M_.length+':</b> '+M_[mi].t+'</div><div class="mrow"><span class="dot" id="mdot"></span><span id="mstat">Ajuste os controles…</span></div><button id="mnext">Próxima missão ▸</button>';document.getElementById('mnext').onclick=()=>{mi=(mi+1)%M_.length;drawM();check();};}
+function check(){const dot=document.getElementById('mdot');if(!dot)return;let ok=false;try{ok=M_[mi].ok(st);}catch(e){}dot.classList.toggle('ok',ok);document.getElementById('mstat').textContent=ok?'✓ Feito! Toque em Próxima.':'Ajuste os controles…';}
+buildControls();buildDmx();drawM();sizeCanvas();check();loop();
+addEventListener('resize',sizeCanvas);
+</script></body></html>

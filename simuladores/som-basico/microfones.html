@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador — Microfones: escolha e padrão polar (SMU)</title>
+<style>
+  :root{--bg:#0b0f17;--panel:#131a29;--panel2:#0e1420;--line:#233149;--ink:#e7ecf5;
+    --muted:#8ea0bd;--amber:#F59E0B;--green:#22c55e;--red:#ef4444;--cyan:#22d3ee}
+  *{box-sizing:border-box}html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);font-family:"Space Grotesk",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;padding:10px}
+  h1{font-size:15px;margin:0 0 2px}.sub{font-size:11.5px;color:var(--muted);margin-bottom:10px}
+  .mission{display:flex;gap:10px;align-items:center;background:#0c1220;border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin-bottom:12px}
+  .mission .idx{font-size:10px;color:var(--amber);font-weight:800;letter-spacing:.8px;white-space:nowrap}
+  .mission .txt{font-size:12.5px;line-height:1.3;flex:1}.mission .txt b{color:var(--amber)}
+  .mission button{font:inherit;font-size:11px;color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:7px;padding:6px 9px;cursor:pointer}
+  .grid{display:flex;flex-wrap:wrap;gap:12px}
+  .card{flex:1 1 320px;background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:12px;padding:14px}
+  .card h3{margin:0 0 10px;font-size:11px;letter-spacing:1.2px;color:var(--muted);text-transform:uppercase}
+  .scene{font-size:13px;line-height:1.4;background:#0c1220;border:1px solid var(--line);border-radius:9px;padding:10px 12px;margin-bottom:12px}
+  .scene b{color:var(--amber)}
+  .opts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+  .opt{font:inherit;font-size:12px;text-align:left;padding:10px;border-radius:9px;border:1px solid var(--line);background:#0c1220;color:var(--ink);cursor:pointer;display:flex;gap:8px;align-items:center;transition:.15s}
+  .opt .em{font-size:18px}.opt.sel{border-color:var(--amber);background:#1a1608}
+  .opt.correct{border-color:var(--green);background:#0e1a10}.opt.wrong{border-color:var(--red);background:#1a1010}
+  .row{display:flex;gap:10px;align-items:center;margin:8px 0;flex-wrap:wrap}
+  .toggle{font:inherit;font-size:12px;font-weight:700;padding:9px 13px;border-radius:9px;border:1px solid var(--line);background:#0c1220;color:var(--muted);cursor:pointer}
+  .toggle.on{background:var(--green);border-color:var(--green);color:#08120a}
+  .verdict{font-size:12.5px;font-weight:700;min-height:18px;margin-top:6px}.verdict.good{color:var(--green)}.verdict.bad{color:var(--red)}
+  .btn{font:inherit;font-size:12.5px;font-weight:800;padding:10px 16px;border-radius:9px;border:0;background:var(--amber);color:#0b0f17;cursor:pointer}
+  canvas{width:100%;height:auto;display:block;background:#080d15;border:1px solid #1b2740;border-radius:10px}
+  select{font:inherit;background:#0c1220;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px}
+  label.sl{font-size:11px;color:var(--muted);display:block;margin-top:8px}
+  input[type=range]{width:100%;accent-color:var(--amber);height:24px}
+  .riskbar{height:12px;border-radius:6px;background:#05070d;border:1px solid #1a2540;overflow:hidden;margin-top:4px}
+  .riskbar i{display:block;height:100%;width:0%;background:linear-gradient(90deg,var(--green),var(--amber) 60%,var(--red));transition:width .1s}
+  @media(max-width:520px){.opts{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+  <h1>Microfones: escolha certa e padrão polar</h1>
+  <div class="sub">Escolha o microfone para cada situação e entenda como o padrão polar evita microfonia.</div>
+  <div class="mission">
+    <span class="idx" id="mIdx">MISSÃO 1/4</span>
+    <span class="txt" id="mTxt">—</span>
+    <button id="mSkip">Pular</button>
+  </div>
+
+  <div class="grid">
+    <!-- ESCOLHA -->
+    <div class="card">
+      <h3>Situação & Escolha</h3>
+      <div class="scene" id="scene">—</div>
+      <div class="opts" id="opts"></div>
+      <div class="row">
+        <button class="toggle" id="phantom">+48V Phantom</button>
+        <button class="btn" id="confirm">Confirmar</button>
+      </div>
+      <div class="verdict" id="verdict"></div>
+    </div>
+
+    <!-- PADRÃO POLAR -->
+    <div class="card">
+      <h3>Padrão Polar & Microfonia</h3>
+      <div class="row">
+        <span style="font-size:11px;color:var(--muted)">Padrão:</span>
+        <select id="pattern">
+          <option value="omni">Omnidirecional</option>
+          <option value="cardioid" selected>Cardioide</option>
+          <option value="super">Supercardioide</option>
+        </select>
+      </div>
+      <canvas id="polar" width="360" height="300"></canvas>
+      <label class="sl">Direção para onde o microfone aponta: <b id="aimTxt">0°</b></label>
+      <input type="range" id="aim" min="0" max="359" value="0">
+      <label class="sl">Risco de microfonia (feedback) da caixa de PA 🔊:</label>
+      <div class="riskbar"><i id="risk"></i></div>
+      <div class="verdict" id="polarVerdict"></div>
+    </div>
+  </div>
+
+<script>
+"use strict";
+(function(){
+  // ---------- ESCOLHA DE MIC ----------
+  const MICS = {
+    din:  {em:"🎤", nm:"Dinâmico cardioide (de mão)"},
+    cond: {em:"🎙️", nm:"Condensador (estúdio)"},
+    lap:  {em:"📎", nm:"Lapela / Headset sem fio"},
+    hand: {em:"📡", nm:"Sem fio de mão (dinâmico)"},
+  };
+  const scenarios=[
+    { txt:'<b>Voz principal</b> de um cantor no palco, show ao vivo e barulhento. Qual o microfone mais indicado?',
+      opts:["din","cond","lap","hand"], correct:"din", phantom:false,
+      why:"Dinâmico cardioide: robusto, aguenta pressão sonora alta e rejeita o que vem de trás — o padrão para voz ao vivo. Não precisa de phantom." },
+    { txt:'Gravação de um <b>vocal em estúdio</b> (ambiente silencioso, busca de detalhe e brilho). Escolha o mic e a alimentação.',
+      opts:["din","cond","lap","hand"], correct:"cond", phantom:true,
+      why:"Condensador capta mais detalhe e agudos — ideal em estúdio. Ele PRECISA de +48V (phantom power) para funcionar." },
+    { txt:'Um <b>palestrante que anda pelo palco</b> e precisa das mãos livres. Qual microfone?',
+      opts:["din","cond","lap","hand"], correct:"lap", phantom:false,
+      why:"Lapela ou headset sem fio deixa as mãos livres e mantém distância constante da boca — perfeito para palestra em movimento." },
+  ];
+  let sc=0, sel=null, phantom=false;
+  const $=id=>document.getElementById(id);
+  function renderScene(){
+    const s=scenarios[sc]; $("scene").innerHTML=s.txt; sel=null; phantom=false;
+    $("phantom").classList.remove("on"); $("verdict").textContent="";
+    const o=$("opts"); o.innerHTML="";
+    s.opts.forEach(k=>{ const b=document.createElement("button"); b.className="opt"; b.dataset.k=k;
+      b.innerHTML=`<span class="em">${MICS[k].em}</span> ${MICS[k].nm}`;
+      b.onclick=()=>{ sel=k; [...o.children].forEach(c=>c.classList.remove("sel","correct","wrong")); b.classList.add("sel"); };
+      o.appendChild(b); });
+  }
+  $("phantom").onclick=()=>{ phantom=!phantom; $("phantom").classList.toggle("on",phantom); };
+  $("confirm").onclick=()=>{
+    if(sel===null){ $("verdict").textContent="Selecione um microfone primeiro."; $("verdict").className="verdict bad"; return; }
+    const s=scenarios[sc]; const okMic=sel===s.correct; const okPh=phantom===s.phantom;
+    [...$("opts").children].forEach(c=>{ if(c.dataset.k===s.correct)c.classList.add("correct"); else if(c.dataset.k===sel&&!okMic)c.classList.add("wrong"); });
+    if(okMic&&okPh){ $("verdict").innerHTML="✔ "+s.why; $("verdict").className="verdict good"; checkMissions(true); }
+    else if(okMic&&!okPh){ $("verdict").innerHTML= s.phantom? "Quase! Este microfone precisa do <b>+48V</b> ligado." : "Quase! Este microfone <b>não</b> usa phantom — desligue o +48V."; $("verdict").className="verdict bad"; }
+    else { $("verdict").innerHTML="✖ Não é o ideal aqui. "+s.why; $("verdict").className="verdict bad"; }
+  };
+
+  // ---------- POLAR ----------
+  const cv=$("polar"), ctx=cv.getContext("2d");
+  function gain(pattern,phi){ // phi em rad, 0 = frente
+    const c=Math.cos(phi);
+    if(pattern==="omni") return 1;
+    if(pattern==="cardioid") return 0.5+0.5*c;             // null atrás (180°)
+    return 0.375+0.625*c;                                   // supercardioide (null ~127°)
+  }
+  function drawPolar(){
+    const w=cv.width,h=cv.height,cx=w/2,cy=h/2,R=Math.min(w,h)/2-24;
+    ctx.clearRect(0,0,w,h);
+    // grid
+    ctx.strokeStyle="#182339";ctx.fillStyle="#3a4a66";ctx.font="9px system-ui";ctx.textAlign="center";
+    for(let r=0.25;r<=1;r+=0.25){ ctx.beginPath();ctx.arc(cx,cy,R*r,0,7);ctx.stroke(); }
+    ctx.beginPath();ctx.moveTo(cx-R,cy);ctx.lineTo(cx+R,cy);ctx.moveTo(cx,cy-R);ctx.lineTo(cx,cy+R);ctx.stroke();
+    const aim=(+$("aim").value)*Math.PI/180;
+    const pat=$("pattern").value;
+    // curva (aponta para 'aim'; 0° tela = topo)
+    ctx.beginPath();
+    for(let a=0;a<=360;a+=2){ const ang=a*Math.PI/180; const phi=ang-aim; const g=gain(pat,phi);
+      const sx=cx+Math.sin(ang)*R*g, sy=cy-Math.cos(ang)*R*g; if(a===0)ctx.moveTo(sx,sy);else ctx.lineTo(sx,sy); }
+    ctx.closePath(); ctx.fillStyle="rgba(245,158,11,.16)"; ctx.fill(); ctx.strokeStyle="var(--amber)"; ctx.strokeStyle="#F59E0B"; ctx.lineWidth=2; ctx.stroke();
+    // seta de apontamento
+    ctx.strokeStyle="#22d3ee";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cx,cy);
+    ctx.lineTo(cx+Math.sin(aim)*R*0.5,cy-Math.cos(aim)*R*0.5);ctx.stroke();
+    ctx.fillStyle="#22d3ee";ctx.font="700 10px system-ui";ctx.fillText("frente",cx+Math.sin(aim)*R*0.62,cy-Math.cos(aim)*R*0.62);
+    // mic no centro
+    ctx.fillStyle="#e7ecf5";ctx.beginPath();ctx.arc(cx,cy,6,0,7);ctx.fill();
+    // PA fixa (fonte de microfonia) no topo-direita (45°)
+    const paAng=45*Math.PI/180; const px=cx+Math.sin(paAng)*R, py=cy-Math.cos(paAng)*R;
+    ctx.font="18px system-ui";ctx.fillText("🔊",px,py+6);
+    // risco = ganho do mic na direção da PA
+    const phiPA=paAng-aim; const g=gain(pat,phiPA); const risk=Math.round(g*100);
+    $("risk").style.width=risk+"%";
+    const pv=$("polarVerdict");
+    if(risk<25){ pv.textContent="✔ Baixo risco: a PA está na zona de rejeição do microfone."; pv.className="verdict good"; }
+    else if(risk<60){ pv.textContent="Atenção: risco médio de microfonia."; pv.className="verdict bad"; }
+    else { pv.textContent="✖ Alto risco de microfonia: o mic está \"olhando\" para a PA."; pv.className="verdict bad"; }
+    return risk;
+  }
+  $("aim").oninput=()=>{ $("aimTxt").textContent=$("aim").value+"°"; const r=drawPolar(); checkMissions(false,r); };
+  $("pattern").onchange=()=>{ const r=drawPolar(); checkMissions(false,r); };
+
+  // ---------- MISSÕES ----------
+  const missions=[
+    { t:'Escolha o microfone para a <b>voz principal ao vivo</b> (painel da esquerda) e confirme.', kind:"scene", scene:0 },
+    { t:'Agora um <b>vocal de estúdio</b>: escolha o mic certo e ligue a alimentação correta.', kind:"scene", scene:1 },
+    { t:'E o <b>palestrante que anda no palco</b>? Escolha e confirme.', kind:"scene", scene:2 },
+    { t:'No painel da direita: use padrão <b>cardioide</b> e gire a <b>direção do microfone</b> para deixar o risco de microfonia da PA 🔊 no verde (baixo).', kind:"polar" },
+  ];
+  let mi=0;
+  function paintMission(){ const idx=$("mIdx"),txt=$("mTxt");
+    if(mi>=missions.length){ idx.textContent="CONCLUÍDO"; txt.innerHTML="🎓 <b>Boa!</b> Você sabe escolher o microfone por situação e usar o padrão polar contra microfonia."; $("mSkip").style.display="none"; return; }
+    idx.textContent="MISSÃO "+(mi+1)+"/"+missions.length; txt.innerHTML=missions[mi].t;
+    const m=missions[mi]; if(m.kind==="scene"){ sc=m.scene; renderScene(); } }
+  function checkMissions(sceneOk,risk){ if(mi>=missions.length)return; const m=missions[mi];
+    if(m.kind==="scene"&&sceneOk){ mi++; paintMission(); }
+    else if(m.kind==="polar"&&$("pattern").value==="cardioid"&&(risk!==undefined?risk:drawPolar())<25){ mi++; paintMission(); } }
+  $("mSkip").onclick=()=>{ if(mi<missions.length){ mi++; paintMission(); } };
+
+  // init
+  $("aimTxt").textContent="0°"; renderScene(); drawPolar(); paintMission();
+})();
+</script>
+</body>
+</html>

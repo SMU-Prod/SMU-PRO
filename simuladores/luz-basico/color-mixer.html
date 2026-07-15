@@ -1,0 +1,133 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Simulador — Mistura de Cor (RGBW + Dimmer)</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#0b0e14;color:#e7ecf3;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;overflow:hidden}
+body{display:flex;align-items:center;justify-content:center}
+.console{width:1000px;height:620px;background:linear-gradient(180deg,#121722,#0d111a);border:1px solid #223049;border-radius:14px;padding:18px;display:grid;grid-template-columns:1.15fr .85fr;gap:16px;box-shadow:0 10px 40px #0008}
+.stage{position:relative;background:#05070c;border:1px solid #1c2740;border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+.stage canvas{width:100%;height:100%;display:block}
+.panel{display:flex;flex-direction:column;gap:12px;min-width:0}
+h1{font-size:15px;font-weight:700;letter-spacing:.2px;color:#cfe0ff}
+.sub{font-size:11.5px;color:#8aa0c2;line-height:1.45}
+.faders{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;flex:1;align-items:end}
+.fad{display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:end}
+.track{position:relative;width:34px;flex:1;min-height:150px;background:#0c1220;border:1px solid #263449;border-radius:8px;touch-action:none;cursor:pointer}
+.fill{position:absolute;left:0;right:0;bottom:0;border-radius:0 0 7px 7px}
+.knob{position:absolute;left:-3px;right:-3px;height:16px;background:#e7ecf3;border-radius:5px;box-shadow:0 2px 6px #000a;transform:translateY(8px)}
+.lbl{font-size:11px;font-weight:700}.val{font-size:11px;color:#9fb4d6;font-variant-numeric:tabular-nums}
+.swatch{height:38px;border-radius:8px;border:1px solid #2a3a55}
+.mission{background:#0e1626;border:1px solid #24406e;border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.5}
+.mission b{color:#8fd0ff}
+.mrow{display:flex;align-items:center;gap:8px;margin-top:4px}
+.dot{width:14px;height:14px;border-radius:50%;border:2px solid #37507a;flex:none}
+.dot.ok{background:#39d98a;border-color:#39d98a}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+button{background:#1b2740;color:#dce7fb;border:1px solid #33507f;border-radius:8px;padding:7px 11px;font-size:12px;font-weight:600;cursor:pointer}
+button:hover{background:#233459}
+.tag{display:inline-block;font-size:10px;padding:2px 7px;border-radius:999px;background:#16233c;border:1px solid #294066;color:#9db6df;margin-left:6px}
+.hint{font-size:11px;color:#7f96bb}
+</style></head>
+<body>
+<div class="console" id="console">
+  <div class="stage"><canvas id="cv"></canvas></div>
+  <div class="panel">
+    <div><h1>Mistura de Cor no Refletor LED <span class="tag" id="ftype">RGBW</span></h1>
+      <div class="sub">Arraste os faders. No LED a cor é <b>aditiva</b>: some Vermelho + Verde + Azul. O <b>Dimmer</b> controla a intensidade geral; o <b>W</b> (branco) limpa e clareia.</div></div>
+    <div class="faders" id="faders"></div>
+    <div class="swatch" id="swatch"></div>
+    <div class="mission" id="mission"></div>
+    <div class="btns">
+      <button id="toggleW">Modo: RGBW</button>
+      <button id="reset">Zerar</button>
+      <button id="next">Próxima missão ▸</button>
+    </div>
+    <div class="hint" id="hint">Dica: R+G+B nos três = branco (mas “sujo”). Use o canal W para um branco limpo.</div>
+  </div>
+</div>
+<script>
+const CH=[{k:'d',lbl:'DIM',c:'#e7ecf3',v:0},{k:'r',lbl:'R',c:'#ff4d4d',v:0},{k:'g',lbl:'G',c:'#48e06a',v:0},{k:'b',lbl:'B',c:'#4d8bff',v:0},{k:'w',lbl:'W',c:'#fff7e6',v:0}];
+const st={d:0,r:0,g:0,b:0,w:0};
+let rgbwMode=true;
+const fadersEl=document.getElementById('faders');
+CH.forEach(ch=>{
+  const el=document.createElement('div');el.className='fad';el.dataset.k=ch.k;
+  el.innerHTML=`<div class="val" data-v>0</div><div class="track"><div class="fill" style="background:${ch.c};height:0%"></div><div class="knob" style="bottom:0%"></div></div><div class="lbl" style="color:${ch.c}">${ch.lbl}</div>`;
+  fadersEl.appendChild(el);
+  const track=el.querySelector('.track');
+  const set=(cy)=>{const r=track.getBoundingClientRect();let p=1-(cy-r.top)/r.height;p=Math.max(0,Math.min(1,p));st[ch.k]=Math.round(p*255);render();};
+  track.addEventListener('pointerdown',e=>{try{track.setPointerCapture(e.pointerId);}catch(_){}set(e.clientY);});
+  track.addEventListener('pointermove',e=>{if(e.buttons)set(e.clientY);});
+});
+function currentColor(){
+  // aditiva: base RGB, mais W soma um branco; dimmer escala tudo
+  let r=st.r,g=st.g,b=st.b;
+  if(rgbwMode){r=Math.min(255,r+st.w);g=Math.min(255,g+st.w);b=Math.min(255,b+st.w);}
+  const dim=st.d/255;
+  return {r:Math.round(r*dim),g:Math.round(g*dim),b:Math.round(b*dim),dim};
+}
+const cv=document.getElementById('cv');const ctx=cv.getContext('2d');
+function sizeCanvas(){const r=cv.getBoundingClientRect();const dpr=Math.min(2,devicePixelRatio||1);cv.width=r.width*dpr;cv.height=r.height*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);drawStage();}
+function drawStage(){
+  const r=cv.getBoundingClientRect();const W=r.width,H=r.height;
+  ctx.clearRect(0,0,W,H);
+  // fundo palco
+  ctx.fillStyle='#05070c';ctx.fillRect(0,0,W,H);
+  const col=currentColor();const cx=W*0.5, topY=H*0.13, fixW=Math.min(120,W*0.22);
+  // luminária
+  ctx.fillStyle='#161b26';ctx.fillRect(cx-fixW/2,topY-18,fixW,20);
+  ctx.fillStyle='#0f131c';ctx.fillRect(cx-fixW/2+6,topY,fixW-12,10);
+  // facho (cone)
+  const beamBottom=H*0.9, spread=W*0.34;
+  const g=ctx.createLinearGradient(0,topY,0,beamBottom);
+  const a=0.06+0.5*(col.dim);
+  g.addColorStop(0,`rgba(${col.r},${col.g},${col.b},${Math.min(0.95,a+0.15)})`);
+  g.addColorStop(1,`rgba(${col.r},${col.g},${col.b},0)`);
+  ctx.beginPath();ctx.moveTo(cx-fixW*0.28,topY+4);ctx.lineTo(cx-spread,beamBottom);ctx.lineTo(cx+spread,beamBottom);ctx.lineTo(cx+fixW*0.28,topY+4);ctx.closePath();
+  ctx.fillStyle=g;ctx.fill();
+  // pool de luz no chão
+  const pool=ctx.createRadialGradient(cx,beamBottom,4,cx,beamBottom,spread*0.95);
+  pool.addColorStop(0,`rgba(${col.r},${col.g},${col.b},${Math.min(0.9,a+0.2)})`);
+  pool.addColorStop(1,`rgba(${col.r},${col.g},${col.b},0)`);
+  ctx.fillStyle=pool;ctx.beginPath();ctx.ellipse(cx,beamBottom,spread*0.95,spread*0.22,0,0,7);ctx.fill();
+  // artista (silhueta) que recebe a cor
+  const px=cx,py=beamBottom-6;
+  ctx.save();
+  const lit=col.dim>0.02;
+  const bodyCol=lit?`rgb(${Math.round(col.r*0.7+20)},${Math.round(col.g*0.7+20)},${Math.round(col.b*0.7+20)})`:'#1a2030';
+  ctx.fillStyle=bodyCol;
+  ctx.beginPath();ctx.ellipse(px,py-70,14,16,0,0,7);ctx.fill(); //cabeça
+  ctx.beginPath();ctx.moveTo(px-18,py);ctx.lineTo(px-12,py-52);ctx.lineTo(px+12,py-52);ctx.lineTo(px+18,py);ctx.closePath();ctx.fill();//corpo
+  ctx.restore();
+  // leitura DMX
+  ctx.fillStyle='#7f96bb';ctx.font='11px system-ui';
+  ctx.fillText(`DMX  DIM:${st.d}  R:${st.r}  G:${st.g}  B:${st.b}`+(rgbwMode?`  W:${st.w}`:''),12,H-14);
+}
+function render(){
+  CH.forEach(ch=>{const el=fadersEl.querySelector(`[data-k="${ch.k}"]`);const v=st[ch.k];const p=v/255*100;
+    el.querySelector('.fill').style.height=p+'%';el.querySelector('.knob').style.bottom=p+'%';el.querySelector('[data-v]').textContent=v;});
+  const c=currentColor();document.getElementById('swatch').style.background=`rgb(${c.r},${c.g},${c.b})`;
+  drawStage();checkMission();
+}
+// ── Missões ──
+const MISSIONS=[
+  {t:'Faça a luz acender em <b>vermelho puro</b>.',ok:()=>st.d>200&&st.r>200&&st.g<40&&st.b<40&&st.w<40},
+  {t:'Some Vermelho + Verde para obter <b>amarelo</b>.',ok:()=>st.d>180&&st.r>180&&st.g>180&&st.b<50},
+  {t:'Some Vermelho + Azul para obter <b>magenta</b>.',ok:()=>st.d>180&&st.r>180&&st.b>180&&st.g<60},
+  {t:'Faça <b>branco</b> — dica: use o canal <b>W</b> (mude para modo RGBW se preciso) ou os três RGB no máximo.',ok:()=>{const c=currentColor();return c.dim>0.7&&c.r>200&&c.g>200&&c.b>200;}},
+  {t:'Deixe a cor e <b>abaixe o Dimmer para ~50%</b> (fade sem mudar a cor).',ok:()=>st.d>=110&&st.d<=145&&(st.r+st.g+st.b+st.w>150)},
+];
+let mi=0;
+function drawMission(){const m=MISSIONS[mi];document.getElementById('mission').innerHTML=
+  `<div><b>Missão ${mi+1}/${MISSIONS.length}:</b> ${m.t}</div><div class="mrow"><span class="dot" id="mdot"></span><span id="mstat">Ajuste os faders…</span></div>`;}
+function checkMission(){const m=MISSIONS[mi];const dot=document.getElementById('mdot');const stat=document.getElementById('mstat');if(!dot)return;
+  if(m.ok()){dot.classList.add('ok');stat.textContent='✓ Conseguiu! Toque em “Próxima missão”.';}
+  else{dot.classList.remove('ok');stat.textContent='Ajuste os faders…';}}
+document.getElementById('next').onclick=()=>{mi=(mi+1)%MISSIONS.length;drawMission();render();};
+document.getElementById('reset').onclick=()=>{st.d=st.r=st.g=st.b=st.w=0;render();};
+document.getElementById('toggleW').onclick=(e)=>{rgbwMode=!rgbwMode;e.target.textContent='Modo: '+(rgbwMode?'RGBW':'RGB');document.getElementById('ftype').textContent=rgbwMode?'RGBW':'RGB';render();};
+// ── Fit responsivo ──
+function fit(){const DW=1000,DH=620;const vw=innerWidth,vh=innerHeight;const scrH=(window.screen&&screen.height)||vh;const iframeTaller=vh>scrH+8;const visH=Math.min(vh,scrH);const headerAllow=iframeTaller?84:(vh>700?24:6);const effVh=Math.max(240,visH-headerAllow);const z=Math.min(vw/DW,effVh/DH);document.getElementById('console').style.zoom=z;requestAnimationFrame(sizeCanvas);}
+addEventListener('resize',fit);
+drawMission();render();fit();setTimeout(fit,60);
+</script></body></html>

@@ -1,0 +1,138 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Simulador — Equipe e jargão: o rádio do palco</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;-webkit-tap-highlight-color:transparent}
+html,body{background:#0a0c10;color:#e9edf2}body{padding:10px}
+.app{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+h1{font-size:clamp(15px,4vw,20px);font-weight:800;color:#eaf0ff}
+.t{font-size:12px;color:#9daecb;line-height:1.45}
+.mission{background:#0e1626;border:1px solid #24406e;border-radius:11px;padding:10px 12px;font-size:12.5px;line-height:1.5}
+.mission b{color:#8fd0ff}
+.mrow{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap}
+.dot{width:14px;height:14px;border-radius:50%;border:2px solid #37507a;flex:none}.dot.ok{background:#39d98a;border-color:#39d98a}
+.btn{background:#1b2740;color:#dce7fb;border:1px solid #33507f;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer}
+.btn.go{background:#1e5a3a;border-color:#2f8f5b}
+.gt{font-size:10px;font-weight:800;color:#8aa0c2;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
+.box{background:#10141d;border:1px solid #222c40;border-radius:12px;padding:10px}
+.radio{background:#060a08;border:1px solid #14301f;border-radius:10px;padding:10px;font-family:Consolas,monospace;font-size:11.5px;min-height:92px;line-height:1.8}
+.radio .who{color:#7fd0a0;font-weight:800}
+.radio .me{color:#ffd24d;font-weight:800}
+.radio .sys{color:#5f7392}
+.opts{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.opt{background:#0d1119;border:2px solid #26314a;border-radius:9px;padding:9px 11px;font-size:12px;color:#cfe0ff;cursor:pointer;line-height:1.45}
+.opt:hover{border-color:#3a4a6a}
+.opt.right{border-color:#2f8f5b;background:#0d2016}
+.opt.wrong{border-color:#8f2f3f;background:#200d10}
+.fb{font-size:11.5px;line-height:1.6;margin-top:8px;padding:9px 11px;border-radius:9px;display:none}
+.fb.show{display:block}.fb.ok{background:#0d2016;border:1px solid #2f8f5b;color:#a8e6c0}.fb.no{background:#200d10;border:1px solid #8f2f3f;color:#ffb8c0}
+.gloss{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px}
+.g{background:#0d1119;border:1px solid #1f2839;border-radius:8px;padding:7px 9px;font-size:10.5px;line-height:1.4}
+.g b{color:#ffd24d;display:block;font-size:11px}
+.prog{font-size:11px;color:#ffd24d;font-weight:700}
+</style></head><body>
+<div class="app">
+ <h1>📻 Equipe e jargão — o rádio do palco</h1>
+ <div class="t">No palco você não trabalha sozinho: produção, palco, som, rigger, contrarregra. E se comunica <b>pelo rádio, com jargão</b>. Falar errado atrasa o show — ou machuca alguém. Responda como um profissional responderia.</div>
+ <div class="mission" id="mission"></div>
+ <div class="box"><div class="gt">Rádio — canal da produção <span class="prog" id="prog"></span></div>
+  <div class="radio" id="radio"></div>
+  <div class="opts" id="opts"></div>
+  <div class="fb" id="fb"></div>
+  <div class="mrow"><button class="btn go" id="next" style="display:none">Próxima chamada ▸</button></div>
+ </div>
+ <div class="box"><div class="gt">Glossário do palco</div>
+  <div class="gloss" id="gloss"></div>
+ </div>
+</div>
+<script>
+'use strict';
+const GLOSS=[
+ ['Rider técnico','A lista do que a produção precisa: equipamento, palco, energia.'],
+ ['Call / Call time','Hora que a equipe tem que estar no local. Chegar no call é o mínimo.'],
+ ['Passagem de som','Ensaio técnico antes do show. Luz também trabalha nela.'],
+ ['Contrarregra','Quem dá as deixas e organiza o palco no teatro.'],
+ ['Rigger','Quem sobe e monta a estrutura/pontos. Trabalho de vida ou morte.'],
+ ['FOH','Front of House — a posição da mesa, no meio da plateia.'],
+ ['Blackout / BO','Apagar tudo de uma vez.'],
+ ['Deixa (cue)','O momento exato de disparar algo.'],
+ ['Foco','Mirar cada refletor no lugar certo.'],
+ ['Desmonte','Tirar tudo depois do show. Ninguém vai embora antes.'],
+];
+const CALLS=[
+ {who:'PRODUÇÃO',msg:'Luz, quanto tempo pro foco terminar? A banda quer subir pra passagem.',
+  opts:[
+   {t:'"Produção, luz: faltam 15 minutos pro foco. Se a banda subir agora, eu paro e continuo depois da passagem — me confirma."',ok:true},
+   {t:'"Já vai."',ok:false},
+   {t:'(não responder, continuar focando)',ok:false},
+  ],
+  fb:{ok:'É isso. <b>Identifica-se, dá número e oferece a alternativa.</b> A produção consegue decidir. Comunicação boa é informação + opção.',
+      no:'No rádio, "já vai" não é informação — a produção não consegue decidir nada com isso. E silêncio é pior: quem não responde some do fluxo. <b>Identifique-se, dê um número e ofereça a alternativa.</b>'}},
+ {who:'RIGGER',msg:'Pessoal do palco, vou içar a truss da frente agora!',
+  opts:[
+   {t:'Sair de baixo da truss, conferir se ninguém está embaixo e confirmar no rádio: "Luz saiu, área livre."',ok:true},
+   {t:'Continuar endereçando a fixture — é rápido, dá tempo.',ok:false},
+   {t:'Pedir pra ele esperar 5 minutos porque você está no meio do patch.',ok:false},
+  ],
+  fb:{ok:'Certo. <b>Carga suspensa é vida ou morte:</b> ninguém fica embaixo, e você confirma no rádio que saiu. Depois volta e termina.',
+      no:'<span style="color:#ff9a9a">Isso mata gente.</span> Quando o rigger avisa que vai içar, <b>todo mundo sai de baixo, sem discussão</b>. O patch espera; a truss caindo não perdoa. Confirme no rádio que a área está livre.'}},
+ {who:'LD (seu chefe)',msg:'Muda o contra do refrão pra âmbar e deixa mais fechado.',
+  opts:[
+   {t:'"Copiado: contra do refrão em âmbar, facho mais fechado. Faço agora e te chamo pra ver."',ok:true},
+   {t:'Mudar tudo, inclusive o verso, pra ficar coerente.',ok:false},
+   {t:'"Não vai ficar bom assim."',ok:false},
+  ],
+  fb:{ok:'Perfeito. <b>Repetir a ordem (copiado + o que entendeu)</b> elimina mal-entendido, e chamar pra ver fecha o ciclo. É assim que se trabalha para um LD.',
+      no:'Dois erros clássicos: <b>fazer além do que foi pedido</b> (o LD tem um motivo para o verso estar assim) e <b>discutir gosto no rádio</b>. Repita a ordem, execute, mostre. Sugestão se dá depois, pessoalmente.'}},
+ {who:'SOM',msg:'Luz, teu dimmer tá chiando no meu sistema. Some um ruído quando você sobe os PARes.',
+  opts:[
+   {t:'"Copiado. Vou conferir aterramento e separar meu cabo de força do teu de sinal. Me dá 10 minutos."',ok:true},
+   {t:'"Problema é teu, meu dimmer tá normal."',ok:false},
+   {t:'Desligar os PARes e deixar o show sem convencional.',ok:false},
+  ],
+  fb:{ok:'Isso. Dimmer chiando no áudio é clássico: <b>aterramento e cabo de força junto do cabo de sinal</b>. Você assume, investiga e dá prazo. Som e luz são o mesmo time.',
+      no:'"Problema é teu" é como se cria guerra entre som e luz — e o público ouve o chiado do mesmo jeito. Dimmer <b>realmente</b> injeta ruído (corte de fase): confira aterramento e afaste força de sinal.'}},
+ {who:'PRODUÇÃO',msg:'Acabou o show. Pessoal, desmonte!',
+  opts:[
+   {t:'Esperar a plateia sair, desligar na ordem (amplificação/fixtures → mesa), e só então começar a recolher com a equipe.',ok:true},
+   {t:'Começar a baixar a truss imediatamente, o público ainda está saindo.',ok:false},
+   {t:'Ir embora — sua parte (operar) acabou.',ok:false},
+  ],
+  fb:{ok:'Exato. <b>Público fora primeiro</b>, desliga na ordem e o desmonte é da equipe inteira. Quem opera também desmonta.',
+      no:'Dois erros graves: mexer em estrutura <b>com público ainda na casa</b> é risco sério; e ir embora antes do desmonte queima seu nome no mercado mais rápido que qualquer erro técnico. <b>Ninguém vai embora antes do desmonte.</b>'}},
+];
+let ci=0,answered=false,score=0,done=[];
+const radioEl=document.getElementById('radio'),optsEl=document.getElementById('opts');
+function buildGloss(){const el=document.getElementById('gloss');el.innerHTML='';
+ GLOSS.forEach(([t,d])=>{const g=document.createElement('div');g.className='g';g.innerHTML='<b>'+t+'</b>'+d;el.appendChild(g);});}
+function build(){const c=CALLS[ci];
+ radioEl.innerHTML='<span class="sys">— canal aberto —</span><br><span class="who">'+c.who+':</span> "'+c.msg+'"';
+ document.getElementById('prog').textContent='· chamada '+(ci+1)+'/'+CALLS.length+' · acertos: '+score;
+ optsEl.innerHTML='';
+ c.opts.forEach(o=>{const d=document.createElement('div');d.className='opt'+(answered?(o.ok?' right':''):'');
+  d.textContent=o.t;
+  d.onclick=()=>{if(answered)return;answered=true;
+   if(o.ok&&!done.includes(ci)){score++;done.push(ci);}
+   d.className='opt '+(o.ok?'right':'wrong');
+   radioEl.innerHTML+='<br><span class="me">VOCÊ:</span> "'+(o.t.length>90?o.t.slice(0,90)+'…':o.t)+'"';
+   const fb=document.getElementById('fb');fb.className='fb show '+(o.ok?'ok':'no');
+   fb.innerHTML=(o.ok?'✓ <b>Resposta de profissional.</b> ':'✗ <b>Não.</b> ')+(o.ok?c.fb.ok:c.fb.no);
+   document.getElementById('next').style.display='';
+   [...optsEl.children].forEach((x,k)=>{if(c.opts[k].ok)x.className='opt right';});
+   check();};
+  optsEl.appendChild(d);});}
+document.getElementById('next').onclick=()=>{ci=(ci+1)%CALLS.length;answered=false;
+ document.getElementById('fb').className='fb';document.getElementById('next').style.display='none';build();check();};
+const M=[
+ {t:'<b>Atenda o rádio:</b> passe pelas 5 chamadas e responda como um profissional. Acerte pelo menos <b>4 de 5</b>. Regra de ouro: identifique-se, dê informação concreta, repita a ordem recebida.',
+  ok:()=>score>=4},
+ {t:'<b>Gabarito:</b> acerte <b>as 5</b>. Duas delas são inegociáveis: <b>ninguém fica sob carga suspensa</b> e <b>ninguém vai embora antes do desmonte</b>.',
+  ok:()=>score===5},
+];
+let mi=0;
+function drawM(){document.getElementById('mission').innerHTML='<div><b>Cenário '+(mi+1)+'/'+M.length+':</b> '+M[mi].t+'</div><div class="mrow"><span class="dot" id="mdot"></span><span id="mstat">…</span><button class="btn" id="mreset">Recomeçar</button><button class="btn go" id="mnext">Próximo ▸</button></div>';
+ document.getElementById('mreset').onclick=()=>{ci=0;score=0;done=[];answered=false;document.getElementById('fb').className='fb';document.getElementById('next').style.display='none';build();check();};
+ document.getElementById('mnext').onclick=()=>{mi=(mi+1)%M.length;drawM();check();};check();}
+function check(){const dot=document.getElementById('mdot');if(!dot)return;let ok=false;try{ok=M[mi].ok();}catch(e){}
+ dot.classList.toggle('ok',ok);document.getElementById('mstat').textContent=ok?'✓ Você fala a língua do palco!':'…';}
+buildGloss();build();drawM();
+</script></body></html>

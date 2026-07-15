@@ -1,0 +1,100 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Simulador — Equilíbrio de Fases (Distro Trifásico)</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;-webkit-tap-highlight-color:transparent}
+html,body{background:#0a0c10;color:#e9edf2}body{padding:10px}
+.app{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+h1{font-size:clamp(15px,4vw,20px);font-weight:800;color:#eaf0ff}
+.t{font-size:12px;color:#9daecb;line-height:1.45}
+.mission{background:#0e1626;border:1px solid #24406e;border-radius:11px;padding:10px 12px;font-size:12.5px;line-height:1.5}
+.mission b{color:#8fd0ff}
+.mrow{display:flex;align-items:center;gap:8px;margin-top:6px}
+.dot{width:14px;height:14px;border-radius:50%;border:2px solid #37507a;flex:none}.dot.ok{background:#39d98a;border-color:#39d98a}
+.btn{background:#1b2740;color:#dce7fb;border:1px solid #33507f;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;margin-top:8px}
+.phases{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ph{background:#10141d;border:2px solid #26314a;border-radius:12px;padding:10px;cursor:pointer;transition:.12s}
+.ph.tgt{border-color:#ffcf5a;box-shadow:0 0 0 1px #ffcf5a}
+.ph h3{font-size:13px;font-weight:800}
+.ph .amp{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;margin:4px 0}
+.ph .bar{height:10px;background:#0c1017;border-radius:6px;overflow:hidden;margin:4px 0}
+.ph .bar i{display:block;height:100%;border-radius:6px;transition:.2s}
+.ph .w{font-size:10.5px;color:#8aa0c2}
+.ph .loads{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;min-height:24px}
+.ph.trip{border-color:#ff5a5a;animation:blink .5s infinite alternate}
+@keyframes blink{from{box-shadow:0 0 0 1px #ff5a5a}to{box-shadow:0 0 0 4px #ff5a5a55}}
+.chip{background:#1a2233;border:1px solid #2c3a58;border-radius:999px;padding:4px 9px;font-size:10.5px;font-weight:700;color:#cfe0ff;cursor:pointer}
+.chip.sel{border-color:#ffcf5a;background:#2a2415;color:#ffe9b0}
+.chip small{color:#7fa0d0;font-weight:600}
+.pool{background:#10141d;border:1px solid #222c40;border-radius:12px;padding:10px}
+.pool .gt{font-size:10px;font-weight:800;color:#8aa0c2;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
+.pool .loads{display:flex;flex-wrap:wrap;gap:6px;min-height:30px}
+.info{font-size:11px;color:#8296b8;line-height:1.5}
+.calc{background:#0d1119;border:1px solid #1f2839;border-radius:9px;padding:8px 10px;font-size:11.5px;color:#a9bcd8;margin-top:6px}
+</style></head><body>
+<div class="app">
+ <h1>⚡ Equilíbrio de Fases — monte a distribuição do rig</h1>
+ <div class="t">Rede <b>trifásica 220V</b> · disjuntor de <b>25A por fase</b>. Toque numa <b>carga</b> e depois na <b>fase</b> onde ela vai ligada. Corrente da fase = soma dos watts ÷ 220. Não deixe nenhuma fase estourar!</div>
+ <div class="mission" id="mission"></div>
+ <div class="pool"><div class="gt">Cargas para ligar (toque para pegar)</div><div class="loads" id="pool"></div></div>
+ <div class="phases" id="phases"></div>
+ <div class="calc" id="calc"></div>
+</div>
+<script>
+'use strict';
+const V=220, LIMIT=25;
+const LOADS=[
+ {id:1,nome:'Rack dimmer (6× PAR64 1kW)',w:6000,split:true},
+ {id:2,nome:'Motor talha 1',w:1100},
+ {id:3,nome:'Motor talha 2',w:1100},
+ {id:4,nome:'12× PAR LED',w:2160},
+ {id:5,nome:'2× Sharpy',w:700},
+ {id:6,nome:'2× MAC Aura',w:800},
+ {id:7,nome:'Máquina de fumaça',w:1500},
+ {id:8,nome:'Mesa + monitores',w:400},
+ {id:9,nome:'2× Strobo LED',w:900},
+ {id:10,nome:'Ribalta 10 células',w:1000},
+];
+// rack dimmer 6kW é grande demais p/ uma fase (27A) — o aluno descobre que precisa DIVIDIR (o distro divide em 3 circuitos de 2kW)
+let assign={}; // loadId -> 'L1'|'L2'|'L3'|null ; para o rack: 'SPLIT'
+let picked=null;
+const poolEl=document.getElementById('pool'), phEl=document.getElementById('phases');
+function phaseWatts(p){let w=0;for(const l of LOADS){if(assign[l.id]===p)w+=l.w;if(assign[l.id]==='SPLIT')w+=l.w/3;}return w;}
+function build(){
+ poolEl.innerHTML='';
+ LOADS.filter(l=>!assign[l.id]).forEach(l=>{const c=document.createElement('div');c.className='chip'+(picked===l.id?' sel':'');
+  c.innerHTML=l.nome+' <small>'+l.w+'W'+(l.w/V>LIMIT?' ⚠':'')+'</small>';
+  c.onclick=()=>{picked=picked===l.id?null:l.id;build();};poolEl.appendChild(c);});
+ if(!LOADS.some(l=>!assign[l.id])&&!picked)poolEl.innerHTML='<span style="font-size:11px;color:#7fd0a0;font-weight:700">✓ Todas as cargas ligadas</span>';
+ phEl.innerHTML='';
+ ['L1','L2','L3'].forEach(p=>{const w=phaseWatts(p);const a=w/V;const pct=Math.min(100,a/LIMIT*100);
+  const d=document.createElement('div');d.className='ph'+(picked?' tgt':'')+(a>LIMIT?' trip':'');
+  d.innerHTML='<h3>Fase '+p+'</h3><div class="amp" style="color:'+(a>LIMIT?'#ff7b7b':a>LIMIT*0.85?'#ffcf6b':'#7fd0a0')+'">'+a.toFixed(1)+' A</div><div class="bar"><i style="width:'+pct+'%;background:'+(a>LIMIT?'#ff5a5a':a>LIMIT*0.85?'#e0b93a':'#39d98a')+'"></i></div><div class="w">'+Math.round(w)+' W · limite '+LIMIT+'A ('+(LIMIT*V)+'W)</div><div class="loads"></div>';
+  const lc=d.querySelector('.loads');
+  LOADS.filter(l=>assign[l.id]===p).forEach(l=>{const c=document.createElement('div');c.className='chip';c.innerHTML=l.nome+' <small>'+l.w+'W ✕</small>';
+   c.onclick=(e)=>{e.stopPropagation();assign[l.id]=null;build();check();};lc.appendChild(c);});
+  if(p==='L1'&&assign[1]==='SPLIT'){const c=document.createElement('div');c.className='chip';c.innerHTML='⅓ do rack dimmer <small>2000W (dividido) ✕</small>';c.onclick=(e)=>{e.stopPropagation();assign[1]=null;build();check();};lc.appendChild(c);}
+  if(p!=='L1'&&assign[1]==='SPLIT'){const c=document.createElement('div');c.className='chip';c.innerHTML='⅓ do rack dimmer <small>2000W</small>';lc.appendChild(c);}
+  d.onclick=()=>{ if(picked==null)return; const l=LOADS.find(x=>x.id===picked);
+   if(l.split&&l.w/V>LIMIT){ // rack não cabe numa fase: escolha inline (sem confirm — iframe-safe)
+     const cal=document.getElementById('calc');
+     cal.innerHTML='<b style="color:#ffcf6b">⚠ O rack de '+l.w+'W puxa '+(l.w/V).toFixed(1)+'A — estoura qualquer fase sozinho!</b> O distro divide os 6 circuitos dele entre as fases: <button class="btn" id="doSplit" style="margin:4px 6px 0 0">Dividir entre as 3 fases (2000W cada)</button><button class="btn" id="doForce" style="margin-top:4px">Forçar nesta fase (errado)</button>';
+     document.getElementById('doSplit').onclick=()=>{assign[l.id]='SPLIT';picked=null;build();check();};
+     document.getElementById('doForce').onclick=()=>{assign[l.id]=p;picked=null;build();check();};
+     return;
+   }
+   assign[l.id]=p;picked=null;build();check();};
+  phEl.appendChild(d);});
+ const ws=['L1','L2','L3'].map(phaseWatts);const as=ws.map(w=>w/V);
+ document.getElementById('calc').innerHTML='<b>Conta ao vivo:</b> I = P ÷ V → L1: '+Math.round(ws[0])+'÷220 = <b>'+as[0].toFixed(1)+'A</b> · L2: <b>'+as[1].toFixed(1)+'A</b> · L3: <b>'+as[2].toFixed(1)+'A</b> · Desequilíbrio (maior−menor): <b>'+(Math.max(...as)-Math.min(...as)).toFixed(1)+'A</b>';
+}
+const M=[
+ {t:'<b>Ligue todas as 10 cargas</b> sem NENHUMA fase passar de 25A. Dica: o rack de dimmer de 6000W não cabe numa fase só…',ok:()=>LOADS.every(l=>assign[l.id])&&['L1','L2','L3'].every(p=>phaseWatts(p)/V<=LIMIT)},
+ {t:'<b>Equilibre:</b> além de tudo ligado sem estourar, deixe o desequilíbrio entre a fase mais carregada e a mais leve <b>menor que 3A</b> — como um chefe de elétrica exige.',ok:()=>{if(!LOADS.every(l=>assign[l.id]))return false;const as=['L1','L2','L3'].map(p=>phaseWatts(p)/V);return as.every(a=>a<=LIMIT)&&(Math.max(...as)-Math.min(...as))<3;}},
+];
+let mi=0;
+function drawM(){document.getElementById('mission').innerHTML='<div><b>Cenário '+(mi+1)+'/'+M.length+':</b> '+M[mi].t+'</div><div class="mrow"><span class="dot" id="mdot"></span><span id="mstat">Distribua as cargas…</span></div><button class="btn" id="mnext">Próximo ▸</button>';
+ document.getElementById('mnext').onclick=()=>{mi=(mi+1)%M.length;drawM();check();};check();}
+function check(){const dot=document.getElementById('mdot');if(!dot)return;let ok=false;try{ok=M[mi].ok();}catch(e){}
+ dot.classList.toggle('ok',ok);document.getElementById('mstat').textContent=ok?'✓ Cenário cumprido! Um eletricista aprovaria.':'Distribua as cargas…';}
+build();drawM();
+</script></body></html>

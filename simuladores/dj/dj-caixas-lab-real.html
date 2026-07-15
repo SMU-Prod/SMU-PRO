@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>Laboratório de Caixas de Som — monte o P.A. do DJ (SMU)</title>
+<style>
+  :root{ --ink:#e9eef7; --muted:#8b97a9; --amber:#f4a02a; --green:#37d07a; --red:#e0483f; --cyan:#39c0e6; }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{ background:radial-gradient(1100px 650px at 50% -8%,#1b1e23,#0a0b0d 62%),#08090b; color:var(--ink);
+    font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; -webkit-font-smoothing:antialiased;
+    user-select:none;overflow:hidden; display:flex;align-items:flex-start;justify-content:center; }
+  #stage{transform-origin:top center;flex:0 0 auto}
+  .lab{position:relative;width:1280px;display:flex;flex-direction:column;gap:9px;padding:12px;
+    background:linear-gradient(180deg,#2b2f36,#1f2228 10%,#191b1f 60%,#141518);
+    border:1px solid #0b0c0e;border-radius:16px;box-shadow:0 30px 80px #000b, inset 0 1px 0 #ffffff10;}
+  .util{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:linear-gradient(180deg,#202329,#15171b);border:1px solid #0c0d0f;border-radius:11px;padding:7px 11px}
+  .brand b{font-size:16px;letter-spacing:1px;color:#eef2f8}
+  .brand .m{font-size:9px;letter-spacing:2px;color:#8a94a4;text-transform:uppercase;margin-left:8px}
+  .pill{font-size:10px;color:var(--muted);background:#0c0e12;border:1px solid #2a2f37;border-radius:16px;padding:4px 9px;display:flex;align-items:center;gap:6px;white-space:nowrap}
+  .pill b{color:#fff}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green)}
+  .dot.off{background:#444;box-shadow:none}
+  .spacer{flex:1}
+  .btnp{font:inherit;font-size:11px;font-weight:700;border:0;border-radius:8px;padding:6px 11px;cursor:pointer;color:#07120b;background:linear-gradient(180deg,#5be59a,#27b566)}
+  .btnp.ghost{background:transparent;color:var(--muted);border:1px solid #2a2f37}
+  .mission{display:flex;align-items:center;gap:9px;background:#0c0e12;border:1px solid #2a2f37;border-radius:9px;padding:5px 10px;flex:1 1 340px;min-width:0}
+  .mission .idx{font-size:10px;color:var(--amber);font-weight:800;white-space:nowrap}
+  .mission .txt{font-size:11px;line-height:1.25;min-width:0}
+  .mission .txt b{color:#fff}.mission .txt small{color:var(--muted)}
+  .mission .ok{color:var(--green);font-weight:800;font-size:15px}
+
+  .row{display:grid;grid-template-columns:1fr 430px;gap:10px;align-items:start}
+
+  /* caixas */
+  .spk{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+  .sp1{display:grid;grid-template-columns:86px 1fr;gap:9px;background:linear-gradient(180deg,#1a1c21,#131519);border:1px solid #0a0b0d;border-radius:11px;padding:10px;cursor:pointer;align-items:center}
+  .sp1:hover{border-color:#2a3548}
+  .sp1.on{border-color:var(--cyan);box-shadow:0 0 0 1px var(--cyan), 0 0 18px #39c0e622}
+  .sp1.on.sub{border-color:var(--amber);box-shadow:0 0 0 1px var(--amber), 0 0 18px #f4a02a22}
+  .sp1 canvas{width:86px;height:96px}
+  .sp1 .nm{font-size:12px;font-weight:800;color:#fff}
+  .sp1 .cls{font-size:8.5px;letter-spacing:1px;font-weight:700;color:var(--cyan);margin-left:5px}
+  .sp1 .cls.bad{color:var(--red)}
+  .sp1 .cls.sub{color:var(--amber)}
+  .sp1 .specs{display:flex;flex-wrap:wrap;gap:3px 9px;margin-top:4px}
+  .sp1 .s{font-size:8.5px;color:#8fa3c4}
+  .sp1 .s b{color:#cfd7e6}
+  .sp1 .use{font-size:9px;color:#a9b7cc;margin-top:4px;line-height:1.3}
+  .sp1 .sel{margin-top:6px;font-size:9.5px;font-weight:800;letter-spacing:.5px;color:#9fc0e8;background:#1a2434;border:1px solid #23406b;border-radius:6px;padding:6px;text-align:center}
+  .sp1.on .sel{background:var(--cyan);color:#04121a;border-color:var(--cyan)}
+  .sp1.on.sub .sel{background:var(--amber);color:#160e00;border-color:var(--amber)}
+
+  /* painel direito */
+  .panel{display:flex;flex-direction:column;gap:9px}
+  .box{background:linear-gradient(180deg,#101622,#0b0f18);border:1px solid #0c1526;border-radius:12px;padding:11px;display:flex;flex-direction:column;gap:8px}
+  .box .t{font-size:10px;letter-spacing:1.5px;color:#7bd3ff;font-weight:800}
+  .sl{display:flex;align-items:center;gap:9px}
+  .sl label{font-size:9.5px;color:#8fa3c4;width:110px}
+  .sl input[type=range]{flex:1;accent-color:#39c0e6}
+  .sl .v{font-size:9.5px;color:var(--amber);width:36px;text-align:right;font-variant-numeric:tabular-nums}
+  .togrow{display:flex;gap:6px}
+  .tog{flex:1;font-size:10px;font-weight:800;color:#9fb0c8;background:#131a28;border:1px solid #223247;border-radius:7px;padding:8px 4px;cursor:pointer;text-align:center;line-height:1.2}
+  .tog small{display:block;font-weight:600;color:#5f6f88;font-size:8px}
+  .tog.on{background:var(--amber);color:#160e00;border-color:var(--amber)}
+  .tog.on small{color:#160e0099}
+  /* espectro */
+  .spec{width:100%;height:96px;background:#060a11;border:1px solid #04070d;border-radius:6px;display:block}
+  .leg{display:flex;justify-content:space-between;font-size:8px;color:#5f6f88;padding:0 3px}
+  .venue{display:flex;gap:6px}
+  .ven{flex:1;font-size:9.5px;font-weight:800;color:#9fb0c8;background:#131a28;border:1px solid #223247;border-radius:7px;padding:7px 3px;cursor:pointer;text-align:center;line-height:1.25}
+  .ven small{display:block;font-weight:600;color:#5f6f88;font-size:8px}
+  .ven.on{background:var(--cyan);color:#04121a;border-color:var(--cyan)}
+  .ven.on small{color:#04121a99}
+  .kitmsg{font-size:10px;line-height:1.4;border-radius:7px;padding:8px 10px;display:none}
+  .kitmsg.ok{display:block;background:#0d2114;border:1px solid #1e4a2c;color:#8fe0ae}
+  .kitmsg.no{display:block;background:#241012;border:1px solid #4a1e22;color:#e0958f}
+  .coach{background:#0c0e12;border:1px solid #223;border-radius:10px;padding:9px 12px;font-size:10.5px;line-height:1.45;color:#c7d0de}
+  .coach b{color:#fff}.coach .k{color:var(--amber);font-weight:800}
+</style>
+</head>
+<body>
+<div id="stage">
+<div class="lab">
+  <div class="util">
+    <div class="brand"><b>SMU</b><span class="m">LAB DE CAIXAS — MONTE O P.A. DO DJ</span></div>
+    <span class="pill"><span class="dot off" id="acDot"></span> Áudio <b id="acState">clique em Ligar</b></span>
+    <div class="mission">
+      <span class="idx" id="mIdx">MISSÃO 1/6</span>
+      <div class="txt"><b id="mTitle">Ouça na caixinha bluetooth</b><br><small id="mHint">Selecione a caixinha e dê play: sinta o que falta (grave e pressão).</small></div>
+      <span class="ok" id="mOk" style="display:none">✓</span>
+    </div>
+    <span class="spacer"></span>
+    <button class="btnp ghost" id="btnReset">Reiniciar</button>
+    <button class="btnp" id="btnStart">▶ Ligar áudio</button>
+  </div>
+
+  <div class="row">
+    <div class="spk" id="spk"></div>
+
+    <div class="panel">
+      <div class="box">
+        <div class="t">🔊 O QUE ESTÁ TOCANDO</div>
+        <div class="sl"><label>Volume do sistema</label><input type="range" id="sysVol" min="0" max="100" value="60"><span class="v" id="sysV">60%</span></div>
+        <div class="togrow">
+          <div class="tog" id="subTog">+ SUBWOOFER 18"<small>crossover 90 Hz — o grave que a caixa não faz</small></div>
+          <div class="tog" id="boothTog">MONITOR DE CABINE<small>o DJ precisa se ouvir sem atraso</small></div>
+        </div>
+        <canvas class="spec" id="spec"></canvas>
+        <div class="leg"><span>30 Hz</span><span>100 Hz</span><span>1 kHz</span><span>10 kHz</span></div>
+      </div>
+      <div class="box">
+        <div class="t">🎪 DIMENSIONE O KIT (missão final)</div>
+        <div class="venue">
+          <div class="ven" data-v="casa">FESTA EM CASA<small>até 50 pessoas</small></div>
+          <div class="ven" data-v="bar">BAR / EVENTO<small>~200 pessoas</small></div>
+          <div class="ven" data-v="balada">BALADA / SHOW<small>1000+ pessoas</small></div>
+        </div>
+        <div class="kitmsg" id="kitmsg"></div>
+      </div>
+      <div class="coach">
+        <b>Regras do P.A.:</b> caixa pequena não faz grave — quem faz é o <span class="k">subwoofer</span> (com crossover, cada um cuida da sua faixa). <span class="k">SPL</span> (pressão) dimensiona o tamanho da festa; potência RMS ≠ marketing "PMPO". E o DJ precisa do <span class="k">monitor de cabine</span>: ouvir o PA de longe atrasa e engana o beatmatch.
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+"use strict";
+/* Lab de caixas: groove tocando através da "resposta" de cada caixa (filtros reais).
+   Sub = banda 30-90Hz com crossover. Bluetooth = HPF alto + compressão (o aluno OUVE o que falta). */
+const $=(s,r=document)=>r.querySelector(s);
+const $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+let AC=null, started=false;
+
+const SPEAKERS=[
+  { id:"bt", nm:"Caixinha bluetooth", cls:"NÃO É P.A.", bad:true, kind:"bt",
+    specs:["Driver 2×45 mm","~20 W","Resposta 120 Hz–12 kHz","SPL ~85 dB"],
+    use:"Ótima p/ ouvir música na praia — mas sem grave, sem pressão e comprime tudo. Não segura nem uma sala.",
+    hp:210, lp:8000, gain:0.42, compress:true },
+  { id:"mon5", nm:"Monitor de estúdio 5\"", cls:"ESTÚDIO / CABINE", bad:false, kind:"mon",
+    specs:["Woofer 5\" + tweeter","~80 W RMS","55 Hz–22 kHz","SPL ~101 dB"],
+    use:"Som plano e honesto p/ produzir e treinar em casa. Em festa, não tem pressão nem grave de pista.",
+    hp:58, lp:19000, gain:0.75, compress:false },
+  { id:"pa12", nm:"Caixa ativa 12\" (tipo K12/EON)", cls:"P.A. PADRÃO", bad:false, kind:"pa",
+    specs:["Woofer 12\" + driver 1.75\"","2000 W pico / ~1000 W","48 Hz–20 kHz","SPL máx ~132 dB"],
+    use:"O cavalo de batalha do DJ: leve, com DSP, cobre bar e evento médio. Em par + tripé = kit clássico.",
+    hp:50, lp:19500, gain:1.0, compress:false },
+  { id:"pa15", nm:"Caixa ativa 15\"", cls:"P.A. GRANDE", bad:false, kind:"pa",
+    specs:["Woofer 15\" + driver 2\"","2000 W pico","42 Hz–20 kHz","SPL máx ~136 dB"],
+    use:"Mais cone = mais grave e pressão. Para pista maior — e mesmo assim o sub continua fazendo falta.",
+    hp:44, lp:19500, gain:1.1, compress:false },
+];
+/* sub separado (toggle) */
+let sel=null, subOn=false, boothOn=false, venue=null;
+
+let master, srcBus, chain={}, subChain={}, anal;
+function buildGraph(){
+  AC=new (window.AudioContext||window.webkitAudioContext)();
+  master=AC.createGain(); master.gain.value=0.9;
+  const comp=AC.createDynamicsCompressor(); comp.threshold.value=-6; comp.ratio.value=3;
+  master.connect(comp); comp.connect(AC.destination);
+  srcBus=AC.createGain(); srcBus.gain.value=0.6;
+  startGroove(srcBus);
+  /* cadeia da caixa: srcBus -> hp -> lp -> gain -> (comp opcional) -> master */
+  chain.hp=AC.createBiquadFilter(); chain.hp.type="highpass"; chain.hp.frequency.value=200; chain.hp.Q.value=0.7;
+  chain.hp2=AC.createBiquadFilter(); chain.hp2.type="highpass"; chain.hp2.frequency.value=200; chain.hp2.Q.value=0.7; // 24 dB/oct em cascata
+  chain.lp=AC.createBiquadFilter(); chain.lp.type="lowpass"; chain.lp.frequency.value=9000;
+  chain.g=AC.createGain(); chain.g.gain.value=0;
+  chain.sq=AC.createWaveShaper(); setSquash(chain.sq,0); // compressão/squash da bt
+  srcBus.connect(chain.hp); chain.hp.connect(chain.hp2); chain.hp2.connect(chain.lp); chain.lp.connect(chain.sq); chain.sq.connect(chain.g); chain.g.connect(master);
+  /* sub: srcBus -> lp90 -> gain -> master */
+  subChain.lp=AC.createBiquadFilter(); subChain.lp.type="lowpass"; subChain.lp.frequency.value=90; subChain.lp.Q.value=0.8;
+  subChain.g=AC.createGain(); subChain.g.gain.value=0;
+  srcBus.connect(subChain.lp); subChain.lp.connect(subChain.g); subChain.g.connect(master);
+  anal=AC.createAnalyser(); anal.fftSize=1024; anal.smoothingTimeConstant=0.82; master.connect(anal);
+}
+function setSquash(node,amt){ const n=256,curve=new Float32Array(n);
+  for(let i=0;i<n;i++){ const x=i/(n-1)*2-1; curve[i]= amt>0 ? Math.tanh(x*(1+amt*4))/Math.tanh(1+amt*4) : x; }
+  node.curve=curve; }
+function startGroove(dest){
+  const bpm=124, step=(60/bpm)/4; let abs=0, next=AC.currentTime+0.1;
+  const nbuf=AC.createBuffer(1,AC.sampleRate*0.3,AC.sampleRate); const nd=nbuf.getChannelData(0);
+  for(let i=0;i<nd.length;i++)nd[i]=Math.random()*2-1;
+  const K=[1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0],H=[0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0],B=[1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0],S=[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0];
+  setInterval(()=>{ const now=AC.currentTime;
+    while(next<now+0.12){ const t=next, st=abs%16;
+      if(K[st]){ const o=AC.createOscillator(),a=AC.createGain(); o.frequency.setValueAtTime(140,t); o.frequency.exponentialRampToValueAtTime(44,t+0.13); a.gain.setValueAtTime(1.0,t); a.gain.exponentialRampToValueAtTime(0.001,t+0.32); o.connect(a); a.connect(dest); o.start(t); o.stop(t+0.34); }
+      if(S[st]){ const s=AC.createBufferSource(); s.buffer=nbuf; const bp=AC.createBiquadFilter(); bp.type="bandpass"; bp.frequency.value=1800; const a=AC.createGain(); a.gain.setValueAtTime(0.5,t); a.gain.exponentialRampToValueAtTime(0.001,t+0.15); s.connect(bp); bp.connect(a); a.connect(dest); s.start(t); s.stop(t+0.17); }
+      if(H[st]){ const s=AC.createBufferSource(); s.buffer=nbuf; const hp=AC.createBiquadFilter(); hp.type="highpass"; hp.frequency.value=8500; const a=AC.createGain(); a.gain.setValueAtTime(0.26,t); a.gain.exponentialRampToValueAtTime(0.001,t+0.045); s.connect(hp); hp.connect(a); a.connect(dest); s.start(t); s.stop(t+0.07); }
+      if(B[st]){ const o=AC.createOscillator(); o.type="sawtooth"; o.frequency.value=55; const lp2=AC.createBiquadFilter(); lp2.type="lowpass"; lp2.frequency.setValueAtTime(400,t); lp2.frequency.exponentialRampToValueAtTime(120,t+0.16); lp2.Q.value=4; const a=AC.createGain(); a.gain.setValueAtTime(0.0001,t); a.gain.linearRampToValueAtTime(0.5,t+0.01); a.gain.exponentialRampToValueAtTime(0.001,t+0.22); o.connect(lp2); lp2.connect(a); a.connect(dest); o.start(t); o.stop(t+0.24); }
+      abs++; next+=step; }
+  },25);
+}
+
+/* seleção */
+function pick(p){
+  sel=p; $$(".sp1").forEach(el=>el.classList.toggle("on", el.dataset.id===p.id));
+  applyChain(); autoCheck();
+}
+function applyChain(){
+  if(!started||!sel)return;
+  chain.hp.frequency.value=sel.hp; chain.hp2.frequency.value=sel.hp; chain.lp.frequency.value=sel.lp;
+  chain.g.gain.value=sel.gain*(+$("#sysVol").value/100);
+  setSquash(chain.sq, sel.compress?1:0);
+  subChain.g.gain.value= subOn? 1.15*(+$("#sysVol").value/100) : 0;
+}
+
+/* desenho da caixa */
+function drawSpk(cv,p){
+  const ctx=cv.getContext("2d"); const w=cv.width=86,h=cv.height=96; ctx.clearRect(0,0,w,h);
+  ctx.strokeStyle=p.bad?"#e0483f":"#39c0e6"; ctx.fillStyle="#131a26"; ctx.lineWidth=2;
+  if(p.kind==="bt"){ ctx.beginPath(); ctx.roundRect(18,34,50,26,12); ctx.fill(); ctx.stroke();
+    for(let x=26;x<=60;x+=7){ ctx.beginPath(); ctx.arc(x,47,1.6,0,7); ctx.stroke(); } return; }
+  const bw=p.kind==="mon"?44:56, bh=p.kind==="mon"?60:78, x=(w-bw)/2, y=(h-bh)/2;
+  ctx.beginPath(); ctx.roundRect(x,y,bw,bh,5); ctx.fill(); ctx.stroke();
+  const wr=p.kind==="mon"?13:(p.id==="pa15"?20:17);
+  ctx.beginPath(); ctx.arc(w/2,y+bh-wr-7,wr,0,7); ctx.stroke();
+  ctx.beginPath(); ctx.arc(w/2,y+bh-wr-7,wr*0.45,0,7); ctx.stroke();
+  ctx.beginPath(); ctx.arc(w/2,y+12,5,0,7); ctx.stroke();
+}
+
+/* missões */
+const MISSIONS=[
+  { id:"bt", t:"Ouça na caixinha bluetooth", h:"Selecione a caixinha e ouça: cadê o grave? Cadê a pressão?" },
+  { id:"pa12", t:"Troque para a caixa ativa 12\"", h:"Selecione a ativa 12\" — o P.A. padrão do DJ. Ouça o corpo aparecer." },
+  { id:"sub", t:"Adicione o SUBWOOFER", h:"Ligue o sub 18\": o grave que NENHUMA caixa de topo faz sozinha (crossover 90 Hz)." },
+  { id:"mon", t:"Compare com o monitor de estúdio", h:"Selecione o monitor 5\": plano e honesto — bom p/ treinar, sem pressão p/ festa." },
+  { id:"booth", t:"Ligue o monitor de cabine", h:"Volte a uma ativa (12\"/15\") e ligue o MONITOR DE CABINE: o DJ se ouve sem atraso." },
+  { id:"kit", t:"Dimensione o kit da festa", h:"BAR/EVENTO (~200 pessoas): monte o kit certo — ativa 12\"/15\" + sub + monitor." },
+];
+let mi=0;
+function renderMission(){ const m=MISSIONS[mi];
+  if(!m){ $("#mIdx").textContent="✓ COMPLETO"; $("#mTitle").textContent="Você sabe montar o P.A.!"; $("#mHint").textContent="Ativa + sub com crossover + monitor de cabine — dimensionado pelo público."; $("#mOk").style.display="inline"; return; }
+  $("#mIdx").textContent="MISSÃO "+(mi+1)+"/"+MISSIONS.length; $("#mTitle").textContent=m.t; $("#mHint").textContent=m.h; }
+function state(id){ switch(id){
+  case "bt": return sel&&sel.id==="bt";
+  case "pa12": return sel&&sel.id==="pa12";
+  case "sub": return subOn&&sel&&sel.kind==="pa";
+  case "mon": return sel&&sel.id==="mon5";
+  case "booth": return boothOn&&sel&&sel.kind==="pa";
+  case "kit": return venue==="bar"&&sel&&sel.kind==="pa"&&subOn&&boothOn;
+} return false; }
+function autoCheck(){ const m=MISSIONS[mi]; if(m&&state(m.id)){ mi++; renderMission(); } }
+
+/* kit sizing feedback */
+function venueMsg(){
+  const el=$("#kitmsg"); if(!venue){ el.className="kitmsg"; return; }
+  const kit={ paOk: sel&&sel.kind==="pa", monOnly: sel&&sel.kind==="mon", bt: sel&&sel.id==="bt" };
+  let ok=false, msg="";
+  if(venue==="casa"){ ok=kit.monOnly||kit.paOk; msg= ok? "✓ Para 50 pessoas: uma ativa 12\" (ou até bons monitores) resolve. Sub é luxo bem-vindo.":"✗ Caixinha bluetooth não segura nem festa de casa com pista."; }
+  if(venue==="bar"){ ok=kit.paOk&&subOn; msg= ok? (boothOn? "✓ Kit certo: par de ativas + sub + monitor de cabine. É esse o kit de trabalho do DJ.":"Quase: faltou o MONITOR DE CABINE — sem ele o beatmatch atrasa.") : "✗ Para ~200 pessoas: ativas 12\"/15\" + SUB obrigatório. Sem sub, a pista fica sem chão."; }
+  if(venue==="balada"){ ok=kit.paOk&&subOn; msg= ok? "✓ Conceito certo — mas 1000+ pessoas pede line array/múltiplos subs dimensionados por um técnico de P.A. (é outro curso: o de SOM da SMU!).":"✗ 1000+ pessoas: só sistema grande dimensionado (line array + banco de subs)."; }
+  el.className="kitmsg "+(ok?"ok":"no"); el.textContent=msg;
+}
+
+/* espectro */
+function drawSpec(){
+  const cv=$("#spec"); const w=cv.width=cv.clientWidth||400,h=cv.height=cv.clientHeight||96;
+  const ctx=cv.getContext("2d"); ctx.clearRect(0,0,w,h);
+  if(!started||!anal)return;
+  const bins=new Uint8Array(anal.frequencyBinCount); anal.getByteFrequencyData(bins);
+  const n=140;
+  for(let i=0;i<n;i++){
+    const f=30*Math.pow(10000/30,i/n); const bi=Math.min(bins.length-1,Math.round(f/(AC.sampleRate/2)*bins.length));
+    const v=bins[bi]/255; const x=i/n*w;
+    ctx.fillStyle= f<90? "#f4a02a" : (f<2000? "#39c0e6":"#7c8bff");
+    ctx.fillRect(x,h-v*h,w/n*0.8,v*h);
+  }
+}
+function frame(){ drawSpec(); if(started)autoCheck(); requestAnimationFrame(frame); }
+
+function buildSpk(){
+  const box=$("#spk");
+  SPEAKERS.forEach(p=>{ const el=document.createElement("div"); el.className="sp1"; el.dataset.id=p.id;
+    el.innerHTML=`<canvas></canvas><div><span class="nm">${p.nm}</span><span class="cls${p.bad?" bad":""}">${p.cls}</span>
+      <div class="specs">${p.specs.map(s=>`<span class="s">▸ <b>${s}</b></span>`).join("")}</div>
+      <div class="use">${p.use}</div><div class="sel">OUVIR NESTA CAIXA</div></div>`;
+    el.addEventListener("pointerdown",()=>{ if(!started)startAudio(); pick(p); });
+    box.appendChild(el); drawSpk(el.querySelector("canvas"),p); });
+}
+function startAudio(){ if(started)return; started=true; buildGraph();
+  $("#acDot").classList.remove("off"); $("#acState").textContent="ligado"; $("#btnStart").textContent="● Áudio ligado";
+  if(AC.resume)AC.resume(); applyChain(); }
+function init(){
+  buildSpk(); renderMission();
+  function fit(){ const s=Math.min(1,(window.innerWidth-8)/1304); $("#stage").style.transform="scale("+s+")"; }
+  window.addEventListener("resize",fit); fit();
+  $("#sysVol").addEventListener("input",()=>{ $("#sysV").textContent=$("#sysVol").value+"%"; applyChain(); });
+  $("#subTog").addEventListener("pointerdown",()=>{ if(!started)startAudio(); subOn=!subOn; $("#subTog").classList.toggle("on",subOn); applyChain(); venueMsg(); autoCheck(); });
+  $("#boothTog").addEventListener("pointerdown",()=>{ if(!started)startAudio(); boothOn=!boothOn; $("#boothTog").classList.toggle("on",boothOn); venueMsg(); autoCheck(); });
+  $$(".ven").forEach(b=>b.addEventListener("pointerdown",()=>{ venue=b.dataset.v; $$(".ven").forEach(x=>x.classList.remove("on")); b.classList.add("on"); venueMsg(); autoCheck(); }));
+  $("#btnStart").addEventListener("pointerdown",()=>startAudio());
+  $("#btnReset").addEventListener("pointerdown",()=>location.reload());
+  frame();
+}
+document.addEventListener("DOMContentLoaded",init);
+</script>
+</body>
+</html>

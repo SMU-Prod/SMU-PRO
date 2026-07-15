@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador — Ordem de ligar o sistema (SMU)</title>
+<style>
+  :root{--bg:#0b0f17;--panel:#151b28;--panel2:#0f1420;--line:#26344c;--ink:#e7ecf5;
+    --muted:#8ea0bd;--amber:#F59E0B;--green:#22c55e;--red:#ef4444;--cyan:#22d3ee}
+  *{box-sizing:border-box}html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);font-family:"Space Grotesk",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;padding:10px;user-select:none}
+  h1{font-size:15px;margin:0 0 2px}.sub{font-size:11.5px;color:var(--muted);margin-bottom:10px}
+  .mission{display:flex;gap:10px;align-items:center;background:#0c1220;border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin-bottom:12px}
+  .mission .idx{font-size:10px;color:var(--amber);font-weight:800;letter-spacing:.8px;white-space:nowrap}
+  .mission .txt{font-size:12.5px;line-height:1.3;flex:1}.mission .txt b{color:var(--amber)}
+  .mission button{font:inherit;font-size:11px;color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:7px;padding:6px 9px;cursor:pointer}
+  .devs{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:14px 0}
+  .dev{flex:1 1 150px;max-width:210px;background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:14px;padding:16px;text-align:center;position:relative}
+  .dev .em{font-size:40px}.dev .nm{font-size:13px;font-weight:700;margin-top:4px}.dev .role{font-size:10px;color:var(--muted)}
+  .dev .order{position:absolute;top:8px;left:10px;font-size:10px;color:var(--muted);border:1px solid var(--line);border-radius:20px;padding:2px 7px}
+  .led{width:12px;height:12px;border-radius:50%;background:#3a2020;margin:8px auto 0;box-shadow:inset 0 0 3px #000}
+  .led.on{background:var(--green);box-shadow:0 0 10px var(--green)}
+  .pw{font:inherit;font-size:12px;font-weight:800;padding:9px 0;width:100%;margin-top:10px;border-radius:9px;border:1px solid var(--line);background:#0c1220;color:var(--muted);cursor:pointer}
+  .pw.on{background:var(--green);border-color:var(--green);color:#08120a}
+  .spkbox{text-align:center;margin:6px 0 4px}
+  .spk{font-size:34px;display:inline-block;transition:transform .08s}
+  .spk.pop{animation:shake .4s}
+  @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px) scale(1.1)}40%{transform:translateX(6px) scale(1.15)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+  .status{text-align:center;font-size:13px;font-weight:700;min-height:22px}
+  .status.good{color:var(--green)}.status.bad{color:var(--red)}
+  .pop-flash{position:fixed;inset:0;background:radial-gradient(circle,rgba(239,68,68,.35),transparent 60%);opacity:0;pointer-events:none;transition:opacity .1s;z-index:5}
+  .pop-flash.show{opacity:1}
+  .phasetag{text-align:center;font-size:11px;color:var(--muted);margin-bottom:6px}
+</style>
+</head>
+<body>
+  <h1>Ordem de ligar (e desligar) o sistema</h1>
+  <div class="sub">A amplificação liga por ÚLTIMO e desliga PRIMEIRO. Assim você evita o estouro que danifica as caixas.</div>
+  <div class="mission">
+    <span class="idx" id="mIdx">MISSÃO 1/2</span>
+    <span class="txt" id="mTxt">—</span>
+    <button id="mSkip">Pular</button>
+  </div>
+
+  <div class="phasetag" id="phase">Fase: LIGAR</div>
+  <div class="spkbox"><span class="spk" id="spk">🔊</span></div>
+  <div class="devs" id="devs"></div>
+  <div class="status" id="status"></div>
+  <div class="pop-flash" id="flash"></div>
+
+<script>
+"use strict";
+(function(){
+  const $=id=>document.getElementById(id);
+  const DEV=[
+    {id:0,em:"💻",nm:"Fontes",role:"notebook, players"},
+    {id:1,em:"🎛️",nm:"Mesa de som",role:"mixer + processadores"},
+    {id:2,em:"🔊",nm:"Amplificação",role:"amplificador / caixas ativas"},
+  ];
+  const on=[false,false,false];
+  let clean=true; // sem estouro na fase atual
+
+  function render(){
+    const d=$("devs");d.innerHTML="";
+    DEV.forEach(v=>{ const el=document.createElement("div");el.className="dev";
+      el.innerHTML=`<div class="order">ligar ${v.id+1}º</div><div class="em">${v.em}</div>
+        <div class="nm">${v.nm}</div><div class="role">${v.role}</div>
+        <div class="led ${on[v.id]?'on':''}"></div>
+        <button class="pw ${on[v.id]?'on':''}" data-i="${v.id}">${on[v.id]?'LIGADO':'desligado'}</button>`;
+      d.appendChild(el); });
+    d.querySelectorAll("[data-i]").forEach(b=>b.onclick=()=>toggle(+b.dataset.i));
+  }
+  function pop(msg){ clean=false; const f=$("flash");f.classList.add("show");setTimeout(()=>f.classList.remove("show"),150);
+    const s=$("spk");s.textContent="🔊💥";s.classList.add("pop");setTimeout(()=>{s.classList.remove("pop");s.textContent="🔊";},500);
+    $("status").textContent="⚡ POP! "+msg; $("status").className="status bad"; }
+  function toggle(i){
+    const turningOn=!on[i];
+    if(turningOn){
+      // ligar amplificação com fontes/mesa desligadas: sem perigo, mas fora de ordem
+      if(i<2 && on[2]){ pop("você mexeu na "+DEV[i].nm+" com a amplificação já ligada — o estouro vai para as caixas."); return; }
+      on[i]=true;
+      if(i===2 && !(on[0]&&on[1])){ $("status").textContent="Dica: a amplificação deve ser o ÚLTIMO a ligar (ligue fontes e mesa antes)."; $("status").className="status bad"; }
+      else { $("status").textContent=DEV[i].nm+" ligado."; $("status").className="status good"; }
+    } else {
+      if(i<2 && on[2]){ pop("desligou a "+DEV[i].nm+" com a amplificação ligada — estouro nas caixas. Desligue a amplificação PRIMEIRO."); return; }
+      on[i]=false; $("status").textContent=DEV[i].nm+" desligado."; $("status").className="status good";
+    }
+    render(); check();
+  }
+
+  const M=[
+    { phase:"LIGAR", t:'Ligue o sistema na <b>ordem certa</b>: 1º Fontes, 2º Mesa e por <b>último</b> a Amplificação. Sem estouro!',
+      setup:()=>{on[0]=on[1]=on[2]=false;clean=true;$("phase").textContent="Fase: LIGAR";},
+      ok:()=>on[0]&&on[1]&&on[2]&&clean },
+    { phase:"DESLIGAR", t:'Agora <b>desligue</b> na ordem inversa: 1º a <b>Amplificação</b>, depois a Mesa e as Fontes. Sem estouro!',
+      setup:()=>{on[0]=on[1]=on[2]=true;clean=true;$("phase").textContent="Fase: DESLIGAR";},
+      ok:()=>!on[0]&&!on[1]&&!on[2]&&clean },
+  ];
+  let mi=0;
+  function paintM(){const idx=$("mIdx"),txt=$("mTxt");
+    if(mi>=M.length){idx.textContent="CONCLUÍDO";txt.innerHTML="🎓 <b>Perfeito!</b> Amplificação por último ao ligar, primeiro ao desligar. Esse hábito protege as caixas e evita o 'tump' no PA.";$("mSkip").style.display="none";$("phase").textContent="";return;}
+    idx.textContent="MISSÃO "+(mi+1)+"/"+M.length;txt.innerHTML=M[mi].t; M[mi].setup(); render(); }
+  function check(){if(mi>=M.length)return;try{if(M[mi].ok()){mi++;$("status").textContent="✔ Sequência correta!";$("status").className="status good";setTimeout(paintM,700);}}catch(e){}}
+  $("mSkip").onclick=()=>{if(mi<M.length){mi++;paintM();}};
+
+  paintM();render();
+})();
+</script>
+</body>
+</html>

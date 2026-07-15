@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Anatomia do Artefato Pirotécnico · SMU PRO</title>
+<style>
+  :root{ --bg:#06080e; --panel:#0c111c; --panel2:#0f1626; --line:#25314c; --ink:#e8eef9; --mut:#8a9bb8; --acc:#ff7a1a; --ok:#39d98a; --bad:#ff4d4d; --warn:#ffc63b; --blue:#54b3ff; }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:#05070c;color:var(--ink);font-family:system-ui,Segoe UI,Roboto,Arial;overflow:hidden;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+  #app{position:fixed;top:0;left:0;width:100vw;height:var(--visH,100vh);display:flex;flex-direction:column;overflow:hidden;padding:7px;gap:6px}
+  #hd{flex:none;display:flex;align-items:baseline;gap:10px}#hd b{font-size:14px;font-weight:800}#hd span{font-size:11px;color:var(--mut)}
+  #stageWrap{flex:0 0 26%;min-height:78px;position:relative;background:#04050a;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  #stage{position:absolute;inset:0;width:100%;height:100%}
+  #seqMsg{position:absolute;left:0;right:0;bottom:6px;text-align:center;font-size:12px;color:var(--warn);pointer-events:none;text-shadow:0 1px 5px #000;font-weight:600}
+  #main{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:1fr 244px;gap:7px}
+  .box{background:var(--panel);border:1px solid var(--line);border-radius:11px;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+  .box h5{margin:0;padding:8px 10px 4px;font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--mut)}
+  #svgWrap{flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;padding:4px}
+  svg#cut{width:100%;height:100%}
+  .part{cursor:pointer}
+  .part .hit{fill:transparent}
+  .part.sel .body{stroke:var(--acc);stroke-width:3}
+  .lblbox{fill:#0e1626;stroke:#33405e;stroke-width:1;rx:4}
+  .lbltx{fill:#cbd6ea;font:600 12px system-ui}
+  .lead{stroke:#46567a;stroke-width:1.2}
+  /* painel direito */
+  #info{overflow:auto;padding:0 10px 10px}
+  #info .pt{font-size:14px;font-weight:800;margin:2px 0 4px;color:var(--acc)}
+  #info .dsc{font-size:12px;color:#c9d4e8;line-height:1.5}
+  #info .fn{font-size:11px;color:var(--mut);margin-top:6px;line-height:1.45}
+  #partList{display:flex;flex-wrap:wrap;gap:5px;padding:6px 10px 2px}
+  .chip{font-size:11px;border:1px solid var(--line);background:var(--panel2);border-radius:20px;padding:4px 9px;cursor:pointer}
+  .chip.sel{border-color:var(--acc);color:#ffcf9e}
+  /* controles */
+  #ctl{flex:none;display:flex;gap:9px;align-items:center;flex-wrap:wrap;justify-content:center;background:#0a0e18;border:1px solid var(--line);border-radius:11px;padding:8px 10px}
+  .sl{display:flex;flex-direction:column;gap:3px;align-items:center;min-width:104px}
+  .sl .v{font-size:12px;font-weight:800}.sl label{font-size:9.5px;color:var(--mut);letter-spacing:.4px;text-transform:uppercase}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:120px;height:22px;background:transparent;cursor:pointer}
+  input[type=range]::-webkit-slider-runnable-track{height:5px;background:#243149;border-radius:3px}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;margin-top:-7px;border-radius:50%;background:var(--acc);border:2px solid #ffd3a8}
+  #fire{border:1px solid #ffb070;background:linear-gradient(180deg,#ff8f36,#e5590a);color:#180a00;border-radius:10px;padding:11px 18px;font-size:14px;font-weight:900;cursor:pointer}
+  #fire:disabled{opacity:.5}
+  #seq{flex:none;font-size:11px;color:#b9c6dd;line-height:1.4;padding:6px 11px;background:#080c14;border:1px solid var(--line);border-radius:9px;font-family:'Courier New',monospace;height:52px;overflow:auto}
+  .sq{color:#5f7089}.sq.on{color:var(--warn)}.sq.ok{color:var(--ok)}
+  @media (max-width:820px){ #main{grid-template-columns:1fr} #stageWrap{flex-basis:22%} }
+</style></head>
+<body>
+<div id="app">
+  <div id="hd"><b>Anatomia do Artefato Pirotécnico</b><span>Composição, câmara e a sequência do disparo</span></div>
+  <div id="stageWrap"><canvas id="stage"></canvas><div id="seqMsg">Toque nas peças para estudar · DISPARAR para ver a sequência</div></div>
+  <div id="main">
+    <div class="box"><h5>Corte do morteiro + shell (toque nas peças)</h5>
+      <div id="partList"></div>
+      <div id="svgWrap"><svg id="cut" viewBox="0 0 520 360" preserveAspectRatio="xMidYMid meet"></svg></div>
+    </div>
+    <div class="box"><h5>Ficha da peça</h5><div id="info"><div class="pt">Selecione uma peça</div><div class="dsc">Toque numa peça do corte (ou num chip) para ver o que é e para que serve.</div></div></div>
+  </div>
+  <div id="ctl">
+    <div class="sl"><div class="v" id="v-cal">150 mm</div><input id="cal" type="range" min="50" max="300" step="25" value="150"><label>Calibre do shell</label></div>
+    <div class="sl"><div class="v" id="v-fuse">3.0 s</div><input id="fuse" type="range" min="10" max="60" value="30"><label>Estopim (delay)</label></div>
+    <button id="fire">▶ DISPARAR</button>
+  </div>
+  <div id="seq"></div>
+</div>
+
+<script>__ENGINE__</script>
+<script>
+(function(){
+  const fx=new StageFX(document.getElementById('stage'),{ haze:0.14, ledWall:0.4, beams:true, performer:false, label:"" });
+  window.__fx=fx;
+
+  // ---- peças ----
+  const PARTS={
+    involucro:{nome:'Invólucro (carcaça)', dsc:'A casca de papelão/plástico que dá forma ao shell e contém todos os componentes até o rompimento.', fn:'Função: manter tudo junto e resistir à pressão da carga de arremesso.'},
+    estrelas:{nome:'Estrelas (pellets)', dsc:'Pequenos grãos de composição pirotécnica prensada. Cada estrela queima e cria um ponto de luz colorido no céu.', fn:'A cor vem dos sais metálicos: estrôncio=vermelho, bário=verde, cobre=azul, sódio=amarelo.'},
+    rompimento:{nome:'Carga de rompimento', dsc:'Pólvora no centro do shell que EXPLODE no ar, arremessando e acendendo as estrelas em todas as direções.', fn:'É ela que forma o "buquê" — o desenho da explosão depende de como as estrelas estão arranjadas ao redor.'},
+    estopim:{nome:'Estopim de tempo (delay)', dsc:'Pavio de queima controlada que leva o fogo da carga de arremesso até a carga de rompimento — mas com ATRASO.', fn:'O delay define a ALTURA da explosão: o shell precisa subir antes de romper. Estopim curto = estoura baixo (perigoso).'},
+    espoleta:{nome:'Espoleta elétrica (e-match)', dsc:'O ignitor elétrico ligado à maleta de disparo. Recebe o comando do console e inicia tudo.', fn:'É onde a parte elétrica encontra a pirotecnia — o teste de continuidade verifica justamente esse e-match.'},
+    arremesso:{nome:'Carga de arremesso (lift)', dsc:'Pólvora negra no fundo do morteiro. Ao acender, gera gás que EMPURRA o shell tubo acima.', fn:'A quantidade é calculada para o calibre: pouco = shell não sobe; muito = sobe demais/rompe cedo.'},
+    morteiro:{nome:'Morteiro (tubo)', dsc:'O tubo (fibra/HDPE) que guia o shell para cima na vertical. Fica enterrado ou preso num rack.', fn:'Nunca olhar por cima de um morteiro carregado. O diâmetro do tubo = o calibre do shell.'},
+  };
+  const ORDER=['morteiro','arremesso','espoleta','involucro','estrelas','rompimento','estopim'];
+
+  // ---- SVG do corte ----
+  const svg=document.getElementById('cut');
+  // desenha morteiro vertical à esquerda, shell dentro, labels à direita
+  const NS='http://www.w3.org/2000/svg';
+  function el(t,a){ const e=document.createElementNS(NS,t); for(const k in a) e.setAttribute(k,a[k]); return e; }
+  function part(id, bodyNodes, labelXY, targetXY){
+    const g=el('g',{class:'part','data-id':id}); g.classList.add('part');
+    bodyNodes.forEach(n=>{ n.classList&&n.classList.add('body'); g.appendChild(n); });
+    // callout
+    const [lx,ly]=labelXY, [tx,ty]=targetXY;
+    const w=PARTS[id].nome.length*6.6+14;
+    g.appendChild(el('line',{class:'lead',x1:tx,y1:ty,x2:lx<tx?lx+w:lx,y2:ly}));
+    const box=el('rect',{class:'lblbox',x:lx,y:ly-13,width:w,height:19,rx:4}); g.appendChild(box);
+    const tra=el('text',{class:'lbltx',x:lx+7,y:ly+1}); tra.textContent=PARTS[id].nome.split(' ')[0]+(PARTS[id].nome.includes('(')?' '+PARTS[id].nome.match(/\(([^)]+)\)/)[0]:''); g.appendChild(tra);
+    g.appendChild(el('circle',{class:'hit',cx:tx,cy:ty,r:22}));
+    g.onclick=()=>select(id);
+    svg.appendChild(g);
+  }
+  const TUBE_X=70, TUBE_W=90, TUBE_TOP=40, TUBE_BOT=330;
+  // morteiro (tubo)
+  part('morteiro',[
+    el('rect',{x:TUBE_X,y:TUBE_TOP,width:TUBE_W,height:TUBE_BOT-TUBE_TOP,rx:8,fill:'#1a2233',stroke:'#3a4a6e','stroke-width':2}),
+    el('rect',{x:TUBE_X+6,y:TUBE_TOP+6,width:TUBE_W-12,height:TUBE_BOT-TUBE_TOP-12,rx:6,fill:'#0a0f18',stroke:'none'}),
+  ],[300,70],[TUBE_X+TUBE_W,90]);
+  // carga de arremesso (fundo, pólvora)
+  part('arremesso',[ el('rect',{x:TUBE_X+8,y:TUBE_BOT-46,width:TUBE_W-16,height:38,rx:4,fill:'#2b2118',stroke:'#5a4a2a','stroke-width':1.5}),
+    ...[...Array(24)].map((_,i)=>el('circle',{cx:TUBE_X+16+(i%8)*9,cy:TUBE_BOT-40+((i/8)|0)*11,r:2.4,fill:'#6b5a34'})) ],
+   [300,300],[TUBE_X+TUBE_W/2,TUBE_BOT-26]);
+  // espoleta e-match (fio entrando no fundo)
+  part('espoleta',[ el('line',{x1:20,y1:TUBE_BOT-14,x2:TUBE_X+20,y2:TUBE_BOT-24,stroke:'#e5484d','stroke-width':2.4}),
+    el('line',{x1:20,y1:TUBE_BOT-8,x2:TUBE_X+20,y2:TUBE_BOT-18,stroke:'#9fb3d6','stroke-width':2.4}),
+    el('circle',{cx:TUBE_X+22,cy:TUBE_BOT-22,r:4,fill:'#ffcf5a',stroke:'#8a6a1e'}) ],
+   [300,330],[TUBE_X+14,TUBE_BOT-18]);
+  // shell (esfera dentro do tubo)
+  const SHX=TUBE_X+TUBE_W/2, SHY=TUBE_TOP+95, SHR=34;
+  part('involucro',[ el('circle',{cx:SHX,cy:SHY,r:SHR,fill:'#161d2c',stroke:'#5a6478','stroke-width':2.5}) ],
+   [300,120],[SHX+SHR,SHY-14]);
+  part('estrelas',[ ...[...Array(12)].map((_,i)=>{const an=i/12*Math.PI*2; return el('circle',{cx:SHX+Math.cos(an)*(SHR-9),cy:SHY+Math.sin(an)*(SHR-9),r:3.4,fill:['#ff5a5a','#5ad2ff','#8bff8b','#ffe08a'][i%4]});}) ],
+   [300,160],[SHX-SHR+6,SHY+8]);
+  part('rompimento',[ el('circle',{cx:SHX,cy:SHY,r:9,fill:'#3a2118',stroke:'#7a4a2a','stroke-width':1.5}),
+    ...[...Array(6)].map((_,i)=>el('circle',{cx:SHX-4+(i%3)*4,cy:SHY-4+((i/3)|0)*5,r:1.6,fill:'#6b5a34'})) ],
+   [300,200],[SHX,SHY]);
+  // estopim (do shell até a carga de arremesso)
+  part('estopim',[ el('path',{d:`M${SHX},${SHY+SHR} C${SHX-6},${SHY+SHR+20} ${SHX+6},${TUBE_BOT-60} ${SHX},${TUBE_BOT-46}`,fill:'none',stroke:'#c98b3a','stroke-width':3,'stroke-dasharray':'5 3'}) ],
+   [300,240],[SHX,SHY+SHR+22]);
+
+  // ---- painel peças ----
+  const pl=document.getElementById('partList');
+  ORDER.forEach(id=>{ const c=document.createElement('div'); c.className='chip'; c.dataset.id=id; c.textContent=PARTS[id].nome.split(' ')[0]; c.onclick=()=>select(id); pl.appendChild(c); });
+  let selId=null;
+  function select(id){ selId=id;
+    document.querySelectorAll('.part').forEach(g=>g.classList.toggle('sel',g.dataset.id===id));
+    document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('sel',c.dataset.id===id));
+    const P=PARTS[id];
+    document.getElementById('info').innerHTML=`<div class="pt">${P.nome}</div><div class="dsc">${P.dsc}</div><div class="fn">${P.fn}</div>`;
+  }
+
+  // ---- controles ----
+  const cfg={cal:150,fuse:30};
+  document.getElementById('cal').oninput=function(){ cfg.cal=+this.value; document.getElementById('v-cal').textContent=cfg.cal+' mm'; };
+  document.getElementById('fuse').oninput=function(){ cfg.fuse=+this.value; document.getElementById('v-fuse').textContent=(cfg.fuse/10).toFixed(1)+' s'; };
+
+  const seqEl=document.getElementById('seq');
+  function log(m,cls){ const d=document.createElement('div'); d.className='sq '+(cls||''); d.textContent=m; seqEl.appendChild(d); seqEl.scrollTop=seqEl.scrollHeight; }
+
+  let firing=false;
+  document.getElementById('fire').onclick=()=>{
+    if(firing) return; firing=true; seqEl.innerHTML='';
+    document.getElementById('fire').disabled=true;
+    const delayS=cfg.fuse/10;                       // s do estopim
+    const burstY=Math.max(70, 300 - cfg.cal*0.75);  // calibre maior sobe mais alto
+    const burstSize=Math.round(50 + cfg.cal*0.5);
+    document.getElementById('seqMsg').textContent='Sequência em execução…';
+    // 1) espoleta -> arremesso
+    setTimeout(()=>{ select('espoleta'); log('1 · Espoleta elétrica recebe o comando da maleta','on'); fx.trigger('flame',{x:640,power:0.5,n:5}); },50);
+    setTimeout(()=>{ select('arremesso'); log('2 · Carga de arremesso acende e EMPURRA o shell tubo acima','on'); },900);
+    // 2) launch (comet subindo no palco)
+    setTimeout(()=>{ launchComet(burstY); log('3 · Shell é arremessado do morteiro','on'); },1500);
+    // 3) estopim queima
+    setTimeout(()=>{ select('estopim'); log('4 · Estopim de tempo queima ('+delayS.toFixed(1)+' s) enquanto o shell sobe','on'); },1900);
+    // 4) rompimento (na altura) — tempo = 1900 + delay
+    const burstAt=1900 + delayS*1000*0.5 + 400;
+    setTimeout(()=>{ select('rompimento'); log('5 · Carga de rompimento ESTOURA na altura','on'); },burstAt);
+    setTimeout(()=>{ select('estrelas');
+      fx.trigger('airburst',{x:640,y:burstY,burst:burstSize,col:'#ffd24a'});
+      setTimeout(()=>{ fx.trigger('airburst',{x:640,y:burstY,burst:Math.round(burstSize*0.6),col:'#54b3ff'}); },120);
+      log('6 · Estrelas acendem → o buquê no céu ✓','ok');
+      document.getElementById('seqMsg').textContent='Calibre '+cfg.cal+' mm · estopim '+delayS.toFixed(1)+' s · buquê a ~'+Math.round((300-burstY)/2)+' m';
+      firing=false; document.getElementById('fire').disabled=false;
+    },burstAt+250);
+  };
+
+  // cometa subindo no mini-palco (partículas co2 douradas? usa spark ascendente)
+  function launchComet(burstY){
+    let y=560, iv=setInterval(()=>{
+      fx.trigger('spark',{x:640,y:y,burst:4,power:0.5});
+      y-=26; if(y< (burstY+40)) clearInterval(iv);
+    },40);
+  }
+
+  // ---- fit tela cheia ----
+  function setVisH(){ var vh=window.innerHeight, sh=(window.screen&&screen.height)||vh; var inflated=vh>sh+8, visH=Math.min(vh,sh), header=inflated?86:0;
+    document.documentElement.style.setProperty('--visH', Math.max(320,visH-header)+'px'); if(fx.resize) fx.resize(); }
+  window.__setVisH=setVisH; addEventListener('resize',setVisH);
+  addEventListener('orientationchange',()=>setTimeout(setVisH,150));
+  document.addEventListener('fullscreenchange',()=>[60,260,600].forEach(d=>setTimeout(setVisH,d)));
+  document.addEventListener('webkitfullscreenchange',()=>[60,260,600].forEach(d=>setTimeout(setVisH,d)));
+  window.__probe={select,fire:()=>document.getElementById('fire').click(),parts:Object.keys(PARTS)};
+  setVisH(); select('involucro');
+})();
+</script>
+</body></html>

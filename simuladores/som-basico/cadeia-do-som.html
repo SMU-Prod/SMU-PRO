@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador — A Cadeia do Som ao Vivo (SMU)</title>
+<style>
+  :root{
+    --bg:#0b0f17; --panel:#131a29; --panel2:#0e1420; --line:#233149; --ink:#e7ecf5;
+    --muted:#8ea0bd; --amber:#F59E0B; --green:#22c55e; --red:#ef4444; --cyan:#22d3ee;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);
+    font-family:"Space Grotesk",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;padding:10px}
+  h1{font-size:15px;margin:0 0 2px}
+  .sub{font-size:11.5px;color:var(--muted);margin-bottom:10px}
+
+  .mission{display:flex;gap:10px;align-items:center;background:#0c1220;border:1px solid var(--line);
+    border-radius:10px;padding:9px 12px;margin-bottom:12px}
+  .mission .idx{font-size:10px;color:var(--amber);font-weight:800;letter-spacing:.8px;white-space:nowrap}
+  .mission .txt{font-size:12.5px;line-height:1.3;flex:1}
+  .mission .txt b{color:var(--amber)}
+  .mission button{font:inherit;font-size:11px;color:var(--muted);background:transparent;border:1px solid var(--line);
+    border-radius:7px;padding:6px 9px;cursor:pointer}
+
+  .chain{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;justify-content:center}
+  .stage{flex:1 1 140px;min-width:130px;max-width:200px;background:linear-gradient(180deg,var(--panel),var(--panel2));
+    border:1.5px solid var(--line);border-radius:12px;padding:11px 10px;display:flex;flex-direction:column;gap:8px;
+    position:relative;transition:border-color .2s,box-shadow .2s}
+  .stage.ok{border-color:var(--green);box-shadow:0 0 0 1px var(--green) inset}
+  .stage.bad{border-color:var(--red);box-shadow:0 0 14px #ef444455}
+  .stage .ic{font-size:26px;line-height:1;text-align:center}
+  .stage .nm{font-size:12.5px;font-weight:700;text-align:center}
+  .stage .st{font-size:10.5px;color:var(--muted);text-align:center;min-height:14px}
+  .stage.bad .st{color:var(--red)}
+  .arrow{align-self:center;color:#33456a;font-size:20px;flex:0 0 auto;transition:color .15s}
+  .arrow.live{color:var(--amber);text-shadow:0 0 10px var(--amber)}
+
+  .btn{font:inherit;border:0;border-radius:8px;padding:9px 8px;font-weight:700;cursor:pointer;font-size:11.5px;
+    background:#0c1220;border:1px solid var(--line);color:var(--ink);width:100%}
+  .btn.on{background:var(--green);border-color:var(--green);color:#08120a}
+  .btn.off{background:#1a1010;border-color:#5b2626;color:#ff9a9a}
+  label.sl{font-size:10px;color:var(--muted);display:flex;justify-content:space-between}
+  input[type=range]{width:100%;accent-color:var(--amber);height:22px}
+  .meterbox{height:12px;border-radius:6px;background:#05070d;border:1px solid #1a2540;overflow:hidden}
+  .meterbox i{display:block;height:100%;width:0%;background:linear-gradient(90deg,var(--green),var(--amber) 82%,var(--red));transition:width .08s}
+
+  .controls{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;align-items:center;justify-content:center}
+  .test{background:var(--amber);color:#0b0f17;font-weight:800;border:0;border-radius:9px;padding:11px 20px;cursor:pointer;font-size:13px}
+  .reset{background:transparent;color:var(--muted);border:1px solid var(--line);border-radius:9px;padding:11px 16px;cursor:pointer;font:inherit}
+  .verdict{font-size:12.5px;font-weight:700;padding:8px 12px;border-radius:8px;min-height:18px;text-align:center;flex-basis:100%}
+  .verdict.good{color:var(--green)} .verdict.bad{color:var(--red)}
+  .spk{display:flex;flex-direction:column;gap:6px;align-items:center;justify-content:center}
+  .wave{font-size:11px;color:var(--muted)}
+  @media(max-width:560px){
+    .stage{flex-basis:100%;max-width:none;flex-direction:row;align-items:center;text-align:left}
+    .stage .ic{font-size:22px} .stage>div:nth-child(2){flex:1}
+    .arrow{transform:rotate(90deg)}
+  }
+</style>
+</head>
+<body>
+  <h1>A Cadeia do Som ao Vivo</h1>
+  <div class="sub">Monte o caminho do som — da voz até a caixa — e aprenda a achar onde o sinal "trava".</div>
+
+  <div class="mission">
+    <span class="idx" id="mIdx">MISSÃO 1/4</span>
+    <span class="txt" id="mTxt">—</span>
+    <button id="mSkip">Pular</button>
+  </div>
+
+  <div class="chain" id="chain"></div>
+
+  <div class="controls">
+    <button class="test" id="testBtn">▶ Testar sinal</button>
+    <button class="reset" id="resetBtn">Ligar tudo</button>
+    <div class="verdict" id="verdict"></div>
+  </div>
+
+<script>
+"use strict";
+(function(){
+  const state={ micOn:true, cableOn:true, gain:60, chOn:true, fader:70, ampOn:true };
+  const chain=document.getElementById("chain");
+  const V=document.getElementById("verdict");
+
+  // define stages
+  const stages=[
+    {id:"src", ic:"🎙️", nm:"Fonte (Voz)", body:st=>`<div class="st">Sinal acústico</div>`, ok:()=>true},
+    {id:"mic", ic:"🎤", nm:"Microfone", ok:()=>state.micOn,
+      body:st=>`<button class="btn ${state.micOn?'on':'off'}" data-t="micOn">${state.micOn?'LIGADO':'DESLIGADO'}</button>
+                <div class="st">Transforma som em sinal elétrico</div>`},
+    {id:"cab", ic:"🔌", nm:"Cabo XLR", ok:()=>state.cableOn,
+      body:st=>`<button class="btn ${state.cableOn?'on':'off'}" data-t="cableOn">${state.cableOn?'CONECTADO':'SOLTO'}</button>
+                <div class="st">Leva o sinal até a mesa</div>`},
+    {id:"mix", ic:"🎚️", nm:"Mesa de Som", ok:()=>state.gain>5&&state.chOn&&state.fader>5,
+      body:st=>`
+        <label class="sl">Ganho <span>${state.gain}</span></label><input type="range" min="0" max="100" value="${state.gain}" data-r="gain">
+        <button class="btn ${state.chOn?'on':'off'}" data-t="chOn">${state.chOn?'CANAL ON':'MUTE'}</button>
+        <label class="sl">Fader <span>${state.fader}</span></label><input type="range" min="0" max="100" value="${state.fader}" data-r="fader">`},
+    {id:"amp", ic:"🧯", nm:"Amplificador", ok:()=>state.ampOn,
+      body:st=>`<button class="btn ${state.ampOn?'on':'off'}" data-t="ampOn">${state.ampOn?'LIGADO':'DESLIGADO'}</button>
+                <div class="st">Dá potência para a caixa</div>`},
+    {id:"spk", ic:"🔊", nm:"Caixa", ok:()=>true,
+      body:st=>`<div class="meterbox"><i id="spkMeter"></i></div><div class="wave" id="spkTxt">silêncio</div>`},
+  ];
+
+  function firstBreak(){ // retorna índice do primeiro estágio que trava, ou -1
+    for(let i=0;i<stages.length;i++){ if(!stages[i].ok()) return i; } return -1;
+  }
+  function reasons(i){ return {
+    mic:"Microfone desligado", cab:"Cabo solto",
+    mix: state.gain<=5?"Ganho no zero": (!state.chOn?"Canal mutado":"Fader embaixo"),
+    amp:"Amplificador desligado" }[stages[i].id] || "—"; }
+
+  function render(){
+    chain.innerHTML="";
+    stages.forEach((s,i)=>{
+      if(i>0){ const a=document.createElement("div"); a.className="arrow"; a.dataset.gap=i; a.textContent="➜"; chain.appendChild(a); }
+      const d=document.createElement("div"); d.className="stage"; d.dataset.id=s.id;
+      d.innerHTML=`<div class="ic">${s.ic}</div><div><div class="nm">${s.nm}</div>${s.body(s)}</div>`;
+      chain.appendChild(d);
+    });
+    wire();
+    liveMeter();
+  }
+  function wire(){
+    chain.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{ state[b.dataset.t]=!state[b.dataset.t]; render(); check(); });
+    chain.querySelectorAll("[data-r]").forEach(r=>r.oninput=()=>{ state[r.dataset.r]=+r.value;
+      r.previousElementSibling.querySelector("span").textContent=r.value; liveMeter(); check(); });
+  }
+
+  // medidor da caixa em tempo real (quando a cadeia funciona)
+  let raf;
+  function chainWorks(){ return firstBreak()===-1 && stages.every(s=>s.ok()); }
+  function liveMeter(){
+    const m=document.getElementById("spkMeter"), t=document.getElementById("spkTxt");
+    if(!m) return;
+    if(chainWorks()){ const lvl=Math.round(state.gain*0.4+state.fader*0.55); m.style.width=lvl+"%";
+      t.textContent="🔊 som na caixa ("+lvl+"%)"; t.style.color="var(--green)"; }
+    else { m.style.width="0%"; t.textContent="silêncio"; t.style.color="var(--muted)"; }
+  }
+
+  // teste animado do sinal percorrendo a cadeia
+  document.getElementById("testBtn").onclick=()=>{
+    chain.querySelectorAll(".stage").forEach(s=>s.classList.remove("ok","bad"));
+    chain.querySelectorAll(".arrow").forEach(a=>a.classList.remove("live"));
+    const brk=firstBreak();
+    const stageEls=[...chain.querySelectorAll(".stage")];
+    const arrowEls=[...chain.querySelectorAll(".arrow")];
+    let i=0;
+    const step=()=>{
+      if(i>0) arrowEls[i-1] && arrowEls[i-1].classList.add("live");
+      const stop = (brk!==-1 && i>=brk);
+      if(stop){ stageEls[brk].classList.add("bad");
+        V.textContent="✖ O sinal travou em: "+stages[brk].nm+" — "+reasons(brk); V.className="verdict bad"; return; }
+      stageEls[i].classList.add("ok"); i++;
+      if(i<stageEls.length){ setTimeout(step,230); }
+      else { V.textContent="✔ Sinal completo! O som chegou na caixa."; V.className="verdict good"; liveMeter(); check(); }
+    };
+    step();
+  };
+  document.getElementById("resetBtn").onclick=()=>{ Object.assign(state,{micOn:true,cableOn:true,gain:60,chOn:true,fader:70,ampOn:true}); render(); check(); V.textContent=""; };
+
+  // missões
+  const missions=[
+    { t:'Tudo começa <b>desligado</b>. Monte a cadeia: ligue o mic, conecte o cabo, suba <b>ganho</b> e <b>fader</b>, deixe o canal <b>ON</b> e ligue o amplificador — até o som chegar na caixa.',
+      setup:()=>Object.assign(state,{micOn:false,cableOn:false,gain:0,chOn:false,fader:0,ampOn:false}), ok:chainWorks },
+    { t:'CENÁRIO — não sai som. Descubra e resolva: o <b>amplificador</b> está desligado.',
+      setup:()=>Object.assign(state,{micOn:true,cableOn:true,gain:60,chOn:true,fader:70,ampOn:false}), ok:chainWorks },
+    { t:'CENÁRIO — sinal mudo. O <b>cabo</b> do microfone está solto. Reconecte.',
+      setup:()=>Object.assign(state,{micOn:true,cableOn:false,gain:60,chOn:true,fader:70,ampOn:true}), ok:chainWorks },
+    { t:'CENÁRIO — o canal está <b>mutado</b> e o <b>ganho no zero</b>. Reative o canal e suba o ganho.',
+      setup:()=>Object.assign(state,{micOn:true,cableOn:true,gain:0,chOn:false,fader:70,ampOn:true}), ok:chainWorks },
+  ];
+  let mi=0;
+  function paintMission(){ const idx=document.getElementById("mIdx"), txt=document.getElementById("mTxt");
+    if(mi>=missions.length){ idx.textContent="CONCLUÍDO"; txt.innerHTML="🎓 <b>Parabéns!</b> Você entendeu a cadeia do som e já sabe caçar onde o sinal trava — a base do trabalho.";
+      document.getElementById("mSkip").style.display="none"; return; }
+    idx.textContent="MISSÃO "+(mi+1)+"/"+missions.length; txt.innerHTML=missions[mi].t; }
+  function loadMission(){ if(mi<missions.length){ missions[mi].setup(); render(); V.textContent=""; } paintMission(); }
+  function check(){ if(mi>=missions.length) return; try{ if(missions[mi].ok()){ mi++; paintMission();
+      if(mi<missions.length){ setTimeout(()=>{ missions[mi].setup(); render(); },600); } } }catch(e){} }
+  document.getElementById("mSkip").onclick=()=>{ if(mi<missions.length){ mi++; loadMission(); } };
+
+  render(); loadMission();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Cenários · SMU PRO</title>
+<style>
+  :root{ --bg:#06080e; --panel:#0c111c; --panel2:#0f1626; --line:#25314c; --ink:#e8eef9; --mut:#8a9bb8; --acc:#ff7a1a; --ok:#39d98a; --bad:#ff4d4d; --warn:#ffc63b; --blue:#54b3ff; }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:#05070c;color:var(--ink);font-family:system-ui,Segoe UI,Roboto,Arial;overflow:hidden;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+  #app{position:fixed;top:0;left:0;width:100vw;height:var(--visH,100vh);display:flex;flex-direction:column;overflow:hidden;padding:10px;gap:9px}
+  #hd{flex:none}#hd b{font-size:15px;font-weight:800}#hd span{display:block;font-size:11.5px;color:var(--mut);margin-top:2px}
+  #bar{flex:none;height:6px;background:#0e1626;border-radius:4px;overflow:hidden}#bar i{display:block;height:100%;background:linear-gradient(90deg,#e5590a,#ff8f36);width:0;transition:.3s}
+  #card{flex:1 1 auto;min-height:0;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:15px 16px;display:flex;flex-direction:column;gap:12px}
+  #scnum{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--acc);font-weight:800}
+  #tag{display:inline-block;font-size:10px;font-weight:700;color:#9cd2ff;background:#123a5e;border:1px solid #2b6a9a;border-radius:20px;padding:2px 9px;margin-left:8px;vertical-align:middle}
+  #sit{font-size:16px;line-height:1.5;font-weight:600}
+  #data{display:flex;flex-wrap:wrap;gap:8px}
+  .d{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:7px 11px;min-width:96px}
+  .d .k{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.3px}
+  .d .v{font-size:16px;font-weight:800}
+  .d.ok .v{color:var(--ok)}.d.warn .v{color:var(--warn)}.d.bad .v{color:var(--bad)}
+  #opts{display:flex;flex-direction:column;gap:8px;margin-top:2px}
+  .opt{text-align:left;background:#141c2b;border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:14px;font-weight:600;color:var(--ink);cursor:pointer;transition:.12s}
+  .opt:hover:not(:disabled){background:#1c2942;border-color:#3a4a6e}
+  .opt:disabled{cursor:default}
+  .opt.correct{background:#123a24;border-color:#2b7a4e;color:#bff5da}
+  .opt.wrong{background:#3a1414;border-color:#8a2a2a;color:#ffb3ab}
+  #why{font-size:13px;line-height:1.5;padding:11px 13px;border-radius:10px;border:1px solid var(--line);background:#0a1120;display:none}
+  #why.show{display:block}
+  #why.good{border-color:#2b7a4e}#why.bad{border-color:#8a2a2a}
+  #why b{color:var(--acc)}
+  #ftr{flex:none;display:flex;justify-content:space-between;align-items:center;gap:10px}
+  #score{font-size:13px;color:var(--mut)}#score b{color:var(--ink)}
+  #next{border:1px solid #ffb070;background:linear-gradient(180deg,#ff8f36,#e5590a);color:#180a00;border-radius:10px;padding:11px 22px;font-size:14px;font-weight:900;cursor:pointer;visibility:hidden}
+  #end{display:none;flex-direction:column;align-items:center;gap:12px;text-align:center;padding:12px}
+  #end.show{display:flex}
+  #end .big{font-size:22px;font-weight:800}
+  #end .sub{font-size:14px;color:var(--mut)}
+  #end.pass .big{color:var(--ok)}#end.fail .big{color:var(--warn)}
+  #retry{border:1px solid var(--line);background:#141c2b;color:var(--ink);border-radius:10px;padding:11px 22px;font-size:14px;font-weight:800;cursor:pointer}
+</style></head>
+<body>
+<div id="app">
+  <div id="hd"><b id="title">Cenários</b><span id="sub"></span></div>
+  <div id="bar"><i id="barfill"></i></div>
+  <div id="card">
+    <div><span id="scnum"></span><span id="tag" style="display:none"></span></div>
+    <div id="sit"></div>
+    <div id="data"></div>
+    <div id="opts"></div>
+    <div id="why"></div>
+  </div>
+  <div id="end">
+    <div class="big" id="endBig"></div>
+    <div class="sub" id="endSub"></div>
+    <button id="retry">↺ Refazer</button>
+  </div>
+  <div id="ftr"><div id="score">Acertos: <b id="scv">0</b>/<b id="sct">0</b></div><button id="next">Próxima →</button></div>
+</div>
+<script>
+var CFG = (function(){ CFG={ title:"Clima — Go / No-Go", sub:"Leia as condições e decida disparar ou segurar. Segurança vem antes do show.", pass:80,
+    passMsg:"Decisões climáticas no ponto — é isso que evita acidente e cancelamento.", scen:[
+    { tag:"Vento", sit:"Show ao ar livre. Você vai disparar SHELLS AÉREOS (F3). O anemômetro marca:",
+      data:[["Vento","46 km/h","bad"],["Rajadas","até 60","bad"],["Chuva","não","ok"]],
+      opts:[{t:"Disparar — está seco",ok:false},{t:"HOLD — vento acima do limite, área de queda imprevisível",ok:true},{t:"Disparar só metade",ok:false}],
+      why:"Vento forte joga a fallout (queijo/estrelas e detritos) fora da área de queda planejada. As normas definem vento máximo (tipicamente ~30–40 km/h para aéreos). Acima disso: <b>HOLD</b> e reavaliar." },
+    { tag:"Chuva", sit:"Começou uma garoa fina sobre os morteiros e gerbs externos, sem cobertura.",
+      data:[["Chuva","garoa","warn"],["Umidade","92%","warn"],["Vento","10 km/h","ok"]],
+      opts:[{t:"Disparar rápido antes de molhar mais",ok:false},{t:"HOLD, cobrir/impermeabilizar e checar continuidade",ok:true}],
+      why:"Umidade compromete a pólvora e os e-matches — falha de ignição (misfire) e disparos parciais. Proteja o material, seque, refaça o teste de continuidade. Pirotecnia molhada não dispara com segurança." },
+    { tag:"Interno", sit:"Casamento em salão coberto. Efeito pedido: FAÍSCA FRIA (cold spark) na entrada dos noivos.",
+      data:[["Local","interno","ok"],["Pé-direito","6 m","ok"],["Sprinkler","sim","warn"]],
+      opts:[{t:"GO — efeito frio, seguindo distância e sem tecido por perto",ok:true},{t:"HOLD — fogo é proibido em local fechado",ok:false}],
+      why:"Faísca fria é efeito FRIO (F1), liberado perto do público em interno — desde que respeitada a distância e afastado de tecidos. Atenção: a coluna pode acionar detector de fumaça/sprinkler; alinhe com o local antes." },
+    { tag:"Tempestade", sit:"Nuvem de tempestade se aproxima; primeiros raios ao longe. Há torres de som e rigging metálico.",
+      data:[["Raios","aproximando","bad"],["Vento","sobe rápido","bad"]],
+      opts:[{t:"Continuar o show até chover",ok:false},{t:"HOLD tudo, plano de tempestade e desmobilizar pessoal de estruturas altas",ok:true}],
+      why:"Raio é risco de morte em torres/rigging. Acione o plano de tempestade: interromper, tirar pessoal das estruturas metálicas e aguardar a regra de segurança (ex.: 30 min após o último raio) antes de retomar." },
+    { tag:"Armazenamento", sit:"No paiol, uma caixa de artefatos ficou exposta e está com a base úmida/manchada.",
+      data:[["Material","úmido","bad"],["Validade","ok","ok"]],
+      opts:[{t:"Usar mesmo, secando no sol",ok:false},{t:"Segregar, não usar e destinar conforme a norma/fabricante",ok:true}],
+      why:"Artefato com suspeita de umidade/deterioração vira imprevisível (misfire ou queima anormal). Nunca improvise secagem. Segregue, identifique e destine conforme fabricante/legislação. Armazenamento seco, ventilado e afastado de ignição é regra." },
+    { tag:"Calor", sit:"Dia muito quente; cilindros de CO₂ ao sol, pressão subindo no manômetro.",
+      data:[["Temp.","39 °C","warn"],["Pressão cilindro","alta","warn"]],
+      opts:[{t:"Ignorar, CO₂ não pega fogo",ok:false},{t:"Sombrear/refrescar os cilindros e conferir válvula de alívio",ok:true}],
+      why:"CO₂ não é inflamável, mas cilindro superaquecido = pressão perigosa. Mantenha à sombra, ventilado, com válvula de alívio operante e bem fixado. Nunca deixe cilindro pressurizado exposto ao sol direto por horas." },
+  ] } ; return CFG; })();
+(function(){
+  const $=id=>document.getElementById(id);
+  $('title').textContent=CFG.title; $('sub').textContent=CFG.sub;
+  const SCEN=CFG.scen; let i=0, score=0, answered=false;
+  $('sct').textContent=SCEN.length;
+
+  function render(){
+    answered=false; $('why').className=''; $('why').classList.remove('show'); $('next').style.visibility='hidden';
+    const s=SCEN[i];
+    $('scnum').textContent='Cenário '+(i+1)+' de '+SCEN.length;
+    if(s.tag){ $('tag').style.display='inline-block'; $('tag').textContent=s.tag; } else $('tag').style.display='none';
+    $('sit').textContent=s.sit;
+    $('data').innerHTML=(s.data||[]).map(d=>`<div class="d ${d[2]||''}"><div class="k">${d[0]}</div><div class="v">${d[1]}</div></div>`).join('');
+    const opts=$('opts'); opts.innerHTML='';
+    s.opts.forEach((o,k)=>{ const b=document.createElement('button'); b.className='opt'; b.textContent=o.t; b.onclick=()=>answer(k); opts.appendChild(b); });
+    $('barfill').style.width=(i/SCEN.length*100)+'%';
+  }
+  function answer(k){
+    if(answered) return; answered=true;
+    const s=SCEN[i]; const btns=[...document.querySelectorAll('.opt')];
+    btns.forEach((b,j)=>{ b.disabled=true; if(s.opts[j].ok) b.classList.add('correct'); });
+    const correct=s.opts[k].ok;
+    if(correct){ score++; $('scv').textContent=score; } else { btns[k].classList.add('wrong'); }
+    const w=$('why'); w.className='show '+(correct?'good':'bad');
+    w.innerHTML=(correct?'✓ <b>Correto.</b> ':'✗ <b>Reveja.</b> ')+s.why;
+    $('next').style.visibility='visible';
+    $('next').textContent = (i===SCEN.length-1)?'Ver resultado →':'Próxima →';
+  }
+  $('next').onclick=()=>{ if(!answered) return; i++; if(i>=SCEN.length) finish(); else render(); };
+  function finish(){
+    $('barfill').style.width='100%';
+    $('card').style.display='none'; $('ftr').style.display='none';
+    const pct=Math.round(score/SCEN.length*100), pass=pct>=(CFG.pass||70);
+    const end=$('end'); end.className='show '+(pass?'pass':'fail');
+    $('endBig').textContent=(pass?'✓ Aprovado — '+pct+'%':'Quase lá — '+pct+'%');
+    $('endSub').textContent=pass?(CFG.passMsg||'Você domina as decisões deste tema.'):(CFG.failMsg||'Reveja os cenários que errou e tente de novo — segurança exige acerto alto.');
+  }
+  $('retry').onclick=()=>{ i=0;score=0;answered=false; $('scv').textContent='0'; $('card').style.display='flex'; $('ftr').style.display='flex'; $('end').className=''; render(); };
+
+  function setVisH(){ var vh=window.innerHeight, sh=(window.screen&&screen.height)||vh; var inflated=vh>sh+8, visH=Math.min(vh,sh), header=inflated?86:0;
+    document.documentElement.style.setProperty('--visH', Math.max(300,visH-header)+'px'); }
+  addEventListener('resize',setVisH); addEventListener('orientationchange',()=>setTimeout(setVisH,150));
+  document.addEventListener('fullscreenchange',()=>[60,260,600].forEach(d=>setTimeout(setVisH,d)));
+  document.addEventListener('webkitfullscreenchange',()=>[60,260,600].forEach(d=>setTimeout(setVisH,d)));
+  window.__probe={CFG,answerAll:(picks)=>{picks.forEach(()=>{});},get i(){return i;},get score(){return score;},pick:(k)=>answer(k),next:()=>$('next').click()};
+  setVisH(); render();
+})();
+</script>
+</body></html>

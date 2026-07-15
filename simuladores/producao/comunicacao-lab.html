@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>SMU PRO · Comunicação do Produtor</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0c1017;--panel:#161c26;--panel2:#1b2230;--line:#2a3444;--ink:#e7edf5;--dim:#8794a8;
+        --accent:#f59e0b;--ok:#22c55e;--err:#ef4444;--warn:#f59e0b;--cyan:#38bdf8;}
+  html,body{background:var(--bg);color:var(--ink);
+    font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased;}
+  body{padding:12px;}
+  .app{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:12px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  h1{font-size:15px;margin-bottom:3px;}
+  .sub{font-size:12px;color:var(--dim);margin-bottom:12px;line-height:1.5;}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px;}
+  .stat .k{font-size:10px;color:var(--dim);letter-spacing:.5px;}
+  .stat .val{font-size:15px;font-weight:800;margin-top:2px;}
+  .verdict{font-size:13px;font-weight:700;padding:9px 12px;border-radius:8px;text-align:center;}
+  .verdict.ok{background:#14532d;color:#bbf7d0;}
+  .verdict.bad{background:#450a0a;color:#fca5a5;}
+  .verdict.warn{background:#422006;color:#fde68a;}
+  .note{font-size:12px;color:var(--dim);line-height:1.55;}
+  button{font:inherit;cursor:pointer;}
+  /* --- barra --- */
+  .bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .bar .pill{font-size:10.5px;color:var(--dim);background:var(--panel2);border:1px solid var(--line);
+    border-radius:14px;padding:4px 9px;white-space:nowrap;}
+  .bar .pill b{color:var(--ink);}
+  .spacer{flex:1;}
+  .prog{display:flex;gap:4px;flex-wrap:wrap;}
+  .pdot{width:16px;height:6px;border-radius:3px;background:#243040;}
+  .pdot.done{background:var(--ok);} .pdot.half{background:var(--warn);} .pdot.cur{background:var(--cyan);}
+  .btnp{font-size:11px;font-weight:700;border:1px solid var(--line);border-radius:8px;padding:7px 12px;
+    background:transparent;color:var(--dim);min-height:34px;}
+  /* --- cenário --- */
+  .tag{font-size:9.5px;letter-spacing:1.4px;color:var(--cyan);font-weight:800;}
+  .tit{font-size:16px;font-weight:900;line-height:1.3;margin:4px 0 6px;}
+  .ctx{font-size:12px;color:#a9b7cc;line-height:1.6;background:var(--panel2);border-left:3px solid var(--line);
+    border-radius:0 8px 8px 0;padding:9px 11px;}
+  .step{font-size:10px;letter-spacing:1.2px;color:var(--accent);font-weight:800;margin:13px 0 7px;}
+  .chosen{font-size:11.5px;color:var(--dim);margin:12px 0 0;}
+  .chosen b{color:#bbf7d0;}
+  .chgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:7px;}
+  .ch{background:#0c1420;border:1px solid #223349;border-radius:9px;padding:9px 7px;color:#dfe8f5;
+    font-size:11.5px;font-weight:600;min-height:44px;text-align:center;line-height:1.3;}
+  .ch .e{display:block;font-size:15px;margin-bottom:2px;}
+  .opts{display:flex;flex-direction:column;gap:7px;}
+  .op{background:#0c1420;border:1px solid #223349;border-radius:9px;padding:10px 12px;cursor:pointer;
+    font-size:11.5px;line-height:1.5;color:#dfe8f5;min-height:34px;}
+  .ch.good,.op.good{background:#0d2114;border-color:var(--ok);color:#c9f0d8;}
+  .ch.badx,.op.badx{background:#241012;border-color:var(--err);color:#f0cdc9;}
+  .ch.off,.op.off{opacity:.4;}
+  .fb{border-radius:9px;padding:10px 12px;font-size:11.5px;line-height:1.55;margin-top:9px;display:none;}
+  .fb.show{display:block;}
+  .fb.hit{background:#0d2114;border:1px solid #1e4a2c;color:#a8ecc4;}
+  .fb.miss{background:#241a08;border:1px solid #4a3a14;color:#ffd9a0;}
+  .nxt{display:none;margin:10px 0 0 auto;font-size:11.5px;font-weight:800;color:#07120b;
+    background:linear-gradient(180deg,#5be59a,#27b566);border:0;border-radius:8px;padding:10px 20px;min-height:36px;}
+  .nxt.show{display:block;}
+  .fin{display:flex;flex-direction:column;gap:11px;}
+  .fin .big{font-size:19px;font-weight:900;line-height:1.3;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .rules{font-size:11.5px;color:#a9b7cc;line-height:1.75;padding-left:16px;}
+  .rules b{color:var(--ink);}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="card">
+    <h1>Comunicação do produtor — canal certo, mensagem certa, rastro certo</h1>
+    <div class="sub">Dez situações reais de evento. Em cada uma você decide <b>duas</b> coisas: por <b>qual canal</b> essa informação sai, e <b>como ela é escrita/dita</b>. Acerto de primeira vale ponto. Errar mostra o preço.</div>
+    <div class="bar">
+      <span class="pill">Cenário <b id="pNow">1</b>/<b>10</b></span>
+      <span class="pill">Acertos de primeira: <b id="pScore">0</b>/20</span>
+      <span class="spacer"></span>
+      <div class="prog" id="prog"></div>
+      <button class="btnp" id="btnReset">Reiniciar</button>
+    </div>
+  </div>
+  <div class="card" id="card"></div>
+  <div class="card">
+    <div class="note"><b style="color:#e7edf5">Canal errado transforma informação certa em problema.</b> Bronca no rádio é bronca pública. Dinheiro no WhatsApp é dinheiro que você paga. Urgência por mensagem é urgência não avisada. E o que você escreve no grupo interno não é o que sobe pro grupo do cliente.</div>
+  </div>
+</div>
+<script>
+(function(){
+var $=function(s){return document.querySelector(s);};
+var $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s));};
+
+var CH={
+  radio:{n:'Rádio / HT',e:'📻'},
+  gint:{n:'Grupo interno',e:'💬'},
+  gcli:{n:'Grupo do cliente',e:'👔'},
+  dir:{n:'Mensagem direta',e:'🔒'},
+  call:{n:'Ligação',e:'📞'},
+  mail:{n:'E-mail',e:'📧'},
+  pres:{n:'Presencial',e:'🚶'}
+};
+var ORD=['radio','gint','gcli','dir','call','mail','pres'];
+
+var CEN=[
+ {
+  tag:'16h20 · DIA DO EVENTO · CORREDOR DE PRODUÇÃO',
+  tit:'O cliente pede duas horas a mais de evento',
+  ctx:'Contrato: som, luz, palco e gerador até 01h. O diretor de marketing te encontra no corredor: "a gente vai esticar até as 3h, tudo bem né? Depois a gente acerta." Sua equipe é toda hora extra, o buffet tem hora de saída em contrato e a estrutura vira diária nova.',
+  ch:'mail',
+  chWhy:'Escopo mudou, custo mudou — isso é aditivo, não é papo de corredor. E-mail com o custo discriminado, para o mesmo endereço que assinou o contrato, pedindo o "de acordo" por escrito. Sem esse e-mail, "depois a gente acerta" vira você pagando hora extra de 40 pessoas do próprio bolso.',
+  chBad:{
+    gcli:'Grupo do cliente é operação, não é contrato. O jurídico deles não lê grupo, e mensagem apagada não vira prova.',
+    pres:'Você já está presencial — e é exatamente por isso que o "tudo bem" saiu tão fácil. Aperto de mão não paga hora extra de 40 pessoas.',
+    dir:'Direct do WhatsApp: some no histórico, não tem assunto, não tem anexo, e quem assinou o contrato não é ele.',
+    call:'Ligação não deixa rastro. Pode ligar — mas o e-mail sai depois, obrigatoriamente. Decisão que mexe em dinheiro só existe escrita.',
+    gint:'Seu grupo interno não decide o contrato do cliente. Você avisa a equipe depois do aceite, não antes.',
+    radio:'Rádio é público: você acabou de anunciar o orçamento do aditivo para trinta pessoas, inclusive fornecedores do cliente.'
+  },
+  msgQ:'Você abre o e-mail. Qual redação?',
+  ops:[
+   {t:'"Oi Marcelo! Sem problema, a gente estica até 3h sim. Depois vemos o custo. Abraço!"',g:0,fb:'Você já disse sim. Cobrar depois de "sem problema" é briga que você perde: para ele o custo virou detalhe de uma coisa já combinada. O aceite vem depois do número, nunca antes.'},
+   {t:'"Marcelo, conforme conversamos às 16h20: extensão do evento de 01h para 03h. Custo adicional R$ 18.400 (hora extra de equipe, diária extra de estrutura e gerador, extensão do seguro). Preciso do seu de acordo respondendo este e-mail até as 19h para eu acionar a equipe. Sem retorno até lá, mantemos o encerramento às 01h."',g:1,fb:'Assunto, número fechado, prazo e consequência do silêncio. É isso que transforma um pedido de corredor em decisão. Repare no "sem retorno até lá, mantemos 01h": silêncio não é sim, e você acabou de escrever isso.'},
+   {t:'"Prezado, informo que a alteração de horário implicará custos adicionais a serem apurados oportunamente."',g:0,fb:'Juridiquês sem número e sem prazo não decide nada. Ele lê, não entende, não responde — e à 01h você está exatamente no mesmo problema, só que agora por escrito.'}
+  ]
+ },
+ {
+  tag:'10h15 · MONTAGEM · PALCO',
+  tit:'Tem gente embaixo da treliça que está subindo',
+  ctx:'A frontal de luz sobe no motor. Dois assistentes de cenografia entraram por baixo para medir o piso e não perceberam. O coordenador de estrutura está no ponto 3, do outro lado do palco, com o HT no ombro e a mão no controle.',
+  ch:'radio',
+  chWhy:'É agora, é curto e é para quem está com a mão no controle. Rádio existe exatamente para isso: o agora, objetivo, canal certo. Dois segundos de transmissão contra vinte e cinco metros de corrida.',
+  chBad:{
+    call:'Você vai discar, chamar e ouvir o telefone tocar enquanto a treliça desce em cima de alguém.',
+    gint:'Ninguém em montagem está olhando o celular. Mensagem não lida não é aviso dado — aqui ela é laudo de acidente.',
+    pres:'Correr vinte e cinco metros gritando é o plano B. O HT está no seu cinto e resolve em dois segundos.',
+    dir:'A mesma mensagem que ninguém vai ler, agora só para uma pessoa.',
+    mail:'E-mail para um acidente que acontece em cinco segundos.',
+    gcli:'Além de não resolver nada, você acabou de documentar o quase-acidente para o contratante.'
+  },
+  msgQ:'Você aperta o PTT. O que sai?',
+  ops:[
+   {t:'"GENTE PARA TUDO PELO AMOR DE DEUS PARA"',g:0,fb:'Grito sem destinatário e sem instrução: sete pessoas param sete coisas diferentes e a que importa continua subindo. Rádio sem endereço não é comunicação, é ruído — e ruído em montagem é acidente.'},
+   {t:'"Estrutura, produção." — solta o PTT, espera o "produção, na escuta" — "Parar a subida da frontal. Tem pessoal embaixo do ponto 2. Confirma." — "Parando. Entendido."',g:1,fb:'O protocolo inteiro: chama, espera a resposta, fala uma coisa só, exige o retorno. O "confirma / entendido" é o que fecha o loop — sem ele você não sabe se alguém ouviu, e no rádio silêncio não é sim.'},
+   {t:'"Fala, Rogério, tudo certo aí? Escuta, é o seguinte, aquele negócio do piso, os meninos da cenografia foram lá medir e..."',g:0,fb:'Rádio não é conversa. Enquanto você conta a história a treliça desceu quarenta centímetros. Primeiro a instrução, o contexto vem depois — se vier.'}
+  ]
+ },
+ {
+  tag:'09h40 · D-1 · GRUPO INTERNO (28 PESSOAS)',
+  tit:'O freela cobra o cachê no grupo',
+  ctx:'Anderson, carga e descarga, escreve no grupo de montagem: "produção, e o meu pagamento do evento passado? já são 40 dias". No grupo tem 28 pessoas: dois coordenadores, o cenógrafo, o fornecedor de som e outros três freelas que também estão esperando pagamento.',
+  ch:'dir',
+  chWhy:'Dinheiro de pessoa é assunto de duas pessoas. Grupo é mural: serve para informação que interessa a todos. Cachê no mural vira efeito dominó — os outros três que estão esperando entram na conversa em dois minutos e você perde o dia.',
+  chBad:{
+    gint:'Responder no grupo, mesmo educadamente, ensina o grupo que ali se cobra pagamento. Amanhã são cinco cobranças, e o fornecedor de som lendo tudo.',
+    pres:'Ele não está aqui: é D-1, ele chega amanhã às 6h. Esperar até lá são mais 24 horas de silêncio sobre o dinheiro dele.',
+    mail:'Freela de carga não abre e-mail. Canal formal com quem não usa o canal equivale a não ter avisado.',
+    radio:'Você acabou de falar do cachê atrasado dele para todos os HTs do evento.',
+    gcli:'Seu problema de pagamento interno no grupo do cliente. É o fim da sua reputação e do seu preço.',
+    call:'Ligação resolve o clima e some. Pagamento tem data e valor — isso precisa ficar escrito, para ele e para você.'
+  },
+  msgQ:'Você chama o Anderson no direct. O que escreve?',
+  ops:[
+   {t:'"Anderson, não se cobra pagamento no grupo. Depois a gente vê isso."',g:0,fb:'Você deu a bronca certa e não resolveu nada. Ele continua sem o dinheiro e agora sem resposta — amanhã posta de novo, mais irritado, e o vilão da história é você. Bronca sem solução é só bronca.'},
+   {t:'"Anderson, aqui é o canal certo pra isso — no grupo tem 28 pessoas e teu pagamento é assunto nosso. Está na remessa de sexta, dia 18: R$ 640, PIX na chave que você mandou. Se sexta não cair até as 18h, me chama aqui direto que eu resolvo."',g:1,fb:'Corrige o canal em uma linha, sem humilhar, e entrega o que ele pediu: data, valor, forma e o que fazer se falhar. Ele sai do grupo porque tem motivo, não porque levou esporro.'},
+   {t:'"Vou verificar com o financeiro e te retorno."',g:0,fb:'"Vou verificar" sem data é exatamente a frase que ele já ouviu há 40 dias — por isso ele foi para o grupo. Toda resposta de produtor tem um prazo; sem prazo, não é resposta, é adiamento.'}
+  ]
+ },
+ {
+  tag:'23h35 · VÉSPERA DA MONTAGEM',
+  tit:'O palco não passa no portão',
+  ctx:'Conferindo a planta do pavilhão você vê: portão de carga com 3,80 m de altura livre. O caminhão do palco tem 4,20 m com a carga. A montagem começa às 06h e o caminhão sai do galpão às 04h. Você mandou mensagem para o Fábio, coordenador de montagem, às 21h. Duas marcas cinza.',
+  ch:'call',
+  chWhy:'É agora e é grave: se o caminhão sair às 04h como está, o dia inteiro cai. Mensagem não lida não é aviso dado. Urgência real se resolve com telefone tocando — e se ele não atender, você liga de novo, e depois liga para o motorista.',
+  chBad:{
+    dir:'Você já fez isso às 21h e ele não leu. Repetir o canal que falhou é apostar que a sorte melhorou.',
+    gint:'Vinte e oito pessoas dormindo. Zero delas vai ler antes das 06h — e às 06h o caminhão já voltou do portão.',
+    mail:'E-mail às 23h35 para alguém que acorda às 04h30 e vai direto para a obra. Ele lê depois do prejuízo.',
+    gcli:'Cliente às 23h35 com um problema que ainda é seu para resolver. Você não avisou: você virou risco na cabeça dele.',
+    pres:'Ele está em casa, a 40 km. Você chega às 00h30 para dar um recado de 90 segundos.',
+    radio:'Rádio desligado, todo mundo em casa. HT não é telefone.'
+  },
+  msgQ:'Ele atende. Primeira frase?',
+  ops:[
+   {t:'"Fábio, desculpa a hora, você tava dormindo? Depois te explico melhor, é sobre amanhã..."',g:0,fb:'Você acordou o cara e não entregou a informação. Pedir desculpa antes de dizer o problema queima os únicos dez segundos em que ele está prestando atenção — e ele volta a dormir achando que dava pra ser amanhã.'},
+   {t:'"Fábio, é urgente, por isso liguei: o portão de carga tem 3,80 e o caminhão do palco tem 4,20. Ele não pode sair às 04h como está. Preciso de duas coisas de você agora: descarga pela rampa lateral e confirmação com o motorista até 00h30. Consegue?"',g:1,fb:'Diz por que ligou, entrega o fato, dá o pedido com dono e prazo, e pede confirmação. Ligação de urgência é isso: trinta segundos e o cara sabe exatamente o que fazer.'},
+   {t:'"Fábio, a gente tem um probleminha com a altura do portão, mas acho que dá pra ver amanhã cedo, o que você acha?"',g:0,fb:'"Probleminha" e "acho que dá pra ver amanhã" desarmam a urgência que fez você ligar às 23h35. Se não era grave, não ligue; se ligou, trate como grave — senão você treina a equipe a ignorar as suas ligações.'}
+  ]
+ },
+ {
+  tag:'17h10 · PASSAGEM DE SOM',
+  tit:'Discussão aos gritos no meio do palco',
+  ctx:'O técnico de PA e o cenógrafo estão brigando no palco por causa dos 80 cm que o praticável tomou do fly. Aos gritos. A equipe de catering do cliente monta as mesas a 15 metros e parou para assistir. Uma pessoa já levantou o celular.',
+  ch:'pres',
+  chWhy:'Conflito se resolve olho no olho e com o menor número possível de plateia. Você vai lá, para a cena e leva os dois para fora do campo de visão do cliente. Qualquer canal remoto aqui é o produtor fingindo que não viu.',
+  chBad:{
+    radio:'Rádio é público: você acabou de dar bronca em dois profissionais para todos os HTs do evento — inclusive o do fornecedor deles. Isso não se desfaz.',
+    gint:'Postar "pessoal, vamos manter o respeito" no grupo enquanto os dois gritam a quinze metros de você é o retrato do produtor ausente.',
+    dir:'Direct para quem está gritando no palco. Ele não vai olhar o celular nos próximos vinte minutos.',
+    call:'Ligar para quem está a quinze metros de você, aos gritos, com o celular no bolso.',
+    gcli:'Você levou a briga da sua equipe para o grupo do cliente. Parabéns, agora o registro é dele também.',
+    mail:'E-mail para uma briga que está acontecendo agora, na frente do catering.'
+  },
+  msgQ:'Você chega nos dois. O que faz?',
+  ops:[
+   {t:'"Que vergonha, hein? Tem gente do cliente ali olhando. Vocês são profissionais ou não são?"',g:0,fb:'Bronca em público, na frente do cliente que você queria proteger — só que agora a cena tem um terceiro personagem: o produtor descontrolado. Você triplicou a plateia e não decidiu nada sobre os 80 cm.'},
+   {t:'"Parou. Os dois comigo, no camarim 2, agora." — no camarim: "Um de cada vez, trinta segundos cada. Bruno, o que você precisa? Agora você, Léo. Decisão: o praticável recua 40, o fly perde 40. Voltem pro palco, a conversa acabou aqui dentro."',g:1,fb:'Tira do palco, ouve os dois em noventa segundos, decide e encerra. Conflito de produção não se resolve por consenso, se resolve por decisão — mas fora do campo de visão do cliente, sempre.'},
+   {t:'"Pessoal, calma, vamos conversar depois com calma, tá? Toca o barco aí."',g:0,fb:'Adiar conflito em dia de evento garante que ele volta às 21h, maior e na pior hora possível. "Depois" não existe em dia de show: existe agora ou existe no meio do show.'}
+  ]
+ },
+ {
+  tag:'22h50 · SHOW EM 40 MINUTOS',
+  tit:'O técnico quer avisar a cantora que o in-ear pode falhar',
+  ctx:'O retorno in-ear da atração está com interferência intermitente na passagem. O técnico de monitor te chama: "vou lá no camarim avisar ela que pode falhar, pra ela não surtar no palco." A empresária da cantora está na coxia, a dez metros.',
+  ch:'pres',
+  chWhy:'Quem fala com o artista é o produtor, junto com o empresário — nunca o técnico direto. Não é vaidade de hierarquia: o artista que ouve "pode falhar" do técnico sobe no palco desconfiando do próprio ouvido. Você vai, com a empresária, e leva solução — não medo.',
+  chBad:{
+    radio:'Rádio é público. Metade do evento acabou de saber que o in-ear da atração pode falhar. O cliente tem HT.',
+    gint:'"O in-ear da Marina tá falhando" escrito em grupo de 28 pessoas, 40 minutos antes do show. Isso vaza em três minutos e chega no camarim antes de você.',
+    dir:'Direct para a cantora. Você pulou a empresária e entregou um problema técnico direto a quem não pode resolvê-lo e vai cantar em 40 minutos.',
+    call:'Ligar para um camarim que fica a trinta metros de você.',
+    gcli:'Você acabou de contar ao cliente que a atração dele pode ter problema no palco. Ele vai passar o show inteiro olhando pro seu ombro.',
+    mail:'E-mail, 40 minutos antes do show.'
+  },
+  msgQ:'Você segura o técnico. O que fala para ele?',
+  ops:[
+   {t:'"Pode ir lá sim, mas fala baixinho pra não assustar ninguém."',g:0,fb:'Você autorizou o técnico a entrar no camarim da atração 40 minutos antes do show para dizer que o equipamento dela pode falhar. A cadeia de comando existe exatamente para isso não acontecer.'},
+   {t:'"Você não vai. Quem fala com ela sou eu, com a Cris. Me dá em uma frase: qual é o cenário técnico e qual é o plano B — o que acontece se falhar e em quanto tempo você troca. Eu levo solução, não aviso."',g:1,fb:'Segura a cadeia sem humilhar o técnico e extrai dele o que serve: diagnóstico e plano B. O artista precisa de confiança e de um combinado, não de relatório de risco vindo de quem ele não conhece.'},
+   {t:'"Não fala com ninguém, resolve isso aí e pronto."',g:0,fb:'Silêncio não é gestão. Se o in-ear cair no terceiro verso e ninguém tinha combinado o plano B com ela, o problema técnico vira crise de palco — e o produtor sabia antes e não avisou ninguém.'}
+  ]
+ },
+ {
+  tag:'14h20 · MONTAGEM',
+  tit:'O cliente foi até a mesa mandar aumentar o som',
+  ctx:'O técnico de PA te chama no rádio: "produção, o cara de terno veio aqui e mandou eu subir o playback. Falou que já tinha falado com você. Aumento?" Você não falou com ninguém. O cara de terno é o gerente de marketing do cliente, e ele está de pé ao lado da mesa.',
+  ch:'radio',
+  chWhy:'Ele te chamou no rádio, é o agora e a resposta cabe em duas frases: rádio é o canal certo. O que precisa ser cuidado é o conteúdo — porque no rádio todo mundo ouve, inclusive o cliente. Você segura a cadeia sem expor ninguém e leva a conversa com o cliente para onde ela pertence: presencial e sua.',
+  chBad:{
+    pres:'Atravessar o pavilhão deixa o técnico três minutos sem resposta com o cliente do lado — ele vai obedecer. Responde no rádio agora e vai lá depois.',
+    dir:'Ele está com as duas mãos na mesa e o HT no ombro. Seu direct chega amanhã.',
+    gint:'No grupo interno você expõe o cliente para 28 pessoas, entre elas fornecedores que também trabalham para ele.',
+    gcli:'"Por favor não deem ordens à minha equipe" no grupo do cliente: tecnicamente correto, politicamente suicida, e você ainda não falou com o homem que está a dois metros do técnico.',
+    call:'Ligar para quem já está com você no rádio, com o PTT na mão.',
+    mail:'E-mail sobre um som que está alto agora.'
+  },
+  msgQ:'Você responde no rádio. O quê?',
+  ops:[
+   {t:'"Se o cliente mandou, pode subir. Ele que paga."',g:0,fb:'Você acabou de ensinar que qualquer pessoa de terno comanda a sua equipe. Amanhã é o cunhado do cliente mandando desligar a climatização do palco. O cliente contrata a produção; a produção comanda a operação — e responde por ela.'},
+   {t:'"Som, produção: não altera. Ordem de operação sai da produção. Estou indo aí falar com ele. Câmbio."',g:1,fb:'Duas frases, sem citar nome, sem julgar o cliente no ar, com destino claro. Segura a cadeia e transfere a conversa para o canal dela: você, presencial, com o gerente. Repare que não tem bronca — no rádio não se dá bronca.'},
+   {t:'"Como assim ele foi aí? Quem deixou o cliente chegar na mesa? Alguém me explica isso agora."',g:0,fb:'Você abriu um inquérito no canal público com o cliente ouvindo, a dois metros do técnico. Rádio é o agora e é objetivo; caça ao culpado não é nem uma coisa nem outra — e você acabou de dizer ao cliente que ele é um estorvo.'}
+  ]
+ },
+ {
+  tag:'08h30 · D-1',
+  tit:'A passagem de som mudou de 16h para 14h',
+  ctx:'A atração antecipou. Isso muda a vida de seis áreas: som, luz, palco, catering, credenciamento e segurança. Os seis coordenadores estão no grupo interno de montagem, junto com mais 22 pessoas.',
+  ch:'gint',
+  chWhy:'Informação que serve para todos vai no mural — é para isso que o grupo existe. Seis directs criam seis versões da verdade e nenhuma referência comum: amanhã ninguém consegue provar o que foi combinado com quem.',
+  chBad:{
+    dir:'Seis directs, seis conversas paralelas, seis históricos diferentes. Ninguém sabe o que o outro combinou e você vira o único ponto de tradução do evento.',
+    call:'Seis ligações de cinco minutos e nada escrito. Amanhã às 14h alguém jura, de boa-fé, que ninguém avisou.',
+    mail:'Equipe de montagem não abre e-mail em dia de carga. Canal formal para quem não usa o canal formal.',
+    radio:'É D-1, ninguém está com HT ligado. E a informação precisa ficar escrita para consulta amanhã.',
+    gcli:'A mudança é operacional interna. O cliente recebe o que o afeta, não o seu cronograma de bastidor.',
+    pres:'Reunir seis coordenadores presencialmente, em D-1, para uma informação de três linhas.'
+  },
+  msgQ:'Você escreve no grupo. Qual mensagem?',
+  ops:[
+   {t:'"Bom dia pessoal!! Novidades: a passagem foi antecipada. Além disso o catering trocou de fornecedor, a credencial da equipe agora é na portaria B e me confirmem quem vem de van amanhã. Ah, e o Rogério pediu mais dois multicabos. Vamos com tudo!!"',g:0,fb:'Cinco assuntos, nenhum dono, nenhum prazo. Ninguém responde a mensagem-monstro: cada um lê a linha que fala dele e ignora o resto — inclusive a linha que era a mais importante. Uma mensagem, um assunto.'},
+   {t:'"MUDANÇA DE HORÁRIO — PASSAGEM DE SOM. De 16h para 14h, amanhã 18/07. Impacto: PA pronto 12h30 (Bruno), luz com foco fechado 13h (Léo), palco liberado 12h (Fábio). Confirmem com 👍 até as 12h de hoje. Quem não confirmar até lá, eu ligo."',g:1,fb:'Um assunto no título, o fato, o impacto por área, um dono por linha, prazo de confirmação e o que acontece se ninguém confirmar. Mensagem sem dono e sem hora não é tarefa — é desabafo. E o "eu ligo" existe porque silêncio não é sim.'},
+   {t:'"Pessoal, a passagem foi antecipada pra 14h. Se organizem aí."',g:0,fb:'"Se organizem" não tem dono. Cada coordenador supõe que o outro vai puxar a cadeia dele e às 14h o PA está a meio caminho. Sem responsável nominal, a tarefa é de ninguém.'}
+  ]
+ },
+ {
+  tag:'18h05 · PORTAS EM 55 MINUTOS',
+  tit:'"Dá pra colocar um telão no hall?"',
+  ctx:'O cliente te encontra no hall: "seria ótimo ter um telão aqui pra quem está na fila. Dá pra fazer até as 19h?" Você não sabe se sobrou painel de LED, se tem processador livre, se existe ponto de energia no hall e se o fornecedor tem gente disponível.',
+  ch:'radio',
+  chWhy:'Antes de responder ao cliente você precisa de três respostas técnicas em cinco minutos: painel, energia e mão de obra. Rádio é o único canal que entrega isso agora. Nunca se promete ao cliente o que não foi confirmado com a equipe — quem paga a promessa é sempre a equipe.',
+  chBad:{
+    pres:'Você já está presencial com ele — e é exatamente aí que mora o perigo: presencial com o cliente e sem informação é onde se promete o impossível.',
+    mail:'E-mail com 55 minutos para as portas abrirem.',
+    gcli:'Perguntar no grupo do cliente se dá pra fazer o que o cliente pediu. Você acabou de terceirizar a sua decisão e mostrar que não conhece o seu próprio evento.',
+    call:'Três ligações em sequência quando um "câmbio" resolve as três ao mesmo tempo.',
+    gint:'Grupo escrito em dia de show: ninguém lê. Em operação, o canal é o rádio.',
+    dir:'Direct para o coordenador de vídeo, que está no fly de luva e capacete.'
+  },
+  msgQ:'Enquanto a equipe checa, o que você responde ao cliente ali no hall?',
+  ops:[
+   {t:'"Claro, sem problema! A gente dá um jeito."',g:0,fb:'A frase que mais custa dinheiro na produção de eventos. Você prometeu sem saber e agora tem duas opções: gastar o que não tinha, ou desdizer. Desdizer para cliente custa mais caro que o telão.'},
+   {t:'"Vou checar agora painel, energia e equipe. Te dou uma resposta em 10 minutos, às 18h15, com sim ou não e com o custo. Se for sim, preciso do seu ok por e-mail antes de eu montar."',g:1,fb:'Não é sim nem não: é prazo. Você comprou dez minutos, protegeu a equipe de uma promessa impossível e já avisou que tem custo e que o aceite é por escrito. Isso é produtor.'},
+   {t:'"Difícil, viu. Acho que não dá não."',g:0,fb:'Você negou sem checar. Talvez desse — e o cliente lembra do "não" muito mais do que lembraria do telão. Não se promete sem confirmar, mas também não se nega sem apurar.'}
+  ]
+ },
+ {
+  tag:'20h15 · PORTAS ABERTAS',
+  tit:'O DJ de abertura não chegou',
+  ctx:'Set marcado para 20h30. O DJ não atende. Sua equipe já acionou o backup, que mora a 12 minutos e está saindo de casa. No grupo do cliente estão o CMO, o diretor da agência e dois estagiários que postam story de tudo.',
+  ch:'gint',
+  chWhy:'Problema que a sua equipe resolve em dez minutos é registro interno, com dono e prazo. O grupo do cliente recebe o que afeta o cliente — e agora nada afeta, porque a solução já está na estrada. Se o backup furar às 20h35, aí sim o cliente é avisado: por você, com o plano na mão.',
+  chBad:{
+    gcli:'Você entregou pânico em tempo real ao CMO, sobre um problema que estaria resolvido antes de ele terminar de ler. Cliente informado não é cliente com acesso à sua cozinha.',
+    mail:'E-mail com as portas abertas e o set em 15 minutos.',
+    pres:'Ir até o cliente contar um problema que se resolve em dez minutos sem ele nunca saber que existiu.',
+    call:'Ligar para o cliente que está a vinte metros, para dar uma notícia que ele não precisa ter.',
+    dir:'Direct para o CMO: mesmo estrago do grupo, só que sem testemunha para te defender depois.',
+    radio:'Rádio resolve a operação — e a operação você já resolveu. O que falta é o registro escrito de quem está fazendo o quê e até quando.'
+  },
+  msgQ:'Você escreve no grupo interno. Qual mensagem?',
+  ops:[
+   {t:'"GENTE O DJ SUMIU 😱 alguém sabe de alguma coisa??? tô surtando aqui"',g:0,fb:'Pânico escrito é pânico distribuído. E se um print dessa mensagem cair no grupo errado — e cai — o cliente não vê o problema resolvido: vê a sua produção descontrolada.'},
+   {t:'"ABERTURA — DJ titular não localizado. Backup (Rafa) acionado 20h12, chegada prevista 20h27, sobe 20h35. Marcos fica no acesso para receber e levar direto à cabine. Playlist de segurança rodando pelo Bruno até lá. Cliente NÃO avisado: sem impacto se o Rafa chegar. Reavalio às 20h30."',g:1,fb:'Fato, dono, horário, plano B — e a decisão explícita sobre o cliente. Repare no "cliente NÃO avisado" escrito: a equipe inteira sabe qual é a versão e ninguém vaza por conta própria. O que sobe pro grupo do cliente é decisão do produtor, não impulso de quem estava perto.'},
+   {t:'"O DJ não veio. Já resolvemos. Pode ficar tranquilo o pessoal."',g:0,fb:'Tranquiliza e não coordena. Quem está no acesso não sabe que vai receber alguém; quem está na cabine não sabe que entra outro pen drive. Registro sem dono e sem hora não organiza ninguém — só acalma você.'}
+  ]
+ }
+];
+
+var TOT=CEN.length, i=0, phase='ch', score=0, chFirst=true, msgFirst=true, chDone=false;
+var st=[];
+
+function esc(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+
+function prog(){
+  var p=$('#prog'); p.innerHTML='';
+  for(var k=0;k<TOT;k++){
+    var d=document.createElement('div');
+    var c='pdot';
+    if(k<i){ c+= st[k]===2?' done': st[k]===1?' half':''; }
+    else if(k===i){ c+=' cur'; }
+    d.className=c; p.appendChild(d);
+  }
+  $('#pNow').textContent=Math.min(i+1,TOT);
+  $('#pScore').textContent=score;
+}
+
+function verdict(){
+  if(score>=18) return {c:'ok',t:'Você comunica como produtor sênior',d:'Canal certo, mensagem enxuta, rastro no lugar. É esse produtor que o cliente chama de novo e que a equipe não abandona.'};
+  if(score>=14) return {c:'warn',t:'Coordenador de área — acerta o canal, escorrega na redação',d:'Você sabe por onde a informação sai, mas ainda manda mensagem sem dono, sem prazo ou sem número. É onde o dia escapa.'};
+  if(score>=10) return {c:'warn',t:'Assistente com boas intuições',d:'Você acerta quando é óbvio e erra quando custa: dinheiro sem e-mail, urgência por mensagem, bronca em canal público.'};
+  return {c:'bad',t:'Você ainda comunica como assistente',d:'Canal errado transforma informação certa em problema. Refaça: em cada cenário, pergunte primeiro quem precisa saber, depois se precisa ficar escrito, e só então abra o canal.'};
+}
+
+function fim(){
+  var v=verdict();
+  $('#card').innerHTML=
+   '<div class="fin"><div class="verdict '+v.c+'">PLACAR: '+score+'/20 acertos de primeira</div>'+
+   '<div class="big">'+esc(v.t)+'</div>'+
+   '<div class="note">'+esc(v.d)+'</div>'+
+   '<div class="step">O QUE ISSO TREINOU</div>'+
+   '<ul class="rules">'+
+   '<li><b>Dinheiro e escopo vão por e-mail.</b> WhatsApp não é contrato. Sem "de acordo" escrito, quem paga é você.</li>'+
+   '<li><b>Rádio é o agora e é público.</b> Chamar, esperar, falar uma coisa, confirmar. Nunca bronca, nunca dinheiro.</li>'+
+   '<li><b>Grupo é mural, não é conversa.</b> Cachê, bronca e conflito saem do grupo: direta ou presencial.</li>'+
+   '<li><b>Urgência real é ligação.</b> Mensagem não lida não é aviso dado.</li>'+
+   '<li><b>Conflito e artista, presencial.</b> Menos plateia, decisão na hora.</li>'+
+   '<li><b>Cadeia de comando.</b> Ordem de operação sai da produção; quem fala com o cliente e com o artista é o produtor.</li>'+
+   '<li><b>Uma mensagem, um assunto, um responsável, um prazo.</b> Sem dono e sem hora não é tarefa.</li>'+
+   '<li><b>Confirmação fecha o loop.</b> Silêncio não é sim — nem no rádio, nem no e-mail.</li>'+
+   '<li><b>Não prometa o que não confirmou com a equipe.</b> Responda com prazo, não com "a gente dá um jeito".</li>'+
+   '<li><b>Grupo do cliente não é grupo interno.</b> O cliente recebe o que o afeta, do produtor, com o plano pronto.</li>'+
+   '</ul>'+
+   '<button class="nxt show" id="nxt" style="margin-left:0">REINICIAR ▶</button></div>';
+  $('#nxt').addEventListener('click',function(){ reset(); });
+}
+
+function render(){
+  prog();
+  if(i>=TOT){ fim(); return; }
+  var c=CEN[i], h='';
+  h+='<div class="tag">'+esc(c.tag)+'</div><div class="tit">'+esc(c.tit)+'</div>';
+  h+='<div class="ctx">'+esc(c.ctx)+'</div>';
+  if(phase==='ch'){
+    h+='<div class="step">DECISÃO 1 · POR QUAL CANAL ESSA INFORMAÇÃO SAI?</div>';
+    h+='<div class="chgrid">'+ORD.map(function(k){
+      return '<button class="ch" data-k="'+k+'"><span class="e">'+CH[k].e+'</span>'+CH[k].n+'</button>';
+    }).join('')+'</div>';
+    h+='<div class="fb" id="fb"></div><button class="nxt" id="nxt">AGORA A MENSAGEM ▶</button>';
+  } else {
+    h+='<div class="chosen">Canal: <b>'+CH[c.ch].e+' '+esc(CH[c.ch].n)+'</b></div>';
+    h+='<div class="step">DECISÃO 2 · '+esc(c.msgQ.toUpperCase())+'</div>';
+    var sh=c.ops.map(function(o,k){return {o:o,k:k};}).sort(function(){return Math.random()-0.5;});
+    h+='<div class="opts">'+sh.map(function(x){
+      return '<div class="op" data-k="'+x.k+'">'+esc(x.o.t)+'</div>';
+    }).join('')+'</div>';
+    h+='<div class="fb" id="fb"></div><button class="nxt" id="nxt">PRÓXIMO CENÁRIO ▶</button>';
+  }
+  var card=$('#card'); card.innerHTML=h;
+  var fb=$('#fb'), nxt=$('#nxt');
+
+  if(phase==='ch'){
+    $$('.ch').forEach(function(b){ b.addEventListener('click',function(){
+      if(chDone) return;
+      var k=b.dataset.k;
+      if(k===c.ch){
+        b.classList.add('good'); chDone=true;
+        $$('.ch').forEach(function(o){ if(o!==b) o.classList.add('off'); });
+        fb.className='fb show hit'; fb.innerHTML='✓ <b>'+CH[k].n+'</b> — '+esc(c.chWhy);
+        if(chFirst){ score++; $('#pScore').textContent=score; }
+        nxt.classList.add('show');
+      } else {
+        b.classList.add('badx'); chFirst=false;
+        fb.className='fb show miss'; fb.innerHTML='✗ <b>'+CH[k].n+'</b> — '+esc(c.chBad[k]||'Canal errado para esta situação.');
+      }
+    }); });
+    nxt.addEventListener('click',function(){ phase='msg'; render(); });
+  } else {
+    var done=false;
+    $$('.op').forEach(function(el){ el.addEventListener('click',function(){
+      if(done) return;
+      var o=c.ops[+el.dataset.k];
+      if(o.g){
+        el.classList.add('good'); done=true;
+        $$('.op').forEach(function(x){ if(x!==el) x.classList.add('off'); });
+        fb.className='fb show hit'; fb.innerHTML='✓ '+esc(o.fb);
+        if(msgFirst){ score++; $('#pScore').textContent=score; }
+        st[i]=(chFirst?1:0)+(msgFirst?1:0);
+        nxt.classList.add('show');
+      } else {
+        el.classList.add('badx'); msgFirst=false;
+        fb.className='fb show miss'; fb.innerHTML='✗ '+esc(o.fb);
+      }
+    }); });
+    nxt.addEventListener('click',function(){ i++; phase='ch'; chFirst=true; msgFirst=true; chDone=false; render(); });
+  }
+}
+
+function reset(){ i=0; phase='ch'; score=0; chFirst=true; msgFirst=true; chDone=false; st=[]; render(); }
+$('#btnReset').addEventListener('click',reset);
+reset();
+})();
+</script>
+</body>
+</html>

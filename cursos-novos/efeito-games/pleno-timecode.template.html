@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Time Code (SMPTE) — Sincronia · SMU PRO</title>
+<style>
+  :root{ --bg:#06080e; --panel:#0c111c; --panel2:#0f1626; --line:#25314c; --ink:#e8eef9; --mut:#8a9bb8; --acc:#ff7a1a; --ok:#39d98a; --bad:#ff4d4d; --warn:#ffc63b; --blue:#54b3ff; }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:#05070c;color:var(--ink);font-family:system-ui,Segoe UI,Roboto,Arial;overflow:hidden;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+  #app{position:fixed;top:0;left:0;width:100vw;height:var(--visH,100vh);display:flex;flex-direction:column;overflow:hidden;padding:8px;gap:7px}
+  #hd{flex:none;display:flex;align-items:baseline;gap:10px}#hd b{font-size:14px;font-weight:800}#hd span{font-size:11px;color:var(--mut)}
+  #stageWrap{flex:1 1 auto;min-height:120px;position:relative;background:#04050a;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  #stage{position:absolute;inset:0;width:100%;height:100%}
+  #tc{position:absolute;left:12px;top:8px;font-family:'Courier New',monospace;font-size:30px;font-weight:800;letter-spacing:1px;color:#fff;text-shadow:0 0 12px #ff7a1a66}
+  #tcMode{position:absolute;right:12px;top:12px;font-size:11px;font-weight:800;padding:4px 10px;border-radius:20px;border:1px solid var(--line);background:#0009}
+  #tcMode.auto{color:#052;background:#0c3;border-color:#0f6}
+  #tcMode.manual{color:#ffe6a8;background:#3a2e0c;border-color:#b98b1e}
+  /* timeline */
+  #tl{flex:none;position:relative;height:82px;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  #beats{position:absolute;inset:0}
+  .beat{position:absolute;top:0;bottom:0;width:1px;background:#182238}
+  .beat.bar{background:#2a3550}
+  .cue{position:absolute;top:14px;height:54px;width:3px;background:var(--acc);border-radius:2px;box-shadow:0 0 6px #ff7a1a88}
+  .cue .cl{position:absolute;top:-13px;left:50%;transform:translateX(-50%);font-size:9px;color:#ffcf9e;white-space:nowrap}
+  .cue.fired{background:var(--ok);box-shadow:0 0 6px #39d98a}
+  #ph{position:absolute;top:0;bottom:0;width:2px;background:#fff;box-shadow:0 0 8px #fff;left:0}
+  #hitmark{position:absolute;top:14px;height:54px;width:2px;background:var(--blue);opacity:.8}
+  /* controles */
+  #ctl{flex:none;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;background:#0a0e18;border:1px solid var(--line);border-radius:11px;padding:8px 10px}
+  button.b{border:1px solid var(--line);background:#141c2b;color:var(--ink);border-radius:9px;padding:9px 14px;font-size:13px;font-weight:800;cursor:pointer;min-height:42px}
+  button.b:hover{background:#1c2942}
+  button.play{background:#123a24;border-color:#2b7a4e;color:#9af2c0}button.play.on{background:#1c6b3f;color:#fff}
+  button.mode{background:#0e2438;border-color:#2b5a8a;color:#9cd2ff;min-width:150px}
+  button.fire{border:1px solid #ffb070;background:linear-gradient(180deg,#ff8f36,#e5590a);color:#180a00;font-weight:900;padding:9px 20px}
+  button.fire:disabled{opacity:.4}
+  .seg{display:flex;gap:3px;align-items:center;font-size:11px;color:var(--mut)}
+  .fps{border:1px solid var(--line);background:#141c2b;color:var(--ink);border-radius:6px;padding:5px 7px;font-size:12px}
+  #stat{flex:none;display:flex;gap:14px;justify-content:center;font-size:12px;padding:5px}
+  #stat b{color:var(--ink)}
+  .tag{color:var(--mut)}
+  #obj{position:absolute;left:10px;bottom:96px;z-index:6;width:min(290px,62vw);background:#0c1220ee;border:1px solid var(--line);border-radius:11px;padding:9px 11px}
+  #obj h4{margin:0 0 5px;font-size:11px;letter-spacing:.4px;text-transform:uppercase;color:var(--acc)}
+  #obj ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+  #obj li{display:flex;gap:7px;font-size:11.5px;line-height:1.3;color:#cdd8ea;align-items:flex-start}
+  #obj li .bx{flex:none;width:15px;height:15px;border-radius:4px;border:1.5px solid #46567a;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#04140b}
+  #obj li.done .bx{background:var(--ok);border-color:var(--ok)}#obj li.done{color:#8fb8a2}
+  #obj.win{border-color:var(--ok);box-shadow:0 0 20px #39d98a44}
+  #toast{position:absolute;left:50%;top:12px;transform:translateX(-50%) translateY(-60px);z-index:9;background:#0e1726f2;border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-size:12.5px;font-weight:700;transition:transform .3s;max-width:82vw;text-align:center}
+  #toast.show{transform:translateX(-50%) translateY(0)}
+  #toast.good{border-color:var(--ok);color:#bff5da}#toast.bad{border-color:var(--bad);color:#ffb3ab}#toast.warn{border-color:var(--warn);color:#ffe6a8}#toast.info{border-color:var(--blue);color:#bfe3ff}
+</style></head>
+<body>
+<div id="app">
+  <div id="hd"><b>Time Code (SMPTE) — Sincronia</b><span>Por que o show trava os efeitos no time code, não no olho</span></div>
+  <div id="stageWrap"><canvas id="stage"></canvas><div id="tc">00:00:00</div><div id="tcMode" class="auto">TIME CODE</div>
+    <div id="obj"><h4>🎯 Objetivos</h4><ul id="objList"></ul></div>
+  </div>
+  <div id="tl"><div id="beats"></div><div id="hitmark" style="display:none"></div><div id="ph"></div></div>
+  <div id="stat"><div><span class="tag">Modo:</span> <b id="s-mode">Time code</b></div><div><span class="tag">Cues certos:</span> <b id="s-hit">0</b></div><div><span class="tag">Seu desvio médio:</span> <b id="s-err">—</b></div></div>
+  <div id="ctl">
+    <button class="b play" id="play">▶ PLAY</button>
+    <button class="b" id="rew">⏮</button>
+    <button class="b mode" id="mode">Modo: TIME CODE (auto)</button>
+    <div class="seg">fps <select class="fps" id="fps"><option>24</option><option selected>25</option><option>30</option></select></div>
+    <button class="b fire" id="fire" disabled>▶ DISPARAR (manual)</button>
+  </div>
+  <div id="toast"></div>
+</div>
+
+<script>__ENGINE__</script>
+<script>
+(function(){
+  const fx=new StageFX(document.getElementById('stage'),{ haze:0.14, ledWall:0.6, beams:true, label:"" });
+  window.__fx=fx;
+
+  const DUR=24, BPM=120, SPB=60/BPM;             // 0.5s por beat
+  const CUES=[
+    {t:4,  lbl:'CO₂',      fire:()=>{fx.trigger('co2',{x:430});fx.trigger('co2',{x:850});}},
+    {t:8,  lbl:'Faísca',   fire:()=>{fx.trigger('spark',{x:400,power:1.1});fx.trigger('spark',{x:880,power:1.1});}},
+    {t:12, lbl:'Gerb',     fire:()=>{fx.trigger('gerb',{x:480});fx.trigger('gerb',{x:800});}},
+    {t:16, lbl:'Airburst', fire:()=>fx.trigger('airburst',{x:640,y:210})},
+    {t:20, lbl:'Confete',  fire:()=>{fx.trigger('confetti',{side:'L'});fx.trigger('confetti',{side:'R'});}},
+  ];
+  const S={ clock:0, playing:false, mode:'auto', fps:25, fired:new Set(), hits:0, errs:[] };
+  const $=id=>document.getElementById(id);
+  let tT; function toast(m,k){ const t=$('toast'); t.textContent=m; t.className='show '+(k||''); clearTimeout(tT); tT=setTimeout(()=>t.className=(k||''),2200); }
+
+  // timeline visual
+  const tl=$('tl'), beats=$('beats');
+  function layoutTL(){
+    const w=tl.clientWidth;
+    beats.innerHTML='';
+    for(let t=0;t<=DUR;t+=SPB){ const b=document.createElement('div'); b.className='beat'+((Math.round(t/SPB)%4===0)?' bar':''); b.style.left=(t/DUR*w)+'px'; beats.appendChild(b); }
+    CUES.forEach((c,i)=>{ const el=document.createElement('div'); el.className='cue'+(S.fired.has(i)?' fired':''); el.id='cue-'+i; el.style.left=(c.t/DUR*w)+'px'; el.innerHTML='<span class="cl">'+c.lbl+'</span>'; beats.appendChild(el); });
+  }
+  function smpte(sec){ const s=Math.floor(sec), ff=Math.floor((sec-s)*S.fps); return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')+':'+String(ff).padStart(2,'0'); }
+
+  // modo
+  $('mode').onclick=()=>{ S.mode = S.mode==='auto'?'manual':'auto';
+    const auto=S.mode==='auto';
+    $('mode').textContent='Modo: '+(auto?'TIME CODE (auto)':'MANUAL (no olho)');
+    $('tcMode').textContent=auto?'TIME CODE':'MANUAL'; $('tcMode').className=auto?'auto':'manual';
+    $('s-mode').textContent=auto?'Time code':'Manual';
+    $('fire').disabled = auto || !S.playing;
+    if(auto) step('auto'); else step('manual');
+    rewind();
+  };
+  $('fps').onchange=()=>{ S.fps=+$('fps').value; };
+  $('play').onclick=()=>{ if(S.playing) return; if(S.clock>=DUR) rewind(); S.playing=true; $('play').classList.add('on'); $('fire').disabled = S.mode==='auto'; };
+  $('rew').onclick=rewind;
+  function rewind(){ S.playing=false; $('play').classList.remove('on'); S.clock=0; S.fired.clear(); S.hits=0; S.errs=[]; $('s-hit').textContent='0'; $('s-err').textContent='—'; $('hitmark').style.display='none'; $('fire').disabled = true; layoutTL(); }
+
+  $('fire').onclick=()=>{
+    if(S.mode!=='manual'||!S.playing) return;
+    // acha o cue não-disparado mais próximo do clock atual
+    let best=-1, bd=1e9;
+    CUES.forEach((c,i)=>{ if(S.fired.has(i)) return; const d=Math.abs(c.t-S.clock); if(d<bd){bd=d;best=i;} });
+    if(best<0) return;
+    const c=CUES[best]; S.fired.add(best); c.fire();
+    const errMs=Math.round(Math.abs(c.t-S.clock)*1000);
+    S.errs.push(errMs);
+    if(bd<0.12) S.hits++;
+    $('s-hit').textContent=S.hits;
+    $('s-err').textContent=Math.round(S.errs.reduce((a,b)=>a+b,0)/S.errs.length)+' ms';
+    // marca visual do ponto onde disparou
+    const w=tl.clientWidth; const hm=$('hitmark'); hm.style.display='block'; hm.style.left=(S.clock/DUR*w)+'px';
+    toast('CH'+(best+1)+' '+c.lbl+' — desvio '+errMs+' ms'+(errMs<120?' (bom!)':' (fora do beat)'), errMs<120?'good':'warn');
+    document.getElementById('cue-'+best).classList.add('fired');
+  };
+
+  // objetivos
+  const OBJ=[{id:'auto',t:'Rode em TIME CODE — os cues caem exatos (desvio ~0)'},{id:'manual',t:'Troque para MANUAL e dispare nos cues'},{id:'compare',t:'Veja: no manual o desvio é bem maior que no time code'}];
+  const objEls={},objDone={}; let won=false;
+  (function(){ const ul=$('objList'); OBJ.forEach(o=>{ const li=document.createElement('li'); li.innerHTML='<span class="bx"></span><span>'+o.t+'</span>'; ul.appendChild(li); objEls[o.id]=li; }); })();
+  function step(id){ if(!objDone[id]){ objDone[id]=true; objEls[id].classList.add('done'); objEls[id].querySelector('.bx').textContent='✓';
+    if(OBJ.every(o=>objDone[o.id])&&!won){won=true;$('obj').classList.add('win');toast('Entendido: time code = precisão de frame; no olho, erro humano. Por isso o show trava no SMPTE.','good');} } }
+
+  // loop
+  let last=performance.now();
+  function loop(now){ const dt=Math.min(80,now-last); last=now;
+    if(S.playing){ S.clock+=dt/1000;
+      if(S.mode==='auto'){ CUES.forEach((c,i)=>{ if(!S.fired.has(i)&&S.clock>=c.t){ S.fired.add(i); c.fire(); S.hits++; $('s-hit').textContent=S.hits; $('s-err').textContent='0 ms (frame exato)'; const el=document.getElementById('cue-'+i); if(el)el.classList.add('fired'); } }); }
+      if(S.clock>=DUR){ S.playing=false; $('play').classList.remove('on');
+        if(S.mode==='manual'&&S.errs.length){ step('compare'); }
+      }
+      $('tc').textContent=smpte(S.clock);
+      const w=tl.clientWidth; $('ph').style.left=(S.clock/DUR*w)+'px';
+    }
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  function setVisH(){ var vh=window.innerHeight, sh=(window.screen&&screen.height)||vh; var inflated=vh>sh+8, visH=Math.min(vh,sh), header=inflated?86:0;
+    document.documentElement.style.setProperty('--visH', Math.max(320,visH-header)+'px'); if(fx.resize) fx.resize(); layoutTL(); }
+  window.__setVisH=setVisH; addEventListener('resize',setVisH);
+  addEventListener('orientationchange',()=>setTimeout(setVisH,150));
+  document.addEventListener('fullscreenchange',()=>[60,260,600].forEach(d=>setTimeout(setVisH,d)));
+  document.addEventListener('webkitfullscreenchange',()=>[60,260,600].forEach(d=>setTimeout(setVisH,d)));
+  window.__probe={S,play:()=>$('play').click(),mode:()=>$('mode').click(),fireManual:()=>$('fire').click(),step:(t)=>{S.clock=t;},tick:(ms)=>{S.clock+=ms/1000;},cues:CUES,isWon:()=>won,objDone,setPlaying:(v)=>{S.playing=v;}};
+  layoutTL(); setVisH();
+})();
+</script>
+</body></html>

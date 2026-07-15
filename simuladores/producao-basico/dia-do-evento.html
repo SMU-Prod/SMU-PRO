@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>SMU PRO · O dia do evento na ordem certa</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0c1017;--panel:#161c26;--panel2:#1b2230;--line:#2a3444;--ink:#e7edf5;--dim:#8794a8;
+        --accent:#f59e0b;--ok:#22c55e;--err:#ef4444;--warn:#f59e0b;--cyan:#38bdf8;}
+  html,body{background:var(--bg);color:var(--ink);
+    font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased;}
+  body{padding:12px;}
+  .app{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:12px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  h1{font-size:15px;margin-bottom:3px;}
+  .sub{font-size:12px;color:var(--dim);margin-bottom:12px;line-height:1.5;}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px;}
+  .stat .k{font-size:10px;color:var(--dim);letter-spacing:.5px;}
+  .stat .val{font-size:15px;font-weight:800;margin-top:2px;}
+  .verdict{font-size:13px;font-weight:700;padding:9px 12px;border-radius:8px;text-align:center;}
+  .verdict.ok{background:#14532d;color:#bbf7d0;}
+  .verdict.bad{background:#450a0a;color:#fca5a5;}
+  .verdict.warn{background:#422006;color:#fde68a;}
+  .note{font-size:12px;color:var(--dim);line-height:1.55;}
+  button{font:inherit;cursor:pointer;}
+
+  .layout{display:grid;grid-template-columns:1fr;gap:12px;}
+  @media(min-width:720px){ .layout{grid-template-columns:1fr 268px;align-items:start;} }
+
+  ul#list{list-style:none;display:flex;flex-direction:column;gap:5px;}
+  .blk{display:flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--line);
+       border-left:3px solid var(--line);border-radius:9px;padding:6px 7px;}
+  .blk .pos{font-size:11px;font-weight:800;color:var(--dim);width:19px;text-align:center;flex-shrink:0;}
+  .blk .ic{font-size:15px;flex-shrink:0;}
+  .blk .nm{font-size:12px;font-weight:600;line-height:1.3;flex:1;min-width:0;}
+  .blk .nm small{display:block;font-size:10px;color:var(--dim);font-weight:400;margin-top:1px;}
+  .blk .mv{display:flex;gap:4px;flex-shrink:0;}
+  .blk .mv button{width:34px;height:34px;border:1px solid var(--line);border-radius:7px;
+       background:#0c1119;color:var(--dim);font-size:12px;line-height:1;}
+  .blk .mv button:active{background:#26313f;color:var(--ink);}
+  .blk .mv button:disabled{opacity:.25;cursor:default;}
+  .blk.ok{border-left-color:var(--ok);} .blk.ok .pos{color:var(--ok);}
+  .blk.err{border-left-color:var(--err);background:#1f1518;} .blk.err .pos{color:var(--err);}
+  .blk.show .nm{color:var(--accent);letter-spacing:.4px;}
+
+  .bar{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 8px;}
+  .bar button{flex:1;min-width:96px;min-height:36px;border:1px solid var(--line);border-radius:8px;
+       background:#0c1119;color:var(--dim);font-size:12px;font-weight:600;}
+  .bar button.pri{background:#422006;border-color:var(--accent);color:#fde68a;}
+
+  .side{display:flex;flex-direction:column;gap:9px;}
+  .side h2{font-size:11px;letter-spacing:.6px;color:var(--dim);font-weight:700;}
+  .clock{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:8px;}
+  .clock .cl{display:flex;gap:7px;font-size:11px;padding:2px 0;line-height:1.35;}
+  .clock .cl .t{font-variant-numeric:tabular-nums;font-weight:700;color:var(--cyan);width:44px;flex-shrink:0;}
+  .clock .cl .l{color:var(--dim);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .clock .cl.d1 .t{color:var(--warn);}
+  .fx{display:flex;flex-direction:column;gap:6px;}
+  .fx .f{background:#1f1518;border:1px solid #4c2626;border-left:3px solid var(--err);border-radius:7px;
+     padding:7px 8px;font-size:11px;line-height:1.45;color:#fca5a5;}
+  .fx .f b{color:#fecaca;}
+  .fx .g{background:#0f1a12;border:1px solid #1e3a24;border-left:3px solid var(--ok);border-radius:7px;
+     padding:7px 8px;font-size:11px;line-height:1.45;color:#86efac;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="card">
+    <h1>O dia do evento na ordem certa — do load-in ao load-out</h1>
+    <div class="sub">Os blocos do dia estão fora de ordem. Use <b>▲ ▼</b> para montar a sequência real de um show,
+      da chegada da equipe até a carga do caminhão. Depois clique em <b>Conferir</b>.</div>
+
+    <div class="layout">
+      <div>
+        <ul id="list"></ul>
+        <div class="bar">
+          <button class="pri" id="check">Conferir</button>
+          <button id="shuffle">Embaralhar</button>
+          <button id="reset">Reiniciar</button>
+        </div>
+        <div class="verdict warn" id="verdict">Monte a ordem e clique em Conferir.</div>
+        <div class="note" id="note" style="margin-top:8px;">Horários no painel ao lado são estimados a partir de
+          <b>07:00</b>, somando a duração típica de cada bloco em um show de médio porte.</div>
+      </div>
+
+      <div class="side">
+        <div class="stat"><div class="k">BLOCOS NA POSIÇÃO CERTA</div><div class="val" id="score">— / 14</div></div>
+        <div>
+          <h2>RELÓGIO DO DIA</h2>
+          <div class="clock" id="clock" style="margin-top:5px;"></div>
+        </div>
+        <div>
+          <h2>EFEITO NA OPERAÇÃO</h2>
+          <div class="fx" id="fx" style="margin-top:5px;">
+            <div class="g">Clique em <b>Conferir</b> para ver o que acontece na prática com a ordem que você montou.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+var $=function(s){return document.querySelector(s);};
+
+/* Sequência correta de um dia de show. d = duração típica em minutos. */
+var BLOCKS=[
+ {id:'chegada',   ic:'👷', n:'Chegada da equipe',                  s:'Briefing, EPI, divisão de frentes', d:30},
+ {id:'loadin',    ic:'🚚', n:'Load-in',                            s:'Descarga do caminhão',              d:60},
+ {id:'estrutura', ic:'🏗️', n:'Estrutura e rigging',                s:'Palco, treliça, pontos, motores',   d:150},
+ {id:'energia',   ic:'⚡', n:'Energia e aterramento',              s:'Gerador, quadro, terra, medição',   d:45},
+ {id:'paluz',     ic:'🔊', n:'Montagem de PA e luz',               s:'Line array, subs, fixtures',        d:135},
+ {id:'patch',     ic:'🔌', n:'Cabeamento e patch',                 s:'Multicabo, stage box, DMX, FOH',    d:90},
+ {id:'linecheck', ic:'🎚️', n:'Line check',                         s:'Canal por canal, palco ao FOH',     d:60},
+ {id:'soundcheck',ic:'🎤', n:'Passagem de som (soundcheck)',       s:'Banda em cena, monitor e PA',       d:90},
+ {id:'limpeza',   ic:'🧹', n:'Liberação e limpeza do palco',       s:'Cases fora, cabo fixado, set list', d:30},
+ {id:'portas',    ic:'🚪', n:'Abertura da casa',                   s:'Portas, revista, público entrando', d:90},
+ {id:'abertura',  ic:'🎸', n:'Banda de abertura',                  s:'Suporte, troca rápida de backline', d:60},
+ {id:'show',      ic:'🌟', n:'SHOW',                               s:'Atração principal',                 d:120},
+ {id:'encerra',   ic:'🔚', n:'Encerramento',                       s:'Luz de casa, público saindo',       d:20},
+ {id:'loadout',   ic:'📦', n:'Load-out',                           s:'Desmontagem e carga do caminhão',   d:120}
+];
+var N=BLOCKS.length, START=7*60;
+var IDX={}; BLOCKS.forEach(function(b,i){IDX[b.id]=i;});
+
+/* Dependências reais. Se A vier depois de B, a produção quebra — e o texto diz por quê. */
+var RULES=[
+ {a:'chegada',b:'loadin',    m:'<b>Equipe antes do caminhão.</b> Sem gente no local não há quem descarregue, quem confira romaneio e quem responda pelo palco. O dia abre com chegada e briefing.'},
+ {a:'loadin',b:'estrutura',  m:'<b>Load-in antes da montagem.</b> Treliça, base de palco e cases ainda estão dentro do caminhão. Não se monta o que não foi descarregado.'},
+ {a:'estrutura',b:'energia', m:'<b>Estrutura antes da força.</b> O quadro, o aterramento e o lançamento de cabo de força seguem o desenho final do palco. Lançar força antes é passar empilhadeira, talha e case por cima do seu cabo.'},
+ {a:'energia',b:'paluz',     m:'<b>Energia e terra antes de ligar qualquer coisa.</b> Amplificador e dimmer em quadro improvisado ou sem aterramento queimam equipamento e dão choque em quem está no truss. Mede-se tensão e terra antes de energizar rack.'},
+ {a:'estrutura',b:'paluz',   m:'<b>Estrutura antes de pendurar PA e luz.</b> Line array e fixture vão içados na treliça. Não se pendura carga em ponto que não está montado e verificado pelo rigger.'},
+ {a:'paluz',b:'patch',       m:'<b>Cabeia-se o que já está no lugar.</b> Patch com PA e luz ainda no chão significa refazer lance, re-etiquetar e sobrar cabo curto onde precisava de 30 m.'},
+ {a:'patch',b:'linecheck',   m:'<b>Patch antes do line check.</b> O line check é a conferência do patch — canal por canal, do palco ao FOH. Sem patch fechado não existe o que conferir.'},
+ {a:'linecheck',b:'soundcheck', m:'<b>Line check antes do soundcheck.</b> O artista não é seu testador de cabo. Canal mudo, fase invertida, micro trocado e ruído de terra se descobrem no line check. A passagem de som é para ajustar o som da banda, não para caçar defeito.'},
+ {a:'soundcheck',b:'limpeza', m:'<b>Liberar o palco depois da passagem de som.</b> Limpar antes é limpar duas vezes: a passagem ainda vai mexer em posição de monitor, cabo de guitarra e pedestal. A liberação é o último ato do palco antes do público.'},
+ {a:'soundcheck',b:'portas', m:'<b>Soundcheck antes das portas.</b> Passagem de som com a casa aberta vira espetáculo: o público vê o artista errando, a banda encurta a passagem por constrangimento e você entra no show sem o ajuste pronto.'},
+ {a:'limpeza',b:'portas',    m:'<b>Palco limpo e liberado antes das portas.</b> Com o palco ainda em montagem você abriu as portas: 800 pessoas olhando montador trabalhar — e a montagem trava, porque não dá para operar talha, escada e carrinho de case com público em volta.'},
+ {a:'portas',b:'abertura',   m:'<b>Portas antes da banda de abertura.</b> Abertura tocando com a casa fechada é show para cadeira vazia. É ela que aquece o público que ainda está entrando.'},
+ {a:'abertura',b:'show',     m:'<b>Abertura antes da atração principal.</b> A banda de suporte segura a casa enquanto o público chega e o backline da principal é ajustado.'},
+ {a:'show',b:'encerra',      m:'<b>Encerramento depois do show.</b> Luz de casa e som ambiente só sobem quando a atração principal termina.'},
+ {a:'encerra',b:'loadout',   m:'<b>Load-out depois da casa vazia.</b> Desmontar treliça e baixar motor com público circulando é acidente esperando acontecer. Primeiro sai o público, depois entra a desmontagem.'}
+];
+
+var order=[], initial=[], checked=false;
+
+function fmt(min){
+  var d=Math.floor(min/1440), t=min%1440;
+  var h=Math.floor(t/60), m=t%60;
+  return {s:(h<10?'0':'')+h+':'+(m<10?'0':'')+m, d:d};
+}
+function shuffle(){
+  var a=BLOCKS.map(function(b){return b.id;});
+  for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i];a[i]=a[j];a[j]=t; }
+  var right=a.every(function(id,i){return IDX[id]===i;});
+  return right?shuffle():a;
+}
+function violations(){
+  var pos={}; order.forEach(function(id,i){pos[id]=i;});
+  return RULES.filter(function(r){ return pos[r.a]>pos[r.b]; });
+}
+function move(i,dir){
+  var j=i+dir; if(j<0||j>=N) return;
+  var t=order[i]; order[i]=order[j]; order[j]=t;
+  checked=false; render();
+}
+
+function render(){
+  var v=checked?violations():[];
+  var bad={}; v.forEach(function(r){ bad[r.a]=1; bad[r.b]=1; });
+  var ul=$('#list'); ul.innerHTML='';
+  order.forEach(function(id,i){
+    var b=BLOCKS[IDX[id]];
+    var li=document.createElement('li');
+    var cls='blk'+(id==='show'?' show':'');
+    if(checked) cls+=(IDX[id]===i?' ok':' err');
+    li.className=cls;
+    li.innerHTML='<span class="pos">'+(i+1)+'</span><span class="ic">'+b.ic+'</span>'+
+      '<span class="nm">'+b.n+'<small>'+b.s+'</small></span>'+
+      '<span class="mv"><button data-i="'+i+'" data-d="-1"'+(i===0?' disabled':'')+' aria-label="subir">▲</button>'+
+      '<button data-i="'+i+'" data-d="1"'+(i===N-1?' disabled':'')+' aria-label="descer">▼</button></span>';
+    ul.appendChild(li);
+  });
+  Array.prototype.forEach.call(ul.querySelectorAll('button'),function(btn){
+    btn.onclick=function(){ move(+btn.dataset.i,+btn.dataset.d); };
+  });
+
+  var t=START, cl=$('#clock'); cl.innerHTML='';
+  order.forEach(function(id){
+    var b=BLOCKS[IDX[id]], f=fmt(t);
+    var row=document.createElement('div');
+    row.className='cl'+(f.d>0?' d1':'');
+    row.innerHTML='<span class="t">'+f.s+(f.d>0?'⁺':'')+'</span><span class="l">'+b.n+'</span>';
+    cl.appendChild(row); t+=b.d;
+  });
+  var end=fmt(t);
+  var row=document.createElement('div'); row.className='cl'+(end.d>0?' d1':'');
+  row.innerHTML='<span class="t">'+end.s+(end.d>0?'⁺':'')+'</span><span class="l" style="color:#e7edf5;font-weight:700;">Caminhão fechado</span>';
+  cl.appendChild(row);
+
+  var hits=order.filter(function(id,i){return IDX[id]===i;}).length;
+  $('#score').textContent=(checked?hits:'—')+' / '+N;
+
+  var vd=$('#verdict'), fx=$('#fx');
+  if(!checked){
+    vd.className='verdict warn'; vd.textContent='Monte a ordem e clique em Conferir.';
+    fx.innerHTML='<div class="g">Clique em <b>Conferir</b> para ver o que acontece na prática com a ordem que você montou.</div>';
+    return;
+  }
+  if(hits===N){
+    vd.className='verdict ok'; vd.textContent='✓ Sequência correta — dia fecha em '+end.s+', sem retrabalho';
+    fx.innerHTML='<div class="g">Cada bloco entrou depois do que ele depende: estrutura verificada antes de içar carga, energia medida antes de energizar rack, patch fechado antes do line check, line check antes de o artista subir, palco liberado antes das portas.</div>';
+  } else {
+    vd.className='verdict bad'; vd.textContent='✗ '+(N-hits)+' bloco(s) fora de posição — '+v.length+' dependência(s) quebrada(s)';
+    fx.innerHTML='';
+    v.forEach(function(r){
+      var d=document.createElement('div'); d.className='f'; d.innerHTML=r.m; fx.appendChild(d);
+    });
+  }
+}
+
+$('#check').onclick=function(){ checked=true; render(); };
+$('#shuffle').onclick=function(){ initial=shuffle(); order=initial.slice(); checked=false; render(); };
+$('#reset').onclick=function(){ order=initial.slice(); checked=false; render(); };
+
+initial=shuffle(); order=initial.slice(); render();
+})();
+</script>
+</body>
+</html>

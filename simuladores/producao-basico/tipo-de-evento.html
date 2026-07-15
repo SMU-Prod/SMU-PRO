@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>SMU PRO · Tipo de evento</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0c1017;--panel:#161c26;--panel2:#1b2230;--line:#2a3444;--ink:#e7edf5;--dim:#8794a8;
+        --accent:#f59e0b;--ok:#22c55e;--err:#ef4444;--warn:#f59e0b;--cyan:#38bdf8;}
+  html,body{background:var(--bg);color:var(--ink);
+    font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased;}
+  body{padding:12px;}
+  .app{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:12px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  h1{font-size:15px;margin-bottom:3px;}
+  .sub{font-size:12px;color:var(--dim);margin-bottom:12px;line-height:1.5;}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px;}
+  .stat .k{font-size:10px;color:var(--dim);letter-spacing:.5px;}
+  .stat .val{font-size:15px;font-weight:800;margin-top:2px;}
+  .verdict{font-size:13px;font-weight:700;padding:9px 12px;border-radius:8px;text-align:center;}
+  .verdict.ok{background:#14532d;color:#bbf7d0;}
+  .verdict.bad{background:#450a0a;color:#fca5a5;}
+  .verdict.warn{background:#422006;color:#fde68a;}
+  .note{font-size:12px;color:var(--dim);line-height:1.55;}
+  button{font:inherit;cursor:pointer;}
+  .legend{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+  .lg{font-size:10.5px;color:var(--dim);border:1px solid var(--line);border-radius:6px;padding:4px 7px;}
+  .lg b{color:var(--ink);}
+  .mwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:10px;background:var(--panel2);}
+  table{border-collapse:separate;border-spacing:0;width:100%;min-width:620px;}
+  th,td{padding:5px 6px;text-align:center;border-bottom:1px solid var(--line);vertical-align:middle;}
+  thead th{position:sticky;top:0;background:#101620;font-size:10px;letter-spacing:.4px;color:var(--accent);
+    padding:7px 4px;line-height:1.3;z-index:3;}
+  thead th small{display:block;color:var(--dim);font-size:9px;font-weight:400;letter-spacing:0;}
+  th.name,td.name{position:sticky;left:0;background:var(--panel2);text-align:left;font-size:11.5px;
+    min-width:170px;max-width:190px;line-height:1.3;z-index:2;border-right:1px solid var(--line);}
+  thead th.name{background:#101620;z-index:4;}
+  td.name .cost{display:block;font-size:9.5px;color:var(--dim);margin-top:2px;}
+  .seg2{display:inline-flex;gap:2px;}
+  .seg2 button{width:34px;height:34px;border:1px solid var(--line);border-radius:6px;background:#0c1119;
+    color:var(--dim);font-size:10px;font-weight:700;line-height:1;}
+  .seg2 button.on[data-v="2"]{background:#14532d;border-color:var(--ok);color:#bbf7d0;}
+  .seg2 button.on[data-v="1"]{background:#422006;border-color:var(--warn);color:#fde68a;}
+  .seg2 button.on[data-v="0"]{background:#1f2937;border-color:#64748b;color:#cbd5e1;}
+  .seg2 button.bad{background:#450a0a;border-color:var(--err);color:#fca5a5;}
+  .seg2 button.key{outline:2px dashed var(--cyan);outline-offset:-2px;}
+  .acts{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+  .acts button{flex:1;min-width:120px;min-height:38px;border-radius:8px;font-size:12.5px;font-weight:700;
+    border:1px solid var(--line);background:var(--panel2);color:var(--ink);}
+  .acts button.pri{background:#422006;border-color:var(--accent);color:#fde68a;}
+  .grid4{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+  @media(min-width:620px){.grid4{grid-template-columns:repeat(4,1fr);}}
+  .btab{width:100%;font-size:11.5px;border-collapse:collapse;min-width:0;}
+  .btab td,.btab th{border-bottom:1px solid var(--line);padding:6px 4px;text-align:right;}
+  .btab th{font-size:10px;color:var(--dim);letter-spacing:.4px;}
+  .btab td:first-child,.btab th:first-child{text-align:left;font-weight:700;}
+  .up{color:#fca5a5;} .down{color:#fde68a;} .fine{color:#86efac;}
+  .errs{display:flex;flex-direction:column;gap:7px;margin-top:10px;}
+  .er{background:var(--panel2);border:1px solid var(--line);border-left:3px solid var(--err);
+    border-radius:7px;padding:8px 9px;font-size:11.5px;line-height:1.5;}
+  .er b{color:var(--ink);} .er .cells{color:#fca5a5;font-size:10.5px;display:block;margin:2px 0 4px;}
+  .er .why{color:var(--dim);}
+  .hide{display:none;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="card">
+    <h1>Que evento é esse? A produção muda com o tipo.</h1>
+    <div class="sub">A base técnica é quase sempre a mesma — o que muda é a <b>necessidade</b>. Para cada item, marque o que ele é em cada tipo de evento: <b>essencial</b>, <b>opcional</b> ou <b>desnecessário</b>. Ler isso errado é orçar errado.</div>
+    <div class="legend">
+      <span class="lg"><b>ESS</b> essencial — sem isso o evento não entrega</span>
+      <span class="lg"><b>OPC</b> opcional — entra se o briefing pedir</span>
+      <span class="lg"><b>NÃO</b> desnecessário — só infla o orçamento</span>
+    </div>
+    <div class="mwrap">
+      <table id="mx"><thead><tr id="hd"></tr></thead><tbody id="bd"></tbody></table>
+    </div>
+    <div class="acts">
+      <button class="pri" id="chk">Conferir</button>
+      <button id="rst">Reiniciar</button>
+    </div>
+  </div>
+
+  <div class="card hide" id="res">
+    <h1>Resultado</h1>
+    <div class="sub">Contorno tracejado <span style="color:var(--cyan)">— — —</span> marca a resposta esperada.</div>
+    <div class="grid4">
+      <div class="stat"><div class="k">ACERTOS</div><div class="val" id="sc">—</div></div>
+      <div class="stat"><div class="k">EM BRANCO</div><div class="val" id="bl">—</div></div>
+      <div class="stat"><div class="k">SUPERDIMENSIONOU</div><div class="val" id="ov">—</div></div>
+      <div class="stat"><div class="k">SUBDIMENSIONOU</div><div class="val" id="un">—</div></div>
+    </div>
+    <div class="verdict" id="vd"></div>
+    <div class="errs" id="el"></div>
+  </div>
+
+  <div class="card hide" id="bud">
+    <h1>Impacto no orçamento</h1>
+    <div class="sub">Somamos apenas o que você marcou como <b>essencial</b> — é isso que vira proposta fechada. Valores de locação por evento, mercado brasileiro.</div>
+    <div class="mwrap"><table class="btab" id="bt"></table></div>
+    <div class="note" id="bn" style="margin-top:10px;"></div>
+  </div>
+</div>
+<script>
+(function(){
+var $=function(s){return document.querySelector(s);};
+var TYPES=[{n:'SHOW',d:'música ao vivo'},{n:'CORPORATIVO',d:'palestra / convenção'},
+           {n:'CASAMENTO',d:'social'},{n:'FESTIVAL',d:'multi-palco, ar livre'}];
+var LBL=['NÃO','OPC','ESS'];
+var FULL=['desnecessário','opcional','essencial'];
+/* k = gabarito [SHOW, CORP, CASA, FEST] : 2 essencial / 1 opcional / 0 desnecessário */
+var IT=[
+ {n:'PA com subgrave potente',c:6500,k:[2,0,1,2],w:'Grave é a assinatura do show e do festival. Em palestra, subgrave só empasta a região da voz e derruba a inteligibilidade — é dinheiro gasto para piorar o evento. No casamento o sub aparece na pista, não na cerimônia.'},
+ {n:'Retornos de palco (monitores)',c:2800,k:[2,1,1,2],w:'Sem retorno a banda não toca junta. No corporativo o monitor só entra se houver banda, VT com áudio ou palco largo; no casamento depende do formato musical contratado.'},
+ {n:'In-ear (monitoração pessoal)',c:3500,k:[1,0,0,1],w:'In-ear é decisão de rider do artista, não obrigação da produção: a maioria dos palcos ainda roda em wedge. Em palestra e casamento não cumpre função nenhuma.'},
+ {n:'Backline (bateria, amplificadores)',c:4500,k:[2,0,1,2],w:'Backline é o que faz a banda existir no palco. Palestra não usa. No casamento só entra se houver banda ou trio ao vivo — e normalmente é backline reduzido.'},
+ {n:'Microfone de lapela',c:900,k:[0,2,1,0],w:'Lapela libera as mãos de quem fala e é o padrão do palestrante que anda pelo palco. No show ela desaparece no vazamento do PA; no casamento entra quando o celebrante usa, mas não é regra do rito.'},
+ {n:'Microfone gooseneck de púlpito',c:600,k:[0,2,0,0],w:'Púlpito com gooseneck é a abertura institucional de qualquer convenção — abertura, patrocinador, autoridade. Fora do corporativo simplesmente não existe púlpito.'},
+ {n:'Projetor e telão de slides',c:5200,k:[1,2,1,1],w:'Slide ilegível derruba a palestra inteira: o telão é o produto do corporativo, não um enfeite. Em show e festival o telão é conteúdo/câmera (opcional); no casamento serve para retrospectiva.'},
+ {n:'Moving heads e luz cênica',c:7000,k:[2,1,1,2],w:'Luz cênica é dramaturgia do show e do festival. No corporativo vira cenografia de marca e no casamento, ambientação — em ambos ela não pode ofuscar quem fala nem estourar a foto.'},
+ {n:'Luz branca de qualidade p/ foto e vídeo',c:2400,k:[1,2,2,1],w:'Câmera não inventa luz. Palestrante gravado precisa de frontal branca, uniforme e com bom índice de reprodução de cor; casamento vive de foto e vídeo. Em show e festival a luz é cênica e a câmera se adapta.'},
+ {n:'Gravação e streaming',c:6800,k:[1,2,1,1],w:'O conteúdo é o entregável do corporativo — o cliente quer o vídeo depois do evento. Nos demais é opcional e muda o contrato: direitos de imagem, rider do artista, ECAD.'},
+ {n:'Tradução simultânea',c:5500,k:[0,1,0,0],w:'Só entra quando existe público estrangeiro: cabine, dois intérpretes por idioma e receptores. Marcar isso fora do corporativo é custo puro sem nenhum uso.'},
+ {n:'Gerador de energia',c:3200,k:[1,1,1,2],w:'Festival ao ar livre não tem rede confiável: gerador dimensionado (e reserva) é obrigatório. Casa de show, hotel e buffet já têm energia instalada — ali o gerador é backup, não regra.'},
+ {n:'Cobertura contra chuva',c:9000,k:[1,1,1,2],w:'Chuva não negocia. Festival precisa cobrir palco, FOH, torres de delay e praça de alimentação. Casamento ao ar livre precisa de plano B; evento coberto não precisa de nada disso.'},
+ {n:'Camarim',c:2000,k:[2,1,1,2],w:'Artista sem camarim atrasa o show — é item de rider, não de conforto. No corporativo vira sala de apoio do palestrante e no casamento, sala dos noivos: útil, raramente crítico.'},
+ {n:'Cronograma minuto a minuto',c:800,k:[2,2,2,2],w:'O cronograma é o que segura qualquer evento de pé: montagem, passagem de som, portas, virada de palco, desmontagem. É o único item que o cliente nunca vê e sente na hora em que falta.'},
+ {n:'Segurança e gradil de contenção',c:7500,k:[2,0,0,2],w:'Gradil serve para conter público em movimento: frente de palco, fluxo e rota de evacuação. Convenção e casamento têm controle de acesso e recepção — contenção de multidão ali é cenário de circo.'},
+ {n:'DJ e pista',c:4000,k:[1,1,2,1],w:'Casamento termina na pista: é ali que o cliente julga se a festa foi boa. Em show e festival o DJ cobre intervalo e virada; no corporativo aparece só na festa de encerramento.'},
+ {n:'Mesa digital com muitos canais',c:3800,k:[2,1,1,2],w:'Contagem de canal sai do mapa de palco, não do catálogo. Banda com retornos passa fácil de 32 canais; palestra com quatro microfones e um VT cabe numa compacta de 16.'},
+ {n:'Rádio comunicador para a equipe',c:700,k:[2,2,2,2],w:'Sem rádio a produção vira grito e mensagem no celular — e no meio do show ninguém ouve o celular. Vale para todo evento: é o item mais barato que mais evita prejuízo.'},
+ {n:'Credenciamento',c:2600,k:[1,2,0,2],w:'Credenciamento controla quem entra e até onde vai: crachá, área restrita, imprensa, equipe. Corporativo e festival vivem disso. No casamento existe lista de convidados na recepção, não credencial.'}
+];
+var st=[], checked=false;
+function brl(v){return 'R$ '+v.toLocaleString('pt-BR');}
+function build(){
+  var hd=$('#hd');
+  hd.innerHTML='<th class="name">NECESSIDADE</th>'+TYPES.map(function(t){
+    return '<th>'+t.n+'<small>'+t.d+'</small></th>';}).join('');
+  var rows=IT.map(function(it,i){
+    var tds=TYPES.map(function(t,j){
+      var bs=[2,1,0].map(function(v){
+        return '<button data-i="'+i+'" data-j="'+j+'" data-v="'+v+'" aria-label="'+FULL[v]+'">'+LBL[v]+'</button>';
+      }).join('');
+      return '<td><div class="seg2">'+bs+'</div></td>';
+    }).join('');
+    return '<tr><td class="name">'+it.n+'<span class="cost">'+brl(it.c)+'</span></td>'+tds+'</tr>';
+  }).join('');
+  $('#bd').innerHTML=rows;
+  Array.prototype.forEach.call(document.querySelectorAll('#bd button'),function(b){
+    b.addEventListener('click',function(){
+      var i=+b.dataset.i,j=+b.dataset.j;
+      if(checked) clear();
+      st[i][j]=+b.dataset.v; paint(i,j);
+    });
+  });
+}
+function paint(i,j){
+  Array.prototype.forEach.call(document.querySelectorAll('#bd button[data-i="'+i+'"][data-j="'+j+'"]'),function(b){
+    b.classList.toggle('on', st[i][j]===+b.dataset.v);
+  });
+}
+function clear(){
+  checked=false;
+  $('#res').classList.add('hide'); $('#bud').classList.add('hide');
+  Array.prototype.forEach.call(document.querySelectorAll('#bd button'),function(b){
+    b.classList.remove('bad'); b.classList.remove('key');
+  });
+}
+function reset(){
+  st=IT.map(function(){return [-1,-1,-1,-1];});
+  clear();
+  Array.prototype.forEach.call(document.querySelectorAll('#bd button'),function(b){b.classList.remove('on');});
+}
+function check(){
+  var ok=0, blank=0, over=0, under=0, errs=[];
+  IT.forEach(function(it,i){
+    var cells=[];
+    TYPES.forEach(function(t,j){
+      var u=st[i][j], k=it.k[j];
+      var kb=document.querySelector('#bd button[data-i="'+i+'"][data-j="'+j+'"][data-v="'+k+'"]');
+      if(kb) kb.classList.add('key');
+      if(u===k){ ok++; return; }
+      if(u===-1){ blank++; cells.push(t.n+': em branco — o esperado é <b>'+FULL[k]+'</b>'); return; }
+      if(u>k){ over++; } else { under++; }
+      var ub=document.querySelector('#bd button[data-i="'+i+'"][data-j="'+j+'"][data-v="'+u+'"]');
+      if(ub) ub.classList.add('bad');
+      cells.push(t.n+': você marcou <b>'+FULL[u]+'</b>, é <b>'+FULL[k]+'</b>');
+    });
+    if(cells.length) errs.push({n:it.n,c:cells});
+  });
+  checked=true;
+  var total=IT.length*TYPES.length;
+  $('#sc').textContent=ok+'/'+total;
+  $('#bl').textContent=blank; $('#ov').textContent=over; $('#un').textContent=under;
+  var pct=Math.round(ok/total*100);
+  var v=$('#vd');
+  if(pct>=90){ v.className='verdict ok'; v.textContent='Leitura de briefing consistente ('+pct+'%) — você orça o evento que existe, não o catálogo.'; }
+  else if(pct>=70){ v.className='verdict warn'; v.textContent='Leitura razoável ('+pct+'%), mas ainda escapa item que muda o preço da proposta.'; }
+  else { v.className='verdict bad'; v.textContent='Leitura de briefing fraca ('+pct+'%) — nesse estado, a proposta sai errada e o evento sofre.'; }
+  $('#el').innerHTML=errs.map(function(e){
+    return '<div class="er"><b>'+e.n+'</b><span class="cells">'+e.c.join(' · ')+'</span><span class="why">'+
+      (IT.filter(function(x){return x.n===e.n;})[0].w)+'</span></div>';
+  }).join('') || '<div class="note">Nenhum erro. Todas as 80 células batem com o gabarito.</div>';
+  $('#res').classList.remove('hide');
+  budget();
+  $('#res').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function budget(){
+  var rows='<tr><th>EVENTO</th><th>SUA PROPOSTA</th><th>REFERÊNCIA</th><th>DIFERENÇA</th></tr>';
+  var infl=0, falta=0;
+  TYPES.forEach(function(t,j){
+    var u=0,r=0;
+    IT.forEach(function(it,i){ if(st[i][j]===2) u+=it.c; if(it.k[j]===2) r+=it.c; });
+    var d=u-r, cls=d>r*0.12?'up':(d<-r*0.12?'down':'fine');
+    if(d>r*0.12) infl++; if(d<-r*0.12) falta++;
+    var sig=(d>0?'+':'')+brl(d).replace('R$ -','-R$ ');
+    rows+='<tr><td>'+t.n+'</td><td>'+brl(u)+'</td><td>'+brl(r)+'</td><td class="'+cls+'">'+sig+
+      ' <small>('+(r?Math.round(d/r*100):0)+'%)</small></td></tr>';
+  });
+  $('#bt').innerHTML=rows;
+  var m=[];
+  if(infl) m.push('Em <b>'+infl+'</b> evento(s) sua proposta ficou acima da referência. Marcar tudo como essencial não é caprichar: é entregar um orçamento inflado que o cliente compara com o concorrente e recusa. Você perde a concorrência antes de discutir qualidade.');
+  if(falta) m.push('Em <b>'+falta+'</b> evento(s) sua proposta ficou abaixo. Orçamento curto ganha a concorrência e perde o evento: falta canal, falta luz, falta gerador — e o custo aparece na correria do dia, sem faturamento, no seu nome.');
+  if(!infl&&!falta) m.push('Suas propostas ficaram dentro da faixa da referência nos quatro tipos. É esse o alvo: o item entra porque o evento pede, não porque está no catálogo.');
+  m.push('O que é <b>opcional</b> não some — vira linha destacada na proposta, com preço, para o cliente decidir. É assim que se sobe o ticket sem inflar a base.');
+  $('#bn').innerHTML=m.join(' ');
+  $('#bud').classList.remove('hide');
+}
+$('#chk').addEventListener('click',check);
+$('#rst').addEventListener('click',reset);
+build(); reset();
+})();
+</script>
+</body>
+</html>

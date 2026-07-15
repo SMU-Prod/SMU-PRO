@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMU PRO · Video Mapping (Warp / Mask / Blend)</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0c1017;--panel:#161c26;--panel2:#1d2431;--line:#2a3444;--ink:#e7edf5;--dim:#8794a8;--accent:#a855f7;--ok:#22c55e;--err:#ef4444;--warn:#f59e0b;}
+  html,body{background:var(--bg);color:var(--ink);font-family:'Segoe UI',system-ui,Arial,sans-serif;}
+  body{padding:10px;}
+  .app{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:10px;}
+  .top{display:flex;align-items:center;gap:10px;background:linear-gradient(90deg,#2a1240,#0f172a);border:1px solid var(--line);border-radius:10px;padding:9px 14px;}
+  .top .logo{font-weight:900;font-size:15px;} .top .sub{font-size:10px;color:var(--dim);letter-spacing:.12em;text-transform:uppercase;} .sp{flex:1;}
+  .tag{font-size:11px;font-weight:700;background:#1b2330;color:var(--dim);padding:4px 12px;border-radius:20px;}
+  .dlbar{display:flex;align-items:center;gap:10px;background:#1d1030;border:1px solid #43206b;border-radius:8px;padding:8px 12px;flex-wrap:wrap;}
+  .dlbar .t{font-size:12px;color:#d3b8f0;flex:1;min-width:220px;} .dlbar .t b{color:#eeddff;}
+  .dlbar a{background:linear-gradient(#a855f7,#7c2fd0);color:#fff;text-decoration:none;padding:8px 14px;border-radius:6px;font-weight:800;font-size:12.5px;white-space:nowrap;}
+  .grid{display:grid;grid-template-columns:1fr;gap:10px;}
+  @media(min-width:880px){ .grid{grid-template-columns:1fr 280px;} }
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;}
+  .card h2{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:9px;}
+  .canwrap{background:#04060a;border:1px solid var(--line);border-radius:9px;overflow:hidden;position:relative;}
+  #cv{width:100%;display:block;aspect-ratio:16/9;touch-action:none;cursor:crosshair;}
+  .step{display:flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px 11px;margin-bottom:7px;cursor:pointer;}
+  .step .n{width:22px;height:22px;border-radius:50%;background:#2a3444;color:#cbd5e1;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .step.on{border-color:var(--accent);} .step.on .n{background:var(--accent);color:#fff;}
+  .step.done{border-color:var(--ok);} .step.done .n{background:var(--ok);color:#04120d;}
+  .step .t{font-size:12px;} .step .t small{display:block;color:var(--dim);font-size:10.5px;margin-top:2px;}
+  .row{display:flex;align-items:center;gap:8px;margin-bottom:9px;}
+  .row label{font-size:11.5px;color:var(--dim);width:96px;flex-shrink:0;}
+  .row .v{margin-left:auto;font-size:11.5px;font-weight:700;color:var(--accent);}
+  input[type=range]{flex:1;accent-color:var(--accent);height:4px;}
+  .sw{width:40px;height:20px;border-radius:10px;background:#2a3444;border:none;position:relative;cursor:pointer;flex-shrink:0;}
+  .sw.on{background:var(--accent);} .sw::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.15s;} .sw.on::after{left:22px;}
+  .verdict{font-size:12.5px;font-weight:700;padding:9px;border-radius:8px;text-align:center;margin-top:8px;}
+  .verdict.ok{background:#14532d;color:#bbf7d0;} .verdict.bad{background:#450a0a;color:#fca5a5;} .verdict.idle{background:var(--panel2);color:var(--dim);}
+  .note{font-size:11.5px;color:var(--dim);line-height:1.55;margin-top:9px;} .note b{color:var(--ink);}
+  .btn{font-size:11.5px;padding:7px 12px;border:1px solid var(--line);border-radius:7px;background:#0c1119;color:var(--ink);cursor:pointer;margin-top:8px;}
+  .note-replica{font-size:10.5px;color:#5f6b7a;text-align:center;padding:4px;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top"><div><div class="logo">Video Mapping — Warp · Mask · Blend</div><div class="sub">Encaixar a imagem na superfície real</div></div><div class="sp"></div><div class="tag" id="tag">Passo 1 · Warp</div></div>
+  <div class="dlbar">
+    <div class="t">Na vida real o mapping é feito no <b>Resolume Arena (Advanced Output)</b>, <b>MadMapper</b>, Watchout ou disguise. Aqui você treina o conceito que vale em todos: <b>warp</b>, <b>mask</b> e <b>blend</b>.</div>
+    <a href="https://resolume.com/download/" target="_blank" rel="noopener">⬇ Baixar Resolume (resolume.com)</a>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Projeção sobre a cenografia</h2>
+      <div class="canwrap"><canvas id="cv" width="960" height="540"></canvas></div>
+      <div class="note" id="note"></div>
+    </div>
+
+    <div class="card">
+      <h2>Procedimento</h2>
+      <div class="step on" id="s1"><div class="n">1</div><div class="t">WARP — alinhar<small>arraste os 4 cantos até casar com a parede</small></div></div>
+      <div class="step" id="s2"><div class="n">2</div><div class="t">MASK — cortar o vazamento<small>esconder a luz que cai fora da cenografia</small></div></div>
+      <div class="step" id="s3"><div class="n">3</div><div class="t">BLEND — juntar 2 projetores<small>apagar a emenda brilhante do meio</small></div></div>
+
+      <div style="margin-top:12px;">
+        <div class="row"><label>Máscara (mask)</label><button class="sw" id="swMask"></button><span class="v" id="maskV">off</span></div>
+        <div class="row"><label>2º projetor</label><button class="sw" id="swP2"></button><span class="v" id="p2V">off</span></div>
+        <div class="row"><label>Blend (emenda)</label><input type="range" id="blend" min="0" max="100" value="0"><span class="v" id="blendV">0%</span></div>
+        <div class="row"><label>Grade de ajuste</label><button class="sw on" id="swGrid"></button><span class="v" id="gridV">on</span></div>
+      </div>
+      <div class="verdict idle" id="verdict">Arraste os cantos para alinhar.</div>
+      <button class="btn" id="reset">Recomeçar</button>
+    </div>
+  </div>
+  <div class="note-replica">Simulador didático de conceito (SMU Produções). O mapping real é feito no Resolume/MadMapper/Watchout — baixe o oficial no link acima.</div>
+</div>
+<script>
+(function(){
+"use strict";
+var $=function(s){return document.querySelector(s);};
+var cv=$('#cv'), ctx=cv.getContext('2d');
+// superfície alvo (parede irregular) em coords normalizadas
+var TARGET=[{x:.24,y:.22},{x:.72,y:.16},{x:.76,y:.74},{x:.20,y:.80}];
+var quad, mask=false, p2=false, blend=0, grid=true, drag=-1;
+var done={warp:false, mask:false, blend:false};
+function reset(){ quad=[{x:.10,y:.10},{x:.60,y:.06},{x:.62,y:.52},{x:.08,y:.56}]; mask=false;p2=false;blend=0;grid=true;
+  done={warp:false,mask:false,blend:false};
+  $('#swMask').classList.remove('on'); $('#swP2').classList.remove('on'); $('#swGrid').classList.add('on');
+  $('#blend').value=0; upd(); }
+function px(p){ return {x:p.x*cv.width, y:p.y*cv.height}; }
+function dist(a,b){ return Math.hypot(a.x-b.x,a.y-b.y); }
+function warpErr(){ var e=0; for(var i=0;i<4;i++) e+=dist(quad[i],TARGET[i]); return e/4; }
+
+cv.addEventListener('pointerdown',function(e){
+  var r=cv.getBoundingClientRect(); var m={x:(e.clientX-r.left)/r.width, y:(e.clientY-r.top)/r.height};
+  var best=-1, bd=0.06;
+  for(var i=0;i<4;i++){ var d=dist(m,quad[i]); if(d<bd){ bd=d; best=i; } }
+  drag=best; if(drag>=0){ try{cv.setPointerCapture(e.pointerId);}catch(_){} }
+});
+cv.addEventListener('pointermove',function(e){ if(drag<0)return; var r=cv.getBoundingClientRect();
+  quad[drag]={x:Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)), y:Math.max(0,Math.min(1,(e.clientY-r.top)/r.height))}; upd(); });
+cv.addEventListener('pointerup',function(){ drag=-1; });
+
+$('#swMask').onclick=function(){ mask=!mask; this.classList.toggle('on',mask); $('#maskV').textContent=mask?'on':'off'; if(mask&&done.warp)done.mask=true; upd(); };
+$('#swP2').onclick=function(){ p2=!p2; this.classList.toggle('on',p2); $('#p2V').textContent=p2?'on':'off'; upd(); };
+$('#blend').oninput=function(){ blend=+this.value; $('#blendV').textContent=blend+'%'; if(p2&&blend>=60&&blend<=90)done.blend=true; upd(); };
+$('#swGrid').onclick=function(){ grid=!grid; this.classList.toggle('on',grid); $('#gridV').textContent=grid?'on':'off'; upd(); };
+$('#reset').onclick=reset;
+
+function upd(){
+  var err=warpErr();
+  if(err<0.035) done.warp=true;
+  $('#s1').className='step'+(done.warp?' done':' on');
+  $('#s2').className='step'+(done.mask?' done':(done.warp?' on':''));
+  $('#s3').className='step'+(done.blend?' done':(done.mask?' on':''));
+  var v=$('#verdict'), n=$('#note'), tg=$('#tag');
+  if(!done.warp){ tg.textContent='Passo 1 · Warp'; v.className='verdict bad'; v.textContent='Desalinhado — arraste os 4 cantos até casar ('+(err*100).toFixed(1)+'% de erro)';
+    n.innerHTML='<b>WARP</b> é deformar a imagem para ela encaixar na superfície real. Nenhuma parede é um retângulo perfeito diante do projetor — você puxa os cantos até a imagem "vestir" a cenografia.'; }
+  else if(!done.mask){ tg.textContent='Passo 2 · Mask'; v.className='verdict warn'; v.style.background='#422006'; v.style.color='#fde68a'; v.textContent='✓ Alinhado! Agora corte o vazamento de luz (Mask).';
+    n.innerHTML='<b>MASK</b> esconde a luz que cai fora da cenografia (na parede do fundo, no chão, no público). Sem máscara, o retângulo do projetor aparece e mata a ilusão.'; }
+  else if(!done.blend){ tg.textContent='Passo 3 · Blend'; v.className='verdict warn'; v.style.background='#422006'; v.style.color='#fde68a';
+    v.textContent = p2 ? 'Ligue o blend até a emenda sumir (60–90%)' : 'Ligue o 2º projetor para cobrir a área toda';
+    n.innerHTML='<b>BLEND</b>: quando um projetor não cobre tudo, você usa dois com <b>sobreposição</b>. Na área sobreposta a luz soma e cria uma <b>emenda brilhante</b> — o blend faz um degradê nas bordas para a junção ficar invisível.'; }
+  else { tg.textContent='Concluído ✓'; v.className='verdict ok'; v.style.background=''; v.style.color=''; v.textContent='✓ Mapping pronto: alinhado, mascarado e com blend invisível.';
+    n.innerHTML='É esse o procedimento em qualquer software (Resolume Advanced Output, MadMapper, Watchout): <b>warp</b> para vestir a superfície → <b>mask</b> para cortar o vazamento → <b>blend</b> para juntar projetores sem emenda.'; }
+  draw();
+}
+function draw(){
+  var W=cv.width,H=cv.height;
+  ctx.fillStyle='#04060a'; ctx.fillRect(0,0,W,H);
+  // cenografia alvo
+  ctx.beginPath(); TARGET.forEach(function(p,i){ var q=px(p); i?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y); }); ctx.closePath();
+  ctx.fillStyle='#141a24'; ctx.fill(); ctx.strokeStyle='#3d4a5c'; ctx.lineWidth=2; ctx.stroke();
+  ctx.fillStyle='#4a5768'; ctx.font='12px Segoe UI'; ctx.textAlign='center';
+  var c=px({x:(TARGET[0].x+TARGET[2].x)/2,y:(TARGET[0].y+TARGET[2].y)/2});
+  if(warpErr()>=0.035) ctx.fillText('cenografia (alvo)', c.x, c.y);
+  ctx.textAlign='left';
+
+  // projeção 1 (quad deformado)
+  ctx.save();
+  ctx.beginPath(); quad.forEach(function(p,i){ var q=px(p); i?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y); }); ctx.closePath();
+  if(mask){ // clipa no alvo -> sem vazamento
+    ctx.beginPath(); TARGET.forEach(function(p,i){ var q=px(p); i?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y); }); ctx.closePath(); ctx.clip();
+    ctx.beginPath(); quad.forEach(function(p,i){ var q=px(p); i?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y); }); ctx.closePath(); ctx.clip();
+  } else ctx.clip();
+  var g=ctx.createLinearGradient(0,0,W,H); g.addColorStop(0,'#a855f7'); g.addColorStop(.5,'#3b82f6'); g.addColorStop(1,'#22d3ee');
+  ctx.globalAlpha=0.85; ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  if(grid){ ctx.globalAlpha=0.35; ctx.strokeStyle='#fff'; ctx.lineWidth=1; for(var x=0;x<W;x+=42){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();} for(var y=0;y<H;y+=42){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();} }
+  ctx.globalAlpha=1; ctx.restore();
+
+  // projeção 2 + blend
+  if(p2){
+    ctx.save();
+    var off=W*0.30;
+    ctx.beginPath(); quad.forEach(function(p,i){ var q=px(p); i?ctx.lineTo(q.x+off,q.y):ctx.moveTo(q.x+off,q.y); }); ctx.closePath();
+    if(mask){ ctx.beginPath(); TARGET.forEach(function(p,i){ var q=px(p); i?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y); }); ctx.closePath(); ctx.clip();
+      ctx.beginPath(); quad.forEach(function(p,i){ var q=px(p); i?ctx.lineTo(q.x+off,q.y):ctx.moveTo(q.x+off,q.y); }); ctx.closePath(); ctx.clip(); }
+    else ctx.clip();
+    var g2=ctx.createLinearGradient(off,0,W+off,H); g2.addColorStop(0,'#a855f7'); g2.addColorStop(.5,'#3b82f6'); g2.addColorStop(1,'#22d3ee');
+    // blend: degradê na borda esquerda do projetor 2
+    ctx.globalCompositeOperation='lighter';
+    var q0=px(quad[0]);
+    var bw=off*(blend/100);
+    var fade=ctx.createLinearGradient(q0.x+off, 0, q0.x+off+Math.max(1,bw), 0);
+    fade.addColorStop(0,'rgba(255,255,255,'+(blend>0?0:0.85)+')');
+    ctx.globalAlpha=0.85; ctx.fillStyle=g2; ctx.fillRect(0,0,W,H);
+    // emenda: se blend baixo, área sobreposta estoura
+    if(blend<60){ ctx.globalAlpha=(60-blend)/60*0.5; ctx.fillStyle='#fff'; ctx.fillRect(q0.x+off, 0, Math.max(6,off*0.5), H); }
+    ctx.globalCompositeOperation='source-over'; ctx.globalAlpha=1; ctx.restore();
+    if(blend<60){ ctx.fillStyle='#fca5a5'; ctx.font='12px Segoe UI'; ctx.textAlign='center'; ctx.fillText('⚠ emenda brilhante (aumente o blend)', W/2, H-14); ctx.textAlign='left'; }
+  }
+
+  // cantos (handles)
+  if(!done.warp || drag>=0){
+    quad.forEach(function(p,i){ var q=px(p); var t=px(TARGET[i]);
+      ctx.strokeStyle='#ffffff55'; ctx.setLineDash([4,4]); ctx.beginPath(); ctx.moveTo(q.x,q.y); ctx.lineTo(t.x,t.y); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle='#22c55e'; ctx.beginPath(); ctx.arc(t.x,t.y,5,0,6.29); ctx.fill();
+    });
+  }
+  quad.forEach(function(p){ var q=px(p); ctx.fillStyle='#fff'; ctx.strokeStyle='#a855f7'; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.arc(q.x,q.y,8,0,6.29); ctx.fill(); ctx.stroke(); });
+}
+function fit(){ var r=cv.getBoundingClientRect(); var dpr=Math.min(2,window.devicePixelRatio||1); cv.width=Math.max(480,Math.round(r.width*dpr)); cv.height=Math.round(cv.width*9/16); draw(); }
+window.addEventListener('resize',function(){clearTimeout(window._z);window._z=setTimeout(fit,120);});
+window.__vm={ get done(){return done;}, upd:upd, solveWarp:function(){ quad=TARGET.map(function(p){return {x:p.x,y:p.y};}); upd(); }, get err(){return warpErr();}};
+reset(); fit();
+})();
+</script>
+</body>
+</html>

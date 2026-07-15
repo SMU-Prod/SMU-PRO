@@ -1,0 +1,248 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Simulador — grandMA3 (réplica funcional)</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif}
+html,body{height:100%;background:#0a0a0b;color:#e9edf2;overflow:hidden}
+body{display:flex;align-items:center;justify-content:center}
+.console{width:1280px;height:720px;background:#141416;border:1px solid #2a2a2e;border-radius:10px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 48px #000a}
+.brand{height:30px;background:linear-gradient(90deg,#1c1c20,#141416);display:flex;align-items:center;justify-content:space-between;padding:0 14px;border-bottom:1px solid #2a2a2e}
+.brand b{font-size:13px;letter-spacing:2px;color:#c7cfda;font-weight:800}
+.brand .cmdlabel{font-size:10px;color:#6b7280}
+.top{flex:1;display:grid;grid-template-columns:1.35fr 1fr;gap:2px;background:#0a0a0b;min-height:0}
+.screen{background:#161719;display:flex;flex-direction:column;min-height:0}
+.scrhdr{font-size:10px;letter-spacing:1px;color:#7b8494;padding:5px 10px;background:#1c1d20;border-bottom:1px solid #26272b;text-transform:uppercase;font-weight:700}
+/* fixture sheet */
+.sheet{flex:1;overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th{background:#1a1b1e;color:#8b93a1;font-weight:600;padding:4px 6px;position:sticky;top:0;font-size:9.5px;letter-spacing:.5px;text-transform:uppercase}
+td{padding:4px 6px;border-bottom:1px solid #222327;text-align:center;font-variant-numeric:tabular-nums;color:#aeb6c2}
+tr.sel td{background:#2a2e1a}
+td.fxname{text-align:left;color:#cfd6e0;font-weight:600}
+td.prog{color:#ff5a5a;font-weight:700}
+.dimbar{display:inline-block;width:26px;height:6px;background:#26282c;border-radius:2px;vertical-align:middle;margin-left:4px;position:relative}
+.dimbar i{position:absolute;left:0;top:0;bottom:0;background:#e0c040;border-radius:2px}
+/* plan */
+.plan{flex:1;position:relative}
+.plan canvas{width:100%;height:100%;display:block}
+/* encoders */
+.encbar{height:96px;background:#161719;border-top:1px solid #26272b;display:flex;align-items:stretch}
+.ptype{width:120px;border-right:1px solid #26272b;display:flex;flex-direction:column}
+.ptbtn{flex:1;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#9aa2b0;cursor:pointer;border-bottom:1px solid #222}
+.ptbtn.on{background:#2b2f3a;color:#fff}
+.encs{flex:1;display:grid;grid-template-columns:repeat(4,1fr)}
+.enc{border-right:1px solid #222;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:6px;cursor:ns-resize;touch-action:none}
+.enc .lbl{font-size:10px;color:#8b93a1;letter-spacing:.5px;text-transform:uppercase;font-weight:700}
+.enc .dial{width:52px;height:52px;border-radius:50%;background:radial-gradient(circle at 50% 40%,#2a2c31,#191a1d);border:2px solid #3a3d44;position:relative}
+.enc .dial i{position:absolute;left:50%;top:6px;width:2px;height:16px;background:#e0c040;transform-origin:50% 20px;margin-left:-1px}
+.enc .val{font-size:12px;color:#e9edf2;font-variant-numeric:tabular-nums;font-weight:700}
+/* bottom: execs + keypad */
+.bottom{height:250px;display:grid;grid-template-columns:1fr 300px;gap:2px;background:#0a0a0b}
+.execs{background:#161719;display:flex;flex-direction:column;min-height:0}
+.execrow{flex:1;display:grid;grid-template-columns:repeat(6,1fr);gap:6px;padding:8px}
+.exec{background:#1a1b1e;border:1px solid #26272b;border-radius:6px;display:flex;flex-direction:column;align-items:center;padding:6px 4px;gap:5px}
+.exec .en{font-size:9px;color:#7b8494;height:20px;text-align:center;overflow:hidden;line-height:1.1}
+.exec .etrack{position:relative;width:26px;flex:1;min-height:70px;background:#0f1012;border:1px solid #2a2c31;border-radius:5px;touch-action:none;cursor:pointer}
+.exec .efill{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(0deg,#3a6a2a,#5aa03a);border-radius:0 0 4px 4px}
+.exec .eknob{position:absolute;left:-2px;right:-2px;height:9px;background:#cfd6e0;border-radius:3px}
+.exec .go{font-size:9px;font-weight:800;color:#0a0a0b;background:#3ad07a;border:none;border-radius:4px;padding:4px 0;width:100%;cursor:pointer}
+.exec.active{border-color:#3ad07a;box-shadow:0 0 0 1px #3ad07a}
+.exec .num{font-size:9px;color:#5b6472}
+.keypad{background:#161719;display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:1fr;gap:5px;padding:8px}
+.key{background:#232529;border:1px solid #313339;border-radius:6px;color:#dfe4ea;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;user-select:none}
+.key:active{background:#3a3d44}
+.key.fn{background:#20252e;color:#7fb2ff}.key.st{background:#2e2620;color:#ffb060}.key.go2{background:#1e2e22;color:#6ee59a}
+.key.wide{grid-column:span 2}
+.key.please{background:#2b3550;color:#bcd2ff}
+/* command line */
+.cmdline{height:34px;background:#0d1524;border-top:1px solid #26314a;display:flex;align-items:center;padding:0 12px;gap:8px;font-family:Consolas,monospace}
+.cmdline .prompt{color:#5aa0ff;font-weight:800;font-size:13px}
+.cmdline .buf{flex:1;color:#e9edf2;font-size:13px;letter-spacing:.3px}
+.cmdline .buf .cur{color:#ffcf6b}
+.cmdline .hint{font-size:10px;color:#5b6472;font-family:system-ui}
+/* mission */
+.mbar{height:40px;background:#0e1626;border-top:1px solid #24406e;display:flex;align-items:center;gap:10px;padding:0 12px;font-size:11.5px}
+.mbar .dot{width:12px;height:12px;border-radius:50%;border:2px solid #37507a;flex:none}.mbar .dot.ok{background:#39d98a;border-color:#39d98a}
+.mbar b{color:#8fd0ff}
+.mbar button{margin-left:auto;background:#1b2740;color:#dce7fb;border:1px solid #33507f;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer}
+</style></head>
+<body>
+<div class="console" id="console">
+  <div class="brand"><b>grandMA3</b><span class="cmdlabel">réplica funcional de estudo · SMU</span></div>
+  <div class="top">
+    <div class="screen"><div class="scrhdr">Fixture Sheet</div><div class="sheet" id="sheet"></div></div>
+    <div class="screen"><div class="scrhdr">Stage / Plan View</div><div class="plan"><canvas id="cv"></canvas></div></div>
+  </div>
+  <div class="encbar">
+    <div class="ptype" id="ptype"></div>
+    <div class="encs" id="encs"></div>
+  </div>
+  <div class="bottom">
+    <div class="execs"><div class="scrhdr">Executors — faders de playback (Go liga o cue; fader controla intensidade)</div>
+      <div class="execrow" id="execrow"></div></div>
+    <div class="keypad" id="keypad"></div>
+  </div>
+  <div class="cmdline"><span class="prompt">&gt;</span><span class="buf" id="buf"></span><span class="hint" id="hint">Selecione fixtures e use At / encoders. Store grava no executor.</span></div>
+  <div class="mbar"><span class="dot" id="mdot"></span><span id="mtext"></span><button id="mnext">Próxima ▸</button></div>
+</div>
+<script>
+// ── Modelo ──
+const N=8;
+const fx=[];
+for(let i=0;i<N;i++){fx.push({id:i+1,name:(i<4?'PAR LED ':'Moving ')+(i+1),x:0,y:0,dim:0,pan:128,tilt:128,r:255,g:255,b:255,sel:false,prog:{}});}
+// prog: quais atributos estão no programmer (dim,pan,tilt,color)
+const execs=[]; for(let i=0;i<6;i++)execs.push({label:'',cue:null,fader:0,go:false});
+let page='Dimmer'; // Dimmer | Position | Color
+let buf=''; // command line buffer
+let selAnchor=null;
+
+// ── Command line parsing (subset MA) ──
+function tokenize(s){return s.trim().split(/\s+/).filter(Boolean);}
+function selectRange(a,b){fx.forEach(f=>f.sel=false);const lo=Math.min(a,b),hi=Math.max(a,b);fx.forEach(f=>{if(f.id>=lo&&f.id<=hi)f.sel=true;});}
+function selected(){return fx.filter(f=>f.sel);}
+function putProg(attr){selected().forEach(f=>f.prog[attr]=true);}
+function execCmd(){
+  const t=tokenize(buf); if(!t.length){buf='';return render();}
+  const up=t.map(x=>x.toLowerCase());
+  try{
+  // Clear
+  if(up[0]==='clear'){clearProg();buf='';flash('Programmer limpo');return render();}
+  // Fixture n [Thru m]
+  if(up[0]==='fixture'||up[0]==='fix'||/^\d+$/.test(up[0])){
+    let i=(up[0]==='fixture'||up[0]==='fix')?1:0;
+    const a=parseInt(t[i]); let b=a;
+    if(up[i+1]==='thru'){b=parseInt(t[i+2])|| N;}
+    if(!isNaN(a)){selectRange(a,b||a); flash('Selecionado(s) fixture '+a+(b!==a?(' … '+b):''));}
+    // At v no mesmo comando?
+    const ai=up.indexOf('at');
+    if(ai>=0){applyAt(up[ai+1]);}
+    if(up.includes('full')){applyAt('100');}
+    buf='';return render();
+  }
+  // At v (sobre seleção atual)
+  if(up[0]==='at'){applyAt(up[1]);buf='';return render();}
+  if(up[0]==='full'){applyAt('100');buf='';return render();}
+  // Group n (grupos pré-def: 1=PARs,2=Movings,3=todos)
+  if(up[0]==='group'||up[0]==='grp'){const g=parseInt(t[1]);fx.forEach(f=>f.sel=false);
+    if(g===1)fx.forEach(f=>{if(f.id<=4)f.sel=true;});else if(g===2)fx.forEach(f=>{if(f.id>4)f.sel=true;});else if(g===3)fx.forEach(f=>f.sel=true);
+    flash('Group '+g);buf='';return render();}
+  // Store [Exec] n
+  if(up[0]==='store'){let n=parseInt(t[t.length-1]);if(!isNaN(n)&&n>=1&&n<=6){storeExec(n-1);flash('Store no Executor '+n);}else flash('Store: informe o nº do executor (1–6)');buf='';return render();}
+  // Off  -> zera dim seleção
+  if(up[0]==='off'){selected().forEach(f=>{f.dim=0;f.prog.dim=true;});buf='';return render();}
+  flash('Comando não reconhecido: '+buf);buf='';render();
+  }catch(e){flash('Erro no comando');buf='';render();}
+}
+function applyAt(v){let n=parseInt(v);if(isNaN(n))return;n=Math.max(0,Math.min(100,n));selected().forEach(f=>{f.dim=Math.round(n*2.55);f.prog.dim=true;});flash('At '+n+'%');}
+function clearProg(){fx.forEach(f=>{f.prog={};f.sel=false;});selAnchor=null;}
+function flash(msg){document.getElementById('hint').textContent=msg;}
+
+// ── Store / playback ──
+function storeExec(idx){
+  const snap=fx.map(f=>({dim:f.dim,pan:f.pan,tilt:f.tilt,r:f.r,g:f.g,b:f.b}));
+  // só grava atributos que estão no programmer (senão grava o estado atual todo — simplificado: grava tudo)
+  execs[idx].cue=snap; execs[idx].label='Cue '+(idx+1); execs[idx].fader=1; execs[idx].go=true;
+}
+function execOutput(){
+  // saída final por fixture: HTP no dim entre programmer e execs ativos; cor = programmer se ativo, senão exec mais recente
+  const out=fx.map(f=>({dim:0,r:f.r,g:f.g,b:f.b,pan:f.pan,tilt:f.tilt}));
+  execs.forEach(ex=>{ if(ex.cue&&ex.go&&ex.fader>0){ ex.cue.forEach((c,i)=>{ const d=Math.round(c.dim*ex.fader); if(d>out[i].dim){out[i].dim=d;out[i].r=c.r;out[i].g=c.g;out[i].b=c.b;out[i].pan=c.pan;out[i].tilt=c.tilt;} }); } });
+  // programmer sobrepõe (live) para fixtures com dim no prog
+  fx.forEach((f,i)=>{ if(f.prog.dim){out[i].dim=Math.max(out[i].dim,f.dim);} if(f.prog.color||f.prog.dim){out[i].r=f.r;out[i].g=f.g;out[i].b=f.b;} if(f.prog.pan)out[i].pan=f.pan; if(f.prog.tilt)out[i].tilt=f.tilt; if(f.prog.dim)out[i].dim=f.dim>out[i].dim?f.dim:out[i].dim; });
+  return out;
+}
+
+// ── Encoders ──
+const PAGES={ Dimmer:[{k:'dim',lbl:'Dimmer',min:0,max:255,disp:v=>Math.round(v/2.55)+'%'}],
+  Position:[{k:'pan',lbl:'Pan',min:0,max:255,disp:v=>Math.round((v/255*540-270))+'°'},{k:'tilt',lbl:'Tilt',min:0,max:255,disp:v=>Math.round((v/255*270-135))+'°'}],
+  Color:[{k:'r',lbl:'Red',min:0,max:255,disp:v=>''+v},{k:'g',lbl:'Green',min:0,max:255,disp:v=>''+v},{k:'b',lbl:'Blue',min:0,max:255,disp:v=>''+v}] };
+function buildPtype(){const el=document.getElementById('ptype');el.innerHTML='';Object.keys(PAGES).forEach(p=>{const b=document.createElement('div');b.className='ptbtn'+(p===page?' on':'');b.textContent=p;b.onclick=()=>{page=p;buildPtype();buildEncs();};el.appendChild(b);});}
+function buildEncs(){const el=document.getElementById('encs');el.innerHTML='';const attrs=PAGES[page];
+  for(let i=0;i<4;i++){const a=attrs[i];const d=document.createElement('div');d.className='enc';
+    if(a){const cur=avgAttr(a.k);d.innerHTML=`<div class="lbl">${a.lbl}</div><div class="dial"><i style="transform:rotate(${(cur/255)*270-135}deg)"></i></div><div class="val">${a.disp(cur)}</div>`;
+      d.addEventListener('pointerdown',e=>{const sy=e.clientY,sv=avgAttr(a.k);const mv=ev=>{if(!ev.buttons){cl();return;}setAttr(a.k,Math.max(0,Math.min(255,Math.round(sv+(sy-ev.clientY)*2))));};const cl=()=>{removeEventListener('pointermove',mv);removeEventListener('pointerup',cl);};addEventListener('pointermove',mv);addEventListener('pointerup',cl);});}
+    else{d.style.opacity=.25;d.innerHTML=`<div class="lbl">—</div><div class="dial"></div><div class="val"></div>`;}
+    el.appendChild(d);}
+}
+function avgAttr(k){const s=selected();if(!s.length)return 0;return s.reduce((a,f)=>a+f[k],0)/s.length;}
+function setAttr(k,v){const s=selected();if(!s.length){flash('Selecione fixtures primeiro');return;}s.forEach(f=>{f[k]=v; if(k==='dim')f.prog.dim=true; else if(k==='pan')f.prog.pan=true; else if(k==='tilt')f.prog.tilt=true; else {f.prog.color=true;}});render();}
+
+// ── Keypad ──
+const KEYS=[['Fixture','fn'],['Group','fn'],['Clear','fn'],['Store','st'],
+ ['7'],['8'],['9'],['Thru','fn'],
+ ['4'],['5'],['6'],['At','fn'],
+ ['1'],['2'],['3'],['Full','fn'],
+ ['0'],['.'],['Off','fn'],['Please','please']];
+function buildKeypad(){const el=document.getElementById('keypad');el.innerHTML='';KEYS.forEach(([t,cls])=>{const b=document.createElement('div');b.className='key'+(cls?' '+cls:'');b.textContent=t;b.onclick=()=>press(t);el.appendChild(b);});}
+function press(t){
+  if(t==='Please'){execCmd();return;}
+  if(t==='Clear'){ if(buf){buf='';render();} else {clearProg();flash('Programmer limpo');render();} return;}
+  const map={Fixture:'Fixture ',Group:'Group ',Thru:' Thru ',At:' At ',Store:'Store ',Full:' Full ',Off:'Off '};
+  if(map[t]!==undefined){buf+=map[t];}
+  else{buf+=t;}
+  render();
+}
+document.addEventListener('keydown',e=>{ if(/^[0-9]$/.test(e.key))buf+=e.key; else if(e.key==='Enter')return execCmd(); else if(e.key==='Backspace'){buf=buf.slice(0,-1);} else if(e.key===' '){buf+=' ';e.preventDefault();} else return; render();});
+
+// ── Fixture sheet ──
+function buildSheet(){const el=document.getElementById('sheet');const out=execOutput();
+  let h='<table><thead><tr><th>Fix</th><th>Nome</th><th>Dim</th><th>Pan</th><th>Tilt</th><th>Cor</th></tr></thead><tbody>';
+  fx.forEach((f,i)=>{const o=out[i];
+    h+=`<tr class="${f.sel?'sel':''}" data-fx="${f.id}">`+
+      `<td>${f.id}</td><td class="fxname">${f.name}</td>`+
+      `<td class="${f.prog.dim?'prog':''}">${Math.round(f.dim/2.55)}<span class="dimbar"><i style="width:${f.dim/2.55}%"></i></span></td>`+
+      `<td class="${f.prog.pan?'prog':''}">${f.id>4?Math.round(f.pan/255*540-270)+'°':'—'}</td>`+
+      `<td class="${f.prog.tilt?'prog':''}">${f.id>4?Math.round(f.tilt/255*270-135)+'°':'—'}</td>`+
+      `<td class="${f.prog.color?'prog':''}"><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:rgb(${f.r},${f.g},${f.b});vertical-align:middle;border:1px solid #333"></span></td></tr>`;
+  });
+  h+='</tbody></table>';el.innerHTML=h;
+  el.querySelectorAll('tr[data-fx]').forEach(tr=>tr.onclick=()=>{const id=+tr.dataset.fx;const f=fx.find(x=>x.id===id);
+    f.sel=!f.sel;selAnchor=id;render();});
+}
+
+// ── Plan canvas ──
+const cv=document.getElementById('cv');const ctx=cv.getContext('2d');
+function sizeCanvas(){const r=cv.getBoundingClientRect();const dpr=Math.min(2,devicePixelRatio||1);cv.width=r.width*dpr;cv.height=r.height*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);drawPlan();}
+function drawPlan(){const r=cv.getBoundingClientRect();const W=r.width,H=r.height;ctx.clearRect(0,0,W,H);ctx.fillStyle='#0c0d0f';ctx.fillRect(0,0,W,H);
+  const out=execOutput();const cols=4,rows=2,mx=W/(cols+1),my=H/(rows+1);
+  fx.forEach((f,i)=>{const cx=mx*((i%cols)+1),cy=my*(Math.floor(i/cols)+1);const o=out[i];const d=o.dim/255;
+    // facho
+    if(d>0.02){const bg=ctx.createRadialGradient(cx,cy,2,cx,cy,52);bg.addColorStop(0,`rgba(${o.r},${o.g},${o.b},${Math.min(0.9,d)})`);bg.addColorStop(1,`rgba(${o.r},${o.g},${o.b},0)`);ctx.fillStyle=bg;ctx.beginPath();ctx.arc(cx,cy,52,0,7);ctx.fill();}
+    // corpo fixture
+    ctx.fillStyle=f.sel?'#3a3f22':'#1a1c20';ctx.strokeStyle=f.sel?'#e0c040':'#2f333a';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,13,0,7);ctx.fill();ctx.stroke();
+    ctx.fillStyle=`rgb(${o.r},${o.g},${o.b})`;ctx.globalAlpha=0.35+0.65*d;ctx.beginPath();ctx.arc(cx,cy,7,0,7);ctx.fill();ctx.globalAlpha=1;
+    ctx.fillStyle='#6b7280';ctx.font='9px system-ui';ctx.textAlign='center';ctx.fillText('Fx'+f.id,cx,cy+26);
+  });
+  ctx.textAlign='left';ctx.fillStyle='#5b6472';ctx.font='10px system-ui';ctx.fillText(selected().length?('Selecionados: '+selected().map(f=>f.id).join(', ')):'Nada selecionado',10,H-10);
+}
+
+// ── Executors ──
+function buildExecs(){const el=document.getElementById('execrow');el.innerHTML='';execs.forEach((ex,i)=>{const d=document.createElement('div');d.className='exec'+(ex.go&&ex.cue?' active':'');
+  d.innerHTML=`<div class="en">${ex.cue?ex.label:'vazio'}</div><div class="etrack" data-ex="${i}"><div class="efill" style="height:${ex.fader*100}%"></div><div class="eknob" style="bottom:${ex.fader*100}%"></div></div><button class="go" data-go="${i}">GO</button><div class="num">Exec ${i+1}</div>`;
+  el.appendChild(d);
+  const track=d.querySelector('.etrack');
+  track.addEventListener('pointerdown',e=>{const r=track.getBoundingClientRect();const set=cy=>{let p=1-(cy-r.top)/r.height;p=Math.max(0,Math.min(1,p));ex.fader=p;if(p>0&&ex.cue)ex.go=true;render();};set(e.clientY);const mv=ev=>{if(!ev.buttons){cl();return;}set(ev.clientY);};const cl=()=>{removeEventListener('pointermove',mv);removeEventListener('pointerup',cl);};addEventListener('pointermove',mv);addEventListener('pointerup',cl);});
+  d.querySelector('[data-go]').onclick=()=>{if(!ex.cue){flash('Executor '+(i+1)+' vazio — faça Store primeiro');return;}ex.go=!ex.go;if(ex.go&&ex.fader===0)ex.fader=1;render();};
+});}
+
+// ── Missões ──
+const M=[
+ {t:'<b>Selecione</b> os fixtures 1 a 4 e coloque em <b>100%</b>. (Digite: Fixture 1 Thru 4 At 100 Please — ou clique nas linhas e use o encoder Dimmer.)',ok:()=>[1,2,3,4].every(id=>{const f=fx.find(x=>x.id===id);return f.sel&&f.dim>240;})},
+ {t:'Selecione um <b>Moving (5–8)</b> e dê uma <b>cor</b> pelo encoder (página Color) — ex.: azul.',ok:()=>fx.some(f=>f.id>4&&f.prog.color&&(f.b>150||f.r>150||f.g>150))},
+ {t:'<b>Store</b> o look atual no <b>Executor 1</b> (tecla Store 1 Please) e mexa no <b>fader do Exec 1</b>.',ok:()=>execs[0].cue&&execs[0].fader>0.1},
+ {t:'<b>Clear</b> o programmer (limpa a seleção/valores ao vivo) e confira que o <b>Executor 1 continua tocando</b> o cue.',ok:()=>fx.every(f=>!f.prog.dim&&!f.prog.color)&&execs[0].cue&&execs[0].go&&execs[0].fader>0.1},
+];
+let mi=0;
+function drawM(){document.getElementById('mtext').innerHTML='<b>Missão '+(mi+1)+'/'+M.length+':</b> '+M[mi].t;}
+function checkM(){const dot=document.getElementById('mdot');let ok=false;try{ok=M[mi].ok();}catch(e){}dot.classList.toggle('ok',ok);}
+document.getElementById('mnext').onclick=()=>{mi=(mi+1)%M.length;drawM();render();};
+
+// ── render geral ──
+let _raf=0;function render(){if(_raf)return;_raf=requestAnimationFrame(()=>{_raf=0;renderNow();});}
+function renderNow(){
+  document.getElementById('buf').innerHTML=buf.replace(/</g,'&lt;')+'<span class="cur">▋</span>';
+  buildSheet();buildEncs();buildExecs();drawPlan();checkM();
+}
+function fit(){const DW=1280,DH=720;const vw=innerWidth,vh=innerHeight;const scrH=(window.screen&&screen.height)||vh;const iframeTaller=vh>scrH+8;const visH=Math.min(vh,scrH);const headerAllow=iframeTaller?84:(vh>700?24:6);const effVh=Math.max(240,visH-headerAllow);const z=Math.min(vw/DW,effVh/DH);document.getElementById('console').style.zoom=z;requestAnimationFrame(sizeCanvas);}
+addEventListener('resize',fit);
+buildPtype();buildKeypad();drawM();renderNow();fit();setTimeout(fit,60);
+</script></body></html>

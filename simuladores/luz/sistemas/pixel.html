@@ -1,0 +1,107 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Simulador — Pixel Mapping (a luz vira tela)</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;-webkit-tap-highlight-color:transparent}
+html,body{background:#0a0c10;color:#e9edf2}body{padding:10px}
+.app{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+h1{font-size:clamp(15px,4vw,20px);font-weight:800;color:#eaf0ff}
+.t{font-size:12px;color:#9daecb;line-height:1.45}
+.mission{background:#0e1626;border:1px solid #24406e;border-radius:11px;padding:10px 12px;font-size:12.5px;line-height:1.5}
+.mission b{color:#8fd0ff}
+.mrow{display:flex;align-items:center;gap:8px;margin-top:6px}
+.dot{width:14px;height:14px;border-radius:50%;border:2px solid #37507a;flex:none}.dot.ok{background:#39d98a;border-color:#39d98a}
+.btn{background:#1b2740;color:#dce7fb;border:1px solid #33507f;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer}
+.btn.on{background:#2b5aa8;border-color:#4d86e0}
+.wall{width:100%;aspect-ratio:3/1;background:#04060a;border:1px solid #1c2740;border-radius:12px;overflow:hidden}
+.wall canvas{width:100%;height:100%;display:block}
+.gt{font-size:10px;font-weight:800;color:#8aa0c2;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
+.box{background:#10141d;border:1px solid #222c40;border-radius:12px;padding:10px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.quiz{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.calc{font-size:11.5px;color:#a9bcd8;line-height:1.6}
+.bars{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.bar{display:grid;grid-template-columns:110px 1fr auto;gap:8px;align-items:center;font-size:11px}
+.bar .nm{font-weight:800;color:#c6d2ea}
+.bar select{background:#131a28;border:1px solid #2b3852;border-radius:7px;color:#ffd24d;font-weight:700;padding:6px;font-size:12px}
+.bar .st{font-size:10px;font-weight:800;min-width:70px;text-align:right}
+.bar .st.ok{color:#7fd0a0}.bar .st.bad{color:#ff9a9a}
+</style></head><body>
+<div class="app">
+ <h1>💡 Pixel Mapping — quando a luz vira tela</h1>
+ <div class="t">Painel de fundo com <b>3 pixel bars de 24 pixels RGB</b> cada (72 pixels no total). Primeiro <b>faça a conta de canais</b>, depois <b>mapeie os universos</b> e rode o conteúdo.</div>
+ <div class="mission" id="mission"></div>
+ <div class="wall"><canvas id="cv"></canvas></div>
+ <div class="box"><div class="gt">1 · A conta do pixel mapping</div>
+  <div class="calc">Cada pixel RGB usa <b>3 canais</b>. Uma barra tem 24 pixels → <b>24 × 3 = 72 canais</b> por barra. As 3 barras somam <b>216 canais</b>… mas cada linha DMX de barra foi patchada num universo separado para deixar folga de expansão. <b>Quantos canais usa o painel TODO?</b></div>
+  <div class="quiz" id="quiz"></div></div>
+ <div class="box"><div class="gt">2 · Mapeie o universo de cada barra (node de 3 portas)</div>
+  <div class="bars" id="bars"></div></div>
+ <div class="box"><div class="gt">3 · Conteúdo (media server)</div>
+  <div class="row" id="fx"></div></div>
+</div>
+<script>
+'use strict';
+const BARS=[{nome:'Barra TOPO',need:1,uni:0},{nome:'Barra MEIO',need:2,uni:0},{nome:'Barra BASE',need:3,uni:0}];
+const PX=24, ROWS=3;
+let quizOK=false, effect='off', t0=performance.now();
+// quiz
+const quizEl=document.getElementById('quiz');
+[['72 canais',false],['216 canais',true],['24 canais',false],['512 canais',false]].forEach(([t,ok])=>{
+ const b=document.createElement('button');b.className='btn';b.textContent=t;
+ b.onclick=()=>{quizOK=ok;[...quizEl.children].forEach(x=>x.classList.remove('on'));b.classList.add('on');
+  b.style.borderColor=ok?'#2f8f5b':'#8f2f2f';check();};
+ quizEl.appendChild(b);});
+// barras / universos
+const barsEl=document.getElementById('bars');
+function buildBars(){barsEl.innerHTML='';
+ BARS.forEach(b=>{const ok=b.uni===b.need;const d=document.createElement('div');d.className='bar';
+  d.innerHTML='<span class="nm">'+b.nome+'</span>';
+  const sel=document.createElement('select');
+  ['— off —','Universo 1','Universo 2','Universo 3'].forEach((t,i)=>{const o=document.createElement('option');o.value=i;o.textContent=t;if(i===b.uni)o.selected=true;sel.appendChild(o);});
+  sel.addEventListener('change',()=>{b.uni=+sel.value;buildBars();check();draw();});
+  const st=document.createElement('span');st.className='st '+(ok?'ok':'bad');st.textContent=ok?'✓ recebendo':'✗ sem dados';
+  d.appendChild(sel);d.appendChild(st);barsEl.appendChild(d);});}
+// efeitos
+const fxEl=document.getElementById('fx');
+[['off','Apagado'],['grad','Degradê'],['chase','Varredura'],['rainbow','Arco-íris'],['fire','Fogo']].forEach(([id,nm])=>{
+ const b=document.createElement('button');b.className='btn'+(effect===id?' on':'');b.textContent=nm;b.dataset.fx=id;
+ b.onclick=()=>{effect=id;[...fxEl.children].forEach(x=>x.classList.toggle('on',x===b));check();};
+ fxEl.appendChild(b);});
+// render
+const cv=document.getElementById('cv');const ctx=cv.getContext('2d');
+function sizeC(){const r=cv.getBoundingClientRect();const dpr=Math.min(2,devicePixelRatio||1);cv.width=r.width*dpr;cv.height=r.height*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);}
+function pxColor(row,i,t){
+ if(BARS[row].uni!==BARS[row].need)return [8,10,14]; // barra sem dados = apagada
+ const u=i/PX;
+ switch(effect){
+  case 'grad':return [Math.round(255*u),40,Math.round(255*(1-u))];
+  case 'chase':{const p=(t/700)%1;const d=Math.abs(u-p);const v=Math.max(0,1-d*6);return [Math.round(255*v),Math.round(120*v),0];}
+  case 'rainbow':{const h=((u+t/3000)%1)*6;const c=(n)=>Math.round(255*Math.max(0,Math.min(1,Math.abs(((h+n)%6)-3)-1)));return [c(0),c(4),c(2)];}
+  case 'fire':{const n=Math.sin(i*3.1+t/120+row*7)*0.5+0.5;const v=0.35+0.65*n;return [Math.round(255*v),Math.round(90*v*n),0];}
+  default:return [10,12,18];
+ }}
+function draw(){const r=cv.getBoundingClientRect();const W=r.width,H=r.height;ctx.clearRect(0,0,W,H);
+ ctx.fillStyle='#04060a';ctx.fillRect(0,0,W,H);
+ const t=performance.now()-t0;
+ const cw=W/PX, ch=H/ROWS;
+ for(let row=0;row<ROWS;row++)for(let i=0;i<PX;i++){
+  const c=pxColor(row,i,t);
+  ctx.fillStyle='rgb('+c[0]+','+c[1]+','+c[2]+')';
+  const x=i*cw+cw*0.12,y=row*ch+ch*0.14;
+  ctx.beginPath();ctx.roundRect(x,y,cw*0.76,ch*0.72,4);ctx.fill();
+  if(c[0]+c[1]+c[2]>60){ctx.fillStyle='rgba('+c[0]+','+c[1]+','+c[2]+',0.25)';ctx.beginPath();ctx.roundRect(x-cw*0.08,y-ch*0.08,cw*0.92,ch*0.88,6);ctx.fill();}
+ }}
+(function loop(){draw();requestAnimationFrame(loop);})();
+// missões
+const M=[
+ {t:'<b>A conta:</b> responda quantos canais o painel todo consome. É por isso que pixel mapping pede <b>rede</b> (Art-Net/sACN) — universos somem rápido.',ok:()=>quizOK},
+ {t:'<b>Mapeie:</b> configure o universo correto de cada barra (TOPO=U1 · MEIO=U2 · BASE=U3). Barra com universo errado fica apagada — olhe o painel.',ok:()=>BARS.every(b=>b.uni===b.need)},
+ {t:'<b>Rode o show:</b> com as 3 barras mapeadas, dispare o <b>Arco-íris</b> e depois o <b>Fogo</b> — o media server varrendo os 216 canais em tempo real. (Deixe em Fogo para concluir.)',ok:()=>BARS.every(b=>b.uni===b.need)&&effect==='fire'},
+];
+let mi=0;
+function drawM(){document.getElementById('mission').innerHTML='<div><b>Cenário '+(mi+1)+'/'+M.length+':</b> '+M[mi].t+'</div><div class="mrow"><span class="dot" id="mdot"></span><span id="mstat">Trabalhe…</span></div><button class="btn" id="mnext" style="margin-top:8px">Próximo ▸</button>';
+ document.getElementById('mnext').onclick=()=>{mi=(mi+1)%M.length;drawM();check();};check();}
+function check(){const dot=document.getElementById('mdot');if(!dot)return;let ok=false;try{ok=M[mi].ok();}catch(e){}
+ dot.classList.toggle('ok',ok);document.getElementById('mstat').textContent=ok?'✓ Cenário cumprido!':'Trabalhe…';}
+buildBars();drawM();sizeC();addEventListener('resize',sizeC);
+</script></body></html>

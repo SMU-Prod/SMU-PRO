@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>__TITLE__ · SMU</title>
+<style>
+  :root{ --bg:#05060a; --card:#0e1420cc; --line:#26304a; --ink:#e6ecf7; --mut:#8ea0bd; --acc:#ff7a1a; --ok:#39d98a; }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:#000;color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;overflow:hidden;-webkit-user-select:none;user-select:none;touch-action:none}
+  /* #screen = área REALMENTE visível (evita corte do rodapé em tela cheia, quando o iframe fica mais alto que a tela) */
+  #screen{position:fixed;top:0;left:0;width:100vw;height:var(--visH,100vh);overflow:hidden;background:#000}
+  #stage{position:absolute;inset:0;width:100%;height:100%;display:block;background:#000}
+  /* Título */
+  #brand{position:absolute;left:12px;top:10px;z-index:5;pointer-events:none}
+  #brand b{display:block;font-size:15px;font-weight:800;letter-spacing:.2px;text-shadow:0 1px 6px #000}
+  #brand span{font-size:11px;color:var(--mut);text-shadow:0 1px 6px #000}
+  /* Dock de controles */
+  #dock{position:absolute;left:8px;right:8px;bottom:8px;z-index:6;display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;justify-content:center;max-height:52%;overflow:auto;
+    background:linear-gradient(180deg,#0b111ccc,#0b111cf2);border:1px solid var(--line);border-radius:14px;padding:9px 10px;backdrop-filter:blur(6px)}
+  .ctl{display:flex;flex-direction:column;gap:4px;align-items:center;min-width:60px}
+  .ctl label{font-size:10px;color:var(--mut);letter-spacing:.3px;text-transform:uppercase;text-align:center;line-height:1.15}
+  .ctl .val{font-size:12px;font-weight:700;color:var(--ink);min-height:14px}
+  button.b{background:#141c2b;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:11px 14px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.2px;transition:.12s;min-height:44px}
+  button.b:hover{background:#1c2942;border-color:#3a4a6e}
+  button.b:active{transform:translateY(1px)}
+  button.b.fire{background:linear-gradient(180deg,#ff8f36,#e5590a);border-color:#ffb070;color:#180a00;box-shadow:0 4px 16px #ff6a0055}
+  button.b.fire:hover{filter:brightness(1.08)}
+  button.b.arm{background:#3a1414;border-color:#8a2a2a;color:#ffb3b3}
+  button.b.arm.on{background:#7a1616;color:#fff;box-shadow:0 0 14px #ff333366}
+  button.b.on{background:#123a24;border-color:#2b7a4e;color:#9af2c0}
+  button.b.sm{padding:8px 10px;font-size:12px;min-height:38px}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:118px;height:26px;background:transparent;cursor:pointer}
+  input[type=range]::-webkit-slider-runnable-track{height:6px;background:#243149;border-radius:3px}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;margin-top:-7px;border-radius:50%;background:var(--acc);border:2px solid #ffd3a8;box-shadow:0 2px 6px #0007}
+  input[type=range].c2::-webkit-slider-thumb{background:#39d98a;border-color:#bff5da}
+  .sep{width:1px;align-self:stretch;background:var(--line);margin:2px 2px}
+  /* Mission HUD */
+  #hud{position:absolute;right:10px;top:10px;z-index:6;width:min(300px,72vw);max-height:70%;overflow:auto;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;backdrop-filter:blur(6px)}
+  #hud h4{margin:0 0 6px;font-size:12px;letter-spacing:.4px;text-transform:uppercase;color:var(--acc);display:flex;align-items:center;gap:6px}
+  #hud .intro{font-size:11.5px;color:var(--mut);line-height:1.45;margin-bottom:8px}
+  #steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px}
+  #steps li{display:flex;gap:8px;align-items:flex-start;font-size:12px;line-height:1.35;color:#cdd8ea}
+  #steps li .bx{flex:none;width:16px;height:16px;border-radius:5px;border:1.5px solid #46567a;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#04140b;background:transparent}
+  #steps li.done .bx{background:var(--ok);border-color:var(--ok)}
+  #steps li.done{color:#8fb8a2;text-decoration:none}
+  #hud.win{border-color:var(--ok);box-shadow:0 0 22px #39d98a44}
+  #winmsg{margin-top:8px;font-size:12px;color:var(--ok);font-weight:700;display:none}
+  #hud.win #winmsg{display:block}
+  #hudToggle{position:absolute;right:8px;top:8px;background:none;border:none;color:var(--mut);font-size:15px;cursor:pointer;padding:0;line-height:1}
+  #hud.min #steps,#hud.min .intro,#hud.min #winmsg{display:none}
+  /* Toast */
+  #toast{position:absolute;left:50%;top:16px;transform:translateX(-50%) translateY(-70px);z-index:8;background:#0e1726ee;border:1px solid var(--line);border-radius:10px;padding:9px 15px;font-size:13px;font-weight:600;transition:transform .3s cubic-bezier(.2,1,.3,1);pointer-events:none;max-width:82vw;text-align:center}
+  #toast.show{transform:translateX(-50%) translateY(0)}
+  #toast.good{border-color:var(--ok);color:#bff5da}
+  #toast.warn{border-color:#c9922a;color:#ffdf9e}
+  #toast.bad{border-color:#c0392b;color:#ffb3ab}
+  @media (max-width:640px){
+    #hud{width:min(260px,80vw);top:8px;right:8px}
+    button.b{padding:9px 11px;font-size:12px}
+    .ctl{min-width:52px}
+    input[type=range]{width:92px}
+    #brand b{font-size:13px}
+  }
+</style></head>
+<body>
+<div id="screen">
+<canvas id="stage"></canvas>
+<div id="brand"><b>__TITLE__</b><span>__SUBTITLE__</span></div>
+<div id="hud">
+  <button id="hudToggle" title="Recolher">▾</button>
+  <h4>🎯 Missão</h4>
+  <div class="intro" id="mIntro"></div>
+  <ul id="steps"></ul>
+  <div id="winmsg">✓ Missão concluída! Você domina este efeito.</div>
+</div>
+<div id="dock"></div>
+<div id="toast"></div>
+</div>
+<script>
+/* Ajusta a altura visível: em tela cheia o iframe fica mais alto que a tela e o
+   rodapé some. Usamos min(innerHeight, screen.height) e reservamos o cabeçalho do player. */
+(function(){
+  function setVisH(){
+    var vh=window.innerHeight, sh=(window.screen&&screen.height)||vh;
+    var inflated = vh > sh+8;                 // iframe 16:9 estourou a tela (tela cheia)
+    var visH = Math.min(vh, sh);
+    var header = inflated?86:0;               // cabeçalho/controles do player em tela cheia
+    var eff = Math.max(240, visH-header);
+    document.documentElement.style.setProperty('--visH', eff+'px');
+    if(window.__fx && window.__fx.resize) window.__fx.resize();
+  }
+  window.__setVisH=setVisH;
+  addEventListener('resize',setVisH);
+  addEventListener('orientationchange',function(){setTimeout(setVisH,150);});
+  document.addEventListener('fullscreenchange',function(){[60,260,600].forEach(function(d){setTimeout(setVisH,d);});});
+  document.addEventListener('webkitfullscreenchange',function(){[60,260,600].forEach(function(d){setTimeout(setVisH,d);});});
+  setVisH();
+})();
+</script>
+
+<script>__ENGINE__</script>
+<script>
+/* ---- Runtime declarativo dos games (compartilhado) ------------------ */
+var GAME = (function(){ __GAME__ ; return GAME; })();
+
+(function(){
+  const cv = document.getElementById('stage');
+  const fx = new StageFX(cv, GAME.env || {});
+  window.__fx = fx;
+  if(window.__setVisH) window.__setVisH();
+
+  // ---- estado + api
+  const S = { flags:{}, vals:{} };
+  const stepEls = {};
+  const readouts = {};
+  const doneSteps = {};
+  let won = false;
+
+  const toastEl = document.getElementById('toast');
+  let toastT=0;
+  function toast(msg, kind){
+    toastEl.textContent = msg;
+    toastEl.className = 'show ' + (kind||'');
+    clearTimeout(toastT); toastT = setTimeout(()=>{ toastEl.className = (kind||''); }, 2200);
+  }
+  function done(id){
+    if(doneSteps[id]) return;
+    doneSteps[id]=true;
+    const li = stepEls[id]; if(li){ li.classList.add('done'); li.querySelector('.bx').textContent='✓'; }
+    checkWin();
+  }
+  function checkWin(){
+    if(won) return;
+    const all = (GAME.mission&&GAME.mission.steps||[]).every(s=>doneSteps[s.id]);
+    if(all && (GAME.mission&&GAME.mission.steps||[]).length){
+      won=true; document.getElementById('hud').classList.add('win');
+      toast(GAME.mission.win||'Missão concluída!','good');
+      if(GAME.onWin) GAME.onWin(fx,S,api);
+    }
+  }
+  function setReadout(id,txt){ if(readouts[id]) readouts[id].textContent = txt; }
+  function setVal(id,txt){ const e=document.getElementById('val-'+id); if(e)e.textContent=txt; }
+  function setToggle(id,on){ S.flags[id]=!!on; const b=document.getElementById('btn-'+id); if(b){ b.classList.toggle('on',!!on); const c=(GAME.controls||[]).find(x=>x.id===id); if(c&&c.onLabel) b.textContent = on? c.onLabel : c.label; } }
+  const api = { done, toast, setReadout, setVal, setToggle, fx, S, isDone:(id)=>!!doneSteps[id] };
+
+  // ---- montar dock
+  const dock = document.querySelector('#dock');
+  (GAME.controls||[]).forEach(c=>{
+    if(c.type==='sep'){ const s=document.createElement('div'); s.className='sep'; dock.appendChild(s); return; }
+    const wrap=document.createElement('div'); wrap.className='ctl';
+    if(c.type==='button'||c.type==='toggle'||c.type==='arm'){
+      const b=document.createElement('button'); b.className='b '+(c.cls||'')+(c.small?' sm':''); b.textContent=c.label; b.id='btn-'+c.id;
+      if(c.type==='toggle'||c.type==='arm'){
+        b.onclick=()=>{ S.flags[c.id]=!S.flags[c.id]; b.classList.toggle('on',S.flags[c.id]);
+          if(c.onLabel) b.textContent = S.flags[c.id]? c.onLabel : c.label;
+          GAME.onControl && GAME.onControl(c.id, S.flags[c.id], fx, S, api); };
+      } else {
+        b.onclick=()=>{ GAME.onControl && GAME.onControl(c.id, true, fx, S, api); };
+      }
+      wrap.appendChild(b);
+      if(c.sub){ const l=document.createElement('label'); l.textContent=c.sub; wrap.appendChild(l); }
+    } else if(c.type==='slider'){
+      const val=document.createElement('div'); val.className='val'; val.id='val-'+c.id;
+      const r=document.createElement('input'); r.type='range'; r.className=c.cls||''; r.min=c.min; r.max=c.max; r.step=c.step||1; r.value=c.value;
+      S.vals[c.id]=+c.value;
+      const fmt=(v)=> (c.fmt? c.fmt(+v) : (+v)+(c.unit||''));
+      val.textContent=fmt(c.value);
+      r.oninput=()=>{ S.vals[c.id]=+r.value; val.textContent=fmt(r.value); GAME.onControl && GAME.onControl(c.id,+r.value,fx,S,api); };
+      const l=document.createElement('label'); l.textContent=c.label;
+      wrap.appendChild(val); wrap.appendChild(r); wrap.appendChild(l);
+    } else if(c.type==='readout'){
+      const val=document.createElement('div'); val.className='val'; val.id='ro-'+c.id; readouts[c.id]=val; val.textContent=c.value||'—';
+      const l=document.createElement('label'); l.textContent=c.label;
+      wrap.appendChild(val); wrap.appendChild(l);
+    }
+    dock.appendChild(wrap);
+  });
+
+  // ---- montar missão
+  document.getElementById('mIntro').textContent = (GAME.mission&&GAME.mission.intro)||'';
+  const stepsUl=document.getElementById('steps');
+  (GAME.mission&&GAME.mission.steps||[]).forEach(s=>{
+    const li=document.createElement('li'); li.innerHTML='<span class="bx"></span><span>'+s.text+'</span>';
+    stepsUl.appendChild(li); stepEls[s.id]=li;
+  });
+  const hud=document.getElementById('hud');
+  document.getElementById('hudToggle').onclick=()=>{ hud.classList.toggle('min'); document.getElementById('hudToggle').textContent = hud.classList.contains('min')?'▸':'▾'; };
+
+  // ---- clique no palco (efeitos posicionais)
+  cv.addEventListener('pointerdown', ev=>{
+    const p = fx.toStage(ev.clientX, ev.clientY);
+    GAME.onStage && GAME.onStage(p, fx, S, api);
+  });
+
+  // ---- setup + loop lógico (a animação do palco roda no próprio engine)
+  if(GAME.setup) GAME.setup(fx,S,api);
+  window.__game = { GAME, S, api, fx, click:(id)=>{const b=document.getElementById('btn-'+id); if(b)b.click();}, done:doneSteps, isWon:()=>won };
+  let last=performance.now();
+  function tickLoop(now){
+    const dt=Math.min(50, now-last); last=now;
+    if(GAME.tick) GAME.tick(fx,S,api,dt);
+    requestAnimationFrame(tickLoop);
+  }
+  requestAnimationFrame(tickLoop);
+})();
+</script>
+</body></html>

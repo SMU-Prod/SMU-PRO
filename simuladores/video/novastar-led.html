@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMU PRO · Processador de LED NovaStar</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{
+    --bg:#0d1017; --panel:#161b25; --panel2:#1d2431; --line:#2a3444;
+    --ink:#e6edf6; --dim:#8794a8; --accent:#12b886; --accent2:#3b82f6;
+    --warn:#f59e0b; --err:#ef4444; --ok:#22c55e;
+  }
+  html,body{background:var(--bg);color:var(--ink);font-family:'Segoe UI',system-ui,Arial,sans-serif;}
+  body{padding:10px;}
+  .app{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:10px;}
+  .topbar{display:flex;align-items:center;gap:10px;background:linear-gradient(90deg,#10b981,#0e7a5c);border-radius:10px;padding:9px 14px;}
+  .topbar .logo{font-weight:900;letter-spacing:.5px;font-size:16px;color:#04120d;}
+  .topbar .sub{font-size:11px;color:#052018cc;font-weight:600;letter-spacing:.12em;text-transform:uppercase;}
+  .topbar .spacer{flex:1;}
+  .topbar .state{font-size:11px;font-weight:700;background:#04120d33;color:#04120d;padding:4px 10px;border-radius:20px;}
+
+  .grid{display:grid;grid-template-columns:1fr;gap:10px;}
+  @media(min-width:900px){ .grid{grid-template-columns:1.15fr 1fr;} }
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;}
+  .card h2{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+  .card h2 .n{width:20px;height:20px;border-radius:50%;background:var(--accent2);color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;font-weight:800;}
+
+  /* WALL preview */
+  .wallwrap{position:relative;width:100%;background:#05070b;border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+  #wall{width:100%;display:block;aspect-ratio:16/9;touch-action:none;}
+  .wall-hud{position:absolute;top:8px;left:8px;right:8px;display:flex;gap:6px;flex-wrap:wrap;font-size:10px;pointer-events:none;}
+  .chip{background:#0d1420cc;border:1px solid var(--line);padding:3px 7px;border-radius:6px;color:var(--dim);}
+  .chip b{color:var(--ink);}
+  .chip.ok{border-color:var(--ok);color:#a7f3d0;}
+  .chip.err{border-color:var(--err);color:#fca5a5;}
+  .chip.warn{border-color:var(--warn);color:#fcd34d;}
+
+  /* tabs */
+  .tabs{display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap;}
+  .tab{flex:1;min-width:70px;font-size:11px;font-weight:700;letter-spacing:.04em;padding:8px 6px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);color:var(--dim);cursor:pointer;text-align:center;transition:.12s;}
+  .tab.on{background:var(--accent2);border-color:var(--accent2);color:#fff;}
+  .pane{display:none;}
+  .pane.on{display:block;}
+
+  .row{display:flex;align-items:center;gap:8px;margin-bottom:9px;}
+  .row label{font-size:12px;color:var(--dim);width:118px;flex-shrink:0;}
+  .row .val{margin-left:auto;font-size:12px;font-weight:700;color:var(--accent);min-width:52px;text-align:right;}
+  select,input[type=number]{background:#0c1119;color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:7px 8px;font-size:13px;flex:1;min-width:0;}
+  input[type=range]{flex:1;accent-color:var(--accent);height:5px;}
+  .seg{display:flex;gap:4px;flex:1;flex-wrap:wrap;}
+  .seg button{flex:1;min-width:44px;font-size:11px;font-weight:700;padding:7px 4px;border:1px solid var(--line);border-radius:6px;background:#0c1119;color:var(--dim);cursor:pointer;}
+  .seg button.on{background:#14532d;border-color:var(--ok);color:#bbf7d0;}
+  .hint{font-size:11px;color:var(--dim);line-height:1.5;margin-top:4px;}
+  .hint b{color:var(--ink);}
+
+  /* physical processor */
+  .proc{background:linear-gradient(#20262f,#12161d);border:1px solid #050708;border-radius:10px;padding:10px 12px;}
+  .proc .prow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .lcd{font-family:'Courier New',monospace;background:#0a1f18;border:1px solid #0f3;border-radius:5px;color:#4ade80;font-size:11px;padding:6px 9px;min-width:150px;box-shadow:inset 0 0 12px #0f36;}
+  .ports{display:flex;gap:5px;flex-wrap:wrap;}
+  .port{width:34px;height:26px;border-radius:4px;border:1px solid #333;background:#0c1119;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--dim);position:relative;}
+  .port .led{position:absolute;top:2px;right:2px;width:5px;height:5px;border-radius:50%;background:#333;}
+  .port.act .led{background:var(--ok);box-shadow:0 0 5px var(--ok);}
+  .inputs{display:flex;gap:5px;flex-wrap:wrap;}
+  .inp{padding:4px 7px;border-radius:4px;border:1px solid #333;background:#0c1119;font-size:9px;color:var(--dim);}
+  .inp.act{border-color:var(--accent);color:var(--accent);}
+
+  .btnbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;}
+  .btn{flex:1;min-width:120px;font-size:12px;font-weight:800;letter-spacing:.05em;padding:11px;border:none;border-radius:9px;cursor:pointer;transition:.12s;}
+  .btn.primary{background:var(--accent);color:#04120d;}
+  .btn.primary:active{transform:scale(.97);}
+  .btn.ghost{background:#0c1119;border:1px solid var(--line);color:var(--ink);}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+
+  /* missions */
+  .mission{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:11px 13px;}
+  .mission h3{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--warn);margin-bottom:8px;}
+  .mlist{list-style:none;display:flex;flex-direction:column;gap:6px;}
+  .mlist li{font-size:12px;color:var(--dim);display:flex;gap:8px;align-items:flex-start;line-height:1.4;}
+  .mlist li .bx{width:16px;height:16px;border-radius:4px;border:1px solid var(--line);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:11px;}
+  .mlist li.done{color:var(--ink);}
+  .mlist li.done .bx{background:var(--ok);border-color:var(--ok);color:#04120d;}
+
+  .maplegend{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;font-size:10px;}
+  .maplegend span{display:flex;align-items:center;gap:4px;color:var(--dim);}
+  .maplegend i{width:11px;height:11px;border-radius:3px;display:inline-block;}
+  .toast{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);background:#0c1119;border:1px solid var(--accent);color:var(--ink);padding:10px 16px;border-radius:10px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:.25s;z-index:50;max-width:92vw;text-align:center;}
+  .toast.show{opacity:1;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div>
+      <div class="logo">NovaStar VX600</div>
+      <div class="sub">Controlador de Vídeo · Processador de LED</div>
+    </div>
+    <div class="spacer"></div>
+    <div class="state" id="stateChip">CONFIGURANDO</div>
+  </div>
+
+  <div class="grid">
+    <!-- LEFT: preview + processor -->
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <div class="card">
+        <h2>Parede de LED — Saída</h2>
+        <div class="wallwrap">
+          <canvas id="wall" width="960" height="540"></canvas>
+          <div class="wall-hud">
+            <div class="chip" id="hudRes">Tela: <b>—</b></div>
+            <div class="chip" id="hudCab">Cabinets: <b>—</b></div>
+            <div class="chip" id="hudLoad">Carga: <b>—</b></div>
+          </div>
+        </div>
+        <div class="maplegend" id="mapLegend"></div>
+      </div>
+
+      <div class="card">
+        <h2>Processador (painel físico)</h2>
+        <div class="proc">
+          <div class="prow" style="margin-bottom:8px;">
+            <div class="lcd" id="lcd">NovaStar VX600<br>Sem sinal</div>
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <div style="font-size:9px;color:var(--dim);letter-spacing:.1em;">ENTRADAS</div>
+              <div class="inputs" id="inpRow"></div>
+            </div>
+          </div>
+          <div class="prow">
+            <div style="font-size:9px;color:var(--dim);letter-spacing:.1em;width:100%;">SAÍDAS ETHERNET (Gigabit · RJ45) — cada porta ≈ 650.000 px @60Hz</div>
+            <div class="ports" id="portRow"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: config -->
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <div class="card">
+        <div class="tabs">
+          <div class="tab on" data-pane="in">1 · Entrada</div>
+          <div class="tab" data-pane="screen">2 · Tela</div>
+          <div class="tab" data-pane="map">3 · Cabeamento</div>
+          <div class="tab" data-pane="img">4 · Imagem</div>
+        </div>
+
+        <!-- INPUT -->
+        <div class="pane on" id="pane-in">
+          <div class="row"><label>Fonte de entrada</label>
+            <div class="seg" id="srcSeg">
+              <button data-src="HDMI">HDMI</button>
+              <button data-src="DVI">DVI</button>
+              <button data-src="SDI">SDI</button>
+              <button data-src="DP">DP</button>
+            </div>
+          </div>
+          <div class="row"><label>Resolução</label>
+            <select id="inRes">
+              <option value="1280x720">1280×720 (HD)</option>
+              <option value="1920x1080" selected>1920×1080 (Full HD)</option>
+              <option value="2560x1600">2560×1600 (WQXGA)</option>
+              <option value="3840x2160">3840×2160 (4K UHD)</option>
+            </select>
+          </div>
+          <div class="row"><label>Frame rate</label>
+            <div class="seg" id="fpsSeg">
+              <button data-fps="50">50</button>
+              <button data-fps="60" class="on">60</button>
+            </div>
+          </div>
+          <div class="hint">A entrada é o vídeo que chega do switcher ou do PC de playback. Escolha a <b>fonte física</b> (o cabo que está plugado) e diga ao processador em qual <b>resolução</b> e <b>frame rate</b> o sinal está chegando. Se errar aqui, o processador mostra <b>"Sem sinal"</b>.</div>
+          <div class="btnbar"><button class="btn primary" id="btnDetect">Detectar sinal</button></div>
+        </div>
+
+        <!-- SCREEN -->
+        <div class="pane" id="pane-screen">
+          <div class="row"><label>Pixel pitch</label>
+            <div class="seg" id="pitchSeg">
+              <button data-pitch="2.6">P2.6</button>
+              <button data-pitch="2.9" class="on">P2.9</button>
+              <button data-pitch="3.9">P3.9</button>
+              <button data-pitch="4.8">P4.8</button>
+            </div>
+          </div>
+          <div class="row"><label>Cabinet (físico)</label>
+            <select id="cabPhys">
+              <option value="500x500">500 × 500 mm</option>
+              <option value="500x1000">500 × 1000 mm</option>
+            </select>
+          </div>
+          <div class="row"><label>Resolução/cabinet</label><span class="val" id="cabPx">—</span></div>
+          <div class="row"><label>Colunas</label>
+            <input type="range" id="cols" min="1" max="16" value="6"><span class="val" id="colsV">6</span>
+          </div>
+          <div class="row"><label>Linhas</label>
+            <input type="range" id="rows" min="1" max="10" value="3"><span class="val" id="rowsV">3</span>
+          </div>
+          <div class="hint" id="screenHint">Monte a parede: cada <b>cabinet</b> é um bloco. Colunas × linhas formam a tela. O processador soma os pixels e calcula quantas <b>portas Ethernet</b> você vai precisar.</div>
+          <div class="btnbar"><button class="btn primary" id="btnApplyScreen">Aplicar tela</button></div>
+        </div>
+
+        <!-- MAPPING -->
+        <div class="pane" id="pane-map">
+          <div class="hint">O <b>mapeamento</b> (Screen Connection) diz por qual porta cada cabinet recebe o sinal e em que <b>ordem</b> o cabo de rede passa por eles (daisy chain). Escolha uma porta e clique nos cabinets na sequência do cabo. Cada porta aguenta ≈ 650.000 px.</div>
+          <div class="row" style="margin-top:10px;"><label>Porta ativa</label>
+            <div class="seg" id="portSel"></div>
+          </div>
+          <div class="btnbar">
+            <button class="btn ghost" id="btnAuto">Cabeamento automático (serpentina)</button>
+            <button class="btn ghost" id="btnClearMap">Limpar</button>
+          </div>
+          <div class="hint" id="mapStatus" style="margin-top:8px;"></div>
+        </div>
+
+        <!-- IMAGE -->
+        <div class="pane" id="pane-img">
+          <div class="row"><label>Brilho</label>
+            <input type="range" id="bright" min="0" max="100" value="80"><span class="val" id="brightV">80%</span>
+          </div>
+          <div class="row"><label>Brilho (nits)</label><span class="val" id="nitsV">—</span></div>
+          <div class="row"><label>Gamma</label>
+            <input type="range" id="gamma" min="18" max="30" value="24"><span class="val" id="gammaV">2.4</span>
+          </div>
+          <div class="row"><label>Temp. de cor</label>
+            <div class="seg" id="ctSeg">
+              <button data-ct="3200">3200K</button>
+              <button data-ct="5600">5600K</button>
+              <button data-ct="6500" class="on">6500K</button>
+            </div>
+          </div>
+          <div class="row"><label>Padrão de teste</label>
+            <select id="testPat">
+              <option value="input">Vídeo de entrada</option>
+              <option value="grid">Grade / cabinets</option>
+              <option value="red">Vermelho</option>
+              <option value="green">Verde</option>
+              <option value="blue">Azul</option>
+              <option value="white">Branco (calibração)</option>
+              <option value="gray">Escala de cinza</option>
+            </select>
+          </div>
+          <div class="hint">Brilho e gamma ajustam como a parede aparece na câmera e ao vivo. Os <b>padrões de teste</b> (RGB, branco, grade) servem para achar módulo queimado, cabinet torto ou cor errada antes do show.</div>
+        </div>
+      </div>
+
+      <div class="mission">
+        <h3>Missão — colocar a parede no ar</h3>
+        <ul class="mlist" id="missions"></ul>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+var $=function(s){return document.querySelector(s);};
+var $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s));};
+
+// ---------- STATE ----------
+var S={
+  src:null, inRes:'1920x1080', fps:60, signal:false,
+  pitch:2.9, cabPhys:'500x500', cols:6, rows:3, applied:false,
+  brightPct:80, gamma:2.4, ct:6500, testPat:'input',
+  activePort:1, map:{}, // key "r,c" -> {port, order}
+};
+var PORT_CAP=650000, NPORTS=6;
+var PORT_COLORS=['#3b82f6','#12b886','#f59e0b','#ef4444','#a855f7','#ec4899'];
+
+// pixel pitch (mm) -> pixels for a 500mm side
+function sidePx(mm){ return Math.round(500/ (S.pitch) ); } // px along a 500mm edge = 500/pitch
+function cabPxDims(){
+  var per500=Math.round(500/S.pitch);
+  var w=per500, h=(S.cabPhys==='500x1000')? per500*2 : per500;
+  return {w:w,h:h};
+}
+function totalRes(){ var d=cabPxDims(); return {w:d.w*S.cols, h:d.h*S.rows}; }
+function totalPx(){ var t=totalRes(); return t.w*t.h; }
+function cabPixels(){ var d=cabPxDims(); return d.w*d.h; }
+function portsNeeded(){ return Math.ceil(totalPx()/PORT_CAP); }
+
+// ---------- BUILD static UI ----------
+var inpRow=$('#inpRow');
+['HDMI','DVI','SDI','DP'].forEach(function(k){ var e=document.createElement('div'); e.className='inp'; e.id='inp-'+k; e.textContent=k; inpRow.appendChild(e); });
+var portRow=$('#portRow');
+for(var p=1;p<=NPORTS;p++){ var e=document.createElement('div'); e.className='port'; e.id='port-'+p; e.innerHTML='<span class="led"></span>P'+p; portRow.appendChild(e); }
+var portSel=$('#portSel');
+for(var p2=1;p2<=NPORTS;p2++){ var b=document.createElement('button'); b.dataset.port=p2; b.textContent='P'+p2; b.style.borderColor=PORT_COLORS[p2-1]; if(p2===1)b.classList.add('on'); portSel.appendChild(b); }
+
+// ---------- TABS ----------
+$$('.tab').forEach(function(t){ t.onclick=function(){
+  $$('.tab').forEach(function(x){x.classList.remove('on');}); t.classList.add('on');
+  $$('.pane').forEach(function(x){x.classList.remove('on');}); $('#pane-'+t.dataset.pane).classList.add('on');
+};});
+
+// ---------- INPUT ----------
+$$('#srcSeg button').forEach(function(b){ b.onclick=function(){
+  $$('#srcSeg button').forEach(function(x){x.classList.remove('on');}); b.classList.add('on');
+  S.src=b.dataset.src; S.signal=false; refresh();
+};});
+$('#inRes').onchange=function(){ S.inRes=this.value; S.signal=false; refresh(); };
+$$('#fpsSeg button').forEach(function(b){ b.onclick=function(){
+  $$('#fpsSeg button').forEach(function(x){x.classList.remove('on');}); b.classList.add('on'); S.fps=+b.dataset.fps; S.signal=false; refresh();
+};});
+$('#btnDetect').onclick=function(){
+  if(!S.src){ toast('Escolha primeiro a fonte de entrada (o cabo plugado).'); return; }
+  S.signal=true; toast('Sinal detectado: '+S.src+' '+S.inRes+' @'+S.fps+'Hz'); refresh();
+};
+
+// ---------- SCREEN ----------
+$$('#pitchSeg button').forEach(function(b){ b.onclick=function(){
+  $$('#pitchSeg button').forEach(function(x){x.classList.remove('on');}); b.classList.add('on'); S.pitch=+b.dataset.pitch; S.applied=false; refresh();
+};});
+$('#cabPhys').onchange=function(){ S.cabPhys=this.value; S.applied=false; refresh(); };
+$('#cols').oninput=function(){ S.cols=+this.value; $('#colsV').textContent=this.value; S.applied=false; S.map={}; refresh(); };
+$('#rows').oninput=function(){ S.rows=+this.value; $('#rowsV').textContent=this.value; S.applied=false; S.map={}; refresh(); };
+$('#btnApplyScreen').onclick=function(){
+  S.applied=true; S.map={}; toast('Tela aplicada: '+totalRes().w+'×'+totalRes().h+' px — precisa de '+portsNeeded()+' porta(s).'); refresh();
+};
+
+// ---------- MAPPING ----------
+$$('#portSel button').forEach(function(b){ b.onclick=function(){
+  $$('#portSel button').forEach(function(x){x.classList.remove('on');}); b.classList.add('on'); S.activePort=+b.dataset.port; refresh();
+};});
+$('#btnAuto').onclick=function(){ autoMap(); };
+$('#btnClearMap').onclick=function(){ S.map={}; toast('Mapeamento limpo.'); refresh(); };
+
+function autoMap(){
+  if(!S.applied){ toast('Aplique a tela primeiro (aba 2).'); return; }
+  S.map={};
+  var order=[]; // serpentine top-left, row by row snaking
+  for(var r=0;r<S.rows;r++){
+    var cseq=[]; for(var c=0;c<S.cols;c++) cseq.push(c);
+    if(r%2===1) cseq.reverse();
+    cseq.forEach(function(c){ order.push([r,c]); });
+  }
+  var perPort=cabPixels()>0? Math.floor(PORT_CAP/cabPixels()) : 1;
+  if(perPort<1)perPort=1;
+  var port=1, cnt=0, ord=1;
+  order.forEach(function(rc){
+    if(cnt>=perPort){ port++; cnt=0; ord=1; }
+    if(port>NPORTS){ return; } // overflow — leaves unmapped
+    S.map[rc[0]+','+rc[1]]={port:port, order:ord};
+    cnt++; ord++;
+  });
+  toast('Cabeamento automático: '+Object.keys(S.map).length+' cabinets em '+Math.min(port,NPORTS)+' porta(s).');
+  refresh();
+}
+
+// click cabinet on canvas to map to active port
+var wall=$('#wall');
+wall.addEventListener('pointerdown', function(ev){
+  if(!S.applied) { toast('Aplique a tela (aba 2) para poder mapear.'); return; }
+  var geo=wallGeo(); if(!geo) return;
+  var rect=wall.getBoundingClientRect();
+  var x=(ev.clientX-rect.left)/rect.width*wall.width;
+  var y=(ev.clientY-rect.top)/rect.height*wall.height;
+  var c=Math.floor((x-geo.ox)/geo.cw), r=Math.floor((y-geo.oy)/geo.ch);
+  if(r<0||c<0||r>=S.rows||c>=S.cols) return;
+  var key=r+','+c;
+  // only allow mapping when on the mapping tab OR always? allow always but only meaningful in map
+  if(S.map[key] && S.map[key].port===S.activePort){ delete S.map[key]; }
+  else {
+    // assign next order for this port
+    var maxOrd=0; for(var k in S.map){ if(S.map[k].port===S.activePort) maxOrd=Math.max(maxOrd,S.map[k].order); }
+    S.map[key]={port:S.activePort, order:maxOrd+1};
+  }
+  refresh();
+});
+
+// ---------- IMAGE ----------
+$('#bright').oninput=function(){ S.brightPct=+this.value; $('#brightV').textContent=this.value+'%'; refresh(); };
+$('#gamma').oninput=function(){ S.gamma=(+this.value)/10; $('#gammaV').textContent=S.gamma.toFixed(1); drawWall(); };
+$$('#ctSeg button').forEach(function(b){ b.onclick=function(){
+  $$('#ctSeg button').forEach(function(x){x.classList.remove('on');}); b.classList.add('on'); S.ct=+b.dataset.ct; drawWall();
+};});
+$('#testPat').onchange=function(){ S.testPat=this.value; drawWall(); };
+
+// ---------- REFRESH (coalesced) ----------
+var _raf=0;
+function refresh(){ if(_raf) return; _raf=requestAnimationFrame(function(){ _raf=0; refreshNow(); }); }
+function refreshNow(){
+  // input panel state
+  ['HDMI','DVI','SDI','DP'].forEach(function(k){ $('#inp-'+k).classList.toggle('act', S.signal && S.src===k); });
+  $('#lcd').innerHTML = S.signal ? ('IN: '+S.src+' '+S.inRes+'<br>'+S.fps+'Hz · OUT '+(S.applied?(totalRes().w+'x'+totalRes().h):'—')) : 'NovaStar VX600<br>Sem sinal';
+  // cabinet px
+  var d=cabPxDims();
+  $('#cabPx').textContent=d.w+'×'+d.h;
+  // ports active
+  var portUse={}; for(var k in S.map){ portUse[S.map[k].port]=true; }
+  for(var p=1;p<=NPORTS;p++){ $('#port-'+p).classList.toggle('act', !!portUse[p]); }
+  // nits (fake: pitch smaller -> higher typical nits; assume 1200 nits max indoor)
+  $('#nitsV').textContent=Math.round(1200*S.brightPct/100)+' nits';
+  // HUD
+  var t=totalRes();
+  $('#hudRes').innerHTML='Tela: <b>'+(S.applied? t.w+'×'+t.h+' px':'—')+'</b>';
+  $('#hudCab').innerHTML='Cabinets: <b>'+(S.cols*S.rows)+'</b> ('+S.cols+'×'+S.rows+')';
+  var need=portsNeeded();
+  var loadChip=$('#hudLoad');
+  loadChip.innerHTML='Portas: <b>'+need+'/'+NPORTS+'</b>';
+  loadChip.className='chip '+(need>NPORTS?'err':(need>0?'ok':''));
+  // map legend
+  var leg=$('#mapLegend'); leg.innerHTML='';
+  var usedPorts=[]; for(var pp=1;pp<=NPORTS;pp++){ if(portUse[pp]) usedPorts.push(pp); }
+  usedPorts.forEach(function(pp){ var s=document.createElement('span'); s.innerHTML='<i style="background:'+PORT_COLORS[pp-1]+'"></i>Porta '+pp; leg.appendChild(s); });
+  // map status
+  var mapped=Object.keys(S.map).length, total=S.cols*S.rows;
+  var overCap=false; var pxByPort={};
+  for(var k2 in S.map){ pxByPort[S.map[k2].port]=(pxByPort[S.map[k2].port]||0)+cabPixels(); }
+  for(var pk in pxByPort){ if(pxByPort[pk]>PORT_CAP) overCap=true; }
+  var ms=$('#mapStatus');
+  if(!S.applied){ ms.innerHTML='<b>Aplique a tela primeiro.</b>'; }
+  else if(mapped<total){ ms.innerHTML='Cabinets mapeados: <b>'+mapped+'/'+total+'</b>. Faltam '+(total-mapped)+' — eles ficam <b style="color:#ef4444">apagados</b> na parede.'; }
+  else if(overCap){ ms.innerHTML='<b style="color:#ef4444">Uma porta passou de 650.000 px</b> — distribua os cabinets em mais portas.'; }
+  else { ms.innerHTML='<b style="color:#22c55e">Todos os cabinets mapeados e dentro da capacidade.</b>'; }
+  // controls sync
+  $('#cols').value=S.cols; $('#colsV').textContent=S.cols;
+  $('#rows').value=S.rows; $('#rowsV').textContent=S.rows;
+  // state chip
+  updateMissions();
+  drawWall();
+}
+
+// ---------- WALL GEOMETRY ----------
+function wallGeo(){
+  if(!S.applied) return null;
+  var W=wall.width, H=wall.height, pad=28;
+  var t=totalRes(); var ar=t.w/t.h;
+  var availW=W-pad*2, availH=H-pad*2;
+  var dw, dh;
+  if(availW/availH > ar){ dh=availH; dw=dh*ar; } else { dw=availW; dh=dw/ar; }
+  var ox=(W-dw)/2, oy=(H-dh)/2;
+  return {ox:ox, oy:oy, dw:dw, dh:dh, cw:dw/S.cols, ch:dh/S.rows};
+}
+
+// ---------- DRAW WALL ----------
+function gammaAdj(v){ return Math.pow(v,1/ (2.2/S.gamma)); }
+function ctTint(){ if(S.ct===3200)return [1,.85,.62]; if(S.ct===5600)return [1,.97,.92]; return [.94,.97,1]; }
+
+function drawWall(){
+  var ctx=wall.getContext('2d'); var W=wall.width, H=wall.height;
+  ctx.fillStyle='#05070b'; ctx.fillRect(0,0,W,H);
+  if(!S.applied){
+    ctx.fillStyle='#5b6675'; ctx.font='15px Segoe UI'; ctx.textAlign='center';
+    ctx.fillText('Configure a tela na aba "2 · Tela" e clique em Aplicar', W/2, H/2);
+    ctx.textAlign='left'; return;
+  }
+  var geo=wallGeo();
+  var bright=S.brightPct/100; var tint=ctTint();
+  // content sampler
+  function contentColor(u,v){ // u,v in 0..1
+    var pat=S.testPat;
+    if(pat==='red')return [1,0,0]; if(pat==='green')return [0,1,0]; if(pat==='blue')return [0,0,1];
+    if(pat==='white')return [1,1,1];
+    if(pat==='gray'){ var g=u; return [g,g,g]; }
+    if(pat==='grid') return null; // handled per-cabinet
+    // input video: a synthetic colorful gradient "show content"
+    if(!S.signal) return [0.02,0.02,0.03];
+    var r=0.5+0.5*Math.sin(u*6.28*1.5+0.3), g=0.5+0.5*Math.sin(v*6.28+2.0), b=0.5+0.5*Math.sin((u+v)*6.28+4.0);
+    return [r,g,b];
+  }
+  for(var r=0;r<S.rows;r++)for(var c=0;c<S.cols;c++){
+    var x=geo.ox+c*geo.cw, y=geo.oy+r*geo.ch;
+    var key=r+','+c; var m=S.map[key];
+    var lit = !!m; // mapped cabinets receive signal
+    // check port over capacity
+    if(lit){
+      var pxByPort=0; for(var k in S.map){ if(S.map[k].port===m.port) pxByPort+=cabPixels(); }
+      if(pxByPort>PORT_CAP) lit=false; // over capacity -> this port fails
+    }
+    if(!S.signal && S.testPat==='input') lit=false;
+    if(!lit){
+      ctx.fillStyle='#0a0d13'; ctx.fillRect(x,y,geo.cw,geo.ch);
+      ctx.strokeStyle='#3a0d0d'; ctx.lineWidth=1; ctx.strokeRect(x+1,y+1,geo.cw-2,geo.ch-2);
+      ctx.fillStyle='#7f1d1d'; ctx.font='10px Segoe UI'; ctx.textAlign='center';
+      ctx.fillText('✕', x+geo.cw/2, y+geo.ch/2+4); ctx.textAlign='left';
+      continue;
+    }
+    if(S.testPat==='grid'){
+      var col=PORT_COLORS[m.port-1];
+      ctx.fillStyle=col; ctx.globalAlpha=0.18*bright+0.05; ctx.fillRect(x,y,geo.cw,geo.ch); ctx.globalAlpha=1;
+      ctx.strokeStyle=col; ctx.lineWidth=1.5; ctx.strokeRect(x+1,y+1,geo.cw-2,geo.ch-2);
+      ctx.fillStyle='#fff'; ctx.font='bold 11px Segoe UI'; ctx.textAlign='center';
+      ctx.fillText('P'+m.port+'·'+m.order, x+geo.cw/2, y+geo.ch/2+4); ctx.textAlign='left';
+      continue;
+    }
+    // sample a few sub-cells for a richer look
+    var u=(c+0.5)/S.cols, v=(r+0.5)/S.rows;
+    var col2=contentColor(u,v)||[0,0,0];
+    var R=gammaAdj(col2[0])*bright*tint[0], G=gammaAdj(col2[1])*bright*tint[1], B=gammaAdj(col2[2])*bright*tint[2];
+    ctx.fillStyle='rgb('+(R*255|0)+','+(G*255|0)+','+(B*255|0)+')';
+    ctx.fillRect(x,y,geo.cw,geo.ch);
+    // subtle cabinet seam
+    ctx.strokeStyle='rgba(0,0,0,.35)'; ctx.lineWidth=1; ctx.strokeRect(x+.5,y+.5,geo.cw-1,geo.ch-1);
+  }
+  // outer frame
+  ctx.strokeStyle='#1c2430'; ctx.lineWidth=2; ctx.strokeRect(geo.ox-1,geo.oy-1,geo.dw+2,geo.dh+2);
+  // cabling path overlay when on mapping tab
+  if($('#pane-map').classList.contains('on')){
+    for(var pp=1;pp<=NPORTS;pp++){
+      var pts=[]; for(var k3 in S.map){ if(S.map[k3].port===pp){ var rc=k3.split(',').map(Number); pts.push({r:rc[0],c:rc[1],o:S.map[k3].order}); } }
+      pts.sort(function(a,b){return a.o-b.o;});
+      if(pts.length<1)continue;
+      ctx.strokeStyle=PORT_COLORS[pp-1]; ctx.lineWidth=2.5; ctx.beginPath();
+      pts.forEach(function(pt,i){ var cx=geo.ox+pt.c*geo.cw+geo.cw/2, cy=geo.oy+pt.r*geo.ch+geo.ch/2; if(i===0)ctx.moveTo(cx,cy); else ctx.lineTo(cx,cy); });
+      ctx.stroke();
+      // start marker
+      var s0=pts[0]; ctx.fillStyle=PORT_COLORS[pp-1]; ctx.beginPath(); ctx.arc(geo.ox+s0.c*geo.cw+geo.cw/2, geo.oy+s0.r*geo.ch+geo.ch/2, 5,0,6.29); ctx.fill();
+    }
+  }
+}
+
+// ---------- MISSIONS ----------
+var MISSIONS=[
+  {id:'src', t:'Detectar o sinal de entrada (fonte + resolução)'},
+  {id:'screen', t:'Montar e aplicar a tela (cabinets)'},
+  {id:'cap', t:'Ficar dentro da capacidade das portas (≤6 portas)'},
+  {id:'map', t:'Mapear TODOS os cabinets ao cabeamento'},
+  {id:'bright', t:'Ajustar o brilho da parede'},
+  {id:'test', t:'Enviar um padrão de teste (grade/branco/RGB)'},
+];
+function missionState(){
+  var total=S.cols*S.rows, mapped=Object.keys(S.map).length;
+  var overCap=false, pxByPort={};
+  for(var k in S.map){ pxByPort[S.map[k].port]=(pxByPort[S.map[k].port]||0)+cabPixels(); }
+  for(var pk in pxByPort){ if(pxByPort[pk]>PORT_CAP) overCap=true; }
+  return {
+    src:S.signal, screen:S.applied, cap:S.applied && portsNeeded()<=NPORTS && !overCap,
+    map:S.applied && mapped===total && total>0, bright:S.brightPct>0,
+    test:S.testPat!=='input' || S.signal
+  };
+}
+function updateMissions(){
+  var st=missionState(); var ul=$('#missions'); ul.innerHTML='';
+  var doneAll=true;
+  MISSIONS.forEach(function(m){
+    var done=!!st[m.id]; if(!done)doneAll=false;
+    var li=document.createElement('li'); li.className=done?'done':'';
+    li.innerHTML='<span class="bx">'+(done?'✓':'')+'</span><span>'+m.t+'</span>';
+    ul.appendChild(li);
+  });
+  var chip=$('#stateChip');
+  if(doneAll){ chip.textContent='NO AR ✓'; chip.style.background='#04120d'; chip.style.color='#4ade80'; }
+  else { chip.textContent='CONFIGURANDO'; chip.style.background=''; chip.style.color=''; }
+}
+
+// ---------- TOAST ----------
+var _tt;
+function toast(msg){ var t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(_tt); _tt=setTimeout(function(){t.classList.remove('show');},2600); }
+
+// ---------- INIT ----------
+function fitCanvas(){
+  var rect=wall.getBoundingClientRect(); var dpr=Math.min(2,window.devicePixelRatio||1);
+  wall.width=Math.max(480,Math.round(rect.width*dpr)); wall.height=Math.round(wall.width*9/16);
+  drawWall();
+}
+window.addEventListener('resize', function(){ clearTimeout(window._rz); window._rz=setTimeout(fitCanvas,120); });
+// expose for tests
+window.__sim={S:S, refresh:refresh, drawWall:drawWall, missionState:missionState, autoMap:autoMap};
+fitCanvas();
+refreshNow();
+})();
+</script>
+</body>
+</html>

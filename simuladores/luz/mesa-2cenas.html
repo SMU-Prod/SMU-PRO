@@ -1,0 +1,123 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Simulador — Mesa DMX de 2 Cenas (preset manual)</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif}
+html,body{height:100%;background:#0b0d11;color:#e9edf2;overflow:hidden}
+body{display:flex;align-items:center;justify-content:center}
+.console{width:1240px;height:700px;background:#181b20;border:1px solid #2b2f38;border-radius:12px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 48px #000a;padding:12px}
+h1{font-size:15px;font-weight:800;color:#cfe0ff}
+.sub{font-size:11px;color:#8aa0c2;line-height:1.4;margin-top:2px}
+.stage{height:140px;background:#04060a;border:1px solid #1c2740;border-radius:10px;overflow:hidden;margin-top:8px}
+.stage canvas{width:100%;height:100%;display:block}
+.body{flex:1;display:grid;grid-template-columns:1fr 220px;gap:12px;margin-top:8px;min-height:0}
+.scenes{display:flex;flex-direction:column;gap:8px;min-height:0}
+.scene{flex:1;background:#12151b;border:1px solid #262b34;border-radius:9px;padding:6px 8px;display:flex;flex-direction:column}
+.scene .sl{font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px}
+.scene.a .sl{color:#e0b93a}.scene.b .sl{color:#4d9bff}
+.row{flex:1;display:grid;grid-template-columns:repeat(12,1fr);gap:5px;align-items:end}
+.ch{display:flex;flex-direction:column;align-items:center;gap:3px;height:100%;justify-content:end}
+.track{position:relative;width:100%;max-width:22px;flex:1;min-height:44px;background:#0c1017;border:1px solid #2a303b;border-radius:5px;touch-action:none;cursor:pointer}
+.fill{position:absolute;left:0;right:0;bottom:0;border-radius:0 0 4px 4px}
+.scene.a .fill{background:linear-gradient(0deg,#8a6a1e,#e0b93a)}.scene.b .fill{background:linear-gradient(0deg,#24507f,#4d9bff)}
+.knob{position:absolute;left:-2px;right:-2px;height:8px;background:#e7ecf3;border-radius:3px}
+.cn{font-size:8px;color:#7f96bb}
+.side{display:flex;flex-direction:column;gap:10px}
+.card{background:#12151b;border:1px solid #262b34;border-radius:9px;padding:9px}
+.card h3{font-size:10px;color:#9db6df;text-transform:uppercase;font-weight:800;margin-bottom:8px;letter-spacing:.5px}
+.xfade{display:flex;flex-direction:column;gap:6px}
+.xrow{display:flex;justify-content:space-between;font-size:10px;font-weight:800}
+.xrow .xa{color:#e0b93a}.xrow .xb{color:#4d9bff}
+.xtrack{position:relative;height:26px;background:#0c1017;border:1px solid #2a303b;border-radius:13px;touch-action:none;cursor:pointer}
+.xknob{position:absolute;top:-2px;width:30px;height:28px;background:#dfe6f0;border-radius:8px;box-shadow:0 2px 6px #0008;transform:translateX(-15px)}
+.mrow{display:flex;gap:10px}
+.gm{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1}
+.gm .track{max-width:26px;min-height:80px}
+.gm .fill{background:linear-gradient(0deg,#555,#cfd6e0)}
+.gm .lbl{font-size:9px;color:#9fb4d6;font-weight:700}
+.btns{display:flex;flex-direction:column;gap:6px;flex:1;justify-content:center}
+button{background:#1b2740;color:#dce7fb;border:1px solid #33507f;border-radius:8px;padding:8px;font-size:11px;font-weight:700;cursor:pointer}
+button:hover{background:#233459}button.on{background:#7a2740;border-color:#c04d6e}
+.readout{font-size:10px;color:#88a;line-height:1.5}
+.mission{background:#0e1626;border:1px solid #24406e;border-radius:9px;padding:9px;font-size:11px;line-height:1.45}
+.mrow2{display:flex;align-items:center;gap:7px;margin-top:4px}.dot{width:12px;height:12px;border-radius:50%;border:2px solid #37507a;flex:none}.dot.ok{background:#39d98a;border-color:#39d98a}
+</style></head>
+<body>
+<div class="console" id="console">
+  <div><h1>Mesa DMX de 2 Cenas <span style="font-weight:400;color:#7f96bb;font-size:12px">— preset manual (a mãe de todos os consoles)</span></h1>
+    <div class="sub">Monte um look na <b style="color:#e0b93a">Cena A</b> (ao vivo). Prepare o PRÓXIMO look na <b style="color:#4d9bff">Cena B</b> — ele fica invisível. Use o <b>crossfade A↔B</b> para transicionar suave. Depois re-prepare a Cena A. É assim que se roda um show na mesa manual.</div></div>
+  <div class="stage"><canvas id="cv"></canvas></div>
+  <div class="body">
+    <div class="scenes">
+      <div class="scene a"><div class="sl">Cena A (Preset X)</div><div class="row" id="rowA"></div></div>
+      <div class="scene b"><div class="sl">Cena B (Preset Y)</div><div class="row" id="rowB"></div></div>
+    </div>
+    <div class="side">
+      <div class="card"><h3>Crossfade A ↔ B</h3>
+        <div class="xfade"><div class="xrow"><span class="xa">A</span><span id="xpct">A 100%</span><span class="xb">B</span></div>
+        <div class="xtrack" id="xtrack"><div class="xknob" id="xknob" style="left:0%"></div></div></div></div>
+      <div class="card"><div class="mrow">
+        <div class="gm"><div class="cn" id="gmv">100</div><div class="track" id="gmt"><div class="fill" style="height:100%"></div><div class="knob" style="bottom:100%"></div></div><div class="lbl">GRAND<br>MASTER</div></div>
+        <div class="btns"><button id="blackout">BLACKOUT</button><button id="next">Próxima ▸</button></div>
+      </div></div>
+      <div class="mission" id="mission"></div>
+      <div class="card"><div class="readout" id="readout"></div></div>
+    </div>
+  </div>
+</div>
+<script>
+const NCH=12;
+const A=new Array(NCH).fill(0), B=new Array(NCH).fill(0);
+let X=0; // 0 = cena A ao vivo, 1 = cena B ao vivo
+let gm=255, blackout=false;
+const COLORS=['#ff5a5a','#ff9a3a','#ffe08a','#8ae06a','#48e0b0','#3ad1e0','#4d8bff','#7d6bff','#b96bff','#ff6bd0','#ff6b9a','#ffffff'];
+// build fader rows
+function buildRow(arr,rowEl,cls){rowEl.innerHTML='';for(let i=0;i<NCH;i++){const el=document.createElement('div');el.className='ch';
+ el.innerHTML=`<div class="track" data-i="${i}"><div class="fill" data-fill style="height:0%"></div><div class="knob" data-knob style="bottom:0%"></div></div><div class="cn">${i+1}</div>`;
+ rowEl.appendChild(el);const track=el.querySelector('.track');
+ const set=cy=>{const r=track.getBoundingClientRect();let p=1-(cy-r.top)/r.height;p=Math.max(0,Math.min(1,p));arr[i]=Math.round(p*255);el.querySelector('[data-fill]').style.height=(p*100)+'%';el.querySelector('[data-knob]').style.bottom=(p*100)+'%';scheduleDraw();};
+ track.addEventListener('pointerdown',e=>{try{track.setPointerCapture(e.pointerId);}catch(_){}const r=track.getBoundingClientRect();set(e.clientY);const mv=ev=>{if(!ev.buttons){cl();return;}set(ev.clientY);};const cl=()=>{removeEventListener('pointermove',mv);removeEventListener('pointerup',cl);};addEventListener('pointermove',mv);addEventListener('pointerup',cl);});
+}}
+buildRow(A,document.getElementById('rowA'),'a');
+buildRow(B,document.getElementById('rowB'),'b');
+// crossfade
+const xtrack=document.getElementById('xtrack'),xknob=document.getElementById('xknob');
+function setX(cx){const r=xtrack.getBoundingClientRect();let p=(cx-r.left)/r.width;p=Math.max(0,Math.min(1,p));X=p;xknob.style.left=(p*100)+'%';document.getElementById('xpct').textContent=p<0.5?('A '+Math.round((1-p)*100)+'%'):('B '+Math.round(p*100)+'%');scheduleDraw();}
+xtrack.addEventListener('pointerdown',e=>{try{xtrack.setPointerCapture(e.pointerId);}catch(_){}setX(e.clientX);const mv=ev=>{if(!ev.buttons){cl();return;}setX(ev.clientX);};const cl=()=>{removeEventListener('pointermove',mv);removeEventListener('pointerup',cl);};addEventListener('pointermove',mv);addEventListener('pointerup',cl);});
+// grand master
+const gmt=document.getElementById('gmt');
+function setGM(cy){const r=gmt.getBoundingClientRect();let p=1-(cy-r.top)/r.height;p=Math.max(0,Math.min(1,p));gm=Math.round(p*255);gmt.querySelector('.fill').style.height=(p*100)+'%';gmt.querySelector('.knob').style.bottom=(p*100)+'%';document.getElementById('gmv').textContent=Math.round(p*100);scheduleDraw();}
+gmt.addEventListener('pointerdown',e=>{try{gmt.setPointerCapture(e.pointerId);}catch(_){}setGM(e.clientY);const mv=ev=>{if(!ev.buttons){cl();return;}setGM(ev.clientY);};const cl=()=>{removeEventListener('pointermove',mv);removeEventListener('pointerup',cl);};addEventListener('pointermove',mv);addEventListener('pointerup',cl);});
+document.getElementById('blackout').onclick=e=>{blackout=!blackout;e.target.classList.toggle('on',blackout);scheduleDraw();};
+document.getElementById('next').onclick=()=>{mi=(mi+1)%M.length;drawM();scheduleDraw();};
+// output: dipless crossfade A*(1-X) + B*X, escalado pelo GM
+function out(i){if(blackout)return 0;const v=A[i]*(1-X)+B[i]*X;return Math.round(v*(gm/255));}
+// canvas
+const cv=document.getElementById('cv');const ctx=cv.getContext('2d');
+function sizeCanvas(){const r=cv.getBoundingClientRect();const dpr=Math.min(2,devicePixelRatio||1);cv.width=r.width*dpr;cv.height=r.height*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);drawPlan();}
+function drawPlan(){const r=cv.getBoundingClientRect();const W=r.width,H=r.height;ctx.clearRect(0,0,W,H);ctx.fillStyle='#04060a';ctx.fillRect(0,0,W,H);
+ const gap=W/(NCH+1);
+ for(let i=0;i<NCH;i++){const x=gap*(i+1);const v=out(i)/255;
+  ctx.fillStyle='#161b26';ctx.fillRect(x-9,6,18,8);
+  if(v>0.01){const bg=ctx.createLinearGradient(0,14,0,H);bg.addColorStop(0,hex(COLORS[i],Math.min(0.9,v)));bg.addColorStop(1,hex(COLORS[i],0));ctx.beginPath();ctx.moveTo(x-5,14);ctx.lineTo(x-gap*0.4,H);ctx.lineTo(x+gap*0.4,H);ctx.lineTo(x+5,14);ctx.closePath();ctx.fillStyle=bg;ctx.fill();ctx.fillStyle=hex(COLORS[i],v);ctx.beginPath();ctx.arc(x,11,4,0,7);ctx.fill();}
+ }
+ ctx.fillStyle='#7f96bb';ctx.font='10px system-ui';ctx.textAlign='left';
+ const live=blackout?'BLACKOUT':(X<0.5?'Cena A ao vivo':'Cena B ao vivo');
+ ctx.fillText('Saída DMX · '+live+' · crossfade '+(X<0.5?('A '+Math.round((1-X)*100)+'%'):('B '+Math.round(X*100)+'%'))+' · GM '+Math.round(gm/255*100)+'%',10,H-10);
+ document.getElementById('readout').innerHTML='<b>Como usar:</b> monte a Cena A, prepare a Cena B (fica invisível), empurre o crossfade para B. Depois re-prepare a Cena A e volte. A plateia só vê o crossfade — nunca a preparação.';
+}
+function hex(h,a){const c=h.replace('#','');return `rgba(${parseInt(c.substr(0,2),16)},${parseInt(c.substr(2,2),16)},${parseInt(c.substr(4,2),16)},${a})`;}
+// coalesced draw
+let _raf=0;function scheduleDraw(){if(_raf)return;_raf=requestAnimationFrame(()=>{_raf=0;drawPlan();checkM();});}
+// missões
+const M=[
+ {t:'Monte um look na <b>Cena A</b> (suba ao menos 3 faders de A) com o crossfade em A.',ok:()=>X<0.1&&A.filter(v=>v>120).length>=3},
+ {t:'Prepare um look DIFERENTE na <b>Cena B</b> (suba faders de B). Repare: ele NÃO aparece no palco ainda.',ok:()=>B.filter(v=>v>120).length>=3},
+ {t:'Empurre o <b>crossfade para B</b> (até o fim) e veja a transição — agora a Cena B está ao vivo.',ok:()=>X>0.9},
+ {t:'Teste o <b>Blackout</b> e o <b>Grand Master</b> (abaixe e volte a 100%).',ok:()=>gm>=250&&!blackout&&(A.some(v=>v>0)||B.some(v=>v>0))},
+];
+let mi=0;
+function drawM(){document.getElementById('mission').innerHTML='<div><b>Missão '+(mi+1)+'/'+M.length+':</b> '+M[mi].t+'</div><div class="mrow2"><span class="dot" id="mdot"></span><span id="mstat">…</span></div>';}
+function checkM(){const dot=document.getElementById('mdot');if(!dot)return;let ok=false;try{ok=M[mi].ok();}catch(e){}dot.classList.toggle('ok',ok);document.getElementById('mstat').textContent=ok?'✓ Feito! Próxima missão.':'…';}
+function fit(){const DW=1240,DH=700;const vw=innerWidth,vh=innerHeight;const scrH=(window.screen&&screen.height)||vh;const iframeTaller=vh>scrH+8;const visH=Math.min(vh,scrH);const headerAllow=iframeTaller?84:(vh>700?24:6);const effVh=Math.max(240,visH-headerAllow);const z=Math.min(vw/DW,effVh/DH);document.getElementById('console').style.zoom=z;requestAnimationFrame(sizeCanvas);}
+addEventListener('resize',fit);drawM();drawPlan();checkM();fit();setTimeout(fit,60);
+</script></body></html>

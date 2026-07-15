@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>SMU PRO · Escala de equipe</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0c1017;--panel:#161c26;--panel2:#1b2230;--line:#2a3444;--ink:#e7edf5;--dim:#8794a8;
+        --accent:#f59e0b;--ok:#22c55e;--err:#ef4444;--warn:#f59e0b;--cyan:#38bdf8;}
+  html,body{background:var(--bg);color:var(--ink);
+    font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased;}
+  body{padding:12px;}
+  .app{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:12px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  h1{font-size:15px;margin-bottom:3px;}
+  .sub{font-size:12px;color:var(--dim);margin-bottom:12px;line-height:1.5;}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px;}
+  .stat .k{font-size:10px;color:var(--dim);letter-spacing:.5px;}
+  .stat .val{font-size:15px;font-weight:800;margin-top:2px;}
+  .verdict{font-size:13px;font-weight:700;padding:9px 12px;border-radius:8px;text-align:center;}
+  .verdict.ok{background:#14532d;color:#bbf7d0;}
+  .verdict.bad{background:#450a0a;color:#fca5a5;}
+  .verdict.warn{background:#422006;color:#fde68a;}
+  .note{font-size:12px;color:var(--dim);line-height:1.55;}
+  button{font:inherit;cursor:pointer;}
+  .brief{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+  @media(min-width:620px){ .brief{grid-template-columns:repeat(4,1fr);} }
+  .stat .val small{font-size:10px;color:var(--dim);font-weight:400;}
+  .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:10px;}
+  table{border-collapse:separate;border-spacing:0;width:100%;min-width:560px;font-size:12px;}
+  th,td{padding:5px 6px;border-bottom:1px solid var(--line);text-align:center;white-space:nowrap;}
+  thead th{background:var(--panel2);font-size:9.5px;color:var(--dim);letter-spacing:.4px;font-weight:700;line-height:1.3;}
+  thead th span{display:block;font-size:8.5px;color:#5c6b80;font-weight:400;}
+  th.fn,td.fn{position:sticky;left:0;z-index:2;background:var(--panel);text-align:left;min-width:150px;}
+  thead th.fn{background:var(--panel2);z-index:3;}
+  td.fn b{font-weight:600;font-size:11.5px;display:block;}
+  td.fn i{font-style:normal;font-size:9.5px;color:var(--dim);}
+  tr.hot td{background:#2a1408;} tr.hot td.fn{background:#2a1408;}
+  .stp{display:inline-flex;align-items:center;gap:1px;}
+  .stp button{width:22px;height:34px;border:1px solid var(--line);background:#0c1119;color:var(--dim);border-radius:5px;font-size:13px;line-height:1;}
+  .stp button:active{background:#42200680;color:var(--accent);}
+  .stp span{min-width:22px;font-weight:800;font-size:13px;}
+  .stp.z span{color:#465468;}
+  .stp.eq span{color:var(--cyan);}
+  .shifts{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+  @media(min-width:620px){ .shifts{grid-template-columns:repeat(4,1fr);} }
+  .sh{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:8px;}
+  .sh .t{font-size:11px;font-weight:700;} .sh .h{font-size:9.5px;color:var(--dim);margin-bottom:5px;}
+  .sh .l{font-size:10.5px;color:var(--dim);display:flex;justify-content:space-between;}
+  .sh .l b{color:var(--ink);font-weight:700;}
+  .alerts{display:flex;flex-direction:column;gap:5px;margin-top:8px;}
+  .al{font-size:11.5px;line-height:1.45;padding:6px 9px;border-radius:7px;border-left:3px solid;background:var(--panel2);}
+  .al.e{border-color:var(--err);color:#fca5a5;} .al.w{border-color:var(--warn);color:#fde68a;}
+  .al.i{border-color:var(--cyan);color:#bae6fd;} .al.g{border-color:var(--ok);color:#bbf7d0;}
+  .bar{height:7px;background:#0c1119;border:1px solid var(--line);border-radius:4px;overflow:hidden;margin-top:5px;}
+  .bar i{display:block;height:100%;background:var(--ok);}
+  .acts{display:flex;gap:8px;margin-top:10px;}
+  .acts button{flex:1;min-height:38px;border-radius:8px;border:1px solid var(--line);background:#0c1119;color:var(--ink);font-size:12.5px;font-weight:700;}
+  .acts button.pri{background:#422006;border-color:var(--accent);color:#fde68a;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="card">
+    <h1>Escala de equipe — 2 dias de operação</h1>
+    <div class="sub">Show de médio porte, palco 12×10 com fly de som e treliça. Verba de mão de obra fechada com o cliente: <b>R$ 34.000</b>. Defina a <b>equipe</b> (pessoas contratadas por função, cada uma custa uma diária) e quantos <b>postos</b> você abre em cada turno. A diária cobre até <b>10h</b>; acima disso entra hora extra com adicional de 50%. Alimentação (R$ 42) e transporte (R$ 35) são pagos <b>por pessoa, por turno</b>.</div>
+    <div class="brief">
+      <div class="stat"><div class="k">CUSTO DA EQUIPE</div><div class="val" id="sCusto">—</div><div class="bar"><i id="sBar" style="width:0%"></i></div></div>
+      <div class="stat"><div class="k">PESSOAS</div><div class="val" id="sPess">—</div></div>
+      <div class="stat"><div class="k">HOMEM-HORA</div><div class="val" id="sHH">—</div></div>
+      <div class="stat"><div class="k">MONTAGEM PROJETADA</div><div class="val" id="sMont">—</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="sub" style="margin-bottom:8px;"><b>Grade de turnos.</b> Postos por turno nunca passam da equipe contratada — o campo se ajusta sozinho. Arraste a grade para o lado no celular.</div>
+    <div class="scroll">
+      <table>
+        <thead><tr>
+          <th class="fn">FUNÇÃO / DIÁRIA</th>
+          <th>EQUIPE<span>pessoas</span></th>
+          <th>MONTAGEM<span>06h–14h · 8h</span></th>
+          <th>PRÉ-SHOW<span>14h–20h · 6h</span></th>
+          <th>SHOW<span>20h–01h · 5h</span></th>
+          <th>DESMONT.<span>01h–06h · 5h</span></th>
+        </tr></thead>
+        <tbody id="tb"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="sub" style="margin-bottom:8px;"><b>Custo alocado por turno</b> — diária pró-rata + hora extra + alimentação/transporte.</div>
+    <div class="shifts" id="shifts"></div>
+    <div class="alerts" id="alerts"></div>
+    <div class="acts">
+      <button class="pri" id="check">Conferir escala</button>
+      <button id="reset">Reiniciar</button>
+    </div>
+    <div id="vwrap" style="margin-top:10px;display:none;"><div class="verdict" id="verdict"></div><div class="note" id="expl" style="margin-top:8px;"></div></div>
+  </div>
+</div>
+<script>
+(function(){
+var $=function(s){return document.querySelector(s);};
+var ORCAMENTO=34000, ALIM=42, TRANSP=35, JORNADA=10, ADIC=1.5;
+var CARGA=110;        /* homem-hora ponderada de montagem (estrutura, fly, energia, cabeamento, foco) */
+var JANELA=14;        /* horas disponíveis para montar: 06h -> 20h (soundcheck começa às 20h) */
+var CURFEW=2;         /* atraso tolerado antes de estourar o curfew da casa */
+var MULTA_H=2500;
+
+var SHIFTS=[
+  {id:'mont',nome:'Montagem',hora:'06h–14h',dur:8},
+  {id:'pre', nome:'Pré-show',hora:'14h–20h',dur:6},
+  {id:'show',nome:'Show',    hora:'20h–01h',dur:5},
+  {id:'des', nome:'Desmontagem',hora:'01h–06h',dur:5}
+];
+/* peso = produtividade na montagem (homem-hora efetiva por hora de turno) */
+var ROLES=[
+  {id:'coord',nome:'Coordenador de palco',diaria:950,peso:0.4},
+  {id:'foh',  nome:'Técnico de som (FOH)',diaria:1100,peso:0.7},
+  {id:'mon',  nome:'Técnico de monitor',  diaria:900, peso:0.7},
+  {id:'roadie',nome:'Roadie / aux. de palco',diaria:420,peso:0.8},
+  {id:'tluz', nome:'Técnico de luz',       diaria:850, peso:0.9},
+  {id:'opluz',nome:'Operador de luz',      diaria:950, peso:0.4},
+  {id:'rig',  nome:'Montador / rigger',    diaria:650, peso:1.0,critico:1},
+  {id:'tvid', nome:'Técnico de vídeo',     diaria:900, peso:0.7},
+  {id:'elet', nome:'Eletricista / energia',diaria:800, peso:0.6,critico:1},
+  {id:'piso', nome:'Produtor de piso',     diaria:800, peso:0.3},
+  {id:'run',  nome:'Runner',               diaria:380, peso:0.3},
+  {id:'cam',  nome:'Camareira',            diaria:350, peso:0.1},
+  {id:'seg',  nome:'Segurança',            diaria:400, peso:0.0}
+];
+/* cobertura mínima: [turno, função, mínimo, motivo] */
+var COBERTURA=[
+  ['mont','rig',2,'içamento de treliça e fly não se faz com um rigger só — a NR-35 exige dupla e ninguém sobe sozinho'],
+  ['mont','elet',1,'ninguém puxa cabo de força nem fecha quadro sem eletricista de energia no piso'],
+  ['mont','coord',1,'sem coordenador de palco a montagem vira fila de gente esperando ordem'],
+  ['pre','foh',1,'soundcheck sem FOH não existe'],
+  ['pre','tluz',1,'foco de luz é feito no pré-show, não durante o show'],
+  ['show','foh',1,'não existe show sem operador de FOH'],
+  ['show','mon',1,'não existe show sem técnico de monitor — o retorno é do artista'],
+  ['show','opluz',1,'a luz precisa de operador durante o show'],
+  ['show','coord',1,'alguém tem que chamar o palco'],
+  ['show','piso',1,'produtor de piso é quem resolve o imprevisto no ato'],
+  ['show','seg',2,'barreira e acesso ao palco pedem no mínimo dois seguranças'],
+  ['des','rig',2,'desmontagem de estrutura sem rigger é queda de treliça'],
+  ['des','roadie',2,'não se desmonta e carrega caminhão sem equipe de palco'],
+  ['des','coord',1,'carregamento sem coordenação perde case e atrasa o caminhão']
+];
+var INIT={
+  coord:[1,1,1,1,1], foh:[1,0,1,1,0], mon:[1,0,1,1,0], roadie:[2,2,2,2,0],
+  tluz:[1,1,1,0,0], opluz:[1,0,0,1,0], rig:[2,2,0,0,0], tvid:[1,0,1,1,0],
+  elet:[0,0,0,0,0], piso:[1,0,0,1,0], run:[1,0,1,1,0], cam:[0,0,0,0,0], seg:[1,0,0,1,0]
+};
+var st={};
+function reset(){ st={}; ROLES.forEach(function(r){ st[r.id]=INIT[r.id].slice(); }); $('#vwrap').style.display='none'; build(); render(); }
+
+/* ---------- modelo ---------- */
+function atrasoCalc(){
+  var rM=0,rP=0;
+  ROLES.forEach(function(r){ rM+=st[r.id][1]*r.peso; rP+=st[r.id][2]*r.peso; });
+  var feito=rM*8;
+  if(feito>=CARGA) return {tempo:rM>0?CARGA/rM:99, atraso:Math.max(0,(rM>0?CARGA/rM:99)-JANELA)};
+  var falta=CARGA-feito;
+  var t = rP>0 ? 8+falta/rP : 99;
+  if(t>30) t=30;
+  return {tempo:t, atraso:Math.max(0,t-JANELA)};
+}
+/* distribui os postos entre as pessoas contratadas equilibrando carga (LPT: turno mais longo primeiro) */
+function alocar(rid,eq){
+  var hrs=[],turnos=[],i;
+  for(i=0;i<eq;i++){ hrs.push(0); turnos.push([]); }
+  var ordem=[0,1,2,3].sort(function(a,b){return SHIFTS[b].dur-SHIFTS[a].dur;});
+  ordem.forEach(function(si){
+    var n=Math.min(st[rid][si+1],eq); if(n<=0) return;
+    var idx=hrs.map(function(v,k){return k;}).sort(function(a,b){return hrs[a]-hrs[b];}).slice(0,n);
+    idx.forEach(function(p){ hrs[p]+=SHIFTS[si].dur; turnos[p].push(si); });
+  });
+  return {hrs:hrs,turnos:turnos};
+}
+function calc(){
+  var at=atrasoCalc(), atraso=at.atraso;
+  var shiftCusto=[0,0,0,0], shiftPess=[0,0,0,0], shiftHH=[0,0,0,0];
+  var total=0, he=0, log=0, diarias=0, ocioso=0, hh=0, pess=0;
+  var fadiga=[], extra=[], vazios=[];
+  ROLES.forEach(function(r){
+    var eq=st[r.id][0]; if(eq<=0) return;
+    pess+=eq; diarias+=eq*r.diaria;
+    var vh=r.diaria/JORNADA, a=alocar(r.id,eq);
+    for(var p=0;p<eq;p++){
+      var horas=a.hrs[p], ts=a.turnos[p];
+      if(horas===0){ ocioso+=r.diaria; total+=r.diaria; vazios.push(r.nome); continue; }
+      var toca=ts.indexOf(2)>=0||ts.indexOf(3)>=0;
+      var atr=toca?atraso:0, hTot=horas+atr;
+      hh+=hTot;
+      var hex=Math.max(0,hTot-JORNADA), pgHe=hex*vh*ADIC;
+      he+=pgHe;
+      var pago=r.diaria+pgHe, lg=ts.length*(ALIM+TRANSP);
+      log+=lg; total+=pago+lg;
+      if(hTot>14) fadiga.push({n:r.nome,h:hTot,c:r.critico});
+      else if(hex>0) extra.push({n:r.nome,h:hTot});
+      /* pró-rata do pagamento entre os turnos da pessoa; o atraso cai no último turno dela */
+      var ult=ts[ts.length-1];
+      ts.forEach(function(si){
+        var hs=SHIFTS[si].dur+(si===ult?atr:0);
+        shiftCusto[si]+=pago*(hs/hTot)+(ALIM+TRANSP);
+        shiftPess[si]++; shiftHH[si]+=hs;
+      });
+    }
+  });
+  var multa = atraso>CURFEW ? (atraso-CURFEW)*MULTA_H : 0;
+  total+=multa; if(multa>0) shiftCusto[2]+=multa;
+  var falhas=[];
+  COBERTURA.forEach(function(c){
+    var si=SHIFTS.map(function(s){return s.id;}).indexOf(c[0]);
+    var r=ROLES.filter(function(x){return x.id===c[1];})[0];
+    var tem=st[c[1]][si+1];
+    if(tem<c[2]) falhas.push({t:SHIFTS[si].nome,f:r.nome,tem:tem,min:c[2],why:c[3]});
+  });
+  return {total:total,he:he,log:log,diarias:diarias,ocioso:ocioso,multa:multa,hh:hh,pess:pess,
+          atraso:atraso,tempo:at.tempo,fadiga:fadiga,extra:extra,vazios:vazios,falhas:falhas,
+          sc:shiftCusto,sp:shiftPess,sh:shiftHH};
+}
+/* ---------- UI ---------- */
+function brl(v){ return 'R$ '+Math.round(v).toLocaleString('pt-BR'); }
+function stepper(rid,col,val,cls){
+  return '<span class="stp '+(val===0?'z ':'')+cls+'"><button data-r="'+rid+'" data-c="'+col+'" data-d="-1">−</button>'+
+         '<span id="v'+rid+col+'">'+val+'</span>'+
+         '<button data-r="'+rid+'" data-c="'+col+'" data-d="1">+</button></span>';
+}
+function build(){
+  var h='';
+  ROLES.forEach(function(r){
+    h+='<tr id="tr'+r.id+'"><td class="fn"><b>'+r.nome+'</b><i>R$ '+r.diaria.toLocaleString('pt-BR')+' / diária · R$ '+Math.round(r.diaria/JORNADA)+' a hora</i></td>';
+    h+='<td>'+stepper(r.id,0,st[r.id][0],'eq')+'</td>';
+    for(var c=1;c<=4;c++) h+='<td>'+stepper(r.id,c,st[r.id][c],'')+'</td>';
+    h+='</tr>';
+  });
+  $('#tb').innerHTML=h;
+}
+function onStep(e){
+  var b=e.target.closest('button'); if(!b) return;
+  var rid=b.dataset.r, c=+b.dataset.c, d=+b.dataset.d;
+  var v=st[rid][c]+d; if(v<0) v=0; if(v>10) v=10;
+  st[rid][c]=v;
+  if(c===0){ for(var k=1;k<=4;k++) if(st[rid][k]>v) st[rid][k]=v; }
+  else if(v>st[rid][0]) st[rid][0]=v;   /* abrir posto contrata gente */
+  $('#vwrap').style.display='none';
+  sync(); render();
+}
+function sync(){
+  ROLES.forEach(function(r){ for(var c=0;c<=4;c++){
+    var el=$('#v'+r.id+c); el.textContent=st[r.id][c];
+    el.parentNode.classList.toggle('z',st[r.id][c]===0);
+  }});
+}
+function render(){
+  var d=calc();
+  $('#sCusto').innerHTML=brl(d.total)+' <small>de '+brl(ORCAMENTO)+'</small>';
+  var pc=Math.min(100,d.total/ORCAMENTO*100);
+  $('#sBar').style.width=pc+'%';
+  $('#sBar').style.background = d.total>ORCAMENTO?'var(--err)':(pc>92?'var(--warn)':'var(--ok)');
+  $('#sPess').innerHTML=d.pess+' <small>contratadas</small>';
+  $('#sHH').innerHTML=Math.round(d.hh)+' <small>h</small>';
+  $('#sMont').innerHTML=(d.tempo>=30?'30+':d.tempo.toFixed(1))+'h <small>de '+JANELA+'h</small>';
+  $('#sMont').style.color=d.atraso>0?'var(--err)':'var(--ink)';
+  var h='';
+  SHIFTS.forEach(function(s,i){
+    h+='<div class="sh"><div class="t">'+s.nome+'</div><div class="h">'+s.hora+' · '+s.dur+'h</div>'+
+       '<div class="l"><span>Pessoas</span><b>'+d.sp[i]+'</b></div>'+
+       '<div class="l"><span>Homem-hora</span><b>'+Math.round(d.sh[i])+'h</b></div>'+
+       '<div class="l"><span>Custo</span><b>'+brl(d.sc[i])+'</b></div></div>';
+  });
+  $('#shifts').innerHTML=h;
+  ROLES.forEach(function(r){
+    var q=d.fadiga.filter(function(f){return f.n===r.nome;}).length;
+    $('#tr'+r.id).classList.toggle('hot',q>0);
+  });
+  return d;
+}
+function check(){
+  var d=render(), a=[], grave=0, med=0;
+  d.falhas.forEach(function(f){
+    grave++;
+    a.push('<div class="al e"><b>Cobertura — '+f.t+':</b> '+f.f+' com '+f.tem+', mínimo '+f.min+'. '+f.why+'.</div>');
+  });
+  var vis={};
+  d.fadiga.forEach(function(f){
+    var k=f.n+'|'+Math.round(f.h); if(vis[k])return; vis[k]=1;
+    var n=d.fadiga.filter(function(x){return x.n===f.n&&Math.round(x.h)===Math.round(f.h);}).length;
+    if(f.c){ grave++;
+      a.push('<div class="al e"><b>Fadiga crítica:</b> '+n+'× '+f.n+' com '+f.h.toFixed(1)+'h de jornada. Fadiga em rigging e energia não é economia, é acidente — desmontagem de madrugada é onde cai treliça.</div>');
+    } else { med++;
+      a.push('<div class="al w"><b>Fadiga:</b> '+n+'× '+f.n+' com '+f.h.toFixed(1)+'h. Ninguém aguenta montagem, show e desmontagem no mesmo corpo. Contrate mais gente na função e divida os turnos.</div>');
+    }
+  });
+  if(d.atraso>0){
+    var s=d.atraso>CURFEW?'e':'w'; if(d.atraso>CURFEW) grave++; else med++;
+    a.push('<div class="al '+s+'"><b>Montagem subdimensionada:</b> projetada em '+(d.tempo>=30?'mais de 30':d.tempo.toFixed(1))+'h para uma janela de '+JANELA+'h — '+d.atraso.toFixed(1)+'h de atraso. Soundcheck comprimido, show empurrado e hora extra para todo mundo que entra à noite.'+
+      (d.atraso>CURFEW?' Passou do curfew da casa: multa de '+brl(d.multa)+'.':'')+'</div>');
+  }
+  if(d.he>0) a.push('<div class="al i"><b>Hora extra:</b> '+brl(d.he)+' acima das diárias. A diária cobre '+JORNADA+'h; a partir daí cada hora sai com adicional de 50%. Enxugar equipe empurra o custo para cá.</div>');
+  if(d.vazios.length){ med++;
+    a.push('<div class="al w"><b>Diária paga sem escala:</b> '+d.vazios.length+' pessoa(s) contratada(s) e não escalada(s) ('+d.vazios.slice(0,3).join(', ')+'). '+brl(d.ocioso)+' de custo morto.</div>');
+  }
+  a.push('<div class="al i"><b>Composição:</b> diárias '+brl(d.diarias)+' · hora extra '+brl(d.he)+' · alimentação e transporte '+brl(d.log)+(d.multa?' · multa de curfew '+brl(d.multa):'')+'.</div>');
+  if(!a.length||(!grave&&!med&&!d.he)) a.unshift('<div class="al g">Cobertura fechada em todos os turnos, ninguém acima de '+JORNADA+'h e montagem dentro da janela.</div>');
+  $('#alerts').innerHTML=a.join('');
+  var v=$('#verdict'), e=$('#expl'), estouro=d.total>ORCAMENTO;
+  if(grave||estouro){
+    v.className='verdict bad';
+    v.textContent = estouro&&!grave ? '✗ Estourou o orçamento em '+brl(d.total-ORCAMENTO)
+      : (d.atraso>CURFEW ? '✗ A escala não entrega o show no horário' : '✗ Escala reprovada: cobertura ou segurança comprometida');
+    e.innerHTML='Escala fechada em '+brl(d.total)+(estouro?' — <b>'+brl(d.total-ORCAMENTO)+' acima</b> da verba.':' de '+brl(ORCAMENTO)+'.')+
+      ' Resolva primeiro o que está em vermelho: cobertura mínima e fadiga em função crítica não são negociáveis com o cliente.';
+  } else if(med||d.he>0){
+    v.className='verdict warn';
+    v.textContent='◐ Dentro da verba, mas com risco: '+(d.fadiga.length?'fadiga na equipe':'')+(d.fadiga.length&&d.atraso?' e ':'')+(d.atraso?'montagem apertada':'')+(!d.fadiga.length&&!d.atraso?'hora extra ou diária ociosa':'');
+    e.innerHTML='Custo de '+brl(d.total)+' ('+Math.round(d.total/ORCAMENTO*100)+'% da verba). Passa no papel, mas a escala está apoiada em gente esticada. É assim que se perde equipe boa e é assim que acontece acidente na desmontagem.';
+  } else {
+    v.className='verdict ok';
+    v.textContent='✓ Escala aprovada: '+brl(d.total)+' ('+Math.round(d.total/ORCAMENTO*100)+'% da verba)';
+    e.innerHTML='Cobertura mínima fechada nos quatro turnos, montagem projetada em '+d.tempo.toFixed(1)+'h dentro da janela de '+JANELA+'h e ninguém acima de '+JORNADA+'h. Sobra de '+brl(ORCAMENTO-d.total)+' — sobra é margem para o imprevisto, não é lucro.';
+  }
+  $('#vwrap').style.display='block';
+}
+$('#tb').addEventListener('click',onStep);
+$('#check').onclick=check;
+$('#reset').onclick=reset;
+window.__ee={calc:calc,st:function(){return st;}};
+reset();
+})();
+</script>
+</body>
+</html>

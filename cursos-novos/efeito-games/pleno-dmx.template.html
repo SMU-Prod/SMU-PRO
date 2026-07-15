@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>DMX & Controle Operacional · SMU PRO</title>
+<style>
+  :root{ --bg:#06080e; --panel:#0c111c; --panel2:#0f1626; --line:#25314c; --ink:#e8eef9; --mut:#8a9bb8; --acc:#ff7a1a; --ok:#39d98a; --bad:#ff4d4d; --warn:#ffc63b; --blue:#54b3ff; }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:#05070c;color:var(--ink);font-family:system-ui,Segoe UI,Roboto,Arial;overflow:hidden;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+  #app{position:fixed;top:0;left:0;width:100vw;height:var(--visH,100vh);display:flex;flex-direction:column;overflow:hidden;padding:8px;gap:7px}
+  #hd{flex:none}#hd b{font-size:14px;font-weight:800}#hd span{display:block;font-size:11px;color:var(--mut)}
+  #stageWrap{flex:0 0 24%;min-height:74px;position:relative;background:#04050a;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  #stage{position:absolute;inset:0;width:100%;height:100%}
+  #stMsg{position:absolute;left:0;right:0;bottom:5px;text-align:center;font-size:11.5px;color:#aeb9cf;pointer-events:none;text-shadow:0 1px 5px #000}
+  /* universo bar */
+  #uni{flex:none;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:7px 9px}
+  #uni .lab{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;display:flex;justify-content:space-between}
+  #unibar{position:relative;height:22px;background:#0a1120;border-radius:5px;overflow:hidden;border:1px solid var(--line)}
+  .foot{position:absolute;top:0;bottom:0;border-radius:3px;opacity:.85;font-size:9px;color:#04140b;font-weight:800;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .foot.clash{outline:2px solid var(--bad);animation:bl .7s infinite;z-index:2}
+  @keyframes bl{50%{opacity:.5}}
+  /* máquinas / chain */
+  #chain{flex:1 1 auto;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:6px}
+  .mac{display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:7px 9px}
+  .mac.clash{border-color:var(--bad)}
+  .mac .info b{font-size:13px}.mac .info .sub{font-size:10px;color:var(--mut)}
+  .mac .dot{width:12px;height:12px;border-radius:3px}
+  .addr{display:flex;align-items:center;gap:4px}
+  .addr button{width:26px;height:30px;border:1px solid var(--line);background:#141c2b;color:var(--ink);border-radius:6px;font-size:16px;font-weight:800;cursor:pointer}
+  .addr .val{font-family:'Courier New',monospace;font-size:15px;font-weight:800;min-width:42px;text-align:center}
+  .tbtn{border:1px solid #ffb070;background:linear-gradient(180deg,#ff8f36,#e5590a);color:#180a00;border-radius:7px;padding:8px 10px;font-size:11px;font-weight:800;cursor:pointer}
+  .tbtn:disabled{opacity:.35;background:#1a2334;color:#5f7089;border-color:#2a3550;cursor:not-allowed}
+  /* controles */
+  #ctl{flex:none;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;background:#0a0e18;border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+  .btn{border:1px solid var(--line);background:#141c2b;color:var(--ink);border-radius:9px;padding:9px 13px;font-size:12.5px;font-weight:800;cursor:pointer;min-height:40px}
+  .btn.term{background:#3a2e0c;border-color:#b98b1e;color:#ffe08a}.btn.term.on{background:#123a24;border-color:#2b7a4e;color:#9af2c0}
+  .btn.apply{background:#0e2438;border-color:#2b5a8a;color:#9cd2ff}
+  #obj{position:absolute;left:10px;bottom:70px;z-index:6;width:min(280px,60vw);background:#0c1220ee;border:1px solid var(--line);border-radius:11px;padding:9px 11px}
+  #obj h4{margin:0 0 5px;font-size:11px;text-transform:uppercase;color:var(--acc)}
+  #obj ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+  #obj li{display:flex;gap:7px;font-size:11.5px;color:#cdd8ea;align-items:flex-start}
+  #obj li .bx{flex:none;width:15px;height:15px;border-radius:4px;border:1.5px solid #46567a;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#04140b}
+  #obj li.done .bx{background:var(--ok);border-color:var(--ok)}#obj li.done{color:#8fb8a2}
+  #obj.win{border-color:var(--ok);box-shadow:0 0 20px #39d98a44}
+  #toast{position:absolute;left:50%;top:12px;transform:translateX(-50%) translateY(-60px);z-index:9;background:#0e1726f2;border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-size:12.5px;font-weight:700;transition:transform .3s;max-width:82vw;text-align:center}
+  #toast.show{transform:translateX(-50%) translateY(0)}
+  #toast.good{border-color:var(--ok);color:#bff5da}#toast.bad{border-color:var(--bad);color:#ffb3ab}#toast.warn{border-color:var(--warn);color:#ffe6a8}
+  @media(max-width:820px){ .mac{grid-template-columns:1fr auto;gap:6px} .mac .addr{grid-column:1} .mac .tbtn{grid-column:2} #obj{width:min(220px,72vw)} }
+</style></head>
+<body>
+<div id="app">
+  <div id="hd"><b>DMX & Controle Operacional</b><span>Enderece cada máquina sem conflito, ponha o terminador e faça o channel check</span></div>
+  <div id="stageWrap"><canvas id="stage"></canvas><div id="stMsg">Endereçe as máquinas e teste cada canal</div></div>
+  <div id="uni"><div class="lab"><span>Universo DMX (1–512) — ocupação por máquina</span><span id="uniState">—</span></div><div id="unibar"></div></div>
+  <div id="chain"></div>
+  <div id="ctl">
+    <button class="btn term" id="term">🔌 Terminador: FALTA</button>
+    <button class="btn apply" id="apply">✔ Aplicar patch</button>
+    <span style="font-size:10.5px;color:var(--mut);max-width:230px">Footprint = nº de canais que a máquina ocupa. Endereços não podem se sobrepor.</span>
+  </div>
+  <div id="obj"><h4>🎯 Objetivos</h4><ul id="objList"></ul></div>
+  <div id="toast"></div>
+</div>
+
+<script>__ENGINE__</script>
+<script>
+(function(){
+  const fx=new StageFX(document.getElementById('stage'),{ haze:0.14, ledWall:0.5, beams:true, label:"" });
+  window.__fx=fx;
+  const $=id=>document.getElementById(id);
+  let tT; function toast(m,k){ const t=$('toast'); t.textContent=m; t.className='show '+(k||''); clearTimeout(tT); tT=setTimeout(()=>t.className=(k||''),2600); }
+
+  // máquinas DMX (footprint real aproximado)
+  const MACS=[
+    {id:'hazer', nome:'Hazer', foot:1, col:'#54b3ff', addr:1,  fire:()=>fx.setHaze(Math.min(0.55,fx.env.haze+0.25))},
+    {id:'fog',   nome:'Máq. de Fumaça', foot:1, col:'#8bd3ff', addr:1, fire:()=>{for(let i=0;i<4;i++)setTimeout(()=>fx.trigger('fog',{x:640,puff:6,spread:2}),i*70);}},
+    {id:'co2',   nome:'Jato de CO₂', foot:2, col:'#39d98a', addr:1, fire:()=>{fx.trigger('co2',{x:430});fx.trigger('co2',{x:850});}},
+    {id:'spark', nome:'Faísca Fria', foot:3, col:'#ffd24a', addr:1, fire:()=>{fx.trigger('spark',{x:400,power:1.1});fx.trigger('spark',{x:880,power:1.1});}},
+  ];
+  let terminator=false, patched=false;
+
+  function ranges(){ return MACS.map(m=>({m, a:m.addr, b:m.addr+m.foot-1})); }
+  function clashesOf(m){ const r=ranges(); const me=r.find(x=>x.m===m); return r.some(x=>x.m!==m && !(me.b<x.a||me.a>x.b)); }
+  function anyClash(){ return MACS.some(m=>clashesOf(m)); }
+  function overflow(){ return MACS.some(m=>m.addr+m.foot-1>512 || m.addr<1); }
+
+  function renderChain(){
+    $('chain').innerHTML=MACS.map(m=>{
+      const cl=clashesOf(m);
+      return `<div class="mac${cl?' clash':''}" data-id="${m.id}">
+        <div class="info"><b><span class="dot" style="display:inline-block;background:${m.col};vertical-align:middle;margin-right:6px"></span>${m.nome}</b><div class="sub">footprint ${m.foot} canal(is) · ocupa DMX ${m.addr}–${m.addr+m.foot-1}${cl?' · ⚠ CONFLITO':''}</div></div>
+        <div class="addr"><button data-dec="${m.id}">−</button><span class="val">${String(m.addr).padStart(3,'0')}</span><button data-inc="${m.id}">+</button></div>
+        <button class="tbtn" data-test="${m.id}" ${patched&&!cl?'':'disabled'}>Testar canal</button>
+      </div>`;
+    }).join('');
+    $('chain').querySelectorAll('[data-dec]').forEach(b=>b.onclick=()=>{ const m=MACS.find(x=>x.id===b.dataset.dec); m.addr=Math.max(1,m.addr-1); patched=false; update(); });
+    $('chain').querySelectorAll('[data-inc]').forEach(b=>b.onclick=()=>{ const m=MACS.find(x=>x.id===b.dataset.inc); m.addr=Math.min(512-m.foot+1,m.addr+1); patched=false; update(); });
+    $('chain').querySelectorAll('[data-test]').forEach(b=>b.onclick=()=>testCh(b.dataset.test));
+  }
+  function renderUni(){
+    const w=$('unibar').clientWidth||300;
+    $('unibar').innerHTML=MACS.map(m=>{ const cl=clashesOf(m);
+      return `<div class="foot${cl?' clash':''}" style="left:${(m.addr-1)/512*100}%;width:${Math.max(3,m.foot/512*100)}%;background:${m.col}" title="${m.nome}">${m.foot>1?m.addr:''}</div>`;
+    }).join('');
+    $('uniState').textContent = overflow()?'fora do range':anyClash()?'CONFLITO de endereço':'sem sobreposição ✓';
+    $('uniState').style.color = (overflow()||anyClash())?'#ff9a9a':'#9af2c0';
+  }
+  function update(){ renderChain(); renderUni();
+    if(!anyClash()&&!overflow()) step('addr');
+  }
+
+  $('term').onclick=()=>{ terminator=!terminator; $('term').classList.toggle('on',terminator); $('term').textContent=terminator?'🔌 Terminador: OK':'🔌 Terminador: FALTA'; patched=false; renderChain(); if(terminator) step('term'); };
+  $('apply').onclick=()=>{
+    if(overflow()){ toast('Há máquina fora do range 1–512.','bad'); return; }
+    if(anyClash()){ toast('Conflito de endereços — duas máquinas na mesma faixa DMX. Ajuste os endereços.','bad'); return; }
+    if(!terminator){ toast('Faltou o TERMINADOR no fim da linha DMX — sinal instável sem ele.','warn'); return; }
+    patched=true; toast('Patch aplicado: endereços sem conflito, linha terminada. Faça o channel check.','good'); step('apply'); renderChain();
+  };
+  function testCh(id){
+    const m=MACS.find(x=>x.id===id);
+    if(!patched){ toast('Aplique o patch antes de testar.','warn'); return; }
+    if(clashesOf(m)){ toast('CONFLITO: outra máquina responde no mesmo endereço!','bad'); return; }
+    m.fire(); $('stMsg').textContent='DMX '+String(m.addr).padStart(3,'0')+' → '+m.nome+' respondeu';
+    toast(m.nome+' respondeu ao canal '+m.addr+' ✓','good'); m.tested=true;
+    if(MACS.every(x=>x.tested)) step('test');
+  }
+
+  const OBJ=[{id:'addr',t:'Endereçar as 4 máquinas SEM sobreposição'},{id:'term',t:'Colocar o terminador no fim da linha'},{id:'apply',t:'Aplicar o patch'},{id:'test',t:'Channel check: cada máquina responde ao seu canal'}];
+  const objEls={},objDone={}; let won=false;
+  (function(){ const ul=$('objList'); OBJ.forEach(o=>{ const li=document.createElement('li'); li.innerHTML='<span class="bx"></span><span>'+o.t+'</span>'; ul.appendChild(li); objEls[o.id]=li; }); })();
+  function step(id){ if(!objDone[id]){ objDone[id]=true; objEls[id].classList.add('done'); objEls[id].querySelector('.bx').textContent='✓';
+    if(OBJ.every(o=>objDone[o.id])&&!won){won=true;$('obj').classList.add('win');toast('Universo DMX limpo, terminado e testado — controle operacional impecável.','good');} } }
+
+  function setVisH(){ var vh=window.innerHeight, sh=(window.screen&&screen.height)||vh; var inflated=vh>sh+8, visH=Math.min(vh,sh), header=inflated?86:0;
+    document.documentElement.style.setProperty('--visH', Math.max(320,visH-header)+'px'); if(fx.resize) fx.resize(); renderUni(); }
+  addEventListener('resize',setVisH); addEventListener('orientationchange',()=>setTimeout(setVisH,150));
+  document.addEventListener('fullscreenchange',()=>[60,260,600].forEach(d=>setTimeout(setVisH,d)));
+  document.addEventListener('webkitfullscreenchange',()=>[60,260,600].forEach(d=>setTimeout(setVisH,d)));
+  window.__probe={MACS,setAddr:(id,a)=>{MACS.find(x=>x.id===id).addr=a;patched=false;update();},term:()=>$('term').click(),apply:()=>$('apply').click(),test:(id)=>testCh(id),anyClash,objDone,isWon:()=>won,get patched(){return patched;}};
+  renderChain(); setVisH();
+})();
+</script>
+</body></html>

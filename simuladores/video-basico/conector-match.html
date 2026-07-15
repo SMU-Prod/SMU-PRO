@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMU PRO · Cabo certo para cada trabalho</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0c1017;--panel:#161c26;--panel2:#1b2230;--line:#2a3444;--ink:#e7edf5;--dim:#8794a8;--accent:#3b82f6;--ok:#22c55e;--err:#ef4444;}
+  html,body{background:var(--bg);color:var(--ink);font-family:'Segoe UI',system-ui,Arial,sans-serif;}
+  body{padding:12px;}
+  .app{max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:12px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  h1{font-size:15px;margin-bottom:3px;} .sub{font-size:12px;color:var(--dim);margin-bottom:12px;}
+  .cols{display:grid;grid-template-columns:1fr;gap:14px;}
+  @media(min-width:640px){ .cols{grid-template-columns:1fr 1fr;} }
+  .col h2{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:8px;}
+  .item{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:9px;padding:9px 11px;margin-bottom:8px;cursor:pointer;background:var(--panel2);transition:.12s;}
+  .item:hover{border-color:var(--accent);}
+  .item.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset;}
+  .item.done{opacity:.55;border-color:var(--ok);cursor:default;}
+  .item.done.sel{box-shadow:none;}
+  .plug{width:42px;height:30px;border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;border:1px solid #000;}
+  .nm{font-size:13px;font-weight:700;} .desc{font-size:11px;color:var(--dim);line-height:1.3;}
+  .use{font-size:12.5px;line-height:1.35;}
+  .bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px;}
+  .score{font-size:13px;font-weight:700;color:var(--ok);}
+  .msg{font-size:12px;color:var(--dim);min-height:18px;}
+  .reset{font-size:11px;padding:6px 12px;border:1px solid var(--line);border-radius:7px;background:#0c1119;color:var(--ink);cursor:pointer;margin-left:auto;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="card">
+    <h1>Qual cabo para cada trabalho?</h1>
+    <div class="sub">Clique num <b>conector</b> à esquerda e depois na <b>situação</b> à direita que ele resolve melhor. Acertou = trava em verde.</div>
+    <div class="cols">
+      <div class="col"><h2>Conectores</h2><div id="left"></div></div>
+      <div class="col"><h2>Situação no evento</h2><div id="right"></div></div>
+    </div>
+    <div class="bar"><span class="score" id="score">0 / 6</span><span class="msg" id="msg"></span><button class="reset" id="reset">Reiniciar</button></div>
+  </div>
+</div>
+<script>
+(function(){
+var $=function(s){return document.querySelector(s);};
+var CONN=[
+  {id:'hdmi', nm:'HDMI (tipo A)', desc:'Padrão consumidor/pro curto', color:'#111827', ico:'▭', use:'Ligar um notebook a uma TV a 3 metros, no stand de um corporativo.'},
+  {id:'sdi', nm:'SDI / BNC (coaxial)', desc:'Trava BNC, robusto', color:'#334155', ico:'◉', use:'Levar o sinal de uma câmera até a mesa de corte a 90 metros, com conector que trava.'},
+  {id:'fibra', nm:'Fibra óptica (LC)', desc:'Longa distância, imune a ruído', color:'#0e7490', ico:'✳', use:'Mandar vídeo do palco à cabine de FOH a 300 metros num estádio.'},
+  {id:'hdbaset', nm:'HDBaseT (Cat6/RJ45)', desc:'HDMI sobre cabo de rede', color:'#1e3a8a', ico:'▤', use:'Estender um HDMI até um projetor a 70 metros usando cabo de rede barato.'},
+  {id:'dp', nm:'DisplayPort', desc:'Saída de placa de vídeo', color:'#3730a3', ico:'▬', use:'Puxar a segunda e a terceira saída de vídeo da GPU do PC de playback.'},
+  {id:'vga', nm:'VGA (analógico)', desc:'Legado, só até HD', color:'#1e40af', ico:'⬒', use:'Conectar num projetor antigo de sala de reunião que só tem entrada analógica.'},
+];
+var order=CONN.map(function(c){return c.id;});
+var rightOrder;
+var selLeft=null, done={}, score=0;
+function shuffle(a){ a=a.slice(); for(var i=a.length-1;i>0;i--){var j=Math.floor((i+1)*((Math.sin(i*97.13+a.length)*0.5+0.5)));j=j%(i+1);var t=a[i];a[i]=a[j];a[j]=t;} return a; }
+function build(){
+  selLeft=null; done={}; score=0;
+  var L=$('#left'), R=$('#right'); L.innerHTML=''; R.innerHTML='';
+  CONN.forEach(function(c){
+    var d=document.createElement('div'); d.className='item'; d.dataset.id=c.id;
+    d.innerHTML='<div class="plug" style="background:'+c.color+'">'+c.ico+'</div><div><div class="nm">'+c.nm+'</div><div class="desc">'+c.desc+'</div></div>';
+    d.onclick=function(){ if(done[c.id])return; document.querySelectorAll('#left .item').forEach(function(x){x.classList.remove('sel');}); d.classList.add('sel'); selLeft=c.id; $('#msg').textContent='Agora escolha a situação que combina.'; };
+    L.appendChild(d);
+  });
+  rightOrder=shuffle(order);
+  rightOrder.forEach(function(id){
+    var c=CONN.find(function(x){return x.id===id;});
+    var d=document.createElement('div'); d.className='item'; d.dataset.id=id;
+    d.innerHTML='<div class="use">'+c.use+'</div>';
+    d.onclick=function(){ if(!selLeft){ $('#msg').textContent='Escolha primeiro um conector à esquerda.'; return; } if(done[id])return;
+      if(selLeft===id){ done[id]=true; score++; d.classList.add('done'); document.querySelector('#left .item[data-id="'+id+'"]').classList.add('done','sel'); document.querySelector('#left .item[data-id="'+id+'"]').classList.remove('sel'); $('#msg').textContent='✓ Certo! '+c.nm; selLeft=null; document.querySelectorAll('#left .item').forEach(function(x){x.classList.remove('sel');}); update(); }
+      else { $('#msg').textContent='✗ Não é o ideal — pense na distância e no tipo de equipamento.'; d.animate([{transform:'translateX(0)'},{transform:'translateX(-6px)'},{transform:'translateX(6px)'},{transform:'translateX(0)'}],{duration:220}); }
+    };
+    R.appendChild(d);
+  });
+  update();
+}
+function update(){ $('#score').textContent=score+' / 6'; if(score===6){ $('#msg').textContent='🎉 Todos certos! Você sabe escolher o transporte de vídeo pela distância e pelo equipamento.'; } }
+$('#reset').onclick=build;
+window.__cm={build:build, get score(){return score;}, solveAll:function(){CONN.forEach(function(c){done[c.id]=true;});score=6;update();}};
+build();
+})();
+</script>
+</body>
+</html>

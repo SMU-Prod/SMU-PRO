@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>Ética na Cabine — decisões de quem é profissional (SMU)</title>
+<style>
+  :root{ --ink:#e9eef7; --muted:#8b97a9; --amber:#f4a02a; --green:#37d07a; --red:#e0483f; --cyan:#39c0e6; }
+  *{box-sizing:border-box} html,body{margin:0;height:100%}
+  body{ background:radial-gradient(1100px 650px at 50% -8%,#1b1e23,#0a0b0d 62%),#08090b; color:var(--ink);
+    font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; -webkit-font-smoothing:antialiased;
+    user-select:none;overflow:hidden; display:flex;align-items:flex-start;justify-content:center; }
+  #stage{transform-origin:top center;flex:0 0 auto}
+  .lab{position:relative;width:1080px;display:flex;flex-direction:column;gap:9px;padding:12px;
+    background:linear-gradient(180deg,#2b2f36,#1f2228 10%,#191b1f 60%,#141518);
+    border:1px solid #0b0c0e;border-radius:16px;box-shadow:0 30px 80px #000b, inset 0 1px 0 #ffffff10;}
+  .util{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:linear-gradient(180deg,#202329,#15171b);border:1px solid #0c0d0f;border-radius:11px;padding:7px 11px}
+  .brand b{font-size:16px;letter-spacing:1px;color:#eef2f8}
+  .brand .m{font-size:9px;letter-spacing:2px;color:#8a94a4;text-transform:uppercase;margin-left:8px}
+  .pill{font-size:10px;color:var(--muted);background:#0c0e12;border:1px solid #2a2f37;border-radius:16px;padding:4px 9px;white-space:nowrap}
+  .pill b{color:#fff}
+  .spacer{flex:1}
+  .btnp{font:inherit;font-size:11px;font-weight:700;border:0;border-radius:8px;padding:6px 11px;cursor:pointer;color:var(--muted);background:transparent;border:1px solid #2a2f37}
+  .prog{display:flex;gap:5px}
+  .pdot{width:22px;height:6px;border-radius:3px;background:#242a35}
+  .pdot.done{background:var(--green)} .pdot.cur{background:var(--cyan)}
+  .card{background:linear-gradient(180deg,#101622,#0b0f18);border:1px solid #0c1526;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:11px;min-height:330px}
+  .ctag{font-size:9.5px;letter-spacing:1.5px;color:#7bd3ff;font-weight:800}
+  .ctit{font-size:16px;font-weight:900;color:#fff;line-height:1.3}
+  .cdesc{font-size:11.5px;color:#a9b7cc;line-height:1.5}
+  .opts{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+  .op{background:#0c1420;border:1px solid #1a2c48;border-radius:10px;padding:11px 13px;cursor:pointer;font-size:11.5px;line-height:1.45;color:#dfe8f5}
+  .op:hover{border-color:#2a4468}
+  .op.good{background:#0d2114;border-color:#37d07a;color:#c9f0d8}
+  .op.badx{background:#241012;border-color:#e0483f;color:#f0cdc9}
+  .fb{border-radius:9px;padding:10px 13px;font-size:11px;line-height:1.5;display:none}
+  .fb.show{display:block}
+  .fb.hit{background:#0d2114;border:1px solid #1e4a2c;color:#a8ecc4}
+  .fb.miss{background:#241a08;border:1px solid #4a3a14;color:#ffd9a0}
+  .nxt{align-self:flex-end;font-size:11px;font-weight:800;color:#07120b;background:linear-gradient(180deg,#5be59a,#27b566);border:0;border-radius:8px;padding:9px 22px;cursor:pointer;display:none}
+  .nxt.show{display:block}
+  .final{display:none;flex-direction:column;gap:10px;align-items:center;text-align:center;padding:26px 10px}
+  .final.show{display:flex}
+  .final .big{font-size:22px;font-weight:900;color:var(--green)}
+  .final .sc{font-size:13px;color:#cfd7e6}
+  .final ul{text-align:left;font-size:11px;color:#a9b7cc;line-height:1.7;margin:4px 0}
+  .coach{background:#0c0e12;border:1px solid #223;border-radius:10px;padding:9px 12px;font-size:10.5px;line-height:1.45;color:#c7d0de}
+  .coach b{color:#fff}.coach .k{color:var(--amber);font-weight:800}
+</style>
+</head>
+<body>
+<div id="stage">
+<div class="lab">
+  <div class="util">
+    <div class="brand"><b>SMU</b><span class="m">ÉTICA NA CABINE — GO / NO-GO</span></div>
+    <span class="pill">Decisão <b id="pNow">1</b>/<b id="pTot">6</b> · Acertos de primeira: <b id="pScore">0</b></span>
+    <span class="spacer"></span>
+    <div class="prog" id="prog"></div>
+    <button class="btnp" id="btnReset">Reiniciar</button>
+  </div>
+  <div class="card" id="card"></div>
+  <div class="coach"><b>Reputação leva anos para construir e uma noite para perder.</b> Aqui são situações REAIS de cabine: pedidos, bebida, equipamento com defeito, colega atrasado, saúde. Decida como profissional — errou, o simulador explica.</div>
+</div>
+</div>
+
+<script>
+"use strict";
+const $=(s)=>document.querySelector(s);
+const CEN=[
+ {
+  "tag": "SITUAÇÃO 1 · O PEDIDO NO AUGE DO SET",
+  "tit": "Pista cheia, seu set voando. Chega alguém: \"toca funk agora!\" — e a festa é de techno.",
+  "desc": "O pedido é o teste diário do DJ.",
+  "ops": [
+   {
+    "t": "Destratar: \"sai daqui, aqui não é jukebox\"",
+    "good": false,
+    "fb": "Grosseria com público é imperdoável — a pessoa pode ser amiga do dono. Recusar SIM, destratar NUNCA."
+   },
+   {
+    "t": "Agradecer com simpatia e explicar que a proposta da noite é outra — e se fizer sentido mais tarde, encaixar uma ponte",
+    "good": true,
+    "fb": "Educação + firmeza. Você mantém a curadoria sem criar inimigo. Ler se o pedido representa a pista é parte do ofício."
+   },
+   {
+    "t": "Tocar na hora, cortando o set no meio",
+    "good": false,
+    "fb": "Atropelar a própria curadoria por um pedido isolado derruba a energia dos outros 200 que estavam dançando."
+   }
+  ]
+ },
+ {
+  "tag": "SITUAÇÃO 2 · BEBIDA NA CABINE",
+  "tit": "Terceiro shot que mandam para a cabine em uma hora. Você está no meio do set.",
+  "desc": "Você está TRABALHANDO — e é o responsável pelo som da noite.",
+  "ops": [
+   {
+    "t": "Virar todos — \"faz parte da vibe\"",
+    "good": false,
+    "fb": "DJ alterado = beatmatch sujo, volume estourado, decisões ruins e risco pro equipamento. Ninguém contrata de novo o DJ que 'não estava inteiro'."
+   },
+   {
+    "t": "Agradecer, brindar com moderação (ou água) e manter o foco no trabalho até o fim do set",
+    "good": true,
+    "fb": "Simpatia sem perder o controle: você é o profissional responsável pela pista até o último minuto."
+   },
+   {
+    "t": "Aceitar tudo e deixar 'no automático' com SYNC",
+    "good": false,
+    "fb": "O 'automático' falha na primeira grade mal analisada — e a queda do set vira story dos outros."
+   }
+  ]
+ },
+ {
+  "tag": "SITUAÇÃO 3 · EQUIPAMENTO COM DEFEITO",
+  "tit": "Na passagem de som você percebe: o canal 2 do mixer da casa está falhando.",
+  "desc": "Defeito descoberto ANTES da festa é problema pequeno. Escondido, vira desastre.",
+  "ops": [
+   {
+    "t": "Avisar imediatamente o responsável da casa, mostrar o defeito e combinar o plano B (usar canais 1 e 3)",
+    "good": true,
+    "fb": "Transparência técnica: a casa fica ciente (o defeito é dela), e você já opera com o plano B testado."
+   },
+   {
+    "t": "Ficar quieto pra 'não criar problema' e torcer",
+    "good": false,
+    "fb": "Quando falhar às 23h com a pista cheia, o problema vai parecer SEU. Defeito não avisado vira culpa do DJ."
+   },
+   {
+    "t": "Abrir o mixer da casa para consertar por conta própria",
+    "good": false,
+    "fb": "Equipamento da casa não se abre sem autorização — se piorar, o prejuízo cai no seu nome."
+   }
+  ]
+ },
+ {
+  "tag": "SITUAÇÃO 4 · O COLEGA ATRASOU",
+  "tit": "Seu set acabou, o próximo DJ não chegou. A pista está cheia.",
+  "desc": "A noite é um trabalho de equipe.",
+  "ops": [
+   {
+    "t": "Desligar tudo e ir embora — \"meu horário acabou\"",
+    "good": false,
+    "fb": "Pista no silêncio = festa morta = prejuízo da casa. 'Não é meu problema' é a frase que encerra carreiras locais."
+   },
+   {
+    "t": "Avisar a produção, segurar o set com energia adequada e passar a cabine quando o colega chegar — sem drama",
+    "good": true,
+    "fb": "Profissional segura a onda e resolve com a produção. O colega fica devendo uma, a casa lembra de VOCÊ."
+   },
+   {
+    "t": "Segurar, mas anunciando no microfone que 'o outro DJ furou'",
+    "good": false,
+    "fb": "Expor colega em cima do palco é veneno duplo: constrange a casa e mostra que você faz o mesmo com qualquer um."
+   }
+  ]
+ },
+ {
+  "tag": "SITUAÇÃO 5 · IMAGEM DOS OUTROS",
+  "tit": "Você quer postar os melhores momentos do seu set. Num dos vídeos, aparece gente identificável na pista.",
+  "desc": "Divulgação sim — respeito também.",
+  "ops": [
+   {
+    "t": "Postar tudo — \"quem foi pra festa sabia que ia aparecer\"",
+    "good": false,
+    "fb": "Nem sempre: há casas e eventos com política de imagem, e pessoas que não podem/querem aparecer. Reclamação pública sobra pra você e pra casa."
+   },
+   {
+    "t": "Priorizar takes da cabine e da massa sem close identificável — e seguir a política de imagem da casa (pergunte!)",
+    "good": true,
+    "fb": "Você divulga o trabalho respeitando o espaço e o público. Casas com política clara (clubes de techno!) valorizam quem respeita."
+   },
+   {
+    "t": "Postar stories da cabine DURANTE o set inteiro",
+    "good": false,
+    "fb": "Celular na mão o set todo = DJ que não está tocando. A pista percebe."
+   }
+  ]
+ },
+ {
+  "tag": "SITUAÇÃO 6 · SEU CORPO, SUA FERRAMENTA",
+  "tit": "Terceira gig na semana, ouvido apitando desde ontem. Hoje tem mais uma.",
+  "desc": "Zumbido (tinnitus) é o alarme de incêndio da audição.",
+  "ops": [
+   {
+    "t": "Ignorar — \"faz parte da profissão\"",
+    "good": false,
+    "fb": "Zumbido recorrente é dano se acumulando. Perda auditiva é IRREVERSÍVEL — e encerra a carreira que você está construindo."
+   },
+   {
+    "t": "Baixar o monitor/fone hoje, usar protetor auricular de músico nos intervalos e dar descanso real ao ouvido entre gigs",
+    "good": true,
+    "fb": "Gestão profissional da ferramenta nº 1: monitor no mínimo necessário, proteção linear e pausas. DJ de carreira longa cuida do ouvido como piloto cuida da visão."
+   },
+   {
+    "t": "Aumentar o fone pra 'compensar' o zumbido",
+    "good": false,
+    "fb": "É o ciclo da surdez: quanto mais dano, mais volume 'precisa', mais dano. Interrompa o ciclo agora."
+   }
+  ]
+ },
+ {
+  "tag": "SITUAÇÃO 7 · PLANO B",
+  "tit": "Meia hora antes de sair de casa. O que separa o profissional do azarado?",
+  "desc": "Na cabine, o imprevisto não é 'se' — é 'quando'.",
+  "ops": [
+   {
+    "t": "1 pen drive com as músicas — \"nunca deu problema\"",
+    "good": false,
+    "fb": "Pen corrompe, porta USB falha, pen fica na mesa da casa anterior. Uma falha = set encerrado."
+   },
+   {
+    "t": "2 pens idênticos e atualizados + fone reserva + o essencial no celular/notebook como última linha",
+    "good": true,
+    "fb": "Redundância profissional: o show não para. Todo DJ experiente tem a história do dia em que o backup salvou a noite."
+   },
+   {
+    "t": "Confiar no Wi-Fi da casa pra streaming",
+    "good": false,
+    "fb": "Wi-Fi de casa cheia morre no pico. Streaming é complemento, nunca o plano principal de uma gig."
+   }
+  ]
+ }
+];
+let i=0, score=0, answered=false, firstTry=true;
+function renderProg(){ const p=$("#prog"); p.innerHTML=""; CEN.forEach((_,k)=>{ const d=document.createElement("div"); d.className="pdot"+(k<i?" done":k===i?" cur":""); p.appendChild(d); }); $("#pNow").textContent=Math.min(i+1,CEN.length); $("#pScore").textContent=score; }
+function render(){
+  renderProg(); const c=CEN[i]; const card=$("#card");
+  if(!c){ card.innerHTML=`<div class="final show"><div class="big">✓ Profissional de verdade!</div>
+    <div class="sc">Acertos de primeira: <b>${score}/${CEN.length}</b></div>
+    <ul><li>Pedidos: recusar com <b>simpatia</b> · Bebida: <b>moderação</b>, você está trabalhando</li>
+  <li>Defeito: <b>avisar</b> a casa e ter plano B · Colega: segurar a noite <b>sem drama</b></li>
+  <li>Imagem: respeitar a política da casa · Ouvido: <b>proteção sempre</b> · 2 pens, sempre</li></ul>
+    <div class="sc" style="font-size:10.5px;color:#8b97a9">Decisão certa repetida todo fim de semana — é isso que constrói carreira.</div></div>`; return; }
+  answered=false; firstTry=true;
+  const shuffled=c.ops.map((o,k)=>({o,k})).sort(()=>Math.random()-0.5);
+  card.innerHTML=`<div class="ctag">${c.tag}</div><div class="ctit">${c.tit}</div><div class="cdesc">${c.desc}</div>
+    <div class="opts">${shuffled.map(({o,k})=>`<div class="op" data-k="${k}">${o.t}</div>`).join("")}</div>
+    <div class="fb" id="fb"></div><button class="nxt" id="nxt">PRÓXIMA DECISÃO ▶</button>`;
+  [...card.querySelectorAll(".op")].forEach(el=>el.addEventListener("pointerdown",()=>{
+    const o=c.ops[+el.dataset.k]; const fb=$("#fb");
+    if(o.good){ if(!answered){ el.classList.add("good"); fb.className="fb show hit"; fb.textContent="✓ "+o.fb;
+        if(firstTry)score++; answered=true; $("#nxt").classList.add("show"); $("#pScore").textContent=score; } }
+    else { el.classList.add("badx"); fb.className="fb show miss"; fb.textContent="✗ "+o.fb; firstTry=false; }
+  }));
+  card.querySelector("#nxt").addEventListener("pointerdown",()=>{ i++; render(); });
+}
+$("#pTot").textContent=CEN.length;
+$("#btnReset").addEventListener("pointerdown",()=>{ i=0; score=0; render(); });
+function fit(){ const s=Math.min(1,(window.innerWidth-8)/1104); $("#stage").style.transform="scale("+s+")"; }
+window.addEventListener("resize",fit); fit(); render();
+</script>
+</body>
+</html>

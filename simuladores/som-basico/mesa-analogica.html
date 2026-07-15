@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador — Mesa Analógica (EQ 3 bandas) — SMU</title>
+<style>
+  :root{--bg:#0b0f17;--panel:#151b28;--panel2:#0f1420;--line:#26344c;--ink:#e7ecf5;
+    --muted:#8ea0bd;--amber:#F59E0B;--green:#22c55e;--red:#ef4444;--cyan:#22d3ee;--strip:#121a29}
+  *{box-sizing:border-box}html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);font-family:"Space Grotesk",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;padding:10px;user-select:none}
+  h1{font-size:15px;margin:0 0 2px}.sub{font-size:11.5px;color:var(--muted);margin-bottom:10px}
+  .mission{display:flex;gap:10px;align-items:center;background:#0c1220;border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin-bottom:10px}
+  .mission .idx{font-size:10px;color:var(--amber);font-weight:800;letter-spacing:.8px;white-space:nowrap}
+  .mission .txt{font-size:12.5px;line-height:1.3;flex:1}.mission .txt b{color:var(--amber)}
+  .mission button{font:inherit;font-size:11px;color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:7px;padding:6px 9px;cursor:pointer}
+
+  .src{display:flex;gap:8px;align-items:center;background:#0c1220;border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-bottom:10px;flex-wrap:wrap}
+  .src .item{display:flex;gap:6px;align-items:center;font-size:11.5px;color:var(--muted)}
+  .src .plug{font:inherit;font-size:11px;font-weight:700;padding:6px 10px;border-radius:7px;border:1px solid var(--line);background:#111a2b;color:var(--ink);cursor:pointer}
+  .src .plug.done{background:var(--green);border-color:var(--green);color:#08120a}
+
+  .board{display:flex;gap:8px;overflow-x:auto;padding:10px;background:linear-gradient(180deg,#0e1420,#0a0f18);border:1px solid var(--line);border-radius:12px}
+  .strip{flex:0 0 118px;background:linear-gradient(180deg,var(--strip),#0e1524);border:1px solid var(--line);border-radius:10px;padding:9px 7px;display:flex;flex-direction:column;align-items:center;gap:7px}
+  .strip.master{flex-basis:104px;background:linear-gradient(180deg,#1b2233,#0e1524);border-color:#3a4a66}
+  .lbl{font-size:11px;font-weight:700;text-align:center;line-height:1.1}
+  .sub2{font-size:9px;color:var(--muted);text-align:center;margin-top:-4px}
+  .jack{font-size:9px;padding:2px 6px;border-radius:20px;border:1px solid var(--line);color:var(--muted)}
+  .jack.on{color:var(--green);border-color:var(--green)}
+  .knob{display:flex;flex-direction:column;align-items:center;gap:2px}
+  .dial{width:40px;height:40px;border-radius:50%;position:relative;cursor:ns-resize;touch-action:none;
+    background:radial-gradient(circle at 50% 32%,#33415f,#151d2e 72%);border:1px solid #3a4d70;box-shadow:inset 0 2px 5px #0008}
+  .dial::after{content:"";position:absolute;left:50%;top:4px;width:2.5px;height:14px;border-radius:2px;background:var(--amber);
+    transform-origin:50% 16px;transform:translateX(-50%) rotate(var(--rot,0deg))}
+  .dial.eq::after{background:var(--cyan)}
+  .kl{font-size:8.5px;color:var(--muted);letter-spacing:.3px}.kv{font-size:9px;font-weight:700}
+  .eqrow{display:flex;gap:5px}
+  .peak{font-size:8px;font-weight:800;color:#3a4a66;letter-spacing:.5px}.peak.on{color:var(--red)}
+  .onbtn{font:inherit;font-size:9.5px;font-weight:800;padding:4px 0;width:100%;border-radius:6px;border:1px solid var(--line);background:#0c1220;color:var(--muted);cursor:pointer}
+  .onbtn.on{background:var(--green);border-color:var(--green);color:#08120a}
+  .faderwrap{display:flex;gap:5px;height:120px;align-items:stretch}
+  .meter{width:7px;border-radius:3px;background:#05070d;border:1px solid #1a2540;position:relative;overflow:hidden}
+  .meter i{position:absolute;left:0;right:0;bottom:0;height:0%;background:linear-gradient(0deg,var(--green),var(--green) 62%,var(--amber) 84%,var(--red))}
+  .fader{width:26px;position:relative;background:linear-gradient(90deg,#0a0e17,#0d1220,#0a0e17);border-radius:5px;border:1px solid #1a2540;cursor:ns-resize;touch-action:none}
+  .fader .unity{position:absolute;left:0;right:0;top:26%;height:1px;background:#3a4d70}
+  .cap{position:absolute;left:-4px;right:-4px;height:20px;border-radius:4px;background:linear-gradient(180deg,#e9edf5,#a7b3c9 46%,#59647e 54%,#8493ad);border:1px solid #0006;box-shadow:0 2px 4px #0009;cursor:grab}
+  .cap::after{content:"";position:absolute;left:3px;right:3px;top:50%;height:2px;transform:translateY(-50%);background:#0b0f17;border-radius:2px}
+  .fdb{font-size:9px;color:var(--muted);font-weight:700}
+  .phantom{font:inherit;font-size:9.5px;font-weight:800;padding:5px 6px;border-radius:6px;border:1px solid var(--line);background:#0c1220;color:var(--muted);cursor:pointer;width:100%}
+  .phantom.on{background:var(--red);border-color:var(--red);color:#fff}
+  .verdict{font-size:12px;font-weight:700;min-height:16px;margin-top:8px;text-align:center}.verdict.good{color:var(--green)}.verdict.bad{color:var(--red)}
+  .hint{font-size:10px;color:var(--muted);margin-top:6px;text-align:center}
+</style>
+</head>
+<body>
+  <h1>Mesa Analógica de Som — EQ de 3 bandas</h1>
+  <div class="sub">A mesa do dia a dia do corporativo: microfones, notebook (P2→P10), EQ de 3 bandas, retorno e master.</div>
+
+  <div class="mission">
+    <span class="idx" id="mIdx">MISSÃO 1/5</span>
+    <span class="txt" id="mTxt">—</span>
+    <button id="mSkip">Pular</button>
+  </div>
+
+  <div class="src">
+    <div class="item">🎤 Microfone com fio</div>
+    <div class="item">📡 Mic sem fio (receptor)</div>
+    <div class="item">💻 Notebook (saída de fone P2)</div>
+    <button class="plug" id="plugNb">Conectar notebook — cabo P2 → P10 estéreo</button>
+    <span class="hint" id="plugHint" style="margin:0">a saída de fone (P2) do notebook vai na entrada de linha estéreo (P10) da mesa</span>
+  </div>
+
+  <div class="board" id="board"></div>
+  <div class="verdict" id="verdict"></div>
+
+<script>
+"use strict";
+(function(){
+  const $=id=>document.getElementById(id);
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+  // canais
+  const CH=[
+    {id:"c1",nm:"Mic 1",sub:"XLR • voz",kind:"mic",jack:"XLR",conn:true,  gain:35,hi:0,mid:0,lo:0,aux:0,on:true,fader:0,peak:false},
+    {id:"c2",nm:"Sem fio",sub:"XLR • mão",kind:"mic",jack:"XLR",conn:true, gain:30,hi:0,mid:0,lo:0,aux:0,on:true,fader:0,peak:false},
+    {id:"ln",nm:"Notebook",sub:"Linha estéreo P10",kind:"line",jack:"P10", conn:false,gain:50,hi:0,mid:0,lo:0,aux:0,on:true,fader:0,peak:false},
+  ];
+  const master={fader:60,phantom:false};
+  const by=id=>CH.find(c=>c.id===id);
+
+  const KN={gain:{min:0,max:100},hi:{min:-15,max:15},mid:{min:-15,max:15},lo:{min:-15,max:15},aux:{min:0,max:100}};
+  function rotOf(k,v){const d=KN[k];return -140+(v-d.min)/(d.max-d.min)*280;}
+  function kv(k,v){ if(k==="gain"||k==="aux")return Math.round(v); return (v>0?"+":"")+Math.round(v); }
+
+  const board=$("board");
+  function render(){
+    board.innerHTML="";
+    CH.forEach(c=>board.appendChild(stripEl(c)));
+    board.appendChild(masterEl());
+    paintClipAndRot();
+  }
+  function knob(c,k,cls){ return `<div class="knob"><div class="dial ${cls||''}" data-ch="${c.id}" data-k="${k}"></div>
+    <div class="kl">${({gain:"GANHO",hi:"HIGH",mid:"MID",lo:"LOW",aux:"AUX"})[k]}</div><div class="kv" id="v-${c.id}-${k}">${kv(k,c[k])}</div></div>`; }
+  function stripEl(c){
+    const d=document.createElement("div");d.className="strip";d.dataset.ch=c.id;
+    d.innerHTML=`
+      <div class="lbl">${c.nm}</div><div class="sub2">${c.sub}</div>
+      <span class="jack ${c.conn?'on':''}" id="jack-${c.id}">${c.conn?'● '+c.jack:'○ sem cabo'}</span>
+      ${knob(c,"gain")}
+      <div class="eqrow">${knob(c,"hi","eq")}${knob(c,"lo","eq")}</div>
+      ${knob(c,"mid","eq")}
+      ${knob(c,"aux")}
+      <div class="peak" id="peak-${c.id}">● PEAK</div>
+      <button class="onbtn ${c.on?'on':''}" data-on="${c.id}">${c.on?'ON':'MUTE'}</button>
+      <div class="faderwrap"><div class="meter"><i id="m-${c.id}"></i></div>
+        <div class="fader" data-fch="${c.id}"><div class="unity"></div><div class="cap" id="cap-${c.id}"></div></div></div>
+      <div class="fdb" id="fdb-${c.id}">${c.fader}</div>`;
+    return d;
+  }
+  function masterEl(){
+    const d=document.createElement("div");d.className="strip master";
+    d.innerHTML=`<div class="lbl">MASTER</div><div class="sub2">saída principal</div>
+      <button class="phantom ${master.phantom?'on':''}" id="phantom">+48V ${master.phantom?'ON':'OFF'}</button>
+      <div style="flex:1"></div>
+      <div class="faderwrap"><div class="meter"><i id="m-main"></i></div><div class="meter"><i id="m-main2"></i></div>
+        <div class="fader" data-fch="main"><div class="unity"></div><div class="cap" id="cap-main"></div></div></div>
+      <div class="fdb" id="fdb-main">${master.fader}</div>`;
+    return d;
+  }
+
+  // Interação unificada (mouse + toque) via Pointer Events + delegação no board.
+  // Registrada UMA vez — não re-registra a cada render (sem vazamento de listeners).
+  let knobDrag=null,faderDrag=null,lastY=0;
+  function setFaderFromY(id,y){const f=board.querySelector('.fader[data-fch="'+id+'"]');if(!f)return;
+    const r=f.getBoundingClientRect();let v=Math.round(clamp(1-(y-r.top)/r.height,0,1)*100);
+    if(id==="main"){master.fader=v;$("fdb-main").textContent=v;} else {const c=by(id);c.fader=v;$("fdb-"+id).textContent=v;}
+    placeCap(id);check();}
+  function setupInteraction(){
+    board.addEventListener("pointerdown",e=>{
+      const dial=e.target.closest(".dial");
+      if(dial){knobDrag={el:dial,ch:dial.dataset.ch,k:dial.dataset.k};lastY=e.clientY;board.setPointerCapture(e.pointerId);e.preventDefault();return;}
+      const f=e.target.closest(".fader");
+      if(f){faderDrag=f.dataset.fch;board.setPointerCapture(e.pointerId);setFaderFromY(faderDrag,e.clientY);e.preventDefault();return;}
+    });
+    board.addEventListener("pointermove",e=>{
+      if(knobDrag){const dy=lastY-e.clientY;lastY=e.clientY;const c=by(knobDrag.ch),d=KN[knobDrag.k];
+        c[knobDrag.k]=clamp(c[knobDrag.k]+dy*(d.max-d.min)/150,d.min,d.max);
+        const v=$("v-"+knobDrag.ch+"-"+knobDrag.k);if(v)v.textContent=kv(knobDrag.k,c[knobDrag.k]);
+        knobDrag.el.style.setProperty("--rot",rotOf(knobDrag.k,c[knobDrag.k])+"deg");checkClip(c);check();e.preventDefault();}
+      else if(faderDrag){setFaderFromY(faderDrag,e.clientY);e.preventDefault();}
+    });
+    const end=()=>{knobDrag=null;faderDrag=null;};
+    board.addEventListener("pointerup",end);board.addEventListener("pointercancel",end);
+    // botões (delegação) — funcionam mesmo após re-render
+    board.addEventListener("click",e=>{
+      const on=e.target.closest("[data-on]");if(on){const c=by(on.dataset.on);c.on=!c.on;render();check();return;}
+      const ph=e.target.closest("#phantom");if(ph){master.phantom=!master.phantom;render();check();return;}
+    });
+  }
+  function placeCap(id){ const v=id==="main"?master.fader:by(id).fader; const cap=$("cap-"+id); if(cap)cap.style.bottom="calc("+v+"% - 10px)"; }
+  function paintClipAndRot(){ CH.forEach(c=>{ ["gain","hi","mid","lo","aux"].forEach(k=>{const el=board.querySelector('.dial[data-ch="'+c.id+'"][data-k="'+k+'"]');if(el)el.style.setProperty("--rot",rotOf(k,c[k])+"deg");}); placeCap(c.id); checkClip(c); }); placeCap("main"); }
+  function checkClip(c){ c.peak = c.conn && c.on && c.kind==="mic" && c.gain>72; const el=$("peak-"+c.id); if(el)el.classList.toggle("on",c.peak); }
+
+  // notebook connect
+  $("plugNb").onclick=()=>{ const ln=by("ln"); ln.conn=!ln.conn; $("plugNb").classList.toggle("done",ln.conn);
+    $("plugNb").textContent = ln.conn? "✔ Notebook conectado (P2→P10)" : "Conectar notebook — cabo P2 → P10 estéreo";
+    render(); check(); };
+
+  // meters loop
+  let t=0;
+  function loop(){ t+=0.05;
+    CH.forEach(c=>{ const el=$("m-"+c.id); if(!el)return;
+      let lvl=0; if(c.conn&&c.on){ const base=c.kind==="mic"?(c.gain/100):(0.6); const env=0.55+0.45*Math.sin(t*(1.7)+c.id.length);
+        lvl=clamp(base*(c.fader/100)*env*1.5 + (c.peak?0.3:0),0,1); }
+      el.style.height=(lvl*100)+"%"; });
+    let sum=0;CH.forEach(c=>{if(c.conn&&c.on)sum+=(c.kind==="mic"?c.gain/100:0.6)*(c.fader/100);});
+    const main=clamp(sum*(master.fader/100)*1.1,0,1); const mm=$("m-main"),mm2=$("m-main2");
+    if(mm){mm.style.height=(main*100)+"%";} if(mm2){mm2.style.height=(clamp(main-0.03,0,1)*100)+"%";}
+    requestAnimationFrame(loop);
+  }
+
+  // missões
+  const M=[
+    { t:'Toque a música de fundo: clique <b>Conectar notebook (P2→P10)</b> e suba o <b>fader</b> do canal Notebook (linha estéreo) acima de 60.',
+      ok:()=>{const l=by("ln");return l.conn&&l.on&&l.fader>=60;} },
+    { t:'Ganho sem estourar: no <b>Mic 1</b>, suba o <b>GANHO</b> — mas se o <b>PEAK</b> vermelho acender, abaixe. Deixe o ganho forte, porém sem clip (entre 55 e 70).',
+      ok:()=>{const c=by("c1");return c.gain>=55&&c.gain<=70&&!c.peak;} },
+    { t:'Voz abafada: no <b>Mic 1</b>, use o EQ de 3 bandas — realce o <b>HIGH</b> (+4 ou mais) e reduza o <b>LOW</b> (−4 ou menos).',
+      ok:()=>{const c=by("c1");return c.hi>=4&&c.lo<=-4;} },
+    { t:'Abra o canal na mistura: suba o <b>fader</b> do <b>Mic 1</b> acima de 60 e garanta que ele está <b>ON</b>.',
+      ok:()=>{const c=by("c1");return c.on&&c.fader>=60;} },
+    { t:'Retorno do palestrante: mande o <b>Mic 1</b> para o <b>AUX</b> (monitor) — gire o AUX acima de 40.',
+      ok:()=>{const c=by("c1");return c.aux>=40;} },
+  ];
+  let mi=0;
+  function paintM(){const idx=$("mIdx"),txt=$("mTxt");
+    if(mi>=M.length){idx.textContent="CONCLUÍDO";txt.innerHTML="🎓 <b>Mandou bem!</b> Você operou uma mesa analógica: notebook via P2→P10, ganho sem clip, EQ de 3 bandas e retorno.";$("mSkip").style.display="none";return;}
+    idx.textContent="MISSÃO "+(mi+1)+"/"+M.length;txt.innerHTML=M[mi].t;}
+  function check(){if(mi>=M.length)return;try{if(M[mi].ok()){mi++;$("verdict").textContent="✔ Feito!";$("verdict").className="verdict good";setTimeout(()=>{$("verdict").textContent="";},1200);paintM();}}catch(e){}}
+  $("mSkip").onclick=()=>{if(mi<M.length){mi++;paintM();}};
+
+  setupInteraction();render();paintM();requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

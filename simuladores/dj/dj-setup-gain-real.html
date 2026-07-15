@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>Configuração do Setup — ganho, níveis e som limpo (SMU)</title>
+<style>
+  :root{ --ink:#e9eef7; --muted:#8b97a9; --amber:#f4a02a; --green:#37d07a; --red:#e0483f; --cyan:#39c0e6; }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{ background:radial-gradient(1100px 650px at 50% -8%,#1b1e23,#0a0b0d 62%),#08090b; color:var(--ink);
+    font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; -webkit-font-smoothing:antialiased;
+    user-select:none;overflow:hidden; display:flex;align-items:flex-start;justify-content:center; }
+  #stage{transform-origin:top center;flex:0 0 auto}
+  .lab{position:relative;width:1280px;display:flex;flex-direction:column;gap:9px;padding:12px;
+    background:linear-gradient(180deg,#2b2f36,#1f2228 10%,#191b1f 60%,#141518);
+    border:1px solid #0b0c0e;border-radius:16px;box-shadow:0 30px 80px #000b, inset 0 1px 0 #ffffff10;}
+  .util{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:linear-gradient(180deg,#202329,#15171b);border:1px solid #0c0d0f;border-radius:11px;padding:7px 11px}
+  .brand b{font-size:16px;letter-spacing:1px;color:#eef2f8}
+  .brand .m{font-size:9px;letter-spacing:2px;color:#8a94a4;text-transform:uppercase;margin-left:8px}
+  .pill{font-size:10px;color:var(--muted);background:#0c0e12;border:1px solid #2a2f37;border-radius:16px;padding:4px 9px;display:flex;align-items:center;gap:6px;white-space:nowrap}
+  .pill b{color:#fff}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green)}
+  .dot.off{background:#444;box-shadow:none}
+  .spacer{flex:1}
+  .btnp{font:inherit;font-size:11px;font-weight:700;border:0;border-radius:8px;padding:6px 11px;cursor:pointer;color:#07120b;background:linear-gradient(180deg,#5be59a,#27b566)}
+  .btnp.ghost{background:transparent;color:var(--muted);border:1px solid #2a2f37}
+  .mission{display:flex;align-items:center;gap:9px;background:#0c0e12;border:1px solid #2a2f37;border-radius:9px;padding:5px 10px;flex:1 1 340px;min-width:0}
+  .mission .idx{font-size:10px;color:var(--amber);font-weight:800;white-space:nowrap}
+  .mission .txt{font-size:11px;line-height:1.25;min-width:0}
+  .mission .txt b{color:#fff}.mission .txt small{color:var(--muted)}
+  .mission .ok{color:var(--green);font-weight:800;font-size:15px}
+
+  /* cadeia */
+  .chainrow{display:grid;grid-template-columns:repeat(4,1fr) 210px;gap:9px;align-items:stretch}
+  .stage{background:linear-gradient(180deg,#1a1c21,#131519);border:1px solid #0a0b0d;border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px;align-items:center;position:relative}
+  .stage .t{font-size:9.5px;letter-spacing:1.2px;color:#7bd3ff;font-weight:800;text-align:center}
+  .stage .t small{display:block;color:#5f6f88;font-weight:600;font-size:8px;letter-spacing:.3px;margin-top:2px}
+  .stage::after{content:"▶";position:absolute;right:-13px;top:50%;transform:translateY(-50%);color:#39536b;font-size:12px;z-index:2}
+  .stage:last-child::after{content:""}
+  .stage.clip{border-color:var(--red);box-shadow:0 0 0 1px var(--red),0 0 16px #e0483f33}
+  .cliplab{font-size:8px;font-weight:800;letter-spacing:1px;color:#3a1512;background:#e0483f;border-radius:3px;padding:1px 6px;visibility:hidden}
+  .stage.clip .cliplab{visibility:visible;animation:bl .5s steps(2) infinite}
+  @keyframes bl{50%{opacity:.35}}
+  .knob{width:52px;height:52px;border-radius:50%;position:relative;cursor:ns-resize;touch-action:none;background:radial-gradient(circle at 50% 34%,#40454e,#181a1e 72%);border:1px solid #000;box-shadow:0 3px 6px #0008,inset 0 1px 0 #fff2}
+  .knob::after{content:"";position:absolute;left:50%;top:6px;width:3px;height:16px;background:#eef2f8;border-radius:2px;transform-origin:50% 20px;transform:translateX(-50%) rotate(var(--pdeg,0deg))}
+  .kv{font-size:10px;color:var(--amber);font-variant-numeric:tabular-nums;font-weight:700}
+  .vu{width:20px;height:120px;background:#07090c;border:1px solid #000;border-radius:4px;position:relative;overflow:hidden}
+  .vu i{position:absolute;left:0;right:0;bottom:0;height:0%;background:linear-gradient(0deg,#37d07a 0 58%,#f4d03a 58% 82%,#e0483f 82% 100%)}
+  .vu .pk{position:absolute;left:0;right:0;height:2px;background:#fff;bottom:0}
+  .vurow{display:flex;gap:8px;align-items:flex-end}
+  .vulab{font-size:7.5px;color:#5f6f88;writing-mode:vertical-rl;transform:rotate(180deg)}
+  .stage .hint{font-size:8.5px;color:#8fa3c4;text-align:center;line-height:1.3}
+
+  /* caixa final */
+  .spkbox{display:flex;flex-direction:column;gap:6px;align-items:center;justify-content:center}
+  .spkdraw{width:90px;height:110px}
+  .cab{display:flex;gap:5px}
+  .cabb{font-size:9px;font-weight:800;color:#9fb0c8;background:#131a28;border:1px solid #223247;border-radius:6px;padding:6px 8px;cursor:pointer;text-align:center;line-height:1.2}
+  .cabb small{display:block;font-weight:600;color:#5f6f88;font-size:7.5px}
+  .cabb.on{background:var(--cyan);color:#04121a;border-color:var(--cyan)}
+  .cabb.on small{color:#04121a99}
+  .cabb.hum{border-color:#5b4620}
+  .hum{font-size:8.5px;color:#ffb03a;display:none;text-align:center}
+  .hum.show{display:block}
+
+  .botrow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
+  .scn{background:#0c0e12;border:1px solid #223;border-radius:10px;padding:9px 11px;cursor:pointer}
+  .scn:hover{border-color:#39536b}
+  .scn.on{border-color:var(--amber);box-shadow:0 0 0 1px var(--amber)}
+  .scn .st{font-size:10.5px;font-weight:800;color:#fff}
+  .scn .sd{font-size:9px;color:#8b97a9;margin-top:3px;line-height:1.35}
+  .coach{background:#0c0e12;border:1px solid #223;border-radius:10px;padding:9px 12px;font-size:10.5px;line-height:1.45;color:#c7d0de}
+  .coach b{color:#fff}.coach .k{color:var(--amber);font-weight:800}
+</style>
+</head>
+<body>
+<div id="stage">
+<div class="lab">
+  <div class="util">
+    <div class="brand"><b>SMU</b><span class="m">CONFIGURAÇÃO DO SETUP — GANHO E SOM LIMPO</span></div>
+    <span class="pill"><span class="dot off" id="acDot"></span> Áudio <b id="acState">clique em Ligar</b></span>
+    <div class="mission">
+      <span class="idx" id="mIdx">MISSÃO 1/5</span>
+      <div class="txt"><b id="mTitle">Ligue o som e dê o play</b><br><small id="mHint">A música passa pela cadeia: DECK → CANAL → MASTER → CAIXA.</small></div>
+      <span class="ok" id="mOk" style="display:none">✓</span>
+    </div>
+    <span class="spacer"></span>
+    <button class="btnp ghost" id="btnReset">Reiniciar</button>
+    <button class="btnp" id="btnStart">▶ Ligar áudio</button>
+  </div>
+
+  <!-- CADEIA DE GANHO -->
+  <div class="chainrow">
+    <div class="stage" data-st="deck">
+      <div class="t">1 · DECK<small>saída do player</small></div>
+      <span class="cliplab">CLIP!</span>
+      <div class="vurow"><span class="vulab">NÍVEL</span><div class="vu"><i data-vu="deck"></i></div>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:center">
+          <div class="knob" data-g="deck" data-min="0" data-max="1.5" data-val="0.8"></div><span class="kv" data-kv="deck">80%</span>
+        </div></div>
+      <div class="hint">Volume de saída do player/notebook. Alto demais já entrega sinal sujo pro mixer.</div>
+    </div>
+    <div class="stage" data-st="trim">
+      <div class="t">2 · TRIM (GAIN)<small>entrada do canal</small></div>
+      <span class="cliplab">CLIP!</span>
+      <div class="vurow"><span class="vulab">CANAL</span><div class="vu"><i data-vu="trim"></i></div>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:center">
+          <div class="knob" data-g="trim" data-min="0" data-max="2" data-val="0.9"></div><span class="kv" data-kv="trim">45%</span>
+        </div></div>
+      <div class="hint">A regra: picos batendo no FIM DO VERDE/AMARELO. Vermelho = distorção que nenhum fader conserta.</div>
+    </div>
+    <div class="stage" data-st="fader">
+      <div class="t">3 · FADER + MASTER<small>volume da mistura</small></div>
+      <span class="cliplab">CLIP!</span>
+      <div class="vurow"><span class="vulab">MASTER</span><div class="vu"><i data-vu="master"></i></div>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:center">
+          <div class="knob" data-g="fader" data-min="0" data-max="1.2" data-val="0.85"></div><span class="kv" data-kv="fader">71%</span>
+        </div></div>
+      <div class="hint">Fader trabalha em ~85%. MASTER nunca no vermelho: é o nível que vai pra caixa.</div>
+    </div>
+    <div class="stage" data-st="amp">
+      <div class="t">4 · CAIXA ATIVA<small>volume da caixa</small></div>
+      <span class="cliplab">CLIP!</span>
+      <div class="vurow"><span class="vulab">CAIXA</span><div class="vu"><i data-vu="amp"></i></div>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:center">
+          <div class="knob" data-g="amp" data-min="0" data-max="1.3" data-val="0.7"></div><span class="kv" data-kv="amp">54%</span>
+        </div></div>
+      <div class="hint">O volume da SALA se faz aqui — com sinal limpo chegando, a caixa trabalha folgada.</div>
+    </div>
+    <div class="stage spkbox">
+      <div class="t">O QUE SAI NA PISTA</div>
+      <canvas class="spkdraw" id="spkdraw"></canvas>
+      <div class="cab">
+        <div class="cabb on" data-cab="xlr">CABO XLR<small>balanceado ✓</small></div>
+        <div class="cabb hum" data-cab="p10">P10 longo<small>capta zumbido</small></div>
+      </div>
+      <div class="hum" id="humLab">⚡ bzzz… cabo desbalanceado captando ruído</div>
+    </div>
+  </div>
+
+  <!-- CENÁRIOS -->
+  <div class="botrow">
+    <div class="scn" data-scn="mudo"><div class="st">🔇 CENÁRIO: "não sai som"</div><div class="sd">Chegou pro seu set e a caixa está muda. Ache o estágio travado na cadeia (sem chutar tudo pro máximo!).</div></div>
+    <div class="scn" data-scn="distorcido"><div class="st">🔥 CENÁRIO: "tá estourando"</div><div class="sd">O som está rasgando. Encontre QUEM está clipando e corrija o estágio certo — não abaixe o resto.</div></div>
+    <div class="scn" data-scn="limpo"><div class="st">✨ DESAFIO: som limpo</div><div class="sd">Deixe a cadeia perfeita: canal no amarelo, master sem clip, fader ~85%, caixa no volume da sala.</div></div>
+  </div>
+
+  <div class="coach">
+    <b>Gain staging é a diferença entre som profissional e som de bagunça:</b> cada estágio entrega sinal <span class="k">forte mas limpo</span> pro próximo. Se um estágio clipa (vermelho), a distorção segue pra frente — <span class="k">abaixar o estágio seguinte NÃO conserta</span>, só esconde. Ordem de ajuste: <span class="k">DECK → TRIM → FADER/MASTER → CAIXA</span>. E cabo balanceado (XLR) em tiragem longa, sempre.
+  </div>
+</div>
+</div>
+
+<script>
+"use strict";
+/* Cadeia de ganho REAL com clipping audível: deck -> trim -> fader/master -> caixa.
+   Cada estágio tem um WaveShaper hard-clip: passou do headroom, DISTORCE (e o aluno ouve). */
+const $=(s,r=document)=>r.querySelector(s);
+const $$=(s,r=document)=>[...s?document.querySelectorAll(s):[]];
+const qq=(s)=>[...document.querySelectorAll(s)];
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+let AC=null, started=false, scenario=null, humOn=false;
+
+const ST=["deck","trim","fader","amp"];
+const g={ deck:0.8, trim:0.9, fader:0.85, amp:0.7 };
+const HEADROOM={ deck:1.0, trim:1.0, fader:1.0, amp:1.0 };
+let nodes={};
+
+function hardClip(){ const n=512,c=new Float32Array(n);
+  for(let i=0;i<n;i++){ const x=i/(n-1)*2-1; c[i]=clamp(x,-0.72,0.72)*1.2; } return c; }
+function buildGraph(){
+  AC=new (window.AudioContext||window.webkitAudioContext)();
+  const out=AC.createGain(); out.gain.value=0.9; out.connect(AC.destination);
+  const src=AC.createGain(); src.gain.value=0.5; startGroove(src);
+  let prev=src;
+  ST.forEach(st=>{
+    const gain=AC.createGain(); gain.gain.value=g[st];
+    const clip=AC.createWaveShaper(); clip.curve=null; // instala curva só quando clipa (senão bypass limpo)
+    const anal=AC.createAnalyser(); anal.fftSize=256;
+    prev.connect(gain); gain.connect(clip); clip.connect(anal);
+    nodes[st]={gain,clip,anal,pre:prev};
+    prev=clip;
+  });
+  /* zumbido do cabo P10 (60Hz + harmônico) */
+  const hum=AC.createGain(); hum.gain.value=0; nodes.hum=hum;
+  [60,180].forEach((f,i)=>{ const o=AC.createOscillator(); o.frequency.value=f; const a=AC.createGain(); a.gain.value=i?0.008:0.02; o.connect(a); a.connect(hum); o.start(); });
+  hum.connect(out);
+  prev.connect(out);
+  nodes.out=out;
+}
+function startGroove(dest){
+  const bpm=124, step=(60/bpm)/4; let abs=0, next=AC.currentTime+0.1;
+  const nbuf=AC.createBuffer(1,AC.sampleRate*0.3,AC.sampleRate); const nd=nbuf.getChannelData(0);
+  for(let i=0;i<nd.length;i++)nd[i]=Math.random()*2-1;
+  const K=[1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0],H=[0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0],B=[1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0],S=[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0];
+  setInterval(()=>{ const now=AC.currentTime;
+    while(next<now+0.12){ const t=next, st=abs%16;
+      if(K[st]){ const o=AC.createOscillator(),a=AC.createGain(); o.frequency.setValueAtTime(150,t); o.frequency.exponentialRampToValueAtTime(48,t+0.12); a.gain.setValueAtTime(0.85,t); a.gain.exponentialRampToValueAtTime(0.001,t+0.3); o.connect(a); a.connect(dest); o.start(t); o.stop(t+0.32); }
+      if(S[st]){ const s=AC.createBufferSource(); s.buffer=nbuf; const bp=AC.createBiquadFilter(); bp.type="bandpass"; bp.frequency.value=1800; const a=AC.createGain(); a.gain.setValueAtTime(0.5,t); a.gain.exponentialRampToValueAtTime(0.001,t+0.15); s.connect(bp); bp.connect(a); a.connect(dest); s.start(t); s.stop(t+0.17); }
+      if(H[st]){ const s=AC.createBufferSource(); s.buffer=nbuf; const hp=AC.createBiquadFilter(); hp.type="highpass"; hp.frequency.value=8000; const a=AC.createGain(); a.gain.setValueAtTime(0.25,t); a.gain.exponentialRampToValueAtTime(0.001,t+0.045); s.connect(hp); hp.connect(a); a.connect(dest); s.start(t); s.stop(t+0.07); }
+      if(B[st]){ const o=AC.createOscillator(); o.type="sawtooth"; o.frequency.value=82; const lp2=AC.createBiquadFilter(); lp2.type="lowpass"; lp2.frequency.setValueAtTime(450,t); lp2.frequency.exponentialRampToValueAtTime(125,t+0.16); lp2.Q.value=5; const a=AC.createGain(); a.gain.setValueAtTime(0.0001,t); a.gain.linearRampToValueAtTime(0.42,t+0.01); a.gain.exponentialRampToValueAtTime(0.001,t+0.2); o.connect(lp2); lp2.connect(a); a.connect(dest); o.start(t); o.stop(t+0.22); }
+      abs++; next+=step; }
+  },25);
+}
+
+/* aplicar ganhos + decidir clipping por estágio (nível estimado em cascata) */
+function levelAt(st){ // nível de pico estimado que ENTRA no estágio seguinte
+  const base=0.62; // pico do groove
+  let lv=base;
+  for(const s of ST){ lv*=g[s]/ ( s==="trim"?0.9 : s==="deck"?0.8 : s==="fader"?0.85 : 0.7 ) * ( s==="trim"?0.9 : s==="deck"?0.8 : s==="fader"?0.85 : 0.7 ); if(s===st)break; }
+  return lv;
+}
+function apply(){
+  if(!started)return;
+  ST.forEach(st=>{ nodes[st].gain.gain.value=g[st]; });
+  // clipping: estágio clipa quando o produto acumulado passa do headroom
+  let acc=0.62;
+  ST.forEach(st=>{
+    acc*=g[st];
+    const clipping=acc>0.75;
+    nodes[st].clip.curve= clipping? hardClip() : null;
+    document.querySelector(`.stage[data-st="${st}"]`).classList.toggle("clip",clipping);
+    if(clipping) acc=0.72; // sinal sai "achatado" pro próximo
+  });
+  nodes.hum.gain.value= humOn? 1 : 0;
+  $("#humLab").classList.toggle("show",humOn);
+  qq(".kv").forEach(el=>{ const st=el.dataset.kv; const max=+document.querySelector(`.knob[data-g="${st}"]`).dataset.max; el.textContent=Math.round(g[st]/max*100)+"%"; });
+  autoCheck();
+}
+
+/* knobs */
+function setKnobVisual(el,val){ const min=+el.dataset.min,max=+el.dataset.max; el.style.setProperty("--pdeg",(-140+(val-min)/(max-min)*280)+"deg"); el.dataset.val=val; }
+function bindKnob(el){ const min=+el.dataset.min,max=+el.dataset.max; let val=+el.dataset.val; setKnobVisual(el,val);
+  let sy,sv,drag=false; const st=el.dataset.g;
+  el.addEventListener("pointerdown",e=>{ if(!started)startAudio(); drag=true;sy=e.clientY;sv=val;el.setPointerCapture(e.pointerId);e.preventDefault(); });
+  el.addEventListener("pointermove",e=>{ if(!drag)return; val=clamp(sv+(sy-e.clientY)/140*(max-min),min,max); setKnobVisual(el,val); g[st]=val; apply(); });
+  el.addEventListener("pointerup",()=>drag=false); el.addEventListener("pointercancel",()=>drag=false);
+  el._set=v=>{ val=clamp(v,min,max); setKnobVisual(el,val); g[st]=val; apply(); };
+}
+
+/* cenários */
+const SCN={
+  mudo:{ deck:0.8, trim:0, fader:0.85, amp:0.7 },       // trim zerado — ache!
+  distorcido:{ deck:1.4, trim:1.8, fader:0.5, amp:0.5 }, // trim/deck estourados, resto compensando (errado)
+  limpo:{ deck:0.8, trim:0.9, fader:0.85, amp:0.7 },
+};
+function setScenario(k){
+  scenario=k; qq(".scn").forEach(el=>el.classList.toggle("on",el.dataset.scn===k));
+  if(!started)startAudio();
+  const s=SCN[k]; if(k!=="limpo"){ ST.forEach(st=>{ document.querySelector(`.knob[data-g="${st}"]`)._set(s[st]); }); }
+  autoCheck();
+}
+
+/* estado "limpo e forte" */
+function isClean(){
+  let acc=0.62; let anyClip=false;
+  ST.forEach(st=>{ acc*=g[st]; if(acc>0.75){anyClip=true; acc=0.72;} });
+  const audible=acc>0.18;
+  const trimOk=g.deck*g.trim*0.62>0.32 && g.deck*g.trim*0.62<=0.75;
+  const faderOk=g.fader>=0.7&&g.fader<=1.0;
+  return !anyClip&&audible&&trimOk&&faderOk&&g.amp>0.35;
+}
+
+/* missões */
+const MISSIONS=[
+  { id:"play", t:"Ligue o som", h:"Aperte ▶ Ligar áudio: a música percorre a cadeia DECK → CANAL → MASTER → CAIXA." },
+  { id:"clip", t:"Provoque um CLIP de propósito", h:"Suba o TRIM até o estágio 2 acender CLIP! — ouça a distorção. Agora você conhece o inimigo." },
+  { id:"mudo", t:"Cenário: 'não sai som'", h:"Clique no cenário 🔇 e ache o estágio travado (dica: siga os medidores da esquerda p/ direita)." },
+  { id:"distorcido", t:"Cenário: 'tá estourando'", h:"Clique no cenário 🔥 e corrija o ESTÁGIO CERTO (deck/trim), sem esconder no master." },
+  { id:"limpo", t:"Desafio final: som limpo e forte", h:"Canal forte sem clipar, fader ~85%, master limpo, caixa no volume da sala. VUs sem vermelho." },
+];
+let mi=0, clipSeen=false, mudoFixed=false, distFixed=false;
+function renderMission(){ const m=MISSIONS[mi];
+  if(!m){ $("#mIdx").textContent="✓ COMPLETO"; $("#mTitle").textContent="Setup configurado como profissional!"; $("#mHint").textContent="Gain staging limpo da fonte à caixa — é isso que separa o som bom do som alto."; $("#mOk").style.display="inline"; return; }
+  $("#mIdx").textContent="MISSÃO "+(mi+1)+"/"+MISSIONS.length; $("#mTitle").textContent=m.t; $("#mHint").textContent=m.h; }
+function state(id){
+  switch(id){
+    case "play": return started;
+    case "clip": return clipSeen;
+    case "mudo": return scenario==="mudo"&&(()=>{ let a=0.62; ST.forEach(s=>a*=g[s]); return a>0.18; })();
+    case "distorcido": return scenario==="distorcido"&&isClean();
+    case "limpo": return scenario==="limpo"&&isClean();
+  } return false; }
+function autoCheck(){
+  let acc=0.62; ST.forEach(st=>{ acc*=g[st]; if(acc>0.75){ if(started)clipSeen=true; acc=0.72; } });
+  const m=MISSIONS[mi]; if(m&&state(m.id)){ mi++; renderMission(); }
+}
+
+/* VUs + caixa */
+function drawSpk(shake){
+  const cv=$("#spkdraw"); const ctx=cv.getContext("2d"); const w=cv.width=90,h=cv.height=110;
+  ctx.clearRect(0,0,w,h); const off=shake?(Math.random()*2-1)*shake*3:0;
+  ctx.strokeStyle="#39c0e6"; ctx.fillStyle="#131a26"; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.roundRect(17+off,6,56,98,6); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.arc(45+off,72,20,0,7); ctx.stroke();
+  ctx.beginPath(); ctx.arc(45+off,72,9+shake*5,0,7); ctx.stroke();
+  ctx.beginPath(); ctx.arc(45+off,22,7,0,7); ctx.stroke();
+}
+function frame(){
+  if(started){
+    let shake=0;
+    ST.forEach(st=>{ const n=nodes[st]; const b=new Uint8Array(n.anal.fftSize); n.anal.getByteTimeDomainData(b);
+      let pk=0; for(const v of b){ const x=Math.abs(v-128)/128; if(x>pk)pk=x; }
+      const el=document.querySelector(`[data-vu="${st}"]`); if(el)el.style.height=Math.min(100,pk*130)+"%";
+      if(st==="amp")shake=pk; });
+    drawSpk(shake);
+    autoCheck();
+  }
+  requestAnimationFrame(frame);
+}
+function startAudio(){ if(started)return; started=true; buildGraph();
+  $("#acDot").classList.remove("off"); $("#acState").textContent="ligado"; $("#btnStart").textContent="● Áudio ligado";
+  if(AC.resume)AC.resume(); apply(); autoCheck(); }
+function init(){
+  renderMission();
+  function fit(){ const s=Math.min(1,(window.innerWidth-8)/1304); $("#stage").style.transform="scale("+s+")"; }
+  window.addEventListener("resize",fit); fit();
+  qq(".knob[data-g]").forEach(bindKnob);
+  qq(".scn").forEach(el=>el.addEventListener("pointerdown",()=>setScenario(el.dataset.scn)));
+  qq(".cabb").forEach(el=>el.addEventListener("pointerdown",()=>{ if(!started)startAudio();
+    qq(".cabb").forEach(x=>x.classList.remove("on")); el.classList.add("on"); humOn=el.dataset.cab==="p10"; apply(); }));
+  $("#btnStart").addEventListener("pointerdown",()=>startAudio());
+  $("#btnReset").addEventListener("pointerdown",()=>location.reload());
+  drawSpk(0); frame();
+}
+document.addEventListener("DOMContentLoaded",init);
+</script>
+</body>
+</html>

@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador — Passagem de som (SMU)</title>
+<style>
+  :root{--bg:#0b0f17;--panel:#151b28;--panel2:#0f1420;--line:#26344c;--ink:#e7ecf5;
+    --muted:#8ea0bd;--amber:#F59E0B;--green:#22c55e;--red:#ef4444;--cyan:#22d3ee}
+  *{box-sizing:border-box}html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);font-family:"Space Grotesk",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;padding:10px;user-select:none}
+  h1{font-size:15px;margin:0 0 2px}.sub{font-size:11.5px;color:var(--muted);margin-bottom:10px}
+  .prog{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .progbar{flex:1;height:12px;border-radius:6px;background:#0c1220;border:1px solid var(--line);overflow:hidden}
+  .progbar i{display:block;height:100%;width:0%;background:linear-gradient(90deg,var(--amber),var(--green));transition:width .3s}
+  .progtxt{font-size:12px;font-weight:800;color:var(--amber)}
+  .step{display:flex;gap:12px;align-items:center;background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:11px;padding:11px 13px;margin-bottom:8px}
+  .step.done{border-color:var(--green)}
+  .dot{width:26px;height:26px;border-radius:50%;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:var(--muted);flex:0 0 auto}
+  .step.done .dot{background:var(--green);border-color:var(--green);color:#08120a}
+  .body{flex:1;min-width:0}
+  .t{font-size:12.5px;font-weight:700}.d{font-size:10.5px;color:var(--muted)}
+  .ctrl{display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap}
+  .b{font:inherit;font-size:11px;font-weight:700;padding:7px 11px;border-radius:8px;border:1px solid var(--line);background:#0c1220;color:var(--ink);cursor:pointer}
+  .b.on{background:var(--green);border-color:var(--green);color:#08120a}
+  .b.amber{background:var(--amber);border-color:var(--amber);color:#0b0f17}
+  .b:disabled{opacity:.4;cursor:not-allowed}
+  input[type=range]{width:130px;accent-color:var(--amber);height:22px;vertical-align:middle}
+  .val{font-size:11px;font-weight:700;min-width:60px}
+  .miniled{display:inline-flex;gap:3px}.miniled i{width:12px;height:10px;border-radius:2px;background:#1a2540}.miniled i.g{background:var(--green)}.miniled i.a{background:var(--amber)}.miniled i.r{background:var(--red)}
+  .final{display:none;text-align:center;padding:16px;border-radius:12px;border:1px solid var(--green);background:#0e1a10;margin-top:8px}
+  .final.show{display:block}.final .big{font-size:18px;font-weight:800;color:var(--green)}
+</style>
+</head>
+<body>
+  <h1>Passagem de som — palestra corporativa</h1>
+  <div class="sub">Junte tudo: ligar na ordem, notebook, microfones sem fio, ganho, EQ, retorno e teste final.</div>
+  <div class="prog"><div class="progbar"><i id="pfill"></i></div><span class="progtxt" id="ptxt">0/7</span></div>
+  <div id="steps"></div>
+  <div class="final" id="final"><div class="big">✅ PA pronto para o evento!</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:6px">Você fez uma passagem de som completa: sistema ligado com segurança, fontes e microfones no nível certo, EQ e retorno ajustados e teste sem microfonia. É exatamente o que o cliente espera do técnico.</div></div>
+
+<script>
+"use strict";
+(function(){
+  const $=id=>document.getElementById(id);
+  const st={ powerSeq:[], nbConn:false, nbVol:0, micScan:false, gain:20, hpf:false, aux:0, tested:false };
+  const done={};
+
+  const steps=[
+    { id:"power", t:"1. Ligar na ordem certa", d:"Clique Fontes, Mesa e Amplificação — nessa ordem (amplificação por último).",
+      render:()=>`<button class="b" data-p="0">💻 Fontes</button><button class="b" data-p="1">🎛️ Mesa</button><button class="b" data-p="2">🔊 Amplificação</button><span class="val" id="pseq"></span>`,
+      ok:()=>st.powerSeq.join()==="0,1,2" },
+    { id:"nb", t:"2. Notebook (P2 → P10)", d:"Conecte o notebook e deixe o volume dele entre 60 e 85%.",
+      render:()=>`<button class="b ${st.nbConn?'on':''}" id="nbBtn">${st.nbConn?'✔ Conectado':'Conectar P2→P10'}</button>
+        <input type="range" id="nbVol" min="0" max="100" value="${st.nbVol}"><span class="val" id="nbVolV">${st.nbVol}%</span>`,
+      ok:()=>st.nbConn&&st.nbVol>=60&&st.nbVol<=85 },
+    { id:"mic", t:"3. Microfone sem fio", d:"Ache um canal livre (SCAN) — bateria já está cheia.",
+      render:()=>`<button class="b ${st.micScan?'on':''}" id="scanBtn">${st.micScan?'✔ Canal livre CH4':'🔎 SCAN canal'}</button>`,
+      ok:()=>st.micScan },
+    { id:"gain", t:"4. Gain staging do microfone", d:"Ajuste o ganho até o nível ficar no verde (nem fraco, nem estourando).",
+      render:()=>`<input type="range" id="gv" min="0" max="100" value="${st.gain}"><span class="miniled" id="gled"></span><span class="val" id="gvV"></span>`,
+      ok:()=>st.gain>=55&&st.gain<=75 },
+    { id:"hpf", t:"5. EQ da voz (HPF)", d:"Ligue o HPF para tirar o grave desnecessário da voz.",
+      render:()=>`<button class="b ${st.hpf?'on':''}" id="hpfBtn">${st.hpf?'✔ HPF ligado (100 Hz)':'Ligar HPF'}</button>`,
+      ok:()=>st.hpf },
+    { id:"aux", t:"6. Retorno do apresentador (AUX)", d:"Mande um pouco do microfone para o monitor do apresentador.",
+      render:()=>`<input type="range" id="av" min="0" max="100" value="${st.aux}"><span class="val" id="avV">${st.aux}</span>`,
+      ok:()=>st.aux>=40 },
+    { id:"test", t:"7. Teste final", d:"Fale no microfone e confira: som na caixa, sem microfonia.",
+      render:()=>`<button class="b amber" id="testBtn" ${allButTest()?'':'disabled'}>🎤 Testar \"1, 2, 3...\"</button><span class="val" id="testV"></span>`,
+      ok:()=>st.tested },
+  ];
+  function allButTest(){ return steps.slice(0,6).every(s=>s.ok()); }
+
+  function render(){
+    const c=$("steps");c.innerHTML="";
+    steps.forEach((s,i)=>{ const el=document.createElement("div");el.className="step"+(s.ok()?" done":"");
+      el.innerHTML=`<div class="dot">${s.ok()?"✓":(i+1)}</div><div class="body"><div class="t">${s.t}</div><div class="d">${s.d}</div><div class="ctrl">${s.render()}</div></div>`;
+      c.appendChild(el); });
+    wire(); updateProg();
+  }
+  function gledPaint(){ const el=$("gled"); if(!el)return; const n= st.gain<30?1: st.gain<55?2: st.gain<=75?4: 5;
+    const cls= st.gain<55?"a": st.gain<=75?"g":"r"; el.innerHTML="";
+    for(let i=0;i<5;i++){const b=document.createElement("i"); if(i<n)b.className=cls; el.appendChild(b);}
+    const v=$("gvV"); if(v)v.textContent= st.gain<55?"fraco": st.gain<=75?"bom ✓":"estourando";
+  }
+  function wire(){
+    document.querySelectorAll("[data-p]").forEach(b=>b.onclick=()=>{ const i=+b.dataset.p;
+      if(!st.powerSeq.includes(i))st.powerSeq.push(i); $("pseq")&&($("pseq").textContent=st.powerSeq.map(x=>["Fontes","Mesa","Amp"][x]).join(" → "));
+      if(st.powerSeq.length===3&&st.powerSeq.join()!=="0,1,2"){ st.powerSeq=[]; $("pseq").textContent="ordem errada — recomece (amplificação por último)"; }
+      render(); });
+    const nb=$("nbBtn"); if(nb)nb.onclick=()=>{st.nbConn=!st.nbConn;render();};
+    const nbv=$("nbVol"); if(nbv)nbv.oninput=()=>{st.nbVol=+nbv.value;$("nbVolV").textContent=st.nbVol+"%";checkOnly();};
+    const sc=$("scanBtn"); if(sc)sc.onclick=()=>{st.micScan=true;render();};
+    const gv=$("gv"); if(gv)gv.oninput=()=>{st.gain=+gv.value;gledPaint();checkOnly();};
+    const hb=$("hpfBtn"); if(hb)hb.onclick=()=>{st.hpf=!st.hpf;render();};
+    const av=$("av"); if(av)av.oninput=()=>{st.aux=+av.value;$("avV").textContent=st.aux;checkOnly();};
+    const tb=$("testBtn"); if(tb)tb.onclick=()=>{ if(allButTest()){st.tested=true;$("testV").textContent="✔ som limpo, sem microfonia!";render();} };
+    gledPaint();
+  }
+  function checkOnly(){ // atualiza dots/prog sem re-render (evita perder foco do slider)
+    steps.forEach((s,i)=>{ const el=$("steps").children[i]; if(!el)return; el.classList.toggle("done",s.ok());
+      el.querySelector(".dot").textContent=s.ok()?"✓":(i+1); });
+    const tb=$("testBtn"); if(tb)tb.disabled=!allButTest();
+    updateProg();
+  }
+  function updateProg(){ const n=steps.filter(s=>s.ok()).length; $("pfill").style.width=(n/steps.length*100)+"%"; $("ptxt").textContent=n+"/"+steps.length;
+    $("final").classList.toggle("show",n===steps.length); }
+
+  render();
+})();
+</script>
+</body>
+</html>

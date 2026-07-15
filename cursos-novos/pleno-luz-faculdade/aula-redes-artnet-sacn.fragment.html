@@ -1,0 +1,58 @@
+<p><strong>Um único cabo Cat5e pode carregar dezenas de universos DMX ao mesmo tempo.</strong> Enquanto o DMX físico (XLR) leva 512 canais por cabo — um universo por linha — a rede Ethernet transporta muitos universos empacotados em pacotes IP. Quando o show cresce (LED em pixel, dezenas de fixtures, palco grande), puxar um XLR por universo vira uma teia impossível. A saída é levar DMX <em>sobre</em> Ethernet: menos cabo, distâncias longas e uma topologia limpa.</p>
+
+<h3>Por que rodar DMX sobre rede</h3>
+<ul>
+<li><strong>Muitos universos num cabo só:</strong> um Cat5/6 substitui dezenas de linhas XLR. Ganho gigante quando cada barra de pixel come vários universos.</li>
+<li><strong>Distância:</strong> Ethernet vai a 100 m por lance de cobre (e muito além com fibra), sem a degradação e os limites de reflexão da linha DMX.</li>
+<li><strong>Menos peso e menos ponto de falha:</strong> um tronco de rede do FOH ao palco em vez de um chicote de multicabos DMX.</li>
+<li><strong>Escala:</strong> mesa, media server e nodes conversam pela mesma infraestrutura.</li>
+</ul>
+
+<h3>O que é um node</h3>
+<p>O <strong>node</strong> (nó Art-Net/sACN) é a caixa que converte os dados da rede em <strong>saídas DMX físicas</strong> — os XLR de 3 ou 5 pinos que entram nas fixtures. Ele recebe os pacotes pela porta Ethernet e "desempacota" o universo endereçado em cada uma de suas saídas de DMX. Nodes vêm com 1, 2, 4, 8 ou mais portas de DMX; cada porta é configurada para transmitir (ou receber) um universo específico. Sem node, a rede é só rede: quem fala XLR com a fixture é ele.</p>
+
+{{IMG:node-artnet}}
+
+<h3>Art-Net x sACN: os dois protocolos</h3>
+<p>São os dois padrões que carregam DMX sobre IP. Convivem na mesma rede, mas você escolhe um por sistema para evitar confusão. Compare:</p>
+
+<table>
+<tr><th>Aspecto</th><th>Art-Net</th><th>sACN / E1.31</th></tr>
+<tr><td>Origem</td><td>Artistic Licence (de fato do mercado)</td><td>Padrão ESTA E1.31 (oficial)</td></tr>
+<tr><td>Transporte</td><td>UDP, broadcast ou unicast</td><td>UDP, multicast (unicast opcional)</td></tr>
+<tr><td>Tráfego na rede</td><td>Broadcast inunda a rede toda; unicast alivia</td><td>Multicast: só quem "assina" o universo recebe</td></tr>
+<tr><td>Prioridade</td><td>Não nativa</td><td><strong>Prioridade por universo</strong> (0-200): duas fontes, ganha a maior</td></tr>
+<tr><td>Merge/backup</td><td>Depende do fabricante</td><td>Backup/tracking previsto no padrão</td></tr>
+<tr><td>Uso típico</td><td>Muito difundido, fácil de achar em nodes baratos</td><td>Preferido em rigs grandes e broadcast por ser mais "comportado" na rede</td></tr>
+</table>
+
+<p>Na prática: <strong>Art-Net</strong> é o mais universal e simples de conectar. <strong>sACN</strong> escala melhor porque o multicast não entope a rede e a prioridade por universo permite ter uma mesa principal e uma de backup assumindo automaticamente.</p>
+
+<h3>Endereçamento por universo</h3>
+<p>Tudo gira em torno de casar o <strong>número do universo</strong> nas três pontas:</p>
+<ol>
+<li><strong>Mesa:</strong> você define que o patch das fixtures X está no universo, digamos, 5.</li>
+<li><strong>Saída do node:</strong> a porta DMX que alimenta essas fixtures precisa estar configurada para o universo 5.</li>
+<li><strong>Patch/fixtures:</strong> os endereços DMX (1-512) das fixtures vivem dentro desse universo 5.</li>
+</ol>
+<p>Se a mesa manda no universo 5 e o node está ouvindo o 4, nada acende. Erro de universo é a primeira coisa a checar quando "a rede está ligada mas a luz não responde". Atenção também à numeração: Art-Net usa net/subnet/universe e algumas mesas contam universos a partir de 0, outras de 1.</p>
+
+<h3>etherCON: o RJ45 de palco</h3>
+<p>O RJ45 comum de escritório é frágil e solta com um tranco. O <strong>etherCON</strong> (Neutrik) é um RJ45 embutido numa carcaça metálica <strong>travável</strong> — trava como um XLR, resiste a poeira, pisão e puxão de cabo. É o conector de rede padrão em palco justamente porque a conexão não pode cair no meio do show.</p>
+
+{{IMG:ethercon-rj45}}
+
+<h3>Boas práticas de rede</h3>
+<ul>
+<li><strong>Rede dedicada só para luz:</strong> nada de dividir com Wi-Fi da produção, som ou internet. O tráfego de iluminação é sensível e constante.</li>
+<li><strong>Switches gigabit de qualidade:</strong> nada de switch doméstico duvidoso. Em sACN, o switch idealmente suporta IGMP snooping para direcionar o multicast.</li>
+<li><strong>IPs fixos:</strong> nada de DHCP nesse ambiente. Endereços manuais evitam conflito e "sumiço" de node. As faixas clássicas do Art-Net são <strong>2.x.x.x</strong> e <strong>10.x.x.x</strong> com máscara ampla; padronize e documente.</li>
+<li><strong>Sem loop:</strong> cabo ligando switch nele mesmo derruba a rede (tempestade de broadcast). Sem gerência STP, um loop mata o show.</li>
+<li><strong>Topologia simples:</strong> estrela a partir de um switch central; evite empilhar muitos switches em série.</li>
+</ul>
+
+<h3>Ligação com pixel mapping</h3>
+<p>É no <strong>pixel mapping</strong> que a rede deixa de ser luxo e vira necessidade. Cada pixel de uma barra ou fita de LED consome alguns canais (RGB = 3 canais por pixel). Uma matriz de pixels estoura os 512 canais de um universo em segundos e passa a exigir dezenas ou centenas de universos. Só a Ethernet dá vazão a esse volume — por isso media server e efeitos de pixel andam sempre de mãos dadas com Art-Net/sACN.</p>
+
+<h3>Resumo prático</h3>
+<p><strong>DMX sobre rede troca a teia de XLR por um cabo Cat5/6 que carrega muitos universos.</strong> O node converte a rede em saídas DMX físicas; Art-Net (broadcast/unicast, universal) e sACN/E1.31 (multicast, padrão ESTA, com prioridade por universo) são os dois protocolos. Case o universo entre mesa, node e patch, use etherCON travável, monte uma rede dedicada com switch gigabit, IP fixo (2.x/10.x) e sem loop. Sem isso, pixel mapping não existe.</p>

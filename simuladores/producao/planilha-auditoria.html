@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>SMU PRO · Auditoria de planilha</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0c1017;--panel:#161c26;--panel2:#1b2230;--line:#2a3444;--ink:#e7edf5;--dim:#8794a8;
+        --accent:#f59e0b;--ok:#22c55e;--err:#ef4444;--warn:#f59e0b;--cyan:#38bdf8;}
+  html,body{background:var(--bg);color:var(--ink);
+    font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased;}
+  body{padding:12px;}
+  .app{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:12px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  h1{font-size:15px;margin-bottom:3px;}
+  .sub{font-size:12px;color:var(--dim);margin-bottom:12px;line-height:1.5;}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px;}
+  .stat .k{font-size:10px;color:var(--dim);letter-spacing:.5px;}
+  .stat .val{font-size:15px;font-weight:800;margin-top:2px;}
+  .verdict{font-size:13px;font-weight:700;padding:9px 12px;border-radius:8px;text-align:center;}
+  .verdict.ok{background:#14532d;color:#bbf7d0;}
+  .verdict.bad{background:#450a0a;color:#fca5a5;}
+  .verdict.warn{background:#422006;color:#fde68a;}
+  .note{font-size:12px;color:var(--dim);line-height:1.55;}
+  button{font:inherit;cursor:pointer;}
+
+  /* barra de fórmula */
+  .fbar{display:flex;align-items:center;gap:0;border:1px solid var(--line);border-radius:8px;
+        background:#0f141d;overflow:hidden;margin-bottom:8px;}
+  .fbar .fref{flex:0 0 62px;height:34px;line-height:34px;text-align:center;font-size:11px;font-weight:800;
+        color:var(--cyan);background:#1e2938;border-right:1px solid var(--line);}
+  .fbar .fx{flex:0 0 30px;height:34px;line-height:34px;text-align:center;font-size:11px;font-style:italic;
+        color:var(--dim);border-right:1px solid var(--line);}
+  .fbar .ftxt{flex:1;height:34px;line-height:34px;padding:0 8px;font-family:ui-monospace,Consolas,monospace;
+        font-size:12px;color:#cfe3ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .fbar .tag{flex:0 0 auto;margin-right:6px;font-size:9px;font-weight:800;letter-spacing:.5px;padding:2px 5px;
+        border-radius:4px;background:#422006;color:#fde68a;display:none;}
+  .fbar .tag.on{display:inline-block;}
+
+  /* planilha */
+  .gridwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:8px;background:#0f141d;}
+  table.sheet{border-collapse:collapse;min-width:660px;width:100%;table-layout:fixed;}
+  .sheet th,.sheet td{border:1px solid #253044;height:34px;font-size:11px;overflow:hidden;
+    white-space:nowrap;text-overflow:ellipsis;padding:0 6px;}
+  .sheet thead th{background:#1e2938;color:var(--dim);font-size:10px;font-weight:700;text-align:center;height:24px;}
+  .sheet th.rn{background:#1e2938;color:var(--dim);font-size:10px;font-weight:600;text-align:center;width:26px;}
+  .sheet td{background:#101722;color:var(--ink);position:relative;}
+  .sheet td.mkable{cursor:pointer;-webkit-tap-highlight-color:transparent;}
+  .k-ttl{background:#1b2230!important;font-weight:800;font-size:11px;color:#fde68a!important;letter-spacing:.3px;}
+  .k-hdr{background:#22304a!important;color:#9fb4d4!important;font-size:10px;font-weight:800;letter-spacing:.4px;text-align:center;}
+  .k-lbl{color:#b9c6d8;}
+  .k-lbl2{background:#18202c!important;font-weight:800;color:#dbe6f4;}
+  .k-lbl3{background:#1f2a1c!important;font-weight:800;color:#bbf7d0;}
+  .k-itm{color:#cbd5e1;}
+  .k-num{text-align:right;font-variant-numeric:tabular-nums;}
+  .k-pct{text-align:right;font-variant-numeric:tabular-nums;color:#93c5fd;}
+  .k-sum{text-align:right;font-weight:800;font-variant-numeric:tabular-nums;background:#18202c!important;}
+  .k-big{text-align:right;font-weight:800;font-size:12px;color:#bbf7d0;background:#1f2a1c!important;font-variant-numeric:tabular-nums;}
+  .k-txt{text-align:left;font-variant-numeric:tabular-nums;}
+  .k-obs{color:#5f6d81;font-size:10px;}
+  .k-emp{background:#101722;}
+  .sheet td.sel{outline:2px solid var(--cyan);outline-offset:-2px;z-index:2;}
+  .sheet td.mk{background:#3d1114!important;}
+  .sheet td.mk::after{content:'⚑';position:absolute;top:0;right:2px;font-size:9px;color:#f87171;}
+  .sheet td.hit{background:#14532d!important;}
+  .sheet td.hit::after{content:'✓';position:absolute;top:0;right:2px;font-size:9px;color:#86efac;}
+  .sheet td.miss{background:#4c1d95!important;}
+  .sheet td.miss::after{content:'!';position:absolute;top:0;right:3px;font-size:10px;font-weight:900;color:#e9d5ff;}
+  .sheet td.fp{background:#422006!important;}
+  .sheet td.fp::after{content:'×';position:absolute;top:0;right:3px;font-size:10px;color:#fbbf24;}
+
+  .bar{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap;}
+  .bar button{flex:1;min-width:110px;height:36px;border-radius:8px;border:1px solid var(--line);
+    background:#0f141d;color:var(--dim);font-size:12px;font-weight:700;}
+  .bar button.pri{background:#42200680;border-color:var(--accent);color:#fde68a;}
+  .bar button.mark{background:#3d111480;border-color:#7f1d1d;color:#fca5a5;}
+  .bar button:disabled{opacity:.4;}
+  .stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:10px;}
+  .legend{display:flex;gap:10px;flex-wrap:wrap;font-size:10px;color:var(--dim);margin-top:8px;}
+  .legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:3px;vertical-align:-1px;}
+  #res{display:none;flex-direction:column;gap:10px;}
+  .fix{border:1px solid var(--line);border-radius:9px;padding:10px;background:var(--panel2);}
+  .fix .h{display:flex;align-items:center;gap:7px;margin-bottom:6px;flex-wrap:wrap;}
+  .fix .cel{font-size:10px;font-weight:800;padding:2px 6px;border-radius:4px;background:#1e2938;color:var(--cyan);}
+  .fix .t{font-size:12px;font-weight:800;flex:1;}
+  .fix .cost{font-size:11px;font-weight:800;padding:2px 7px;border-radius:4px;background:#450a0a;color:#fca5a5;}
+  .fix .cost.up{background:#422006;color:#fde68a;}
+  .fix.found .cel{background:#14532d;color:#bbf7d0;}
+  .fml{font-family:ui-monospace,Consolas,monospace;font-size:11px;padding:5px 7px;border-radius:5px;margin-bottom:4px;
+    white-space:pre-wrap;word-break:break-word;}
+  .fml.bad{background:#2a0f12;color:#fca5a5;border-left:2px solid var(--err);}
+  .fml.good{background:#0e2a19;color:#86efac;border-left:2px solid var(--ok);}
+  .fix .why{font-size:11px;color:var(--dim);line-height:1.55;margin-top:5px;}
+  .fix .why b{color:#cbd5e1;} .fix .why code{font-family:ui-monospace,Consolas,monospace;color:#93c5fd;}
+  .fin{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+  @media(max-width:520px){ .stats{grid-template-columns:1fr;} .fin{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="card">
+    <h1>Auditoria de planilha — ache os erros que fazem o produtor perder dinheiro</h1>
+    <div class="sub">Orçamento fechado, cliente esperando. Antes de mandar, <b>audite</b>. Clique numa célula para ler a fórmula na barra <i>fx</i> e use <b>Marcar erro</b> nas células furadas. Marcar célula certa também conta contra: produtor que desconfia de tudo trava a operação.</div>
+
+    <div class="stats">
+      <div class="stat"><div class="k">CÉLULAS MARCADAS</div><div class="val" id="sMk">0</div></div>
+      <div class="stat"><div class="k">ERROS NA PLANILHA</div><div class="val" id="sTot">8</div></div>
+      <div class="stat"><div class="k">PREÇO NA PLANILHA</div><div class="val" id="sPr">—</div></div>
+    </div>
+
+    <div class="fbar">
+      <span class="fref" id="fref">—</span>
+      <span class="fx">fx</span>
+      <span class="ftxt" id="ftxt">clique numa célula da planilha</span>
+      <span class="tag" id="ftag">TEXTO</span>
+    </div>
+
+    <div class="gridwrap"><table class="sheet" id="sheet"></table></div>
+
+    <div class="legend">
+      <span><i style="background:#3d1114"></i>marcada por você</span>
+      <span><i style="background:#14532d"></i>erro achado</span>
+      <span><i style="background:#4c1d95"></i>erro que passou</span>
+      <span><i style="background:#422006"></i>falso positivo</span>
+    </div>
+
+    <div class="bar">
+      <button class="mark" id="bMark" disabled>⚑ Marcar erro</button>
+      <button class="pri" id="bCheck">Conferir</button>
+      <button id="bReset">Reiniciar</button>
+    </div>
+  </div>
+
+  <div class="card" id="res">
+    <div class="verdict" id="verdict"></div>
+    <div class="fin" style="margin-top:10px">
+      <div class="stat"><div class="k">TOTAL QUE VOCÊ APRESENTOU</div><div class="val" id="vApr">—</div></div>
+      <div class="stat"><div class="k">TOTAL CORRETO</div><div class="val" id="vCor" style="color:#86efac">—</div></div>
+    </div>
+    <div class="verdict bad" id="punch" style="margin-top:2px;line-height:1.5"></div>
+    <div id="list" style="display:flex;flex-direction:column;gap:10px"></div>
+    <div class="note" id="fpNote"></div>
+  </div>
+</div>
+<script>
+(function(){
+var $=function(s){return document.querySelector(s);};
+
+/* ---------- planilha: [col, texto, conteúdo real (fx), tipo, colspan, marcável] ---------- */
+var ROWS=[
+[1,[['A','ORÇAMENTO — FESTIVAL BEIRA-RIO · palco principal · 1 dia de montagem + 2 shows','','ttl',5,0]]],
+[2,[['A','Alíquota de ISS do município','','lbl',1,0],['B','5%','0,05','pct',1,1],['C','','','emp',1,0],['D','','','emp',1,0],['E','premissa fixa','','obs',1,0]]],
+[3,[['A','Dias de operação (montagem + shows)','','lbl',1,0],['B','3','3','pct',1,1],['C','','','emp',1,0],['D','','','emp',1,0],['E','premissa fixa','','obs',1,0]]],
+[4,[['A','ITEM','','hdr',1,0],['B','QTD','','hdr',1,0],['C','VALOR UNIT.','','hdr',1,0],['D','TOTAL','','hdr',1,0],['E','CATEGORIA','','hdr',1,0]]],
+[5,[['A','Locação de PA — line array 12 caixas + 8 subs','','itm',1,1],['B','1','1','num',1,1],['C','9.800,00','9800','num',1,1],['D','9.800,00','=B5*C5','num',1,1],['E','Som','','obs',1,0]]],
+[6,[['A','Mesa digital 48 canais + microfonia + 8 monitores','','itm',1,1],['B','1','1','num',1,1],['C','4.200,00','4200','num',1,1],['D','4.200,00','=B6*C6','num',1,1],['E','Som','','obs',1,0]]],
+[7,[['A','Palco Q30 12×10 m + house mix + ala técnica','','itm',1,1],['B','1','1','num',1,1],['C','12.500,00','12500','num',1,1],['D','12.500,00','=B7*C7','num',1,1],['E','Estrutura','','obs',1,0]]],
+[8,[['A','Iluminação — 24 movings, 12 par LED, treliça box truss','','itm',1,1],['B','1','1','num',1,1],['C','14.600,00','14600','num',1,1],['D','14.600,00','=B8*C8','num',1,1],['E','Luz','','obs',1,0]]],
+[9,[['A','Painel LED P3,9 — 24 m² + processador','','itm',1,1],['B','24','24','num',1,1],['C','380,00','380','num',1,1],['D','R$ 9.120,00','R$ 9.120,00','txt',1,1],['E','Vídeo','','obs',1,0]]],
+[10,[['A','Gerador 180 kVA silenciado + operador','','itm',1,1],['B','1','1','num',1,1],['C','3.900,00','3900','num',1,1],['D','3.900,00','=B10*C10','num',1,1],['E','Energia','','obs',1,0]]],
+[11,[['A','Equipe técnica — 8 técnicos (diária)','','itm',1,1],['B','8','8','num',1,1],['C','450,00','450','num',1,1],['D','3.600,00','=B11*C11','num',1,1],['E','Equipe','','obs',1,0]]],
+[12,[['A','Transporte — carreta 12 m + van da equipe','','itm',1,1],['B','1','1','num',1,1],['C','5.400,00','5400','num',1,1],['D','5.400,00','=B12*C12','num',1,1],['E','Logística','','obs',1,0]]],
+[13,[['A','Alimentação — 105 refeições (35 pax × 3 dias)','','itm',1,1],['B','105','105','num',1,1],['C','42,00','42','num',1,1],['D','4.410,00','=B13*C13','num',1,1],['E','Equipe','','obs',1,0]]],
+[14,[['A','Console digital FOH + kit de microfones','','itm',1,1],['B','1','1','num',1,1],['C','4.200,00','4200','num',1,1],['D','4.200,00','=B14*C14','num',1,1],['E','Locação','','obs',1,0]]],
+[15,[['A','Seguro de RC do evento + ART','','itm',1,1],['B','1','1','num',1,1],['C','2.800,00','2800','num',1,1],['D','2.800,00','=B15*C15','num',1,1],['E','Jurídico','','obs',1,0]]],
+[16,[['A','SUBTOTAL DE CUSTOS','','lbl2',3,0],['D','62.610,00','=SOMA(D5:D14)','sum',1,1],['E','soma da tabela','','obs',1,0]]],
+[17,[['A','Contingência / imprevistos','','lbl',1,0],['B','0%','0','pct',1,1],['C','','','emp',1,0],['D','0,00','=D16*B17','num',1,1],['E','% na própria linha','','obs',1,0]]],
+[18,[['A','CUSTO TOTAL DO EVENTO','','lbl2',3,0],['D','59.800,00','59800','sum',1,1],['E','','','obs',1,0]]],
+[19,[['A','Margem de 30% (alvo do contrato)','','lbl2',3,0],['D','17.940,00','=D18*0,3','num',1,1],['E','margem alvo','','obs',1,0]]],
+[20,[['A','PREÇO AO CLIENTE (antes do imposto)','','lbl2',3,0],['D','77.740,00','=D18+D19','sum',1,1],['E','','','obs',1,0]]],
+[21,[['A','ISS sobre a nota','','lbl',1,0],['B','','','emp',1,1],['C','','','emp',1,0],['D','0,00','=D20*B21','num',1,1],['E','imposto do serviço','','obs',1,0]]],
+[22,[['A','PREÇO FINAL APRESENTADO','','lbl3',3,0],['D','77.740,00','=D20+D21','big',1,1],['E','','','obs',1,0]]]
+];
+
+/* ---------- modelo: recalcula o orçamento com N erros corrigidos ---------- */
+var IDS=['soma','texto','dias','dup','cont','hard','markup','ref'];
+function model(fx){
+  var it=[9800,4200,12500,14600, fx.texto?9120:0, 3900, fx.dias?10800:3600, 5400, 4410, fx.dup?0:4200];
+  var s=0; for(var i=0;i<it.length;i++) s+=it[i];
+  var sub=s+(fx.soma?2800:0);
+  var cont=sub*(fx.cont?0.05:0);
+  var custo=fx.hard?(sub+cont):59800;
+  var marg=fx.markup?(custo/0.70-custo):(custo*0.30);
+  var preco=custo+marg;
+  var iss=preco*(fx.ref?0.05:0);
+  return {sub:sub,cont:cont,custo:custo,marg:marg,preco:preco,iss:iss,fim:preco+iss};
+}
+function all(){ var o={}; for(var i=0;i<IDS.length;i++) o[IDS[i]]=1; return o; }
+function without(id){ var o=all(); o[id]=0; return model(o); }
+var OK=model(all()), NOW=model({});
+function impacto(id){ return OK.fim-without(id).fim; }
+function fmt(n){ return 'R$ '+Math.abs(n).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+/* ---------- catálogo de erros ---------- */
+var ERR=[
+{id:'soma',cell:'D16',alt:[],t:'SOMA que não pega a última linha',
+ bad:'=SOMA(D5:D14)', good:'=SOMA(D5:D15)',
+ why:'A tabela de custos vai até a <b>linha 15</b>; a SOMA para na 14. O <b>Seguro de RC + ART (R$ 2.800,00)</b> ficou fora do orçamento e nada fica vermelho. É o erro mais comum da planilha de produção: alguém insere uma linha no fim da tabela e o intervalo da SOMA não acompanha. Confira sempre a última linha do intervalo.'},
+{id:'texto',cell:'D9',alt:[],t:'Número digitado como texto',
+ bad:'R$ 9.120,00   (conteúdo em texto, sem "=")', good:'=B9*C9',
+ why:'Alguém colou o valor com o "R$" junto e a célula virou <b>texto</b>. A SOMA <b>ignora texto em silêncio</b> — não dá erro, só não conta. O sinal na tela: número alinha à direita sozinho; este está à esquerda. O painel de LED inteiro sumiu do custo.'},
+{id:'dias',cell:'D11',alt:[],t:'Quantidade × diária sem multiplicar pelos dias',
+ bad:'=B11*C11   →  8 × 450 = 3.600', good:'=B11*C11*$B$3   →  8 × 450 × 3 = 10.800',
+ why:'8 técnicos × R$ 450 é o custo de <b>um dia</b>. O evento tem 3 dias de operação (célula B3): montagem + 2 shows. <b>Diária é por dia</b> — toda linha de equipe, gerador, locação e alimentação tem que bater com a escala.'},
+{id:'dup',cell:'D14',alt:['A14','B14','C14'],t:'Item lançado duas vezes',
+ bad:'Linha 14 — Console digital FOH + kit de microfones — R$ 4.200,00', good:'Excluir a linha 14 (já está na linha 6)',
+ why:'É o mesmo equipamento da <b>linha 6</b> (Mesa digital 48 canais + microfonia), relançado na categoria Locação. Duplicidade nasce quando cada setor manda a própria lista e ninguém cruza. Este erro <b>infla</b> o orçamento: não te faz perder dinheiro, te faz perder o job na concorrência.'},
+{id:'cont',cell:'B17',alt:['D17'],t:'Contingência zerada',
+ bad:'B17 = 0%   →   =D16*B17 = R$ 0,00', good:'B17 = 5%',
+ why:'A linha existe e o percentual está em zero — dá no mesmo que não existir, mas passa despercebido porque a linha está lá. Contingência de <b>5% a 10%</b> cobre o que sempre acontece: hora extra de montagem, cabo queimado, refeição a mais, frete de emergência, van extra.'},
+{id:'hard',cell:'D18',alt:[],t:'Valor digitado direto no total (hardcode)',
+ bad:'59800   (número cravado, sem "=")', good:'=SOMA(D16:D17)',
+ why:'O CUSTO TOTAL não é fórmula: é um número de uma versão antiga da planilha. Ele <b>não acompanha mais</b> as linhas de cima — você conserta tudo lá em cima e este total continua mentindo. <b>Total sem "=" no começo é bomba-relógio.</b> Aqui ele mascara todos os outros erros.'},
+{id:'markup',cell:'D19',alt:[],t:'Markup vendido como se fosse margem',
+ bad:'=D18*0,30   (markup: 30% por cima do custo)', good:'=D18/(1-0,30)-D18   (margem: 30% do preço)',
+ why:'Custo 100 + 30% = 130. Mas 30/130 = <b>23%</b> de margem real, não 30%. Margem se calcula <b>sobre o preço de venda</b>: <code>preço = custo / (1 − margem)</code>. Custo 100 com 30% de margem vende a <b>142,86</b>, não a 130. Quanto maior a margem alvo, maior o buraco: 50% de markup dá 33% de margem.'},
+{id:'ref',cell:'D21',alt:['B21'],t:'Referência relativa que deslizou',
+ bad:'=D20*B21   (B21 está vazia → ISS = R$ 0,00)', good:'=D20*$B$2',
+ why:'A fórmula foi copiada da linha da contingência (<code>=D16*B17</code>, onde o % mora na própria linha). Ao colar na linha 21 a referência desceu junto e virou <b>B21</b> — célula vazia. Vazio × qualquer coisa = zero, e o imposto sumiu sem erro na tela. Alíquota é premissa: trave com <b>$B$2</b> (tecla F4) para a referência não andar quando você arrasta.'}
+];
+function owner(ref){ for(var i=0;i<ERR.length;i++){ if(ERR[i].cell===ref||ERR[i].alt.indexOf(ref)>=0) return ERR[i]; } return null; }
+
+/* ---------- render da planilha ---------- */
+var CELL={}, sel=null, marks={}, done=false;
+function build(){
+  var t=$('#sheet'); t.innerHTML='';
+  var cg=document.createElement('colgroup');
+  [30,268,52,88,98,104].forEach(function(w){ var c=document.createElement('col'); c.style.width=w+'px'; cg.appendChild(c); });
+  t.appendChild(cg);
+  var th=document.createElement('thead'), hr=document.createElement('tr');
+  hr.appendChild(document.createElement('th'));
+  ['A','B','C','D','E'].forEach(function(L){ var e=document.createElement('th'); e.textContent=L; hr.appendChild(e); });
+  th.appendChild(hr); t.appendChild(th);
+  var tb=document.createElement('tbody');
+  ROWS.forEach(function(R){
+    var n=R[0], tr=document.createElement('tr');
+    var rn=document.createElement('th'); rn.className='rn'; rn.textContent=n; tr.appendChild(rn);
+    R[1].forEach(function(c){
+      var td=document.createElement('td');
+      td.className='k-'+c[3];
+      if(c[4]>1) td.colSpan=c[4];
+      td.textContent=c[1];
+      td.title=c[1];
+      var ref=c[0]+n;
+      td.setAttribute('data-ref',ref);
+      td.setAttribute('data-fx',c[2]||'');
+      td.setAttribute('data-kind',c[3]);
+      if(c[5]) td.classList.add('mkable');
+      CELL[ref]=td;
+      tr.appendChild(td);
+    });
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb);
+  t.addEventListener('click',function(e){
+    var td=e.target.closest?e.target.closest('td'):null;
+    if(!td||!td.getAttribute('data-ref')) return;
+    select(td.getAttribute('data-ref'));
+  });
+  t.addEventListener('dblclick',function(e){
+    var td=e.target.closest?e.target.closest('td'):null;
+    if(td&&td.classList.contains('mkable')) toggle(td.getAttribute('data-ref'));
+  });
+}
+function select(ref){
+  if(sel&&CELL[sel]) CELL[sel].classList.remove('sel');
+  sel=ref; var td=CELL[ref]; td.classList.add('sel');
+  var fx=td.getAttribute('data-fx'), kind=td.getAttribute('data-kind');
+  $('#fref').textContent=ref;
+  $('#ftxt').textContent=fx||(kind==='hdr'||kind==='ttl'||kind==='lbl'||kind==='lbl2'||kind==='lbl3'||kind==='obs'?td.textContent:'(vazia)');
+  $('#ftag').className='tag'+(kind==='txt'?' on':'');
+  var b=$('#bMark');
+  b.disabled=done||!td.classList.contains('mkable');
+  b.textContent=marks[ref]?'⚑ Desmarcar '+ref:'⚑ Marcar erro'+(td.classList.contains('mkable')?' em '+ref:'');
+}
+function toggle(ref){
+  if(done) return;
+  if(marks[ref]){ delete marks[ref]; CELL[ref].classList.remove('mk'); }
+  else { marks[ref]=1; CELL[ref].classList.add('mk'); }
+  $('#sMk').textContent=Object.keys(marks).length;
+  if(sel===ref) select(ref);
+}
+
+/* ---------- conferência ---------- */
+function check(){
+  if(done) return; done=true;
+  var found={}, fps=[];
+  Object.keys(marks).forEach(function(ref){
+    var o=owner(ref);
+    if(o){ found[o.id]=1; CELL[ref].classList.remove('mk'); CELL[ref].classList.add('hit'); }
+    else { fps.push(ref); CELL[ref].classList.remove('mk'); CELL[ref].classList.add('fp'); }
+  });
+  ERR.forEach(function(e){ if(!found[e.id]) CELL[e.cell].classList.add('miss'); });
+  var nF=Object.keys(found).length, nP=fps.length;
+
+  var v=$('#verdict');
+  if(nF===ERR.length&&nP===0){ v.className='verdict ok';
+    v.textContent='✓ '+nF+' de '+ERR.length+' erros achados, zero falso positivo. Planilha auditada.'; }
+  else if(nF>=6&&nP<=1){ v.className='verdict warn';
+    v.textContent='◐ '+nF+' de '+ERR.length+' erros achados · '+nP+' falso(s) positivo(s). Passou o que mais custa? Confira abaixo.'; }
+  else { v.className='verdict bad';
+    v.textContent='✗ '+nF+' de '+ERR.length+' erros achados · '+nP+' falso(s) positivo(s). Esta planilha ainda vai para o cliente errada.'; }
+
+  $('#vApr').textContent=fmt(NOW.fim);
+  $('#vCor').textContent=fmt(OK.fim);
+  $('#punch').innerHTML='Você ia apresentar <b>'+fmt(NOW.fim)+'</b> para um evento que custa <b>'+fmt(OK.custo)+
+    '</b> (custos + contingência). São <b>'+fmt(OK.custo-NOW.fim)+'</b> do seu bolso para trabalhar 3 dias — e o ISS ainda não foi recolhido.<br>'+
+    'Com a planilha corrigida o preço é <b>'+fmt(OK.fim)+'</b>. A diferença é de <b>'+fmt(OK.fim-NOW.fim)+'</b>.';
+
+  var L=$('#list'); L.innerHTML='';
+  ERR.forEach(function(e){
+    var imp=impacto(e.id), up=imp<0;
+    var d=document.createElement('div');
+    d.className='fix'+(found[e.id]?' found':'');
+    d.innerHTML='<div class="h"><span class="cel">'+e.cell+'</span><span class="t">'+
+      (found[e.id]?'✓ ':'✗ ')+e.t+'</span><span class="cost'+(up?' up':'')+'">'+(up?'+':'−')+' '+fmt(imp)+'</span></div>'+
+      '<div class="fml bad">'+e.bad+'</div><div class="fml good">'+e.good+'</div>'+
+      '<div class="why">'+e.why+'<br><b>Impacto no preço final: '+(up?'infla ':'some ')+fmt(imp)+'.</b></div>';
+    L.appendChild(d);
+  });
+  $('#fpNote').innerHTML = nP?('<b>Falsos positivos ('+nP+'):</b> '+fps.join(', ')+
+    ' — estas células estão corretas. Cada célula certa marcada como erro vira reunião, refação de orçamento e prazo perdido. Auditoria é cirúrgica, não desconfiança geral.')
+    :'<b>Nenhum falso positivo.</b> Você só mexeu no que estava furado.';
+  $('#res').style.display='flex';
+  $('#bMark').disabled=true;
+  $('#res').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function reset(){
+  done=false; marks={}; sel=null;
+  Object.keys(CELL).forEach(function(r){ CELL[r].className=CELL[r].className.replace(/\b(mk|hit|miss|fp|sel)\b/g,'').replace(/\s+/g,' ').trim(); });
+  $('#sMk').textContent='0'; $('#res').style.display='none';
+  $('#fref').textContent='—'; $('#ftxt').textContent='clique numa célula da planilha';
+  $('#ftag').className='tag'; $('#bMark').disabled=true; $('#bMark').textContent='⚑ Marcar erro';
+}
+
+build();
+$('#sTot').textContent=ERR.length;
+$('#sPr').textContent=fmt(NOW.fim);
+$('#bMark').onclick=function(){ if(sel) toggle(sel); };
+$('#bCheck').onclick=check;
+$('#bReset').onclick=reset;
+})();
+</script>
+</body>
+</html>

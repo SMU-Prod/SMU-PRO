@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador — Montando o PA (SMU)</title>
+<style>
+  :root{--bg:#0b0f17;--panel:#151b28;--panel2:#0f1420;--line:#26344c;--ink:#e7ecf5;
+    --muted:#8ea0bd;--amber:#F59E0B;--green:#22c55e;--red:#ef4444;--cyan:#22d3ee}
+  *{box-sizing:border-box}html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);font-family:"Space Grotesk",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;padding:10px;user-select:none}
+  h1{font-size:15px;margin:0 0 2px}.sub{font-size:11.5px;color:var(--muted);margin-bottom:10px}
+  .mission{display:flex;gap:10px;align-items:center;background:#0c1220;border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin-bottom:12px}
+  .mission .idx{font-size:10px;color:var(--amber);font-weight:800;letter-spacing:.8px;white-space:nowrap}
+  .mission .txt{font-size:12.5px;line-height:1.3;flex:1}.mission .txt b{color:var(--amber)}
+  .mission button{font:inherit;font-size:11px;color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:7px;padding:6px 9px;cursor:pointer}
+  .grid{display:flex;gap:14px;flex-wrap:wrap}
+  .card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:12px;padding:14px;flex:1 1 320px}
+  .card h3{margin:0 0 10px;font-size:11px;letter-spacing:1px;color:var(--muted);text-transform:uppercase}
+  .chain{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:64px;background:#0c1220;border:1px dashed var(--line);border-radius:10px;padding:12px}
+  .node{background:#111a2b;border:1px solid var(--line);border-radius:9px;padding:8px 12px;font-size:12px;font-weight:700;text-align:center;position:relative}
+  .node .em{font-size:20px;display:block}
+  .node.mesa{border-color:var(--amber)}
+  .node.rm{cursor:pointer}
+  .node .x{position:absolute;top:-7px;right:-7px;width:18px;height:18px;border-radius:50%;background:var(--red);color:#fff;font-size:11px;line-height:18px;text-align:center}
+  .arrow{color:#33456a;font-size:18px}
+  .palette{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .pbtn{font:inherit;font-size:12px;font-weight:700;padding:9px 12px;border-radius:9px;border:1px solid var(--line);background:#0c1220;color:var(--ink);cursor:pointer}
+  .pbtn .em{margin-right:5px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .opt{font:inherit;font-size:12px;font-weight:700;padding:9px 12px;border-radius:9px;border:1px solid var(--line);background:#0c1220;color:var(--ink);cursor:pointer}
+  .opt.sel{border-color:var(--amber);background:#1a1608}.opt.sub.on{border-color:var(--green);background:#0e1a10;color:var(--green)}
+  .stage{position:relative;height:150px;background:#0c1220;border:1px solid var(--line);border-radius:10px;margin-top:8px;overflow:hidden}
+  .stage .aud{position:absolute;left:0;right:0;bottom:0;height:34px;background:#0e1524;border-top:1px solid var(--line);font-size:10px;color:var(--muted);display:flex;align-items:center;justify-content:center}
+  .stage .mic{position:absolute;left:50%;top:64px;transform:translateX(-50%);font-size:22px}
+  .stage .spk{position:absolute;font-size:22px;transition:.25s}
+  .verdict{font-size:12.5px;font-weight:700;min-height:18px;margin-top:8px}.verdict.good{color:var(--green)}.verdict.bad{color:var(--red)}
+</style>
+</head>
+<body>
+  <h1>Montando o PA do evento</h1>
+  <div class="sub">Ligue as caixas do jeito certo (ativa × passiva), posicione contra microfonia e reforce os graves.</div>
+  <div class="mission">
+    <span class="idx" id="mIdx">MISSÃO 1/4</span>
+    <span class="txt" id="mTxt">—</span>
+    <button id="mSkip">Pular</button>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Cadeia de saída (da mesa até a caixa)</h3>
+      <div class="chain" id="chain"></div>
+      <div class="palette" id="palette">
+        <button class="pbtn" data-add="ativa"><span class="em">🔊</span>Caixa Ativa</button>
+        <button class="pbtn" data-add="amp"><span class="em">🧯</span>Amplificador</button>
+        <button class="pbtn" data-add="passiva"><span class="em">📦</span>Caixa Passiva</button>
+        <button class="pbtn" data-add="sub"><span class="em">🔈</span>Subgrave</button>
+      </div>
+      <div class="row"><button class="pbtn" id="clear">↺ Limpar cadeia</button></div>
+      <div class="verdict" id="v1"></div>
+    </div>
+
+    <div class="card" style="flex:1 1 260px">
+      <h3>Posicionamento (contra microfonia)</h3>
+      <div class="row">
+        <button class="opt" data-pos="frente">Caixas à FRENTE dos mics</button>
+        <button class="opt" data-pos="atras">Caixas ATRÁS dos mics</button>
+      </div>
+      <div class="stage" id="stage">
+        <div class="spk" id="spk1">🔊</div><div class="spk" id="spk2">🔊</div>
+        <div class="mic">🎤</div>
+        <div class="aud">👥 plateia</div>
+      </div>
+      <div class="verdict" id="v2"></div>
+    </div>
+  </div>
+
+<script>
+"use strict";
+(function(){
+  const $=id=>document.getElementById(id);
+  const NODE={ativa:{em:"🔊",nm:"Caixa Ativa"},amp:{em:"🧯",nm:"Amplificador"},passiva:{em:"📦",nm:"Caixa Passiva"},sub:{em:"🔈",nm:"Subgrave"}};
+  const state={chain:[],pos:null};
+
+  function renderChain(){
+    const c=$("chain");c.innerHTML="";
+    const mesa=document.createElement("div");mesa.className="node mesa";mesa.innerHTML='<span class="em">🎛️</span>Mesa';c.appendChild(mesa);
+    state.chain.forEach((k,i)=>{ const a=document.createElement("span");a.className="arrow";a.textContent="➜";c.appendChild(a);
+      const n=document.createElement("div");n.className="node rm";n.innerHTML=`<span class="em">${NODE[k].em}</span>${NODE[k].nm}<span class="x">×</span>`;
+      n.onclick=()=>{state.chain.splice(i,1);renderChain();check();};c.appendChild(n); });
+    validateChain();
+  }
+  function validateChain(){
+    const v=$("v1"); const ch=state.chain.filter(x=>x!=="sub");
+    const hasSub=state.chain.includes("sub");
+    // regras
+    let msg="",cls="";
+    if(ch.length===0){ msg="Adicione as caixas para completar o caminho do som."; cls=""; }
+    else if(ch.join()==="ativa"){ msg="✔ Correto! Mesa → Caixa Ativa (a caixa ativa já tem amplificador dentro)."; cls="good"; }
+    else if(ch.join()==="amp,passiva"){ msg="✔ Correto! Mesa → Amplificador → Caixa Passiva (a passiva precisa do amp)."; cls="good"; }
+    else if(ch.join()==="passiva"){ msg="✖ A caixa passiva não tem amplificador — sem som. Coloque um Amplificador antes dela."; cls="bad"; }
+    else if(ch.join()==="amp,ativa"||ch.join()==="ativa,amp"){ msg="✖ Caixa ativa já tem amp interno — não precisa (e não deve) de amplificador antes."; cls="bad"; }
+    else if(ch.join()==="amp"){ msg="Falta a caixa. Amplificador sozinho não toca — ligue uma Caixa Passiva depois."; cls=""; }
+    else { msg="Cadeia incomum. O certo é: Mesa → Caixa Ativa, OU Mesa → Amplificador → Caixa Passiva."; cls="bad"; }
+    if(hasSub&&cls==="good") msg+=" Subgrave adicionado 🔈 — reforço de graves ok.";
+    v.textContent=msg;v.className="verdict "+cls;
+  }
+  $("palette").querySelectorAll("[data-add]").forEach(b=>b.onclick=()=>{ state.chain.push(b.dataset.add);renderChain();check(); });
+  $("clear").onclick=()=>{state.chain=[];renderChain();check();};
+
+  // posicionamento
+  function renderPos(){
+    const s1=$("spk1"),s2=$("spk2");
+    document.querySelectorAll("[data-pos]").forEach(o=>o.classList.toggle("sel",o.dataset.pos===state.pos));
+    if(state.pos==="frente"){ s1.style.left="12%";s1.style.top="96px";s2.style.left="80%";s2.style.top="96px"; }
+    else if(state.pos==="atras"){ s1.style.left="18%";s1.style.top="24px";s2.style.left="74%";s2.style.top="24px"; }
+    else { s1.style.left="12%";s1.style.top="24px";s2.style.left="80%";s2.style.top="24px";s2.style.opacity="0.3";s1.style.opacity="0.3"; }
+    if(state.pos){ s1.style.opacity="1";s2.style.opacity="1"; }
+    const v=$("v2");
+    if(state.pos==="frente"){ v.textContent="✔ Certo! As caixas à frente dos microfones (apontando para a plateia) reduzem a microfonia."; v.className="verdict good"; }
+    else if(state.pos==="atras"){ v.textContent="✖ Perigo de microfonia! Caixas atrás/apontando para os microfones realimentam e apitam."; v.className="verdict bad"; }
+    else v.textContent="";
+  }
+  document.querySelectorAll("[data-pos]").forEach(o=>o.onclick=()=>{state.pos=o.dataset.pos;renderPos();check();});
+
+  // missões
+  const okActive=()=>state.chain.filter(x=>x!=="sub").join()==="ativa";
+  const okPassive=()=>state.chain.filter(x=>x!=="sub").join()==="amp,passiva";
+  const M=[
+    { t:'Monte o PA com uma <b>caixa ATIVA</b>: a cadeia deve ser <b>Mesa → Caixa Ativa</b> (a ativa já tem amplificador).', ok:okActive },
+    { t:'Agora com <b>caixa PASSIVA</b>: ela precisa de <b>Amplificador</b> antes. Monte <b>Mesa → Amplificador → Caixa Passiva</b>. (limpe a cadeia primeiro)', ok:okPassive },
+    { t:'Posicionamento: coloque as caixas <b>à FRENTE</b> dos microfones (painel da direita) para evitar microfonia.', ok:()=>state.pos==="frente" },
+    { t:'Reforce os graves: adicione um <b>Subgrave</b> à cadeia (mantendo a ligação correta).', ok:()=>state.chain.includes("sub")&&(okActive()||okPassive()) },
+  ];
+  let mi=0;
+  function paintM(){const idx=$("mIdx"),txt=$("mTxt");
+    if(mi>=M.length){idx.textContent="CONCLUÍDO";txt.innerHTML="🎓 <b>Boa!</b> Você sabe montar um PA pequeno: ativa liga direto, passiva precisa de amplificador, caixas à frente dos mics e sub para os graves.";$("mSkip").style.display="none";return;}
+    idx.textContent="MISSÃO "+(mi+1)+"/"+M.length;txt.innerHTML=M[mi].t;}
+  function check(){if(mi>=M.length)return;try{if(M[mi].ok()){mi++;paintM();}}catch(e){}}
+  $("mSkip").onclick=()=>{if(mi<M.length){mi++;paintM();}};
+
+  renderChain();renderPos();paintM();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>SMU PRO · Credenciamento e Zonas de Acesso</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0c1017;--panel:#161c26;--panel2:#1b2230;--line:#2a3444;--ink:#e7edf5;--dim:#8794a8;
+        --accent:#f59e0b;--ok:#22c55e;--err:#ef4444;--warn:#f59e0b;--cyan:#38bdf8;}
+  html,body{background:var(--bg);color:var(--ink);
+    font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased;}
+  body{padding:12px;}
+  .app{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:12px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  h1{font-size:15px;margin-bottom:3px;}
+  .sub{font-size:12px;color:var(--dim);margin-bottom:12px;line-height:1.5;}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px;}
+  .stat .k{font-size:10px;color:var(--dim);letter-spacing:.5px;}
+  .stat .val{font-size:15px;font-weight:800;margin-top:2px;}
+  .verdict{font-size:13px;font-weight:700;padding:9px 12px;border-radius:8px;text-align:center;}
+  .verdict.ok{background:#14532d;color:#bbf7d0;}
+  .verdict.bad{background:#450a0a;color:#fca5a5;}
+  .verdict.warn{background:#422006;color:#fde68a;}
+  .note{font-size:12px;color:var(--dim);line-height:1.55;}
+  button{font:inherit;cursor:pointer;}
+  /* ---- comum ---- */
+  .tag{font-size:10px;letter-spacing:.7px;color:var(--cyan);font-weight:800;margin-bottom:6px;}
+  .brief{background:var(--panel2);border:1px solid var(--line);border-left:3px solid var(--cyan);border-radius:8px;padding:10px;margin-bottom:12px;}
+  .brief li{font-size:12px;color:var(--dim);line-height:1.6;margin-left:15px;}
+  .brief b{color:var(--ink);}
+  .acts{display:flex;gap:8px;margin-top:10px;}
+  .acts button{flex:1;min-height:38px;border-radius:8px;border:1px solid var(--line);font-size:12px;font-weight:700;background:#0c1119;color:var(--dim);}
+  .acts button.go{background:var(--accent);border-color:var(--accent);color:#1a1206;}
+  .fails{list-style:none;margin-top:10px;display:flex;flex-direction:column;gap:6px;}
+  .fails li{font-size:12px;line-height:1.5;padding:8px 10px;border-radius:7px;background:var(--panel2);border-left:3px solid var(--err);}
+  .fails li.w{border-left-color:var(--warn);} .fails li.g{border-left-color:var(--ok);}
+  .fails li b{display:block;font-size:11px;letter-spacing:.4px;margin-bottom:2px;color:#fca5a5;}
+  .fails li.w b{color:#fde68a;} .fails li.g b{color:#bbf7d0;}
+  .hide{display:none;}
+  /* ---- credenciais ---- */
+  .creds{display:flex;gap:5px;overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch;}
+  .creds button{flex:0 0 auto;min-height:34px;padding:6px 10px;border-radius:7px;border:1px solid var(--line);
+    background:#0c1119;color:var(--dim);font-size:11px;font-weight:700;white-space:nowrap;}
+  .creds button.on{background:#42200680;border-color:var(--accent);color:#fde68a;}
+  .creds button.done{border-color:#2f5d3c;}
+  .credhint{font-size:11.5px;color:var(--dim);line-height:1.5;margin:8px 0 10px;padding-left:9px;border-left:2px solid var(--accent);}
+  .credhint b{color:var(--ink);}
+  /* ---- mapa ---- */
+  .map{display:grid;grid-template-columns:repeat(12,1fr);grid-auto-rows:minmax(38px,auto);gap:4px;
+       background:#05070b;border:1px solid var(--line);border-radius:10px;padding:6px;}
+  .z{background:var(--panel2);border:1px solid var(--line);border-radius:6px;display:flex;flex-direction:column;
+     align-items:center;justify-content:center;text-align:center;font-size:10px;font-weight:800;letter-spacing:.2px;
+     color:var(--dim);line-height:1.2;padding:4px 2px;cursor:pointer;user-select:none;-webkit-user-select:none;min-height:38px;}
+  .z i{font-style:normal;font-weight:400;font-size:9px;opacity:.65;margin-top:1px;}
+  .z.on{background:#42200680;border-color:var(--accent);color:#fde68a;}
+  .z.ok{border-color:var(--ok);background:#14532d80;color:#bbf7d0;}
+  .z.bad{border-color:var(--err);background:#450a0a;color:#fca5a5;}
+  .z.miss{border-color:var(--warn);border-style:dashed;color:#fde68a;}
+  .z.lock{cursor:default;}
+  .pista{justify-content:space-between;gap:6px;padding:6px;}
+  .pista>.subrow{display:flex;gap:6px;width:100%;justify-content:space-around;}
+  .pista>.subrow>.z{flex:1;background:#111826;}
+  .deco{border:1px dashed var(--line);border-radius:6px;display:flex;align-items:center;justify-content:center;
+        text-align:center;font-size:9px;color:#4a5566;letter-spacing:.3px;line-height:1.2;padding:2px;}
+  .legend{font-size:11px;color:var(--dim);margin-top:8px;line-height:1.5;}
+  /* ---- portaria ---- */
+  .case{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:11px;}
+  .case .who{font-size:13px;font-weight:800;}
+  .case .badge{display:inline-block;font-size:9.5px;font-weight:800;letter-spacing:.5px;padding:3px 7px;border-radius:5px;
+    background:#0c1119;border:1px solid var(--accent);color:#fde68a;margin:6px 6px 0 0;}
+  .case .badge.t{border-color:var(--line);color:var(--dim);}
+  .case .say{font-size:12.5px;line-height:1.55;margin-top:8px;color:var(--ink);font-style:italic;}
+  .dec{display:flex;gap:6px;margin-top:10px;}
+  .dec button{flex:1;min-height:42px;border-radius:8px;border:1px solid var(--line);background:#0c1119;
+    color:var(--ink);font-size:12px;font-weight:800;line-height:1.25;}
+  .dec button:disabled{opacity:.4;}
+  .dec button.pick{border-width:2px;}
+  .prog{display:flex;gap:3px;margin-bottom:9px;}
+  .prog i{flex:1;height:4px;border-radius:2px;background:#232c3a;}
+  .prog i.g{background:var(--ok);} .prog i.r{background:var(--err);} .prog i.c{background:var(--accent);}
+  .why{font-size:12px;line-height:1.6;margin-top:9px;padding:9px 10px;border-radius:7px;background:#0c1119;border:1px solid var(--line);}
+  .why b{color:var(--ink);}
+  .inc{margin-top:8px;padding:9px 10px;border-radius:7px;background:#450a0a;border-left:3px solid var(--err);
+       font-size:12px;line-height:1.55;color:#fca5a5;}
+  .inc b{display:block;font-size:10px;letter-spacing:.5px;margin-bottom:3px;}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="card">
+    <h1>Credenciamento e zonas de acesso — quem entra onde, e por quê</h1>
+    <div class="sub">Show de médio porte, 8.000 pessoas, um artista nacional. Você fecha o plano de credenciamento e depois senta na portaria. <b>Credencial não é hierarquia social, é função.</b></div>
+    <div class="brief">
+      <div class="tag">REGRAS DA CASA</div>
+      <ul>
+        <li><b>Quem barra é a segurança; quem decide exceção é a produção.</b> Técnico não libera ninguém. Nunca.</li>
+        <li><b>Credencial se confere na entrada.</b> Depois que entrou, tirar de lá é conflito — e conflito no backstage para o show.</li>
+        <li><b>Zona não é camarote.</b> Cada área tem lotação e rota de fuga. Corredor de emergência não vira depósito de case.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ================= BLOCO 1 ================= -->
+  <div class="card">
+    <div class="tag">BLOCO 1 · DESENHAR AS ZONAS</div>
+    <h1>Qual credencial abre qual zona</h1>
+    <div class="sub">Escolha a credencial e toque nas zonas do mapa que ela <b>abre</b>. A <b>AAA</b> já está preenchida como referência. Depois, <b>Conferir plano</b>.</div>
+    <div class="creds" id="creds"></div>
+    <div class="credhint" id="credhint"></div>
+    <div class="map" id="map">
+      <div class="z" data-z="loadin"    style="grid-area:1/1/2/5">LOAD-IN<i>carga · caminhão</i></div>
+      <div class="z" data-z="catering"  style="grid-area:1/5/2/8">CATERING<i>cozinha</i></div>
+      <div class="z" data-z="camarim"   style="grid-area:1/8/2/11">CAMARINS</div>
+      <div class="z" data-z="gerador"   style="grid-area:1/11/3/13">GERADOR<i>área de risco</i></div>
+      <div class="z" data-z="backstage" style="grid-area:2/1/3/11">BACKSTAGE / COXIA</div>
+      <div class="z" data-z="imprensa"  style="grid-area:3/1/5/3">SALA DE IMPRENSA</div>
+      <div class="z" data-z="palco"     style="grid-area:3/3/4/11">PALCO</div>
+      <div class="z" data-z="vip"       style="grid-area:3/11/6/13">ÁREA VIP<i>convidados</i></div>
+      <div class="z" data-z="fosso"     style="grid-area:4/3/5/11">FOSSO / PIT</div>
+      <div class="z pista" data-z="pista" style="grid-area:5/1/7/11">
+        <span>PISTA / PLATEIA</span>
+        <div class="subrow">
+          <div class="z" data-z="delay">TORRE DE DELAY</div>
+          <div class="z" data-z="foh">FOH<i>ilha de som/luz</i></div>
+        </div>
+      </div>
+      <div class="deco" style="grid-area:6/11/7/13">PORTARIA<br>DO PÚBLICO</div>
+    </div>
+    <div class="legend">Visto de cima. Toque na zona para abrir/fechar. Depois de conferir: <b style="color:#bbf7d0">verde</b> = certo · <b style="color:#fca5a5">vermelho</b> = abriu o que não devia · <b style="color:#fde68a">tracejado</b> = faltou abrir.</div>
+    <div class="acts">
+      <button class="go" id="check1">Conferir plano</button>
+      <button id="clear1">Limpar credencial</button>
+    </div>
+    <ul class="fails" id="fb1"></ul>
+  </div>
+
+  <!-- ================= BLOCO 2 ================= -->
+  <div class="card">
+    <div class="tag">BLOCO 2 · PORTARIA</div>
+    <h1>21h. A fila está na porta.</h1>
+    <div class="sub">Cada pessoa chega com uma credencial e um pedido. Decida: <b>libera</b>, <b>barra</b> ou <b>escala pra produção</b>.</div>
+    <div class="prog" id="prog"></div>
+    <div class="case" id="case"></div>
+    <div class="dec" id="dec">
+      <button data-a="libera">LIBERA</button>
+      <button data-a="barra">BARRA</button>
+      <button data-a="escala">ESCALA<br>PRA PRODUÇÃO</button>
+    </div>
+    <div id="why2"></div>
+    <div class="acts hide" id="nextwrap"><button class="go" id="next">Próximo da fila</button></div>
+  </div>
+
+  <!-- ================= PLACAR ================= -->
+  <div class="card hide" id="final">
+    <div class="tag">FECHAMENTO DA NOITE</div>
+    <h1 id="fhead">Placar</h1>
+    <div class="stats" id="fstats"></div>
+    <div class="verdict" id="fverdict"></div>
+    <ul class="fails" id="fincidents"></ul>
+    <div class="acts"><button class="go" id="restart">Reiniciar</button></div>
+  </div>
+
+</div>
+<script>
+(function(){
+var $=function(s){return document.querySelector(s);};
+var $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s));};
+
+var ALL=['pista','vip','fosso','foh','palco','backstage','camarim','catering','loadin','imprensa','gerador','delay'];
+var ZN={pista:'pista',vip:'área VIP',fosso:'fosso/pit',foh:'FOH',palco:'palco',backstage:'backstage',
+        camarim:'camarins',catering:'cozinha/catering',loadin:'load-in',imprensa:'sala de imprensa',
+        gerador:'gerador',delay:'torre de delay'};
+
+var CREDS=[
+ {k:'aaa',n:'AAA',lock:1,z:ALL.slice(),
+  h:'<b>ALL ACCESS / AAA</b> — abre tudo, inclusive o perímetro do gerador. Por isso AAA é <b>contada</b>, não distribuída: são 4 ou 5 na noite inteira, e quem tem responde pelo evento.'},
+ {k:'artista',n:'ARTISTA',z:['pista','vip','palco','backstage','camarim'],
+  h:'<b>ARTISTA</b> — circula na área de show e nos convidados dele. Não tem função em load-in, gerador nem na ilha de som.'},
+ {k:'banda',n:'BANDA',z:['pista','palco','backstage','camarim'],
+  h:'<b>BANDA</b> — palco, backstage, camarim e pista. VIP é lista do contratante/patrocinador, não da banda.'},
+ {k:'crew',n:'CREW/TÉCNICO',z:['pista','foh','palco','backstage','loadin','delay'],
+  h:'<b>CREW / TÉCNICO</b> — onde ele trabalha: load-in, palco, backstage, FOH e torre de delay. Abrir a zona é para trabalhar, não para assistir.'},
+ {k:'producao',n:'PRODUÇÃO',z:['pista','vip','fosso','foh','palco','backstage','camarim','catering','loadin','imprensa','delay'],
+  h:'<b>PRODUÇÃO</b> — precisa de tudo que é operacional, porque é quem resolve exceção. Uma zona fica de fora.'},
+ {k:'press',n:'IMPRENSA/FOTO',z:['pista','fosso','imprensa'],
+  h:'<b>IMPRENSA / FOTO</b> — a regra é escrita e vem do contrato do artista: <b>3 primeiras músicas, do fosso, sem flash</b>. Depois sai do fosso.'},
+ {k:'vipc',n:'VIP/CONVIDADO',z:['pista','vip'],
+  h:'<b>VIP / CONVIDADO</b> — é público. Público bem tratado, com bar e vista, mas público.'},
+ {k:'forn',n:'FORNECEDOR (gerador)',z:['loadin','gerador'],
+  h:'<b>FORNECEDOR</b> — só o load-in e <b>a área dele</b>, que vem carimbada na credencial. Aqui é a locadora do gerador.'},
+ {k:'seg',n:'SEGURANÇA',z:['pista','vip','fosso','foh','palco','backstage','loadin','delay'],
+  h:'<b>SEGURANÇA do evento</b> — cobre público, perímetro e postos técnicos. Camarim tem a segurança da comitiva, que viaja com o artista.'},
+ {k:'cat',n:'CATERING',z:['catering','backstage','loadin'],
+  h:'<b>CATERING</b> — cozinha, load-in e o trânsito pelo backstage para servir. O que entra no camarim, e a que horas, é a produção que diz.'}
+];
+
+var NOTE={
+ 'vipc:backstage':'VIP não é backstage — é o erro que gera 90% da confusão na porta. VIP é área de público. Backstage é área de trabalho, com case, cabo no chão e gente carregando peso.',
+ 'vipc:camarim':'Camarim não abre para convidado. Quem prometeu “VIP conhece o artista” foi o comercial, não a produção. Contorno: alinhar ANTES, no contrato/briefing — se tem meet &amp; greet, ele tem hora, lista e escolta.',
+ 'vipc:foh':'FOH é área técnica, não camarote. Público na ilha atrapalha a mixagem e some equipamento.',
+ 'vipc:fosso':'Fosso é do fotógrafo e da segurança. Convidado no fosso vira foto de convidado no fosso.',
+ 'press:palco':'Imprensa não sobe no palco. A regra vem do contrato do artista e é literal: 3 primeiras músicas, do fosso, sem flash.',
+ 'press:backstage':'Backstage não é pauta livre. Foto de bastidor se negocia com a assessoria, com horário e acompanhante.',
+ 'press:camarim':'Camarim para imprensa só existe se estiver escrito no contrato, com hora marcada. Não se resolve na porta.',
+ 'press:vip':'Credencial de imprensa é de trabalho: fosso, pista e sala de imprensa. VIP é outra lista.',
+ 'press:foh':'FOH é área técnica. Fotógrafo na ilha é tripeça na frente do LD.',
+ 'crew:camarim':'Camarim é do artista e da comitiva. Crew tem palco e backstage — o que ele precisa do camarim, o runner leva.',
+ 'crew:gerador':'Perímetro do gerador é do geradorista/eletricista responsável. Crew de palco não entra.',
+ 'crew:vip':'Crew não é convidado. Se ele quer assistir, assiste da pista.',
+ 'crew:catering':'Cozinha é área de manipulação de alimento. Crew come onde a refeição é servida, não dentro da cozinha.',
+ 'cat:camarim':'Catering monta o camarim no horário combinado e acompanhado da produção — não é acesso livre. Com o artista dentro, quem entra é o runner.',
+ 'cat:palco':'Catering não tem função no palco. Água de palco quem põe é o backline.',
+ 'forn:pista':'Fornecedor não é público. Credencial de fornecedor abre load-in e a área dele — o que estiver escrito nela.',
+ 'forn:backstage':'Fornecedor não circula no backstage porque entregou material. Ele vai à área dele e volta.',
+ 'seg:camarim':'Camarim tem a segurança própria da comitiva. Segurança do evento cobre público, perímetro e postos.',
+ 'seg:catering':'Cozinha não é posto de segurança.',
+ 'producao:gerador':'Nem a produção entra no perímetro do gerador. Área cercada, risco elétrico, responsável técnico habilitado. Só AAA e quem opera.',
+ 'banda:vip':'VIP é lista do contratante/patrocinador. A banda tem palco, backstage e camarim.',
+ 'banda:foh':'FOH é área técnica com lotação contada. Músico de folga na ilha é gente atrás do operador.',
+ 'artista:foh':'A ilha é do operador. Artista no FOH é durante a passagem, com o operador chamando — não é acesso de credencial.',
+ 'artista:loadin':'Ninguém quer o artista atravessando o load-in no meio de empilhadeira e caminhão.'
+};
+var MISS={
+ 'crew:delay':'A torre de delay é posto técnico: quem sobe é crew.',
+ 'crew:foh':'FOH é onde o crew trabalha — operador de PA, de monitor, de luz, LD, playback.',
+ 'press:fosso':'O fosso É o lugar da imprensa. Sem fosso, a credencial de foto não serve pra nada.',
+ 'press:imprensa':'A sala de imprensa é onde a assessoria dá o material, o coletivo acontece e o fotógrafo descarrega o cartão.',
+ 'cat:loadin':'A comida entra pelo load-in, como todo o resto.',
+ 'cat:backstage':'Sem backstage o catering não chega até onde serve.',
+ 'forn:gerador':'A área dele É o gerador. É o que está escrito na credencial.',
+ 'producao:camarim':'Produção entra no camarim — é o runner e o produtor que resolvem o rider.',
+ 'seg:fosso':'O fosso tem posto de segurança de frente pro público: é lá que se tira gente desmaiada.',
+ 'vipc:pista':'Convidado é público: pista e VIP.'
+};
+
+var CASES=[
+ {p:'Fotógrafo de veículo grande',c:'IMPRENSA/FOTO',t:'21h12 · 2ª música',
+  q:'“Vou subir rápido na lateral do palco pra pegar a plateia de cima. É um clique, ninguém vê.”',a:'barra',
+  w:'<b>Barra.</b> A credencial de imprensa abre fosso, pista e sala de imprensa — e a regra é escrita: <b>3 primeiras músicas, do fosso, sem flash</b>. Ela não é sua, é do contrato do artista. Você não tem autoridade pra flexibilizar o que o empresário assinou.',
+  inc:'O fotógrafo subiu na lateral e apareceu em vídeo de fã. O empresário do artista mandou recolher todas as credenciais de imprensa no meio do show e cortou o fosso. Amanhã sai matéria negativa, e o veículo não cobre mais a casa.'},
+ {p:'Convidado do patrocinador',c:'VIP/CONVIDADO',t:'20h40 · antes do show',
+  q:'“Sou diretor da marca que paga esse show. O comercial de vocês me garantiu que eu ia conhecer o artista no camarim.”',a:'barra',
+  w:'<b>Barra — com educação e sem discussão.</b> VIP não é backstage. Credencial não é hierarquia social: ele é importante, mas não tem função no camarim. Quem prometeu foi o comercial, não a produção — e a promessa não vira acesso na porta. Se houvesse meet &amp; greet contratado, teria hora, lista e escolta. O contorno é ANTES: alinhar no briefing o que “VIP” inclui.',
+  inc:'Ele entrou. O tour manager encontrou um estranho na coxia, fechou o corredor do camarim e o artista atrasou 25 minutos. A conta do atraso chegou na produção — e o patrocinador ainda achou o acesso ruim.'},
+ {p:'Encarregado do catering',c:'CATERING',t:'18h40 · artista já no camarim',
+  q:'“A refeição quente tá pronta. Preciso entrar no camarim pra montar a mesa.”',a:'escala',
+  w:'<b>Escala pra produção.</b> A credencial de catering abre cozinha, load-in e backstage — o camarim é <b>horário</b>, não zona livre. Montagem se faz antes do artista chegar. Com ele dentro, quem leva é o runner, ou o catering entra acompanhado da produção. Não é desconfiança, é privacidade contratada.',
+  inc:null},
+ {p:'Operador de PA da banda de abertura',c:'CREW/TÉCNICO',t:'20h55 · abertura encerrada',
+  q:'“O meu técnico fica no FOH durante o show do principal, tá? Eu autorizo, é da minha equipe.”',a:'barra',
+  w:'<b>Barra.</b> Duas coisas de uma vez: <b>técnico não libera ninguém</b> — quem barra é a segurança, quem decide exceção é a produção; e a credencial CREW abre o FOH <b>para trabalhar</b>. Terminada a abertura, a função dele acabou. A ilha tem lotação contada (PA, monitor, luz, LD, playback) e FOH não é camarote: público na ilha atrapalha a mixagem e some equipamento. Se ele quer ver o show, vê da pista.',
+  inc:'Viraram cinco pessoas na ilha. O operador de monitor não alcançou a mesa num retorno microfonando e o LD perdeu a visada. No fim da noite faltou um bodypack.'},
+ {p:'Técnico da locadora de gerador',c:'FORNECEDOR',t:'20h30 · 30 min pro show',
+  q:'“Vim trocar uma peça do gerador. Tenho credencial de fornecedor, área gerador.”',a:'escala',
+  w:'<b>Escala pra produção.</b> A credencial dele está certa — load-in e gerador é exatamente a área dele. Mas mexer na fonte de energia com público dentro e 30 minutos pro show não é decisão de portaria: é a produção, com o eletricista responsável, que define se para, se troca depois ou se assume o risco. Fornecedor entra na área carimbada; <b>quando</b> ele entra é operação.',
+  inc:null},
+ {p:'Motoboy',c:'SEM CREDENCIAL',t:'19h20',
+  q:'“Trouxe marmita pra produção. Me falaram pra entrar e deixar lá dentro.”',a:'barra',
+  w:'<b>Barra.</b> Sem credencial não entra — <b>credencial se confere na entrada</b>, porque depois que entrou, tirar de lá é conflito. Ele entrega na portaria e o runner leva. “Me falaram” não é lista.',
+  inc:'Ele entrou e ficou. Meia hora depois estava no backstage tirando foto. Quando a segurança foi tirar, virou discussão na frente da comitiva — na porta teria sido um “não” de dois segundos.'},
+ {p:'Segurança pessoal da comitiva',c:'SEM CREDENCIAL',t:'17h50 · desceu do ônibus',
+  q:'“Vim com o artista, tô na lista da comitiva. Minha credencial deve estar com o tour manager.”',a:'escala',
+  w:'<b>Escala pra produção.</b> Ele provavelmente está certo: a segurança própria viaja com o artista e as credenciais da comitiva costumam vir em bloco com o tour manager. Mas quem confere lista e entrega credencial é a produção, não a portaria — e ninguém entra “na palavra”. Dois minutos de rádio resolvem sem criar precedente.',
+  inc:null},
+ {p:'Homem de rádio na mão',c:'ALL ACCESS / AAA',t:'19h05',
+  q:'“Tô com AAA, pode liberar.” — a foto da credencial é de outra pessoa.',a:'barra',
+  w:'<b>Barra.</b> AAA é a credencial mais forte do evento e por isso é <b>contada e nominal</b>. Foto que não bate = credencial emprestada ou clonada. Confere na entrada: recolhe, registra e chama a produção. Deixar passar um AAA errado é abrir o evento inteiro.',
+  inc:'A AAA emprestada rodou o backstage a noite toda. No load-out sumiram dois microfones sem-fio e a casa pagou. Ninguém sabe quem era o cara na foto.'},
+ {p:'Equipe do bar',c:'FORNECEDOR',t:'19h45 · público entrando',
+  q:'“Vamos entrar com 12 engradados pelo corredor lateral e deixar os cases empilhados ali durante o show. É mais perto.”',a:'barra',
+  w:'<b>Barra a rota, não a pessoa.</b> A credencial está certa; o caminho não. Aquele corredor é <b>rota de fuga</b> e corredor de emergência não vira depósito de case. Zona não pode virar gargalo: com 8.000 pessoas, uma pilha de engradado num corredor é o que transforma um susto em tragédia. Entra pelo load-in e o vazio volta pro load-in.',
+  inc:'Os engradados ficaram no corredor. O bombeiro passou às 22h, autuou a casa e mandou desocupar com o show rolando — três pessoas carregando engradado no meio do público.'},
+ {p:'Repórter fotográfica credenciada',c:'IMPRENSA/FOTO',t:'21h08 · 1ª música',
+  q:'“Vou pro fosso fotografar as três primeiras. Flash desligado, já conferi.”',a:'libera',
+  w:'<b>Libera.</b> É exatamente o que a credencial dela abre e exatamente o que o contrato do artista prevê: fosso, 3 primeiras músicas, sem flash. Ela sabe a regra melhor que você. Barrar quem está certo custa a mesma matéria negativa que liberar quem está errado — e queima a portaria pro resto da noite.',
+  inc:'Você barrou quem estava dentro da regra. A fotógrafa perdeu as três músicas, a assessoria do artista ligou pra produção reclamando e a cobertura do show ficou sem foto. Rigor sem critério é tão caro quanto liberdade sem critério.'},
+ {p:'Técnico de monitor do headliner',c:'CREW/TÉCNICO',t:'21h30 · meio do show',
+  q:'“Preciso subir no palco agora, o cabo do sidefill do baixista abriu.”',a:'libera',
+  w:'<b>Libera.</b> Credencial é função, e essa é a função dele: CREW abre palco e backstage, e ele está indo trabalhar no meio do show — que é quando o trabalho dele acontece. É o mesmo raciocínio que barrou o técnico da abertura na ilha: lá não havia função, aqui há.',
+  inc:'Você segurou o técnico na coxia. O baixista tocou três músicas sem retorno, saiu de tom e reclamou no microfone. O tour manager quer saber quem barrou a própria equipe do artista.'}
+];
+
+var VER={libera:'LIBERA',barra:'BARRA',escala:'ESCALA PRA PRODUÇÃO'};
+
+/* ---------------- estado ---------------- */
+var sel,ans,shown1,idx,answers;
+function reset(){
+  sel='artista'; ans={}; shown1=false; idx=0; answers=[];
+  CREDS.forEach(function(c){ ans[c.k]={}; if(c.lock){ c.z.forEach(function(z){ans[c.k][z]=1;}); } });
+  $('#fb1').innerHTML=''; $('#final').classList.add('hide');
+  renderCreds(); renderCase();
+}
+
+/* ---------------- bloco 1 ---------------- */
+function renderCreds(){
+  $('#creds').innerHTML=CREDS.map(function(c){
+    return '<button data-k="'+c.k+'"'+(c.k===sel?' class="on"':'')+'>'+c.n+'</button>';
+  }).join('');
+  renderMap();
+}
+function cred(k){ for(var i=0;i<CREDS.length;i++){ if(CREDS[i].k===k) return CREDS[i]; } }
+function renderMap(){
+  var c=cred(sel);
+  $('#credhint').innerHTML=c.h+(c.lock?' <span style="color:#8794a8">(referência — travada)</span>':'');
+  $$('#map .z').forEach(function(el){
+    var z=el.dataset.z; el.className=el.classList.contains('pista')?'z pista':'z';
+    if(c.lock) el.classList.add('lock');
+    if(ans[sel][z]) el.classList.add('on');
+    if(shown1){
+      var want=c.z.indexOf(z)>=0, has=!!ans[sel][z];
+      el.classList.remove('on');
+      if(want&&has) el.classList.add('ok');
+      else if(!want&&has) el.classList.add('bad');
+      else if(want&&!has) el.classList.add('miss');
+    }
+  });
+  $('#clear1').disabled=!!c.lock;
+}
+$('#creds').addEventListener('click',function(e){
+  var b=e.target.closest('button'); if(!b) return;
+  sel=b.dataset.k; renderCreds();
+});
+$('#map').addEventListener('click',function(e){
+  var el=e.target.closest('.z'); if(!el) return;
+  if(cred(sel).lock||shown1) return;
+  var z=el.dataset.z; ans[sel][z]=ans[sel][z]?0:1; renderMap();
+});
+$('#clear1').onclick=function(){ if(cred(sel).lock) return; ans[sel]={}; shown1=false; renderMap(); };
+$('#check1').onclick=function(){
+  shown1=true;
+  var out=[],okCreds=0,errs=0;
+  CREDS.forEach(function(c){
+    if(c.lock) return;
+    var has=Object.keys(ans[c.k]).filter(function(z){return ans[c.k][z];});
+    var miss=c.z.filter(function(z){return !ans[c.k][z];});
+    var extra=has.filter(function(z){return c.z.indexOf(z)<0;});
+    errs+=miss.length+extra.length;
+    if(!miss.length&&!extra.length){ okCreds++;
+      out.push('<li class="g"><b>'+c.n+' · OK</b>'+c.h.replace(/<b>.*?<\/b> — /,'')+'</li>'); return; }
+    var txt='';
+    if(extra.length) txt+='<b style="color:#fca5a5">Abriu demais:</b> '+extra.map(function(z){return ZN[z];}).join(', ')+'. ';
+    if(miss.length) txt+='<b style="color:#fde68a">Faltou abrir:</b> '+miss.map(function(z){return ZN[z];}).join(', ')+'. ';
+    var notes=[];
+    extra.forEach(function(z){ if(NOTE[c.k+':'+z]) notes.push(NOTE[c.k+':'+z]); });
+    miss.forEach(function(z){ if(MISS[c.k+':'+z]) notes.push(MISS[c.k+':'+z]); });
+    out.push('<li class="'+(extra.length?'':'w')+'"><b>'+c.n+'</b>'+txt+
+      (notes.length?'<div style="margin-top:5px;color:#c3cddb">'+notes.slice(0,3).join(' ')+'</div>':'')+'</li>');
+  });
+  out.unshift('<li class="'+(okCreds===9?'g':'w')+'"><b>PLANO DE CREDENCIAMENTO · '+okCreds+'/9 credenciais fechadas · '+errs+' erros de zona</b>'+
+    (okCreds===9?'Plano fechado. Agora a portaria tem uma régua escrita — e a segurança não precisa adivinhar.'
+    :'Cada erro aqui vira discussão na porta às 21h, com o cara na sua frente e a fila atrás dele.')+'</li>');
+  $('#fb1').innerHTML=out.join('');
+  renderMap(); tryFinal();
+};
+
+/* ---------------- bloco 2 ---------------- */
+function renderProg(){
+  $('#prog').innerHTML=CASES.map(function(_,i){
+    var a=answers[i]; return '<i class="'+(a===undefined?(i===idx?'c':''):(a?'g':'r'))+'"></i>';
+  }).join('');
+}
+function renderCase(){
+  renderProg();
+  if(idx>=CASES.length){
+    $('#case').innerHTML='<div class="who">Fila zerada.</div><div class="note" style="margin-top:6px">A portaria fechou. Placar no fim da página.</div>';
+    $('#dec').classList.add('hide'); $('#nextwrap').classList.add('hide'); $('#why2').innerHTML=''; tryFinal(); return;
+  }
+  var c=CASES[idx];
+  $('#case').innerHTML='<div class="who">'+c.p+'</div>'+
+    '<span class="badge">'+c.c+'</span><span class="badge t">'+c.t+'</span>'+
+    '<div class="say">'+c.q+'</div>';
+  $('#dec').classList.remove('hide');
+  $$('#dec button').forEach(function(b){ b.disabled=false; b.className=''; });
+  $('#why2').innerHTML=''; $('#nextwrap').classList.add('hide');
+}
+$('#dec').addEventListener('click',function(e){
+  var b=e.target.closest('button'); if(!b||b.disabled) return;
+  var c=CASES[idx], pick=b.dataset.a, right=pick===c.a;
+  answers[idx]=right?1:0;
+  $$('#dec button').forEach(function(x){ x.disabled=true; });
+  b.classList.add('pick');
+  b.style.borderColor=right?'var(--ok)':'var(--err)';
+  var html='<div class="verdict '+(right?'ok':'bad')+'" style="margin-top:9px">'+
+    (right?'✓ Decisão correta':'✗ Errado — o certo era '+VER[c.a])+'</div>'+
+    '<div class="why">'+c.w+'</div>';
+  if(!right&&c.inc) html+='<div class="inc"><b>INCIDENTE GERADO</b>'+c.inc+'</div>';
+  $('#why2').innerHTML=html;
+  $('#nextwrap').classList.remove('hide');
+  renderProg();
+});
+$('#next').onclick=function(){ idx++; renderCase(); };
+
+/* ---------------- placar ---------------- */
+function tryFinal(){
+  if(idx<CASES.length||!shown1) return;
+  var okP=answers.filter(function(a){return a===1;}).length;
+  var okCreds=0,errs=0;
+  CREDS.forEach(function(c){ if(c.lock) return;
+    var miss=c.z.filter(function(z){return !ans[c.k][z];});
+    var extra=Object.keys(ans[c.k]).filter(function(z){return ans[c.k][z]&&c.z.indexOf(z)<0;});
+    errs+=miss.length+extra.length; if(!miss.length&&!extra.length) okCreds++;
+  });
+  var incs=[];
+  CASES.forEach(function(c,i){ if(answers[i]===0&&c.inc) incs.push('<li><b>'+c.p.toUpperCase()+' · '+c.c+'</b>'+c.inc+'</li>'); });
+  $('#fstats').innerHTML=
+    '<div class="stat"><div class="k">PLANO DE ZONAS</div><div class="val">'+okCreds+'/9<span style="font-size:10px;color:#8794a8;font-weight:400"> · '+errs+' erros</span></div></div>'+
+    '<div class="stat"><div class="k">PORTARIA</div><div class="val">'+okP+'/'+CASES.length+'</div></div>';
+  var v=$('#fverdict'), score=okP+okCreds;
+  if(okP>=10&&okCreds>=8){ v.className='verdict ok';
+    v.textContent='Portaria consistente. A régua estava escrita antes das 21h e você não abriu exceção na porta.'; }
+  else if(score>=13){ v.className='verdict warn';
+    v.textContent='Passou, mas com furo. Cada furo desses tem nome, cargo e vai lembrar amanhã.'; }
+  else { v.className='verdict bad';
+    v.textContent='Portaria vazando. Zona sem régua vira negociação — e quem negocia na porta perde sempre.'; }
+  $('#fincidents').innerHTML=incs.length?
+    '<li class="w"><b>'+incs.length+' INCIDENTE(S) NA NOITE</b>Nenhum deles apareceu na hora da decisão. Todos apareceram depois.</li>'+incs.join('')
+    :'<li class="g"><b>NOITE SEM INCIDENTE</b>Ninguém entrou onde não tinha função, e ninguém que precisava trabalhar ficou parado na porta.</li>';
+  $('#final').classList.remove('hide');
+  $('#fhead').textContent='Placar da noite';
+}
+$('#restart').onclick=function(){ reset(); window.scrollTo(0,0); };
+
+reset();
+})();
+</script>
+</body>
+</html>

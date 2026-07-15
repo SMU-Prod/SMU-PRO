@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Roland V-60HD · Video Switcher (réplica de treino)</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0b0d10;--panel:#15181d;--metal:#20242b;--metal2:#2a2f38;--line:#3a4048;--ink:#e9edf2;--dim:#8a93a0;--pgm:#e23b3b;--pst:#2ec26b;--amber:#f0a92b;--blue:#3b82f6;}
+  html,body{background:var(--bg);color:var(--ink);font-family:'Segoe UI',system-ui,Arial,sans-serif;}
+  body{padding:10px;}
+  .app{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:10px;}
+  .dlbar{display:flex;align-items:center;gap:10px;background:#12171f;border:1px solid #24303f;border-radius:9px;padding:8px 12px;flex-wrap:wrap;}
+  .dlbar .t{font-size:12px;color:#9fb2c8;flex:1;min-width:220px;} .dlbar .t b{color:#dbe7f3;}
+  .dlbar a{background:linear-gradient(#e8892b,#c96f16);color:#1a0f03;text-decoration:none;padding:8px 14px;border-radius:6px;font-weight:800;font-size:12.5px;white-space:nowrap;}
+  /* device chassis */
+  .device{background:linear-gradient(#23272e,#15181d);border:1px solid #05070a;border-radius:12px;padding:12px;box-shadow:0 8px 26px #0007, inset 0 1px 0 #ffffff08;}
+  .brandrow{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding-bottom:9px;border-bottom:1px solid #05070a;}
+  .brandrow .roland{font-weight:900;letter-spacing:1px;font-size:15px;color:#fff;} .brandrow .model{font-size:12px;color:var(--amber);font-weight:700;} .brandrow .sp{flex:1;} .brandrow .tag{font-size:10px;color:var(--dim);background:#0c0f13;border:1px solid var(--line);padding:3px 9px;border-radius:14px;}
+  .grid{display:grid;grid-template-columns:1fr;gap:12px;}
+  @media(min-width:820px){ .grid{grid-template-columns:300px 1fr;} }
+  /* monitors */
+  .mons{display:flex;flex-direction:column;gap:8px;}
+  .mon{position:relative;aspect-ratio:16/9;border-radius:5px;overflow:hidden;border:2px solid #333;background:#000;}
+  .mon .c{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;text-shadow:0 1px 4px #000;font-size:15px;}
+  .mon .lbl{position:absolute;left:5px;top:4px;font-size:9px;font-weight:800;padding:1px 6px;border-radius:3px;letter-spacing:.08em;}
+  .mon.pgm{border-color:var(--pgm);} .mon.pgm .lbl{background:var(--pgm);color:#fff;}
+  .mon .pip{position:absolute;width:34%;aspect-ratio:16/9;border:2px solid #fff;border-radius:2px;overflow:hidden;z-index:3;box-shadow:0 2px 8px #0009;}
+  .mon .key{position:absolute;left:0;right:0;bottom:10%;text-align:center;font-size:12px;font-weight:800;color:#fff;text-shadow:0 1px 4px #000;z-index:4;}
+  /* panel */
+  .panel{background:var(--metal);border:1px solid #05070a;border-radius:9px;padding:11px;}
+  .plabel{font-size:9px;letter-spacing:.14em;color:var(--dim);text-transform:uppercase;margin-bottom:7px;}
+  .btnrow{display:flex;gap:6px;flex-wrap:wrap;}
+  .ibtn{flex:1;min-width:44px;aspect-ratio:1.5/1;border:1px solid #05070a;border-radius:5px;background:linear-gradient(#3a4048,#272b32);color:#c7ced6;font-size:11px;font-weight:800;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;box-shadow:inset 0 1px 0 #ffffff10;}
+  .ibtn small{font-size:8px;color:#8a93a0;font-weight:600;}
+  .ibtn.pgm{background:linear-gradient(#ff5a5a,#c62222);color:#fff;border-color:#7f1010;box-shadow:0 0 10px #e23b3b88,inset 0 1px 0 #fff4;}
+  .ibtn.pst{background:linear-gradient(#3ee089,#1f9e57);color:#04220f;border-color:#0d6a38;box-shadow:0 0 10px #2ec26b66,inset 0 1px 0 #fff6;}
+  .ibtn:active{transform:translateY(1px);}
+  /* transition */
+  .tsec{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap;}
+  .trans{display:flex;gap:6px;flex-direction:column;}
+  .modebtns{display:flex;gap:6px;}
+  .mbtn{padding:8px 12px;border:1px solid #05070a;border-radius:5px;background:linear-gradient(#3a4048,#272b32);color:#c7ced6;font-size:11px;font-weight:800;cursor:pointer;}
+  .mbtn.on{background:linear-gradient(#f0c05a,#d89a1e);color:#241800;border-color:#8a6410;box-shadow:0 0 8px #f0a92b66;}
+  .fader{width:46px;display:flex;flex-direction:column;align-items:center;gap:4px;}
+  .ftrack{width:22px;flex:1;min-height:96px;background:#0c0f13;border:1px solid #05070a;border-radius:6px;position:relative;cursor:ns-resize;touch-action:none;box-shadow:inset 0 0 8px #000a;}
+  .fknob{position:absolute;left:-6px;width:34px;height:26px;border-radius:4px;background:linear-gradient(#5b636e,#2c333c);border:1px solid #05070a;cursor:ns-resize;box-shadow:0 2px 5px #0008,inset 0 1px 0 #ffffff18;}
+  .flab{font-size:8px;color:var(--dim);}
+  .actbtns{display:flex;flex-direction:column;gap:6px;justify-content:center;}
+  .actbtn{padding:11px 16px;border:1px solid #05070a;border-radius:6px;font-size:12px;font-weight:900;letter-spacing:.06em;cursor:pointer;}
+  .actbtn.auto{background:linear-gradient(#4a90d9,#2b6cb0);color:#fff;} .actbtn.cut{background:linear-gradient(#ff5a5a,#c62222);color:#fff;}
+  .actbtn:active{transform:translateY(1px);}
+  /* effects row */
+  .fxrow{display:flex;gap:6px;flex-wrap:wrap;}
+  .fxbtn{padding:9px 12px;border:1px solid #05070a;border-radius:5px;background:linear-gradient(#3a4048,#272b32);color:#c7ced6;font-size:11px;font-weight:800;cursor:pointer;}
+  .fxbtn.on{background:linear-gradient(#f0c05a,#d89a1e);color:#241800;box-shadow:0 0 8px #f0a92b66;}
+  /* memory */
+  .memrow{display:flex;gap:5px;flex-wrap:wrap;align-items:center;}
+  .mem{width:36px;height:30px;border:1px solid #05070a;border-radius:5px;background:linear-gradient(#3a4048,#272b32);color:#c7ced6;font-size:11px;font-weight:800;cursor:pointer;}
+  .mem.saved{border-color:var(--blue);color:#9dc3ee;} .mem.on{background:linear-gradient(#4a90d9,#2b6cb0);color:#fff;}
+  .memmode{display:flex;gap:6px;margin-left:auto;} .memmode button{font-size:10px;padding:5px 9px;border:1px solid var(--line);border-radius:5px;background:#0c0f13;color:var(--dim);cursor:pointer;} .memmode button.on{background:#1e3a5f;border-color:var(--blue);color:#93c5fd;}
+  .hint{font-size:11.5px;color:var(--dim);line-height:1.5;background:#0c0f13;border:1px solid var(--line);border-radius:7px;padding:8px 10px;} .hint b{color:var(--ink);}
+  .mission{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:10px;}
+  .mission h3{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--amber);margin-bottom:7px;}
+  .mlist{list-style:none;display:flex;flex-direction:column;gap:5px;} .mlist li{font-size:11.5px;color:var(--dim);display:flex;gap:7px;align-items:flex-start;line-height:1.4;}
+  .mlist li .bx{width:15px;height:15px;border-radius:4px;border:1px solid var(--line);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:10px;} .mlist li.done{color:var(--ink);} .mlist li.done .bx{background:var(--pst);border-color:var(--pst);color:#04220f;}
+  .note-replica{font-size:10.5px;color:#5f6b7a;text-align:center;padding:4px;}
+  .toast{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);background:#0c0f13;border:1px solid var(--amber);color:var(--ink);border-radius:8px;padding:9px 15px;font-size:12.5px;opacity:0;pointer-events:none;transition:.2s;z-index:60;max-width:92vw;text-align:center;} .toast.show{opacity:1;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="dlbar">
+    <div class="t">Software real: <b>V-60HD RCS</b> (Roland) — controle remoto gratuito pela rede. A V-60HD é uma mesa de corte <b>de hardware</b> plug-n-play (6 entradas SDI/HDMI); o RCS expande mixer de áudio e controle de PTZ.</div>
+    <a href="https://proav.roland.com/global/products/v-60hd/downloads/" target="_blank" rel="noopener">⬇ Baixar RCS / manual (proav.roland.com)</a>
+  </div>
+
+  <div class="device">
+    <div class="brandrow"><span class="roland">Roland</span><span class="model">V-60HD</span><span class="sp"></span><span class="tag" id="tallyTag">PGM: SDI 1</span></div>
+    <div class="grid">
+      <div class="mons">
+        <div class="mon pgm" id="monPGM"><span class="lbl">PGM (SAÍDA)</span><div class="c" id="cPGM"></div><div id="pgmOverlays"></div></div>
+        <div class="mon" id="monPST" style="border-color:var(--pst)"><span class="lbl" style="background:var(--pst);color:#04220f">PST (PRÓXIMA)</span><div class="c" id="cPST"></div></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:11px;">
+        <div class="panel">
+          <div class="plabel">PROGRAM — o que está no ar</div>
+          <div class="btnrow" id="pgmBus"></div>
+        </div>
+        <div class="panel">
+          <div class="plabel">PRESET / PST — a próxima fonte</div>
+          <div class="btnrow" id="pstBus"></div>
+        </div>
+        <div class="panel">
+          <div class="tsec">
+            <div class="trans">
+              <div class="plabel">TRANSITION</div>
+              <div class="modebtns"><button class="mbtn on" data-m="MIX">MIX</button><button class="mbtn" data-m="WIPE">WIPE</button></div>
+            </div>
+            <div class="fader"><div class="flab">FADER</div><div class="ftrack" id="ftrack"><div class="fknob" id="fknob" style="bottom:2px;"></div></div><div class="flab" id="fpct">PST</div></div>
+            <div class="actbtns"><button class="actbtn auto" id="btnAuto">AUTO</button><button class="actbtn cut" id="btnCut">CUT</button></div>
+            <div style="flex:1;min-width:150px;">
+              <div class="plabel">EFEITOS</div>
+              <div class="fxrow"><button class="fxbtn" id="btnPinP1">PinP 1</button><button class="fxbtn" id="btnPinP2">PinP 2</button><button class="fxbtn" id="btnKey">KEY (DSK)</button><button class="fxbtn" id="btnSplit">SPLIT</button></div>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="plabel">MEMORY — salvar/recuperar cenas</div>
+          <div class="memrow" id="memRow"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hint">A V-60HD é <b>plug-n-play</b>: as 6 entradas já entram configuradas. Você opera direto no painel — escolhe a próxima fonte no <b>PST</b>, transiciona com <b>AUTO/CUT</b> ou o <b>fader</b>, e usa <b>PinP</b>, <b>KEY</b> e <b>SPLIT</b> para compor. As <b>MEMORY</b> guardam a cena inteira para chamar num toque. O RCS faz tudo isso pela rede, de longe.</div>
+
+  <div class="mission">
+    <h3>Missão — operar a mesa Roland</h3>
+    <ul class="mlist" id="missions"></ul>
+  </div>
+  <div class="note-replica">Réplica de treino do painel Roland V-60HD para fins didáticos (SMU Produções). Não é o produto oficial nem afiliada à Roland. Baixe o RCS/manual no site oficial.</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+var $=function(s){return document.querySelector(s);};
+var $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s));};
+var SRC=[
+  {id:'SDI1',lb:'SDI 1',sub:'CÂMERA 1',bg:'linear-gradient(150deg,#0b1e3a,#1a4a86)'},
+  {id:'SDI2',lb:'SDI 2',sub:'CÂMERA 2',bg:'linear-gradient(150deg,#3a240b,#7a5216)'},
+  {id:'SDI3',lb:'SDI 3',sub:'CÂMERA 3',bg:'linear-gradient(150deg,#2a0b3a,#5f1f7a)'},
+  {id:'HDMI4',lb:'HDMI 4',sub:'NOTEBOOK',bg:'linear-gradient(150deg,#0b3a33,#12665a)'},
+  {id:'HDMI5',lb:'HDMI 5',sub:'PLAYBACK',bg:'linear-gradient(150deg,#1e1b4b,#3b2a8f)'},
+  {id:'STILL',lb:'STILL',sub:'GRAFISMO',bg:'linear-gradient(150deg,#4a1414,#7a2a2a)'}
+];
+function src(id){ return SRC.find(function(s){return s.id===id;})||SRC[0]; }
+var S={ pgm:'SDI1', pst:'SDI2', mode:'MIX', fader:0, dragging:false,
+  pinp1:false, pinp2:false, key:false, split:false,
+  mem:{}, memMode:'recall' };
+var done={cutauto:false, fader:false, wipe:false, pinp:false, key:false, split:false, save:false, recall:false};
+
+// buses
+function buildBus(el,kind){ el.innerHTML=''; SRC.forEach(function(s){ var b=document.createElement('button'); b.className='ibtn'; b.dataset.src=s.id; b.innerHTML=s.lb+'<small>'+s.sub+'</small>'; b.onclick=function(){ pick(kind,s.id); }; el.appendChild(b); }); }
+buildBus($('#pgmBus'),'pgm'); buildBus($('#pstBus'),'pst');
+// memory
+var memEl=$('#memRow'); for(var m=1;m<=8;m++){ (function(m){ var b=document.createElement('button'); b.className='mem'; b.dataset.m=m; b.textContent=m; b.onclick=function(){ mem(m); }; memEl.appendChild(b); })(m); }
+var mm=document.createElement('div'); mm.className='memmode'; mm.innerHTML='<button data-md="recall" class="on">RECALL</button><button data-md="save">SAVE</button>'; memEl.appendChild(mm);
+$$('.memmode button').forEach(function(b){ b.onclick=function(){ $$('.memmode button').forEach(function(x){x.classList.remove('on');}); b.classList.add('on'); S.memMode=b.dataset.md; }; });
+
+function pick(kind,id){ if(kind==='pgm'){ S.pgm=id; toast('PGM direto → '+src(id).lb+' (cut)'); done.cutauto=true; } else { S.pst=id; } render(); }
+$$('.modebtns .mbtn').forEach(function(b){ b.onclick=function(){ $$('.modebtns .mbtn').forEach(function(x){x.classList.remove('on');}); b.classList.add('on'); S.mode=b.dataset.m; if(S.mode==='WIPE')done.wipe=true; render(); }; });
+$('#btnCut').onclick=function(){ swap(); done.cutauto=true; toast('CUT → PGM '+src(S.pgm).lb); render(); };
+$('#btnAuto').onclick=function(){ autoTrans(); };
+$('#btnPinP1').onclick=function(){ S.pinp1=!S.pinp1; done.pinp=done.pinp||S.pinp1; render(); };
+$('#btnPinP2').onclick=function(){ S.pinp2=!S.pinp2; done.pinp=done.pinp||S.pinp2; render(); };
+$('#btnKey').onclick=function(){ S.key=!S.key; done.key=done.key||S.key; render(); };
+$('#btnSplit').onclick=function(){ S.split=!S.split; done.split=done.split||S.split; render(); };
+
+function swap(){ var o=S.pgm; S.pgm=S.pst; S.pst=o; }
+function autoTrans(){ if(S.busy)return; S.busy=true; $('#btnAuto').disabled=$('#btnCut').disabled=true; done.cutauto=true;
+  var t0=performance.now(), dur=700; var mon=$('#monPGM'); var ov=document.createElement('div'); ov.style.cssText='position:absolute;inset:0;z-index:8;'; var s=src(S.pst); ov.style.background=s.bg;
+  if(S.mode==='WIPE'){ ov.style.clipPath='inset(0 100% 0 0)'; ov.style.transition='clip-path '+dur+'ms linear'; } else { ov.style.opacity=0; ov.style.transition='opacity '+dur+'ms linear'; }
+  var lab=document.createElement('div'); lab.style.cssText='position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;text-shadow:0 1px 4px #000'; lab.textContent=s.sub; ov.appendChild(lab); mon.appendChild(ov);
+  requestAnimationFrame(function(){requestAnimationFrame(function(){ if(S.mode==='WIPE')ov.style.clipPath='inset(0 0 0 0)'; else ov.style.opacity=1; });});
+  (function tick(now){ var p=Math.min(1,(now-t0)/dur); setFader(p); if(p<1&&S.busy)requestAnimationFrame(tick); })(t0);
+  setTimeout(function(){ ov.remove(); swap(); S.busy=false; $('#btnAuto').disabled=$('#btnCut').disabled=false; setFader(0); toast('AUTO '+S.mode+' → PGM '+src(S.pgm).lb); render(); }, dur+40);
+}
+// fader
+var ftrack=$('#ftrack'), fknob=$('#fknob');
+function setFader(v){ S.fader=Math.max(0,Math.min(1,v)); var h=ftrack.offsetHeight-30; fknob.style.bottom=(2+S.fader*h)+'px'; $('#fpct').textContent=S.fader<=0?'PST':(S.fader>=1?'PGM':Math.round(S.fader*100)+'%');
+  var mon=$('#monPGM'); var ov=$('#faderOv');
+  if(!S.busy && S.fader>0){ if(!ov){ ov=document.createElement('div'); ov.id='faderOv'; ov.style.cssText='position:absolute;inset:0;z-index:7;pointer-events:none'; mon.appendChild(ov);} ov.style.background=src(S.pst).bg; ov.style.opacity=S.fader; }
+  else if(ov){ ov.style.opacity=0; }
+}
+ftrack.addEventListener('pointerdown',function(e){ if(S.busy)return; S.dragging=true; try{ftrack.setPointerCapture(e.pointerId);}catch(_){}; upd(e); });
+ftrack.addEventListener('pointermove',function(e){ if(S.dragging)upd(e); });
+ftrack.addEventListener('pointerup',function(e){ if(!S.dragging)return; S.dragging=false; done.fader=true; if(S.fader>=0.999){ swap(); var ov=$('#faderOv'); if(ov)ov.remove(); setFader(0); toast('Fader → PGM '+src(S.pgm).lb); render(); } });
+function upd(e){ var r=ftrack.getBoundingClientRect(); setFader(1-(e.clientY-r.top)/r.height); }
+// memory
+function mem(n){ if(S.memMode==='save'){ S.mem[n]={pgm:S.pgm,pst:S.pst,pinp1:S.pinp1,pinp2:S.pinp2,key:S.key,split:S.split,mode:S.mode}; done.save=true; toast('Cena salva na MEMORY '+n); }
+  else { var c=S.mem[n]; if(!c){ toast('MEMORY '+n+' vazia — salve primeiro (modo SAVE).'); return; } Object.assign(S,c); done.recall=true; toast('MEMORY '+n+' recuperada.'); } render(); }
+
+function render(){
+  // monitors
+  renderMon($('#cPGM'),$('#monPGM'),S.pgm,true);
+  renderMon($('#cPST'),$('#monPST'),S.pst,false);
+  $('#tallyTag').textContent='PGM: '+src(S.pgm).lb;
+  // buses
+  $$('#pgmBus .ibtn').forEach(function(b){ b.classList.toggle('pgm', b.dataset.src===S.pgm); });
+  $$('#pstBus .ibtn').forEach(function(b){ b.classList.toggle('pst', b.dataset.src===S.pst); });
+  $('#btnPinP1').classList.toggle('on',S.pinp1); $('#btnPinP2').classList.toggle('on',S.pinp2); $('#btnKey').classList.toggle('on',S.key); $('#btnSplit').classList.toggle('on',S.split);
+  $$('.modebtns .mbtn').forEach(function(b){ b.classList.toggle('on',b.dataset.m===S.mode); });
+  $$('.mem').forEach(function(b){ b.classList.toggle('saved', !!S.mem[b.dataset.m]); });
+  updateMissions();
+}
+function renderMon(c,mon,id,isPgm){ var s=src(id); mon.style.background=s.bg; c.parentElement.style.background=s.bg; c.textContent=s.sub; c.style.background='none';
+  // overlays only on PGM
+  var host=$('#pgmOverlays'); if(isPgm){ host.innerHTML='';
+    if(S.split){ var sp=document.createElement('div'); sp.style.cssText='position:absolute;inset:0;z-index:2;'; sp.innerHTML='<div style="position:absolute;left:0;top:0;bottom:0;width:50%;background:'+src(S.pst).bg+';display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:12px;border-right:2px solid #fff">'+src(S.pst).sub+'</div>'; host.appendChild(sp); }
+    if(S.pinp1){ host.appendChild(mkPip('6%','10%',S.pst)); }
+    if(S.pinp2){ host.appendChild(mkPip('36%','10%','SDI3')); }
+    if(S.key){ var k=document.createElement('div'); k.className='key'; k.textContent='◆ LEGENDA / KEY'; host.appendChild(k); }
+  } }
+function mkPip(right,bottom,id){ var p=document.createElement('div'); p.className='pip'; p.style.right=right; p.style.bottom=bottom; p.style.background=src(id).bg; var i=document.createElement('div'); i.style.cssText='position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;text-shadow:0 1px 3px #000'; i.textContent=src(id).sub; p.appendChild(i); return p; }
+
+var MISS=[
+  {id:'cutauto',t:'Preparar no PST e mandar ao ar (CUT ou AUTO)'},
+  {id:'fader',t:'Transicionar manualmente com o FADER'},
+  {id:'wipe',t:'Usar transição WIPE'},
+  {id:'pinp',t:'Ligar um PinP (picture-in-picture)'},
+  {id:'key',t:'Ligar o KEY/DSK (legenda)'},
+  {id:'split',t:'Usar o SPLIT (tela dividida)'},
+  {id:'save',t:'Salvar uma cena na MEMORY'},
+  {id:'recall',t:'Recuperar uma MEMORY salva'},
+];
+function updateMissions(){ var ul=$('#missions'); ul.innerHTML=''; MISS.forEach(function(m){ var d=!!done[m.id]; var li=document.createElement('li'); li.className=d?'done':''; li.innerHTML='<span class="bx">'+(d?'✓':'')+'</span><span>'+m.t+'</span>'; ul.appendChild(li); }); }
+var _tt; function toast(m){ var t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(_tt); _tt=setTimeout(function(){t.classList.remove('show');},2600); }
+window.__roland={S:S,done:done,render:render};
+render();
+})();
+</script>
+</body>
+</html>

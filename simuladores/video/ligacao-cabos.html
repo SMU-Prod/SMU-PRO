@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMU PRO · Ligação de Cabos (cadeia de vídeo)</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0d1017;--panel:#161c26;--panel2:#1d2431;--line:#2a3444;--ink:#e7edf5;--dim:#8794a8;--accent:#3b82f6;--eth:#12b886;--hdmi:#a855f7;--pwr:#f59e0b;--ok:#22c55e;--err:#ef4444;}
+  html,body{background:var(--bg);color:var(--ink);font-family:'Segoe UI',system-ui,Arial,sans-serif;}
+  body{padding:10px;}
+  .app{max-width:1160px;margin:0 auto;display:flex;flex-direction:column;gap:10px;}
+  .topbar{display:flex;align-items:center;gap:10px;background:linear-gradient(90deg,#1e293b,#0f172a);border:1px solid var(--line);border-radius:10px;padding:9px 14px;}
+  .topbar .logo{font-weight:900;font-size:15px;} .topbar .sub{font-size:10px;color:var(--dim);letter-spacing:.12em;text-transform:uppercase;} .sp{flex:1;}
+  .instr{background:#101826;border:1px solid #24405f;border-radius:10px;padding:10px 14px;font-size:13px;line-height:1.5;}
+  .instr b{color:#fff;} .instr .next{color:#93c5fd;font-weight:700;}
+  .devs{display:grid;grid-template-columns:1fr;gap:10px;}
+  @media(min-width:720px){ .devs{grid-template-columns:repeat(3,1fr);} }
+  .dev{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:11px;}
+  .dev h3{font-size:12px;letter-spacing:.06em;margin-bottom:4px;} .dev .desc{font-size:10.5px;color:var(--dim);margin-bottom:9px;line-height:1.3;}
+  .ports{display:flex;flex-direction:column;gap:6px;}
+  .port{display:flex;align-items:center;gap:7px;background:#0c1119;border:1px solid var(--line);border-radius:7px;padding:7px 9px;cursor:pointer;transition:.1s;}
+  .port:hover{border-color:var(--accent);}
+  .port.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset;}
+  .port.done{border-color:var(--ok);background:#0e2018;}
+  .port .dot{width:12px;height:12px;border-radius:3px;flex-shrink:0;}
+  .port .dot.hdmi{background:var(--hdmi);} .port .dot.eth{background:var(--eth);} .port .dot.pwr{background:var(--pwr);border-radius:50%;}
+  .port .nm{font-size:11.5px;flex:1;} .port .nm small{color:var(--dim);font-size:10px;}
+  .port .st{font-size:10px;color:var(--dim);} .port.done .st{color:#6ee7b7;}
+  .cols2{display:grid;grid-template-columns:1fr;gap:10px;}
+  @media(min-width:780px){ .cols2{grid-template-columns:1.3fr 1fr;} }
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:12px;}
+  .card h2{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:9px;}
+  .links{list-style:none;display:flex;flex-direction:column;gap:5px;}
+  .links li{font-size:11.5px;color:var(--dim);display:flex;gap:7px;align-items:flex-start;line-height:1.4;}
+  .links li .bx{width:15px;height:15px;border-radius:4px;border:1px solid var(--line);flex-shrink:0;margin-top:1px;text-align:center;line-height:14px;font-size:10px;}
+  .links li.done{color:var(--ink);} .links li.done .bx{background:var(--ok);border-color:var(--ok);color:#04120d;}
+  .power{display:flex;flex-direction:column;gap:7px;}
+  .pstep{display:flex;align-items:center;gap:9px;background:#0c1119;border:1px solid var(--line);border-radius:8px;padding:9px 11px;cursor:pointer;}
+  .pstep .num{width:22px;height:22px;border-radius:50%;background:#2a3444;color:#cbd5e1;font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .pstep .pt{font-size:12px;} .pstep .pt small{color:var(--dim);display:block;font-size:10.5px;}
+  .pstep.done{border-color:var(--ok);} .pstep.done .num{background:var(--ok);color:#04120d;}
+  .pstep.locked{opacity:.5;cursor:not-allowed;}
+  .legend{display:flex;gap:10px;flex-wrap:wrap;font-size:10.5px;color:var(--dim);margin-top:4px;}
+  .legend span{display:flex;align-items:center;gap:4px;} .legend i{width:11px;height:11px;border-radius:3px;display:inline-block;}
+  .verdict{font-size:12.5px;font-weight:700;padding:9px 12px;border-radius:9px;text-align:center;margin-top:6px;}
+  .verdict.ok{background:#14532d;color:#bbf7d0;} .verdict.idle{background:#1b2330;color:var(--dim);}
+  .btnrow{display:flex;gap:8px;margin-top:8px;} .btn{border:1px solid var(--line);background:#0c1119;color:var(--ink);border-radius:7px;padding:7px 12px;font-size:12px;cursor:pointer;}
+  .toast{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);background:#0c1119;border:1px solid var(--accent);color:var(--ink);border-radius:8px;padding:9px 15px;font-size:12.5px;opacity:0;pointer-events:none;transition:.2s;z-index:60;max-width:92vw;text-align:center;} .toast.show{opacity:1;} .toast.err{border-color:var(--err);}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar"><div><div class="logo">Ligação de Cabos — Cadeia de Vídeo</div><div class="sub">Do computador ao telão de LED</div></div><div class="sp"></div><div id="tag" style="font-size:11px;font-weight:700;background:#1b2330;color:var(--dim);padding:4px 12px;border-radius:20px;">0 / 4 cabos</div></div>
+
+  <div class="instr">Clique em <b>dois conectores</b> para ligar um cabo entre eles (uma ponta em cada equipamento). <span class="next" id="nextHint"></span></div>
+
+  <div class="devs">
+    <div class="dev">
+      <h3>💻 Computador (PC de vídeo)</h3>
+      <div class="desc">Placa de vídeo com saídas HDMI/DisplayPort. É a <b>fonte</b> da imagem.</div>
+      <div class="ports">
+        <div class="port" data-port="pc.hdmi"><span class="dot hdmi"></span><span class="nm">HDMI OUT <small>saída de vídeo</small></span><span class="st">livre</span></div>
+        <div class="port" data-port="pc.dp"><span class="dot hdmi"></span><span class="nm">DisplayPort OUT <small>saída alternativa</small></span><span class="st">livre</span></div>
+      </div>
+    </div>
+    <div class="dev">
+      <h3>🟩 Processadora de LED</h3>
+      <div class="desc">Recebe o vídeo e distribui aos cabinets pelas portas de rede (RJ45).</div>
+      <div class="ports">
+        <div class="port" data-port="proc.hdmi"><span class="dot hdmi"></span><span class="nm">HDMI IN <small>entrada de vídeo</small></span><span class="st">livre</span></div>
+        <div class="port" data-port="proc.sdi"><span class="dot hdmi"></span><span class="nm">SDI IN <small>entrada (BNC)</small></span><span class="st">livre</span></div>
+        <div class="port" data-port="proc.eth1"><span class="dot eth"></span><span class="nm">ETHERNET OUT 1 <small>RJ45 → cabinets</small></span><span class="st">livre</span></div>
+      </div>
+    </div>
+    <div class="dev">
+      <h3>🟦 Telão — Cabinets (em cadeia)</h3>
+      <div class="desc">Ligados em <b>daisy chain</b>: a saída de um entra na entrada do próximo.</div>
+      <div class="ports">
+        <div class="port" data-port="cab1.in"><span class="dot eth"></span><span class="nm">Cabinet 1 · RJ45 IN <small>vem da processadora</small></span><span class="st">livre</span></div>
+        <div class="port" data-port="cab1.out"><span class="dot eth"></span><span class="nm">Cabinet 1 · RJ45 OUT <small>→ cabinet 2</small></span><span class="st">livre</span></div>
+        <div class="port" data-port="cab2.in"><span class="dot eth"></span><span class="nm">Cabinet 2 · RJ45 IN</span><span class="st">livre</span></div>
+        <div class="port" data-port="cab2.out"><span class="dot eth"></span><span class="nm">Cabinet 2 · RJ45 OUT <small>→ cabinet 3</small></span><span class="st">livre</span></div>
+        <div class="port" data-port="cab3.in"><span class="dot eth"></span><span class="nm">Cabinet 3 · RJ45 IN</span><span class="st">livre</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="legend"><span><i style="background:var(--hdmi)"></i>Cabo de vídeo (HDMI/DP/SDI)</span><span><i style="background:var(--eth)"></i>Cabo de rede (Cat/RJ45)</span></div>
+
+  <div class="cols2">
+    <div class="card">
+      <h2>Ligações da cadeia</h2>
+      <ul class="links" id="links"></ul>
+      <div class="btnrow"><button class="btn" id="btnReset">Recomeçar</button></div>
+    </div>
+    <div class="card">
+      <h2>Ordem de ligar a energia</h2>
+      <div class="power" id="power"></div>
+      <div class="verdict idle" id="verdict">Faça as ligações e depois ligue na ordem certa.</div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+var $=function(s){return document.querySelector(s);};
+var $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s));};
+
+// port meta: type + direction
+var PORTS={
+  'pc.hdmi':{type:'video',dir:'out'}, 'pc.dp':{type:'video',dir:'out'},
+  'proc.hdmi':{type:'video',dir:'in'}, 'proc.sdi':{type:'video',dir:'in'}, 'proc.eth1':{type:'eth',dir:'out'},
+  'cab1.in':{type:'eth',dir:'in'}, 'cab1.out':{type:'eth',dir:'out'},
+  'cab2.in':{type:'eth',dir:'in'}, 'cab2.out':{type:'eth',dir:'out'},
+  'cab3.in':{type:'eth',dir:'in'}
+};
+// required links (unordered) with description
+var REQUIRED=[
+  {a:'pc.hdmi', b:'proc.hdmi', d:'PC (HDMI OUT) → Processadora (HDMI IN) — cabo HDMI'},
+  {a:'proc.eth1', b:'cab1.in', d:'Processadora (ETHERNET OUT 1) → Cabinet 1 (RJ45 IN) — cabo de rede'},
+  {a:'cab1.out', b:'cab2.in', d:'Cabinet 1 (OUT) → Cabinet 2 (IN) — daisy chain'},
+  {a:'cab2.out', b:'cab3.in', d:'Cabinet 2 (OUT) → Cabinet 3 (IN) — daisy chain'}
+];
+function keyOf(a,b){ return [a,b].sort().join('|'); }
+var reqSet={}; REQUIRED.forEach(function(r){ reqSet[keyOf(r.a,r.b)]=r; });
+
+var made={}; // key -> true
+var sel=null;
+
+// build links checklist
+var linksEl=$('#links');
+REQUIRED.forEach(function(r){ var li=document.createElement('li'); li.id='lk-'+keyOf(r.a,r.b).replace(/[|.]/g,'_'); li.innerHTML='<span class="bx"></span><span>'+r.d+'</span>'; linksEl.appendChild(li); });
+
+$$('.port').forEach(function(p){ p.onclick=function(){ clickPort(p.dataset.port, p); }; });
+
+function clickPort(id, el){
+  if(made_hasPort(id)){ toast('Esse conector já está ligado.'); return; }
+  if(!sel){ sel={id:id, el:el}; el.classList.add('sel'); return; }
+  if(sel.id===id){ el.classList.remove('sel'); sel=null; return; }
+  // attempt connection sel.id <-> id
+  var a=sel.id, b=id; var pa=PORTS[a], pb=PORTS[b];
+  var k=keyOf(a,b);
+  // validate compatibility
+  var reason=null;
+  if(pa.type!==pb.type){ reason='Cabo errado: você não liga um conector de vídeo num de rede (RJ45). Junte vídeo com vídeo, rede com rede.'; }
+  else if(pa.dir===pb.dir){ reason='Ligue uma SAÍDA (OUT) numa ENTRADA (IN) — não OUT com OUT nem IN com IN.'; }
+  else if(!reqSet[k]){ reason='Ligação possível, mas fora da cadeia certa. Siga a ordem: PC→Processadora, Processadora→Cabinet 1, e o daisy chain 1→2→3.'; }
+  clearSel();
+  if(reason){ toast(reason, true); return; }
+  // success
+  made[k]=true; markDone(a); markDone(b);
+  $('#lk-'+k.replace(/[|.]/g,'_')).classList.add('done');
+  $('#lk-'+k.replace(/[|.]/g,'_')).querySelector('.bx').textContent='✓';
+  refresh();
+  toast('Cabo ligado: '+reqSet[k].d.split('—')[0].trim());
+}
+function made_hasPort(id){ for(var k in made){ if(k.split('|').indexOf(id)>=0) return true; } return false; }
+function markDone(id){ var el=$('.port[data-port="'+id+'"]'); if(el){ el.classList.add('done'); el.querySelector('.st').textContent='ligado'; } }
+function clearSel(){ if(sel){ sel.el.classList.remove('sel'); sel=null; } }
+
+$('#btnReset').onclick=function(){ made={}; clearSel(); $$('.port').forEach(function(p){ p.classList.remove('done','sel'); p.querySelector('.st').textContent='livre'; }); $$('.links li').forEach(function(l){ l.classList.remove('done'); l.querySelector('.bx').textContent=''; }); powerState=[]; buildPower(); refresh(); };
+
+// ---- POWER ORDER ----
+var POWER=[
+  {id:'energia', t:'Energia / No-break', s:'fonte estável primeiro (evita queda no boot)'},
+  {id:'proc', t:'Processadora + Telão (cabinets)', s:'ligue os equipamentos de saída'},
+  {id:'pc', t:'Computador (fonte de vídeo)', s:'a fonte por último — o processador já reconhece o sinal'},
+  {id:'conferir', t:'Enviar imagem e conferir', s:'padrão de teste / imagem real na parede'}
+];
+var powerState=[];
+var powerEl=$('#power');
+function buildPower(){
+  powerEl.innerHTML='';
+  POWER.forEach(function(p,i){
+    var d=document.createElement('div'); d.className='pstep'; d.id='pw-'+p.id;
+    d.innerHTML='<div class="num">'+(i+1)+'</div><div class="pt">'+p.t+'<small>'+p.s+'</small></div>';
+    d.onclick=function(){ pressPower(p.id, i); };
+    powerEl.appendChild(d);
+  });
+  updatePowerLock();
+}
+function pressPower(id,i){
+  if(Object.keys(made).length<REQUIRED.length){ toast('Ligue todos os cabos antes de energizar.', true); return; }
+  var expected=POWER[powerState.length];
+  if(!expected || expected.id!==id){
+    if(powerState.indexOf(id)>=0){ toast('Esse já foi ligado.'); return; }
+    toast('Ordem errada: comece pela energia estável, depois processadora/telão, a fonte (PC) por último.', true); return;
+  }
+  powerState.push(id); $('#pw-'+id).classList.add('done'); updatePowerLock();
+  if(powerState.length===POWER.length){ var v=$('#verdict'); v.className='verdict ok'; v.textContent='✓ Cadeia ligada e energizada na ordem certa — imagem na parede!'; toast('Perfeito! Cadeia completa e no ar.'); }
+}
+function updatePowerLock(){ POWER.forEach(function(p,i){ var el=$('#pw-'+p.id); if(!el)return; var ready=Object.keys(made).length>=REQUIRED.length; el.classList.toggle('locked', !ready || (i>powerState.length && powerState.length<POWER.length && i!==powerState.length)); if(powerState.indexOf(p.id)>=0)el.classList.remove('locked'); }); }
+
+function refresh(){
+  var n=Object.keys(made).length;
+  $('#tag').textContent=n+' / '+REQUIRED.length+' cabos';
+  $('#tag').style.background=n===REQUIRED.length?'#14532d':'#1b2330'; $('#tag').style.color=n===REQUIRED.length?'#bbf7d0':'var(--dim)';
+  // next hint
+  var nextReq=REQUIRED.find(function(r){ return !made[keyOf(r.a,r.b)]; });
+  $('#nextHint').textContent = nextReq ? ('Próximo cabo: '+nextReq.d) : 'Todos os cabos ligados! Agora energize na ordem certa →';
+  updatePowerLock();
+}
+var _tt; function toast(m,err){ var t=$('#toast'); t.textContent=m; t.className='toast show'+(err?' err':''); clearTimeout(_tt); _tt=setTimeout(function(){t.className='toast';},3000); }
+
+window.__cab={made:made, get powerState(){return powerState;}, refresh:refresh};
+buildPower(); refresh();
+})();
+</script>
+</body>
+</html>

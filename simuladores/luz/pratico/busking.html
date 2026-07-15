@@ -1,0 +1,211 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Simulador — Busking: toque a luz ao vivo</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;-webkit-tap-highlight-color:transparent;user-select:none}
+html,body{background:#0a0c10;color:#e9edf2}body{padding:10px}
+.app{max-width:1020px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+h1{font-size:clamp(15px,4vw,20px);font-weight:800;color:#eaf0ff}
+.t{font-size:12px;color:#9daecb;line-height:1.45}
+.mission{background:#0e1626;border:1px solid #24406e;border-radius:11px;padding:10px 12px;font-size:12.5px;line-height:1.5}
+.mission b{color:#8fd0ff}
+.mrow{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap}
+.dot{width:14px;height:14px;border-radius:50%;border:2px solid #37507a;flex:none}.dot.ok{background:#39d98a;border-color:#39d98a}
+.btn{background:#1b2740;color:#dce7fb;border:1px solid #33507f;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer}
+.btn.go{background:#1e5a3a;border-color:#2f8f5b}.btn.stop{background:#5a2020;border-color:#8f2f2f}
+.stage{width:100%;aspect-ratio:16/6;background:#04060a;border:1px solid #1c2740;border-radius:12px;overflow:hidden;position:relative}
+@media(max-width:560px){.stage{aspect-ratio:4/2.3}}
+.stage canvas{width:100%;height:100%;display:block}
+.beat{position:absolute;top:8px;right:10px;display:flex;gap:5px;align-items:center}
+.beat i{width:12px;height:12px;border-radius:50%;background:#1e2634;display:block}
+.beat i.on{background:#ffd24d;box-shadow:0 0 10px #ffd24d}
+.beat span{font-size:10px;color:#8aa0c2;font-weight:800;margin-right:4px}
+.tl{width:100%;height:44px;background:#0d1119;border:1px solid #1f2839;border-radius:9px;position:relative;overflow:hidden}
+.tl .seg{position:absolute;top:0;bottom:0;border-right:1px solid #0a0c10;display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:800;color:#8fa4c4;letter-spacing:.4px}
+.tl .seg.cur{color:#fff}
+.tl .play{position:absolute;top:0;bottom:0;width:2px;background:#ffd24d;box-shadow:0 0 8px #ffd24d}
+.tl .acc{position:absolute;top:2px;width:8px;height:8px;border-radius:50%;background:#e05a86;transform:translateX(-4px)}
+.tl .acc.hit{background:#39d98a}
+.gt{font-size:10px;font-weight:800;color:#8aa0c2;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
+.box{background:#10141d;border:1px solid #222c40;border-radius:12px;padding:10px}
+.pbs{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:6px}
+.pbb{background:#131826;border:2px solid #263149;border-radius:9px;padding:8px 5px;cursor:pointer;text-align:center}
+.pbb.on{border-color:#ffcf5a;background:#2a2415;box-shadow:0 0 0 1px #ffcf5a}
+.pbb .k{font-size:9px;color:#7d8db0;font-weight:800}
+.pbb .n{font-size:11px;font-weight:800;color:#cfe0ff;margin:2px 0}
+.pbb .sw{height:10px;border-radius:3px;border:1px solid #333}
+.acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.acts .ab{flex:1;min-width:88px;background:#20283a;border:2px solid #33405c;border-radius:9px;padding:11px 6px;font-size:11.5px;font-weight:800;color:#cfe0ff;cursor:pointer;text-align:center}
+.acts .ab:active{background:#3a4a6a;border-color:#7fb2ff}
+.acts .ab.bump{background:#3a2a10;border-color:#c98a2a;color:#ffd8a0}
+.acts .ab.bo{background:#3a1418;border-color:#8f2f3f;color:#ffb0b8}
+.score{display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:12px;margin-top:8px}
+.score b{color:#ffd24d;font-size:15px}
+.score .ok{color:#7fd0a0;font-weight:800}
+.hint{font-size:10.5px;color:#8296b8;line-height:1.5;margin-top:6px}
+.hint b{color:#8fd0ff}
+</style></head><body>
+<div class="app">
+ <h1>🎸 Busking — toque a luz ao vivo, no tempo da música</h1>
+ <div class="t">A banda mudou o setlist e a cuelist não serve. Aqui você <b>toca a luz como um instrumento</b>: cada playback é um look preparado, e você troca no trecho certo e <b>bate os acentos na batida</b>. É o que separa o operador que salva o show.</div>
+ <div class="mission" id="mission"></div>
+ <div class="stage"><canvas id="cv"></canvas>
+  <div class="beat"><span id="bpm">120 BPM</span><i id="b0"></i><i id="b1"></i><i id="b2"></i><i id="b3"></i></div></div>
+ <div class="tl" id="tl"></div>
+ <div class="box"><div class="gt">Playbacks preparados (toque para ativar · teclas 1–6)</div>
+  <div class="pbs" id="pbs"></div>
+  <div class="acts">
+   <div class="ab bump" id="bump">BUMP<br><span style="font-size:9px;font-weight:600">flash na batida (espaço)</span></div>
+   <div class="ab" id="strobe">STROBE<br><span style="font-size:9px;font-weight:600">segure (S)</span></div>
+   <div class="ab bo" id="bo">BLACKOUT<br><span style="font-size:9px;font-weight:600">(B)</span></div>
+  </div>
+  <div class="score">
+   <span>Precisão do look: <b id="acc">0%</b></span>
+   <span>Acentos: <b id="hits">0/0</b></span>
+   <span id="verdict"></span>
+   <button class="btn go" id="play">▶ TOCAR A MÚSICA</button>
+   <button class="btn stop" id="stop">■ Parar</button>
+  </div>
+  <div class="hint" id="hint">Cada trecho da música pede um <b>clima</b>. Deixe o playback certo ativo durante o trecho e bata o <b>BUMP</b> nos acentos (bolinhas rosa na timeline) — acerte perto da batida.</div>
+ </div>
+</div>
+<script>
+'use strict';
+const BPM=120, BEAT=60000/BPM;
+// música: trechos com clima esperado (mood) → o playback certo
+const SONG=[
+ {n:'INTRO', dur:8000, mood:'suave'},
+ {n:'VERSO', dur:10000,mood:'frontal'},
+ {n:'REFRÃO',dur:10000,mood:'forte'},
+ {n:'VERSO 2',dur:8000, mood:'frontal'},
+ {n:'PONTE', dur:8000, mood:'contra'},
+ {n:'DROP',  dur:10000,mood:'forte'},
+ {n:'FINAL', dur:6000, mood:'suave'},
+];
+const TOTAL=SONG.reduce((a,s)=>a+s.dur,0);
+// playbacks: look + mood que ele serve
+const PBS=[
+ {k:'1',n:'Cyc azul',mood:'suave', g:[0,20,200],rgb:[40,80,255]},
+ {k:'2',n:'Frontal quente',mood:'frontal',g:[220,0,40],rgb:[255,170,90]},
+ {k:'3',n:'Tudo branco',mood:'forte',g:[255,255,200],rgb:[255,255,255]},
+ {k:'4',n:'Contra magenta',mood:'contra',g:[0,235,120],rgb:[255,40,200]},
+ {k:'5',n:'Beams ciano',mood:'forte',g:[40,255,60],rgb:[0,230,255]},
+ {k:'6',n:'Âmbar suave',mood:'suave',g:[90,0,60],rgb:[255,150,60]},
+];
+// acentos: instantes (ms) em que se espera um BUMP (nos refrões/drop)
+const ACCENTS=[];
+(function(){let t=0;SONG.forEach(s=>{ if(s.mood==='forte'){ for(let b=0;b<Math.floor(s.dur/BEAT);b++){ if(b%4===0)ACCENTS.push({t:t+b*BEAT,hit:false}); } } t+=s.dur;})})();
+let active=-1, playing=false, t0=0, now=0, blackout=false, strobe=false, bumpT=0;
+let scoreOK=0, scoreTot=0, hits=0;
+// UI playbacks
+const pbsEl=document.getElementById('pbs');
+function buildPbs(){pbsEl.innerHTML='';
+ PBS.forEach((p,i)=>{const d=document.createElement('div');d.className='pbb'+(active===i?' on':'');
+  d.innerHTML='<div class="k">'+p.k+'</div><div class="n">'+p.n+'</div><div class="sw" style="background:rgb('+p.rgb.join(',')+')"></div>';
+  d.onclick=()=>{active=active===i?-1:i;buildPbs();};pbsEl.appendChild(d);});}
+document.addEventListener('keydown',e=>{
+ const i=PBS.findIndex(p=>p.k===e.key); if(i>=0){active=i;buildPbs();return;}
+ if(e.code==='Space'){e.preventDefault();doBump();}
+ if(e.key==='b'||e.key==='B')blackout=!blackout;
+ if(e.key==='s'||e.key==='S')strobe=true;});
+document.addEventListener('keyup',e=>{if(e.key==='s'||e.key==='S')strobe=false;});
+document.getElementById('bump').onclick=doBump;
+const stEl=document.getElementById('strobe');
+['pointerdown'].forEach(ev=>stEl.addEventListener(ev,()=>strobe=true));
+['pointerup','pointerleave','pointercancel'].forEach(ev=>stEl.addEventListener(ev,()=>strobe=false));
+document.getElementById('bo').onclick=()=>{blackout=!blackout;};
+function doBump(){bumpT=performance.now();
+ if(!playing)return;
+ // acerta acento se estiver dentro de ±180ms
+ let best=null,bd=1e9;
+ ACCENTS.forEach(a=>{if(a.hit)return;const d=Math.abs(a.t-now);if(d<bd){bd=d;best=a;}});
+ if(best&&bd<=180){best.hit=true;hits++;flash('✓ Acento na batida! ('+Math.round(bd)+'ms)');}
+ else if(bd<600)flash('✗ Fora da batida por '+Math.round(bd)+'ms');
+}
+function flash(m){document.getElementById('hint').innerHTML=m;}
+// timeline
+const tlEl=document.getElementById('tl');
+function buildTl(){tlEl.innerHTML='';
+ let t=0;
+ SONG.forEach((s,i)=>{const d=document.createElement('div');d.className='seg';
+  d.style.left=(t/TOTAL*100)+'%';d.style.width=(s.dur/TOTAL*100)+'%';d.textContent=s.n;d.dataset.i=i;tlEl.appendChild(d);t+=s.dur;});
+ ACCENTS.forEach((a,i)=>{const d=document.createElement('div');d.className='acc'+(a.hit?' hit':'');d.style.left=(a.t/TOTAL*100)+'%';d.dataset.a=i;tlEl.appendChild(d);});
+ const p=document.createElement('div');p.className='play';p.id='playhead';p.style.left='0%';tlEl.appendChild(p);}
+function curSec(){let t=0;for(const s of SONG){if(now<t+s.dur)return s;t+=s.dur;}return SONG[SONG.length-1];}
+document.getElementById('play').onclick=()=>{
+ ACCENTS.forEach(a=>a.hit=false);scoreOK=0;scoreTot=0;hits=0;now=0;t0=performance.now();playing=true;blackout=false;
+ buildTl();flash('Tocando! Troque o playback no trecho certo e bata o BUMP nos acentos.');};
+document.getElementById('stop').onclick=()=>{playing=false;flash('Parado.');};
+// render
+const cv=document.getElementById('cv');const ctx=cv.getContext('2d');
+function sizeC(){const r=cv.getBoundingClientRect();const dpr=Math.min(2,devicePixelRatio||1);cv.width=r.width*dpr;cv.height=r.height*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);}
+function out(){
+ if(blackout)return {g:[0,0,0],rgb:[0,0,0]};
+ const p=active>=0?PBS[active]:null;
+ let g=p?[...p.g]:[0,0,0], rgb=p?[...p.rgb]:[255,255,255];
+ const since=performance.now()-bumpT;
+ if(since<140){const k=1-since/140;g=g.map(v=>Math.min(255,v+255*k));rgb=[255,255,255];}
+ if(strobe){const on=Math.floor(performance.now()/60)%2===0;g=g.map(v=>on?255:0);}
+ return {g,rgb};
+}
+function paint(){const r=cv.getBoundingClientRect();const W=r.width,H=r.height;ctx.clearRect(0,0,W,H);
+ ctx.fillStyle='#04060a';ctx.fillRect(0,0,W,H);
+ const o=out();const [R,G,B]=o.rgb;
+ const cyc=o.g[2]/255, mv=o.g[1]/255, pr=o.g[0]/255;
+ if(cyc>0.02){const g=ctx.createLinearGradient(0,H*0.82,0,H*0.08);g.addColorStop(0,'rgba('+R+','+G+','+B+','+(0.5*cyc)+')');g.addColorStop(1,'rgba('+R+','+G+','+B+',0)');ctx.fillStyle=g;ctx.fillRect(0,H*0.08,W,H*0.74);}
+ if(mv>0.02)for(let i=0;i<4;i++){const x=W*(0.2+i*0.2),y=H*0.12;
+  const g=ctx.createLinearGradient(x,y,x,H*0.86);g.addColorStop(0,'rgba('+R+','+G+','+B+','+(0.6*mv)+')');g.addColorStop(1,'rgba('+R+','+G+','+B+',0)');
+  ctx.beginPath();ctx.moveTo(x-4,y);ctx.lineTo(x-W*0.028,H*0.86);ctx.lineTo(x+W*0.028,H*0.86);ctx.lineTo(x+4,y);ctx.closePath();ctx.fillStyle=g;ctx.fill();}
+ if(pr>0.02)for(let i=0;i<4;i++){const x=W*(0.14+i*0.24),y=H*0.96;
+  const g=ctx.createLinearGradient(0,y,0,H*0.4);g.addColorStop(0,'rgba('+R+','+G+','+B+','+(0.45*pr)+')');g.addColorStop(1,'rgba('+R+','+G+','+B+',0)');
+  ctx.beginPath();ctx.moveTo(x-6,y);ctx.lineTo(x-W*0.07,H*0.4);ctx.lineTo(x+W*0.07,H*0.4);ctx.lineTo(x+6,y);ctx.closePath();ctx.fillStyle=g;ctx.fill();}
+ const lit=pr;const cx=W*0.5,gy=H*0.88;
+ ctx.fillStyle='rgb('+Math.round(30+180*lit)+','+Math.round(28+160*lit)+','+Math.round(28+150*lit)+')';
+ ctx.beginPath();ctx.ellipse(cx,gy-H*0.2,W*0.011,H*0.05,0,0,7);ctx.fill();
+ ctx.beginPath();ctx.moveTo(cx-W*0.017,gy);ctx.lineTo(cx-W*0.011,gy-H*0.17);ctx.lineTo(cx+W*0.011,gy-H*0.17);ctx.lineTo(cx+W*0.017,gy);ctx.closePath();ctx.fill();
+ ctx.fillStyle='#5f7392';ctx.font='9.5px system-ui';ctx.textAlign='left';
+ const s=playing?curSec():null;
+ ctx.fillText(playing?('▶ '+s.n+' — pede clima: '+s.mood.toUpperCase()+(active>=0?('  · você: '+PBS[active].n+' ('+PBS[active].mood+')'):'  · nenhum playback!')):'Parado — aperte TOCAR',10,H-8);
+}
+function tick(){
+ if(playing){
+  now=performance.now()-t0;
+  if(now>=TOTAL){playing=false;finish();}
+  else{
+   const s=curSec();
+   scoreTot++; if(active>=0&&PBS[active].mood===s.mood&&!blackout)scoreOK++;
+   const ph=document.getElementById('playhead');if(ph)ph.style.left=(now/TOTAL*100)+'%';
+   [...tlEl.querySelectorAll('.seg')].forEach(d=>d.classList.toggle('cur',SONG[+d.dataset.i]===s));
+   [...tlEl.querySelectorAll('.acc')].forEach(d=>d.classList.toggle('hit',ACCENTS[+d.dataset.a].hit));
+   // beat leds
+   const beat=Math.floor(now/BEAT)%4;
+   for(let i=0;i<4;i++)document.getElementById('b'+i).classList.toggle('on',i===beat);
+   document.getElementById('acc').textContent=Math.round(scoreOK/Math.max(1,scoreTot)*100)+'%';
+   document.getElementById('hits').textContent=hits+'/'+ACCENTS.length;
+  }
+ }
+ paint();requestAnimationFrame(tick);
+}
+function finish(){
+ const acc=Math.round(scoreOK/Math.max(1,scoreTot)*100);
+ const v=document.getElementById('verdict');
+ v.innerHTML=acc>=70&&hits>=Math.ceil(ACCENTS.length*0.6)?'<span class="ok">✓ Show salvo!</span>':'<span style="color:#ffb066">Treine mais</span>';
+ flash('Fim: <b>'+acc+'%</b> de precisão no look e <b>'+hits+'/'+ACCENTS.length+'</b> acentos. '+(acc>=70?'Bom busking!':'Fique atento à troca de trecho.'));
+ check();
+}
+// cenários
+const lastAcc=()=>Math.round(scoreOK/Math.max(1,scoreTot)*100);
+const M=[
+ {t:'<b>Reconheça os climas:</b> toque a música e vá trocando o playback conforme o trecho pede (o rodapé do palco mostra o clima pedido). Termine com <b>precisão ≥ 60%</b>.',
+  ok:()=>!playing&&scoreTot>0&&lastAcc()>=60},
+ {t:'<b>Bata os acentos:</b> nos trechos FORTES (refrão/drop) existem acentos (bolinhas rosa). Acerte o <b>BUMP</b> na batida — pelo menos <b>60% dos acentos</b>.',
+  ok:()=>!playing&&scoreTot>0&&hits>=Math.ceil(ACCENTS.length*0.6)},
+ {t:'<b>Show completo:</b> uma passada com <b>≥70% de precisão</b> E <b>≥60% dos acentos</b>. Aí você faz busking de verdade.',
+  ok:()=>!playing&&scoreTot>0&&lastAcc()>=70&&hits>=Math.ceil(ACCENTS.length*0.6)},
+];
+let mi=0;
+function drawM(){document.getElementById('mission').innerHTML='<div><b>Cenário '+(mi+1)+'/'+M.length+':</b> '+M[mi].t+'</div><div class="mrow"><span class="dot" id="mdot"></span><span id="mstat">Toque a música…</span><button class="btn go" id="mnext">Próximo ▸</button></div>';
+ document.getElementById('mnext').onclick=()=>{mi=(mi+1)%M.length;drawM();check();};check();}
+function check(){const dot=document.getElementById('mdot');if(!dot)return;let ok=false;try{ok=M[mi].ok();}catch(e){}
+ dot.classList.toggle('ok',ok);document.getElementById('mstat').textContent=ok?'✓ Cenário cumprido!':'Toque a música…';}
+buildPbs();buildTl();drawM();sizeC();tick();addEventListener('resize',sizeC);
+</script></body></html>
