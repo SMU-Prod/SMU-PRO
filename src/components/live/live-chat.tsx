@@ -6,7 +6,36 @@ import { useUser } from "@clerk/nextjs";
 import { Send } from "lucide-react";
 import { sendLiveMessage } from "@/lib/actions/live-chat";
 import { useT } from "@/lib/i18n/ui";
-import type { LiveMessage } from "@/types/database";
+import type { LiveMessage, UserRole } from "@/types/database";
+
+// Paleta estável de cores por autor — mesmo nome sempre cai na mesma cor,
+// como o chat do YouTube. Tons 400 escolhidos por funcionarem tanto no
+// tema escuro quanto no claro.
+const CORES_AUTOR = [
+  "text-sky-400",
+  "text-emerald-400",
+  "text-violet-400",
+  "text-rose-400",
+  "text-cyan-400",
+  "text-orange-400",
+] as const;
+
+function corDoAutor(nome: string): string {
+  let hash = 0;
+  for (let i = 0; i < nome.length; i++) {
+    hash = (hash * 31 + nome.charCodeAt(i)) | 0;
+  }
+  return CORES_AUTOR[Math.abs(hash) % CORES_AUTOR.length];
+}
+
+const ROLES_EQUIPE = new Set<UserRole>(["admin", "instrutor", "content_manager"]);
+
+function rotuloRole(role: UserRole | null, t: (s: string) => string): string | null {
+  if (role === "instrutor") return t("Instrutor");
+  if (role === "admin") return t("Admin");
+  if (role === "content_manager") return t("Equipe");
+  return null;
+}
 
 export function LiveChat({
   liveEventId,
@@ -73,11 +102,23 @@ export function LiveChat({
 
       <div ref={scrollRef} onScroll={aoRolar} className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-2">
         {msgs.length === 0 && <p className="text-xs text-muted">{t("Seja o primeiro a comentar.")}</p>}
-        {msgs.map((m) => (
-          <div key={m.id} className="text-sm">
-            <span className="text-foreground break-words">{m.texto}</span>
-          </div>
-        ))}
+        {msgs.map((m) => {
+          const destaque = m.autor_role != null && ROLES_EQUIPE.has(m.autor_role);
+          const rotulo = destaque ? rotuloRole(m.autor_role, t) : null;
+          return (
+            <div key={m.id} className="text-sm py-0.5 break-words">
+              <span className={destaque ? "font-semibold text-amber-400" : `font-semibold ${corDoAutor(m.autor_nome)}`}>
+                {m.autor_nome}
+              </span>
+              {rotulo && (
+                <span className="mx-1 rounded bg-amber-400/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-400 align-middle">
+                  {rotulo}
+                </span>
+              )}
+              <span className="text-foreground">: {m.texto}</span>
+            </div>
+          );
+        })}
         <div ref={fimRef} />
       </div>
 

@@ -30,9 +30,11 @@ export async function sendLiveMessage(liveEventId: string, texto: string): Promi
 
   const supabase = createAdminClient();
   const { data: userRow } = await supabase
-    .from("users").select("id").eq("clerk_id", userId).single();
+    .from("users").select("id, nome, role").eq("clerk_id", userId).single();
   const userUuid = userRow?.id;
   if (!userUuid) throw new Error("Usuário não encontrado.");
+  const autorNome = (userRow as any)?.nome?.trim() || "Aluno";
+  const autorRole = (userRow as any)?.role ?? null;
 
   const { data: live } = await supabase
     .from("live_events").select("status").eq("id", liveEventId).single();
@@ -49,6 +51,6 @@ export async function sendLiveMessage(liveEventId: string, texto: string): Promi
 
   const { error } = await (supabase as any)
     .from("live_messages")
-    .insert({ live_event_id: liveEventId, user_id: userUuid, texto: limpo });
+    .insert({ live_event_id: liveEventId, user_id: userUuid, texto: limpo, autor_nome: autorNome, autor_role: autorRole });
   if (error) throw new Error(error.message);
 }

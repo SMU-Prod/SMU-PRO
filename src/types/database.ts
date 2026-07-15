@@ -298,9 +298,13 @@ export type LiveAttendanceUpdate = { last_seen_at?: string; duracao_segundos?: n
 export type LiveMessage = {
   id: string; live_event_id: string; user_id: string;
   texto: string; oculto: boolean; created_at: string;
+  autor_nome: string; autor_role: UserRole | null;
 };
 
-export type LiveMessageInsert = { live_event_id: string; user_id: string; texto: string };
+export type LiveMessageInsert = {
+  live_event_id: string; user_id: string; texto: string;
+  autor_nome: string; autor_role?: UserRole | null;
+};
 
 // ── Database type (formato supabase-js v2) ─────────────────
 
