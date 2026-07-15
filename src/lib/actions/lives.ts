@@ -298,6 +298,83 @@ export async function setLiveStatus(id: string, status: LiveStatus) {
   revalidatePath("/admin/lives");
 }
 
+/** Uma linha do relatório de presença — já com nome/e-mail do aluno resolvidos. */
+export type AttendanceRow = {
+  id: string;
+  user_id: string;
+  nome: string;
+  email: string;
+  joined_at: string;
+  last_seen_at: string;
+  duracao_segundos: number;
+  ip: string | null;
+};
+
+/**
+ * Relatório de presença de uma live — a tela que a NR-01 Anexo II 4.7.1 exige
+ * (log de acesso retido por 2 anos). Mesma tríade de guarda de updateLive:
+ * portal certo + (se instrutor) só a própria live. Sem a checagem de ownership
+ * aqui, um instrutor digitando a URL de outra live veria e-mail/IP de aluno
+ * que não é dele — pior que o resto do painel porque aqui tem PII de verdade.
+ */
+export async function listAttendanceForLive(liveEventId: string): Promise<AttendanceRow[]> {
+  const { userUuid, role } = await assertAdmin();
+  await assertLiveInPortal(liveEventId);
+
+  const supabase = createAdminClient();
+  const { data: live } = await supabase
+    .from("live_events").select("criado_por").eq("id", liveEventId).single();
+  if (!live) throw new Error("Live não encontrada");
+  assertLiveOwnership(live as Pick<LiveEvent, "criado_por">, userUuid, role);
+
+  const { data } = await supabase
+    .from("live_attendance")
+    .select("id, user_id, joined_at, last_seen_at, duracao_segundos, ip, users(nome, email)")
+    .eq("live_event_id", liveEventId)
+    .order("duracao_segundos", { ascending: false });
+
+  return ((data ?? []) as any[]).map((r) => ({
+    id: r.id as string,
+    user_id: r.user_id as string,
+    nome: (r.users?.nome as string) ?? "—",
+    email: (r.users?.email as string) ?? "—",
+    joined_at: r.joined_at as string,
+    last_seen_at: r.last_seen_at as string,
+    duracao_segundos: r.duracao_segundos as number,
+    ip: (r.ip as string | null) ?? null,
+  }));
+}
+
+/**
+ * Contagem de participantes (live_attendance) e mensagens (live_messages) para
+ * um lote de lives — usada pela lista admin. UMA chamada por tabela pro lote
+ * inteiro, nunca por linha: com N lives isso seria 2N queries na renderização
+ * da lista inteira, e cada uma delas pagando o round-trip do Supabase.
+ */
+export async function getLiveEngagementCounts(
+  liveEventIds: string[],
+): Promise<Record<string, { participantes: number; mensagens: number }>> {
+  await assertAdmin();
+
+  const counts: Record<string, { participantes: number; mensagens: number }> = {};
+  for (const id of liveEventIds) counts[id] = { participantes: 0, mensagens: 0 };
+  if (liveEventIds.length === 0) return counts;
+
+  const supabase = createAdminClient();
+  const [{ data: attendance }, { data: messages }] = await Promise.all([
+    supabase.from("live_attendance").select("live_event_id").in("live_event_id", liveEventIds),
+    supabase.from("live_messages").select("live_event_id").in("live_event_id", liveEventIds),
+  ]);
+
+  for (const row of (attendance ?? []) as { live_event_id: string }[]) {
+    counts[row.live_event_id].participantes++;
+  }
+  for (const row of (messages ?? []) as { live_event_id: string }[]) {
+    counts[row.live_event_id].mensagens++;
+  }
+  return counts;
+}
+
 export async function deleteLive(id: string) {
   await assertAdminOnly();
   await assertLiveInPortal(id);

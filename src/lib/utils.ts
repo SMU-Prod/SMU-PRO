@@ -12,6 +12,11 @@ export function formatMinutes(minutes: number): string {
   return m > 0 ? `${h}h ${m}min` : `${h}h`;
 }
 
+/** Segundos assistidos → "1h 23min" (não segundos crus — ninguém lê 4980s). */
+export function formatDuracaoSegundos(segundos: number): string {
+  return formatMinutes(Math.round(segundos / 60));
+}
+
 export function formatCurrency(value: number): string {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
