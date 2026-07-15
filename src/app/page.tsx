@@ -1,395 +1,403 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { auth } from "@clerk/nextjs/server";
 import { getPublicCoursesCached, getLandingStatsCached } from "@/lib/cache/public-data";
 import { getPortal, filterCoursesByPortal } from "@/lib/portal";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { getCategoryLabel, getLevelLabel, formatMinutes, formatCurrency } from "@/lib/utils";
-import { CategoryIcon } from "@/components/ui/category-icon";
+import { getLevelLabel } from "@/lib/utils";
 import { getServerT, getServerLocale } from "@/lib/i18n/server";
 import { translateEntities } from "@/lib/i18n/content";
 import { LanguageSelector } from "@/components/i18n/language-selector";
-import { Zap, Award, Users, PlayCircle, ChevronRight, Star, Shield, Mic, Lightbulb, Music, Film } from "lucide-react";
+import { ConsoleSimulator } from "@/components/landing/console-simulator";
+import { LiveDemo } from "@/components/landing/live-demo";
+import { AiTutor } from "@/components/landing/ai-tutor";
+import { CourseExplorer, type ExplorerCourse } from "@/components/landing/course-explorer";
+import { CertCard } from "@/components/landing/cert-card";
 
 export const dynamic = "force-dynamic"; // renderiza por requisição p/ ler o cookie de idioma
 
-const CATEGORIES = [
-  { key: "som", icon: <Mic size={28} />, label: "Sonorização", desc: "PA, monitor, mixing ao vivo" },
-  { key: "luz", icon: <Lightbulb size={28} />, label: "Iluminação", desc: "Consoles, moving heads, show design" },
-  { key: "dj", icon: <Music size={28} />, label: "DJ & Produção", desc: "Técnica, sets, performance" },
-  { key: "vj", icon: <Film size={28} />, label: "VJ & Vídeo", desc: "Mapeamento, switching ao vivo" },
-];
-
-const FEATURES = [
-  {
-    icon: <PlayCircle size={24} className="text-amber-500" />,
-    title: "Aulas em vídeo HD",
-    desc: "Conteúdo gravado por profissionais em atividade no mercado de eventos.",
-  },
-  {
-    icon: <Zap size={24} className="text-amber-400" />,
-    title: "Quizzes por módulo",
-    desc: "Avaliações que testam o conhecimento real e emitem nota no certificado.",
-  },
-  {
-    icon: <Award size={24} className="text-emerald-400" />,
-    title: "Certificado verificável",
-    desc: "QR Code único em cada certificado — verificável por qualquer contratante.",
-  },
-  {
-    icon: <Users size={24} className="text-blue-400" />,
-    title: "Programa MIT",
-    desc: "Alunos do Projeto Cultural têm acesso gratuito a todo o catálogo.",
-  },
-  {
-    icon: <Shield size={24} className="text-purple-400" />,
-    title: "Trilha de carreira",
-    desc: "Trainee → Junior → Pleno: progressão estruturada para o mercado.",
-  },
-  {
-    icon: <Star size={24} className="text-orange-400" />,
-    title: "Anotações pessoais",
-    desc: "Salve insights diretamente no player, vinculados ao timestamp do vídeo.",
-  },
-];
+const LOGO = "/logo-smu.png";
 
 export default async function HomePage() {
   const { userId } = await auth();
   const isSignedIn = !!userId;
   const t = await getServerT();
-  // Portal: "aula" = aula.smuproducoes.com (escola profissionalizante) · "main" = www (eventos).
   const portal = await getPortal();
   const isAula = portal === "aula";
 
-  let featuredCourses: any[] = [];
+  let scoped: any[] = [];
   let stats = { totalUsers: 0, totalCourses: 0, totalHours: 0, completionRate: 0 };
   try {
     const [courses, realStats] = await Promise.all([getPublicCoursesCached(), getLandingStatsCached()]);
-    // Portal aula.smuproducoes.com: só os cursos curados do portal (mantém o cache das páginas públicas).
-    const scoped = filterCoursesByPortal(courses ?? [], portal);
-    featuredCourses = scoped.filter((c: any) => c.destaque).slice(0, 3);
-    if (featuredCourses.length === 0) {
-      featuredCourses = scoped.slice(0, 3);
-    }
+    scoped = filterCoursesByPortal(courses ?? [], portal);
     stats = realStats;
   } catch {
-    // server not configured yet, show page without courses
+    // servidor ainda não configurado — renderiza a página sem cursos
   }
 
-  // Traduz o nome/descrição dos cursos em destaque (conteúdo do banco). Fail-safe: PT.
+  // Cursos do explorador (até 12) — destaques primeiro.
+  let explorer: any[] = [...scoped].sort((a, b) => Number(b.destaque) - Number(a.destaque)).slice(0, 12);
+
+  // Traduz nome/descrição (conteúdo do banco). Fail-safe: PT.
   const lang = await getServerLocale();
-  if (lang !== "pt" && featuredCourses.length > 0) {
+  if (lang !== "pt" && explorer.length > 0) {
     const tr = await translateEntities(
-      featuredCourses.map((c) => ({ type: "course" as const, id: c.id, titulo: c.titulo, descricao: c.descricao, descricao_curta: c.descricao_curta })),
+      explorer.map((c) => ({ type: "course" as const, id: c.id, titulo: c.titulo, descricao: c.descricao, descricao_curta: c.descricao_curta })),
       lang,
     );
     if (tr.size > 0) {
-      featuredCourses = featuredCourses.map((c) => {
+      explorer = explorer.map((c) => {
         const f = tr.get(c.id);
-        return f ? { ...c, titulo: f.titulo ?? c.titulo, descricao: f.descricao ?? c.descricao, descricao_curta: f.descricao_curta ?? c.descricao_curta } : c;
+        return f ? { ...c, titulo: f.titulo ?? c.titulo, descricao_curta: f.descricao_curta ?? c.descricao_curta } : c;
       });
     }
   }
 
+  const explorerCourses: ExplorerCourse[] = explorer.map((c) => ({
+    id: c.id,
+    slug: c.slug,
+    titulo: c.titulo,
+    categoria: c.categoria,
+    nivel: c.nivel,
+    tipo: c.tipo,
+    preco: c.preco,
+    thumbnail_url: c.thumbnail_url,
+    total_aulas: c.total_aulas,
+    carga_horaria: c.carga_horaria,
+    descricao_curta: c.descricao_curta,
+  }));
+
+  const explorerDict = {
+    filters: {
+      all: t("Todos"),
+      som: t("Sonorização"),
+      luz: t("Iluminação"),
+      dj: t("DJ & Produção"),
+      vj: t("VJ & Vídeo"),
+    },
+    free: t("Grátis"),
+    aulas: t("aulas"),
+    levels: {
+      trainee: t("Trainee"),
+      junior: t("Junior"),
+      pleno: t("Pleno"),
+      projeto_cultural: t(getLevelLabel("projeto_cultural")),
+    },
+  };
+
+  // Cards do herói = fotos reais de eventos (som / luz / DJ), não as thumbnails de curso.
+  const heroA = "/lives/Lighting_technician_at_console_202607150429.jpeg";
+  const heroB = "/lives/DJ_at_CDJ_mixer_setup_202607150429.jpeg";
+  const heroC = "/lives/Sound_engineer_mixing_console_202607150429.jpeg";
+  const livePoster = "/lives/Sound_engineer_mixing_console_202607150429.jpeg";
+
   const STATS = [
-    { label: "Alunos ativos", value: stats.totalUsers > 0 ? stats.totalUsers.toLocaleString("pt-BR") : "—" },
-    { label: "Horas de conteúdo", value: stats.totalHours > 0 ? `${stats.totalHours}+` : "—" },
-    { label: "Cursos ativos", value: stats.totalCourses > 0 ? String(stats.totalCourses) : "—" },
-    { label: "Taxa de conclusão", value: stats.completionRate > 0 ? `${stats.completionRate}%` : "—" },
+    { value: stats.totalUsers > 0 ? stats.totalUsers.toLocaleString("pt-BR") : "—", label: t("alunos ativos") },
+    { value: stats.totalCourses > 0 ? String(stats.totalCourses) : "—", label: t("cursos ativos") },
+    { value: stats.totalHours > 0 ? `${stats.totalHours}+` : "—", label: t("horas de conteúdo") },
+    { value: "100%", label: t("online · vitalício") },
   ];
+
+  const serif = { fontFamily: "var(--font-instrument-serif), serif" } as const;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Nav */}
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/90 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
+      {/* NAV */}
+      <nav className="fixed inset-x-0 top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
+        <div className="mx-auto flex h-[70px] max-w-6xl items-center justify-between px-6">
           <div className="flex items-center gap-3">
-            <div className="text-center">
-              <p className="text-2xl leading-none gradient-text" style={{ fontFamily: "var(--font-instrument-serif), serif" }}>SMU</p>
-              <p className="text-[5.5px] font-medium tracking-[0.15em] text-muted-light leading-none mt-0.5" style={{ fontFamily: "var(--font-orbitron), sans-serif" }}>PRODUÇÕES</p>
-            </div>
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-              <span className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider">MIT</span>
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={LOGO} alt="SMU Produções" className="h-11 w-auto" />
+            <span className="hidden items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold tracking-wider text-amber-400 sm:flex">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-400" /> MIT
+            </span>
           </div>
-          <div className="hidden md:flex items-center gap-8 text-sm text-muted">
-            <Link href="/cursos" className="hover:text-amber-400 transition-colors">{t("Cursos")}</Link>
-            <Link href="/#categorias" className="hover:text-amber-400 transition-colors">{t("Categorias")}</Link>
-            <Link href="/#sobre" className="hover:text-amber-400 transition-colors">{t("Sobre")}</Link>
+          <div className="hidden items-center gap-8 text-sm text-muted md:flex">
+            <Link href="#ao-vivo" className="transition-colors hover:text-amber-400">{t("Ao vivo")}</Link>
+            <Link href="#simulador" className="transition-colors hover:text-amber-400">{t("Simulador")}</Link>
+            <Link href="#trilha" className="transition-colors hover:text-amber-400">{t("Trilha")}</Link>
+            <Link href="#cursos" className="transition-colors hover:text-amber-400">{t("Cursos")}</Link>
           </div>
           <div className="flex items-center gap-3">
             <LanguageSelector />
             {isSignedIn ? (
-              <Link href="/dashboard">
-                <Button size="sm">{t("Meu painel")}</Button>
-              </Link>
+              <Link href="/dashboard"><Button size="sm">{t("Meu painel")}</Button></Link>
             ) : (
               <>
-                <Link href="/login">
-                  <Button variant="ghost" size="sm">{t("Entrar")}</Button>
-                </Link>
-                <Link href="/cadastro">
-                  <Button size="sm">{t("Começar grátis")}</Button>
-                </Link>
+                <Link href="/login" className="hidden sm:block"><Button variant="ghost" size="sm">{t("Entrar")}</Button></Link>
+                <Link href="/cadastro"><Button size="sm">{t("Começar grátis")}</Button></Link>
               </>
             )}
           </div>
         </div>
       </nav>
 
-      {/* Hero */}
-      {isAula ? (
-        /* Hero do aula.smuproducoes.com — escola profissionalizante (fundo branco, preto + amarelo) */
-        <section className="relative flex min-h-[85vh] flex-col items-center justify-center px-6 pt-16 text-center overflow-hidden bg-white text-neutral-900">
-          <div className="absolute inset-0 -z-10">
-            <div className="absolute top-1/3 left-1/2 -translate-x-1/2 h-[500px] w-[500px] rounded-full bg-amber-400/10 blur-[150px]" />
-            <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-400/40 to-transparent" />
-          </div>
-
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-400/15 border border-amber-500/30 mb-8">
-            <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
-            <span className="text-xs font-semibold text-amber-600 uppercase tracking-widest">
-              {t("Escola Profissionalizante")}
+      {/* HERO */}
+      <header className="relative px-6 pb-20 pt-32">
+        <div className="mx-auto grid max-w-6xl items-center gap-14 lg:grid-cols-[1.05fr_.95fr]">
+          <div>
+            <span className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.18em] text-amber-400" style={{ fontFamily: "var(--font-orbitron), sans-serif" }}>
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-400" />
+              {isAula ? t("Escola Profissionalizante") : t("Escola profissional de eventos ao vivo")}
             </span>
-          </div>
-
-          <h1 className="max-w-5xl text-5xl md:text-7xl lg:text-8xl font-black leading-[0.9] tracking-tight text-neutral-900">
-            {t("Aprenda uma")}{" "}
-            <span className="text-amber-500">{t("profissão")}</span>
-            <br />
-            {t("e conquiste sua")}{" "}
-            <span className="text-amber-500">{t("carreira")}</span>
-          </h1>
-
-          <p className="mt-8 max-w-2xl text-lg text-neutral-600 leading-relaxed">
-            {t("Cursos técnicos e de renda em casa, do básico ao avançado — no seu ritmo e com certificado. Comece hoje, aprenda fazendo e transforme seu talento em trabalho.")}
-          </p>
-
-          <div className="mt-10 flex flex-col sm:flex-row gap-4">
-            <Link href="/cadastro">
-              <Button size="xl" className="shadow-[0_0_30px_rgba(245,158,11,0.3)]">
-                {t("Criar conta grátis")} <ChevronRight size={18} />
-              </Button>
-            </Link>
-            <Link href="/cursos">
-              <Button size="xl" variant="outline" className="border-neutral-300 text-neutral-900 hover:bg-neutral-100">
-                {t("Ver cursos")}
-              </Button>
-            </Link>
-          </div>
-
-          {/* Stats */}
-          <div className="mt-24 grid grid-cols-2 md:grid-cols-4 gap-0 w-full max-w-4xl border border-neutral-200 rounded-2xl overflow-hidden divide-x divide-neutral-200">
-            {STATS.map((s) => (
-              <div key={s.label} className="p-6 text-center hover:bg-neutral-50 transition-colors">
-                <div className="text-3xl font-black text-amber-500 tabular-nums">{s.value}</div>
-                <div className="text-xs text-neutral-500 mt-2 uppercase tracking-wider">{t(s.label)}</div>
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : (
-        <section className="relative flex min-h-[85vh] flex-col items-center justify-center px-6 pt-16 text-center overflow-hidden">
-          {/* Background grid + amber glow */}
-          <div className="absolute inset-0 -z-10">
-            <div className="absolute inset-0 bg-[linear-gradient(rgba(245,158,11,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(245,158,11,0.03)_1px,transparent_1px)] bg-[size:64px_64px]" />
-            <div className="absolute top-1/3 left-1/2 -translate-x-1/2 h-[500px] w-[500px] rounded-full bg-amber-500/[0.08] blur-[150px]" />
-            <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/30 to-transparent" />
-          </div>
-
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 mb-8">
-            <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
-            <span className="text-xs font-semibold text-amber-400 uppercase tracking-widest">
-              {t("Escola Profissional de Eventos ao Vivo")}
-            </span>
-          </div>
-
-          <h1 className="max-w-5xl text-5xl md:text-7xl lg:text-8xl font-black leading-[0.9] tracking-tight text-foreground">
-            {t("Sua carreira no")}{" "}
-            <span className="text-amber-400">{t("backstage")}</span>
-            <br />
-            {t("começa aqui")}
-          </h1>
-
-          <p className="mt-8 max-w-2xl text-lg text-muted leading-relaxed">
-            {t("Cursos técnicos de sonorização, iluminação, DJ e VJ com profissionais em atividade. Certificados verificáveis. Trilha de carreira estruturada.")}
-          </p>
-
-          <div className="mt-10 flex flex-col sm:flex-row gap-4">
-            <Link href="/cadastro">
-              <Button size="xl" className="shadow-[0_0_30px_rgba(245,158,11,0.3)]">
-                {t("Criar conta grátis")} <ChevronRight size={18} />
-              </Button>
-            </Link>
-            <Link href="/cursos">
-              <Button size="xl" variant="outline">
-                {t("Ver cursos")}
-              </Button>
-            </Link>
-          </div>
-
-          {/* Stats */}
-          <div className="mt-24 grid grid-cols-2 md:grid-cols-4 gap-0 w-full max-w-4xl border border-border rounded-2xl overflow-hidden divide-x divide-border">
-            {STATS.map((s) => (
-              <div key={s.label} className="p-6 text-center hover:bg-surface-2/50 transition-colors">
-                <div className="text-3xl font-black text-amber-400 tabular-nums">{s.value}</div>
-                <div className="text-xs text-muted-light mt-2 uppercase tracking-wider">{t(s.label)}</div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Cursos em destaque */}
-      {featuredCourses.length > 0 && (
-        <section className="py-24 px-6 border-t border-border/50">
-          <div className="mx-auto max-w-7xl">
-            <div className="flex items-end justify-between mb-12">
-              <div>
-                <p className="text-amber-400 text-sm font-semibold uppercase tracking-widest mb-2">{t("Em destaque")}</p>
-                <h2 className="text-4xl font-black text-foreground">{t("Cursos populares")}</h2>
-              </div>
-              <Link href="/cursos" className="text-sm text-muted-light hover:text-amber-400 transition-colors flex items-center gap-1">
-                {t("Ver todos")} <ChevronRight size={14} />
-              </Link>
+            <h1 className="mt-5 text-[42px] font-bold leading-[1.03] tracking-tight sm:text-6xl">
+              {t("Aprenda com quem")}<br />
+              {t("está no")} <span style={serif} className="italic text-amber-400">{t("palco")}</span> —<br />
+              {t("e viva do")} <span style={serif} className="italic text-amber-400">{t("backstage")}</span>.
+            </h1>
+            <p className="mt-6 max-w-lg text-lg text-muted">
+              {t("Sonorização, iluminação, DJ, vídeo e produção. Aulas ao vivo, tutor com IA, narração em áudio e simuladores práticos. Certificado verificável e trilha do Trainee ao Pleno.")}
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3.5">
+              <Link href="/cadastro"><Button size="xl">{t("Criar conta grátis")} →</Button></Link>
+              <Link href="#simulador"><Button size="xl" variant="outline">{t("Testar o simulador")}</Button></Link>
             </div>
-
-            <div className="grid md:grid-cols-3 gap-6">
-              {featuredCourses.map((course: any) => (
-                <Link key={course.id} href={`/cursos/${course.slug}`} className="group">
-                  <div className="rounded-2xl bg-surface border border-border overflow-hidden hover:border-amber-500/30 hover:shadow-[0_0_30px_rgba(245,158,11,0.05)] transition-all hover:-translate-y-1">
-                    <div className="h-44 bg-gradient-to-br from-surface-2 to-surface-3 flex items-center justify-center text-5xl relative overflow-hidden">
-                      {course.thumbnail_url ? (
-                        <Image src={course.thumbnail_url} alt={course.titulo} fill className="object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
-                      ) : (
-                        <span className="opacity-50"><CategoryIcon category={course.categoria} size={40} /></span>
-                      )}
-                      <div className="absolute top-3 left-3 flex gap-1.5">
-                        <Badge variant={course.nivel as any}>{t(getLevelLabel(course.nivel))}</Badge>
-                        {course.tipo === "free" && <Badge variant="free">{t("Grátis")}</Badge>}
-                      </div>
-                    </div>
-                    <div className="p-5">
-                      <h3 className="font-bold text-lg text-foreground leading-tight mb-2 group-hover:text-amber-400 transition-colors">
-                        {course.titulo}
-                      </h3>
-                      <p className="text-muted-light text-sm line-clamp-2 mb-4">{course.descricao_curta || course.descricao || t("Curso completo de formação profissional.")}</p>
-                      <div className="flex items-center justify-between text-xs text-muted-light pt-3 border-t border-border">
-                        <span>{course.total_aulas} {t("aulas")} · {formatMinutes(course.carga_horaria ?? 0)}</span>
-                        {course.preco && course.preco > 0 ? (
-                          <span className="text-amber-400 font-semibold">{formatCurrency(course.preco)}</span>
-                        ) : (
-                          <span className="text-emerald-400 font-semibold">{t("Grátis")}</span>
-                        )}
-                      </div>
-                    </div>
+            <div className="mt-9 flex flex-wrap items-center gap-6">
+              {STATS.map((s, i) => (
+                <div key={s.label} className="flex items-center gap-6">
+                  {i > 0 && <span className="hidden h-9 w-px bg-border sm:block" />}
+                  <div className="flex flex-col">
+                    <b className="text-2xl font-bold tabular-nums">{s.value}</b>
+                    <span className="text-xs text-muted-light">{s.label}</span>
                   </div>
-                </Link>
+                </div>
               ))}
             </div>
           </div>
-        </section>
-      )}
 
-      {/* Categorias — áreas de EVENTOS (só no www; o aula tem áreas próprias na página de cursos) */}
-      {!isAula && (
-      <section id="categorias" className="py-24 px-6 border-t border-border/50">
-        <div className="mx-auto max-w-7xl">
-          <div className="text-center mb-16">
-            <p className="text-amber-400 text-sm font-semibold uppercase tracking-widest mb-2">{t("Áreas de formação")}</p>
-            <h2 className="text-4xl font-black text-foreground">{t("O que você quer dominar?")}</h2>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {CATEGORIES.map((cat) => (
-              <Link key={cat.key} href={`/cursos?categoria=${cat.key}`} className="group">
-                <div className="rounded-2xl p-6 bg-surface border border-border hover:border-amber-500/30 transition-all text-center">
-                  <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400 group-hover:bg-amber-500 group-hover:text-black transition-all">
-                    {cat.icon}
-                  </div>
-                  <h3 className="font-bold text-foreground mb-1">{t(cat.label)}</h3>
-                  <p className="text-sm text-muted-light">{t(cat.desc)}</p>
-                </div>
-              </Link>
-            ))}
+          {/* Composição com thumbnails reais */}
+          <div className="relative mx-auto h-[440px] w-full max-w-[440px] lg:h-[520px]">
+            {/* O vídeo já traz selo AO VIVO, contador e chat embutidos (é a captura
+                da sala inteira), então este card NÃO põe overlay — senão duplica o selo. */}
+            <div className="absolute right-5 top-0 z-20 h-[300px] w-[240px] overflow-hidden rounded-2xl border border-border-strong shadow-2xl sm:right-10 sm:h-[338px] sm:w-[268px]">
+              <video
+                className="h-full w-full object-cover"
+                src="/videos/live-demo.mp4"
+                poster={heroA || undefined}
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="metadata"
+                aria-label={t("Prévia de uma aula ao vivo na SMU PRO")}
+              />
+            </div>
+            <div className="absolute bottom-4 left-0 z-30 h-[200px] w-[160px] overflow-hidden rounded-2xl border border-border-strong shadow-2xl sm:h-[238px] sm:w-[188px]">
+              {heroB ? (
+                <Image src={heroB} alt="" fill sizes="190px" className="object-cover" />
+              ) : (
+                <div className="h-full w-full bg-gradient-to-br from-surface-2 to-surface-3" />
+              )}
+            </div>
+            <div className="absolute right-0 top-[150px] z-10 hidden h-[148px] w-[148px] overflow-hidden rounded-2xl border border-border-strong opacity-90 shadow-2xl sm:block">
+              {heroC ? (
+                <Image src={heroC} alt="" fill sizes="150px" className="object-cover" />
+              ) : (
+                <div className="h-full w-full bg-gradient-to-br from-surface-2 to-surface-3" />
+              )}
+            </div>
           </div>
         </div>
-      </section>
-      )}
+      </header>
 
-      {/* Features */}
-      <section id="sobre" className="py-24 px-6 border-t border-border/50">
-        <div className="mx-auto max-w-7xl">
-          <div className="text-center mb-16">
-            <p className="text-amber-400 text-sm font-semibold uppercase tracking-widest mb-2">{t("Plataforma")}</p>
-            <h2 className="text-4xl font-black text-foreground">{t("Feita para profissionais")}</h2>
-            <p className="mt-4 text-muted-light max-w-xl mx-auto">
-              {isAula
-                ? t("Cada detalhe foi pensado para quem quer aprender uma profissão e precisa de formação séria.")
-                : t("Cada detalhe foi pensado para quem trabalha em palco e precisa de formação séria.")}
+      {/* SIMULADOR */}
+      <Section id="simulador" n="01" eyebrow={t("Prática · interativo")}>
+        <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
+          <div><ConsoleSimulator /></div>
+          <div>
+            <SectionHeading>
+              {t("Simuladores e")} <em style={serif} className="not-italic text-amber-400" >{t("animações")}</em> {t("que ensinam fazendo")}
+            </SectionHeading>
+            <p className="mb-5 text-base text-muted">
+              {t("Aqui do lado é de verdade: mexa numa mesa de som digital (estilo CL5 / DiGiCo) ou numa mesa de luz — arraste os faders, dê mute/solo, toque o mix ou acenda o palco. É assim que a plataforma ensina: mexendo antes de encostar no equipamento real.")}
             </p>
+            <Bullets items={[
+              [t("Mesa de som digital"), t("canais, faders, meters, mute e solo como numa CL5 / DiGiCo.")],
+              [t("Mesa de luz e animações"), t("feixes, cor e show em movimento.")],
+              [t("Quizzes por módulo"), t("a nota entra no seu certificado.")],
+            ]} />
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {FEATURES.map((f) => (
-              <div key={f.title} className="rounded-2xl p-6 bg-surface border border-border hover:border-amber-500/20 hover:shadow-[0_0_20px_rgba(245,158,11,0.03)] transition-all">
-                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-surface-3 border border-border-strong">
-                  {f.icon}
+        </div>
+      </Section>
+
+      {/* AO VIVO */}
+      <Section id="ao-vivo" n="02" eyebrow={t("Novidade")} badge={t("NOVO")}>
+        <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
+          <div className="lg:order-2">
+            <SectionHeading>
+              {t("Aulas e palestras")} <em style={serif} className="not-italic text-amber-400">{t("ao vivo")}</em>
+            </SectionHeading>
+            <p className="mb-5 text-base text-muted">
+              {t("Aulas, workshops e podcasts transmitidos ao vivo, com chat em tempo real direto com quem trabalha no mercado. Perdeu? Fica gravado na sua trilha.")}
+            </p>
+            <Bullets items={[
+              [t("Chat ao vivo"), t("tire dúvidas durante a transmissão.")],
+              [t("Agenda de eventos"), t("saiba quando entra cada aula.")],
+              [t("Replay"), t("reveja tudo depois, no seu ritmo.")],
+            ]} />
+          </div>
+          <div className="lg:order-1"><LiveDemo src="/videos/live-demo.mp4" poster={livePoster} /></div>
+        </div>
+      </Section>
+
+      {/* Próximas lives */}
+      <section className="border-t border-border/50 px-6 py-24">
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-9">
+            <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-amber-400" style={{ fontFamily: "var(--font-orbitron), sans-serif" }}>
+              {t("Agenda ao vivo")}
+            </span>
+            <h2 className="mt-3 text-[29px] font-bold tracking-tight sm:text-4xl">
+              {t("Próximas")} <em style={serif} className="not-italic text-amber-400">{t("lives")}</em>
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              { img: "/lives/Sound_engineer_mixing_console_202607150429.jpeg", area: t("Sonorização"), title: t("Ganho de estrutura e gate"), when: t("Qui · 20h") },
+              { img: "/lives/Lighting_technician_at_console_202607150429.jpeg", area: t("Iluminação"), title: t("Programando moving heads"), when: t("Sáb · 15h") },
+              { img: "/lives/DJ_at_CDJ_mixer_setup_202607150429.jpeg", area: t("DJ & Produção"), title: t("Transições e leitura de pista"), when: t("Dom · 19h") },
+            ].map((l) => (
+              <div key={l.title} className="group overflow-hidden rounded-2xl border border-border bg-surface transition-all hover:-translate-y-1 hover:border-amber-500/30">
+                <div className="relative aspect-video overflow-hidden">
+                  <Image src={l.img} alt={l.title} fill sizes="(max-width:640px) 100vw, 33vw" className="object-cover transition-transform duration-300 group-hover:scale-105" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                  <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-red-500 px-2.5 py-1 text-[11px] font-bold text-white">
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" /> {t("AO VIVO")}
+                  </div>
+                  <span className="absolute right-3 top-3 rounded-full bg-background/70 px-2.5 py-1 text-[11px] text-foreground backdrop-blur">{l.when}</span>
                 </div>
-                <h3 className="font-bold text-foreground mb-2">{t(f.title)}</h3>
-                <p className="text-sm text-muted-light leading-relaxed">
-                  {t(isAula && f.desc.includes("mercado de eventos")
-                    ? "Conteúdo gravado por profissionais em atividade na área."
-                    : f.desc)}
-                </p>
+                <div className="p-4">
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-amber-400">{l.area}</p>
+                  <h3 className="text-[15px] font-semibold leading-tight text-foreground">{l.title}</h3>
+                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA final */}
-      <section className="py-32 px-6 border-t border-border/50 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(245,158,11,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(245,158,11,0.02)_1px,transparent_1px)] bg-[size:32px_32px]" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[400px] w-[600px] rounded-full bg-amber-500/5 blur-[120px]" />
-
-        <div className="mx-auto max-w-3xl text-center relative">
-          <h2 className="text-4xl md:text-6xl font-black text-foreground mb-6">
-            {t("Pronto para subir")}<br />
-            <span className="text-amber-400">{t("de nível")}</span>?
-          </h2>
-          <p className="text-muted mb-10 text-lg max-w-xl mx-auto">
-            {t("Crie sua conta agora e acesse os cursos gratuitos do nível Trainee. Sem cartão de crédito.")}
-          </p>
-          <Link href="/cadastro">
-            <Button size="xl" className="shadow-[0_0_40px_rgba(245,158,11,0.3)] text-lg px-10">
-              {t("Começar agora — é grátis")} <ChevronRight size={18} />
-            </Button>
-          </Link>
-          {stats.totalUsers > 0 && (
-            <p className="text-xs text-muted-light mt-4">
-              +{stats.totalUsers.toLocaleString("pt-BR")} {t("profissionais já estudam na SMU PRO")}
+      {/* IA + narração */}
+      <Section id="plataforma" n="03" eyebrow={t("Plataforma · interativo")}>
+        <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
+          <div><AiTutor /></div>
+          <div>
+            <SectionHeading>
+              {t("Um")} <em style={serif} className="not-italic text-amber-400">{t("tutor com IA")}</em> {t("e narração em áudio")}
+            </SectionHeading>
+            <p className="mb-5 text-base text-muted">
+              {t("Travou numa aula? O tutor explica no contexto do vídeo — clique numa pergunta e veja. E toda aula pode ser ouvida narrada: dá play no player.")}
             </p>
+            <Bullets items={[
+              [t("Explicador com IA"), t("respostas ligadas ao timestamp.")],
+              [t("Narração em áudio"), t("cada aula vira podcast pra ouvir.")],
+              [t("Anotações no player"), t("no momento exato do vídeo.")],
+            ]} />
+          </div>
+        </div>
+      </Section>
+
+      {/* TRILHA */}
+      <section id="trilha" className="border-t border-border/50 px-6 py-24">
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-11 text-center">
+            <Eyebrow n="04">{t("Carreira")}</Eyebrow>
+            <h2 className="mt-3.5 text-[29px] font-bold leading-tight tracking-tight sm:text-4xl">
+              {t("Uma")} <em style={serif} className="not-italic text-amber-400">{t("trilha")}</em>, {t("do primeiro cabo ao palco grande")}
+            </h2>
+            <p className="mx-auto mt-3.5 max-w-xl text-muted">{t("Progressão por níveis. Comece grátis no Trainee e evolua até dominar a função como Pleno.")}</p>
+          </div>
+          <div className="relative grid gap-9 md:grid-cols-3">
+            <div className="absolute left-[16%] right-[16%] top-[34px] z-0 hidden h-0.5 bg-gradient-to-r from-amber-700 via-amber-500 to-amber-300 opacity-50 md:block" />
+            {[
+              ["1", t("Trainee"), t("Fundamentos e segurança. Pra quem começa do zero."), t("Introdução · NR's · Panorama")],
+              ["2", t("Junior"), t("Técnica por área: som, luz, DJ, vídeo e efeitos."), t("DJ · Luz · Som · Vídeo · Eletrônica")],
+              ["3", t("Pleno"), t("Domínio avançado e atuação profissional."), t("Pleno Som · Luz · Vídeo · Efeito · Rigging")],
+            ].map(([num, title, desc, cnt]) => (
+              <div key={num} className="group relative z-10 px-4 text-center">
+                <div className="mx-auto mb-[18px] flex h-[68px] w-[68px] items-center justify-center rounded-full border-2 border-amber-500 bg-surface text-[22px] font-bold text-amber-400 shadow-[0_0_0_6px_rgba(245,158,11,0.06)] transition-all group-hover:bg-amber-500 group-hover:text-black">{num}</div>
+                <h4 className="mb-1.5 text-lg font-bold">{title}</h4>
+                <p className="mx-auto mb-2 max-w-[230px] text-sm text-muted">{desc}</p>
+                <div className="text-xs font-semibold text-amber-300">{cnt}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CURSOS */}
+      <section id="cursos" className="border-t border-border/50 px-6 py-24">
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <Eyebrow n="05">{t("Catálogo")}</Eyebrow>
+              <h2 className="mt-3.5 text-[29px] font-bold tracking-tight sm:text-4xl">
+                {t("Comece por um curso")} <em style={serif} className="not-italic text-amber-400">{t("gratuito")}</em>
+              </h2>
+            </div>
+            <Link href="/cursos"><Button variant="outline">{t("Ver todos os cursos")} →</Button></Link>
+          </div>
+          {explorerCourses.length > 0 ? (
+            <CourseExplorer courses={explorerCourses} dict={explorerDict} />
+          ) : (
+            <p className="text-muted">{t("Em breve novos cursos por aqui.")}</p>
           )}
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-border py-12 px-6">
-        <div className="mx-auto max-w-7xl flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-light">
+      {/* CERTIFICADO */}
+      <Section n="06" eyebrow={t("Reconhecimento · interativo")}>
+        <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
+          <div className="lg:order-2">
+            <SectionHeading>
+              {t("Certificado com")} <em style={serif} className="not-italic text-amber-400">{t("QR verificável")}</em>
+            </SectionHeading>
+            <p className="mb-5 text-base text-muted">
+              {t("Cada certificado tem um QR único. Qualquer contratante confere a autenticidade em segundos. Clique em verificar pra ver como funciona.")}
+            </p>
+            <Bullets items={[
+              [t("QR único por certificado"), t("impossível de falsificar.")],
+              [t("Nota do quiz no documento"), t("mostra domínio real.")],
+              [t("Programa MIT"), t("acesso gratuito pra alunos do Projeto Cultural.")],
+            ]} />
+          </div>
+          <div className="lg:order-1"><CertCard logoSrc={LOGO} /></div>
+        </div>
+      </Section>
+
+      {/* CTA FINAL */}
+      {/* overflow-hidden: o brilho tem 600px fixos e fica centrado por translate.
+          Num iPhone de 390px ele transborda ~105px de cada lado e, sem contenção,
+          isso vira scroll horizontal na PÁGINA inteira — um enfeite decorativo
+          arrastando o site todo. */}
+      <section className="relative overflow-hidden border-t border-border/50 px-6 py-28 text-center">
+        <div className="pointer-events-none absolute left-1/2 top-1/2 -z-0 h-[340px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-500/10 blur-3xl" />
+        <div className="relative mx-auto max-w-2xl">
+          <h2 className="mb-5 text-4xl font-bold leading-tight tracking-tight sm:text-5xl">
+            {t("Sua próxima função")}<br />{t("começa")} <em style={serif} className="not-italic text-amber-400">{t("hoje")}</em>.
+          </h2>
+          <p className="mx-auto mb-8 max-w-md text-lg text-muted">{t("Crie sua conta e acesse agora os cursos gratuitos do nível Trainee. Sem cartão de crédito.")}</p>
+          <Link href="/cadastro"><Button size="xl">{t("Começar agora — é grátis")} →</Button></Link>
+          {stats.totalUsers > 0 && (
+            <p className="mt-4 text-xs text-muted-light">+{stats.totalUsers.toLocaleString("pt-BR")} {t("profissionais já estudam na SMU PRO")}</p>
+          )}
+        </div>
+      </section>
+
+      {/* FOOTER */}
+      <footer className="border-t border-border px-6 py-10">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 text-sm text-muted-light">
           <div className="flex items-center gap-3">
-            <div className="text-center">
-              <p className="text-lg leading-none gradient-text" style={{ fontFamily: "var(--font-instrument-serif), serif" }}>SMU</p>
-              <p className="text-[4.5px] font-medium tracking-[0.12em] text-muted-light leading-none mt-0.5" style={{ fontFamily: "var(--font-orbitron), sans-serif" }}>PRODUÇÕES</p>
-            </div>
-            <span className="text-muted-light">—</span>
-            <span>{isAula ? t("Escola Profissionalizante") : t("Escola Profissional de Eventos")}</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={LOGO} alt="SMU" className="h-8 w-auto" />
+            <span>— {isAula ? t("Escola Profissionalizante") : t("Escola Profissional de Eventos")}</span>
           </div>
           <div className="flex gap-6">
-            <Link href="/cursos" className="hover:text-amber-400 transition-colors">{t("Cursos")}</Link>
-            <Link href="/certificado" className="hover:text-amber-400 transition-colors">{t("Verificar certificado")}</Link>
+            <Link href="/cursos" className="hover:text-amber-400">{t("Cursos")}</Link>
+            <Link href="#ao-vivo" className="hover:text-amber-400">{t("Ao vivo")}</Link>
+            <Link href="/certificado" className="hover:text-amber-400">{t("Verificar certificado")}</Link>
           </div>
-          <span className="text-muted-light">© {new Date().getFullYear()} SMU PRO</span>
+          <span>© {new Date().getFullYear()} SMU PRO</span>
         </div>
       </footer>
 
@@ -402,17 +410,60 @@ export default async function HomePage() {
         "url": isAula ? "https://aula.smuproducoes.com" : "https://smuproducoes.com",
         "address": { "@type": "PostalAddress", "addressCountry": "BR" },
       }) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
-        "@context": "https://schema.org",
-        "@type": "FAQPage",
-        "mainEntity": [
-          { "@type": "Question", "name": "Os cursos da SMU PRO têm certificado?", "acceptedAnswer": { "@type": "Answer", "text": "Sim, todos os cursos emitem certificado digital com QR Code verificável por qualquer contratante." }},
-          { "@type": "Question", "name": "Preciso ter experiência para começar?", "acceptedAnswer": { "@type": "Answer", "text": "Não. O nível Trainee é ideal para iniciantes. A trilha de carreira vai do básico ao avançado." }},
-          { "@type": "Question", "name": "O que é o Projeto Cultural MIT?", "acceptedAnswer": { "@type": "Answer", "text": "É um programa de inclusão que oferece acesso gratuito a todo o catálogo de cursos para alunos selecionados." }},
-          { "@type": "Question", "name": "Quanto tempo tenho acesso aos cursos?", "acceptedAnswer": { "@type": "Answer", "text": "O acesso é vitalício. Uma vez matriculado, você pode assistir quantas vezes quiser." }},
-          { "@type": "Question", "name": "Os cursos são online ou presenciais?", "acceptedAnswer": { "@type": "Answer", "text": "100% online. Assista de qualquer lugar, no seu ritmo, com aulas em vídeo HD." }},
-        ]
-      }) }} />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------ helpers (server) */
+function Eyebrow({ n, children }: { n: string; children: ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-2.5 font-mono text-[11px] uppercase tracking-[0.18em] text-amber-400" style={{ fontFamily: "var(--font-orbitron), sans-serif" }}>
+      <span className="font-bold text-muted-light">{n}</span> — {children}
+    </span>
+  );
+}
+
+function Section({
+  id,
+  n,
+  eyebrow,
+  badge,
+  children,
+}: {
+  id?: string;
+  n: string;
+  eyebrow: string;
+  badge?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section id={id} className="border-t border-border/50 px-6 py-24">
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-9">
+          <Eyebrow n={n}>
+            {eyebrow}
+            {badge && <span className="ml-2 rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold text-white">{badge}</span>}
+          </Eyebrow>
+        </div>
+        {children}
+      </div>
+    </section>
+  );
+}
+
+function SectionHeading({ children }: { children: ReactNode }) {
+  return <h3 className="mb-4 mt-4 text-2xl font-bold leading-tight tracking-tight sm:text-3xl">{children}</h3>;
+}
+
+function Bullets({ items }: { items: [string, string][] }) {
+  return (
+    <div className="flex flex-col gap-3">
+      {items.map(([head, tail]) => (
+        <div key={head} className="flex items-start gap-3 text-[14.5px]">
+          <span className="mt-0.5 flex h-[22px] w-[22px] flex-none items-center justify-center rounded-md bg-amber-500/10 text-[13px] text-amber-400">✓</span>
+          <span className="text-muted"><b className="text-foreground">{head}</b> — {tail}</span>
+        </div>
+      ))}
     </div>
   );
 }
