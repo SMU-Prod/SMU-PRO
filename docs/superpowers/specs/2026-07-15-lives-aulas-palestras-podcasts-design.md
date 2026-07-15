@@ -29,7 +29,7 @@ Esses três objetivos são parcialmente contraditórios — delay mínimo e cust
 ### 0.2 Terminologia — manter a distinção
 
 - **Broadcast** — o palestrante transmite, alunos assistem e interagem **por escrito**. Delay 2-5s. É o escopo deste spec.
-- **Palco interativo** — aluno entra no ar com câmera/mic. Exige WebRTC sub-500ms. **Fora do escopo** (fase 2, §11).
+- **Palco interativo** — aluno entra no ar com câmera/mic. Exige WebRTC sub-500ms. **Fora do escopo** (fase 2, §12).
 
 Não chamar broadcast de "interativo em tempo real". Com 2-5s de delay não existe conversa, e vender isso internamente leva a decisões erradas.
 
@@ -50,10 +50,10 @@ Permitir que a SMU transmita aulas, palestras e podcasts ao vivo dentro do SMU P
 7. Gravação vira aula VOD do curso.
 
 ### Não-objetivos (fora deste spec)
-- **Palco WebRTC / aluno no ar** — fase 2, ver §11.
-- **Q&A com upvote e quiz durante a live** — alto valor, spec próprio (§11).
+- **Palco WebRTC / aluno no ar** — fase 2, ver §12.
+- **Q&A com upvote e quiz durante a live** — alto valor, spec próprio (§12).
 - Legendas ao vivo, transcrição, resumo por IA.
-- Breakout rooms, Super Chat/gorjeta, leaderboard na live, replay com chat sincronizado — **decidido não construir** (§10).
+- Breakout rooms, Super Chat/gorjeta, leaderboard na live, replay com chat sincronizado — **decidido não construir** (§11).
 - Qualquer mudança no fluxo de pagamento existente.
 
 ---
@@ -279,7 +279,56 @@ Segue os padrões existentes: Server Actions em `src/lib/actions/`, `assertAdmin
 
 ---
 
-## 10. Decidido NÃO construir
+## 10. Responsividade — celular, tablet, desktop
+
+**Numa live, a pessoa está no celular.** Isto não é polimento final; é o caso de uso principal e condiciona o layout da sala.
+
+### 10.1 O idioma que já existe (e onde divergimos)
+
+O `lesson-player.tsx` faz 65/35 **só a partir de `lg:`** (1024px). Abaixo disso a sidebar vira `hidden` e seu conteúdo reaparece como **aba** na barra principal (`lg:hidden`, linha ~531). O vídeo é capado em `{ aspectRatio: "16/9", maxHeight: "40vh" }`.
+
+**Seguimos o breakpoint, divergimos do padrão da aba** — e a justificativa importa:
+
+Na aula, a sidebar é **material de referência** (secundário) — esconder atrás de aba é correto. Na live, o chat é **co-primário**: é o que faz o evento ser ao vivo. Escondê-lo atrás de uma aba mata a sensação de live justamente onde ela mais importa.
+
+**No celular: player fixo no topo (16:9), chat ocupando o resto e rolando embaixo.** É o que YouTube, Twitch e Instagram Live fazem — não por convenção, mas porque é o único arranjo que cabe. Divergir do idioma interno aqui é seguir o idioma do domínio.
+
+### 10.2 Layout por tamanho
+
+| Alvo | Largura | Layout |
+|---|---|---|
+| Celular retrato | <640px | Player 16:9 fixo no topo · chat abaixo, rolando · input ancorado no rodapé |
+| Celular paisagem | — | Player em tela cheia; chat vira overlay recolhível |
+| **iPad retrato** | 768-834px | Empilhado (igual celular, com folga) — **fica abaixo de `lg`, cai naturalmente na regra** |
+| **iPad paisagem** | 1024-1194px | 65/35 lado a lado — **atinge `lg`, cai naturalmente na regra** |
+| Desktop | ≥1024px | 65/35, igual à aula |
+
+O breakpoint `lg` existente **já separa iPad retrato de iPad paisagem** sem nenhum breakpoint novo. Não inventar `md:` aqui.
+
+### 10.3 As três armadilhas de iOS
+
+1. **`100vh` mente no Safari.** O `globals.css:113` usa `min-height: 100vh`; no iOS isso inclui a barra de endereço e o conteúdo do rodapé fica **fora da tela**. Numa sala com input de chat ancorado embaixo, o input some. **A sala de live usa `dvh` (`100dvh`/`svh`), não `vh`.** Não mexer no `globals.css` global — o risco não vale; corrigir no escopo da sala.
+2. **Teclado empurra o viewport.** Ao focar o input, o iOS encolhe o *visual viewport* sem avisar o layout. O input precisa continuar visível e o chat precisa rolar até o fim. Testar em device real — simulador não reproduz.
+3. **Área segura.** Rodapé precisa de `env(safe-area-inset-bottom)` ou o input fica embaixo da barra de gestos do iPhone.
+
+### 10.4 Decisão pendente: tela cheia no celular
+
+O `video-player.tsx` hoje passa **`allowFullScreen={false}`** — escolha deliberada da aula (mantém o aluno no app).
+
+**Para live isso não se sustenta.** Uma palestra de 1h a 40vh num iPhone em retrato é assistível por uns cinco minutos. Sem tela cheia, o aluno abre no YouTube e você perde o chat, a presença e o app.
+
+Recomendação: **`allowFullScreen` ligado na live** (mantém desligado na aula VOD). O trade-off é real — em tela cheia o chat some — mas a alternativa é o aluno sair. Em paisagem no celular, entrar em tela cheia por padrão.
+
+### 10.5 Regras gerais
+- Alvos de toque ≥44px (iOS HIG) — a barra de aba atual usa `py-2.5`, apertado no dedo.
+- `aspect-video` do Tailwind no container do player; nunca altura fixa em px.
+- Chat com scroll virtualizado ou janela limitada — uma live de 1h com 500 mensagens não pode montar 500 nós no DOM de um celular fraco.
+- Auto-scroll do chat **só se o usuário já estiver no fim** (senão puxa a leitura dele para baixo à força).
+- Verificar em device real, não só no DevTools: iPhone retrato/paisagem, iPad retrato/paisagem.
+
+---
+
+## 11. Decidido NÃO construir
 
 Cada item tem motivo, não é só corte de escopo:
 
@@ -294,7 +343,7 @@ Cada item tem motivo, não é só corte de escopo:
 
 ---
 
-## 11. Fases seguintes (specs próprios)
+## 12. Fases seguintes (specs próprios)
 
 1. **Q&A com upvote + quiz avaliativo ao vivo** — maior valor/custo do backlog. Q&A: ~20 perguntas/sessão, **nenhuma plataforma BR tem**. Quiz: g=0.61 e **serve como a avaliação do Anexo II 4.6** (Clerk = "identificação e senha individual").
 2. **Auto live → aula VOD** — ~50% dos inscritos nunca assistem ao vivo; custo marginal ~zero.
@@ -303,7 +352,7 @@ Cada item tem motivo, não é só corte de escopo:
 
 ---
 
-## 12. Erros e casos de borda
+## 13. Erros e casos de borda
 
 | Caso | Comportamento |
 |---|---|
@@ -317,7 +366,7 @@ Cada item tem motivo, não é só corte de escopo:
 
 ---
 
-## 13. Testes
+## 14. Testes
 
 Vitest já está no projeto (`npm test`), e a auditoria de julho registrou **~0% de cobertura** — este spec não conserta isso, mas não piora.
 
@@ -331,7 +380,7 @@ Vitest já está no projeto (`npm test`), e a auditoria de julho registrou **~0%
 
 ---
 
-## 14. Ordem de implementação
+## 15. Ordem de implementação
 
 Custo de infra **R$0 até o passo 6**.
 
@@ -349,7 +398,7 @@ Passos 1-5 já entregam mais live nativa que Hotmart, Kiwify e Eduzz — as trê
 
 ---
 
-## 15. Incertezas registradas
+## 16. Incertezas registradas
 
 Nada aqui bloqueia a fase 1; tudo aqui deve ser reconfirmado antes de virar decisão de produto.
 
