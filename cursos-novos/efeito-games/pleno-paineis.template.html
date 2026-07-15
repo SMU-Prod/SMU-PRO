@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Painéis LED & Efeitos Visuais · SMU PRO</title>
+<style>
+  :root{ --bg:#06080e; --panel:#0c111c; --panel2:#0f1626; --line:#25314c; --ink:#e8eef9; --mut:#8a9bb8; --acc:#ff7a1a; --ok:#39d98a; --bad:#ff4d4d; --warn:#ffc63b; --blue:#54b3ff; }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:#05070c;color:var(--ink);font-family:system-ui,Segoe UI,Roboto,Arial;overflow:hidden;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+  #app{position:fixed;top:0;left:0;width:100vw;height:var(--visH,100vh);display:flex;flex-direction:column;overflow:hidden;padding:9px;gap:8px}
+  #hd{flex:none}#hd b{font-size:14px;font-weight:800}#hd span{display:block;font-size:11px;color:var(--mut)}
+  #wallWrap{flex:1 1 auto;min-height:100px;position:relative;background:#000;border:1px solid var(--line);border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center}
+  #wall{max-width:100%;max-height:100%}
+  #laserTag{position:absolute;right:10px;top:8px;font-size:11px;font-weight:800;padding:4px 10px;border-radius:20px;border:1px solid var(--line);background:#0009;display:none}
+  #laserTag.bad{display:block;color:#ffb3ab;background:#3a1414;border-color:#8a2a2a;animation:bl .7s infinite}
+  #laserTag.ok{display:block;color:#9af2c0;background:#123a24;border-color:#2b7a4e}
+  @keyframes bl{50%{opacity:.5}}
+  #info{position:absolute;left:10px;bottom:8px;font-size:11px;color:#8ea0bd;pointer-events:none;text-shadow:0 1px 5px #000}
+  #ctl{flex:none;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;background:#0a0e18;border:1px solid var(--line);border-radius:11px;padding:8px 10px}
+  .btn{border:1px solid var(--line);background:#141c2b;color:var(--ink);border-radius:9px;padding:8px 11px;font-size:12px;font-weight:700;cursor:pointer;min-height:38px}
+  .btn.sel{background:#3a2410;border-color:var(--acc);color:#ffcf9e}
+  .btn.laser{background:#2a0d0d;border-color:#8a2a2a;color:#ff9a9a}.btn.laser.on{background:#123a24;border-color:#2b7a4e;color:#9af2c0}
+  .sl{display:flex;flex-direction:column;gap:3px;align-items:center;min-width:96px}
+  .sl .v{font-size:12px;font-weight:800}.sl label{font-size:9.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:110px;height:22px;background:transparent;cursor:pointer}
+  input[type=range]::-webkit-slider-runnable-track{height:5px;background:#243149;border-radius:3px}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;margin-top:-7px;border-radius:50%;background:var(--acc);border:2px solid #ffd3a8}
+  input[type=color]{width:38px;height:34px;border:1px solid var(--line);border-radius:7px;background:#141c2b;cursor:pointer}
+  #obj{position:absolute;left:10px;bottom:74px;z-index:6;width:min(285px,62vw);background:#0c1220ee;border:1px solid var(--line);border-radius:11px;padding:9px 11px}
+  #obj h4{margin:0 0 5px;font-size:11px;text-transform:uppercase;color:var(--acc)}
+  #obj ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+  #obj li{display:flex;gap:7px;font-size:11.5px;color:#cdd8ea;align-items:flex-start}
+  #obj li .bx{flex:none;width:15px;height:15px;border-radius:4px;border:1.5px solid #46567a;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#04140b}
+  #obj li.done .bx{background:var(--ok);border-color:var(--ok)}#obj li.done{color:#8fb8a2}
+  #obj.win{border-color:var(--ok);box-shadow:0 0 20px #39d98a44}
+  #toast{position:absolute;left:50%;top:12px;transform:translateX(-50%) translateY(-60px);z-index:9;background:#0e1726f2;border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-size:12.5px;font-weight:700;transition:transform .3s;max-width:82vw;text-align:center}
+  #toast.show{transform:translateX(-50%) translateY(0)}
+  #toast.good{border-color:var(--ok);color:#bff5da}#toast.bad{border-color:var(--bad);color:#ffb3ab}#toast.warn{border-color:var(--warn);color:#ffe6a8}
+</style></head>
+<body>
+<div id="app">
+  <div id="hd"><b>Painéis LED & Efeitos Visuais</b><span>LED wall, pixel mapping e laser (não pirotécnicos) — controle e segurança</span></div>
+  <div id="wallWrap"><canvas id="wall"></canvas><div id="laserTag"></div><div id="info"></div></div>
+  <div id="ctl">
+    <button class="btn sel" data-mode="solid">Cor sólida</button>
+    <input type="color" id="col" value="#ff2b6d">
+    <button class="btn" data-mode="chase">Chase</button>
+    <button class="btn" data-mode="rainbow">Arco-íris</button>
+    <button class="btn" data-mode="vu">VU / música</button>
+    <button class="btn" data-mode="logo">Conteúdo (mídia)</button>
+    <div class="sl"><div class="v" id="v-br">80%</div><input id="br" type="range" min="5" max="100" value="80"><label>Brilho</label></div>
+    <button class="btn laser" id="laser">🔺 Laser: OFF</button>
+    <button class="btn" id="aim">Apontar p/ público</button>
+  </div>
+  <div id="obj"><h4>🎯 Objetivos</h4><ul id="objList"></ul></div>
+  <div id="toast"></div>
+</div>
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const cv=$('wall'), ctx=cv.getContext('2d');
+  const COLS=48, ROWS=27;            // resolução do painel (pixels)
+  let mode='solid', bright=0.8, solid='#ff2b6d', t=0;
+  let laser=false, aimAudience=false;
+  let tT; function toast(m,k){ const el=$('toast'); el.textContent=m; el.className='show '+(k||''); clearTimeout(tT); tT=setTimeout(()=>el.className=(k||''),2600); }
+
+  function size(){ const r=cv.parentElement.getBoundingClientRect(); const ar=COLS/ROWS;
+    let w=r.width-8, h=w/ar; if(h>r.height-8){ h=r.height-8; w=h*ar; }
+    cv.width=Math.round(w*(Math.min(devicePixelRatio||1,2))); cv.height=Math.round(h*(Math.min(devicePixelRatio||1,2)));
+    cv.style.width=w+'px'; cv.style.height=h+'px'; }
+
+  function px(col,row){ // retorna [r,g,b] do conteúdo no pixel
+    if(mode==='solid'){ const n=parseInt(solid.slice(1),16); return [(n>>16)&255,(n>>8)&255,n&255]; }
+    if(mode==='chase'){ const on=((col+Math.floor(t))%COLS)<6; return on?[80,180,255]:[6,10,20]; }
+    if(mode==='rainbow'){ const h=((col/COLS*360)+t*4)%360; return hsl(h,90,55); }
+    if(mode==='vu'){ const bars=[.9,.6,.75,.5,.85,.65,.95,.55]; const bi=Math.floor(col/COLS*bars.length); const lvl=bars[bi]*(0.6+0.4*Math.abs(Math.sin(t*0.15+bi))); const y=1-row/ROWS; const on=y<lvl; return on?(y>lvl-0.15?[255,80,60]:y>lvl-0.35?[255,200,60]:[60,220,120]):[6,10,20]; }
+    if(mode==='logo'){ // "SMU" simples via blocos + fundo gradiente
+      const g=[Math.round(20+col/COLS*40),Math.round(10+row/ROWS*30),60];
+      const cx=col-COLS/2, cy=row-ROWS/2; if(Math.abs(cy)<7 && Math.abs(cx)<18){ const seg=Math.floor((cx+18)/12); if((col+Math.floor(t))%2===0) return [255,120+seg*20,40]; }
+      return g; }
+    return [0,0,0];
+  }
+  function hsl(h,s,l){ s/=100;l/=100; const c=(1-Math.abs(2*l-1))*s, x=c*(1-Math.abs((h/60)%2-1)), m=l-c/2; let r,g,b;
+    if(h<60){r=c;g=x;b=0;}else if(h<120){r=x;g=c;b=0;}else if(h<180){r=0;g=c;b=x;}else if(h<240){r=0;g=x;b=c;}else if(h<300){r=x;g=0;b=c;}else{r=c;g=0;b=x;}
+    return [Math.round((r+m)*255),Math.round((g+m)*255),Math.round((b+m)*255)]; }
+
+  function draw(){
+    const W=cv.width,H=cv.height; ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
+    const pw=W/COLS, ph=H/ROWS, gap=Math.max(1,pw*0.12);
+    for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){ const [R,G,B]=px(c,r);
+      ctx.fillStyle=`rgb(${R*bright|0},${G*bright|0},${B*bright|0})`;
+      ctx.beginPath(); const x=c*pw+gap/2,y=r*ph+gap/2,w=pw-gap,h=ph-gap; ctx.rect(x,y,w,h); ctx.fill(); }
+    // laser overlay
+    if(laser){ ctx.save(); ctx.globalCompositeOperation='lighter';
+      const oy=aimAudience? H*0.9 : H*0.28;   // aimAudience = feixe baixo (no público) = perigo
+      for(let i=0;i<10;i++){ const gx=W*(0.2+i*0.06); ctx.strokeStyle=aimAudience?'rgba(255,40,40,.5)':'rgba(60,255,120,.45)'; ctx.lineWidth=2;
+        ctx.beginPath(); ctx.moveTo(W*0.5,0); ctx.lineTo(gx,oy); ctx.stroke(); }
+      ctx.restore(); }
+    t+=0.35; requestAnimationFrame(draw);
+  }
+
+  // controles
+  document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{ mode=b.dataset.mode;
+    document.querySelectorAll('[data-mode]').forEach(x=>x.classList.toggle('sel',x===b));
+    $('info').textContent='Conteúdo: '+b.textContent+' · '+COLS+'×'+ROWS+' px'; step('content:'+mode); toast('Conteúdo: '+b.textContent,'good'); });
+  $('col').oninput=function(){ solid=this.value; if(mode==='solid') step('content:solid'); };
+  $('br').oninput=function(){ bright=+this.value/100; $('v-br').textContent=this.value+'%'; step('bright'); };
+  $('laser').onclick=()=>{ laser=!laser; $('laser').classList.toggle('on',laser); $('laser').textContent=laser?'🔺 Laser: ON':'🔺 Laser: OFF';
+    updateLaser(); };
+  $('aim').onclick=()=>{ aimAudience=!aimAudience; $('aim').textContent=aimAudience?'Apontar acima do público':'Apontar p/ público'; updateLaser(); };
+  function updateLaser(){ const tag=$('laserTag');
+    if(!laser){ tag.className=''; return; }
+    if(aimAudience){ tag.className='bad'; tag.textContent='⚠ PROIBIDO — feixe no público (risco ocular)'; toast('NUNCA escaneie o público! Laser no olho causa lesão. Precisa de variance/FDA e feixe acima das cabeças.','bad'); }
+    else { tag.className='ok'; tag.textContent='✓ Feixe acima do público'; step('laser'); }
+  }
+
+  const OBJ=[{id:'content:solid',t:'Rodar cor sólida'},{id:'content:chase',t:'Rodar chase'},{id:'content:rainbow',t:'Rodar arco-íris'},{id:'content:vu',t:'Rodar VU / música'},{id:'content:logo',t:'Rodar conteúdo (mídia)'},{id:'bright',t:'Ajustar o brilho do painel'},{id:'laser',t:'Usar o laser com segurança (acima do público)'}];
+  const objEls={},objDone={}; let won=false;
+  (function(){ const ul=$('objList'); OBJ.forEach(o=>{ const li=document.createElement('li'); li.innerHTML='<span class="bx"></span><span>'+o.t+'</span>'; ul.appendChild(li); objEls[o.id]=li; }); })();
+  function step(id){ if(objEls[id]&&!objDone[id]){ objDone[id]=true; objEls[id].classList.add('done'); objEls[id].querySelector('.bx').textContent='✓';
+    if(OBJ.every(o=>objDone[o.id])&&!won){won=true;$('obj').classList.add('win');toast('Painel dominado + laser seguro. Efeito visual bonito nunca vale um acidente.','good');} } }
+
+  function setVisH(){ var vh=window.innerHeight, sh=(window.screen&&screen.height)||vh; var inflated=vh>sh+8, visH=Math.min(vh,sh), header=inflated?86:0;
+    document.documentElement.style.setProperty('--visH', Math.max(300,visH-header)+'px'); size(); }
+  addEventListener('resize',setVisH); addEventListener('orientationchange',()=>setTimeout(setVisH,150));
+  document.addEventListener('fullscreenchange',()=>[60,260,600].forEach(d=>setTimeout(setVisH,d)));
+  document.addEventListener('webkitfullscreenchange',()=>[60,260,600].forEach(d=>setTimeout(setVisH,d)));
+  window.__probe={setMode:(m)=>{document.querySelector('[data-mode="'+m+'"]').click();},bright:(v)=>{$('br').value=v;$('br').oninput();},laser:()=>$('laser').click(),aim:()=>$('aim').click(),objDone,isWon:()=>won};
+  $('info').textContent='Conteúdo: Cor sólida · '+COLS+'×'+ROWS+' px';
+  setVisH(); size(); draw();
+})();
+</script>
+</body></html>

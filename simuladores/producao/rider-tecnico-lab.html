@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>SMU PRO · Auditoria de Rider Técnico</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0c1017;--panel:#161c26;--panel2:#1b2230;--line:#2a3444;--ink:#e7edf5;--dim:#8794a8;
+        --accent:#f59e0b;--ok:#22c55e;--err:#ef4444;--warn:#f59e0b;--cyan:#38bdf8;}
+  html,body{background:var(--bg);color:var(--ink);
+    font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased;}
+  body{padding:12px;}
+  .app{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:12px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  h1{font-size:15px;margin-bottom:3px;}
+  .sub{font-size:12px;color:var(--dim);margin-bottom:12px;line-height:1.5;}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px;}
+  .stat .k{font-size:10px;color:var(--dim);letter-spacing:.5px;}
+  .stat .val{font-size:15px;font-weight:800;margin-top:2px;}
+  .verdict{font-size:13px;font-weight:700;padding:9px 12px;border-radius:8px;text-align:center;}
+  .verdict.ok{background:#14532d;color:#bbf7d0;}
+  .verdict.bad{background:#450a0a;color:#fca5a5;}
+  .verdict.warn{background:#422006;color:#fde68a;}
+  .note{font-size:12px;color:var(--dim);line-height:1.55;}
+  button{font:inherit;cursor:pointer;}
+
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  @media(min-width:660px){ .stats{grid-template-columns:repeat(4,1fr);} }
+  .stat .val small{font-size:10px;color:var(--dim);font-weight:400;}
+  .bar{height:5px;border-radius:3px;background:#0a0e15;border:1px solid var(--line);margin-top:6px;overflow:hidden;}
+  .bar i{display:block;height:100%;background:var(--ok);width:0;transition:width .18s;}
+  .bar i.over{background:var(--err);}
+
+  .grid{display:grid;grid-template-columns:1fr;gap:10px;}
+  @media(min-width:660px){ .grid{grid-template-columns:1fr 1fr;} }
+  .item{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:11px;display:flex;flex-direction:column;gap:8px;}
+  .item.done{border-color:#3a4658;}
+  .cat{font-size:9px;letter-spacing:.7px;color:var(--cyan);font-weight:700;}
+  .nm{font-size:13px;font-weight:700;line-height:1.3;}
+  .cmp{display:grid;grid-template-columns:1fr;gap:7px;}
+  @media(min-width:440px){ .cmp{grid-template-columns:1fr 1fr;} }
+  .side{border:1px solid var(--line);border-radius:7px;padding:7px 8px;background:#0f141d;}
+  .side.r{border-left:2px solid var(--accent);}
+  .side.c{border-left:2px solid var(--cyan);}
+  .side .lb{font-size:9px;letter-spacing:.6px;color:var(--dim);font-weight:700;margin-bottom:3px;}
+  .side .tx{font-size:11px;line-height:1.45;color:#c7d2e0;}
+  .opts{display:flex;gap:5px;}
+  .opts button{flex:1;min-height:38px;font-size:11px;font-weight:600;padding:5px 3px;border:1px solid var(--line);
+    border-radius:7px;background:#0c1119;color:var(--dim);line-height:1.25;}
+  .opts button b{display:block;font-size:9px;font-weight:500;opacity:.75;margin-top:2px;}
+  .opts button.on[data-a=casa]{background:#052e1a;border-color:var(--ok);color:#bbf7d0;}
+  .opts button.on[data-a=locar]{background:#3b1414;border-color:#b45309;color:#fdba74;}
+  .opts button.on[data-a=neg]{background:#0b2d3d;border-color:var(--cyan);color:#bae6fd;}
+  .item.locked .opts button{pointer-events:none;opacity:.55;}
+  .item.locked .opts button.on{opacity:1;}
+  .fb{display:none;font-size:11px;line-height:1.5;border-radius:7px;padding:8px 9px;}
+  .fb.show{display:block;}
+  .fb.right{background:#0d2818;color:#86efac;border:1px solid #14532d;}
+  .fb.wrong{background:#1f0d0d;color:#fca5a5;border:1px solid #7f1d1d;}
+  .fb .hd{font-weight:800;color:var(--ink);margin-bottom:3px;font-size:11px;}
+  .acts{display:flex;gap:8px;}
+  .acts button{flex:1;min-height:40px;border-radius:8px;font-size:13px;font-weight:700;border:1px solid var(--line);}
+  #check{background:var(--accent);border-color:var(--accent);color:#1a1206;}
+  #check:disabled{opacity:.4;cursor:default;}
+  #reset{background:#0c1119;color:var(--dim);}
+  .brief{display:grid;grid-template-columns:1fr;gap:6px;font-size:11px;color:#c7d2e0;line-height:1.5;}
+  @media(min-width:560px){ .brief{grid-template-columns:1fr 1fr;} }
+  .brief div{background:#0f141d;border:1px solid var(--line);border-radius:7px;padding:7px 9px;}
+  .brief b{color:var(--ink);}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="card">
+    <h1>Auditoria de rider técnico × inventário da casa</h1>
+    <div class="sub">Show único, casa de 1.500 pax, banda pop-rock nacional. Item a item, decida: <b>Casa atende</b>, <b>Locar</b> ou <b>Negociar/substituir</b>. Cada locação entra no orçamento. O rider é ponto de partida — o que é <b>inegociável</b> você loca, o resto você negocia.</div>
+    <div class="brief">
+      <div><b>Artista:</b> 5 músicos, 4 vocais, bateria, baixo, 2 guitarras, teclado. Engenheiro de FOH e de monitor próprios.</div>
+      <div><b>Venue:</b> casa fixa, PA e consoles instalados, sem backline. Load-in 08h, soundcheck 16h, casa abre 20h.</div>
+    </div>
+    <div class="stats" style="margin-top:10px">
+      <div class="stat"><div class="k">LOCAÇÃO ACUMULADA</div><div class="val" id="cost">R$ 0</div>
+        <div class="bar"><i id="bar"></i></div></div>
+      <div class="stat"><div class="k">ORÇAMENTO-TETO</div><div class="val" id="cap">R$ 15.000</div></div>
+      <div class="stat"><div class="k">DECIDIDOS</div><div class="val" id="dec">0 <small>/ 12</small></div></div>
+      <div class="stat"><div class="k">ACERTOS</div><div class="val" id="score">— <small>/ 12</small></div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <div class="card" style="display:flex;flex-direction:column;gap:10px">
+    <div class="acts">
+      <button id="check" disabled>Conferir auditoria</button>
+      <button id="reset">Reiniciar</button>
+    </div>
+    <div class="verdict warn" id="verdict">Decida os 12 itens para conferir.</div>
+    <div class="note" id="detail"></div>
+  </div>
+
+</div>
+<script>
+(function(){
+var $=function(s){return document.querySelector(s);};
+var $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s));};
+var TETO=15000;
+var LB={casa:'Casa atende',locar:'Locar',neg:'Negociar/substituir'};
+
+/* v = custo de locação do item; cn = custo se a saída for negociada */
+var ITENS=[
+{cat:'ÁUDIO · SISTEMA',n:'Sistema PA principal',a:'neg',v:18000,cn:0,
+ r:'Line array d&b audiotechnik V8 — 12 caixas por lado, mais 4 V8 de downfill. Predição em ArrayCalc.',
+ c:'L-Acoustics Kara II — 10 por lado voadas + 4 X8 de front fill, amplificadas em LA12X. Predição em Soundvision.',
+ j:'A marca no rider é preferência do engenheiro, não requisito físico. Dez Kara II por lado fecham SPL e cobertura numa casa de 1.500 pax com folga. O que você exige é a predição no Soundvision e o alinhamento entregue antes do soundcheck. Locar um V8 inteiro por causa do logotipo são R$ 18.000 saindo direto da sua margem.'},
+
+{cat:'ÁUDIO · SISTEMA',n:'Subgrave em arranjo cardioide',a:'casa',v:6000,cn:0,
+ r:'8 subgraves em arranjo cardioide (V-SUB ou equivalente), para limpar o grave do palco e da primeira fila.',
+ c:'6× L-Acoustics KS28 no chão, em array frontal, amplificados em LA12X. 1,4 m de profundidade livre à frente do palco.',
+ j:'Cardioide não é um SKU, é arranjo. Com 6 KS28 você monta broadside cardioide invertendo uma caixa a cada três e ajustando polaridade e delay no LA12X — o preset já existe na biblioteca. Locar 8 subs "para ter cardioide" é pagar R$ 6.000 por uma configuração que o sistema da casa faz de graça. Só confirme a profundidade livre e a perda de SPL do arranjo na predição.'},
+
+{cat:'ÁUDIO · FOH',n:'Console de FOH',a:'locar',v:5200,cn:0,
+ r:'DiGiCo SD12 (96 canais). O engenheiro traz o arquivo de sessão do show, com snapshots e ordem de cenas.',
+ c:'Yamaha QL5 fixa na FOH — 64 canais mono, 32 mix, rede Dante.',
+ j:'Não existe conversão de sessão DiGiCo para Yamaha: canais, snapshots, ordem de cenas e processamento não migram. Reconstruir isso na QL5 consome o soundcheck inteiro e ainda sai diferente do que a banda ensaiou. Aqui o rider é lei — R$ 5.200 de SD12 + D2 Rack é o preço de o show sair como foi ensaiado. Peça o arquivo por e-mail antes e case a versão de software da mesa.'},
+
+{cat:'ÁUDIO · MONITOR',n:'Console de monitor',a:'casa',v:3600,cn:0,
+ r:'DiGiCo SD11, Yamaha CL5 ou QL5 — aceitos. Mínimo de 16 mixes.',
+ c:'Yamaha CL5 fixa na ala do palco — 72 canais, 24 mix + 8 matrix, Dante.',
+ j:'O próprio rider lista a CL5 como alternativa aceita: leia o rider inteiro antes de cotar. E a conta fecha — 12 wedges + 4 IEM estéreo = 20 mixes, dentro dos 24 buses da CL5. Locar uma SD11 por R$ 3.600 é contrariar o que o artista já autorizou por escrito e pagar por isso.'},
+
+{cat:'ÁUDIO · MONITOR',n:'Vias de monitor (wedge + IEM)',a:'locar',v:2900,cn:0,
+ r:'12 vias de wedge + 4 sistemas in-ear estéreo (Shure PSM1000). Mapa de palco anexo.',
+ c:'8 wedges L-Acoustics X12 em 4 amplificadores. Nenhum sistema in-ear.',
+ j:'Quantidade de via é mapa de palco, não preferência: cortar via deixa músico sem referência e vira problema de FOH no primeiro refrão. Faltam 4 wedges e os 4 IEM inteiros. O modelo se negocia — PSM1000 pode virar PSM900 —, a existência da via não. R$ 2.900. Coordene as frequências dos 4 IEM junto com os bastões de voz, não depois.'},
+
+{cat:'ÁUDIO · PALCO',n:'Microfones de bateria e DI',a:'casa',v:850,cn:0,
+ r:'Bumbo Beta 52A; caixa SM57 em cima e e604 embaixo; tons e604; 4 DI ativas Radial J48.',
+ c:'Beta 52A, 6× SM57, 4× e604, 6× SM58, 4× Radial J48, 2× BSS AR-133 — tudo no case da casa.',
+ j:'O kit da casa é linha por linha o que o rider pede, com sobra. Locar microfone que já está no case é a locação mais cara que existe, porque some da margem sem produzir nenhuma diferença audível. Na conferência de carga cheque só estado de cápsula e os clips do e604.'},
+
+{cat:'ÁUDIO · PALCO',n:'Overheads de bateria',a:'neg',v:420,cn:0,
+ r:'Par de AKG C414 XLS, em cardioide, na vara de overhead.',
+ c:'Par de Neumann KM184 — cardioide fixo, diafragma pequeno, já rigado na vara de OH.',
+ j:'O rider usa o C414 justamente em cardioide, que é o único padrão do KM184 — e diafragma pequeno costuma resolver transiente de prato melhor que diafragma grande. É uma ligação de trinta segundos com o engenheiro no load-in: se ele quer o C414 pelo corpo do diafragma grande, você loca o par por R$ 420; se marcou por hábito, o KM184 fica. Resolva antes, não no soundcheck.'},
+
+{cat:'ÁUDIO · RF',n:'Bastões sem fio de voz',a:'neg',v:3100,cn:420,
+ r:'4× Shure Axient Digital AD2 com cápsula KSM9 — voz principal e 3 backing.',
+ c:'4× Shure ULXD2 com cápsula Beta 58A, banda G50, antena distribuída já coordenada na casa.',
+ j:'A cápsula KSM9 (RPW184) rosqueia direto no bastão ULXD2 — é a mesma rosca da linha Shure. Você loca 4 cápsulas por R$ 420 e entrega o timbre que o engenheiro pediu, em vez de R$ 3.100 de Axient. O que o Axient traz a mais é ShowLink e densidade de canais; com 4 bastões e 4 IEM na G50, densidade não é o gargalo. Rode o Wireless Workbench com o scan do local mesmo assim.'},
+
+{cat:'ÁUDIO · INFRA',n:'Split e rack de palco (48 canais)',a:'locar',v:1200,cn:0,
+ r:'48 canais no palco, com split independente para FOH, monitor e o gravador multipista do artista.',
+ c:'Stage box Yamaha Rio3224-D (32 in / 16 out) em Dante, compartilhado entre a QL5 da FOH e a CL5 do monitor.',
+ j:'Dois furos: 32 canais não cobrem os 48 do mapa de palco, e o Rio é Dante — não entrega sinal para o D2 Rack do SD12 que você acabou de locar. Sem splitter analógico 48×3, FOH, monitor e gravação disputam a mesma fonte e o show inteiro fica pendurado num ponto único de falha. R$ 1.200 é o item mais barato que evita o pior problema da lista.'},
+
+{cat:'PALCO',n:'Riser de bateria',a:'casa',v:700,cn:0,
+ r:'Riser de bateria 2×2 m, 40 cm de altura, com rodízios e freio.',
+ c:'Praticáveis modulares 2×1 m, pés reguláveis em 20/40/60 cm, carpete preto. Sem rodízio.',
+ j:'Dois módulos de 2×1 formam os 2×2 e o pé regulável entrega os 40 cm exatos. Rodízio serve para troca rápida entre bandas — a grade do dia é de artista único, não há troca. Locar riser rolante por R$ 700 é resolver um problema que este show não tem. Cheque o carpete e a passagem de cabo por baixo.'},
+
+{cat:'BACKLINE',n:'Backline completo',a:'locar',v:3400,cn:0,
+ r:'Fender Twin Reverb + Vox AC30; Ampeg SVT-4PRO com caixa 810E; bateria DW Collector\'s 22/12/16; 4 estantes de prato.',
+ c:'A casa não fornece backline. Palco tem 6 girafas e 2 estantes retas de microfone.',
+ j:'Backline não é do venue — é linha de locadora e entra no orçamento como item próprio. Marcar "casa atende" aqui é chegar no dia sem amplificador. O que se negocia é modelo (um AC30 pode virar um JC-120 se o guitarrista topar), não a existência do equipamento. Peça o release do backline com 10 dias e defina por escrito quem afina a bateria.'},
+
+{cat:'ENERGIA',n:'Alimentação e aterramento',a:'casa',v:4800,cn:0,
+ r:'63 A trifásico exclusivo para áudio, com terra de resistência ≤ 10 Ω conforme NBR 5410.',
+ c:'Quadro trifásico de 125 A com barramento de terra; laudo do SPDA mede 3,2 Ω. Hoje o circuito é compartilhado com a iluminação.',
+ j:'3,2 Ω está dentro dos 10 Ω da NBR 5410, e 125 A comportam os 63 A de áudio. O rider pede circuito exclusivo a partir do quadro — isso é distribuição (um disjuntor e um cabo), não fonte nova. Gerador de R$ 4.800 aqui é pagar por um problema que não existe. Exija o laudo, meça a tensão entre neutro e terra antes do soundcheck e não divida a fase do áudio com dimmer.'}
+];
+
+var pick=new Array(ITENS.length), checked=false;
+
+function brl(n){ return 'R$ '+n.toLocaleString('pt-BR'); }
+function custo(i,a){ if(a==='locar') return ITENS[i].v; if(a==='neg') return ITENS[i].cn; return 0; }
+function total(){ var t=0; for(var i=0;i<ITENS.length;i++){ if(pick[i]) t+=custo(i,pick[i]); } return t; }
+
+function build(){
+  var g=$('#grid'); g.innerHTML='';
+  ITENS.forEach(function(it,i){
+    var d=document.createElement('div'); d.className='item'; d.dataset.i=i;
+    d.innerHTML='<div class="cat">'+it.cat+'</div><div class="nm">'+(i+1)+'. '+it.n+'</div>'+
+      '<div class="cmp"><div class="side r"><div class="lb">RIDER PEDE</div><div class="tx">'+it.r+'</div></div>'+
+      '<div class="side c"><div class="lb">CASA TEM</div><div class="tx">'+it.c+'</div></div></div>'+
+      '<div class="opts">'+
+        '<button data-a="casa">Casa atende<b>R$ 0</b></button>'+
+        '<button data-a="locar">Locar<b>'+brl(it.v)+'</b></button>'+
+        '<button data-a="neg">Negociar<b>'+(it.cn?brl(it.cn):'R$ 0')+'</b></button>'+
+      '</div><div class="fb"></div>';
+    g.appendChild(d);
+  });
+  $$('.opts button').forEach(function(b){
+    b.addEventListener('click',function(){
+      if(checked) return;
+      var it=b.closest('.item'), i=+it.dataset.i;
+      it.querySelectorAll('.opts button').forEach(function(x){x.classList.remove('on');});
+      b.classList.add('on'); it.classList.add('done');
+      pick[i]=b.dataset.a; refresh();
+    });
+  });
+}
+
+function refresh(){
+  var t=total(), n=pick.filter(Boolean).length;
+  $('#cost').textContent=brl(t);
+  $('#dec').innerHTML=n+' <small>/ '+ITENS.length+'</small>';
+  var pct=Math.min(100,Math.round(t/TETO*100));
+  var bar=$('#bar'); bar.style.width=pct+'%'; bar.className=(t>TETO?'over':'');
+  $('#check').disabled=(n<ITENS.length)||checked;
+  if(!checked) $('#verdict').textContent=n<ITENS.length?('Faltam '+(ITENS.length-n)+' item(ns) para conferir.'):'Auditoria fechada em '+brl(t)+'. Confira.';
+}
+
+function conferir(){
+  checked=true;
+  var acertos=0, superfluas=0, gastoSuperfluo=0, faltou=0;
+  ITENS.forEach(function(it,i){
+    var el=$('.item[data-i="'+i+'"]'); el.classList.add('locked');
+    var fb=el.querySelector('.fb'), ok=(pick[i]===it.a);
+    if(ok){ acertos++; fb.className='fb show right'; fb.innerHTML='<div class="hd">✓ '+LB[it.a]+' — correto</div>'+it.j; }
+    else{
+      fb.className='fb show wrong';
+      fb.innerHTML='<div class="hd">✗ Você marcou "'+LB[pick[i]]+'". O correto é "'+LB[it.a]+'".</div>'+it.j;
+      if(it.a==='casa'&&pick[i]==='locar'){ superfluas++; gastoSuperfluo+=it.v; }
+      if(it.a==='locar'&&pick[i]!=='locar') faltou++;
+    }
+  });
+  var t=total(), v=$('#verdict');
+  $('#score').innerHTML=acertos+' <small>/ '+ITENS.length+'</small>';
+  var msg;
+  if(t>TETO){ v.className='verdict bad';
+    msg='Orçamento estourado: '+brl(t)+' contra teto de '+brl(TETO)+'.';
+    if(superfluas) msg+=' '+superfluas+' locação(ões) foram de equipamento que a casa já tinha — '+brl(gastoSuperfluo)+' jogados fora. Isso não some do show, some da sua margem.';
+  }
+  else if(acertos===ITENS.length){ v.className='verdict ok';
+    msg='Auditoria fechada: 12/12, '+brl(t)+' de locação dentro do teto de '+brl(TETO)+' ('+brl(TETO-t)+' de folga). Locou só o inegociável e negociou o resto.'; }
+  else if(faltou){ v.className='verdict bad';
+    msg=acertos+'/12 e dentro do teto ('+brl(t)+'), mas '+faltou+' item(ns) inegociável(is) ficaram sem locação. Orçamento barato que não faz o show acontecer não é economia — é falha de produção.'; }
+  else if(superfluas){ v.className='verdict warn';
+    msg=acertos+'/12, '+brl(t)+' dentro do teto — mas '+brl(gastoSuperfluo)+' foram locar o que a casa já tinha. Leia o inventário antes de cotar.'; }
+  else { v.className='verdict warn';
+    msg=acertos+'/12, '+brl(t)+' dentro do teto. Os erros abaixo são de leitura do rider, não de orçamento: reveja o que é preferência e o que é requisito.'; }
+  v.textContent=msg;
+  $('#detail').innerHTML='<b>Referência:</b> a auditoria correta fecha em <b>R$ 13.120</b> — SD12 + D2 Rack, 4 wedges e 4 IEM, splitter 48×3, backline e as 4 cápsulas KSM9. Locar a lista inteira daria <b>R$ 50.170</b>, mais de três vezes o teto. Rider é ponto de partida: o que muda o resultado do show você loca, o que é logotipo você negocia.';
+  $('#check').disabled=true;
+  refresh();
+}
+
+function reset(){
+  checked=false; pick=new Array(ITENS.length);
+  build(); $('#score').innerHTML='— <small>/ '+ITENS.length+'</small>';
+  $('#verdict').className='verdict warn'; $('#detail').innerHTML='';
+  refresh();
+}
+
+$('#check').addEventListener('click',conferir);
+$('#reset').addEventListener('click',reset);
+reset();
+})();
+</script>
+</body>
+</html>

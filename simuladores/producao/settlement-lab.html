@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>SMU PRO · Settlement do Show</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0c1017;--panel:#161c26;--panel2:#1b2230;--line:#2a3444;--ink:#e7edf5;--dim:#8794a8;
+        --accent:#f59e0b;--ok:#22c55e;--err:#ef4444;--warn:#f59e0b;--cyan:#38bdf8;}
+  html,body{background:var(--bg);color:var(--ink);
+    font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased;}
+  body{padding:12px;}
+  .app{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:12px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  h1{font-size:15px;margin-bottom:3px;}
+  .sub{font-size:12px;color:var(--dim);margin-bottom:12px;line-height:1.5;}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px;}
+  .stat .k{font-size:10px;color:var(--dim);letter-spacing:.5px;}
+  .stat .val{font-size:15px;font-weight:800;margin-top:2px;}
+  .verdict{font-size:13px;font-weight:700;padding:9px 12px;border-radius:8px;text-align:center;}
+  .verdict.ok{background:#14532d;color:#bbf7d0;}
+  .verdict.bad{background:#450a0a;color:#fca5a5;}
+  .verdict.warn{background:#422006;color:#fde68a;}
+  .note{font-size:12px;color:var(--dim);line-height:1.55;}
+  button{font:inherit;cursor:pointer;}
+  h2{font-size:12px;letter-spacing:.7px;color:var(--accent);text-transform:uppercase;margin-bottom:8px;}
+  .tw{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:9px;}
+  table{width:100%;min-width:520px;border-collapse:collapse;font-size:12px;}
+  th,td{padding:7px 9px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap;}
+  th:first-child,td:first-child{text-align:left;white-space:normal;min-width:150px;}
+  thead th{background:#0f141d;color:var(--dim);font-size:10px;letter-spacing:.5px;text-transform:uppercase;font-weight:700;}
+  tbody tr:last-child td{border-bottom:0;}
+  tr.tot td{background:#0f141d;font-weight:800;}
+  tr.sep td{background:#101722;color:var(--dim);font-size:11px;}
+  td.q{color:var(--accent);font-weight:800;}
+  .neg{color:#fca5a5;} .pos{color:#86efac;} .mut{color:var(--dim);font-weight:400;}
+  .grid4{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
+  @media(min-width:660px){.grid4{grid-template-columns:repeat(4,1fr);}}
+  .seg{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px;}
+  .seg button{flex:1;min-width:104px;min-height:34px;font-size:11px;padding:7px 6px;border:1px solid var(--line);
+    border-radius:7px;background:#0c1119;color:var(--dim);font-weight:600;}
+  .seg button.on{background:#42200680;border-color:var(--accent);color:#fde68a;}
+  .fields{display:grid;grid-template-columns:1fr;gap:9px;}
+  @media(min-width:660px){.fields{grid-template-columns:1fr 1fr;}}
+  .f label{display:block;font-size:11px;color:var(--dim);margin-bottom:4px;line-height:1.35;}
+  .f label b{color:var(--ink);font-weight:700;}
+  .f input{width:100%;min-height:36px;padding:7px 9px;border:1px solid var(--line);border-radius:7px;
+    background:#0a0e15;color:var(--ink);font:inherit;font-size:13px;font-weight:700;text-align:right;}
+  .f input:focus{outline:none;border-color:var(--cyan);}
+  .f.ok input{border-color:var(--ok);} .f.bad input{border-color:var(--err);}
+  .fb{font-size:11px;line-height:1.5;margin-top:4px;display:none;}
+  .f.ok .fb,.f.bad .fb{display:block;}
+  .f.ok .fb{color:#86efac;} .f.bad .fb{color:#fca5a5;}
+  .acts{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px;}
+  .acts button{flex:1;min-width:112px;min-height:38px;border-radius:8px;font-size:12px;font-weight:700;
+    border:1px solid var(--line);background:#0c1119;color:var(--ink);}
+  .acts button.pri{background:var(--accent);border-color:var(--accent);color:#1a1200;}
+  .doc{background:#12171f;border:1px dashed var(--line);border-radius:9px;padding:9px 11px;font-size:11px;
+    color:var(--dim);line-height:1.6;margin-bottom:9px;}
+  .doc b{color:var(--ink);}
+  ul{margin:0 0 0 15px;font-size:12px;color:var(--dim);line-height:1.65;}
+  ul b{color:var(--ink);}
+  .hide{display:none;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="card">
+    <h1>Settlement: fechar o show e achar o resultado real</h1>
+    <div class="sub">Fim do show, 2h da manhã, mesa de fechamento. Você tem o <b>borderô da ticketeira</b>, o <b>contrato do artista</b> e a <b>planilha de custos</b>. Preencha o settlement e descubra se o evento deu lucro — de verdade.</div>
+    <div class="seg" id="scen"></div>
+    <div class="note" id="scenNote"></div>
+  </div>
+
+  <div class="card">
+    <h2>Borderô · relatório da ticketeira</h2>
+    <div class="doc" id="docHead"></div>
+    <div class="tw"><table id="tBord"></table></div>
+    <div class="grid4" id="statsBord"></div>
+  </div>
+
+  <div class="card">
+    <h2>Contrato e condições da praça</h2>
+    <div class="tw"><table id="tCond"></table></div>
+  </div>
+
+  <div class="card">
+    <h2>Planilha de custos</h2>
+    <div class="tw"><table id="tCusto"></table></div>
+  </div>
+
+  <div class="card">
+    <h2>Seu settlement</h2>
+    <div class="sub">Preencha em reais (ex.: <b>183.000,00</b>). Prejuízo entra com sinal negativo.</div>
+    <div class="fields" id="fields"></div>
+    <div class="acts">
+      <button class="pri" id="bCheck">Conferir settlement</button>
+      <button id="bClear">Limpar campos</button>
+      <button id="bReset">Reiniciar cenário</button>
+    </div>
+    <div class="verdict hide" id="verd" style="margin-top:12px;"></div>
+    <div class="tw hide" id="wAnal" style="margin-top:10px;"><table id="tAnal"></table></div>
+  </div>
+
+  <div class="card">
+    <h2>Bloco "e se" · o risco é do produtor</h2>
+    <div class="sub">O cachê fixo não cai quando o público cai. Veja o que sobra de você.</div>
+    <div class="acts" style="margin-top:0;">
+      <button id="bRain">E se: choveu, veio 60% do público</button>
+    </div>
+    <div id="rainOut" class="hide" style="margin-top:11px;">
+      <div class="tw"><table id="tRain"></table></div>
+      <div class="note" id="rainNote" style="margin-top:9px;"></div>
+    </div>
+  </div>
+
+</div>
+<script>
+(function(){
+var $=function(s){return document.querySelector(s);};
+
+/* ---------- parâmetros do evento (mercado BR) ---------- */
+var P={
+  cap:{pista:800,vip:300,camarote:100},
+  preco:{pista:120,vip:240,camarote:480},
+  cort:{pista:55,vip:30,camarote:5},
+  conv:0.15,     /* taxa de conveniência da ticketeira, cobrada do comprador */
+  ecad:0.10,     /* ECAD - música ao vivo com ingresso, s/ receita bruta de bilheteria */
+  iss:0.05,      /* ISS diversão pública, s/ receita bruta de bilheteria */
+  cartao:0.035,  /* MDR do adquirente, s/ receita bruta de bilheteria */
+  casa:0.10,     /* locação em percentual do borderô */
+  cacheFixo:60000, cacheVar:0.15,
+  patroc:25000,
+  abTicket:40, abPct:0.15, /* consumo médio no bar x % do produtor no A&B */
+  custos:[['Som — PA, monitor e operadores',14000],['Luz — rider do artista',11000],
+          ['Palco, estrutura e backline',8500],['Equipe de produção',7200],
+          ['Transporte — van e carreta',4800],['Hospedagem — 14 apt / 1 noite',5600],
+          ['Catering e camarim',3400],['Segurança, brigada e ambulância',6500],
+          ['Seguro do evento (RC)',1900],['Marketing e mídia',12000],
+          ['Ticketeira — setup e bilheteiros',2100]]
+};
+var SET=['pista','vip','camarote'], NOME={pista:'Pista',vip:'VIP',camarote:'Camarote'};
+var CAP_T=1200, CORT_T=90, FIXO=77000, PE=112000; /* PE = 77.000 + 60.000 − 25.000 patrocínio */
+
+var SCEN={
+  base:{n:'Sexta cheia',v:{pista:745,vip:250,camarote:70},
+        d:'Sexta-feira, venda normal, boa antecipada. Casa quase cheia.'},
+  chuva:{n:'Choveu — 60%',v:{pista:447,vip:150,camarote:42},
+        d:'Temporal na semana do show: a venda travou em 60% do previsto. O cachê fixo continua o mesmo.'},
+  esgot:{n:'Esgotado',v:{pista:745,vip:270,camarote:95},
+        d:'Todos os 1.110 ingressos vendáveis vendidos. Com as cortesias, 1.200 pessoas na casa — teto absoluto.'}
+};
+var cur='base';
+
+/* ---------- motor de cálculo ---------- */
+function calc(sc){
+  var v=SCEN[sc].v, bruta=0, pag=0, i;
+  for(i=0;i<SET.length;i++){ bruta+=v[SET[i]]*P.preco[SET[i]]; pag+=v[SET[i]]; }
+  var conv=bruta*P.conv, ecad=bruta*P.ecad, iss=bruta*P.iss,
+      cartao=bruta*P.cartao, casa=bruta*P.casa;
+  var ded=ecad+iss+cartao+casa, liq=bruta-ded;
+  var publico=pag+CORT_T;
+  var ab=publico*P.abTicket*P.abPct;
+  var outras=P.patroc+ab;
+  var cvar=Math.max(0,(liq-PE)*P.cacheVar);
+  var cache=P.cacheFixo+cvar;
+  var custos=FIXO+cache;
+  var res=liq+outras-custos;
+  var peIng=Math.ceil(PE/(liq/pag));
+  return {v:v,bruta:bruta,conv:conv,cobrado:bruta+conv,ecad:ecad,iss:iss,cartao:cartao,casa:casa,
+          ded:ded,liq:liq,pag:pag,publico:publico,ab:ab,outras:outras,cvar:cvar,cache:cache,
+          custos:custos,res:res,peIng:peIng};
+}
+
+/* ---------- formatação ---------- */
+function fmt(n,d){ if(d===undefined)d=2;
+  return n.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d}); }
+function brl(n){ return (n<0?'−R$ ':'R$ ')+fmt(Math.abs(n)); }
+function parseBR(s){
+  s=String(s).trim().replace(/R\$/g,'').replace(/\s/g,'');
+  if(s==='') return null;
+  if(s.indexOf(',')>-1) s=s.replace(/\./g,'').replace(',','.');
+  else if(/^-?\d{1,3}(\.\d{3})+$/.test(s)) s=s.replace(/\./g,'');
+  var v=parseFloat(s.replace('−','-'));
+  return isNaN(v)?null:v;
+}
+function near(a,b,t){ return Math.abs(a-b)<=(t===undefined?1:t); }
+function row(t,cells,cls){ var tr=document.createElement('tr'); if(cls)tr.className=cls;
+  for(var i=0;i<cells.length;i++){ var c=cells[i]; var td=document.createElement('td');
+    if(typeof c==='object'&&c){ td.innerHTML=c.h; if(c.c)td.className=c.c; } else td.innerHTML=c;
+    tr.appendChild(td); } t.appendChild(tr); }
+function head(t,cells){ var th=document.createElement('thead'); var tr=document.createElement('tr');
+  for(var i=0;i<cells.length;i++){ var e=document.createElement('th'); e.innerHTML=cells[i]; tr.appendChild(e); }
+  th.appendChild(tr); t.appendChild(th); return t.appendChild(document.createElement('tbody')); }
+
+/* ---------- documentos ---------- */
+function drawDocs(c){
+  $('#docHead').innerHTML='<b>SMU LIVE PRODUÇÕES</b> · Borderô nº 4471 · Casa: Teatro Municipal Cine Show — lotação <b>'+CAP_T+
+    '</b> · Ticketeira: IngressoJá · Encerramento de vendas: 22h40.<br>Cortesias emitidas: <b>'+CORT_T+
+    '</b> (contrato do artista 40, casa 30, imprensa e permuta 20). Cortesia <b>não paga ingresso, mas ocupa lugar</b>.';
+  var t=$('#tBord'); t.innerHTML='';
+  var b=head(t,['Setor','Preço face','Lotação','Cortesias','Vendidos','Face (R$)']);
+  for(var i=0;i<SET.length;i++){ var s=SET[i];
+    row(b,[NOME[s],fmt(P.preco[s]),fmt(P.cap[s],0),fmt(P.cort[s],0),
+      '<b>'+fmt(c.v[s],0)+'</b>',fmt(c.v[s]*P.preco[s])]); }
+  row(b,['<b>Totais</b>','<span class="mut">—</span>',fmt(CAP_T,0),fmt(CORT_T,0),fmt(c.pag,0),
+    {h:'?',c:'q'}],'tot');
+  row(b,[{h:'Taxa de conveniência ('+(P.conv*100)+'% s/ face) — <b>repasse à ticketeira</b>',c:''},
+    '','','','',fmt(c.conv)],'sep');
+  row(b,['<b>Total cobrado do público</b> (face + conveniência)','','','','','<b>'+fmt(c.cobrado)+'</b>'],'tot');
+  var oc=Math.round(c.publico/CAP_T*100);
+  $('#statsBord').innerHTML=
+    st('PÚBLICO PAGANTE',fmt(c.pag,0))+st('CORTESIAS',fmt(CORT_T,0))+
+    st('PÚBLICO TOTAL NA CASA',fmt(c.publico,0))+st('OCUPAÇÃO',oc+'%');
+}
+function st(k,v){ return '<div class="stat"><div class="k">'+k+'</div><div class="val">'+v+'</div></div>'; }
+
+function drawCond(){
+  var t=$('#tCond'); t.innerHTML='';
+  var b=head(t,['Cláusula','Base de cálculo','Valor']);
+  row(b,['Cachê fixo do artista','devido sempre, chova ou faça sol',brl(P.cacheFixo)]);
+  row(b,['Cachê variável — % de borderô','<b>15% sobre a receita LÍQUIDA de bilheteria que exceder o ponto de equilíbrio</b>','15%']);
+  row(b,['Ponto de equilíbrio contratual','custos fixos R$ 137.000,00 − patrocínio R$ 25.000,00',brl(PE)]);
+  row(b,['ECAD — direito autoral','receita <b>bruta</b> de bilheteria (borderô)',(P.ecad*100)+'%']);
+  row(b,['ISS — diversão pública','receita <b>bruta</b> de bilheteria (borderô)',(P.iss*100)+'%']);
+  row(b,['Taxa de cartão (MDR)','receita <b>bruta</b> de bilheteria (borderô)','3,5%']);
+  row(b,['Casa — locação em percentual','receita <b>bruta</b> de bilheteria (borderô)',(P.casa*100)+'%']);
+  row(b,['Taxa de conveniência','cobrada do comprador, <b>retida pela ticketeira</b>',(P.conv*100)+'%']);
+  row(b,['Bar / A&B — participação do produtor','15% do faturamento do bar · consumo médio R$ 40,00 por pessoa <b>presente</b>','15%']);
+  row(b,['Cota de patrocínio','contratada, valor fixo já faturado',brl(P.patroc)]);
+}
+
+function drawCustos(){
+  var t=$('#tCusto'); t.innerHTML='';
+  var b=head(t,['Rubrica','Valor']);
+  row(b,['Cachê fixo do artista',brl(P.cacheFixo)]);
+  for(var i=0;i<P.custos.length;i++) row(b,[P.custos[i][0],brl(P.custos[i][1])]);
+  row(b,['<b>Custos fixos (sem o cachê variável)</b>','<b>'+brl(FIXO+P.cacheFixo)+'</b>'],'tot');
+  row(b,[{h:'Cachê variável — só existe se a receita líquida de bilheteria passar de '+brl(PE)+'.',c:''},
+    {h:'a apurar',c:'q'}],'sep');
+}
+
+/* ---------- campos do settlement ---------- */
+function fields(c){ return [
+ {id:'lot',lab:'Lotação disponível para <b>venda</b>',u:'un.',exp:CAP_T-CORT_T,dec:0,tol:0,
+  hint:[{v:CAP_T,m:'Você usou a lotação cheia. As '+CORT_T+' cortesias ocupam lugar sem pagar: sobram apenas '+
+        fmt(CAP_T-CORT_T,0)+' ingressos vendáveis. Cortesia é lotação queimada.'}]},
+ {id:'bruta',lab:'Receita <b>bruta</b> de bilheteria (borderô)',exp:c.bruta,
+  hint:[{v:c.cobrado,m:'Você lançou o total cobrado do público. Dentro dele há '+brl(c.conv)+
+        ' de taxa de conveniência, que a ticketeira retém — nunca foi sua receita.'}]},
+ {id:'ecad',lab:'ECAD — 10% s/ receita bruta de bilheteria',exp:c.ecad,
+  hint:[{v:0,m:'ECAD esquecido: '+brl(c.ecad)+' a menos no seu resultado. Música ao vivo com ingresso recolhe direito autoral sobre o borderô — sem recibo do ECAD a casa não libera o alvará.'},
+        {v:c.cobrado*P.ecad,m:'Base errada: você incluiu a conveniência. O ECAD incide sobre a receita bruta de bilheteria ('+brl(c.bruta)+'), não sobre o total cobrado.'},
+        {v:c.liq*P.ecad,m:'Base errada: o ECAD incide sobre a receita <b>bruta</b> de bilheteria, não sobre a líquida.'}]},
+ {id:'iss',lab:'ISS — 5% s/ receita bruta de bilheteria',exp:c.iss,
+  hint:[{v:0,m:'ISS esquecido: '+brl(c.iss)+'. Diversão pública é serviço tributado no município do evento.'},
+        {v:c.cobrado*P.iss,m:'Base errada: a conveniência não é sua receita e não entra na base do ISS.'},
+        {v:c.liq*P.iss,m:'Base errada: o ISS incide sobre a receita bruta de bilheteria.'}]},
+ {id:'cartao',lab:'Taxa de cartão (MDR) — 3,5% s/ borderô',exp:c.cartao,
+  hint:[{v:0,m:'Taxa de cartão esquecida: '+brl(c.cartao)+'. O adquirente desconta antes de repassar.'}]},
+ {id:'casa',lab:'Percentual da casa — 10% s/ borderô',exp:c.casa,
+  hint:[{v:0,m:'Percentual da casa esquecido: '+brl(c.casa)+'.'},
+        {v:c.cobrado*P.casa,m:'Base errada: a casa fica com 10% do borderô, não do total cobrado com conveniência.'}]},
+ {id:'liq',lab:'Receita <b>líquida</b> de bilheteria',exp:c.liq,
+  hint:[{v:c.bruta-c.iss-c.cartao-c.casa,m:'Faltou descontar o ECAD ('+brl(c.ecad)+').'},
+        {v:c.bruta,m:'Essa é a bruta. Líquida = borderô − ECAD − ISS − cartão − casa = '+brl(c.liq)+'.'},
+        {v:c.cobrado-c.ded,m:'Você partiu do total cobrado do público. A conveniência nunca entrou no seu caixa.'}]},
+ {id:'outras',lab:'Outras receitas — patrocínio + A&B',exp:c.outras,
+  hint:[{v:P.patroc+c.pag*P.abTicket*P.abPct,m:'Você calculou o A&B só sobre o público pagante. Cortesia não paga ingresso, mas consome no bar: o A&B vale sobre o público <b>presente</b> ('+fmt(c.publico,0)+' pessoas) = '+brl(c.ab)+'.'},
+        {v:P.patroc,m:'Faltou o A&B: '+brl(c.ab)+' (15% de R$ 40,00 × '+fmt(c.publico,0)+' pessoas presentes).'}]},
+ {id:'cache',lab:'Cachê <b>total</b> do artista — fixo + variável',exp:c.cache,
+  hint:[{v:P.cacheFixo,m:(c.cvar>0?'Você não aplicou a cláusula de % de borderô. A receita líquida de bilheteria ('+brl(c.liq)+') passou do ponto de equilíbrio ('+brl(PE)+') em '+brl(c.liq-PE)+'; 15% disso = '+brl(c.cvar)+' de cachê variável.':'Aqui o fixo está certo — a receita líquida não passou do ponto de equilíbrio.')},
+        {v:P.cacheFixo+Math.max(0,(c.bruta-PE)*P.cacheVar),m:'Você aplicou os 15% sobre a receita <b>bruta</b>. O contrato diz receita <b>líquida</b> de bilheteria: 15% × ('+brl(c.liq)+' − '+brl(PE)+') = '+brl(c.cvar)+'.'},
+        {v:P.cacheFixo+c.liq*P.cacheVar,m:'Os 15% incidem só sobre o que <b>excede</b> o ponto de equilíbrio, não sobre a receita líquida inteira.'}]},
+ {id:'res',lab:'<b>Resultado do produtor</b> (lucro ou prejuízo)',exp:c.res,
+  hint:[{v:c.liq+c.outras-FIXO-P.cacheFixo,m:'Você não descontou o cachê variável ('+brl(c.cvar)+').'},
+        {v:c.cobrado+c.outras-c.custos,m:'Você somou a conveniência como receita própria.'},
+        {v:c.bruta+c.outras-c.custos,m:'Você usou a receita bruta de bilheteria. As deduções ('+brl(c.ded)+') saem antes.'}]}
+];}
+
+function drawFields(c){
+  var F=fields(c), h='';
+  for(var i=0;i<F.length;i++){ var f=F[i];
+    h+='<div class="f" id="f_'+f.id+'"><label>'+f.lab+' <span class="mut">'+(f.u||'R$')+'</span></label>'+
+       '<input type="text" inputmode="decimal" autocomplete="off" id="i_'+f.id+'"><div class="fb"></div></div>'; }
+  $('#fields').innerHTML=h;
+  $('#verd').className='verdict hide'; $('#wAnal').className='tw hide';
+}
+
+/* ---------- conferência ---------- */
+function check(){
+  var c=calc(cur), F=fields(c), t=$('#tAnal'); t.innerHTML='';
+  var b=head(t,['Linha do settlement','Você lançou','Correto','Divergência']);
+  var errs=0, filled=0, resUser=null;
+  for(var i=0;i<F.length;i++){
+    var f=F[i], el=$('#i_'+f.id), box=$('#f_'+f.id), fb=box.querySelector('.fb');
+    var u=parseBR(el.value), dec=(f.dec===undefined?2:f.dec), tol=(f.tol===undefined?1:f.tol);
+    var ok=(u!==null)&&near(u,f.exp,tol);
+    if(u!==null) filled++;
+    if(f.id==='res') resUser=u;
+    box.className='f '+(ok?'ok':'bad');
+    if(ok){ fb.innerHTML='✓ confere.'; }
+    else if(u===null){ fb.innerHTML='✗ em branco. Correto: <b>'+(dec?brl(f.exp):fmt(f.exp,0)+' un.')+'</b>'; errs++; }
+    else {
+      var msg='';
+      for(var j=0;j<(f.hint||[]).length;j++) if(near(u,f.hint[j].v,Math.max(tol,1))){ msg=f.hint[j].m; break; }
+      if(!msg) msg='Recalcule: diferença de '+(dec?brl(u-f.exp):fmt(u-f.exp,0)+' un.')+'.';
+      fb.innerHTML='✗ '+msg+' Correto: <b>'+(dec?brl(f.exp):fmt(f.exp,0)+' un.')+'</b>';
+      errs++;
+    }
+    var d=(u===null)?null:(u-f.exp);
+    row(b,[f.lab.replace(/<[^>]+>/g,''),
+      (u===null?'<span class="mut">—</span>':(dec?brl(u):fmt(u,0))),
+      (dec?brl(f.exp):fmt(f.exp,0)),
+      (d===null?'<span class="mut">em branco</span>':
+        (Math.abs(d)<=tol?'<span class="pos">ok</span>':
+         '<span class="neg">'+(dec?brl(d):fmt(d,0))+'</span>'))]);
+  }
+  row(b,[{h:'Ponto de equilíbrio: <b>'+fmt(c.peIng,0)+' ingressos</b> no mix vendido ('+
+    Math.round(c.peIng/(CAP_T-CORT_T)*100)+'% da lotação vendável) só para zerar. Vendidos: <b>'+fmt(c.pag,0)+'</b>.',c:''},
+    '','',''],'sep');
+  $('#wAnal').className='tw';
+
+  var v=$('#verd'), R=c.res;
+  if(resUser!==null&&near(resUser,R,1)&&errs===0){
+    v.className='verdict ok';
+    v.innerHTML=(R>=0?'Settlement fechado e batendo. Lucro real: '+brl(R)+'.':
+      'Settlement fechado e batendo. O evento deu prejuízo de '+brl(Math.abs(R))+'.')+
+      ' Nenhuma divergência nas '+F.length+' linhas.';
+  } else if(resUser!==null&&resUser>0&&R<0){
+    v.className='verdict bad';
+    v.innerHTML='Você achou que lucrou '+brl(resUser)+', mas o evento deu <b>prejuízo de '+brl(Math.abs(R))+
+      '</b>. Diferença de '+brl(resUser-R)+' — veja linha a linha abaixo.';
+  } else if(resUser!==null&&near(resUser,R,1)){
+    v.className='verdict warn';
+    v.innerHTML='O resultado final bateu ('+brl(R)+'), mas '+errs+' linha(s) do settlement estão erradas. '+
+      'Erros que se anulam hoje viram prejuízo no próximo show.';
+  } else if(filled===0){
+    v.className='verdict warn';
+    v.innerHTML='Nada preenchido. O gabarito está abaixo — mas faça as contas antes de olhar.';
+  } else {
+    v.className='verdict bad';
+    v.innerHTML=(resUser===null?'Resultado em branco.':'Seu resultado: '+brl(resUser)+'.')+
+      ' Resultado real: <b>'+(R>=0?'lucro de ':'prejuízo de ')+brl(Math.abs(R))+'</b>. '+
+      errs+' divergência(s).';
+  }
+}
+
+/* ---------- bloco "e se" ---------- */
+function rain(){
+  var a=calc('base'), r=calc('chuva'), t=$('#tRain'); t.innerHTML='';
+  var b=head(t,['Linha','Sexta cheia','Choveu — 60%','Δ']);
+  function d(l,x,y,dec){ var f=(dec===0)?function(n){return fmt(n,0);}:brl;
+    row(b,[l,f(x),f(y),{h:f(y-x),c:(y-x)<0?'neg':'pos'}]); }
+  d('Público pagante',a.pag,r.pag,0);
+  d('Receita bruta de bilheteria',a.bruta,r.bruta);
+  d('Deduções (ECAD, ISS, cartão, casa)',-a.ded,-r.ded);
+  d('Receita líquida de bilheteria',a.liq,r.liq);
+  d('Patrocínio + A&B',a.outras,r.outras);
+  d('Cachê do artista (fixo + variável)',-a.cache,-r.cache);
+  d('Custos de produção',-FIXO,-FIXO);
+  row(b,['<b>Resultado do produtor</b>',{h:'<b>'+brl(a.res)+'</b>',c:a.res<0?'neg':'pos'},
+    {h:'<b>'+brl(r.res)+'</b>',c:r.res<0?'neg':'pos'},
+    {h:'<b>'+brl(r.res-a.res)+'</b>',c:'neg'}],'tot');
+  var perdaRec=(a.liq+a.outras)-(r.liq+r.outras), perdaCache=a.cache-r.cache;
+  $('#rainNote').innerHTML='O público pagante caiu <b>40%</b>. Sua receita caiu <b>'+brl(perdaRec)+
+    '</b> (bilheteria líquida + A&B). O cachê do artista caiu <b>'+brl(perdaCache)+
+    '</b> — só o variável, porque o fixo de '+brl(P.cacheFixo)+' é devido com a casa cheia ou vazia. '+
+    'Os '+brl(FIXO)+' de produção também não se mexem: som, luz, palco e equipe já foram contratados. '+
+    'Resultado: um lucro de '+brl(a.res)+' virou prejuízo de '+brl(Math.abs(r.res))+'. '+
+    '<b>O risco de bilheteria é integralmente do produtor.</b> É por isso que se negocia cachê menor + percentual maior, '+
+    'ou se trava a data com patrocínio e pré-venda antes de assinar o fixo.';
+  $('#rainOut').className='';
+}
+
+/* ---------- boot ---------- */
+function load(sc){
+  cur=sc; var c=calc(sc);
+  var h='';
+  for(var k in SCEN) h+='<button data-s="'+k+'"'+(k===sc?' class="on"':'')+'>'+SCEN[k].n+'</button>';
+  $('#scen').innerHTML=h;
+  Array.prototype.slice.call(document.querySelectorAll('#scen button')).forEach(function(bt){
+    bt.onclick=function(){ load(bt.dataset.s); };
+  });
+  $('#scenNote').innerHTML=SCEN[sc].d;
+  drawDocs(c); drawFields(c);
+  $('#rainOut').className='hide';
+}
+drawCond(); drawCustos(); load('base');
+$('#bCheck').onclick=check;
+$('#bClear').onclick=function(){ drawFields(calc(cur)); };
+$('#bReset').onclick=function(){ load('base'); window.scrollTo(0,0); };
+$('#bRain').onclick=rain;
+window.__sl={calc:calc,P:P,PE:PE,FIXO:FIXO};
+})();
+</script>
+</body>
+</html>

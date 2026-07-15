@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador — Microfone sem fio (SMU)</title>
+<style>
+  :root{--bg:#0b0f17;--panel:#151b28;--panel2:#0f1420;--line:#26344c;--ink:#e7ecf5;
+    --muted:#8ea0bd;--amber:#F59E0B;--green:#22c55e;--red:#ef4444;--cyan:#22d3ee}
+  *{box-sizing:border-box}html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);font-family:"Space Grotesk",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;padding:10px;user-select:none}
+  h1{font-size:15px;margin:0 0 2px}.sub{font-size:11.5px;color:var(--muted);margin-bottom:10px}
+  .mission{display:flex;gap:10px;align-items:center;background:#0c1220;border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin-bottom:12px}
+  .mission .idx{font-size:10px;color:var(--amber);font-weight:800;letter-spacing:.8px;white-space:nowrap}
+  .mission .txt{font-size:12.5px;line-height:1.3;flex:1}.mission .txt b{color:var(--amber)}
+  .mission button{font:inherit;font-size:11px;color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:7px;padding:6px 9px;cursor:pointer}
+  .grid{display:flex;flex-wrap:wrap;gap:12px}
+  .card{flex:1 1 300px;background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:12px;padding:14px}
+  .card h3{margin:0 0 10px;font-size:11px;letter-spacing:1.2px;color:var(--muted);text-transform:uppercase}
+  .lcd{background:#08130d;border:1px solid #16351f;border-radius:8px;padding:10px 12px;font-family:"Courier New",monospace;margin-bottom:10px}
+  .lcd .big{font-size:22px;font-weight:700;color:#39ff9e;letter-spacing:1px}
+  .lcd .lbl{font-size:10px;color:#4a8f6a}
+  .bars{display:flex;gap:3px;align-items:flex-end;height:22px;margin-top:4px}
+  .bars i{width:6px;background:#16351f;border-radius:1px}.bars i.on{background:#39ff9e}
+  .bars.rf i.on{background:var(--cyan)}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px}
+  .chgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:8px 0}
+  .ch{font:inherit;font-size:11px;font-weight:700;padding:8px 4px;border-radius:7px;border:1px solid var(--line);background:#0c1220;color:var(--ink);cursor:pointer;text-align:center;position:relative}
+  .ch.busy{color:var(--red);border-color:#5b2626}
+  .ch.free{color:var(--green)}
+  .ch.sel{outline:2px solid var(--amber);outline-offset:1px}
+  .ch small{display:block;font-size:8px;color:var(--muted);font-weight:600}
+  .btn{font:inherit;font-size:12px;font-weight:800;padding:9px 14px;border-radius:9px;border:0;background:var(--amber);color:#0b0f17;cursor:pointer}
+  .btn.sec{background:#0c1220;border:1px solid var(--line);color:var(--ink)}
+  .batt{display:flex;align-items:center;gap:8px;margin-top:6px}
+  .battbar{flex:1;height:14px;border-radius:4px;background:#05070d;border:1px solid #1a2540;overflow:hidden}
+  .battbar i{display:block;height:100%;background:var(--green);transition:width .2s}
+  .txbody{display:flex;flex-direction:column;align-items:center;gap:8px}
+  .mic{font-size:44px}
+  .verdict{font-size:12px;font-weight:700;min-height:16px;margin-top:8px;text-align:center}.verdict.good{color:var(--green)}.verdict.bad{color:var(--red)}
+  .tag{font-size:10px;padding:3px 8px;border-radius:20px;border:1px solid var(--line);color:var(--muted)}
+  .tag.ok{color:var(--green);border-color:var(--green)}.tag.bad{color:var(--red);border-color:var(--red)}
+</style>
+</head>
+<body>
+  <h1>Microfone sem fio — configuração</h1>
+  <div class="sub">Ligue o sistema, ache um canal livre de interferência, sincronize e cuide da bateria.</div>
+  <div class="mission">
+    <span class="idx" id="mIdx">MISSÃO 1/4</span>
+    <span class="txt" id="mTxt">—</span>
+    <button id="mSkip">Pular</button>
+  </div>
+
+  <div class="grid">
+    <!-- RECEPTOR -->
+    <div class="card">
+      <h3>Receptor (na mesa)</h3>
+      <div class="lcd">
+        <div class="lbl">CANAL / FREQUÊNCIA</div>
+        <div class="big" id="rxDisp">CH— · ---.--- MHz</div>
+        <div class="lbl" style="margin-top:6px">RF (sinal de rádio)</div>
+        <div class="bars rf" id="rfBars"></div>
+        <div class="lbl" style="margin-top:6px">AF (áudio)</div>
+        <div class="bars" id="afBars"></div>
+      </div>
+      <div class="lbl" style="font-size:10px;color:var(--muted)">Toque num canal (verde = livre, vermelho = interferência):</div>
+      <div class="chgrid" id="chgrid"></div>
+      <div class="row">
+        <button class="btn sec" id="scanBtn">🔎 SCAN (achar canal livre)</button>
+        <button class="btn" id="syncBtn">⇄ SYNC transmissor</button>
+      </div>
+      <div class="row"><span class="tag" id="syncTag">não sincronizado</span></div>
+    </div>
+
+    <!-- TRANSMISSOR -->
+    <div class="card" style="flex:1 1 220px">
+      <h3>Transmissor (o microfone)</h3>
+      <div class="txbody">
+        <div class="mic" id="micIco">🎤</div>
+        <button class="btn" id="txPower">Ligar transmissor</button>
+        <div class="lcd" style="width:100%;text-align:center">
+          <div class="lbl">CANAL DO TX</div><div class="big" id="txDisp" style="font-size:18px">CH—</div>
+        </div>
+        <div style="width:100%">
+          <div class="lbl" style="font-size:10px;color:var(--muted)">Bateria</div>
+          <div class="batt"><div class="battbar"><i id="battFill"></i></div><span id="battTxt" style="font-size:11px">15%</span></div>
+          <button class="btn sec" id="battBtn" style="margin-top:6px;width:100%">🔋 Trocar / recarregar bateria</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="verdict" id="verdict"></div>
+
+<script>
+"use strict";
+(function(){
+  const $=id=>document.getElementById(id);
+  // canais: alguns com interferência
+  const CH=[
+    {n:1,f:"512.100",busy:true},{n:2,f:"514.375",busy:false},{n:3,f:"518.900",busy:true},{n:4,f:"521.250",busy:false},
+    {n:5,f:"524.600",busy:false},{n:6,f:"527.125",busy:true},{n:7,f:"530.800",busy:false},{n:8,f:"533.400",busy:true},
+  ];
+  const state={ rx:1, tx:3, txOn:false, batt:15 };
+  const rxCh=()=>CH.find(c=>c.n===state.rx);
+  const synced=()=>state.tx===state.rx;
+  const receiving=()=>state.txOn && synced() && !rxCh().busy && state.batt>5;
+
+  function renderChannels(){
+    const g=$("chgrid");g.innerHTML="";
+    CH.forEach(c=>{ const b=document.createElement("button");
+      b.className="ch "+(c.busy?"busy":"free")+(c.n===state.rx?" sel":"");
+      b.innerHTML=`CH${c.n}<small>${c.busy?"interfer.":"livre"}</small>`;
+      b.onclick=()=>{state.rx=c.n;update();check();};
+      g.appendChild(b); });
+  }
+  function bars(el,n,cls){ el.innerHTML=""; for(let i=0;i<10;i++){ const b=document.createElement("i");
+    b.style.height=(6+i*1.6)+"px"; if(i<n)b.className="on"; el.appendChild(b); } }
+  function update(){
+    const c=rxCh();
+    $("rxDisp").textContent="CH"+c.n+" · "+c.f+" MHz";
+    $("txDisp").textContent="CH"+state.tx;
+    $("txPower").textContent=state.txOn?"Desligar transmissor":"Ligar transmissor";
+    $("txPower").classList.toggle("sec",state.txOn);
+    $("micIco").style.opacity=state.txOn?"1":"0.4";
+    $("syncTag").textContent=synced()?"sincronizado ✓":"não sincronizado";
+    $("syncTag").className="tag "+(synced()?"ok":"bad");
+    $("battFill").style.width=state.batt+"%";
+    $("battFill").style.background=state.batt<20?"var(--red)":state.batt<50?"var(--amber)":"var(--green)";
+    $("battTxt").textContent=state.batt+"%";
+    // RF
+    let rf=0; if(state.txOn && state.batt>5){ rf = synced()? (rxCh().busy?3:9) : 1; if(!synced())rf=Math.max(rf,2); }
+    bars($("rfBars"),rf,"rf");
+    // AF
+    bars($("afBars"), receiving()? 7:0);
+    renderChannels();
+  }
+  $("scanBtn").onclick=()=>{ const free=CH.find(c=>!c.busy); if(free){state.rx=free.n; $("verdict").textContent="SCAN: canal livre encontrado — CH"+free.n; $("verdict").className="verdict good";} update();check(); };
+  $("syncBtn").onclick=()=>{ state.tx=state.rx; $("verdict").textContent="Transmissor sincronizado no CH"+state.tx; $("verdict").className="verdict good"; update();check(); };
+  $("txPower").onclick=()=>{ state.txOn=!state.txOn; update();check(); };
+  $("battBtn").onclick=()=>{ state.batt=100; $("verdict").textContent="Bateria nova instalada (100%)."; $("verdict").className="verdict good"; update();check(); };
+
+  // bateria drenando devagar quando ligado
+  setInterval(()=>{ if(state.txOn&&state.batt>0){ state.batt=Math.max(0,state.batt-1); update(); } },5000);
+
+  const M=[
+    { t:'Ligue o <b>transmissor</b> (o microfone). Veja o RF aparecer no receptor.', ok:()=>state.txOn },
+    { t:'O canal do receptor tem <b>interferência</b> (vermelho). Clique <b>SCAN</b> para achar um canal livre (verde).', ok:()=>!rxCh().busy },
+    { t:'Agora <b>sincronize</b> o transmissor com o receptor (mesmo canal). Clique <b>SYNC</b>.', ok:()=>synced()&&!rxCh().busy },
+    { t:'A <b>bateria</b> está fraca. Troque/recarregue para o microfone não falhar no meio do evento.', ok:()=>state.batt>=80&&receiving() },
+  ];
+  let mi=0;
+  function paintM(){const idx=$("mIdx"),txt=$("mTxt");
+    if(mi>=M.length){idx.textContent="CONCLUÍDO";txt.innerHTML="🎓 <b>Perfeito!</b> Sistema sem fio no ar: canal livre, sincronizado e bateria cheia — sem sustos no evento.";$("mSkip").style.display="none";return;}
+    idx.textContent="MISSÃO "+(mi+1)+"/"+M.length;txt.innerHTML=M[mi].t;}
+  function check(){if(mi>=M.length)return;try{if(M[mi].ok()){mi++;paintM();}}catch(e){}}
+  $("mSkip").onclick=()=>{if(mi<M.length){mi++;paintM();}};
+
+  update();paintM();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMU PRO · Casar o Sinal (Scaler)</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0c1017;--panel:#161c26;--panel2:#1b2230;--line:#2a3444;--ink:#e7edf5;--dim:#8794a8;--accent:#3b82f6;--ok:#22c55e;--err:#ef4444;--warn:#f59e0b;}
+  html,body{background:var(--bg);color:var(--ink);font-family:'Segoe UI',system-ui,Arial,sans-serif;}
+  body{padding:12px;}
+  .app{max-width:880px;margin:0 auto;display:flex;flex-direction:column;gap:12px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  h1{font-size:15px;margin-bottom:3px;} .sub{font-size:12px;color:var(--dim);margin-bottom:12px;}
+  .chain{display:flex;align-items:stretch;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+  .box{flex:1;min-width:120px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px;}
+  .box .t{font-size:10px;letter-spacing:.08em;color:var(--dim);text-transform:uppercase;margin-bottom:7px;}
+  .box.off{opacity:.45;}
+  .arrow{align-self:center;color:var(--dim);font-size:18px;}
+  select{width:100%;background:#0c1119;color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:6px;font-size:12px;margin-bottom:6px;}
+  .toggle{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dim);}
+  .toggle button{width:40px;height:20px;border-radius:10px;background:#2a303c;border:none;position:relative;cursor:pointer;}
+  .toggle button.on{background:var(--ok);}
+  .toggle button::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.15s;}
+  .toggle button.on::after{left:22px;}
+  .screenwrap{background:#000;border:2px solid #333;border-radius:8px;aspect-ratio:16/9;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;max-width:440px;margin:0 auto;}
+  .screenwrap .content{position:absolute;background:linear-gradient(135deg,#f59e0b,#ef4444 45%,#3b82f6);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;}
+  .screenwrap .nosig{color:#ef4444;font-weight:800;letter-spacing:.1em;font-size:15px;z-index:3;}
+  .verdict{font-size:13px;font-weight:700;padding:9px 12px;border-radius:8px;text-align:center;margin-top:12px;}
+  .verdict.ok{background:#14532d;color:#bbf7d0;} .verdict.bad{background:#450a0a;color:#fca5a5;} .verdict.warn{background:#422006;color:#fde68a;}
+  .note{font-size:12px;color:var(--dim);line-height:1.5;margin-top:8px;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="card">
+    <h1>Casar o sinal com a tela — o papel do scaler</h1>
+    <div class="sub">A <b>fonte</b> manda uma resolução; a <b>tela</b> tem a sua resolução <b>nativa</b>. Se não casam, dá "sem sinal" ou imagem cortada/borrada. Use o <b>scaler</b> para acertar.</div>
+    <div class="chain">
+      <div class="box"><div class="t">Fonte (notebook / player)</div>
+        <select id="srcRes"><option value="1280x720">Saída 1280×720</option><option value="1920x1080" selected>Saída 1920×1080</option><option value="3840x2160">Saída 3840×2160</option></select>
+      </div>
+      <div class="arrow">→</div>
+      <div class="box" id="scalerBox"><div class="t">Scaler / Processador</div>
+        <div class="toggle" style="margin-bottom:7px;"><button id="scOn"></button><span id="scLbl">Desligado (bypass)</span></div>
+        <select id="scOut" disabled><option value="1280x720">Escala p/ 1280×720</option><option value="1920x1080">Escala p/ 1920×1080</option><option value="1024x768">Escala p/ 1024×768</option></select>
+      </div>
+      <div class="arrow">→</div>
+      <div class="box"><div class="t">Tela (nativa)</div>
+        <select id="scr"><option value="1920x1080" selected>Telão 1920×1080</option><option value="1280x720">TV 1280×720</option><option value="1024x768">Projetor 1024×768</option></select>
+      </div>
+    </div>
+    <div class="screenwrap" id="screen"><div class="content" id="content"></div><div class="nosig" id="nosig" style="display:none">SEM SINAL</div></div>
+    <div class="verdict" id="verdict"></div>
+    <div class="note" id="note"></div>
+  </div>
+</div>
+<script>
+(function(){
+var $=function(s){return document.querySelector(s);};
+var scalerOn=false;
+function P(v){ var a=v.split('x'); return {w:+a[0],h:+a[1]}; }
+function render(){
+  var src=$('#srcRes').value, scr=$('#scr').value, scOut=$('#scOut').value;
+  $('#scOn').classList.toggle('on',scalerOn); $('#scLbl').textContent=scalerOn?'Ligado':'Desligado (bypass)';
+  $('#scOut').disabled=!scalerOn; $('#scalerBox').classList.toggle('off',!scalerOn);
+  var signalToScreen = scalerOn? scOut : src;
+  var s=P(signalToScreen), d=P(scr);
+  var match = (s.w===d.w && s.h===d.h);
+  var content=$('#content'), nosig=$('#nosig'), sw=$('#screen');
+  var v=$('#verdict'), n=$('#note');
+  // display logic: if native accepts common res -> ok scale; if far off -> no signal (e.g. 4K into 1024)
+  var accepts = true;
+  // simulate: screen without scaler only locks native; sending non-native may still show but cropped/blurry; 4K into small = no signal
+  if(!match && (s.w>d.w*1.9)){ accepts=false; }
+  nosig.style.display=accepts?'none':'block';
+  content.style.display=accepts?'flex':'none';
+  if(accepts){
+    if(match){ content.style.width='100%'; content.style.height='100%'; content.style.left='0'; content.style.top='0'; content.style.filter='none'; content.textContent=s.w+'×'+s.h; }
+    else {
+      // not native -> screen rescales internally: show blurry + maybe crop
+      var scaleW=Math.min(100, d.w/s.w*100* (s.w<d.w?1:1));
+      content.style.width='100%'; content.style.height='100%'; content.style.left='0'; content.style.top='0';
+      content.style.filter='blur('+(s.w<d.w?1.5:1)+'px) brightness(.92)'; content.textContent=s.w+'×'+s.h+' → '+d.w+'×'+d.h;
+    }
+  }
+  if(!accepts){ v.className='verdict bad'; v.textContent='✗ SEM SINAL — a tela não aceita '+s.w+'×'+s.h; n.innerHTML='A tela nativa <b>'+d.w+'×'+d.h+'</b> não reconhece um sinal tão maior/diferente. <b>Ligue o scaler</b> e escale para a resolução nativa.'; }
+  else if(match){ v.className='verdict ok'; v.textContent='✓ Perfeito — sinal na resolução nativa da tela'; n.innerHTML='O sinal chega em <b>'+d.w+'×'+d.h+'</b>, exatamente a resolução nativa. Imagem nítida, pixel a pixel, sem borrar nem cortar. É sempre o objetivo.'; }
+  else { v.className='verdict warn'; v.textContent='◐ Aparece, mas fora da nativa (borrado)'; n.innerHTML='A tela até mostra, mas precisa <b>reescalar por conta própria</b> — imagem levemente borrada. Use o scaler e mande exatamente <b>'+d.w+'×'+d.h+'</b> para ficar nítido.'; }
+}
+$('#scOn').onclick=function(){ scalerOn=!scalerOn; render(); };
+['srcRes','scr','scOut'].forEach(function(id){ $('#'+id).onchange=render; });
+window.__ss={render:render};
+render();
+})();
+</script>
+</body>
+</html>

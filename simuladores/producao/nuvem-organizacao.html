@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>SMU PRO · Organização em nuvem</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0c1017;--panel:#161c26;--panel2:#1b2230;--line:#2a3444;--ink:#e7edf5;--dim:#8794a8;
+        --accent:#f59e0b;--ok:#22c55e;--err:#ef4444;--warn:#f59e0b;--cyan:#38bdf8;}
+  html,body{background:var(--bg);color:var(--ink);
+    font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased;}
+  body{padding:12px;}
+  .app{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:12px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  h1{font-size:15px;margin-bottom:3px;}
+  .sub{font-size:12px;color:var(--dim);margin-bottom:12px;line-height:1.5;}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px;}
+  .stat .k{font-size:10px;color:var(--dim);letter-spacing:.5px;}
+  .stat .val{font-size:15px;font-weight:800;margin-top:2px;}
+  .verdict{font-size:13px;font-weight:700;padding:9px 12px;border-radius:8px;text-align:center;}
+  .verdict.ok{background:#14532d;color:#bbf7d0;}
+  .verdict.bad{background:#450a0a;color:#fca5a5;}
+  .verdict.warn{background:#422006;color:#fde68a;}
+  .note{font-size:12px;color:var(--dim);line-height:1.55;}
+  button{font:inherit;cursor:pointer;}
+  h2{font-size:12px;letter-spacing:.6px;color:var(--accent);text-transform:uppercase;margin-bottom:7px;}
+  .layout{display:grid;grid-template-columns:1fr;gap:14px;}
+  @media(min-width:660px){ .layout{grid-template-columns:1fr 1fr;} }
+  .path{font-family:ui-monospace,Consolas,monospace;font-size:11px;color:var(--cyan);
+    background:#05070b;border:1px solid var(--line);border-radius:7px;padding:7px 9px;margin-bottom:8px;word-break:break-all;}
+  .pool{display:flex;flex-direction:column;gap:5px;}
+  .chip{display:flex;align-items:center;gap:7px;min-height:36px;padding:6px 9px;text-align:left;width:100%;
+    background:#0c1119;border:1px solid var(--line);border-radius:7px;color:var(--ink);font-size:11.5px;line-height:1.3;}
+  .chip:hover{border-color:#3d4a5e;}
+  .chip.sel{border-color:var(--accent);background:#42200680;box-shadow:0 0 0 1px var(--accent) inset;}
+  .chip .fn{font-family:ui-monospace,Consolas,monospace;font-size:10px;color:var(--dim);display:block;margin-top:2px;word-break:break-all;}
+  .chip .ic{font-size:14px;flex-shrink:0;}
+  .chip .tx{flex:1;min-width:0;}
+  .tree{display:flex;flex-direction:column;gap:4px;}
+  .folder{border:1px solid var(--line);border-radius:8px;background:var(--panel2);padding:6px 8px;min-height:38px;
+    width:100%;text-align:left;color:var(--ink);display:block;}
+  .folder.on{border-color:var(--cyan);background:#0b2b3a;}
+  .folder .fname{font-family:ui-monospace,Consolas,monospace;font-size:11px;font-weight:700;}
+  .folder .fhint{font-size:9.5px;color:var(--dim);margin-top:1px;line-height:1.35;}
+  .drop{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px;}
+  .mini{font-size:10px;padding:4px 7px;min-height:26px;border-radius:5px;border:1px solid #3d4a5e;background:#0c1119;color:#cbd5e1;}
+  .mini.good{border-color:var(--ok);color:#bbf7d0;} .mini.bad{border-color:var(--err);color:#fca5a5;}
+  .nm{border:1px solid var(--line);border-radius:9px;padding:9px;margin-bottom:8px;background:var(--panel2);}
+  .nm .bad-name{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;color:#fca5a5;word-break:break-all;}
+  .nm .lb{font-size:9.5px;color:var(--dim);letter-spacing:.5px;margin-bottom:3px;}
+  .opts{display:flex;flex-direction:column;gap:4px;margin-top:7px;}
+  .opt{min-height:34px;padding:6px 8px;text-align:left;background:#0c1119;border:1px solid var(--line);
+    border-radius:6px;color:#cbd5e1;font-family:ui-monospace,Consolas,monospace;font-size:10.5px;word-break:break-all;}
+  .opt.sel{border-color:var(--accent);background:#42200680;color:#fde68a;}
+  .opt.right{border-color:var(--ok);background:#14532d80;color:#bbf7d0;}
+  .opt.wrong{border-color:var(--err);background:#450a0a80;color:#fca5a5;}
+  .bar{display:flex;gap:8px;flex-wrap:wrap;}
+  .btn{flex:1;min-width:120px;min-height:40px;border-radius:8px;border:1px solid var(--accent);
+    background:var(--accent);color:#1a1206;font-size:13px;font-weight:800;}
+  .btn.sec{background:transparent;color:var(--dim);border-color:var(--line);}
+  .stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;}
+  .errs{display:flex;flex-direction:column;gap:6px;margin-top:10px;}
+  .err-i{font-size:11.5px;line-height:1.5;background:#0c1119;border-left:2px solid var(--err);border-radius:5px;padding:7px 9px;color:#cbd5e1;}
+  .err-i b{color:#fca5a5;} .err-i code{font-family:ui-monospace,Consolas,monospace;font-size:10.5px;color:var(--cyan);}
+  .hidden{display:none;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="card">
+    <h1>Arquivo morto vivo: organização em nuvem da produtora</h1>
+    <div class="sub">Caíram 15 arquivos soltos no Drive da produtora. <b>Bloco 1:</b> toque no arquivo, depois na pasta certa da árvore do evento. <b>Bloco 2:</b> conserte os nomes. Depois toque em <b>Conferir</b>.</div>
+    <div class="path" id="rootPath">/2026/2026-03-14_SaoPaulo_EspacoUnimed_ArtistaX/</div>
+    <div class="layout">
+      <div>
+        <h2>Caixa de entrada · <span id="poolN">15</span> soltos</h2>
+        <div class="pool" id="pool"></div>
+        <div class="note" style="margin-top:8px">Arquivo na pasta errada = ninguém acha no dia do show. Toque de novo num arquivo já arquivado para tirá-lo da pasta.</div>
+      </div>
+      <div>
+        <h2>Árvore do evento</h2>
+        <div class="tree" id="tree"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h1>Nomenclatura: <code style="color:var(--cyan);font-size:12px">DATA_EVENTO_DOCUMENTO_vN.ext</code></h1>
+    <div class="sub">Data <b>ISO (AAAA-MM-DD)</b> ordena sozinha. Sem espaço, sem acento, sem parêntese. Versão explícita <b>v1/v2/v3</b>. <b>_FINAL é proibido</b>. O nome tem que se entender fora da pasta.</div>
+    <div class="layout" id="naming"></div>
+  </div>
+
+  <div class="card">
+    <div class="bar">
+      <button class="btn" id="check">Conferir</button>
+      <button class="btn sec" id="reset">Reiniciar</button>
+    </div>
+    <div id="result" class="hidden" style="margin-top:12px">
+      <div class="stats">
+        <div class="stat"><div class="k">ARQUIVAMENTO</div><div class="val" id="sArq">—</div></div>
+        <div class="stat"><div class="k">NOMENCLATURA</div><div class="val" id="sNom">—</div></div>
+        <div class="stat"><div class="k">TOTAL</div><div class="val" id="sTot">—</div></div>
+      </div>
+      <div class="verdict" id="verd"></div>
+      <div class="errs" id="errs"></div>
+      <div class="note" style="margin-top:12px;border-top:1px solid var(--line);padding-top:10px">
+        <b style="color:var(--ink)">Regras da casa</b><br>
+        · <b>Fonte única da verdade:</b> um documento, um lugar. Você manda <i>link</i> da pasta, nunca anexo — anexo vira cópia e cópia vira versão paralela.<br>
+        · <b>Permissão:</b> produção edita, fornecedor e casa só visualizam. Rider aberto para edição volta alterado sem ninguém saber quem mexeu.<br>
+        · <b>O rider que circula é o da pasta.</b> Se o técnico da casa está montando pelo PDF que você mandou por e-mail há 3 semanas, o palco vai sair errado — reenvie o link, não o arquivo.<br>
+        · Pasta do evento fecha com o <code style="color:var(--cyan)">08_Pos_Evento</code> preenchido: settlement, relatório e mídia. Sem isso, o próximo orçamento do mesmo artista é chute.
+      </div>
+    </div>
+  </div>
+
+</div>
+<script>
+(function(){
+var $=function(s){return document.querySelector(s);};
+var FOLDERS=[
+ {id:'01',n:'01_Contratos',h:'Documentos com valor jurídico: contrato, aditivo, apólice, ART/laudo'},
+ {id:'02',n:'02_Riders',h:'Exigências do artista: rider técnico e rider de camarim/hospitality'},
+ {id:'03',n:'03_Financeiro',h:'Orçamento, NF, pagamento, settlement de bilheteria'},
+ {id:'04',n:'04_Logistica',h:'Pessoas e deslocamento: escala, transporte, hotel, alimentação'},
+ {id:'05',n:'05_Cronogramas',h:'Linha do tempo: montagem, passagem de som, run of show'},
+ {id:'06',n:'06_Mapas_e_Plantas',h:'Desenhos: planta baixa, stage plan, rigging, mapa de setor'},
+ {id:'07',n:'07_Comunicacao',h:'Decisão registrada: aprovações por e-mail, atas, briefing'},
+ {id:'08',n:'08_Pos_Evento',h:'Relatório, checklist de devolução, avarias, lições'},
+ {id:'09',n:'09_Midia',h:'Fotos, vídeos e material bruto do show'}
+];
+var FILES=[
+ {id:'f1', ic:'📄', d:'Contrato de show assinado pelas duas partes', raw:'Contrato_ArtistaX_assinado.pdf', a:'01', w:'Contrato é documento jurídico. Vai em <code>01_Contratos</code> — a pasta que o advogado e o financeiro abrem em caso de briga.'},
+ {id:'f2', ic:'🎚️', d:'Rider técnico v3 do artista', raw:'rider tecnico v3.pdf', a:'02', w:'Rider técnico vive em <code>02_Riders</code>. É a exigência do artista, não um desenho — planta e stage plan ficam em <code>06</code>.'},
+ {id:'f3', ic:'🍽️', d:'Rider de camarim (hospitality)', raw:'hospitality rider camarim.pdf', a:'02', w:'Camarim é rider igual, só que de hospitality. Fica junto do técnico em <code>02_Riders</code> — não é logística nem financeiro.'},
+ {id:'f4', ic:'📊', d:'Orçamento aprovado pelo cliente', raw:'orcamento aprovado cliente.xlsx', a:'03', w:'Orçamento é dinheiro: <code>03_Financeiro</code>. O e-mail que aprovou vai em <code>07</code>; a planilha aprovada, aqui.'},
+ {id:'f5', ic:'🧾', d:'Nota fiscal do fretista (Transportes Silva)', raw:'NF 12345 Transportes Silva.pdf', a:'03', w:'NF é <code>03_Financeiro</code>, mesmo sendo de frete. Logística guarda a operação; financeiro guarda o comprovante que a contabilidade precisa.'},
+ {id:'f6', ic:'💰', d:'Settlement / fechamento de bilheteria', raw:'settlement bilheteria.xlsx', a:'03', w:'Settlement é o fechamento de caixa do show: <code>03_Financeiro</code>. Sem ele arquivado, o próximo cachê é discutido no escuro.'},
+ {id:'f7', ic:'📐', d:'Planta baixa do palco 12x10 (DWG)', raw:'planta baixa palco 12x10.dwg', a:'06', w:'Desenho técnico da casa vai em <code>06_Mapas_e_Plantas</code>. É o que o rigger e o cenotécnico abrem.'},
+ {id:'f8', ic:'🎛️', d:'Stage plan + input list', raw:'stage plan + input list.pdf', a:'06', w:'Stage plan é desenho de posição: <code>06_Mapas_e_Plantas</code>. Chega junto do rider, mas quem procura stage plan procura entre as plantas.'},
+ {id:'f9', ic:'⏱️', d:'Run of show do dia 14/03', raw:'run of show 14-03.xlsx', a:'05', w:'Run of show é linha do tempo do dia: <code>05_Cronogramas</code>, junto com montagem e passagem de som.'},
+ {id:'f10',ic:'👷', d:'Escala da equipe de montagem (turnos)', raw:'escala equipe montagem.xlsx', a:'04', w:'Escala é gente: <code>04_Logistica</code>. <code>05_Cronogramas</code> é o que acontece; <code>04</code> é quem está lá e como chega.'},
+ {id:'f11',ic:'🛡️', d:'Apólice de seguro RC do evento', raw:'apolice RC evento.pdf', a:'01', w:'Apólice é contrato com a seguradora: <code>01_Contratos</code>. Fiscal e casa de show pedem isso na portaria — tem que estar com o contrato.'},
+ {id:'f12',ic:'📋', d:'ART e laudo estrutural do palco', raw:'ART laudo estrutura palco.pdf', a:'01', w:'ART/laudo é documento legal assinado por engenheiro: <code>01_Contratos</code>. Não é planta — é responsabilidade técnica.'},
+ {id:'f13',ic:'📝', d:'Relatório pós-evento da produção', raw:'relatorio pos evento.docx', a:'08', w:'Relatório fecha o evento: <code>08_Pos_Evento</code>. É de onde sai o orçamento realista do próximo show na mesma casa.'},
+ {id:'f14',ic:'📸', d:'Fotos do show (245 arquivos)', raw:'fotos show (245 arquivos).zip', a:'09', w:'Mídia bruta em <code>09_Midia</code>. Foto não é pós-evento: relatório é texto, mídia é entrega para marketing e para o artista.'},
+ {id:'f15',ic:'✉️', d:'PDF da thread: cliente aprovando o palco', raw:'aprovacao cliente email.pdf', a:'07', w:'Aprovação por e-mail é decisão registrada: <code>07_Comunicacao</code>. E-mail que aprova mudança de escopo tem que sair da caixa e entrar na pasta.'}
+];
+var NAMES=[
+ {bad:'rider final FINAL (2).pdf', ctx:'Rider técnico do ArtistaX, terceira revisão, show 14/03/2026.', o:[
+   {n:'2026-03-14_ArtistaX_RiderTecnico_v3.pdf', ok:1, why:'Data ISO ordena sozinha na pasta, evento e documento identificados, versão explícita.'},
+   {n:'rider_final_v2.pdf', why:'"final" com número de versão do lado é contradição — e sem data e sem artista ninguém sabe de que show é.'},
+   {n:'Rider Tecnico ArtistaX FINAL.pdf', why:'Espaços quebram link em servidor e "FINAL" não diz qual revisão está na mão do técnico.'},
+   {n:'14-03-2026_rider_v3.pdf', why:'Data BR não ordena: 14-03 aparece antes de 02-11 na lista. Só ISO (AAAA-MM-DD) ordena.'}]},
+ {bad:'orçamento show são paulo.xlsx', ctx:'Segunda versão do orçamento, já aprovada pelo cliente.', o:[
+   {n:'2026-03-14_SaoPaulo_Orcamento_v2_APROVADO.xlsx', ok:1, why:'Sem acento, com data ISO, versão e status. "APROVADO" no nome evita alguém trabalhar em cima da v1.'},
+   {n:'2026-03-14_Orçamento_São_Paulo_v2.xlsx', why:'Acento quebra em servidor Linux, em link compartilhado e no zip que vai para o Windows do fornecedor.'},
+   {n:'orcamento_sao_paulo_aprovado.xlsx', why:'Sem data e sem versão: daqui a dois shows em SP você tem três arquivos com o mesmo nome.'},
+   {n:'Orcamento 2026-03-14 v2.xlsx', why:'Espaços viram %20 no link e a data no meio não ordena a pasta — data vem primeiro.'}]},
+ {bad:'WhatsApp Image 2026-03-01 at 14.22.31.jpeg', ctx:'Foto tirada na visita técnica ao Espaço Unimed, ponto de energia do palco.', o:[
+   {n:'2026-03-01_EspacoUnimed_VisitaTecnica_Energia_v1.jpg', ok:1, why:'Nome que se entende fora da pasta: quem abre no celular sabe o que é sem perguntar.'},
+   {n:'IMG_2026-03-01.jpeg', why:'Diz quando, não diz o quê. Em três meses ninguém lembra o que a foto provava.'},
+   {n:'foto visita tecnica.jpg', why:'Sem data, sem local e com espaço. Se a visita foi em duas casas, os dois arquivos brigam pelo mesmo nome.'},
+   {n:'visita_tecnica_espaco_unimed_final.jpg', why:'"final" numa foto não significa nada — e sem data não ordena com o resto da visita.'}]},
+ {bad:'Doc1.docx', ctx:'Relatório pós-evento do show do ArtistaX.', o:[
+   {n:'2026-03-14_ArtistaX_RelatorioPosEvento_v1.docx', ok:1, why:'Documento novo já nasce v1. Nome sobrevive a sair da pasta e ir por e-mail.'},
+   {n:'relatorio.docx', why:'Genérico demais: colide com o relatório de todos os outros eventos no momento em que sair da pasta.'},
+   {n:'Relatório Pós Evento Artista X.docx', why:'Acento, espaço e nenhuma data. Não ordena e quebra ao subir para servidor.'},
+   {n:'pos_evento_final.docx', why:'"final" de novo — e quando vier a correção do settlement, vira final_v2 e você perdeu o controle.'}]},
+ {bad:'contrato assinado ok.pdf', ctx:'Contrato assinado em 22/01/2026, versão 2 (a v1 caiu com o aditivo de horário).', o:[
+   {n:'2026-01-22_ArtistaX_Contrato_v2_ASSINADO.pdf', ok:1, why:'Data da assinatura, não do show, porque é isso que o jurídico procura. Status no nome separa da minuta.'},
+   {n:'2026-01-22 Contrato ArtistaX assinado.pdf', why:'Espaços. O link chega quebrado no WhatsApp do empresário e ele pede o arquivo de novo.'},
+   {n:'contrato_assinado_ok_v2.pdf', why:'"ok" não é status de nada. E sem data nem artista, fora da pasta é um contrato anônimo.'},
+   {n:'Contrato_ArtistaX_FINAL_assinado.pdf', why:'FINAL é proibido: o aditivo sempre chega. Numere e o histórico se explica sozinho.'}]},
+ {bad:'14-03 planilha.xlsx', ctx:'Run of show do show no Espaço Unimed, quarta revisão.', o:[
+   {n:'2026-03-14_EspacoUnimed_RunOfShow_v4.xlsx', ok:1, why:'"planilha" não é documento — RunOfShow é. Data ISO, casa, versão: cabe no grupo do WhatsApp sem legenda.'},
+   {n:'14-03-2026_run_of_show_v4.xlsx', why:'Data BR não ordena e ainda perde o ano na pasta que mistura 2026 e 2027.'},
+   {n:'run of show v4.xlsx', why:'Sem data nem casa: no dia do show, na correria, o crew abre o run of show do evento errado.'},
+   {n:'RunOfShow_EspacoUnimed_FINAL.xlsx', why:'FINAL sem versão. Quando sair a v5 às 15h, quem está com esse na mão não sabe que está desatualizado.'}]}
+];
+var placed={}, sel=null, picks={}, done=false;
+
+function shuffleOpts(){
+  NAMES.forEach(function(it){
+    for(var i=it.o.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=it.o[i]; it.o[i]=it.o[j]; it.o[j]=t; }
+  });
+}
+
+function renderPool(){
+  var p=$('#pool'); p.innerHTML=''; var n=0;
+  FILES.forEach(function(f){
+    if(placed[f.id]) return; n++;
+    var b=document.createElement('button');
+    b.className='chip'+(sel===f.id?' sel':'');
+    b.innerHTML='<span class="ic">'+f.ic+'</span><span class="tx">'+f.d+'<span class="fn">'+esc(f.raw)+'</span></span>';
+    b.onclick=function(){ if(done) return; sel=(sel===f.id?null:f.id); renderPool(); renderTree(); };
+    p.appendChild(b);
+  });
+  if(!n) p.innerHTML='<div class="note">Caixa de entrada vazia. Confira o resultado.</div>';
+  $('#poolN').textContent=n;
+}
+function renderTree(){
+  var t=$('#tree'); t.innerHTML='';
+  FOLDERS.forEach(function(fo){
+    var d=document.createElement('button');
+    d.className='folder'+(sel&&!done?' on':'');
+    var inner='<div class="fname">📁 '+fo.n+'</div><div class="fhint">'+fo.h+'</div>';
+    var mine=FILES.filter(function(f){return placed[f.id]===fo.id;});
+    if(mine.length){
+      inner+='<div class="drop">'+mine.map(function(f){
+        var st=done?(f.a===fo.id?' good':' bad'):'';
+        var mk=done?(f.a===fo.id?' ✓':' ✗'):'';
+        return '<span class="mini'+st+'">'+f.ic+' '+f.d.split('(')[0].trim()+mk+'</span>';
+      }).join('')+'</div>';
+    }
+    d.innerHTML=inner;
+    d.onclick=function(e){
+      if(done) return;
+      var m=e.target.closest('.mini');
+      if(m){ var i=Array.prototype.indexOf.call(d.querySelectorAll('.mini'),m); delete placed[mine[i].id]; sel=null; }
+      else if(sel){ placed[sel]=fo.id; sel=null; }
+      renderPool(); renderTree();
+    };
+    t.appendChild(d);
+  });
+}
+function renderNaming(){
+  var w=$('#naming'); w.innerHTML='';
+  NAMES.forEach(function(it,i){
+    var d=document.createElement('div'); d.className='nm';
+    var h='<div class="lb">NOME QUE CHEGOU</div><div class="bad-name">'+esc(it.bad)+'</div>'+
+          '<div class="note" style="margin-top:5px;font-size:11px">'+it.ctx+'</div><div class="opts">';
+    it.o.forEach(function(o,j){
+      var cls='opt'; if(picks[i]===j) cls+=' sel';
+      if(done){ if(o.ok) cls='opt right'; else if(picks[i]===j) cls='opt wrong'; }
+      h+='<button class="'+cls+'" data-i="'+i+'" data-j="'+j+'">'+esc(o.n)+'</button>';
+    });
+    d.innerHTML=h+'</div>';
+    w.appendChild(d);
+  });
+  Array.prototype.forEach.call(w.querySelectorAll('.opt'),function(b){
+    b.onclick=function(){ if(done) return; picks[+b.dataset.i]=+b.dataset.j; renderNaming(); };
+  });
+}
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+$('#check').onclick=function(){
+  done=true; sel=null;
+  var errs=[], okA=0;
+  FILES.forEach(function(f){
+    var g=placed[f.id];
+    if(g===f.a){ okA++; return; }
+    var fn=FOLDERS.filter(function(x){return x.id===f.a;})[0].n;
+    var where=g?('foi para <code>'+FOLDERS.filter(function(x){return x.id===g;})[0].n+'</code>'):'ficou solto na caixa de entrada';
+    errs.push('<b>'+f.d+'</b> — '+where+', devia estar em <code>'+fn+'</code>. '+f.w);
+  });
+  var okN=0;
+  NAMES.forEach(function(it,i){
+    var p=picks[i], right=it.o.filter(function(o){return o.ok;})[0];
+    if(p!=null && it.o[p].ok){ okN++; return; }
+    if(p==null){ errs.push('<b>'+esc(it.bad)+'</b> — sem resposta. Correto: <code>'+esc(right.n)+'</code>. '+right.why); }
+    else { errs.push('<b>'+esc(it.bad)+'</b> — você escolheu <code>'+esc(it.o[p].n)+'</code>: '+it.o[p].why+' Correto: <code>'+esc(right.n)+'</code>. '+right.why); }
+  });
+  var tot=okA+okN, max=FILES.length+NAMES.length;
+  $('#sArq').textContent=okA+'/'+FILES.length;
+  $('#sNom').textContent=okN+'/'+NAMES.length;
+  $('#sTot').textContent=tot+'/'+max;
+  var v=$('#verd');
+  if(tot===max){ v.className='verdict ok'; v.textContent='✓ Pasta auditável: qualquer um da equipe acha o arquivo sem te ligar às 2h da manhã.'; }
+  else if(tot>=max-4){ v.className='verdict warn'; v.textContent='◐ Estrutura de pé, mas com '+(max-tot)+' furo(s). Furo em pasta de evento aparece no dia da montagem.'; }
+  else { v.className='verdict bad'; v.textContent='✗ '+(max-tot)+' erro(s). Nessa condição a pasta não é fonte da verdade — a equipe volta a trabalhar por anexo de e-mail.'; }
+  $('#errs').innerHTML=errs.length?errs.map(function(e){return '<div class="err-i">'+e+'</div>';}).join(''):'';
+  $('#result').classList.remove('hidden');
+  renderPool(); renderTree(); renderNaming();
+  $('#result').scrollIntoView({behavior:'smooth',block:'nearest'});
+};
+$('#reset').onclick=function(){
+  placed={}; picks={}; sel=null; done=false; shuffleOpts();
+  $('#result').classList.add('hidden');
+  renderPool(); renderTree(); renderNaming();
+  $('#rootPath').scrollIntoView({behavior:'smooth',block:'nearest'});
+};
+shuffleOpts(); renderPool(); renderTree(); renderNaming();
+})();
+</script>
+</body>
+</html>

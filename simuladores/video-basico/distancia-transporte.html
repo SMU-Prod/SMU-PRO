@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMU PRO · Levar o Sinal Longe</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0c1017;--panel:#161c26;--panel2:#1d2431;--line:#2a3444;--ink:#e7edf5;--dim:#8794a8;--accent:#3b82f6;--ok:#22c55e;--err:#ef4444;--warn:#f59e0b;}
+  html,body{background:var(--bg);color:var(--ink);font-family:'Segoe UI',system-ui,Arial,sans-serif;}
+  body{padding:12px;}
+  .app{max-width:880px;margin:0 auto;display:flex;flex-direction:column;gap:12px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  h1{font-size:15px;margin-bottom:3px;} .sub{font-size:12px;color:var(--dim);margin-bottom:12px;}
+  .scen{background:#101826;border:1px solid #24405f;border-radius:10px;padding:12px;}
+  .scen .lbl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:5px;}
+  .scen .txt{font-size:13.5px;line-height:1.5;} .scen .txt b{color:#fff;}
+  .canwrap{background:#05070b;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin-top:12px;}
+  #cv{width:100%;display:block;aspect-ratio:16/5;}
+  .opts{display:grid;grid-template-columns:1fr;gap:7px;margin-top:12px;}
+  @media(min-width:600px){ .opts{grid-template-columns:1fr 1fr;} }
+  .opt{display:flex;align-items:center;gap:9px;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:10px 12px;cursor:pointer;transition:.12s;text-align:left;}
+  .opt:hover{border-color:var(--accent);}
+  .opt.right{border-color:var(--ok);background:#0e2018;} .opt.wrong{border-color:var(--err);background:#2a0e0e;}
+  .opt .ic{width:12px;height:12px;border-radius:3px;flex-shrink:0;}
+  .opt .nm{font-size:12.5px;font-weight:700;} .opt .ds{font-size:10.5px;color:var(--dim);}
+  .verdict{font-size:13px;font-weight:700;padding:10px;border-radius:9px;text-align:center;margin-top:12px;}
+  .verdict.ok{background:#14532d;color:#bbf7d0;} .verdict.bad{background:#450a0a;color:#fca5a5;} .verdict.idle{background:var(--panel2);color:var(--dim);}
+  .note{font-size:12px;color:var(--dim);line-height:1.55;margin-top:10px;} .note b{color:var(--ink);}
+  .bar{display:flex;align-items:center;gap:10px;margin-top:12px;}
+  .score{font-size:13px;font-weight:800;color:var(--ok);} .sp{flex:1;}
+  .btn{font-size:11.5px;padding:7px 12px;border:1px solid var(--line);border-radius:7px;background:#0c1119;color:var(--ink);cursor:pointer;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="card">
+    <h1>Qual transporte leva o sinal até lá?</h1>
+    <div class="sub">Leia o caso, veja a distância no desenho e escolha o <b>meio de transporte</b> certo. Cada erro explica o porquê.</div>
+    <div class="scen"><div class="lbl">Caso <span id="idx"></span></div><div class="txt" id="scenTxt"></div></div>
+    <div class="canwrap"><canvas id="cv" width="900" height="281"></canvas></div>
+    <div class="opts" id="opts"></div>
+    <div class="verdict idle" id="verdict">Escolha o transporte.</div>
+    <div class="note" id="note"></div>
+    <div class="bar"><span class="score" id="score">0 / 5</span><span class="sp"></span><button class="btn" id="reset">Recomeçar</button></div>
+  </div>
+</div>
+<script>
+(function(){
+var $=function(s){return document.querySelector(s);};
+var OPTS=[
+  {id:'hdmi', nm:'Cabo HDMI direto', ds:'até ~10-15 m', c:'#a855f7'},
+  {id:'hdbaset', nm:'Extensor HDBaseT (Cat6)', ds:'até ~70-100 m', c:'#3b82f6'},
+  {id:'sdi', nm:'SDI coaxial (BNC)', ds:'~100 m, trava', c:'#12b886'},
+  {id:'fibra', nm:'Fibra óptica (LC)', ds:'centenas de m a km', c:'#f59e0b'},
+  {id:'ndi', nm:'NDI (vídeo sobre rede IP)', ds:'rede Gigabit, vários sinais', c:'#ec4899'}
+];
+var CASES=[
+  {d:3,  txt:'Stand de um <b>corporativo</b>: um notebook a <b>3 metros</b> de uma TV. Nada de especial.', a:'hdmi',
+   why:'Distância curta e um equipamento só: <b>HDMI direto</b> resolve, é o mais simples e barato. Não invente complexidade onde não precisa.'},
+  {d:70, txt:'<b>Auditório</b>: o notebook fica na mesa e o projetor está a <b>70 metros</b>, mas já existe <b>cabo de rede</b> passado pelo prédio.', a:'hdbaset',
+   why:'HDMI não vai a 70 m. Como já há <b>cabo de rede (Cat6)</b>, o <b>extensor HDBaseT</b> é a solução barata e direta — leva HDMI até ~100 m.'},
+  {d:90, txt:'<b>Câmera</b> no palco precisa chegar à mesa de corte a <b>90 metros</b>, num cabo que <b>não pode soltar</b> se alguém esbarrar.', a:'sdi',
+   why:'<b>SDI coaxial com BNC</b>: chega a ~100 m e o conector <b>trava com giro</b> — padrão profissional de câmera justamente por não soltar.'},
+  {d:300,txt:'<b>Estádio</b>: mandar vídeo do palco até a cabine de FOH a <b>300 metros</b>, passando perto de cabos de energia.', a:'fibra',
+   why:'A <b>fibra óptica</b> é a única que vai tão longe com folga e ainda é <b>imune a interferência elétrica</b> — perfeita ao lado de energia.'},
+  {d:60, txt:'Você precisa levar <b>várias câmeras ao mesmo tempo</b> para dois computadores, e o local já tem uma <b>rede Gigabit</b> boa.', a:'ndi',
+   why:'<b>NDI</b> manda vídeo pela rede IP: vários sinais no mesmo cabo, chegando a vários destinos. É a escolha quando já existe rede e há muitas fontes.'}
+];
+var i=0, score=0, locked=false;
+var cv=$('#cv');
+function build(){ i=0; score=0; show(); }
+function show(){
+  locked=false;
+  if(i>=CASES.length){ $('#scenTxt').innerHTML='<b>Você fechou os 5 casos.</b> Agora sabe escolher o transporte pela distância, pelo que já existe no local e pelo tipo de equipamento.'; $('#opts').innerHTML=''; var v=$('#verdict'); v.className='verdict ok'; v.textContent='✓ Concluído — '+score+'/5'; $('#note').innerHTML=''; draw(0); return; }
+  var c=CASES[i];
+  $('#idx').textContent=(i+1)+'/'+CASES.length;
+  $('#scenTxt').innerHTML=c.txt;
+  var oe=$('#opts'); oe.innerHTML='';
+  OPTS.forEach(function(o){ var b=document.createElement('div'); b.className='opt'; b.id='o-'+o.id;
+    b.innerHTML='<span class="ic" style="background:'+o.c+'"></span><span><span class="nm">'+o.nm+'</span><br><span class="ds">'+o.ds+'</span></span>';
+    b.onclick=function(){ pick(o.id); }; oe.appendChild(b); });
+  $('#verdict').className='verdict idle'; $('#verdict').textContent='Escolha o transporte.';
+  $('#note').innerHTML=''; $('#score').textContent=score+' / '+CASES.length;
+  draw(c.d);
+}
+function pick(id){
+  if(locked)return; var c=CASES[i];
+  if(id===c.a){ locked=true; score++; $('#o-'+id).classList.add('right');
+    var v=$('#verdict'); v.className='verdict ok'; v.textContent='✓ Certo!'; $('#note').innerHTML=c.why;
+    $('#score').textContent=score+' / '+CASES.length;
+    setTimeout(function(){ i++; show(); }, 2600);
+  } else {
+    $('#o-'+id).classList.add('wrong');
+    var v2=$('#verdict'); v2.className='verdict bad'; v2.textContent='✗ Não é o ideal aqui — olhe a distância e o que o local já tem.';
+  }
+}
+function draw(d){
+  var ctx=cv.getContext('2d'); var W=cv.width,H=cv.height; ctx.fillStyle='#05070b'; ctx.fillRect(0,0,W,H);
+  if(!d){ return; }
+  var y=H*0.55;
+  // ground
+  ctx.strokeStyle='#1e2a3a'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(40,y+34); ctx.lineTo(W-40,y+34); ctx.stroke();
+  // source
+  ctx.fillStyle='#334155'; ctx.fillRect(40,y-18,42,36); ctx.fillStyle='#93c5fd'; ctx.font='11px Segoe UI'; ctx.textAlign='center'; ctx.fillText('FONTE',61,y+34+16);
+  // dest
+  ctx.fillStyle='#334155'; ctx.fillRect(W-82,y-22,44,44); ctx.fillStyle='#93c5fd'; ctx.fillText('TELA',W-60,y+34+16);
+  // line
+  ctx.strokeStyle='#3b82f6'; ctx.setLineDash([7,5]); ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(84,y); ctx.lineTo(W-84,y); ctx.stroke(); ctx.setLineDash([]);
+  // distance label
+  ctx.fillStyle='#e7edf5'; ctx.font='bold 17px Segoe UI'; ctx.fillText(d+' m', W/2, y-14);
+  ctx.fillStyle='#64748b'; ctx.font='11px Segoe UI'; ctx.fillText('distância a vencer', W/2, y+20);
+  ctx.textAlign='left';
+}
+$('#reset').onclick=build;
+window.__dt={build:build, pick:pick, get i(){return i;}, get score(){return score;}};
+build();
+})();
+</script>
+</body>
+</html>

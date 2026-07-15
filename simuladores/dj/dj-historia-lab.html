@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>Linha do Tempo do DJ — dos block parties ao streaming (SMU)</title>
+<style>
+  :root{ --ink:#e9eef7; --muted:#8b97a9; --amber:#f4a02a; --green:#37d07a; --red:#e0483f; --cyan:#39c0e6; }
+  *{box-sizing:border-box} html,body{margin:0;height:100%}
+  body{ background:radial-gradient(1100px 650px at 50% -8%,#1b1e23,#0a0b0d 62%),#08090b; color:var(--ink);
+    font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; -webkit-font-smoothing:antialiased;
+    user-select:none;overflow:hidden; display:flex;align-items:flex-start;justify-content:center; }
+  #stage{transform-origin:top center;flex:0 0 auto}
+  .lab{position:relative;width:1080px;display:flex;flex-direction:column;gap:9px;padding:12px;
+    background:linear-gradient(180deg,#2b2f36,#1f2228 10%,#191b1f 60%,#141518);
+    border:1px solid #0b0c0e;border-radius:16px;box-shadow:0 30px 80px #000b, inset 0 1px 0 #ffffff10;}
+  .util{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:linear-gradient(180deg,#202329,#15171b);border:1px solid #0c0d0f;border-radius:11px;padding:7px 11px}
+  .brand b{font-size:16px;letter-spacing:1px;color:#eef2f8}
+  .brand .m{font-size:9px;letter-spacing:2px;color:#8a94a4;text-transform:uppercase;margin-left:8px}
+  .pill{font-size:10px;color:var(--muted);background:#0c0e12;border:1px solid #2a2f37;border-radius:16px;padding:4px 9px;white-space:nowrap}
+  .pill b{color:#fff}
+  .spacer{flex:1}
+  .btnp{font:inherit;font-size:11px;font-weight:700;border:0;border-radius:8px;padding:6px 11px;cursor:pointer;color:var(--muted);background:transparent;border:1px solid #2a2f37}
+  .prog{display:flex;gap:5px}
+  .pdot{width:22px;height:6px;border-radius:3px;background:#242a35}
+  .pdot.done{background:var(--green)} .pdot.cur{background:var(--cyan)}
+  .card{background:linear-gradient(180deg,#101622,#0b0f18);border:1px solid #0c1526;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:11px;min-height:330px}
+  .ctag{font-size:9.5px;letter-spacing:1.5px;color:#7bd3ff;font-weight:800}
+  .ctit{font-size:16px;font-weight:900;color:#fff;line-height:1.3}
+  .cdesc{font-size:11.5px;color:#a9b7cc;line-height:1.5}
+  .opts{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+  .op{background:#0c1420;border:1px solid #1a2c48;border-radius:10px;padding:11px 13px;cursor:pointer;font-size:11.5px;line-height:1.45;color:#dfe8f5}
+  .op:hover{border-color:#2a4468}
+  .op.good{background:#0d2114;border-color:#37d07a;color:#c9f0d8}
+  .op.badx{background:#241012;border-color:#e0483f;color:#f0cdc9}
+  .fb{border-radius:9px;padding:10px 13px;font-size:11px;line-height:1.5;display:none}
+  .fb.show{display:block}
+  .fb.hit{background:#0d2114;border:1px solid #1e4a2c;color:#a8ecc4}
+  .fb.miss{background:#241a08;border:1px solid #4a3a14;color:#ffd9a0}
+  .nxt{align-self:flex-end;font-size:11px;font-weight:800;color:#07120b;background:linear-gradient(180deg,#5be59a,#27b566);border:0;border-radius:8px;padding:9px 22px;cursor:pointer;display:none}
+  .nxt.show{display:block}
+  .final{display:none;flex-direction:column;gap:10px;align-items:center;text-align:center;padding:26px 10px}
+  .final.show{display:flex}
+  .final .big{font-size:22px;font-weight:900;color:var(--green)}
+  .final .sc{font-size:13px;color:#cfd7e6}
+  .final ul{text-align:left;font-size:11px;color:#a9b7cc;line-height:1.7;margin:4px 0}
+  .coach{background:#0c0e12;border:1px solid #223;border-radius:10px;padding:9px 12px;font-size:10.5px;line-height:1.45;color:#c7d0de}
+  .coach b{color:#fff}.coach .k{color:var(--amber);font-weight:800}
+</style>
+</head>
+<body>
+<div id="stage">
+<div class="lab">
+  <div class="util">
+    <div class="brand"><b>SMU</b><span class="m">LINHA DO TEMPO DO DJ</span></div>
+    <span class="pill">Decisão <b id="pNow">1</b>/<b id="pTot">6</b> · Acertos de primeira: <b id="pScore">0</b></span>
+    <span class="spacer"></span>
+    <div class="prog" id="prog"></div>
+    <button class="btnp" id="btnReset">Reiniciar</button>
+  </div>
+  <div class="card" id="card"></div>
+  <div class="coach"><b>Quem conhece a história toca com contexto.</b> Cada era criou uma técnica que você usa até hoje: o <span class="k">break</span> virou loop, o <span class="k">scratch</span> virou performance, a house/techno viraram a pista moderna. Percorra as eras e acerte o que marcou cada uma.</div>
+</div>
+</div>
+
+<script>
+"use strict";
+const $=(s)=>document.querySelector(s);
+const CEN=[
+ {
+  "tag": "ERA 1 · ANOS 70 — O NASCIMENTO (BRONX, NY)",
+  "tit": "Block parties no Bronx. O que DJ Kool Herc inventou que fundou a cultura?",
+  "desc": "Tudo começa com uma observação de pista: qual parte da música fazia todo mundo dançar?",
+  "ops": [
+   {
+    "t": "O 'merry-go-round': usar DOIS toca-discos com o mesmo disco para estender o BREAK (a parte só de bateria) sem parar",
+    "good": true,
+    "fb": "Exato. Herc percebeu que a pista explodia no break — e o estendeu alternando dois discos. Nasce o DJing (e o chão para o hip-hop e os b-boys)."
+   },
+   {
+    "t": "O sync automático de BPM",
+    "good": false,
+    "fb": "Sync é tecnologia dos anos 2000 — em 1973 era mão, ouvido e dois Technics."
+   },
+   {
+    "t": "A live de DJ em rede social",
+    "good": false,
+    "fb": "Meio século antes das lives: a 'transmissão' era o alto-falante na rua do Bronx."
+   }
+  ]
+ },
+ {
+  "tag": "ERA 2 · FIM DOS 70 — AS TÉCNICAS",
+  "tit": "A geração seguinte transformou o toca-discos em instrumento. Quem fez o quê?",
+  "desc": "O DJing ganha virtuosismo.",
+  "ops": [
+   {
+    "t": "Grandmaster Flash sistematizou o corte rápido/backspin e Grand Wizzard Theodore criou o SCRATCH (por acidente, segurando o disco)",
+    "good": true,
+    "fb": "Isso: Flash trouxe a precisão cirúrgica (quick mix theory) e Theodore, ao segurar o disco quando a mãe o chamou, descobriu o scratch."
+   },
+   {
+    "t": "Ambos inventaram o CDJ",
+    "good": false,
+    "fb": "O CDJ só chega em 1994 (Pioneer CDJ-500). Nos anos 70 era vinil, agulha e feltro."
+   },
+   {
+    "t": "Eles criaram o streaming de música",
+    "good": false,
+    "fb": "Décadas antes da internet como conhecemos."
+   }
+  ]
+ },
+ {
+  "tag": "ERA 3 · ANOS 80 — A MÚSICA DAS MÁQUINAS",
+  "tit": "Duas cidades americanas criam os gêneros que dominam as pistas até hoje. Quais?",
+  "desc": "Drum machines baratas + clubes lendários = novos gêneros.",
+  "ops": [
+   {
+    "t": "Chicago cria a HOUSE (Frankie Knuckles, clube Warehouse) e Detroit cria o TECHNO (Juan Atkins, Derrick May, Kevin Saunderson)",
+    "good": true,
+    "fb": "House vem de 'Warehouse'; o techno de Detroit veio do trio de Belleville. As duas matrizes de quase toda a música eletrônica de pista."
+   },
+   {
+    "t": "Miami cria o rock e Seattle cria o samba",
+    "good": false,
+    "fb": "Geografia trocada — e gêneros também. House = Chicago; techno = Detroit. Guarde isso."
+   },
+   {
+    "t": "A house nasceu na Europa nos anos 2000",
+    "good": false,
+    "fb": "A Europa abraçou forte (UK, Alemanha, Ibiza), mas o berço é americano e oitentista."
+   }
+  ]
+ },
+ {
+  "tag": "ERA 4 · ANOS 90 — A PISTA CRESCE",
+  "tit": "A cultura sai do underground e vira fenômeno. O que marca os anos 90?",
+  "desc": "Da warehouse ilegal ao clube gigante.",
+  "ops": [
+   {
+    "t": "Raves, superclubs (Ministry of Sound, Tresor), o DJ virando atração principal — e o primeiro CDJ da Pioneer (CDJ-500, 1994)",
+    "good": true,
+    "fb": "A década em que o DJ vira headliner e o CD entra na cabine. O flyer de rave dos 90 é o avô do line-up de festival de hoje."
+   },
+   {
+    "t": "O fim das festas de música eletrônica",
+    "good": false,
+    "fb": "O oposto: foi a década da explosão global."
+   },
+   {
+    "t": "A invenção do vinil",
+    "good": false,
+    "fb": "O vinil é dos anos 1940-50 — nos 90 ele já era o veterano da cabine."
+   }
+  ]
+ },
+ {
+  "tag": "ERA 5 · ANOS 2000 — A REVOLUÇÃO DIGITAL",
+  "tit": "O notebook entra na cabine. O que muda no trabalho do DJ?",
+  "desc": "A maior mudança técnica desde os dois toca-discos.",
+  "ops": [
+   {
+    "t": "Serato/Traktor com timecode, acervo infinito no HD, o CDJ vira padrão das cabines — e o beatmatch manual ganha o botão SYNC",
+    "good": true,
+    "fb": "O acervo saiu da mala de discos para o disco rígido. A técnica clássica continua — mas a tecnologia libera as mãos para performance."
+   },
+   {
+    "t": "Os DJs pararam de mixar",
+    "good": false,
+    "fb": "Mixou-se mais do que nunca — com mais ferramentas: loops, hot cues, efeitos."
+   },
+   {
+    "t": "O vinil foi proibido",
+    "good": false,
+    "fb": "Nunca: o vinil seguiu vivo (e voltou com força no colecionismo e no techno)."
+   }
+  ]
+ },
+ {
+  "tag": "ERA 6 · HOJE — STANDALONE E STREAMING",
+  "tit": "A cabine de 2020s: o que define a era atual?",
+  "desc": "Você está entrando na história exatamente aqui.",
+  "ops": [
+   {
+    "t": "Equipamento standalone (CDJ-3000, Prime), pen drive/rekordbox e streaming chegando às cabines — DJ também é produtor e marca digital",
+    "good": true,
+    "fb": "A era do curso que você está fazendo: hardware potente sem notebook, biblioteca no pen/nuvem, e a carreira construída também online."
+   },
+   {
+    "t": "Só se toca com orquestra ao vivo",
+    "good": false,
+    "fb": "Não — a cabine segue sendo o centro, mais poderosa do que nunca."
+   },
+   {
+    "t": "O DJ foi substituído por playlist automática",
+    "good": false,
+    "fb": "Playlist não lê pista, não constrói energia, não improvisa. Por isso você está aqui."
+   }
+  ]
+ }
+];
+let i=0, score=0, answered=false, firstTry=true;
+function renderProg(){ const p=$("#prog"); p.innerHTML=""; CEN.forEach((_,k)=>{ const d=document.createElement("div"); d.className="pdot"+(k<i?" done":k===i?" cur":""); p.appendChild(d); }); $("#pNow").textContent=Math.min(i+1,CEN.length); $("#pScore").textContent=score; }
+function render(){
+  renderProg(); const c=CEN[i]; const card=$("#card");
+  if(!c){ card.innerHTML=`<div class="final show"><div class="big">✓ Você conhece a linhagem!</div>
+    <div class="sc">Acertos de primeira: <b>${score}/${CEN.length}</b></div>
+    <ul><li><b>70s</b> Bronx: Kool Herc estende o break · <b>Flash/Theodore</b>: técnicas e scratch</li>
+  <li><b>80s</b>: house (Chicago) e techno (Detroit) · <b>90s</b>: raves, superclubs, 1º CDJ</li>
+  <li><b>2000s</b>: era digital (Serato/Traktor) · <b>Hoje</b>: standalone, pen drive e streaming</li></ul>
+    <div class="sc" style="font-size:10.5px;color:#8b97a9">Cada era e cada perfil têm algo a te ensinar — a cultura é a base do ofício.</div></div>`; return; }
+  answered=false; firstTry=true;
+  const shuffled=c.ops.map((o,k)=>({o,k})).sort(()=>Math.random()-0.5);
+  card.innerHTML=`<div class="ctag">${c.tag}</div><div class="ctit">${c.tit}</div><div class="cdesc">${c.desc}</div>
+    <div class="opts">${shuffled.map(({o,k})=>`<div class="op" data-k="${k}">${o.t}</div>`).join("")}</div>
+    <div class="fb" id="fb"></div><button class="nxt" id="nxt">PRÓXIMA DECISÃO ▶</button>`;
+  [...card.querySelectorAll(".op")].forEach(el=>el.addEventListener("pointerdown",()=>{
+    const o=c.ops[+el.dataset.k]; const fb=$("#fb");
+    if(o.good){ if(!answered){ el.classList.add("good"); fb.className="fb show hit"; fb.textContent="✓ "+o.fb;
+        if(firstTry)score++; answered=true; $("#nxt").classList.add("show"); $("#pScore").textContent=score; } }
+    else { el.classList.add("badx"); fb.className="fb show miss"; fb.textContent="✗ "+o.fb; firstTry=false; }
+  }));
+  card.querySelector("#nxt").addEventListener("pointerdown",()=>{ i++; render(); });
+}
+$("#pTot").textContent=CEN.length;
+$("#btnReset").addEventListener("pointerdown",()=>{ i=0; score=0; render(); });
+function fit(){ const s=Math.min(1,(window.innerWidth-8)/1104); $("#stage").style.transform="scale("+s+")"; }
+window.addEventListener("resize",fit); fit(); render();
+</script>
+</body>
+</html>

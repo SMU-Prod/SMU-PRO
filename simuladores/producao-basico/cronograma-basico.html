@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>SMU PRO · Cronograma de montagem</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0c1017;--panel:#161c26;--panel2:#1b2230;--line:#2a3444;--ink:#e7edf5;--dim:#8794a8;
+        --accent:#f59e0b;--ok:#22c55e;--err:#ef4444;--warn:#f59e0b;--cyan:#38bdf8;}
+  html,body{background:var(--bg);color:var(--ink);
+    font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased;}
+  body{padding:12px;}
+  .app{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:12px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  h1{font-size:15px;margin-bottom:3px;}
+  .sub{font-size:12px;color:var(--dim);margin-bottom:12px;line-height:1.5;}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px;}
+  .stat .k{font-size:10px;color:var(--dim);letter-spacing:.5px;}
+  .stat .val{font-size:15px;font-weight:800;margin-top:2px;}
+  .verdict{font-size:13px;font-weight:700;padding:9px 12px;border-radius:8px;text-align:center;}
+  .verdict.ok{background:#14532d;color:#bbf7d0;}
+  .verdict.bad{background:#450a0a;color:#fca5a5;}
+  .verdict.warn{background:#422006;color:#fde68a;}
+  .note{font-size:12px;color:var(--dim);line-height:1.55;}
+  button{font:inherit;cursor:pointer;}
+  .brief{background:#0e1520;border:1px solid var(--line);border-left:3px solid var(--cyan);border-radius:8px;
+    padding:10px 12px;font-size:12px;line-height:1.6;color:#c3cede;}
+  .brief b{color:var(--ink);}
+  .tl{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:10px;
+    background:#0a0e15;padding:9px 9px 5px;margin-top:12px;}
+  .tlin{min-width:600px;}
+  .trow{display:flex;align-items:center;gap:6px;height:25px;}
+  .trow .lb{width:104px;flex-shrink:0;font-size:10px;color:var(--dim);text-align:right;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .track{position:relative;flex:1;height:18px;border-radius:4px;background:#101722;
+    background-image:repeating-linear-gradient(to right,#1b2330 0 1px,transparent 1px 6.25%);}
+  .bar{position:absolute;top:0;height:18px;border-radius:4px;background:#4220069e;border:1px solid var(--accent);
+    font-size:9px;color:#fde68a;line-height:16px;padding:0 3px;white-space:nowrap;overflow:hidden;font-variant-numeric:tabular-nums;}
+  .bar.err{background:#450a0ac9;border-color:var(--err);color:#fca5a5;}
+  .mk{position:absolute;top:-2px;bottom:-2px;width:2px;pointer-events:none;}
+  .mk.lib{background:#38bdf880;} .mk.show{background:var(--err);}
+  .ax .lb{color:transparent;}
+  .ax .track{background:none;height:12px;}
+  .ax .track span{position:absolute;top:0;font-size:9px;color:#4e5a72;transform:translateX(-50%);}
+  .rows{display:flex;flex-direction:column;gap:5px;margin-top:12px;}
+  .r{display:flex;align-items:center;gap:7px;background:var(--panel2);border:1px solid var(--line);
+    border-radius:8px;padding:6px 8px;flex-wrap:wrap;}
+  .r.err{border-color:#7f1d1d;background:#1e1113;}
+  .r .n{flex:1;min-width:150px;font-size:12px;line-height:1.3;}
+  .r .n small{display:block;color:var(--dim);font-size:10px;}
+  select{background:#0c1119;border:1px solid var(--line);color:var(--ink);border-radius:6px;
+    padding:6px 4px;font:inherit;font-size:12px;min-height:34px;font-variant-numeric:tabular-nums;}
+  .fl{display:flex;align-items:center;gap:4px;font-size:9px;color:var(--dim);letter-spacing:.5px;}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px;}
+  .btn{background:#0c1119;border:1px solid var(--line);color:var(--ink);border-radius:8px;
+    padding:9px 13px;font-size:12px;font-weight:700;min-height:36px;}
+  .btn.pri{background:#42200680;border-color:var(--accent);color:#fde68a;}
+  .btn.dng{background:#450a0a80;border-color:#7f1d1d;color:#fca5a5;}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:11px;}
+  @media(min-width:660px){ .stats{grid-template-columns:repeat(4,1fr);} }
+  .errs{display:flex;flex-direction:column;gap:6px;margin-top:10px;}
+  .e{font-size:12px;line-height:1.5;padding:8px 10px;border-radius:7px;border:1px solid;}
+  .e.bad{background:#2a0d0d;border-color:#7f1d1d;color:#fca5a5;}
+  .e.warn{background:#2a1c06;border-color:#78350f;color:#fde68a;}
+  .e.ok{background:#0d2418;border-color:#14532d;color:#bbf7d0;}
+  .e b{color:#fff;}
+  .leg{display:flex;gap:12px;flex-wrap:wrap;font-size:10px;color:var(--dim);margin-top:7px;}
+  .leg i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:-1px;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="card">
+    <h1>Encaixar tudo no tempo — o cronograma de montagem</h1>
+    <div class="sub">Defina início e duração de cada tarefa. O plano abaixo está quebrado: tarefas fora de ordem e portas antes do soundcheck. Conserte.</div>
+    <div class="brief">
+      <b>Show às 22:00.</b> O salão <b>libera às 08:00</b> — antes disso não entra caminhão, não entra ninguém.
+      Equipe de 8 pessoas, PA voado na treliça, banda de 5. Você tem <b>14 horas</b> entre a chave na mão e a primeira música.
+    </div>
+
+    <div class="tl">
+      <div class="tlin" id="tlin"></div>
+    </div>
+    <div class="leg">
+      <span><i style="background:#422006;border:1px solid var(--accent)"></i>tarefa ok</span>
+      <span><i style="background:#450a0a;border:1px solid var(--err)"></i>conflito</span>
+      <span><i style="background:#38bdf8"></i>08:00 local libera</span>
+      <span><i style="background:#ef4444"></i>22:00 show</span>
+    </div>
+
+    <div class="rows" id="rows"></div>
+
+    <div class="toolbar">
+      <button class="btn pri" id="check">Conferir</button>
+      <button class="btn dng" id="delay">🚚 O caminhão atrasou 1h30</button>
+      <button class="btn" id="reset">Reiniciar</button>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="k">ÚLTIMO INÍCIO POSSÍVEL</div><div class="val" id="sNec">—</div></div>
+      <div class="stat"><div class="k">FOLGA DO SEU PLANO</div><div class="val" id="sFol">—</div></div>
+      <div class="stat"><div class="k">SEU LOAD-IN COMEÇA</div><div class="val" id="sIni">—</div></div>
+      <div class="stat"><div class="k">CONFLITOS</div><div class="val" id="sCon">—</div></div>
+    </div>
+
+    <div class="errs" id="errs"></div>
+    <div class="note" style="margin-top:10px;">
+      <b>Último início possível</b> sai da conta de trás para frente: 22:00 menos portas, menos soundcheck, menos line check, menos as montagens. <b>Folga do seu plano</b> é a distância entre o seu load-in e esse horário — na prática, quanto de atraso o dia engole antes do show escorregar. Folga zero não é eficiência: é o atraso já contratado.
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var $=function(s){return document.querySelector(s);};
+  var T0=420, T1=1380, SPAN=T1-T0, LIBERA=480, SHOW=1320; // 07:00 · 23:00 · 08:00 · 22:00
+  var BASE=[
+    {id:'loadin',n:'Load-in — descarga do caminhão',sn:'Load-in',s:480,d:60,deps:[]},
+    {id:'estrut',n:'Montagem de estrutura — praticável e treliça',sn:'Estrutura',s:720,d:180,
+      deps:[{id:'loadin',w:'o material precisa estar descarregado antes de subir estrutura'}]},
+    {id:'energia',n:'Energia — quadro, aterramento e distribuição',sn:'Energia',s:540,d:60,
+      deps:[{id:'loadin',w:'o quadro e os cabos de força chegam no caminhão'}]},
+    {id:'som',n:'Montagem de som — PA voado, subs, monitores',sn:'Som',s:540,d:150,
+      deps:[{id:'estrut',w:'não dá para voar o PA antes da treliça estar no ar'}]},
+    {id:'luz',n:'Montagem de luz — fixtures na treliça, endereçamento',sn:'Luz',s:600,d:120,
+      deps:[{id:'estrut',w:'os fixtures penduram na treliça — ela vem primeiro'}]},
+    {id:'patch',n:'Patch e line check',sn:'Patch/line check',s:660,d:60,
+      deps:[{id:'energia',w:'sem energia nada liga — line check antes do quadro é impossível'},
+            {id:'som',w:'line check é conferir canal por canal do sistema montado'},
+            {id:'luz',w:'a luz também precisa estar endereçada'}]},
+    {id:'sound',n:'Soundcheck da banda',sn:'Soundcheck',s:1230,d:90,
+      deps:[{id:'patch',w:'a banda não passa som em sistema que ainda não fechou o line check'}]},
+    {id:'portas',n:'Abertura de portas',sn:'Portas',s:1200,d:60,
+      deps:[{id:'sound',w:'soundcheck acaba antes das portas — não se abre a casa com a banda na passagem'}]}
+  ];
+  var TK=[], checked=false;
+  function get(id){ for(var i=0;i<TK.length;i++) if(TK[i].id===id) return TK[i]; }
+  function hm(m){ m=((m%1440)+1440)%1440; return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'); }
+  function dur(m){ var h=Math.floor(m/60), r=m%60; return (h?h+'h':'')+(r?String(r).padStart(h?2:1,'0'):(h?'00':'0'))+(h?'':'min'); }
+  function pct(m){ return (m-T0)/SPAN*100; }
+
+  function reset(){
+    TK=BASE.map(function(o){var x={};for(var k in o)x[k]=o[k];return x;});
+    checked=false; build(); render(); $('#errs').innerHTML='';
+  }
+  function opts(from,to,step,sel,fmt){
+    var h=''; for(var v=from;v<=to;v+=step) h+='<option value="'+v+'"'+(v===sel?' selected':'')+'>'+fmt(v)+'</option>';
+    return h;
+  }
+  function build(){
+    var tl='', rw='';
+    TK.forEach(function(t){
+      tl+='<div class="trow"><div class="lb">'+t.sn+'</div><div class="track" data-tr="'+t.id+'">'+
+          '<div class="mk lib" style="left:'+pct(LIBERA)+'%"></div>'+
+          '<div class="mk show" style="left:'+pct(SHOW)+'%"></div>'+
+          '<div class="bar" data-bar="'+t.id+'"></div></div></div>';
+      rw+='<div class="r" data-r="'+t.id+'"><div class="n">'+t.n+'<small data-when="'+t.id+'"></small></div>'+
+          '<div class="fl">INÍCIO<select data-a="s" data-i="'+t.id+'">'+opts(420,1320,15,t.s,hm)+'</select></div>'+
+          '<div class="fl">DURAÇÃO<select data-a="d" data-i="'+t.id+'">'+opts(15,240,15,t.d,dur)+'</select></div></div>';
+    });
+    var ax='<div class="trow ax"><div class="lb">.</div><div class="track">';
+    for(var h2=7;h2<=23;h2+=2) ax+='<span style="left:'+pct(h2*60)+'%">'+String(h2).padStart(2,'0')+'h</span>';
+    ax+='</div></div>';
+    $('#tlin').innerHTML=tl+ax;
+    $('#rows').innerHTML=rw;
+  }
+  $('#rows').addEventListener('change',function(e){
+    var t=get(e.target.dataset.i); if(!t) return;
+    t[e.target.dataset.a]=+e.target.value; render();
+  });
+
+  // conta de trás para frente: último início possível de cada tarefa
+  function backward(){
+    var LS={}, order=TK.slice().reverse();
+    order.forEach(function(t){
+      var succ=TK.filter(function(o){ return o.deps.some(function(d){return d.id===t.id;}); });
+      var lf = succ.length ? Math.min.apply(null,succ.map(function(o){return LS[o.id];})) : SHOW;
+      LS[t.id]=lf-t.d;
+    });
+    return LS;
+  }
+  function conflicts(){
+    var out=[];
+    TK.forEach(function(t){
+      if(t.s<LIBERA) out.push({id:t.id,h:'<b>'+t.sn+'</b> começa '+hm(t.s)+', mas o local só libera às 08:00. Fora do salão você não monta nada.'});
+      t.deps.forEach(function(d){
+        var p=get(d.id);
+        if(t.s < p.s+p.d) out.push({id:t.id,h:'<b>'+t.sn+'</b> ('+hm(t.s)+') começa antes de <b>'+p.sn+'</b> terminar ('+hm(p.s+p.d)+') — '+d.w+'.'});
+      });
+      if(t.s+t.d>SHOW) out.push({id:t.id,h:'<b>'+t.sn+'</b> termina '+hm(t.s+t.d)+', depois do show começar (22:00). Nesse horário a banda já está no palco.'});
+    });
+    return out;
+  }
+  function render(){
+    var cf=conflicts(), bad={}; cf.forEach(function(c){bad[c.id]=1;});
+    TK.forEach(function(t){
+      var b=$('[data-bar="'+t.id+'"]');
+      var L=Math.max(0,Math.min(98.5,pct(t.s)));           // barra que estoura 23:00 encosta na borda
+      b.style.left=L+'%'; b.style.width=Math.max(1.5,Math.min(100-L,t.d/SPAN*100))+'%';
+      b.className='bar'+(bad[t.id]?' err':'');
+      b.textContent=t.d>=150?hm(t.s)+'–'+hm(t.s+t.d):(t.d>=45?dur(t.d):'');
+      b.title=t.sn+' '+hm(t.s)+'–'+hm(t.s+t.d);
+      $('[data-when="'+t.id+'"]').textContent=hm(t.s)+' → '+hm(t.s+t.d)+' · '+dur(t.d);
+      $('[data-r="'+t.id+'"]').className='r'+(bad[t.id]?' err':'');
+      var ss=document.querySelector('select[data-a="s"][data-i="'+t.id+'"]'); if(ss) ss.value=t.s;
+      var sd=document.querySelector('select[data-a="d"][data-i="'+t.id+'"]'); if(sd) sd.value=t.d;
+    });
+    var LS=backward(), nec=LS.loadin;
+    var maxFol=nec-LIBERA;          // o dia comporta essas durações?
+    var fol=nec-get('loadin').s;    // quanto o SEU plano absorve de atraso
+    $('#sNec').textContent=(nec<T0?'D-1 ':'')+hm(nec); // cadeia longa demais estoura para o dia anterior
+    var f=$('#sFol'); f.textContent=(fol<0?'−':'')+dur(Math.abs(fol));
+    f.style.color=fol<=0?'var(--err)':(fol<45?'var(--warn)':'var(--ok)');
+    $('#sIni').textContent=hm(get('loadin').s);
+    var c=$('#sCon'); c.textContent=cf.length; c.style.color=cf.length?'var(--err)':'var(--ok)';
+    if(checked) diag(cf,nec,fol,maxFol);
+  }
+  function diag(cf,nec,fol,maxFol){
+    var out=[], v;
+    cf.forEach(function(c){ out.push({t:'bad',h:c.h}); });
+    if(maxFol<0) out.push({t:'bad',h:'Somadas, as durações da cadeia pedem <b>'+dur(-maxFol)+' a mais</b> do que o dia tem: nem começando 08:00 em ponto isso fecha. Corte duração, some gente na montagem ou negocie o acesso mais cedo.'});
+    if(fol<0 && maxFol>=0) out.push({t:'bad',h:'Você abre o load-in às <b>'+hm(get('loadin').s)+'</b>, mas com essas durações o <b>último início possível é '+hm(nec)+'</b>. Cronograma se conta de trás para frente: parte das 22:00 e volta até o load-in. Do jeito que está, a montagem não chega no show.'});
+    else if(fol===0) out.push({t:'warn',h:'<b>Folga zero.</b> Você começa exatamente no último minuto possível ('+hm(nec)+'): o plano fecha no cronômetro. Qualquer atraso — caminhão, cabo, banda — bate direto no soundcheck. Dia sem folga é dia que atrasa. Puxe o load-in para mais cedo.'});
+    else if(fol<45) out.push({t:'warn',h:'Folga de <b>'+dur(fol)+'</b> para um dia inteiro de montagem. Um pneu furado come isso antes do café.'});
+    var sd=get('sound'), pt=get('portas');
+    if(pt.s-(sd.s+sd.d)>0 && pt.s-(sd.s+sd.d)<15 && !cf.length)
+      out.push({t:'warn',h:'Portas abrem '+(pt.s-sd.s-sd.d)+' min depois do soundcheck. Sobra tempo nenhum para tirar cabo do chão e limpar o palco antes do público entrar.'});
+    if(!cf.length && fol>=45)
+      out.push({t:'ok',h:'Ordem correta, dependências respeitadas, soundcheck fechado antes das portas e '+dur(fol)+' de colchão — o plano absorve '+dur(fol)+' de atraso antes do show escorregar.'});
+
+    if(cf.length) v={t:'bad',h:'✗ <b>'+cf.length+' conflito(s) no cronograma.</b> Do jeito que está, alguém sobe na treliça enquanto outro pendura PA — ou o público entra na passagem de som.'};
+    else if(maxFol<0) v={t:'bad',h:'✗ <b>Não cabe no dia.</b> Sem conflito de ordem, mas falta tempo: '+dur(-maxFol)+' além do que o salão dá.'};
+    else if(fol<0) v={t:'bad',h:'✗ <b>Começou tarde demais.</b> Load-in às '+hm(get('loadin').s)+' com o último início possível às '+hm(nec)+': o show atrasa '+dur(-fol)+'.'};
+    else if(fol===0) v={t:'warn',h:'◐ <b>Folga zero.</b> Fecha no cronômetro, no papel. Na rua, o primeiro imprevisto atrasa o show — e sempre tem um.'};
+    else if(fol<45) v={t:'warn',h:'◐ <b>Passa, mas no cronômetro.</b> Folga de '+dur(fol)+' — o primeiro imprevisto atrasa o show.'};
+    else v={t:'ok',h:'✓ <b>Cronograma fecha.</b> Load-in às '+hm(get('loadin').s)+', último início possível '+hm(nec)+', folga de '+dur(fol)+'.'};
+    out.unshift(v);
+    $('#errs').innerHTML=out.map(function(o){return '<div class="e '+o.t+'">'+o.h+'</div>';}).join('');
+  }
+  $('#check').onclick=function(){ checked=true; render(); };
+  $('#delay').onclick=function(){
+    var antes=get('portas').s+get('portas').d;
+    get('loadin').s+=90;
+    TK.forEach(function(t){ // empurra em cascata: o atraso só some se houver folga
+      t.deps.forEach(function(d){ var p=get(d.id); if(t.s<p.s+p.d) t.s=p.s+p.d; });
+    });
+    var depois=get('portas').s+get('portas').d, comeu=depois-antes;
+    checked=true; render();
+    var extra = comeu<=0
+      ? 'Você tinha folga suficiente: o atraso foi absorvido pelos intervalos e nada mudou no fim do dia. É exatamente para isso que a folga existe.'
+      : 'O atraso empurrou o fim da montagem em <b>'+dur(comeu)+'</b> ('+hm(antes)+' → '+hm(depois)+'). Atraso não evapora: ele anda pela cadeia inteira até esbarrar no soundcheck e nas portas.';
+    $('#errs').insertAdjacentHTML('afterbegin','<div class="e warn">🚚 <b>Caminhão 1h30 atrasado.</b> '+extra+'</div>');
+  };
+  $('#reset').onclick=reset;
+  reset();
+})();
+</script>
+</body>
+</html>

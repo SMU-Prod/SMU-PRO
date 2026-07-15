@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMU PRO · Encaixe da Imagem (Fit/Fill/Stretch)</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0c1017;--panel:#161c26;--line:#2a3444;--ink:#e7edf5;--dim:#8794a8;--accent:#3b82f6;--ok:#22c55e;--err:#ef4444;}
+  html,body{background:var(--bg);color:var(--ink);font-family:'Segoe UI',system-ui,Arial,sans-serif;}
+  body{padding:12px;}
+  .app{max-width:820px;margin:0 auto;display:flex;flex-direction:column;gap:12px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  h1{font-size:15px;margin-bottom:3px;} .sub{font-size:12px;color:var(--dim);margin-bottom:12px;}
+  .stage{display:grid;grid-template-columns:1fr;gap:12px;}
+  @media(min-width:620px){ .stage{grid-template-columns:1fr 240px;} }
+  .screenwrap{background:#05070b;border:1px solid var(--line);border-radius:10px;display:flex;align-items:center;justify-content:center;padding:14px;min-height:220px;}
+  #screen{background:#000;border:2px solid #333;position:relative;overflow:hidden;transition:.2s;}
+  #img{position:absolute;background:linear-gradient(135deg,#f59e0b,#ef4444 40%,#a855f7 70%,#3b82f6);display:flex;align-items:center;justify-content:center;}
+  #img .grid{position:absolute;inset:0;background-image:linear-gradient(#fff3 1px,transparent 1px),linear-gradient(90deg,#fff3 1px,transparent 1px);background-size:20px 20px;}
+  #img .circle{width:60%;aspect-ratio:1;border:3px solid #fff;border-radius:50%;position:relative;z-index:2;}
+  .ctrls{display:flex;flex-direction:column;gap:12px;}
+  .grp label{font-size:11px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;display:block;margin-bottom:6px;}
+  .seg{display:flex;gap:5px;flex-wrap:wrap;}
+  .seg button{flex:1;min-width:52px;font-size:12px;font-weight:700;padding:8px 4px;border:1px solid var(--line);border-radius:7px;background:#0c1119;color:var(--dim);cursor:pointer;}
+  .seg button.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .verdict{font-size:13px;font-weight:700;padding:9px 12px;border-radius:8px;text-align:center;}
+  .verdict.ok{background:#14532d;color:#bbf7d0;} .verdict.bad{background:#450a0a;color:#fca5a5;} .verdict.warn{background:#422006;color:#fde68a;}
+  .note{font-size:12px;color:var(--dim);line-height:1.5;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="card">
+    <h1>Encaixe da imagem: Fit × Fill × Stretch</h1>
+    <div class="sub">Escolha a proporção da <b>fonte</b> e da <b>tela</b>, depois o modo de encaixe. Observe as barras pretas, o corte e a deformação.</div>
+    <div class="stage">
+      <div class="screenwrap"><div id="screen"><div id="img"><div class="grid"></div><div class="circle"></div></div></div></div>
+      <div class="ctrls">
+        <div class="grp"><label>Proporção da fonte (vídeo)</label>
+          <div class="seg" id="srcSeg"><button data-ar="1.777" class="on">16:9</button><button data-ar="1.333">4:3</button><button data-ar="0.5625">9:16</button></div></div>
+        <div class="grp"><label>Proporção da tela / telão</label>
+          <div class="seg" id="scrSeg"><button data-ar="1.777" class="on">16:9</button><button data-ar="1.333">4:3</button><button data-ar="0.5625">9:16 (vertical)</button></div></div>
+        <div class="grp"><label>Modo de encaixe</label>
+          <div class="seg" id="modeSeg"><button data-m="fit" class="on">Fit</button><button data-m="fill">Fill</button><button data-m="stretch">Stretch</button></div></div>
+        <div class="verdict" id="verdict"></div>
+      </div>
+    </div>
+    <div class="note" id="note" style="margin-top:12px;"></div>
+  </div>
+</div>
+<script>
+(function(){
+var $=function(s){return document.querySelector(s);};
+var srcAR=1.777, scrAR=1.777, mode='fit';
+function seg(id,cb){ document.querySelectorAll('#'+id+' button').forEach(function(b){ b.onclick=function(){ document.querySelectorAll('#'+id+' button').forEach(function(x){x.classList.remove('on');}); b.classList.add('on'); cb(b); }; }); }
+seg('srcSeg',function(b){ srcAR=+b.dataset.ar; render(); });
+seg('scrSeg',function(b){ scrAR=+b.dataset.ar; render(); });
+seg('modeSeg',function(b){ mode=b.dataset.m; render(); });
+function render(){
+  var screen=$('#screen'), img=$('#img');
+  // screen box sized to fit container
+  var box=260; var sw,sh; if(scrAR>=1){ sw=box; sh=box/scrAR; } else { sh=box; sw=box*scrAR; }
+  screen.style.width=sw+'px'; screen.style.height=sh+'px';
+  var iw,ih,left,top;
+  if(mode==='stretch'){ iw=sw; ih=sh; left=0; top=0; }
+  else if(mode==='fit'){ // contain
+    if(srcAR>scrAR){ iw=sw; ih=sw/srcAR; } else { ih=sh; iw=sh*srcAR; }
+    left=(sw-iw)/2; top=(sh-ih)/2;
+  } else { // fill = cover
+    if(srcAR>scrAR){ ih=sh; iw=sh*srcAR; } else { iw=sw; ih=sw/srcAR; }
+    left=(sw-iw)/2; top=(sh-ih)/2;
+  }
+  img.style.width=iw+'px'; img.style.height=ih+'px'; img.style.left=left+'px'; img.style.top=top+'px';
+  // circle stays circle unless stretch (stretch distorts because img is stretched, circle inside is % so also distorts)
+  var circle=img.querySelector('.circle');
+  if(mode==='stretch' && Math.abs(srcAR-scrAR)>0.01){ circle.style.borderRadius='50%'; /* it visually ovals because parent distorted */ }
+  // verdict
+  var v=$('#verdict'), n=$('#note'); var same=Math.abs(srcAR-scrAR)<0.01;
+  if(mode==='stretch' && !same){ v.className='verdict bad'; v.textContent='✗ DEFORMADO — o círculo virou oval'; n.innerHTML='<b>Stretch</b> forçou a fonte no formato da tela e distorceu tudo. Rostos ficam largos ou finos. <b>Nunca use</b> quando as proporções são diferentes.'; }
+  else if(mode==='fit' && !same){ v.className='verdict ok'; v.textContent='✓ Imagem inteira, com barras pretas'; n.innerHTML='<b>Fit (contain):</b> mostra tudo sem cortar e sem deformar; sobram barras pretas (letterbox/pillarbox). Ideal quando nada pode ser cortado.'; }
+  else if(mode==='fill' && !same){ v.className='verdict warn'; v.textContent='◐ Preenche tudo, mas corta as bordas'; n.innerHTML='<b>Fill (cover):</b> preenche a tela inteira sem deformar, mas <b>corta</b> parte da imagem. Bom para fundo/textura; cuidado com textos e rostos nas bordas.'; }
+  else { v.className='verdict ok'; v.textContent='✓ Proporções iguais — encaixe perfeito'; n.innerHTML='Quando a fonte e a tela têm a <b>mesma proporção</b>, qualquer modo preenche certinho, sem barras, corte ou deformação. É sempre o objetivo do técnico.'; }
+}
+render();
+})();
+</script>
+</body>
+</html>

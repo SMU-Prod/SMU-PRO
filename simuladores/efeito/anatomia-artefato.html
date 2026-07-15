@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Anatomia do Artefato Pirotécnico · SMU PRO</title>
+<style>
+  :root{ --bg:#06080e; --panel:#0c111c; --panel2:#0f1626; --line:#25314c; --ink:#e8eef9; --mut:#8a9bb8; --acc:#ff7a1a; --ok:#39d98a; --bad:#ff4d4d; --warn:#ffc63b; --blue:#54b3ff; }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:#05070c;color:var(--ink);font-family:system-ui,Segoe UI,Roboto,Arial;overflow:hidden;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+  #app{position:fixed;top:0;left:0;width:100vw;height:var(--visH,100vh);display:flex;flex-direction:column;overflow:hidden;padding:7px;gap:6px}
+  #hd{flex:none;display:flex;align-items:baseline;gap:10px}#hd b{font-size:14px;font-weight:800}#hd span{font-size:11px;color:var(--mut)}
+  #stageWrap{flex:0 0 26%;min-height:78px;position:relative;background:#04050a;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  #stage{position:absolute;inset:0;width:100%;height:100%}
+  #seqMsg{position:absolute;left:0;right:0;bottom:6px;text-align:center;font-size:12px;color:var(--warn);pointer-events:none;text-shadow:0 1px 5px #000;font-weight:600}
+  #main{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:1fr 244px;gap:7px}
+  .box{background:var(--panel);border:1px solid var(--line);border-radius:11px;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+  .box h5{margin:0;padding:8px 10px 4px;font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--mut)}
+  #svgWrap{flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;padding:4px}
+  svg#cut{width:100%;height:100%}
+  .part{cursor:pointer}
+  .part .hit{fill:transparent}
+  .part.sel .body{stroke:var(--acc);stroke-width:3}
+  .lblbox{fill:#0e1626;stroke:#33405e;stroke-width:1;rx:4}
+  .lbltx{fill:#cbd6ea;font:600 12px system-ui}
+  .lead{stroke:#46567a;stroke-width:1.2}
+  /* painel direito */
+  #info{overflow:auto;padding:0 10px 10px}
+  #info .pt{font-size:14px;font-weight:800;margin:2px 0 4px;color:var(--acc)}
+  #info .dsc{font-size:12px;color:#c9d4e8;line-height:1.5}
+  #info .fn{font-size:11px;color:var(--mut);margin-top:6px;line-height:1.45}
+  #partList{display:flex;flex-wrap:wrap;gap:5px;padding:6px 10px 2px}
+  .chip{font-size:11px;border:1px solid var(--line);background:var(--panel2);border-radius:20px;padding:4px 9px;cursor:pointer}
+  .chip.sel{border-color:var(--acc);color:#ffcf9e}
+  /* controles */
+  #ctl{flex:none;display:flex;gap:9px;align-items:center;flex-wrap:wrap;justify-content:center;background:#0a0e18;border:1px solid var(--line);border-radius:11px;padding:8px 10px}
+  .sl{display:flex;flex-direction:column;gap:3px;align-items:center;min-width:104px}
+  .sl .v{font-size:12px;font-weight:800}.sl label{font-size:9.5px;color:var(--mut);letter-spacing:.4px;text-transform:uppercase}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:120px;height:22px;background:transparent;cursor:pointer}
+  input[type=range]::-webkit-slider-runnable-track{height:5px;background:#243149;border-radius:3px}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;margin-top:-7px;border-radius:50%;background:var(--acc);border:2px solid #ffd3a8}
+  #fire{border:1px solid #ffb070;background:linear-gradient(180deg,#ff8f36,#e5590a);color:#180a00;border-radius:10px;padding:11px 18px;font-size:14px;font-weight:900;cursor:pointer}
+  #fire:disabled{opacity:.5}
+  #seq{flex:none;font-size:11px;color:#b9c6dd;line-height:1.4;padding:6px 11px;background:#080c14;border:1px solid var(--line);border-radius:9px;font-family:'Courier New',monospace;height:52px;overflow:auto}
+  .sq{color:#5f7089}.sq.on{color:var(--warn)}.sq.ok{color:var(--ok)}
+  @media (max-width:820px){ #main{grid-template-columns:1fr} #stageWrap{flex-basis:22%} }
+</style></head>
+<body>
+<div id="app">
+  <div id="hd"><b>Anatomia do Artefato Pirotécnico</b><span>Composição, câmara e a sequência do disparo</span></div>
+  <div id="stageWrap"><canvas id="stage"></canvas><div id="seqMsg">Toque nas peças para estudar · DISPARAR para ver a sequência</div></div>
+  <div id="main">
+    <div class="box"><h5>Corte do morteiro + shell (toque nas peças)</h5>
+      <div id="partList"></div>
+      <div id="svgWrap"><svg id="cut" viewBox="0 0 520 360" preserveAspectRatio="xMidYMid meet"></svg></div>
+    </div>
+    <div class="box"><h5>Ficha da peça</h5><div id="info"><div class="pt">Selecione uma peça</div><div class="dsc">Toque numa peça do corte (ou num chip) para ver o que é e para que serve.</div></div></div>
+  </div>
+  <div id="ctl">
+    <div class="sl"><div class="v" id="v-cal">150 mm</div><input id="cal" type="range" min="50" max="300" step="25" value="150"><label>Calibre do shell</label></div>
+    <div class="sl"><div class="v" id="v-fuse">3.0 s</div><input id="fuse" type="range" min="10" max="60" value="30"><label>Estopim (delay)</label></div>
+    <button id="fire">▶ DISPARAR</button>
+  </div>
+  <div id="seq"></div>
+</div>
+
+<script>/* ============================================================================
+   SMU · MOTOR DE PALCO DE EFEITOS  (StageFX)
+   Renderizador Canvas 2D realista para efeitos cênicos: fumaça, haze, low fog,
+   jato de CO2, faísca fria, gerb/airburst pirotécnico, chama, confete,
+   serpentina, bolhas e neve — com palco em perspectiva, truss, feixes
+   volumétricos e reflexo no piso.
+   Autocontido (sem dependências). Usado pelos games do básico e pelo
+   simulador de show do pleno.
+   ============================================================================ */
+(function (global) {
+  "use strict";
+
+  const TAU = Math.PI * 2;
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+  const lerp = (a, b, t) => a + (b - a) * t;
+
+  // ---- paletas ------------------------------------------------------------
+  const SPARK_GOLD = ["#fff6d8", "#ffe08a", "#ffb347", "#ff8c1a", "#ff6a00"];
+  const CONFETTI = ["#ff3b5c", "#ffd23b", "#3bd1ff", "#8b5bff", "#ff7ad1", "#4bff8b", "#ffffff", "#ff9a3b"];
+  const FLAME = ["#fff2c0", "#ffd24a", "#ff9d1c", "#ff5a00", "#e03000"];
+
+  function StageFX(canvas, opts) {
+    opts = opts || {};
+    const ctx = canvas.getContext("2d", { alpha: false });
+    const self = this;
+
+    // estado lógico em coordenadas de "palco" 1280x720 (escala p/ o canvas real)
+    const DW = 1280, DH = 720;
+    let W = DW, H = DH, scale = 1, offx = 0, offy = 0, dpr = 1;
+
+    // horizonte do palco / piso (perspectiva)
+    const FLOOR_Y = 560;          // linha frontal do palco
+    const BACK_Y = 300;           // fundo do palco
+    const STAGE_L = 120, STAGE_R = 1160;
+
+    // ---- ambiente configurável -------------------------------------------
+    this.env = {
+      haze: opts.haze != null ? opts.haze : 0.12,   // densidade de névoa 0..1
+      beams: opts.beams !== false,                    // feixes de luz on/off
+      beamColor: opts.beamColor || null,              // null => ciclo
+      performer: opts.performer !== false,            // silhueta no palco
+      audience: opts.audience !== false,
+      ledWall: opts.ledWall || 0,                     // brilho do painel de fundo 0..1
+      label: opts.label || "",
+    };
+
+    // ---- partículas -------------------------------------------------------
+    const P = [];               // partículas genéricas (sparks, confetti, flame, co2...)
+    const smoke = [];           // sopros de fumaça / haze volumétrico
+    const lowfog = [];          // névoa baixa
+    const co2jets = [];         // jatos de CO2 sustentados (pluma triangular do bico)
+    let t = 0;                  // tempo (frames)
+    let running = true;
+    const emitters = [];        // emissores contínuos {type, x, y, life, params}
+
+    // beams de luz (moving heads no truss)
+    const NBEAM = 8;
+    const beams = [];
+    for (let i = 0; i < NBEAM; i++) {
+      const x = lerp(STAGE_L + 80, STAGE_R - 80, i / (NBEAM - 1));
+      beams.push({ x, baseY: 150, phase: rnd(0, TAU), speed: rnd(0.006, 0.014), spread: rnd(28, 46), hue: (i * 47) % 360, on: true });
+    }
+
+    // =====================================================================
+    //  API PÚBLICA
+    // =====================================================================
+    this.setHaze = (v) => { self.env.haze = clamp(v, 0, 1); };
+    this.setBeams = (on) => { self.env.beams = !!on; };
+    this.pause = () => { running = false; };
+    this.resume = () => { running = true; if (!raf) loop(); };
+
+    // dispara um efeito pontual ou inicia um contínuo
+    // name: fog, haze, lowfog, co2, spark, gerb, airburst, flame, confetti,
+    //       streamer, bubbles, snow, cryo (blast)
+    this.trigger = function (name, p) {
+      p = p || {};
+      const x = p.x != null ? p.x : DW / 2;
+      const groundY = p.y != null ? p.y : FLOOR_Y - 10;
+      switch (name) {
+        case "fog": spawnFog(x, groundY, p); break;
+        case "haze": self.env.haze = clamp(self.env.haze + (p.amount || 0.25), 0, 1); break;
+        case "lowfog": spawnLowFog(p); break;
+        case "co2": spawnCO2(x, groundY, p); break;
+        case "cryo": spawnCO2(x, groundY, Object.assign({ power: 1.35, wide: true }, p)); break;
+        case "spark": spawnSparkFountain(x, groundY, p); break;
+        case "gerb": spawnGerb(x, groundY, p); break;
+        case "airburst": spawnAirburst(x, p.y != null ? p.y : 210, p); break;
+        case "flame": spawnFlame(x, groundY, p); break;
+        case "confetti": spawnConfetti(p); break;
+        case "streamer": spawnStreamer(x, p); break;
+        case "bubbles": spawnBubbles(p); break;
+        case "snow": spawnSnow(p); break;
+      }
+    };
+
+    // emissor contínuo (para máquinas ligadas): retorna id
+    this.startEmitter = function (type, params) {
+      const e = { id: (Math.random() * 1e9) | 0, type, params: params || {}, t: 0, alive: true };
+      emitters.push(e); return e.id;
+    };
+    this.stopEmitter = function (id) {
+      for (const e of emitters) if (e.id === id) e.alive = false;
+    };
+    this.stopAllEmitters = function () { emitters.forEach(e => e.alive = false); };
+    this.clear = function () { P.length = 0; smoke.length = 0; lowfog.length = 0; emitters.length = 0; co2jets.length = 0; self.env.haze = 0.08; };
+
+    // =====================================================================
+    //  SPAWNERS
+    // =====================================================================
+    function spawnFog(x, y, p) {
+      const n = p.puff || 6;
+      const spread = p.spread || 1;
+      for (let i = 0; i < n; i++) {
+        // fumaça billowing: sobe devagar e se abre, cinza-fria e translúcida (não um "orbe" branco)
+        smoke.push({
+          x: x + rnd(-26, 26) * spread, y: y + rnd(-6, 6),
+          vx: rnd(-0.45, 0.45) * spread, vy: rnd(-0.68, -0.26),
+          r: rnd(44, 92), gr: rnd(0.42, 0.82),
+          a: rnd(0.045, 0.10), da: rnd(0.0008, 0.0016),
+          hue: 210, sat: 6, lig: 72, kind: "fog"
+        });
+      }
+    }
+    function spawnLowFog(p) {
+      const n = p.puff || 5;
+      for (let i = 0; i < n; i++) {
+        lowfog.push({
+          x: rnd(STAGE_L, STAGE_R), y: FLOOR_Y + rnd(-6, 18),
+          vx: rnd(-0.25, 0.25), r: rnd(50, 110),
+          a: rnd(0.12, 0.24), da: rnd(0.0006, 0.0014), spread: rnd(0.05, 0.14)
+        });
+      }
+    }
+    // CO2 = jato SUSTENTADO: sai de um bico fino e sobe, abrindo em pluma triangular.
+    // Registra o jato; o update() emite partículas por alguns quadros.
+    function spawnCO2(x, y, p) {
+      co2jets.push({
+        x, y, ang: (p.angle != null ? p.angle : -90) * Math.PI / 180,
+        power: p.power || 1, t: 0, dur: p.dur || 46, wide: p.wide ? 1.7 : 1
+      });
+    }
+    function emitCO2(j) {
+      const n = j.wide > 1 ? 8 : 6;
+      for (let i = 0; i < n; i++) {
+        const a = j.ang + rnd(-0.03, 0.03) * j.wide;      // bico FINO
+        const sp = rnd(13, 19) * j.power;                  // jato alto
+        P.push({
+          kind: "co2", x: j.x + rnd(-2.5, 2.5), y: j.y, y0: j.y,
+          vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+          r: rnd(2.5, 5), gr: rnd(0.42, 0.8),              // cresce devagar = jato definido
+          a: rnd(0.5, 0.74), da: rnd(0.0034, 0.0052),      // some devagar = jato alto e visível
+          drag: 0.955, life: 0, side: rnd(-1, 1) * j.wide
+        });
+      }
+    }
+    function spawnSparkFountain(x, y, p) {
+      const n = p.burst || 26;
+      const power = p.power || 1;
+      const base = -90 + (p.ang || 0);
+      for (let i = 0; i < n; i++) {
+        const a = (base + rnd(-16, 16)) * Math.PI / 180;
+        const sp = rnd(8, 15) * power;
+        P.push({
+          kind: "spark", x: x + rnd(-6, 6), y,
+          vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+          r: rnd(1.1, 2.4), col: SPARK_GOLD[(Math.random() * SPARK_GOLD.length) | 0],
+          a: 1, da: rnd(0.008, 0.02), grav: 0.16, drag: 0.995,
+          trail: [], twinkle: Math.random() < 0.3, life: 0, cold: true
+        });
+      }
+    }
+    function spawnGerb(x, y, p) {
+      // jato pirotécnico denso e alto (gerb)
+      const n = p.burst || 40;
+      const power = p.power || 1;
+      const base = -90 + (p.ang || 0);
+      for (let i = 0; i < n; i++) {
+        const a = (base + rnd(-8, 8)) * Math.PI / 180;
+        const sp = rnd(15, 24) * power;
+        P.push({
+          kind: "spark", x: x + rnd(-4, 4), y,
+          vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+          r: rnd(1.4, 3), col: SPARK_GOLD[(Math.random() * 3) | 0],
+          a: 1, da: rnd(0.01, 0.022), grav: 0.22, drag: 0.99,
+          trail: [], twinkle: Math.random() < 0.5, life: 0, hot: true
+        });
+      }
+      // fumaça de pólvora
+      for (let i = 0; i < 5; i++) smoke.push({ x: x + rnd(-20, 20), y: y - rnd(20, 80), vx: rnd(-.2, .2), vy: rnd(-.6, -.2), r: rnd(30, 60), gr: .5, a: .14, da: .0016, hue: 30, sat: 8, lig: 60, kind: "fog" });
+    }
+    function spawnAirburst(x, y, p) {
+      const n = p.burst || 90;
+      const col = p.col || SPARK_GOLD[1];
+      for (let i = 0; i < n; i++) {
+        const a = rnd(0, TAU); const sp = rnd(6, 15);
+        P.push({
+          kind: "spark", x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+          r: rnd(1.4, 3), col: Math.random() < 0.7 ? col : "#fff2c0",
+          a: 1, da: rnd(0.008, 0.016), grav: 0.12, drag: 0.985,
+          trail: [], twinkle: Math.random() < 0.6, life: 0, hot: true
+        });
+      }
+      flash(x, y, 180, col);
+    }
+    function spawnFlame(x, y, p) {
+      const n = p.n || 12, h = p.power || 1;
+      const base = -90 + (p.ang || 0);
+      for (let i = 0; i < n; i++) {
+        const a = (base + rnd(-6, 6)) * Math.PI / 180;
+        const sp = rnd(10, 15) * (0.7 + h * 0.35);
+        P.push({
+          kind: "flame", x: x + rnd(-7, 7), y,
+          vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+          r: rnd(9, 15) * (0.8 + h * 0.25),
+          a: rnd(0.85, 1), da: rnd(0.015, 0.025),
+          life: 0, seed: rnd(0, TAU)
+        });
+      }
+      // fumaça escura subindo do topo da labareda (realismo)
+      if (Math.random() < 0.6) smoke.push({ x: x + rnd(-10, 10), y: y - rnd(80, 150) * h, vx: rnd(-.2, .2), vy: rnd(-.6, -.25), r: rnd(18, 34), gr: .55, a: .09, da: .0026, hue: 24, sat: 14, lig: 20, kind: "fog" });
+    }
+    function spawnConfetti(p) {
+      const n = p.n || 120;
+      const fromLeft = p.side === "L", fromRight = p.side === "R";
+      for (let i = 0; i < n; i++) {
+        let x, y, vx, vy;
+        if (fromLeft) { x = STAGE_L; y = rnd(180, 320); vx = rnd(6, 12); vy = rnd(-8, -2); }
+        else if (fromRight) { x = STAGE_R; y = rnd(180, 320); vx = rnd(-12, -6); vy = rnd(-8, -2); }
+        else { x = rnd(STAGE_L, STAGE_R); y = rnd(-40, 60); vx = rnd(-1.5, 1.5); vy = rnd(1, 3); }
+        P.push({
+          kind: "confetti", x, y, vx, vy,
+          w: rnd(7, 13), hcol: CONFETTI[(Math.random() * CONFETTI.length) | 0],
+          rot: rnd(0, TAU), vr: rnd(-0.2, 0.2), flut: rnd(0, TAU),
+          grav: 0.10, a: 1, da: 0.0016, life: 0
+        });
+      }
+    }
+    function spawnStreamer(x, p) {
+      const side = p.side || (Math.random() < .5 ? "L" : "R");
+      for (let i = 0; i < (p.n || 10); i++) {
+        const sx = side === "L" ? STAGE_L : STAGE_R;
+        P.push({
+          kind: "streamer", x: sx, y: rnd(200, 300),
+          vx: (side === "L" ? 1 : -1) * rnd(7, 13), vy: rnd(-7, -3),
+          seg: [], col: CONFETTI[(Math.random() * CONFETTI.length) | 0],
+          len: rnd(60, 120), grav: 0.13, a: 1, da: 0.001, life: 0, wob: rnd(0, TAU)
+        });
+      }
+    }
+    function spawnBubbles(p) {
+      for (let i = 0; i < (p.n || 24); i++) {
+        P.push({
+          kind: "bubble", x: rnd(STAGE_L, STAGE_R), y: rnd(FLOOR_Y - 40, FLOOR_Y),
+          vx: rnd(-0.4, 0.4), vy: rnd(-1.6, -0.7), r: rnd(6, 16),
+          a: rnd(0.5, 0.85), da: 0, wob: rnd(0, TAU), life: 0
+        });
+      }
+    }
+    function spawnSnow(p) {
+      for (let i = 0; i < (p.n || 40); i++) {
+        P.push({
+          kind: "snow", x: rnd(STAGE_L - 40, STAGE_R + 40), y: rnd(-60, 60),
+          vx: rnd(-0.4, 0.4), vy: rnd(0.8, 2), r: rnd(1.5, 4),
+          a: rnd(0.6, 0.95), da: 0, wob: rnd(0, TAU), life: 0
+        });
+      }
+    }
+
+    // flash de luz (pirotecnia)
+    const flashes = [];
+    function flash(x, y, r, col) { flashes.push({ x, y, r, col: col || "#fff", a: 0.9 }); }
+
+    // =====================================================================
+    //  UPDATE
+    // =====================================================================
+    function update() {
+      t++;
+      // emissores contínuos
+      for (const e of emitters) {
+        if (!e.alive) continue;
+        e.t++;
+        const pr = e.params;
+        if (e.type === "fog" && e.t % 4 === 0) spawnFog(pr.x != null ? pr.x : DW / 2, FLOOR_Y - 14, { puff: Math.round((pr.output || 0.6) * 3) + 1, spread: pr.spread || 1.8 });
+        else if (e.type === "haze") self.env.haze = clamp(self.env.haze + (pr.output || 0.5) * 0.0016, 0, (pr.max || 0.5));
+        else if (e.type === "lowfog" && e.t % 4 === 0) spawnLowFog({ puff: Math.round((pr.output || 0.6) * 4) });
+        else if (e.type === "flame" && e.t % 2 === 0) spawnFlame(pr.x != null ? pr.x : DW / 2, FLOOR_Y - 10, { power: pr.power || 1, n: 8 });
+        else if (e.type === "spark" && e.t % 2 === 0) spawnSparkFountain(pr.x != null ? pr.x : DW / 2, FLOOR_Y - 10, { burst: 6, power: pr.power || 1 });
+      }
+      emitters.splice(0, emitters.length, ...emitters.filter(e => e.alive));
+
+      // jatos de CO2 sustentados
+      for (let i = co2jets.length - 1; i >= 0; i--) {
+        const j = co2jets[i]; emitCO2(j); j.t++;
+        if (j.t >= j.dur) co2jets.splice(i, 1);
+      }
+
+      // haze decai lentamente para o ambiente base
+      self.env.haze = lerp(self.env.haze, opts.hazeBase != null ? opts.hazeBase : 0.08, 0.004);
+
+      // smoke
+      for (let i = smoke.length - 1; i >= 0; i--) {
+        const s = smoke[i];
+        s.x += s.vx; s.y += s.vy; s.vy *= 0.99; s.r += s.gr; s.a -= s.da;
+        if (s.a <= 0.003) smoke.splice(i, 1);
+      }
+      // low fog
+      for (let i = lowfog.length - 1; i >= 0; i--) {
+        const s = lowfog[i];
+        s.x += s.vx; s.r += s.spread; s.a -= s.da;
+        if (s.a <= 0.004) lowfog.splice(i, 1);
+      }
+      // partículas
+      for (let i = P.length - 1; i >= 0; i--) {
+        const q = P[i]; q.life++;
+        switch (q.kind) {
+          case "co2":
+            q.vx *= q.drag; q.vy *= q.drag;
+            q.y += q.vy;
+            // desloca lateralmente proporcional à altura subida → pluma triangular (fino no bico, largo em cima)
+            q.x += q.vx + q.side * Math.max(0, q.y0 - q.y) * 0.006;
+            q.r += q.gr; q.a -= q.da; break;
+          case "spark":
+            if (q.trail) { q.trail.push([q.x, q.y]); if (q.trail.length > 6) q.trail.shift(); }
+            q.vy += q.grav; q.vx *= q.drag; q.vy *= q.drag; q.x += q.vx; q.y += q.vy;
+            q.a -= q.da; if (q.y > FLOOR_Y + 4 && q.vy > 0) { q.vy *= -0.28; q.vx *= 0.4; q.y = FLOOR_Y + 4; q.a -= 0.15; }
+            break;
+          case "flame":
+            q.life++;
+            q.vy *= 0.975;                                                 // empuxo: sobe e desacelera
+            q.vx = q.vx * 0.86 + Math.sin(q.life * 0.35 + q.seed) * 0.6;   // bruxuleio / lambida lateral
+            q.x += q.vx; q.y += q.vy; q.r *= 0.98; q.a -= q.da; break;
+          case "confetti":
+            q.flut += 0.15; q.vy += q.grav; q.vy = Math.min(q.vy, 3.4); q.vx += Math.sin(q.flut) * 0.12; q.vx *= 0.99;
+            q.x += q.vx; q.y += q.vy; q.rot += q.vr; if (q.y > FLOOR_Y + rnd(-30, 20)) q.a -= 0.02; else q.a -= q.da; break;
+          case "streamer":
+            q.vy += q.grav; q.wob += 0.2; q.x += q.vx + Math.sin(q.wob) * 0.6; q.y += q.vy; q.vx *= 0.99;
+            q.seg.push([q.x, q.y]); if (q.seg.length > q.len / 6) q.seg.shift();
+            if (q.y > FLOOR_Y) q.a -= 0.03; else q.a -= q.da; break;
+          case "bubble":
+            q.wob += 0.08; q.x += q.vx + Math.sin(q.wob) * 0.5; q.y += q.vy; q.vy *= 0.995;
+            if (q.y < 120 || Math.random() < 0.002) q.a -= 0.05; break;
+          case "snow":
+            q.wob += 0.03; q.x += q.vx + Math.sin(q.wob) * 0.5; q.y += q.vy; if (q.y > FLOOR_Y + 10) q.a -= 0.05; break;
+        }
+        if (q.a <= 0.02 || q.y > DH + 60) P.splice(i, 1);
+      }
+      // beams movimentam
+      for (const b of beams) b.phase += b.speed;
+      // flashes
+      for (let i = flashes.length - 1; i >= 0; i--) { flashes[i].a -= 0.06; if (flashes[i].a <= 0) flashes.splice(i, 1); }
+
+      // limite de partículas (performance)
+      if (P.length > 1400) P.splice(0, P.length - 1400);
+    }
+
+    // =====================================================================
+    //  RENDER
+    // =====================================================================
+    function draw() {
+      // fundo do venue
+      const g = ctx.createLinearGradient(0, 0, 0, DH);
+      g.addColorStop(0, "#05060a"); g.addColorStop(0.55, "#0a0d16"); g.addColorStop(1, "#04050a");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, DW, DH);
+
+      // painel de LED de fundo (opcional)
+      if (self.env.ledWall > 0) {
+        ctx.save();
+        const lg = ctx.createLinearGradient(0, BACK_Y - 140, 0, BACK_Y + 20);
+        lg.addColorStop(0, `rgba(40,80,180,${0.25 * self.env.ledWall})`);
+        lg.addColorStop(1, `rgba(120,40,180,${0.10 * self.env.ledWall})`);
+        ctx.fillStyle = lg; ctx.fillRect(STAGE_L, BACK_Y - 150, STAGE_R - STAGE_L, 170);
+        ctx.restore();
+      }
+
+      // piso do palco em perspectiva
+      drawStageFloor();
+
+      // truss
+      drawTruss();
+
+      // low fog ATRÁS do performer? mistura — desenhamos parte atrás
+      drawLowFog(0.5);
+
+      // performer
+      if (self.env.performer) drawPerformer();
+
+      // feixes volumétricos (dependem do haze)
+      if (self.env.beams) drawBeams();
+
+      // haze/fumaça volumétrica
+      drawSmoke();
+
+      // low fog frente
+      drawLowFog(1);
+
+      // partículas (aditivo p/ brilho)
+      drawParticles();
+
+      // flashes
+      for (const f of flashes) {
+        const rg = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.r);
+        rg.addColorStop(0, hexA(f.col, f.a)); rg.addColorStop(1, hexA(f.col, 0));
+        ctx.globalCompositeOperation = "lighter";
+        ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, TAU); ctx.fill();
+        ctx.globalCompositeOperation = "source-over";
+      }
+
+      // vinheta
+      const vg = ctx.createRadialGradient(DW / 2, DH / 2, DH * 0.3, DW / 2, DH / 2, DH * 0.85);
+      vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0,0.55)");
+      ctx.fillStyle = vg; ctx.fillRect(0, 0, DW, DH);
+
+      // etiqueta
+      if (self.env.label) {
+        ctx.font = "600 13px system-ui,Arial"; ctx.fillStyle = "rgba(255,255,255,.22)";
+        ctx.textAlign = "left"; ctx.fillText(self.env.label, 16, DH - 14);
+      }
+    }
+
+    function drawStageFloor() {
+      ctx.save();
+      // tampo do palco (trapézio)
+      ctx.beginPath();
+      ctx.moveTo(STAGE_L, FLOOR_Y);
+      ctx.lineTo(STAGE_R, FLOOR_Y);
+      ctx.lineTo(STAGE_R - 130, BACK_Y);
+      ctx.lineTo(STAGE_L + 130, BACK_Y);
+      ctx.closePath();
+      const fg = ctx.createLinearGradient(0, BACK_Y, 0, FLOOR_Y);
+      fg.addColorStop(0, "#0c0f17"); fg.addColorStop(1, "#151a26");
+      ctx.fillStyle = fg; ctx.fill();
+      // brilho especular central (reflexo de luz)
+      ctx.globalCompositeOperation = "lighter";
+      const sh = ctx.createRadialGradient(DW / 2, FLOOR_Y - 30, 10, DW / 2, FLOOR_Y - 30, 360);
+      sh.addColorStop(0, "rgba(80,110,190,0.10)"); sh.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = sh; ctx.fill();
+      ctx.globalCompositeOperation = "source-over";
+      // borda frontal do palco
+      ctx.fillStyle = "#05070c"; ctx.fillRect(STAGE_L, FLOOR_Y, STAGE_R - STAGE_L, 6);
+      ctx.restore();
+    }
+
+    function drawTruss() {
+      ctx.save();
+      const y = 92;
+      // travessa
+      ctx.strokeStyle = "#2b3242"; ctx.lineWidth = 8; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(STAGE_L + 20, y); ctx.lineTo(STAGE_R - 20, y); ctx.stroke();
+      // treliça (X)
+      ctx.strokeStyle = "#232a38"; ctx.lineWidth = 2;
+      for (let x = STAGE_L + 20; x < STAGE_R - 20; x += 34) {
+        ctx.beginPath(); ctx.moveTo(x, y - 12); ctx.lineTo(x + 34, y + 12);
+        ctx.moveTo(x + 34, y - 12); ctx.lineTo(x, y + 12); ctx.stroke();
+      }
+      ctx.strokeStyle = "#2b3242"; ctx.lineWidth = 8;
+      ctx.beginPath(); ctx.moveTo(STAGE_L + 20, y - 12); ctx.lineTo(STAGE_R - 20, y - 12);
+      ctx.moveTo(STAGE_L + 20, y + 12); ctx.lineTo(STAGE_R - 20, y + 12); ctx.stroke();
+      // corpos dos moving heads
+      for (const b of beams) {
+        ctx.fillStyle = "#11151f"; ctx.strokeStyle = "#2b3242"; ctx.lineWidth = 2;
+        ctx.beginPath(); roundRect(ctx, b.x - 10, y + 6, 20, 22, 4); ctx.fill(); ctx.stroke();
+        // lente acesa
+        const lit = self.env.beams && b.on;
+        ctx.fillStyle = lit ? beamCss(b, 0.9) : "#0a0d14";
+        ctx.beginPath(); ctx.arc(b.x, y + 30, 5, 0, TAU); ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    function drawBeams() {
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      const dens = clamp(self.env.haze, 0, 1);
+      for (const b of beams) {
+        if (!b.on) continue;
+        const sway = Math.sin(b.phase) * b.spread;
+        const topx = b.x, topy = 122;
+        const tx = b.x + sway, ty = FLOOR_Y - 40;
+        const halfTop = 5, halfBot = 46;
+        const a = 0.05 + dens * 0.28;
+        // cone
+        ctx.beginPath();
+        ctx.moveTo(topx - halfTop, topy);
+        ctx.lineTo(tx - halfBot, ty);
+        ctx.lineTo(tx + halfBot, ty);
+        ctx.lineTo(topx + halfTop, topy);
+        ctx.closePath();
+        const grd = ctx.createLinearGradient(topx, topy, tx, ty);
+        grd.addColorStop(0, beamCss(b, a * 1.1));
+        grd.addColorStop(1, beamCss(b, 0));
+        ctx.fillStyle = grd; ctx.fill();
+        // spot no chão
+        const sg = ctx.createRadialGradient(tx, ty, 2, tx, ty, 60);
+        sg.addColorStop(0, beamCss(b, 0.10 + dens * 0.12)); sg.addColorStop(1, beamCss(b, 0));
+        ctx.fillStyle = sg; ctx.beginPath(); ctx.ellipse(tx, ty, 60, 16, 0, 0, TAU); ctx.fill();
+      }
+      ctx.restore();
+    }
+    function beamCss(b, a) {
+      const hue = self.env.beamColor != null ? self.env.beamColor : b.hue;
+      return `hsla(${hue},85%,62%,${a})`;
+    }
+
+    function drawSmoke() {
+      ctx.save();
+      // haze de ambiente (fina camada difusa)
+      if (self.env.haze > 0.02) {
+        ctx.globalCompositeOperation = "lighter";
+        const hg = ctx.createLinearGradient(0, BACK_Y - 40, 0, FLOOR_Y);
+        const ha = self.env.haze * 0.10;
+        hg.addColorStop(0, `rgba(150,160,190,${ha})`); hg.addColorStop(1, `rgba(120,130,170,${ha * 0.4})`);
+        ctx.fillStyle = hg; ctx.fillRect(STAGE_L - 20, BACK_Y - 60, STAGE_R - STAGE_L + 40, FLOOR_Y - BACK_Y + 60);
+      }
+      ctx.globalCompositeOperation = "source-over";
+      for (const s of smoke) {
+        const rg = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r);
+        rg.addColorStop(0, `hsla(${s.hue},${s.sat}%,${s.lig}%,${s.a})`);
+        rg.addColorStop(1, `hsla(${s.hue},${s.sat}%,${s.lig}%,0)`);
+        ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, TAU); ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    function drawLowFog(op) {
+      ctx.save();
+      ctx.globalAlpha = op;
+      for (const s of lowfog) {
+        const rg = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r);
+        rg.addColorStop(0, `rgba(210,220,240,${s.a})`);
+        rg.addColorStop(1, `rgba(210,220,240,0)`);
+        ctx.fillStyle = rg;
+        ctx.beginPath(); ctx.ellipse(s.x, s.y, s.r, s.r * 0.42, 0, 0, TAU); ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    function drawParticles() {
+      ctx.save();
+      // CO2 (branco, source-over com leve additive no núcleo)
+      for (const q of P) {
+        if (q.kind === "co2") {
+          const rg = ctx.createRadialGradient(q.x, q.y, 0, q.x, q.y, q.r);
+          rg.addColorStop(0, `rgba(255,255,255,${q.a})`);
+          rg.addColorStop(0.6, `rgba(235,242,255,${q.a * 0.6})`);
+          rg.addColorStop(1, `rgba(220,230,245,0)`);
+          ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(q.x, q.y, q.r, 0, TAU); ctx.fill();
+        }
+      }
+      // aditivos: sparks + flame
+      ctx.globalCompositeOperation = "lighter";
+      for (const q of P) {
+        if (q.kind === "spark") {
+          if (q.trail && q.trail.length > 1) {
+            ctx.strokeStyle = hexA(q.col, q.a * 0.5); ctx.lineWidth = q.r * 0.9; ctx.lineCap = "round";
+            ctx.beginPath(); ctx.moveTo(q.trail[0][0], q.trail[0][1]);
+            for (let k = 1; k < q.trail.length; k++) ctx.lineTo(q.trail[k][0], q.trail[k][1]);
+            ctx.lineTo(q.x, q.y); ctx.stroke();
+          }
+          const tw = q.twinkle ? (0.6 + 0.4 * Math.sin(q.life * 0.6)) : 1;
+          const rg = ctx.createRadialGradient(q.x, q.y, 0, q.x, q.y, q.r * 3);
+          rg.addColorStop(0, hexA("#fff6e0", q.a * tw)); rg.addColorStop(0.4, hexA(q.col, q.a * 0.9 * tw)); rg.addColorStop(1, hexA(q.col, 0));
+          ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(q.x, q.y, q.r * 3, 0, TAU); ctx.fill();
+        } else if (q.kind === "flame") {
+          // cor pela IDADE: base branco-quente → amarelo → laranja → vermelho no topo
+          const tt = q.life / 30;
+          const col = tt < 0.22 ? "#fff3c8" : tt < 0.45 ? "#ffd24a" : tt < 0.68 ? "#ff8c1a" : tt < 0.86 ? "#f0400f" : "#9c2606";
+          const rg = ctx.createRadialGradient(q.x, q.y, 0, q.x, q.y, q.r);
+          rg.addColorStop(0, hexA(col, q.a)); rg.addColorStop(0.5, hexA(col, q.a * 0.55)); rg.addColorStop(1, hexA(col, 0));
+          ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(q.x, q.y, q.r, 0, TAU); ctx.fill();
+        }
+      }
+      ctx.globalCompositeOperation = "source-over";
+      // confetti / streamer / bubble / snow
+      for (const q of P) {
+        if (q.kind === "confetti") {
+          ctx.save(); ctx.translate(q.x, q.y); ctx.rotate(q.rot);
+          const w = q.w, h = q.w * (0.5 + 0.4 * Math.abs(Math.cos(q.flut)));
+          ctx.globalAlpha = clamp(q.a, 0, 1); ctx.fillStyle = q.hcol; ctx.fillRect(-w / 2, -h / 2, w, h);
+          ctx.restore();
+        } else if (q.kind === "streamer") {
+          if (q.seg.length > 1) {
+            ctx.globalAlpha = clamp(q.a, 0, 1); ctx.strokeStyle = q.col; ctx.lineWidth = 4; ctx.lineCap = "round"; ctx.lineJoin = "round";
+            ctx.beginPath(); ctx.moveTo(q.seg[0][0], q.seg[0][1]);
+            for (let k = 1; k < q.seg.length; k++) ctx.lineTo(q.seg[k][0], q.seg[k][1]);
+            ctx.stroke(); ctx.globalAlpha = 1;
+          }
+        } else if (q.kind === "bubble") {
+          ctx.save(); ctx.globalAlpha = clamp(q.a, 0, 1);
+          ctx.strokeStyle = "rgba(200,225,255,0.9)"; ctx.lineWidth = 1.4;
+          ctx.beginPath(); ctx.arc(q.x, q.y, q.r, 0, TAU); ctx.stroke();
+          ctx.fillStyle = "rgba(255,255,255,0.5)"; ctx.beginPath(); ctx.arc(q.x - q.r * 0.3, q.y - q.r * 0.3, q.r * 0.22, 0, TAU); ctx.fill();
+          ctx.restore();
+        } else if (q.kind === "snow") {
+          ctx.globalAlpha = clamp(q.a, 0, 1); ctx.fillStyle = "#eef4ff";
+          ctx.beginPath(); ctx.arc(q.x, q.y, q.r, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
+        }
+      }
+      ctx.restore();
+    }
+
+    function drawPerformer() {
+      ctx.save();
+      const cx = DW / 2, base = FLOOR_Y - 6;
+      // reflexo
+      ctx.globalAlpha = 0.18; ctx.scale(1, -1); ctx.translate(0, -2 * base);
+      silhouette(cx, base, "#0b0e16"); ctx.setTransform(1, 0, 0, 1, offx, offy); ctx.scale(scale, scale); ctx.globalAlpha = 1;
+      // corpo
+      silhouette(cx, base, "#03040a");
+      // rim light (do haze/beams)
+      ctx.globalCompositeOperation = "lighter";
+      ctx.globalAlpha = 0.5 + self.env.haze * 0.4;
+      silhouetteRim(cx, base);
+      ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1;
+      ctx.restore();
+    }
+    function silhouette(cx, base, col) {
+      ctx.fillStyle = col;
+      // pernas
+      ctx.beginPath(); roundRect(ctx, cx - 16, base - 70, 12, 70, 4); roundRect(ctx, cx + 4, base - 70, 12, 70, 4); ctx.fill();
+      // tronco
+      ctx.beginPath(); roundRect(ctx, cx - 20, base - 130, 40, 66, 10); ctx.fill();
+      // braços
+      ctx.beginPath(); roundRect(ctx, cx - 30, base - 128, 10, 54, 5); roundRect(ctx, cx + 20, base - 128, 10, 54, 5); ctx.fill();
+      // cabeça
+      ctx.beginPath(); ctx.arc(cx, base - 146, 13, 0, TAU); ctx.fill();
+    }
+    function silhouetteRim(cx, base) {
+      ctx.strokeStyle = "rgba(140,170,230,0.5)"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(cx - 20, base - 64); ctx.lineTo(cx - 20, base - 122);
+      ctx.arc(cx, base - 146, 13, Math.PI, TAU * 0.75, false); ctx.stroke();
+    }
+
+    // =====================================================================
+    //  LOOP + RESIZE
+    // =====================================================================
+    function resize() {
+      const rect = canvas.getBoundingClientRect();
+      dpr = Math.min(global.devicePixelRatio || 1, 2);
+      W = Math.max(1, Math.round(rect.width));
+      H = Math.max(1, Math.round(rect.height));
+      canvas.width = Math.round(W * dpr);
+      canvas.height = Math.round(H * dpr);
+      // fit "contain" do palco DWxDH dentro do canvas
+      scale = Math.min(W / DW, H / DH);
+      offx = (W - DW * scale) / 2;
+      offy = (H - DH * scale) / 2;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    this.resize = resize;
+    this.toStage = function (clientX, clientY) {
+      const rect = canvas.getBoundingClientRect();
+      const x = (clientX - rect.left - offx) / scale;
+      const y = (clientY - rect.top - offy) / scale;
+      return { x, y, floorY: FLOOR_Y, W: DW, H: DH, STAGE_L, STAGE_R };
+    };
+    this.dims = { W: DW, H: DH, FLOOR_Y, STAGE_L, STAGE_R };
+
+    function renderFrame(doUpdate) {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      // letterbox
+      ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H);
+      ctx.save();
+      ctx.translate(offx, offy); ctx.scale(scale, scale);
+      // clip ao palco
+      ctx.beginPath(); ctx.rect(0, 0, DW, DH); ctx.clip();
+      if (doUpdate && running) update();
+      draw();
+      ctx.restore();
+    }
+    let raf = 0;
+    function loop() { renderFrame(true); raf = requestAnimationFrame(loop); }
+    // roda N quadros de forma síncrona (verificação sem depender de rAF)
+    this._tick = function (n) { for (let i = 0; i < (n || 1); i++) renderFrame(true); };
+    this._count = function () { return { P: P.length, smoke: smoke.length, lowfog: lowfog.length, emitters: emitters.length, haze: self.env.haze }; };
+
+    // utils
+    function roundRect(c, x, y, w, h, r) { c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); }
+    function hexA(hex, a) {
+      if (hex[0] !== "#") return hex.replace(/[\d.]+\)$/g, a + ")");
+      let h = hex.slice(1); if (h.length === 3) h = h.split("").map(c => c + c).join("");
+      const n = parseInt(h, 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+    }
+
+    resize();
+    global.addEventListener("resize", resize);
+    loop();
+  }
+
+  global.StageFX = StageFX;
+})(window);
+</script>
+<script>
+(function(){
+  const fx=new StageFX(document.getElementById('stage'),{ haze:0.14, ledWall:0.4, beams:true, performer:false, label:"" });
+  window.__fx=fx;
+
+  // ---- peças ----
+  const PARTS={
+    involucro:{nome:'Invólucro (carcaça)', dsc:'A casca de papelão/plástico que dá forma ao shell e contém todos os componentes até o rompimento.', fn:'Função: manter tudo junto e resistir à pressão da carga de arremesso.'},
+    estrelas:{nome:'Estrelas (pellets)', dsc:'Pequenos grãos de composição pirotécnica prensada. Cada estrela queima e cria um ponto de luz colorido no céu.', fn:'A cor vem dos sais metálicos: estrôncio=vermelho, bário=verde, cobre=azul, sódio=amarelo.'},
+    rompimento:{nome:'Carga de rompimento', dsc:'Pólvora no centro do shell que EXPLODE no ar, arremessando e acendendo as estrelas em todas as direções.', fn:'É ela que forma o "buquê" — o desenho da explosão depende de como as estrelas estão arranjadas ao redor.'},
+    estopim:{nome:'Estopim de tempo (delay)', dsc:'Pavio de queima controlada que leva o fogo da carga de arremesso até a carga de rompimento — mas com ATRASO.', fn:'O delay define a ALTURA da explosão: o shell precisa subir antes de romper. Estopim curto = estoura baixo (perigoso).'},
+    espoleta:{nome:'Espoleta elétrica (e-match)', dsc:'O ignitor elétrico ligado à maleta de disparo. Recebe o comando do console e inicia tudo.', fn:'É onde a parte elétrica encontra a pirotecnia — o teste de continuidade verifica justamente esse e-match.'},
+    arremesso:{nome:'Carga de arremesso (lift)', dsc:'Pólvora negra no fundo do morteiro. Ao acender, gera gás que EMPURRA o shell tubo acima.', fn:'A quantidade é calculada para o calibre: pouco = shell não sobe; muito = sobe demais/rompe cedo.'},
+    morteiro:{nome:'Morteiro (tubo)', dsc:'O tubo (fibra/HDPE) que guia o shell para cima na vertical. Fica enterrado ou preso num rack.', fn:'Nunca olhar por cima de um morteiro carregado. O diâmetro do tubo = o calibre do shell.'},
+  };
+  const ORDER=['morteiro','arremesso','espoleta','involucro','estrelas','rompimento','estopim'];
+
+  // ---- SVG do corte ----
+  const svg=document.getElementById('cut');
+  // desenha morteiro vertical à esquerda, shell dentro, labels à direita
+  const NS='http://www.w3.org/2000/svg';
+  function el(t,a){ const e=document.createElementNS(NS,t); for(const k in a) e.setAttribute(k,a[k]); return e; }
+  function part(id, bodyNodes, labelXY, targetXY){
+    const g=el('g',{class:'part','data-id':id}); g.classList.add('part');
+    bodyNodes.forEach(n=>{ n.classList&&n.classList.add('body'); g.appendChild(n); });
+    // callout
+    const [lx,ly]=labelXY, [tx,ty]=targetXY;
+    const w=PARTS[id].nome.length*6.6+14;
+    g.appendChild(el('line',{class:'lead',x1:tx,y1:ty,x2:lx<tx?lx+w:lx,y2:ly}));
+    const box=el('rect',{class:'lblbox',x:lx,y:ly-13,width:w,height:19,rx:4}); g.appendChild(box);
+    const tra=el('text',{class:'lbltx',x:lx+7,y:ly+1}); tra.textContent=PARTS[id].nome.split(' ')[0]+(PARTS[id].nome.includes('(')?' '+PARTS[id].nome.match(/\(([^)]+)\)/)[0]:''); g.appendChild(tra);
+    g.appendChild(el('circle',{class:'hit',cx:tx,cy:ty,r:22}));
+    g.onclick=()=>select(id);
+    svg.appendChild(g);
+  }
+  const TUBE_X=70, TUBE_W=90, TUBE_TOP=40, TUBE_BOT=330;
+  // morteiro (tubo)
+  part('morteiro',[
+    el('rect',{x:TUBE_X,y:TUBE_TOP,width:TUBE_W,height:TUBE_BOT-TUBE_TOP,rx:8,fill:'#1a2233',stroke:'#3a4a6e','stroke-width':2}),
+    el('rect',{x:TUBE_X+6,y:TUBE_TOP+6,width:TUBE_W-12,height:TUBE_BOT-TUBE_TOP-12,rx:6,fill:'#0a0f18',stroke:'none'}),
+  ],[300,70],[TUBE_X+TUBE_W,90]);
+  // carga de arremesso (fundo, pólvora)
+  part('arremesso',[ el('rect',{x:TUBE_X+8,y:TUBE_BOT-46,width:TUBE_W-16,height:38,rx:4,fill:'#2b2118',stroke:'#5a4a2a','stroke-width':1.5}),
+    ...[...Array(24)].map((_,i)=>el('circle',{cx:TUBE_X+16+(i%8)*9,cy:TUBE_BOT-40+((i/8)|0)*11,r:2.4,fill:'#6b5a34'})) ],
+   [300,300],[TUBE_X+TUBE_W/2,TUBE_BOT-26]);
+  // espoleta e-match (fio entrando no fundo)
+  part('espoleta',[ el('line',{x1:20,y1:TUBE_BOT-14,x2:TUBE_X+20,y2:TUBE_BOT-24,stroke:'#e5484d','stroke-width':2.4}),
+    el('line',{x1:20,y1:TUBE_BOT-8,x2:TUBE_X+20,y2:TUBE_BOT-18,stroke:'#9fb3d6','stroke-width':2.4}),
+    el('circle',{cx:TUBE_X+22,cy:TUBE_BOT-22,r:4,fill:'#ffcf5a',stroke:'#8a6a1e'}) ],
+   [300,330],[TUBE_X+14,TUBE_BOT-18]);
+  // shell (esfera dentro do tubo)
+  const SHX=TUBE_X+TUBE_W/2, SHY=TUBE_TOP+95, SHR=34;
+  part('involucro',[ el('circle',{cx:SHX,cy:SHY,r:SHR,fill:'#161d2c',stroke:'#5a6478','stroke-width':2.5}) ],
+   [300,120],[SHX+SHR,SHY-14]);
+  part('estrelas',[ ...[...Array(12)].map((_,i)=>{const an=i/12*Math.PI*2; return el('circle',{cx:SHX+Math.cos(an)*(SHR-9),cy:SHY+Math.sin(an)*(SHR-9),r:3.4,fill:['#ff5a5a','#5ad2ff','#8bff8b','#ffe08a'][i%4]});}) ],
+   [300,160],[SHX-SHR+6,SHY+8]);
+  part('rompimento',[ el('circle',{cx:SHX,cy:SHY,r:9,fill:'#3a2118',stroke:'#7a4a2a','stroke-width':1.5}),
+    ...[...Array(6)].map((_,i)=>el('circle',{cx:SHX-4+(i%3)*4,cy:SHY-4+((i/3)|0)*5,r:1.6,fill:'#6b5a34'})) ],
+   [300,200],[SHX,SHY]);
+  // estopim (do shell até a carga de arremesso)
+  part('estopim',[ el('path',{d:`M${SHX},${SHY+SHR} C${SHX-6},${SHY+SHR+20} ${SHX+6},${TUBE_BOT-60} ${SHX},${TUBE_BOT-46}`,fill:'none',stroke:'#c98b3a','stroke-width':3,'stroke-dasharray':'5 3'}) ],
+   [300,240],[SHX,SHY+SHR+22]);
+
+  // ---- painel peças ----
+  const pl=document.getElementById('partList');
+  ORDER.forEach(id=>{ const c=document.createElement('div'); c.className='chip'; c.dataset.id=id; c.textContent=PARTS[id].nome.split(' ')[0]; c.onclick=()=>select(id); pl.appendChild(c); });
+  let selId=null;
+  function select(id){ selId=id;
+    document.querySelectorAll('.part').forEach(g=>g.classList.toggle('sel',g.dataset.id===id));
+    document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('sel',c.dataset.id===id));
+    const P=PARTS[id];
+    document.getElementById('info').innerHTML=`<div class="pt">${P.nome}</div><div class="dsc">${P.dsc}</div><div class="fn">${P.fn}</div>`;
+  }
+
+  // ---- controles ----
+  const cfg={cal:150,fuse:30};
+  document.getElementById('cal').oninput=function(){ cfg.cal=+this.value; document.getElementById('v-cal').textContent=cfg.cal+' mm'; };
+  document.getElementById('fuse').oninput=function(){ cfg.fuse=+this.value; document.getElementById('v-fuse').textContent=(cfg.fuse/10).toFixed(1)+' s'; };
+
+  const seqEl=document.getElementById('seq');
+  function log(m,cls){ const d=document.createElement('div'); d.className='sq '+(cls||''); d.textContent=m; seqEl.appendChild(d); seqEl.scrollTop=seqEl.scrollHeight; }
+
+  let firing=false;
+  document.getElementById('fire').onclick=()=>{
+    if(firing) return; firing=true; seqEl.innerHTML='';
+    document.getElementById('fire').disabled=true;
+    const delayS=cfg.fuse/10;                       // s do estopim
+    const burstY=Math.max(70, 300 - cfg.cal*0.75);  // calibre maior sobe mais alto
+    const burstSize=Math.round(50 + cfg.cal*0.5);
+    document.getElementById('seqMsg').textContent='Sequência em execução…';
+    // 1) espoleta -> arremesso
+    setTimeout(()=>{ select('espoleta'); log('1 · Espoleta elétrica recebe o comando da maleta','on'); fx.trigger('flame',{x:640,power:0.5,n:5}); },50);
+    setTimeout(()=>{ select('arremesso'); log('2 · Carga de arremesso acende e EMPURRA o shell tubo acima','on'); },900);
+    // 2) launch (comet subindo no palco)
+    setTimeout(()=>{ launchComet(burstY); log('3 · Shell é arremessado do morteiro','on'); },1500);
+    // 3) estopim queima
+    setTimeout(()=>{ select('estopim'); log('4 · Estopim de tempo queima ('+delayS.toFixed(1)+' s) enquanto o shell sobe','on'); },1900);
+    // 4) rompimento (na altura) — tempo = 1900 + delay
+    const burstAt=1900 + delayS*1000*0.5 + 400;
+    setTimeout(()=>{ select('rompimento'); log('5 · Carga de rompimento ESTOURA na altura','on'); },burstAt);
+    setTimeout(()=>{ select('estrelas');
+      fx.trigger('airburst',{x:640,y:burstY,burst:burstSize,col:'#ffd24a'});
+      setTimeout(()=>{ fx.trigger('airburst',{x:640,y:burstY,burst:Math.round(burstSize*0.6),col:'#54b3ff'}); },120);
+      log('6 · Estrelas acendem → o buquê no céu ✓','ok');
+      document.getElementById('seqMsg').textContent='Calibre '+cfg.cal+' mm · estopim '+delayS.toFixed(1)+' s · buquê a ~'+Math.round((300-burstY)/2)+' m';
+      firing=false; document.getElementById('fire').disabled=false;
+    },burstAt+250);
+  };
+
+  // cometa subindo no mini-palco (partículas co2 douradas? usa spark ascendente)
+  function launchComet(burstY){
+    let y=560, iv=setInterval(()=>{
+      fx.trigger('spark',{x:640,y:y,burst:4,power:0.5});
+      y-=26; if(y< (burstY+40)) clearInterval(iv);
+    },40);
+  }
+
+  // ---- fit tela cheia ----
+  function setVisH(){ var vh=window.innerHeight, sh=(window.screen&&screen.height)||vh; var inflated=vh>sh+8, visH=Math.min(vh,sh), header=inflated?86:0;
+    document.documentElement.style.setProperty('--visH', Math.max(320,visH-header)+'px'); if(fx.resize) fx.resize(); }
+  window.__setVisH=setVisH; addEventListener('resize',setVisH);
+  addEventListener('orientationchange',()=>setTimeout(setVisH,150));
+  document.addEventListener('fullscreenchange',()=>[60,260,600].forEach(d=>setTimeout(setVisH,d)));
+  document.addEventListener('webkitfullscreenchange',()=>[60,260,600].forEach(d=>setTimeout(setVisH,d)));
+  window.__probe={select,fire:()=>document.getElementById('fire').click(),parts:Object.keys(PARTS)};
+  setVisH(); select('involucro');
+})();
+</script>
+</body></html>

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Distâncias de Segurança · SMU</title>
+<style>
+  :root{ --bg:#0a0f1a; --card:#0e1420ee; --line:#26304a; --ink:#e6ecf7; --mut:#8ea0bd; --acc:#ff7a1a; --ok:#39d98a; --bad:#ff4d4d; }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:system-ui,Segoe UI,Roboto,Arial;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none}
+  #screen{position:fixed;top:0;left:0;width:100vw;height:var(--visH,100vh);overflow:hidden;background:var(--bg)}
+  #plan{position:absolute;inset:0;width:100%;height:100%;display:block}
+  #brand{position:absolute;left:12px;top:10px;z-index:5;pointer-events:none}
+  #brand b{display:block;font-size:15px;font-weight:800;text-shadow:0 1px 6px #000}
+  #brand span{font-size:11px;color:var(--mut)}
+  #dock{position:absolute;left:8px;right:8px;bottom:8px;z-index:6;display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:center;max-height:46%;overflow:auto;background:linear-gradient(180deg,#0b111ccc,#0b111cf2);border:1px solid var(--line);border-radius:14px;padding:9px 10px}
+  button.b{background:#141c2b;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px 13px;font-size:13px;font-weight:700;cursor:pointer;min-height:44px}
+  button.b:hover{background:#1c2942}
+  button.b.sel{background:#3a2410;border-color:var(--acc);color:#ffcf9e;box-shadow:0 0 10px #ff7a1a55}
+  button.b.rst{background:#20283a}
+  .hint{font-size:11px;color:var(--mut);max-width:220px;line-height:1.35}
+  #hud{position:absolute;right:10px;top:10px;z-index:6;width:min(310px,74vw);max-height:66%;overflow:auto;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  #hud h4{margin:0 0 6px;font-size:12px;letter-spacing:.4px;text-transform:uppercase;color:var(--acc)}
+  #hud .intro{font-size:11.5px;color:var(--mut);line-height:1.45;margin-bottom:8px}
+  #steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px}
+  #steps li{display:flex;gap:8px;align-items:flex-start;font-size:12px;line-height:1.35;color:#cdd8ea}
+  #steps li .bx{flex:none;width:16px;height:16px;border-radius:5px;border:1.5px solid #46567a;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#04140b}
+  #steps li.done .bx{background:var(--ok);border-color:var(--ok)}
+  #steps li.done{color:#8fb8a2}
+  #hud.win{border-color:var(--ok);box-shadow:0 0 22px #39d98a44}
+  #winmsg{margin-top:8px;font-size:12px;color:var(--ok);font-weight:700;display:none}
+  #hud.win #winmsg{display:block}
+  #toast{position:fixed;left:50%;top:16px;transform:translateX(-50%) translateY(-70px);z-index:8;background:#0e1726ee;border:1px solid var(--line);border-radius:10px;padding:9px 15px;font-size:13px;font-weight:600;transition:transform .3s;max-width:82vw;text-align:center}
+  #toast.show{transform:translateX(-50%) translateY(0)}
+  #toast.good{border-color:var(--ok);color:#bff5da}
+  #toast.warn{border-color:#c9922a;color:#ffdf9e}
+  #toast.bad{border-color:var(--bad);color:#ffb3ab}
+  #toast{position:absolute}
+  @media (max-width:640px){ #hud{width:min(250px,80vw)} .hint{display:none} }
+</style></head>
+<body>
+<div id="screen">
+<canvas id="plan"></canvas>
+<div id="brand"><b>Distâncias de Segurança</b><span>Planta baixa — posicione os efeitos longe do público</span></div>
+<div id="hud">
+  <h4>🎯 Missão</h4>
+  <div class="intro">Cada efeito tem uma <b>zona de exclusão</b> (raio de segurança). Nenhuma pode tocar o público nem a barreira. Toque num efeito na paleta e depois no palco para posicioná-lo; arraste para ajustar. Arraste a <b>barreira do público</b> para achar a distância certa.</div>
+  <ul id="steps"></ul>
+  <div id="winmsg">✓ Layout aprovado! Todas as zonas de exclusão estão livres.</div>
+</div>
+<div id="dock">
+  <span class="hint">Paleta:</span>
+  <button class="b" data-fx="spark">✨ Faísca fria</button>
+  <button class="b" data-fx="co2">❄ CO₂</button>
+  <button class="b" data-fx="gerb">🎆 Gerb (pyro)</button>
+  <button class="b" data-fx="flame">🔥 Chama</button>
+  <button class="b rst" id="reset">↺ Limpar</button>
+  <span class="hint" id="tip">Selecione um efeito e toque no palco.</span>
+</div>
+<div id="toast"></div>
+</div>
+<script>
+(function(){
+  const cv=document.getElementById('plan'), ctx=cv.getContext('2d');
+  const TAU=Math.PI*2;
+  // plano lógico 1280x720
+  const DW=1280, DH=720; let scale=1,offx=0,offy=0,dpr=1,W=DW,H=DH;
+  function setVisH(){
+    var vh=window.innerHeight, sh=(window.screen&&screen.height)||vh;
+    var inflated=vh>sh+8, visH=Math.min(vh,sh), header=inflated?86:0;
+    document.documentElement.style.setProperty('--visH', Math.max(240,visH-header)+'px');
+    resize();
+  }
+  function resize(){
+    const r=cv.getBoundingClientRect(); dpr=Math.min(devicePixelRatio||1,2);
+    W=Math.max(1,r.width|0); H=Math.max(1,r.height|0); cv.width=W*dpr; cv.height=H*dpr;
+    scale=Math.min(W/DW,H/DH); offx=(W-DW*scale)/2; offy=(H-DH*scale)/2;
+  }
+  addEventListener('resize',setVisH);
+  addEventListener('orientationchange',function(){setTimeout(setVisH,150);});
+  document.addEventListener('fullscreenchange',function(){[60,260,600].forEach(function(d){setTimeout(setVisH,d);});});
+  document.addEventListener('webkitfullscreenchange',function(){[60,260,600].forEach(function(d){setTimeout(setVisH,d);});});
+  setVisH();
+  function toLog(cx,cy){ const r=cv.getBoundingClientRect(); return {x:(cx-r.left-offx)/scale, y:(cy-r.top-offy)/scale}; }
+
+  // ESCALA: 1 metro = ESC px no plano
+  const ESC=22;
+  // geometria do venue
+  const STAGE={x:220,y:70,w:840,h:230};       // palco (topo)
+  let barrierY=470;                            // linha da barreira do público (arrastável)
+  const AUD={x:120,y2:690, x2:1160};          // público abaixo da barreira
+
+  // tipos de efeito e RAIO DE EXCLUSÃO (metros) — valores didáticos p/ proximidade de público
+  const TYPES={
+    spark:{ic:'✨',name:'Faísca fria', r:2.5, col:'#ffcf5a', note:'fria, mas mantenha 2,5 m do público e nada inflamável na queda'},
+    co2:  {ic:'❄', name:'Jato de CO₂', r:2.0, col:'#7fd8ff', note:'não jorrar direto em pessoas; risco de congelamento e ruído'},
+    gerb: {ic:'🎆',name:'Gerb pirotécnico', r:5.0, col:'#ff9a3b', note:'pólvora: zona de exclusão ampla, ~5 m livres'},
+    flame:{ic:'🔥',name:'Chama (flame)', r:4.0, col:'#ff6a3b', note:'fogo real: 4 m ao redor + pé-direito livre acima'},
+  };
+  let sel=null;                 // tipo selecionado na paleta
+  const items=[];               // {type,x,y}
+  let drag=null;                // {kind:'item'|'barrier', idx, dx,dy}
+
+  // ---- interação
+  document.querySelectorAll('button[data-fx]').forEach(b=>{
+    b.onclick=()=>{ sel=b.dataset.fx; document.querySelectorAll('button[data-fx]').forEach(x=>x.classList.toggle('sel',x===b));
+      document.getElementById('tip').textContent='Toque no palco para posicionar: '+TYPES[sel].name; };
+  });
+  document.getElementById('reset').onclick=()=>{ items.length=0; sel=null; document.querySelectorAll('button[data-fx]').forEach(x=>x.classList.remove('sel')); toast('Layout limpo','warn'); };
+
+  cv.addEventListener('pointerdown',ev=>{
+    cv.setPointerCapture(ev.pointerId);
+    const p=toLog(ev.clientX,ev.clientY);
+    // pegar item existente?
+    for(let i=items.length-1;i>=0;i--){ const it=items[i]; if(Math.hypot(it.x-p.x,it.y-p.y)<26){ drag={kind:'item',idx:i,dx:it.x-p.x,dy:it.y-p.y}; return; } }
+    // pegar barreira?
+    if(Math.abs(p.y-barrierY)<24 && p.x>AUD.x && p.x<AUD.x2){ drag={kind:'barrier'}; return; }
+    // colocar novo
+    if(sel){
+      if(p.y>STAGE.y-10 && p.y<barrierY-10 && p.x>STAGE.x-40 && p.x<STAGE.x+STAGE.w+40){
+        items.push({type:sel,x:p.x,y:Math.max(STAGE.y+20,Math.min(p.y,barrierY-40))});
+      } else toast('Posicione dentro/na frente do palco, acima da barreira','warn');
+    } else { toast('Escolha um efeito na paleta primeiro','warn'); }
+  });
+  cv.addEventListener('pointermove',ev=>{
+    if(!drag) return; const p=toLog(ev.clientX,ev.clientY);
+    if(drag.kind==='item'){ const it=items[drag.idx]; it.x=Math.max(60,Math.min(DW-60,p.x+drag.dx)); it.y=Math.max(STAGE.y+10,Math.min(barrierY-16,p.y+drag.dy)); }
+    else if(drag.kind==='barrier'){ barrierY=Math.max(STAGE.y+STAGE.h+40, Math.min(640, p.y)); }
+  });
+  cv.addEventListener('pointerup',ev=>{ drag=null; });
+  cv.addEventListener('pointercancel',()=>{ drag=null; });
+
+  // ---- avaliação de segurança
+  function evalItem(it){
+    const T=TYPES[it.type]; const rpx=T.r*ESC;
+    // distância vertical até a barreira (público começa abaixo dela)
+    const distToAud = barrierY - it.y;           // px
+    const clearAud = distToAud >= rpx;            // zona não alcança o público
+    // sobreposição com outro efeito (zonas de pyro/flame não devem se somar)
+    let overlap=false;
+    for(const o of items){ if(o===it) continue; const To=TYPES[o.type]; const d=Math.hypot(o.x-it.x,o.y-it.y);
+      if(d < rpx+To.r*ESC*0.6 && (it.type==='gerb'||it.type==='flame'||o.type==='gerb'||o.type==='flame')) overlap=true; }
+    return {rpx, clearAud, overlap, distM:(distToAud/ESC)};
+  }
+
+  // ---- missão
+  const steps=[
+    {id:'place2', text:'Posicione pelo menos 1 gerb e 1 faísca fria'},
+    {id:'clear',  text:'Nenhuma zona de exclusão pode tocar o público'},
+    {id:'nolap',  text:'Zonas de fogo/pyro não podem se sobrepor'},
+    {id:'barrier',text:'Barreira do público a ≥ 6 m do palco'},
+  ];
+  const stepEls={}; const doneS={}; let won=false;
+  const ul=document.getElementById('steps');
+  steps.forEach(s=>{ const li=document.createElement('li'); li.innerHTML='<span class="bx"></span><span>'+s.text+'</span>'; ul.appendChild(li); stepEls[s.id]=li; });
+  function done(id,v){ if(v && !doneS[id]){ doneS[id]=true; stepEls[id].classList.add('done'); stepEls[id].querySelector('.bx').textContent='✓'; }
+    else if(!v && doneS[id]){ doneS[id]=false; stepEls[id].classList.remove('done'); stepEls[id].querySelector('.bx').textContent=''; } }
+  const toastEl=document.getElementById('toast'); let tT;
+  function toast(m,k){ toastEl.textContent=m; toastEl.className='show '+(k||''); clearTimeout(tT); tT=setTimeout(()=>toastEl.className=(k||''),2000); }
+  function checkWin(){ const all=steps.every(s=>doneS[s.id]); const hud=document.getElementById('hud');
+    if(all&&!won){ won=true; hud.classList.add('win'); toast('Layout aprovado pela segurança! ✓','good'); }
+    if(!all&&won){ won=false; hud.classList.remove('win'); } }
+
+  // ---- render
+  function draw(){
+    ctx.setTransform(dpr,0,0,dpr,0,0); ctx.fillStyle='#0a0f1a'; ctx.fillRect(0,0,W,H);
+    ctx.save(); ctx.translate(offx,offy); ctx.scale(scale,scale);
+    // grid metros
+    ctx.strokeStyle='#141c2b'; ctx.lineWidth=1;
+    for(let x=0;x<DW;x+=ESC){ ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,DH);ctx.stroke(); }
+    for(let y=0;y<DH;y+=ESC){ ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(DW,y);ctx.stroke(); }
+    // palco
+    ctx.fillStyle='#141b29'; ctx.strokeStyle='#33405e'; ctx.lineWidth=2;
+    rr(STAGE.x,STAGE.y,STAGE.w,STAGE.h,10); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#5f7099'; ctx.font='600 15px system-ui'; ctx.textAlign='center'; ctx.fillText('PALCO',STAGE.x+STAGE.w/2,STAGE.y+26);
+    // público
+    ctx.fillStyle='rgba(60,110,190,.10)'; ctx.fillRect(AUD.x,barrierY,AUD.x2-AUD.x,AUD.y2-barrierY);
+    // gradinha (barreira)
+    ctx.strokeStyle='#ffd24a'; ctx.lineWidth=4; ctx.setLineDash([14,8]);
+    ctx.beginPath(); ctx.moveTo(AUD.x,barrierY); ctx.lineTo(AUD.x2,barrierY); ctx.stroke(); ctx.setLineDash([]);
+    // pontinhos = público
+    ctx.fillStyle='#3f5f9a';
+    for(let y=barrierY+26;y<AUD.y2-8;y+=34) for(let x=AUD.x+24;x<AUD.x2-8;x+=34){ ctx.beginPath(); ctx.arc(x+((y/34|0)%2?17:0),y,4,0,TAU); ctx.fill(); }
+    ctx.fillStyle='#cdb85a'; ctx.font='600 13px system-ui'; ctx.textAlign='left';
+    const distStage=(barrierY-(STAGE.y+STAGE.h))/ESC;
+    ctx.fillText('◀ arraste a barreira do público — '+distStage.toFixed(1)+' m do palco', AUD.x+8, barrierY-8);
+
+    // efeitos + zonas
+    let allClear=true, anyLap=false, nGerb=0, nSpark=0;
+    for(const it of items){
+      const T=TYPES[it.type], E=evalItem(it);
+      if(it.type==='gerb')nGerb++; if(it.type==='spark')nSpark++;
+      if(!E.clearAud) allClear=false; if(E.overlap) anyLap=true;
+      const bad = !E.clearAud || E.overlap;
+      // zona
+      ctx.beginPath(); ctx.arc(it.x,it.y,E.rpx,0,TAU);
+      ctx.fillStyle = bad? 'rgba(255,60,60,.16)':'rgba(60,220,140,.13)';
+      ctx.fill();
+      ctx.lineWidth=2; ctx.setLineDash([6,5]); ctx.strokeStyle= bad? '#ff5a5a':'#39d98a'; ctx.stroke(); ctx.setLineDash([]);
+      // raio label
+      ctx.fillStyle= bad?'#ffb3ab':'#bff5da'; ctx.font='600 12px system-ui'; ctx.textAlign='center';
+      ctx.fillText(T.r.toFixed(1)+' m', it.x, it.y-E.rpx-6);
+      // corpo
+      ctx.fillStyle='#0b0f18'; ctx.strokeStyle=T.col; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc(it.x,it.y,16,0,TAU); ctx.fill(); ctx.stroke();
+      ctx.font='16px system-ui'; ctx.fillText(T.ic,it.x,it.y+6);
+    }
+    ctx.restore();
+
+    // avaliação missão
+    done('place2', nGerb>=1 && nSpark>=1);
+    done('clear', items.length>0 && allClear);
+    done('nolap', items.length>0 && !anyLap);
+    done('barrier', distStage>=6);
+    checkWin();
+    requestAnimationFrame(draw);
+  }
+  function rr(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); }
+  window.__dbg={ items, TYPES, evalItem, place:(t,x,y)=>items.push({type:t,x,y}), setBarrier:(y)=>{barrierY=y;}, tick:()=>draw.__once?null:null, doneS, isWon:()=>won, step:()=>{ // roda um frame lógico sem depender de rAF
+      // recomputa avaliação como no draw
+      let allClear=true,anyLap=false,nGerb=0,nSpark=0;
+      for(const it of items){ const E=evalItem(it); if(it.type==='gerb')nGerb++; if(it.type==='spark')nSpark++; if(!E.clearAud)allClear=false; if(E.overlap)anyLap=true; }
+      const distStage=(barrierY-(STAGE.y+STAGE.h))/ESC;
+      done('place2',nGerb>=1&&nSpark>=1); done('clear',items.length>0&&allClear); done('nolap',items.length>0&&!anyLap); done('barrier',distStage>=6); checkWin();
+      return {allClear,anyLap,nGerb,nSpark,distStage:+distStage.toFixed(2),done:{...doneS},won}; } };
+  requestAnimationFrame(draw);
+})();
+</script>
+</body></html>

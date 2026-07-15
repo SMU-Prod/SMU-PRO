@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>Lab de Análise — escolha a próxima música certa (SMU)</title>
+<style>
+  :root{ --ink:#e9eef7; --muted:#8b97a9; --amber:#f4a02a; --green:#37d07a; --red:#e0483f; --cyan:#39c0e6; }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{ background:radial-gradient(1100px 650px at 50% -8%,#1b1e23,#0a0b0d 62%),#08090b; color:var(--ink);
+    font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; -webkit-font-smoothing:antialiased;
+    user-select:none;overflow:hidden; display:flex;align-items:flex-start;justify-content:center; }
+  #stage{transform-origin:top center;flex:0 0 auto}
+  .lab{position:relative;width:1240px;display:flex;flex-direction:column;gap:9px;padding:12px;
+    background:linear-gradient(180deg,#2b2f36,#1f2228 10%,#191b1f 60%,#141518);
+    border:1px solid #0b0c0e;border-radius:16px;box-shadow:0 30px 80px #000b, inset 0 1px 0 #ffffff10;}
+  .util{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:linear-gradient(180deg,#202329,#15171b);border:1px solid #0c0d0f;border-radius:11px;padding:7px 11px}
+  .brand b{font-size:16px;letter-spacing:1px;color:#eef2f8}
+  .brand .m{font-size:9px;letter-spacing:2px;color:#8a94a4;text-transform:uppercase;margin-left:8px}
+  .pill{font-size:10px;color:var(--muted);background:#0c0e12;border:1px solid #2a2f37;border-radius:16px;padding:4px 9px;display:flex;align-items:center;gap:6px;white-space:nowrap}
+  .pill b{color:#fff}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green)}
+  .dot.off{background:#444;box-shadow:none}
+  .spacer{flex:1}
+  .btnp{font:inherit;font-size:11px;font-weight:700;border:0;border-radius:8px;padding:6px 11px;cursor:pointer;color:#07120b;background:linear-gradient(180deg,#5be59a,#27b566)}
+  .btnp.ghost{background:transparent;color:var(--muted);border:1px solid #2a2f37}
+  .mission{display:flex;align-items:center;gap:9px;background:#0c0e12;border:1px solid #2a2f37;border-radius:9px;padding:5px 10px;flex:1 1 340px;min-width:0}
+  .mission .idx{font-size:10px;color:var(--amber);font-weight:800;white-space:nowrap}
+  .mission .txt{font-size:11px;line-height:1.25;min-width:0}
+  .mission .txt b{color:#fff}.mission .txt small{color:var(--muted)}
+  .mission .ok{color:var(--green);font-weight:800;font-size:15px}
+
+  .row{display:grid;grid-template-columns:390px 1fr;gap:10px;align-items:start}
+  .box{background:linear-gradient(180deg,#101622,#0b0f18);border:1px solid #0c1526;border-radius:12px;padding:11px;display:flex;flex-direction:column;gap:8px}
+  .box .t{font-size:10px;letter-spacing:1.5px;color:#7bd3ff;font-weight:800}
+
+  /* faixa atual */
+  .nowplay{border-color:#1e4a2c}
+  .np{display:flex;flex-direction:column;gap:6px}
+  .np .nm{font-size:15px;font-weight:900;color:#fff}
+  .badges{display:flex;gap:6px;flex-wrap:wrap}
+  .bd{font-size:10px;font-weight:800;border-radius:6px;padding:4px 8px}
+  .bd.bpm{background:#241a08;color:var(--amber);border:1px solid #4a3a14}
+  .bd.key{background:#0d1f2a;color:var(--cyan);border:1px solid #1d4258}
+  .bd.en{background:#12240f;color:#8fe0ae;border:1px solid #2c4a1e}
+  .wfmini{width:100%;height:44px;background:#060a11;border-radius:5px;display:block}
+  .npbtn{font-size:10px;font-weight:800;color:#07120b;background:var(--green);border:0;border-radius:7px;padding:8px;cursor:pointer}
+  .camelot{width:100%;height:170px;display:block}
+  .camtip{font-size:9px;color:#8fa3c4;line-height:1.4}
+
+  /* candidatas */
+  .cand{display:flex;flex-direction:column;gap:7px}
+  .c1{display:grid;grid-template-columns:1fr auto;gap:8px;background:#0c1420;border:1px solid #1a2c48;border-radius:10px;padding:9px 11px;cursor:pointer;align-items:center}
+  .c1:hover{border-color:#2a4468}
+  .c1.sel{border-color:var(--cyan);box-shadow:0 0 0 1px var(--cyan)}
+  .c1.good{border-color:var(--green);box-shadow:0 0 0 1px var(--green)}
+  .c1.badx{border-color:var(--red);box-shadow:0 0 0 1px var(--red)}
+  .c1 .nm{font-size:12px;font-weight:800;color:#fff}
+  .c1 .row2{display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap}
+  .c1 canvas{width:220px;height:30px;background:#060a11;border-radius:4px}
+  .c1 .pv{font-size:9px;font-weight:800;color:#9fc0e8;background:#1a2434;border:1px solid #23406b;border-radius:6px;padding:5px 9px;text-align:center}
+  .c1 .pick{font-size:9px;font-weight:800;color:#07120b;background:#37d07a;border-radius:6px;padding:5px 9px;text-align:center;margin-top:4px}
+  .fb{font-size:10.5px;min-height:15px;font-weight:700}
+  .fb.hit{color:var(--green)} .fb.miss{color:#ffb03a}
+  .coach{background:#0c0e12;border:1px solid #223;border-radius:10px;padding:9px 12px;font-size:10.5px;line-height:1.45;color:#c7d0de}
+  .coach b{color:#fff}.coach .k{color:var(--amber);font-weight:800}
+</style>
+</head>
+<body>
+<div id="stage">
+<div class="lab">
+  <div class="util">
+    <div class="brand"><b>SMU</b><span class="m">LAB DE ANÁLISE — ESCOLHA A PRÓXIMA MÚSICA CERTA</span></div>
+    <span class="pill"><span class="dot off" id="acDot"></span> Áudio <b id="acState">clique em Ligar</b></span>
+    <div class="mission">
+      <span class="idx" id="mIdx">MISSÃO 1/5</span>
+      <div class="txt"><b id="mTitle">Ouça a faixa que está tocando</b><br><small id="mHint">Dê play na faixa atual e leia a análise: BPM, tom (Camelot) e energia.</small></div>
+      <span class="ok" id="mOk" style="display:none">✓</span>
+    </div>
+    <span class="spacer"></span>
+    <button class="btnp ghost" id="btnReset">Reiniciar</button>
+    <button class="btnp" id="btnStart">▶ Ligar áudio</button>
+  </div>
+
+  <div class="row">
+    <div style="display:flex;flex-direction:column;gap:9px">
+      <div class="box nowplay">
+        <div class="t">▶ TOCANDO AGORA NA PISTA</div>
+        <div class="np">
+          <div class="nm" id="npName">SMU Anthem</div>
+          <div class="badges" id="npBadges"></div>
+          <canvas class="wfmini" id="npWf"></canvas>
+          <button class="npbtn" id="npPlay">▶ OUVIR A FAIXA ATUAL</button>
+        </div>
+      </div>
+      <div class="box">
+        <div class="t">🎡 RODA DE CAMELOT (harmonia)</div>
+        <canvas class="camelot" id="camelot"></canvas>
+        <div class="camtip"><b>Combinam:</b> mesmo número (8A→8A), vizinhos (8A→7A/9A) e a troca de letra (8A→8B). Pular longe na roda = risco de "briga" de tons.</div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:9px">
+      <div class="box">
+        <div class="t" id="candTitle">🎧 CANDIDATAS — pré-escute e escolha</div>
+        <div class="cand" id="cand"></div>
+        <div class="fb" id="fb"></div>
+      </div>
+      <div class="coach">
+        <b>Análise profissional em 4 leituras:</b> <span class="k">BPM</span> (dá pra casar? ±6%), <span class="k">tom</span> (Camelot compatível?), <span class="k">energia</span> (sobe, mantém ou respira?) e <span class="k">forma de onda</span> (intro/outro secas = janela de mix). Repertório é 50% do set — a escolha certa faz a mixagem quase sozinha.
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+"use strict";
+/* Lab de análise: faixa atual + rodadas de escolha (harmonia, BPM, energia, outro mixável),
+   com pré-escuta REAL (groove no tom/BPM de cada candidata). */
+const $=(s,r=document)=>r.querySelector(s);
+const qq=s=>[...document.querySelectorAll(s)];
+let AC=null, started=false, playTimer=null, playingId=null;
+
+const NP={ nm:"SMU Anthem", bpm:124, cam:"8A", root:110, en:3 }; // 8A = Lá menor região
+const camNum=c=>parseInt(c);
+const camLet=c=>c.slice(-1);
+function harmonic(a,b){ const na=camNum(a),nb=camNum(b);
+  if(a===b)return true; if(camLet(a)===camLet(b)&&(Math.abs(na-nb)===1||Math.abs(na-nb)===11))return true;
+  if(na===nb&&camLet(a)!==camLet(b))return true; return false; }
+const semis={ "5A":-3,"6A":2,"7A":-3+12,"8A":0,"9A":7,"10A":2,"8B":3,"3B":-6,"12A":-7 };
+function rootFor(cam){ return 110*Math.pow(2,(semis[cam]||0)/12); }
+
+/* rodadas */
+const ROUNDS=[
+  { id:"harm", title:"RODADA 1 · HARMONIA — quem combina com 8A?",
+    cands:[
+      { nm:"Night Drive", bpm:124, cam:"9A", en:3, good:true,  why:"9A é vizinho de 8A — combina." },
+      { nm:"Sunset Glow", bpm:124, cam:"3B", en:3, good:false, why:"3B fica longe de 8A na roda — os tons brigam." },
+      { nm:"Deep Waters", bpm:124, cam:"8B", en:3, good:true,  why:"8B é a troca de letra do 8A — combina." },
+    ], hint:"Duas combinam; clique numa CERTA. (mesmo nº, vizinho, ou troca de letra)" },
+  { id:"bpm", title:"RODADA 2 · BPM — quem dá pra casar com 124?",
+    cands:[
+      { nm:"Metro Pulse", bpm:120, cam:"8A", en:3, good:true,  why:"120→124 = 3,3% — dentro dos ±6% do pitch." },
+      { nm:"Rocket Fuel", bpm:150, cam:"8A", en:4, good:false, why:"150 vs 124 = 21% — nem WIDE salva com naturalidade." },
+      { nm:"Slow Motion", bpm:98,  cam:"8A", en:2, good:false, why:"98 vs 124 = 27% — outro mundo de tempo." },
+    ], hint:"Regra prática: até ±6% o pitch casa sem esticar demais o som." },
+  { id:"energy", title:"RODADA 3 · ENERGIA — a pista está subindo (E3). Qual mantém a curva?",
+    cands:[
+      { nm:"Peak Hour", bpm:126, cam:"8A", en:4, good:true,  why:"E4 dá o próximo degrau — a pista continua subindo." },
+      { nm:"Chill Sunrise", bpm:122, cam:"8A", en:1, good:false, why:"E1 derruba a pista no meio da subida." },
+      { nm:"Same Groove", bpm:124, cam:"8A", en:3, good:true,  why:"E3 mantém o platô — válido para segurar o momento." },
+    ], hint:"Energia se constrói em degraus — despencar sem motivo mata a pista." },
+  { id:"outro", title:"RODADA 4 · FORMA DE ONDA — qual tem OUTRO mixável?",
+    cands:[
+      { nm:"Radio Hit Edit", bpm:124, cam:"8A", en:3, good:false, shape:"abrupt", why:"Termina cheia, de repente (edit de rádio) — sem janela de mix." },
+      { nm:"Club Extended Mix", bpm:124, cam:"8A", en:3, good:true, shape:"outro", why:"Outro longa e seca — feita exatamente para a próxima entrar." },
+    ], hint:"Olhe o FIM da forma de onda: cheia até o fim = ruim; esvaziando = janela de mix." },
+];
+let ri=0, roundHits=0, heardNp=false;
+
+/* ---------- áudio ---------- */
+function buildAudio(){ AC=new (window.AudioContext||window.webkitAudioContext)();
+  const out=AC.createGain(); out.gain.value=0.85; out.connect(AC.destination); window._out=out;
+  const nb=AC.createBuffer(1,AC.sampleRate*0.3,AC.sampleRate); const nd=nb.getChannelData(0);
+  for(let i=0;i<nd.length;i++)nd[i]=Math.random()*2-1; window._nb=nb; }
+const K=[1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0],S=[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],H=[0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0],B=[1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0];
+let abs=0,nextT=0,curTrack=null;
+function preview(track,id){
+  if(!started)startAudio();
+  if(playingId===id){ stopPreview(); return; }
+  stopPreview(); playingId=id; curTrack=track; abs=0; nextT=AC.currentTime+0.06;
+  playTimer=setInterval(()=>{ const now=AC.currentTime, step=(60/track.bpm)/4, out=window._out, nb=window._nb;
+    while(nextT<now+0.12){ const t=nextT, st=abs%16, en=track.en||3;
+      if(K[st]){ const o=AC.createOscillator(),a=AC.createGain(); o.frequency.setValueAtTime(150,t); o.frequency.exponentialRampToValueAtTime(47,t+0.12); a.gain.setValueAtTime(0.8,t); a.gain.exponentialRampToValueAtTime(0.001,t+0.3); o.connect(a); a.connect(out); o.start(t); o.stop(t+0.32); }
+      if(en>=2&&S[st]){ const s=AC.createBufferSource(); s.buffer=nb; const bp=AC.createBiquadFilter(); bp.type="bandpass"; bp.frequency.value=1800; const a=AC.createGain(); a.gain.setValueAtTime(0.42,t); a.gain.exponentialRampToValueAtTime(0.001,t+0.15); s.connect(bp); bp.connect(a); a.connect(out); s.start(t); s.stop(t+0.17); }
+      if(en>=2&&H[st]){ const s=AC.createBufferSource(); s.buffer=nb; const hp=AC.createBiquadFilter(); hp.type="highpass"; hp.frequency.value=8200; const a=AC.createGain(); a.gain.setValueAtTime(0.1+en*0.045,t); a.gain.exponentialRampToValueAtTime(0.001,t+0.045); s.connect(hp); hp.connect(a); a.connect(out); s.start(t); s.stop(t+0.07); }
+      if(B[st]){ const root=rootFor(track.cam)/2; const o=AC.createOscillator(); o.type="sawtooth"; o.frequency.value=root; const lp=AC.createBiquadFilter(); lp.type="lowpass"; lp.frequency.setValueAtTime(430,t); lp.frequency.exponentialRampToValueAtTime(120,t+0.15); lp.Q.value=5; const a=AC.createGain(); a.gain.setValueAtTime(0.0001,t); a.gain.linearRampToValueAtTime(0.36,t+0.01); a.gain.exponentialRampToValueAtTime(0.001,t+0.2); o.connect(lp); lp.connect(a); a.connect(out); o.start(t); o.stop(t+0.22); }
+      if(st===0){ // pad do tom (é o que faz a harmonia audível)
+        const root=rootFor(track.cam); const minor=camLet(track.cam)==="A";
+        [0, minor?3:4, 7].forEach(se=>{ const o=AC.createOscillator(); o.type="triangle"; o.frequency.value=root*Math.pow(2,se/12);
+          const a=AC.createGain(); a.gain.setValueAtTime(0.0001,t); a.gain.linearRampToValueAtTime(0.07,t+0.05); a.gain.exponentialRampToValueAtTime(0.001,t+(60/track.bpm)*3.6);
+          o.connect(a); a.connect(out); o.start(t); o.stop(t+(60/track.bpm)*4); }); }
+      abs++; nextT+=step; }
+  },25);
+  refreshPlayLabels();
+}
+function stopPreview(){ if(playTimer){clearInterval(playTimer); playTimer=null;} playingId=null; refreshPlayLabels(); }
+function refreshPlayLabels(){
+  $("#npPlay").textContent= playingId==="np" ? "■ PARAR" : "▶ OUVIR A FAIXA ATUAL";
+  qq(".c1 .pv").forEach(el=>{ el.textContent= playingId===el.dataset.pid ? "■ PARAR" : "▶ PRÉ-ESCUTA"; });
+}
+
+/* ---------- UI ---------- */
+function badge(t,cls){ return `<span class="bd ${cls}">${t}</span>`; }
+function enTxt(e){ return "ENERGIA "+"▁▂▄▆█".slice(e-1,e)+" E"+e; }
+function drawWf(cv,shape,seed){
+  const w=cv.width=cv.clientWidth||220,h=cv.height=cv.clientHeight||30;
+  const ctx=cv.getContext("2d"); ctx.clearRect(0,0,w,h);
+  const n=70;
+  for(let i=0;i<n;i++){ let s=Math.sin(i*13.7+seed)*43758.5; s-=Math.floor(s);
+    let env=1;
+    if(shape==="outro"){ env= i<8? i/8 : (i>n-20? Math.max(0.12,(n-i)/20) : 1); }
+    else if(shape==="abrupt"){ env= i<6? i/6 : 1; }
+    else { env= i<8? i/8 : (i>n-10? (n-i)/10 : 1); }
+    const amp=(0.3+s*0.7)*env*h*0.92;
+    ctx.fillStyle= env<0.55&&i>n/2? "#4a5a72" : "#39c0e6";
+    ctx.fillRect(i/n*w,(h-amp)/2,w/n*0.7,amp); }
+}
+function drawCamelot(){
+  const cv=$("#camelot"); const w=cv.width=cv.clientWidth||360,h=cv.height=cv.clientHeight||170;
+  const ctx=cv.getContext("2d"); ctx.clearRect(0,0,w,h);
+  const cx=w/2, cy=h/2+4, r1=62, r2=42;
+  for(let i=1;i<=12;i++){
+    const ang=(i-3)/12*Math.PI*2;
+    [["B",r1],["A",r2]].forEach(([L,r])=>{
+      const x=cx+Math.cos(ang)*r, y=cy+Math.sin(ang)*r;
+      const key=i+L; const isNp=key===NP.cam; const ok=harmonic(NP.cam,key);
+      ctx.beginPath(); ctx.arc(x,y,L==="B"?11:10,0,7);
+      ctx.fillStyle= isNp? "#37d07a" : ok? "#1d4258" : "#131a24";
+      ctx.fill(); ctx.strokeStyle= ok? "#39c0e6":"#26303f"; ctx.lineWidth=isNp?2:1; ctx.stroke();
+      ctx.fillStyle= isNp? "#04170b" : ok? "#9fd8f0":"#5f6f88";
+      ctx.font="bold 8.5px Inter,sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(key,x,y);
+    });
+  }
+  ctx.fillStyle="#8fa3c4"; ctx.font="8.5px Inter,sans-serif"; ctx.textAlign="center";
+  ctx.fillText("verde = a faixa atual · azul = compatíveis",cx,h-6);
+}
+
+function renderRound(){
+  const R=ROUNDS[ri]; const box=$("#cand"); box.innerHTML="";
+  if(!R){ $("#candTitle").textContent="🏁 ANÁLISE COMPLETA"; $("#fb").className="fb hit"; $("#fb").textContent="Você escolheu por harmonia, BPM, energia e forma de onda — como um profissional."; return; }
+  $("#candTitle").textContent="🎧 "+R.title;
+  $("#fb").className="fb"; $("#fb").textContent=R.hint;
+  R.cands.forEach((c,i)=>{
+    const el=document.createElement("div"); el.className="c1"; el.dataset.i=i;
+    el.innerHTML=`<div><span class="nm">${c.nm}</span>
+      <div class="row2">${badge(c.bpm+" BPM","bpm")}${badge(c.cam,"key")}${badge(enTxt(c.en),"en")}</div>
+      <canvas data-shape="${c.shape||'norm'}" data-seed="${i*7+ri*13}"></canvas></div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <div class="pv" data-pid="r${ri}c${i}">▶ PRÉ-ESCUTA</div>
+        <div class="pick" data-pick="${i}">ESCOLHER ▶</div>
+      </div>`;
+    el.querySelector(".pv").addEventListener("pointerdown",e=>{ e.stopPropagation(); preview(c,"r"+ri+"c"+i); });
+    el.querySelector(".pick").addEventListener("pointerdown",e=>{ e.stopPropagation(); pickCand(el,c); });
+    box.appendChild(el);
+    drawWf(el.querySelector("canvas"),c.shape||"norm",i*7+ri*13);
+  });
+}
+function pickCand(el,c){
+  const R=ROUNDS[ri];
+  if(c.good){ el.classList.add("good"); $("#fb").className="fb hit"; $("#fb").textContent="✓ "+c.why;
+    roundHits++; stopPreview();
+    setTimeout(()=>{ ri++; renderRound(); autoCheck(); },1600);
+  } else { el.classList.add("badx"); $("#fb").className="fb miss"; $("#fb").textContent="✗ "+c.why;
+    setTimeout(()=>el.classList.remove("badx"),900); }
+}
+
+/* missões (espelham as rodadas) */
+const MISSIONS=[
+  { id:"np", t:"Ouça a faixa que está tocando", h:"Dê play na faixa atual e leia a análise: 124 BPM · 8A · energia 3." },
+  { id:"harm", t:"Rodada 1: harmonia", h:"Pré-escute as candidatas e escolha uma compatível com 8A na roda de Camelot." },
+  { id:"bpm", t:"Rodada 2: BPM", h:"Escolha a candidata que casa com 124 BPM dentro de ±6% de pitch." },
+  { id:"energy", t:"Rodada 3: energia", h:"A pista está subindo — escolha quem mantém a curva de energia." },
+  { id:"outro", t:"Rodada 4: forma de onda", h:"Olhe o FIM das formas de onda e escolha a que tem outro mixável." },
+];
+let mi=0;
+function renderMission(){ const m=MISSIONS[mi];
+  if(!m){ $("#mIdx").textContent="✓ COMPLETO"; $("#mTitle").textContent="Você analisa como profissional!"; $("#mHint").textContent="BPM + tom + energia + forma de onda: a próxima música certa, sempre."; $("#mOk").style.display="inline"; return; }
+  $("#mIdx").textContent="MISSÃO "+(mi+1)+"/"+MISSIONS.length; $("#mTitle").textContent=m.t; $("#mHint").textContent=m.h; }
+function state(id){ switch(id){
+  case "np": return heardNp;
+  case "harm": return ri>=1; case "bpm": return ri>=2; case "energy": return ri>=3; case "outro": return ri>=4;
+} return false; }
+function autoCheck(){ const m=MISSIONS[mi]; if(m&&state(m.id)){ mi++; renderMission(); autoCheck(); } }
+
+function startAudio(){ if(started)return; started=true; buildAudio();
+  $("#acDot").classList.remove("off"); $("#acState").textContent="ligado"; $("#btnStart").textContent="● Áudio ligado";
+  if(AC.resume)AC.resume(); }
+function init(){
+  $("#npBadges").innerHTML=badge(NP.bpm+" BPM","bpm")+badge(NP.cam+" (Lá menor)","key")+badge(enTxt(NP.en),"en");
+  drawWf($("#npWf"),"norm",3); drawCamelot(); renderRound(); renderMission();
+  function fit(){ const s=Math.min(1,(window.innerWidth-8)/1264); $("#stage").style.transform="scale("+s+")"; }
+  window.addEventListener("resize",fit); fit();
+  $("#npPlay").addEventListener("pointerdown",()=>{ preview(NP,"np"); heardNp=true; setTimeout(autoCheck,400); });
+  $("#btnStart").addEventListener("pointerdown",()=>startAudio());
+  $("#btnReset").addEventListener("pointerdown",()=>location.reload());
+  setInterval(autoCheck,400);
+}
+document.addEventListener("DOMContentLoaded",init);
+</script>
+</body>
+</html>

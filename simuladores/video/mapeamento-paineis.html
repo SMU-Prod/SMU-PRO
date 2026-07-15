@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMU PRO · Mapeamento Multi-Painel</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0d1017;--panel:#161c26;--panel2:#1d2431;--line:#2a3444;--ink:#e7edf5;--dim:#8794a8;--accent:#3b82f6;--ok:#22c55e;--warn:#f59e0b;--err:#ef4444;}
+  html,body{background:var(--bg);color:var(--ink);font-family:'Segoe UI',system-ui,Arial,sans-serif;}
+  body{padding:10px;}
+  .app{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:10px;}
+  .topbar{display:flex;align-items:center;gap:10px;background:linear-gradient(90deg,#1e293b,#0f172a);border:1px solid var(--line);border-radius:10px;padding:9px 14px;}
+  .topbar .logo{font-weight:900;font-size:15px;} .topbar .sub{font-size:10px;color:var(--dim);letter-spacing:.12em;text-transform:uppercase;} .topbar .sp{flex:1;}
+  .brief{background:#101826;border:1px solid #24405f;border-radius:10px;padding:11px 14px;}
+  .brief .lbl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:4px;}
+  .brief .txt{font-size:13.5px;line-height:1.5;} .brief .txt b{color:#fff;}
+  .scenpick{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px;}
+  .scenpick button{font-size:11.5px;font-weight:700;padding:7px 11px;border:1px solid var(--line);border-radius:7px;background:#0c1119;color:var(--dim);cursor:pointer;}
+  .scenpick button.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .grid{display:grid;grid-template-columns:1fr;gap:10px;}
+  @media(min-width:900px){ .grid{grid-template-columns:340px 1fr;} }
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;}
+  .card h2{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+  .card h2 .n{width:20px;height:20px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;font-weight:800;}
+  /* windows settings mock */
+  .winset{background:#1b2330;border:1px solid var(--line);border-radius:9px;padding:11px;}
+  .winset .wt{font-size:11px;color:var(--dim);margin-bottom:8px;}
+  .monrow{display:flex;gap:6px;justify-content:center;margin-bottom:10px;flex-wrap:wrap;}
+  .mon{width:52px;height:34px;background:#0c1119;border:2px solid #3a4658;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#93c5fd;position:relative;}
+  .mon.stack{position:relative;}
+  .mon.stack::after{content:'';position:absolute;inset:3px -3px -3px 3px;border:2px solid #3a4658;border-radius:4px;z-index:-1;background:#0c1119;}
+  .frow{display:flex;align-items:center;gap:8px;margin-bottom:9px;flex-wrap:wrap;}
+  .frow label{font-size:12px;color:var(--dim);width:120px;flex-shrink:0;}
+  select{background:#0c1119;color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:12.5px;flex:1;min-width:120px;}
+  .outs{display:flex;flex-direction:column;gap:7px;margin-top:6px;}
+  .out{display:flex;align-items:center;gap:8px;background:#0c1119;border:1px solid var(--line);border-radius:7px;padding:6px 8px;}
+  .out canvas{width:70px;height:39px;border-radius:3px;background:#000;border:1px solid #2a3444;flex-shrink:0;}
+  .out .ol{font-size:11px;color:var(--dim);} .out .ol b{color:var(--ink);}
+  /* stage */
+  .stage{background:linear-gradient(#0a1220,#05070b);border:1px solid var(--line);border-radius:10px;padding:14px;}
+  .walls{display:grid;grid-template-columns:1fr 1.4fr 1fr;gap:10px;align-items:end;}
+  .wall{display:flex;flex-direction:column;gap:6px;}
+  .wall .screen{width:100%;aspect-ratio:16/9;background:#000;border:2px solid #333;border-radius:5px;overflow:hidden;}
+  .wall .screen canvas{width:100%;height:100%;display:block;}
+  .wall .wname{font-size:10px;color:var(--dim);text-align:center;letter-spacing:.06em;}
+  .wall .assign{display:flex;align-items:center;gap:4px;justify-content:center;}
+  .wall .assign select{flex:none;font-size:10.5px;padding:3px 4px;}
+  .wall .assign span{font-size:10px;color:var(--dim);}
+  .stagefloor{height:8px;background:linear-gradient(#1a2536,#0c1119);border-radius:0 0 8px 8px;margin-top:8px;}
+  .verdict{font-size:13px;font-weight:700;padding:10px 12px;border-radius:9px;text-align:center;margin-top:10px;}
+  .verdict.ok{background:#14532d;color:#bbf7d0;} .verdict.bad{background:#450a0a;color:#fca5a5;} .verdict.idle{background:#1b2330;color:var(--dim);}
+  .explain{font-size:12px;color:var(--dim);line-height:1.55;margin-top:8px;} .explain b{color:var(--ink);}
+  .toast{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);background:#0c1119;border:1px solid var(--accent);color:var(--ink);border-radius:8px;padding:9px 15px;font-size:12.5px;opacity:0;pointer-events:none;transition:.2s;z-index:60;max-width:92vw;text-align:center;} .toast.show{opacity:1;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar"><div><div class="logo">Mapeamento Multi-Painel</div><div class="sub">Computador → Processadora → Telões</div></div><div class="sp"></div><div id="tag" style="font-size:11px;font-weight:700;background:#1b2330;color:var(--dim);padding:4px 12px;border-radius:20px;">Configure a saída</div></div>
+
+  <div class="brief">
+    <div class="lbl">Trabalho do dia — o que o cliente pediu</div>
+    <div class="txt" id="briefTxt"></div>
+    <div class="scenpick" id="scenPick"></div>
+  </div>
+
+  <div class="grid">
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <div class="card">
+        <h2><span class="n">1</span> Computador (Configurações de Vídeo do Windows)</h2>
+        <div class="winset">
+          <div class="wt">Sistema › Vídeo › Vários monitores</div>
+          <div class="monrow" id="monRow"></div>
+          <div class="frow"><label>Vários monitores</label>
+            <select id="winMode"><option value="duplicate">Duplicar estes vídeos</option><option value="extend" selected>Estender estes vídeos</option></select>
+          </div>
+          <div class="frow"><label>Resolução</label><span id="resLbl" style="font-weight:700;color:var(--accent)">—</span></div>
+        </div>
+        <div class="explain" id="winHint"></div>
+      </div>
+
+      <div class="card">
+        <h2><span class="n">2</span> Saídas da placa / Processadora</h2>
+        <div class="outs" id="outs"></div>
+        <div class="explain">Cada <b>saída (Output)</b> da placa de vídeo entra na processadora e vira um sinal. No modo <b>Estender</b>, cada saída mostra uma <b>parte diferente</b> da área de trabalho; no modo <b>Duplicar</b>, todas mostram a <b>mesma</b> imagem.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="n">3</span> Palco — Telões de LED</h2>
+      <div class="stage">
+        <div class="walls" id="walls"></div>
+        <div class="stagefloor"></div>
+      </div>
+      <div class="verdict idle" id="verdict">Configure e veja o resultado nos telões.</div>
+      <div class="explain" id="explain"></div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+var $=function(s){return document.querySelector(s);};
+var $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s));};
+
+// ---------- CONTENT PIECES ----------
+// draw a "region key" into a canvas ctx of size w,h
+function draw(ctx,w,h,key,t){
+  ctx.clearRect(0,0,w,h);
+  if(key==='empty'){ ctx.fillStyle='#0b1220'; ctx.fillRect(0,0,w,h); ctx.fillStyle='#33415588'; for(var i=0;i<6;i++){ctx.fillRect(w*0.15,h*(0.2+i*0.12),w*0.7,2);} ctx.fillStyle='#4b5563'; ctx.font=Math.round(h*0.12)+'px Segoe UI'; ctx.textAlign='center'; ctx.fillText('(sem conteúdo)',w/2,h/2); ctx.textAlign='left'; return; }
+  if(key==='logo'){ var g=ctx.createLinearGradient(0,0,w,h); g.addColorStop(0,'#1e1b4b'); g.addColorStop(1,'#3b0764'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h); ctx.fillStyle='#f9a8d4'; ctx.font='bold '+Math.round(h*0.22)+'px Georgia'; ctx.textAlign='center'; ctx.fillText('A ♥ R',w/2,h*0.5); ctx.fillStyle='#e9d5ff'; ctx.font=Math.round(h*0.1)+'px Segoe UI'; ctx.fillText('ANA & RAFAEL',w/2,h*0.72); ctx.textAlign='left'; return; }
+  if(key==='slide'){ ctx.fillStyle='#0b3b66'; ctx.fillRect(0,0,w,h); ctx.fillStyle='#dbeafe'; ctx.font='bold '+Math.round(h*0.16)+'px Segoe UI'; ctx.textAlign='center'; ctx.fillText('APRESENTAÇÃO',w/2,h*0.42); ctx.fillStyle='#93c5fd'; ctx.font=Math.round(h*0.1)+'px Segoe UI'; ctx.fillText('Resultados 2026 — Slide 1',w/2,h*0.62); ctx.textAlign='left'; return; }
+  if(key==='brand'){ ctx.fillStyle='#111827'; ctx.fillRect(0,0,w,h); ctx.fillStyle='#f59e0b'; ctx.font='bold '+Math.round(h*0.2)+'px Segoe UI'; ctx.textAlign='center'; ctx.fillText('◆ LOGO',w/2,h*0.5); ctx.fillStyle='#9ca3af'; ctx.font=Math.round(h*0.09)+'px Segoe UI'; ctx.fillText('MARCA DO EVENTO',w/2,h*0.7); ctx.textAlign='left'; return; }
+  if(key==='timer'){ ctx.fillStyle='#052e16'; ctx.fillRect(0,0,w,h); ctx.fillStyle='#86efac'; ctx.font='bold '+Math.round(h*0.26)+'px Consolas,monospace'; ctx.textAlign='center'; ctx.fillText('00:15',w/2,h*0.52); ctx.fillStyle='#4ade80'; ctx.font=Math.round(h*0.09)+'px Segoe UI'; ctx.fillText('PRÓXIMO: BANDA',w/2,h*0.74); ctx.textAlign='left'; return; }
+  // panorama slices: pano0/1/2  (full pano is 3 wide)
+  if(key.indexOf('pano')===0){
+    var idx=+key.slice(4); // 0,1,2
+    // draw the slice [idx/3 .. (idx+1)/3] of a full panorama of virtual width 3w
+    var FW=w*3;
+    // sky
+    var sg=ctx.createLinearGradient(0,0,0,h); sg.addColorStop(0,'#0b3a6b'); sg.addColorStop(.6,'#3b82c4'); sg.addColorStop(1,'#f0a860'); ctx.fillStyle=sg; ctx.fillRect(0,0,w,h);
+    // sun (at 55% of full width)
+    var sunX=FW*0.55 - idx*w; var sunY=h*0.35;
+    ctx.fillStyle='#fff3c4'; ctx.beginPath(); ctx.arc(sunX,sunY,h*0.16,0,6.29); ctx.fill();
+    // mountains (sine ridge across full width)
+    ctx.fillStyle='#12263f'; ctx.beginPath(); ctx.moveTo(0,h);
+    for(var x=0;x<=w;x+=4){ var gx=idx*w+x; var ry=h*0.62 + Math.sin(gx*0.012)*h*0.14 + Math.sin(gx*0.03)*h*0.05; ctx.lineTo(x,ry); }
+    ctx.lineTo(w,h); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#0a1626'; ctx.beginPath(); ctx.moveTo(0,h);
+    for(var x2=0;x2<=w;x2+=4){ var gx2=idx*w+x2; var ry2=h*0.78 + Math.sin(gx2*0.02+2)*h*0.1; ctx.lineTo(x2,ry2); }
+    ctx.lineTo(w,h); ctx.closePath(); ctx.fill();
+    return;
+  }
+}
+
+// ---------- SCENARIOS ----------
+// regions = content on Output 1/2/3 (extended desktop, left->right). In duplicate, all outputs = regions[0].
+var SCEN={
+  mirror:{
+    label:'Casamento — mesma imagem', tag:'Mesma imagem',
+    brief:'No casamento de Ana & Rafael há <b>3 telões iguais</b> (esquerda, centro, direita) e o cliente quer o <b>monograma do casal em TODOS ao mesmo tempo</b>, idêntico.',
+    regions:['logo','empty','empty'],
+    goal:'sameAll',
+    okMode:'duplicate',
+    tip:'Mesma imagem em todos = <b>Duplicar</b> (ou mandar a mesma saída para os 3 telões). No Estender, só o Output 1 tem o logo; os outros ficam pretos.'
+  },
+  span:{
+    label:'Show — 1 imagem dividida', tag:'Imagem dividida (partes)',
+    brief:'No show, os <b>3 painéis juntos formam um único telão gigante</b>. O VJ manda uma <b>paisagem panorâmica</b> que precisa aparecer <b>dividida</b>: um pedaço em cada painel, formando a imagem inteira.',
+    regions:['pano0','pano1','pano2'],
+    goal:'panorama',
+    okMode:'extend',
+    tip:'Uma imagem repartida entre painéis = <b>Estender</b> a área de trabalho e mandar <b>cada saída para o painel na ordem certa</b> (Output 1→esquerda, 2→centro, 3→direita).'
+  },
+  diff:{
+    label:'Corporativo — conteúdos diferentes', tag:'Conteúdos diferentes',
+    brief:'No corporativo, cada telão mostra uma <b>coisa diferente</b>: à esquerda a <b>apresentação</b>, no centro a <b>logo da marca</b> e à direita um <b>cronômetro</b> do próximo bloco.',
+    regions:['slide','brand','timer'],
+    goal:'allDifferent',
+    okMode:'extend',
+    tip:'Conteúdos diferentes por painel = <b>Estender</b> e mandar <b>uma saída diferente para cada telão</b>. No Duplicar, os três mostrariam a mesma coisa.'
+  }
+};
+var order=['mirror','span','diff'];
+var cur='mirror';
+
+var S={ mode:'extend', assign:{left:1, center:2, right:3} }; // wall -> output number (1..3)
+var WALLS=[{k:'left',n:'ESQUERDA'},{k:'center',n:'CENTRO'},{k:'right',n:'DIREITA'}];
+
+// build scenario buttons
+var sp=$('#scenPick');
+order.forEach(function(k){ var b=document.createElement('button'); b.textContent=SCEN[k].label; b.dataset.k=k; if(k===cur)b.classList.add('on'); b.onclick=function(){ cur=k; $$('#scenPick button').forEach(function(x){x.classList.remove('on');}); b.classList.add('on'); S.assign={left:1,center:2,right:3}; render(); }; sp.appendChild(b); });
+
+// build outputs + walls UI
+var outsEl=$('#outs');
+var outCanvases=[];
+for(var o=1;o<=3;o++){ var d=document.createElement('div'); d.className='out'; var cv=document.createElement('canvas'); cv.width=140; cv.height=79; d.appendChild(cv); var lab=document.createElement('div'); lab.className='ol'; lab.innerHTML='<b>Output '+o+'</b><br><span id="ol-'+o+'"></span>'; d.appendChild(lab); outsEl.appendChild(d); outCanvases.push(cv); }
+
+var wallsEl=$('#walls'); var wallCanvases={};
+WALLS.forEach(function(w){
+  var d=document.createElement('div'); d.className='wall';
+  var sc=document.createElement('div'); sc.className='screen'; var cv=document.createElement('canvas'); cv.width=240; cv.height=135; sc.appendChild(cv); d.appendChild(sc); wallCanvases[w.k]=cv;
+  var nm=document.createElement('div'); nm.className='wname'; nm.textContent='TELÃO '+w.n; d.appendChild(nm);
+  var asg=document.createElement('div'); asg.className='assign'; asg.innerHTML='<span>recebe</span>';
+  var sel=document.createElement('select'); sel.id='asg-'+w.k; ['1','2','3'].forEach(function(o){ var op=document.createElement('option'); op.value=o; op.textContent='Output '+o; sel.appendChild(op); }); sel.value=S.assign[w.k];
+  sel.onchange=function(){ S.assign[w.k]=+sel.value; render(); }; asg.appendChild(sel); d.appendChild(asg);
+  wallsEl.appendChild(d);
+});
+
+// windows mode
+$('#winMode').onchange=function(){ S.mode=this.value; render(); };
+
+// region shown on a given output number (1..3)
+function regionOfOutput(outNum){ // returns region key
+  var sc=SCEN[cur];
+  if(S.mode==='duplicate') return sc.regions[0]; // all outputs mirror primary (Output1 region)
+  return sc.regions[outNum-1];
+}
+// region shown on a wall
+function regionOfWall(wk){ return regionOfOutput(S.assign[wk]); }
+
+function render(){
+  var sc=SCEN[cur];
+  $('#briefTxt').innerHTML=sc.brief;
+  $('#tag').textContent=sc.tag;
+  $('#winMode').value=S.mode;
+  // monitors mock
+  var mr=$('#monRow'); mr.innerHTML='';
+  if(S.mode==='duplicate'){ var m=document.createElement('div'); m.className='mon stack'; m.textContent='1'; mr.appendChild(m); $('#resLbl').textContent='1920 × 1080 (clonado nas 3 saídas)'; }
+  else { for(var i=1;i<=3;i++){ var mm=document.createElement('div'); mm.className='mon'; mm.textContent=i; mr.appendChild(mm); } $('#resLbl').textContent='5760 × 1080 (3 monitores lado a lado)'; }
+  $('#winHint').innerHTML = S.mode==='duplicate'
+    ? '<b>Duplicar:</b> o Windows manda a MESMA imagem (1920×1080) para todas as saídas. Bom para <b>mesma imagem em todos os telões</b>.'
+    : '<b>Estender:</b> a área de trabalho vira um retângulo largo dividido em 3 monitores. Cada saída mostra uma <b>parte diferente</b>. Necessário para <b>dividir</b> uma imagem ou mostrar <b>conteúdos diferentes</b>.';
+  // outputs
+  for(var o=1;o<=3;o++){ var ctx=outCanvases[o-1].getContext('2d'); var key=regionOfOutput(o); draw(ctx,140,79,key); var lbl=$('#ol-'+o); lbl.textContent=labelFor(key); }
+  // walls
+  WALLS.forEach(function(w){ var cv=wallCanvases[w.k]; var ctx=cv.getContext('2d'); draw(ctx,240,135,regionOfWall(w.k)); $('#asg-'+w.k).value=S.assign[w.k]; $('#asg-'+w.k).disabled=(S.mode==='duplicate'); });
+  // verdict
+  evaluate();
+}
+function labelFor(key){ if(key==='empty')return 'preto (sem conteúdo)'; if(key==='logo')return 'monograma A♥R'; if(key.indexOf('pano')===0)return 'paisagem — parte '+(+key.slice(4)+1); if(key==='slide')return 'apresentação'; if(key==='brand')return 'logo da marca'; if(key==='timer')return 'cronômetro'; return key; }
+
+function evaluate(){
+  var sc=SCEN[cur];
+  var rL=regionOfWall('left'), rC=regionOfWall('center'), rR=regionOfWall('right');
+  var v=$('#verdict'), ex=$('#explain'); var ok=false, msg='';
+  if(sc.goal==='sameAll'){
+    ok = (rL==='logo' && rC==='logo' && rR==='logo');
+    msg = ok ? '✓ Perfeito — o monograma aparece igual nos 3 telões.' : 'Ainda não: algum telão está preto ou diferente. O logo mora no Output 1.';
+  } else if(sc.goal==='panorama'){
+    ok = (S.mode==='extend' && rL==='pano0' && rC==='pano1' && rR==='pano2');
+    msg = ok ? '✓ Perfeito — a paisagem se completa da esquerda para a direita, dividida nos 3 painéis.' : 'Ainda não: no panorâmico a ordem importa — esquerda=Output 1, centro=Output 2, direita=Output 3, em modo Estender.';
+  } else if(sc.goal==='allDifferent'){
+    var set={}; [rL,rC,rR].forEach(function(r){set[r]=1;});
+    ok = (S.mode==='extend' && Object.keys(set).length===3 && !set['empty']);
+    msg = ok ? '✓ Perfeito — cada telão mostra um conteúdo diferente (apresentação, logo e cronômetro).' : 'Ainda não: cada telão precisa de uma saída diferente (Estender), sem repetir e sem tela preta.';
+  }
+  v.className='verdict '+(ok?'ok':'bad'); v.textContent=msg;
+  $('#tag').style.background = ok? '#14532d':'#1b2330'; $('#tag').style.color = ok? '#bbf7d0':'var(--dim)';
+  ex.innerHTML = '<b>Dica do dia a dia:</b> '+sc.tip;
+  if(ok && !evaluate['done_'+cur]){ evaluate['done_'+cur]=true; toast('Trabalho concluído: '+sc.tag+' ✓'); }
+}
+var _tt; function toast(m){ var t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(_tt); _tt=setTimeout(function(){t.classList.remove('show');},2600); }
+
+window.__map={S:S, get cur(){return cur;}, set cur(v){cur=v;}, render:render, regionOfWall:regionOfWall, evaluate:evaluate};
+render();
+})();
+</script>
+</body>
+</html>

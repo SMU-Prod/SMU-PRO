@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMU PRO · Cálculo de Projeção</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0c1017;--panel:#161c26;--panel2:#1b2230;--line:#2a3444;--ink:#e7edf5;--dim:#8794a8;--accent:#f59e0b;--ok:#22c55e;--err:#ef4444;--warn:#f59e0b;}
+  html,body{background:var(--bg);color:var(--ink);font-family:'Segoe UI',system-ui,Arial,sans-serif;}
+  body{padding:12px;}
+  .app{max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:12px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  h1{font-size:15px;margin-bottom:3px;} .sub{font-size:12px;color:var(--dim);margin-bottom:12px;}
+  .layout{display:grid;grid-template-columns:1fr;gap:14px;}
+  @media(min-width:660px){ .layout{grid-template-columns:1fr 250px;} }
+  .canwrap{background:#05070b;border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+  #room{width:100%;display:block;aspect-ratio:16/9;}
+  .ctrls{display:flex;flex-direction:column;gap:11px;}
+  .row{display:flex;align-items:center;gap:8px;} .row label{font-size:12px;color:var(--dim);width:92px;flex-shrink:0;}
+  .row .v{margin-left:auto;font-size:12px;font-weight:700;color:var(--accent);min-width:56px;text-align:right;}
+  input[type=range]{flex:1;accent-color:var(--accent);}
+  .seg{display:flex;gap:4px;flex-wrap:wrap;} .seg button{flex:1;min-width:52px;font-size:11px;padding:6px 3px;border:1px solid var(--line);border-radius:6px;background:#0c1119;color:var(--dim);cursor:pointer;}
+  .seg button.on{background:#42200680;border-color:var(--accent);color:#fde68a;}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px;}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px;}
+  .stat .k{font-size:10px;color:var(--dim);} .stat .val{font-size:15px;font-weight:800;margin-top:2px;} .stat .val small{font-size:10px;color:var(--dim);font-weight:400;}
+  .verdict{font-size:13px;font-weight:700;padding:9px 12px;border-radius:8px;text-align:center;margin-top:4px;}
+  .verdict.ok{background:#14532d;color:#bbf7d0;} .verdict.bad{background:#450a0a;color:#fca5a5;} .verdict.warn{background:#422006;color:#fde68a;}
+  .note{font-size:12px;color:var(--dim);line-height:1.5;margin-top:8px;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="card">
+    <h1>Cálculo de projeção: distância, lente e lúmens</h1>
+    <div class="sub">Ajuste a <b>distância</b> e a <b>lente (throw ratio)</b> para chegar no tamanho de imagem desejado. Depois cheque se os <b>lúmens</b> vencem a luz do ambiente.</div>
+    <div class="layout">
+      <div>
+        <div class="canwrap"><canvas id="room" width="640" height="360"></canvas></div>
+        <div class="stats">
+          <div class="stat"><div class="k">LARGURA DA IMAGEM</div><div class="val" id="w">—</div></div>
+          <div class="stat"><div class="k">DIAGONAL</div><div class="val" id="diag">—</div></div>
+        </div>
+        <div class="verdict" id="verdict"></div>
+      </div>
+      <div class="ctrls">
+        <div class="row"><label>Distância</label><input type="range" id="dist" min="20" max="300" value="80"><span class="v" id="distV">8.0 m</span></div>
+        <div class="row"><label>Lente (throw)</label>
+          <div class="seg" id="lensSeg"><button data-t="0.8">Curta 0.8</button><button data-t="1.5" class="on">Normal 1.5</button><button data-t="3.0">Longa 3.0</button></div></div>
+        <div class="row"><label>Ambiente</label>
+          <div class="seg" id="ambSeg"><button data-a="escuro" class="on">Escuro</button><button data-a="meia">Meia-luz</button><button data-a="claro">Claro</button></div></div>
+        <div class="row"><label>Lúmens ANSI</label><input type="range" id="lum" min="2000" max="30000" step="500" value="6000"><span class="v" id="lumV">6000</span></div>
+        <div class="note" id="note"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+var $=function(s){return document.querySelector(s);};
+var dist=8.0, throwR=1.5, amb='escuro', lum=6000;
+var room=$('#room');
+// nits threshold needed per ambient (lux-ish -> required lumens per m2 of screen)
+var AMB={escuro:{need:150,label:'sala escura'},meia:{need:400,label:'meia-luz'},claro:{need:900,label:'ambiente claro / luz do dia'}};
+function calc(){
+  var w=dist/throwR; var h=w/1.778; var diagM=Math.sqrt(w*w+h*h); var diagIn=diagM/0.0254;
+  var area=w*h; var lumPerM2=lum/area;
+  return {w:w,h:h,diagM:diagM,diagIn:diagIn,area:area,lumPerM2:lumPerM2};
+}
+function render(){
+  $('#distV').textContent=dist.toFixed(1)+' m';
+  $('#lumV').textContent=lum.toLocaleString('pt-BR');
+  var c=calc();
+  $('#w').innerHTML=c.w.toFixed(2)+' <small>m</small>';
+  $('#diag').innerHTML=Math.round(c.diagIn)+'" <small>('+c.diagM.toFixed(1)+' m)</small>';
+  var need=AMB[amb].need; var ratio=c.lumPerM2/need;
+  var v=$('#verdict');
+  if(ratio>=1.1){ v.className='verdict ok'; v.textContent='✓ Brilho suficiente para '+AMB[amb].label; }
+  else if(ratio>=0.75){ v.className='verdict warn'; v.textContent='◐ No limite — imagem lavada se a luz subir'; }
+  else { v.className='verdict bad'; v.textContent='✗ Fraco demais para '+AMB[amb].label+' — imagem apagada'; }
+  $('#note').innerHTML='Imagem de <b>'+c.w.toFixed(1)+' m</b> de largura a <b>'+dist.toFixed(1)+' m</b> com lente <b>'+throwR+'</b>. '+
+    'Quanto <b>maior a imagem</b>, mais os lúmens se espalham e mais fraco fica o brilho. '+
+    (ratio<1?'Aumente os lúmens, aproxime o projetor (imagem menor) ou controle a luz do ambiente.':'Bom equilíbrio entre tamanho, distância e brilho.');
+  draw(c);
+}
+function draw(c){
+  var ctx=room.getContext('2d'); var W=room.width,H=room.height; ctx.fillStyle='#070a10'; ctx.fillRect(0,0,W,H);
+  // top-view: projector left, screen right; scale by max distance 30m across width
+  var maxD=30; var px=40; var scale=(W-120)/maxD;
+  var projX=px, projY=H/2;
+  var scrX=px+dist*scale; scrX=Math.min(scrX,W-40);
+  // image height in px (screen shown vertically)
+  var imgPx=Math.min(H-40, c.h*scale*3.2);
+  // beam cone
+  ctx.fillStyle='rgba(245,200,80,'+Math.min(0.5, (c.lumPerM2/900))+')';
+  ctx.beginPath(); ctx.moveTo(projX,projY); ctx.lineTo(scrX,projY-imgPx/2); ctx.lineTo(scrX,projY+imgPx/2); ctx.closePath(); ctx.fill();
+  // projector
+  ctx.fillStyle='#334155'; ctx.fillRect(projX-24,projY-12,26,24); ctx.fillStyle='#93c5fd'; ctx.beginPath(); ctx.arc(projX,projY,6,0,6.29); ctx.fill();
+  // screen
+  ctx.fillStyle='#e5e7eb'; ctx.fillRect(scrX,projY-imgPx/2,6,imgPx);
+  ctx.strokeStyle='#f59e0b'; ctx.lineWidth=2; ctx.strokeRect(scrX,projY-imgPx/2,6,imgPx);
+  // labels
+  ctx.fillStyle='#8794a8'; ctx.font='11px Segoe UI'; ctx.textAlign='center';
+  ctx.fillText(dist.toFixed(1)+' m', (projX+scrX)/2, projY+imgPx/2+22>H-6? projY-imgPx/2-8 : projY+imgPx/2+22);
+  ctx.fillText(c.h.toFixed(1)+' m', scrX+22, projY);
+  ctx.textAlign='left';
+}
+function seg(id,cb){ document.querySelectorAll('#'+id+' button').forEach(function(b){ b.onclick=function(){ document.querySelectorAll('#'+id+' button').forEach(function(x){x.classList.remove('on');}); b.classList.add('on'); cb(b); }; }); }
+$('#dist').oninput=function(){ dist=(+this.value)/10; render(); };
+seg('lensSeg',function(b){ throwR=+b.dataset.t; render(); });
+seg('ambSeg',function(b){ amb=b.dataset.a; render(); });
+$('#lum').oninput=function(){ lum=+this.value; render(); };
+function fit(){ var r=room.getBoundingClientRect(); var dpr=Math.min(2,window.devicePixelRatio||1); room.width=Math.max(400,Math.round(r.width*dpr)); room.height=Math.round(room.width*9/16); render(); }
+window.addEventListener('resize',function(){clearTimeout(window._z);window._z=setTimeout(fit,120);});
+window.__pc={render:render,calc:calc};
+fit();
+})();
+</script>
+</body>
+</html>

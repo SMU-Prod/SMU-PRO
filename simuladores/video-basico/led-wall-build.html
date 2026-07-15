@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMU PRO · Montando o Telão de LED</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0c1017;--panel:#161c26;--panel2:#1b2230;--line:#2a3444;--ink:#e7edf5;--dim:#8794a8;--accent:#12b886;--blue:#3b82f6;}
+  html,body{background:var(--bg);color:var(--ink);font-family:'Segoe UI',system-ui,Arial,sans-serif;}
+  body{padding:12px;}
+  .app{max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:12px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  h1{font-size:15px;margin-bottom:3px;} .sub{font-size:12px;color:var(--dim);margin-bottom:12px;}
+  .layout{display:grid;grid-template-columns:1fr;gap:14px;}
+  @media(min-width:660px){ .layout{grid-template-columns:1fr 250px;} }
+  .wallwrap{background:#05070b;border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+  #wall{width:100%;display:block;aspect-ratio:16/9;}
+  .ctrls{display:flex;flex-direction:column;gap:11px;}
+  .row{display:flex;align-items:center;gap:8px;} .row label{font-size:12px;color:var(--dim);width:88px;flex-shrink:0;}
+  .row .v{margin-left:auto;font-size:12px;font-weight:700;color:var(--accent);}
+  input[type=range]{flex:1;accent-color:var(--accent);}
+  .seg{display:flex;gap:4px;flex-wrap:wrap;} .seg button{flex:1;min-width:42px;font-size:11px;padding:6px 3px;border:1px solid var(--line);border-radius:6px;background:#0c1119;color:var(--dim);cursor:pointer;}
+  .seg button.on{background:#0e3b30;border-color:var(--accent);color:#6ee7b7;}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px;}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px;}
+  .stat .k{font-size:10px;color:var(--dim);letter-spacing:.05em;} .stat .val{font-size:15px;font-weight:800;color:var(--ink);margin-top:2px;} .stat .val small{font-size:10px;color:var(--dim);font-weight:400;}
+  .note{font-size:12px;color:var(--dim);line-height:1.5;margin-top:10px;}
+  .note b{color:var(--ink);}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="card">
+    <h1>Montando o telão de LED</h1>
+    <div class="sub">Monte a parede com gabinetes (cabinets) de 500×500 mm. Veja como o <b>pixel pitch</b> muda a resolução, o tamanho e a distância mínima do público.</div>
+    <div class="layout">
+      <div>
+        <div class="wallwrap"><canvas id="wall" width="640" height="360"></canvas></div>
+        <div class="stats">
+          <div class="stat"><div class="k">RESOLUÇÃO TOTAL</div><div class="val" id="res">—</div></div>
+          <div class="stat"><div class="k">TAMANHO FÍSICO</div><div class="val" id="size">—</div></div>
+          <div class="stat"><div class="k">Nº DE GABINETES</div><div class="val" id="cabs">—</div></div>
+          <div class="stat"><div class="k">DIST. MÍN. DO PÚBLICO</div><div class="val" id="dist">—</div></div>
+        </div>
+      </div>
+      <div class="ctrls">
+        <div class="row"><label>Pixel pitch</label>
+          <div class="seg" id="pitchSeg"><button data-p="1.5">P1.5</button><button data-p="2.6">P2.6</button><button data-p="3.9" class="on">P3.9</button><button data-p="6.6">P6.6</button><button data-p="10">P10</button></div></div>
+        <div class="row"><label>Colunas</label><input type="range" id="cols" min="1" max="14" value="6"><span class="v" id="colsV">6</span></div>
+        <div class="row"><label>Linhas</label><input type="range" id="rows" min="1" max="8" value="3"><span class="v" id="rowsV">3</span></div>
+        <div class="note" id="note"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+var $=function(s){return document.querySelector(s);};
+var pitch=3.9, cols=6, rows=3;
+var wall=$('#wall');
+function cabPx(){ return Math.round(500/pitch); } // px per 500mm cabinet edge
+function render(){
+  var per=cabPx(); var W=per*cols, H=per*rows;
+  var physW=(cols*0.5), physH=(rows*0.5);
+  $('#res').innerHTML=W+'×'+H+' <small>px</small>';
+  $('#size').innerHTML=physW.toFixed(1)+'×'+physH.toFixed(1)+' <small>m</small>';
+  $('#cabs').innerHTML=(cols*rows)+' <small>('+cols+'×'+rows+')</small>';
+  // viewing distance rule of thumb: pitch(mm) ≈ min comfortable distance (m) where pixels blend
+  $('#dist').innerHTML='~'+pitch.toFixed(1)+' <small>m</small>';
+  draw(per,W,H);
+  var n=$('#note');
+  var big = W>=1920||H>=1080;
+  n.innerHTML='Com <b>P'+pitch+'</b>, cada gabinete tem <b>'+per+'×'+per+' px</b>. '+
+    (pitch<=2.6?'Pitch pequeno = pixels bem juntos: o público pode chegar perto (indoor, TV, câmera).':'Pitch maior = pixels mais espaçados: barato e brilhante, mas o público precisa ficar longe (palco, outdoor).')+
+    ' A parede toda dá <b>'+W+'×'+H+' px</b>'+(big?' — já passa de Full HD, ótima resolução de trabalho.':' — resolução modesta; some mais gabinetes para ganhar pixels.');
+}
+function draw(per,W,H){
+  var ctx=wall.getContext('2d'); var CW=wall.width, CH=wall.height; ctx.fillStyle='#05070b'; ctx.fillRect(0,0,CW,CH);
+  var pad=24; var ar=W/H, availW=CW-pad*2, availH=CH-pad*2, dw,dh;
+  if(availW/availH>ar){ dh=availH; dw=dh*ar; } else { dw=availW; dh=dw/ar; }
+  var ox=(CW-dw)/2, oy=(CH-dh)/2, cw=dw/cols, ch=dh/rows;
+  // sample image (colorful gradient) per cabinet
+  for(var r=0;r<rows;r++)for(var c=0;c<cols;c++){
+    var u=(c+0.5)/cols, v=(r+0.5)/rows;
+    var R=128+120*Math.sin(u*4+0.4), G=128+120*Math.sin(v*4+2), B=128+120*Math.sin((u+v)*4+4);
+    ctx.fillStyle='rgb('+(R|0)+','+(G|0)+','+(B|0)+')'; ctx.fillRect(ox+c*cw,oy+r*ch,cw,ch);
+    ctx.strokeStyle='rgba(0,0,0,.45)'; ctx.lineWidth=1; ctx.strokeRect(ox+c*cw+.5,oy+r*ch+.5,cw-1,ch-1);
+  }
+  // pixel dots hint when pitch large & cabinet big enough on screen
+  if(cw>26){ ctx.fillStyle='rgba(0,0,0,.25)'; var step=Math.max(3,cw/ (Math.min(per,18))); for(var y=oy;y<oy+dh;y+=step)for(var x=ox;x<ox+dw;x+=step){ ctx.fillRect(x,y,1,1);} }
+  ctx.strokeStyle='#1c2430'; ctx.lineWidth=2; ctx.strokeRect(ox-1,oy-1,dw+2,dh+2);
+}
+function seg(id,cb){ document.querySelectorAll('#'+id+' button').forEach(function(b){ b.onclick=function(){ document.querySelectorAll('#'+id+' button').forEach(function(x){x.classList.remove('on');}); b.classList.add('on'); cb(b); }; }); }
+seg('pitchSeg',function(b){ pitch=+b.dataset.p; render(); });
+$('#cols').oninput=function(){ cols=+this.value; $('#colsV').textContent=cols; render(); };
+$('#rows').oninput=function(){ rows=+this.value; $('#rowsV').textContent=rows; render(); };
+function fit(){ var r=wall.getBoundingClientRect(); var dpr=Math.min(2,window.devicePixelRatio||1); wall.width=Math.max(400,Math.round(r.width*dpr)); wall.height=Math.round(wall.width*9/16); render(); }
+window.addEventListener('resize',function(){clearTimeout(window._z);window._z=setTimeout(fit,120);});
+window.__lw={render:render};
+fit();
+})();
+</script>
+</body>
+</html>

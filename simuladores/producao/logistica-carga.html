@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>SMU PRO · Ordem de carregamento do caminhão</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0c1017;--panel:#161c26;--panel2:#1b2230;--line:#2a3444;--ink:#e7edf5;--dim:#8794a8;
+        --accent:#f59e0b;--ok:#22c55e;--err:#ef4444;--warn:#f59e0b;--cyan:#38bdf8;}
+  html,body{background:var(--bg);color:var(--ink);
+    font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased;}
+  body{padding:12px;}
+  .app{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:12px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  h1{font-size:15px;margin-bottom:3px;}
+  .sub{font-size:12px;color:var(--dim);margin-bottom:12px;line-height:1.5;}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px;}
+  .stat .k{font-size:10px;color:var(--dim);letter-spacing:.5px;}
+  .stat .val{font-size:15px;font-weight:800;margin-top:2px;}
+  .verdict{font-size:13px;font-weight:700;padding:9px 12px;border-radius:8px;text-align:center;}
+  .verdict.ok{background:#14532d;color:#bbf7d0;}
+  .verdict.bad{background:#450a0a;color:#fca5a5;}
+  .verdict.warn{background:#422006;color:#fde68a;}
+  .note{font-size:12px;color:var(--dim);line-height:1.55;}
+  button{font:inherit;cursor:pointer;}
+
+  .layout{display:grid;grid-template-columns:1fr;gap:14px;}
+  @media(min-width:760px){ .layout{grid-template-columns:1fr 268px;align-items:start;} }
+
+  .seq{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px;}
+  .seq i{font-style:normal;font-size:10px;padding:4px 7px;border-radius:20px;background:#0c1119;
+    border:1px solid var(--line);color:var(--dim);white-space:nowrap;}
+  .seq i b{color:var(--cyan);font-weight:800;}
+
+  .bau{background:#05070b;border:1px solid var(--line);border-radius:10px;padding:8px;}
+  .cap{font-size:10px;letter-spacing:1px;color:var(--dim);text-align:center;padding:5px 0;font-weight:700;}
+  .cap.porta{color:var(--accent);border-top:2px dashed #3a2a10;margin-top:6px;}
+  .cap.fundo{border-bottom:1px solid var(--line);margin-bottom:6px;}
+  .vol{display:flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--line);
+    border-left:3px solid #3b4655;border-radius:8px;padding:6px 7px;margin-bottom:5px;min-height:44px;}
+  .vol.ok{border-left-color:var(--ok);} .vol.no{border-left-color:var(--err);}
+  .vol .pos{font-size:10px;color:var(--dim);width:16px;flex-shrink:0;text-align:center;font-weight:700;}
+  .vol .body{flex:1;min-width:0;}
+  .vol .nm{font-size:12px;font-weight:600;line-height:1.3;}
+  .vol .meta{font-size:10px;color:var(--dim);margin-top:2px;display:flex;gap:5px;flex-wrap:wrap;align-items:center;}
+  .tag{padding:1px 5px;border-radius:4px;border:1px solid var(--line);font-size:9px;letter-spacing:.3px;}
+  .tag.f{color:#fca5a5;border-color:#7f1d1d;} .tag.a{color:#fde68a;border-color:#78350f;}
+  .tag.e{color:#7dd3fc;border-color:#075985;}
+  .arm{display:flex;gap:4px;flex-shrink:0;}
+  .arm button{width:34px;height:34px;border:1px solid var(--line);background:#0c1119;color:var(--ink);
+    border-radius:7px;font-size:13px;line-height:1;}
+  .arm button:disabled{opacity:.25;cursor:default;}
+  .cinta{width:34px;height:34px;border:1px solid var(--line);background:#0c1119;border-radius:7px;
+    font-size:13px;color:#3b4655;flex-shrink:0;}
+  .cinta.on{background:#42200680;border-color:var(--accent);color:#fde68a;}
+  .cinta.off{visibility:hidden;}
+
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  @media(min-width:760px){ .stats{grid-template-columns:1fr 1fr;} }
+  .stat .val small{font-size:10px;color:var(--dim);font-weight:400;}
+  .stat .val.alerta{color:var(--err);}
+  .bar{height:4px;border-radius:3px;background:#0c1119;margin-top:5px;overflow:hidden;}
+  .bar i{display:block;height:100%;background:var(--ok);transition:width .15s linear;}
+  .bar i.alerta{background:var(--err);}
+  .acts{display:flex;gap:8px;}
+  .acts button{flex:1;min-height:38px;border-radius:8px;border:1px solid var(--line);font-size:12px;font-weight:700;}
+  #go{background:var(--accent);color:#180f00;border-color:var(--accent);}
+  #rst{background:#0c1119;color:var(--dim);}
+  .side{display:flex;flex-direction:column;gap:10px;}
+  ul.log{list-style:none;display:flex;flex-direction:column;gap:5px;margin-top:8px;}
+  ul.log li{font-size:11px;line-height:1.45;color:var(--dim);padding-left:14px;position:relative;}
+  ul.log li:before{content:'▸';position:absolute;left:0;color:var(--accent);}
+  ul.log li.d:before{content:'✕';color:var(--err);}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="card">
+    <h1>Load-in: ordem de carregamento do baú</h1>
+    <div class="sub">O último a entrar é o primeiro a sair. Ordene os volumes do <b>fundo do baú</b> (parede da cabine) até a <b>porta</b>, sabendo que a <b>ordem de descarga é a ordem de montagem invertida</b>. Use ▲▼ para mover e 🪢 para cintar volume alto.</div>
+    <div class="seq" id="seq"></div>
+    <div class="layout">
+      <div class="bau">
+        <div class="cap fundo">▲ PAREDE DO FUNDO · CABINE</div>
+        <div id="pilha"></div>
+        <div class="cap porta">▼ PORTA · TRASEIRA (primeiro a sair)</div>
+      </div>
+      <div class="side">
+        <div class="stats">
+          <div class="stat"><div class="k">ORDEM CORRETA</div><div class="val" id="sOrd">—</div></div>
+          <div class="stat"><div class="k">TEMPO PERDIDO</div><div class="val" id="sTmp">—</div></div>
+          <div class="stat"><div class="k">DANOS</div><div class="val" id="sDan">—</div></div>
+          <div class="stat"><div class="k">EIXO TRASEIRO</div><div class="val" id="sEix">—</div>
+            <div class="bar"><i id="bEix"></i></div></div>
+        </div>
+        <div class="acts"><button id="go">Conferir descarga</button><button id="rst">Reiniciar</button></div>
+        <div class="verdict warn" id="vd">Carga montada na ordem em que os volumes estavam no galpão.</div>
+        <div class="note" id="nt">Carga total: <b id="tot">—</b>. Hora extra da equipe de montagem: <b>R$ 420/h</b>.</div>
+      </div>
+    </div>
+    <ul class="log" id="log"></ul>
+  </div>
+</div>
+<script>
+(function(){
+var $=function(s){return document.querySelector(s);};
+
+/* Sequência real de montagem no evento. A descarga segue esta ordem;
+   o carregamento é o inverso dela. */
+var ET={1:'Rigging: motores e lingas',2:'Estrutura: treliça e bases',3:'Palco: praticáveis',
+        4:'Energia',5:'PA e luz nas treliças',6:'Backline',7:'Cabeamento e patch',8:'Console e line check'};
+
+/* n=nome  p=peso kg  e=etapa de montagem  f=frágil  a=volume alto (precisa cinta) */
+var VOL=[
+ {n:'Cases de microfone e cabos de mão',        p:60, e:8, f:1, a:0},
+ {n:'Console de FOH em case',                   p:110,e:8, f:1, a:0},
+ {n:'Stage box e multicabo em carretel',        p:90, e:7, f:0, a:0},
+ {n:'Backline: bateria e amps de palco',        p:180,e:6, f:0, a:0},
+ {n:'Line array (12 caixas) em carrinho',       p:520,e:5, f:0, a:1},
+ {n:'Subgraves (6 un)',                         p:480,e:5, f:0, a:1},
+ {n:'Rack de amplificadores de PA',             p:320,e:5, f:0, a:1},
+ {n:'Moving heads (8 un) em case',              p:260,e:5, f:1, a:1},
+ {n:'Quadro de distribuição e cabos de força',  p:240,e:4, f:0, a:0},
+ {n:'Praticáveis do palco e tapete',            p:420,e:3, f:0, a:0},
+ {n:'Treliça, bases e sapatas',                 p:560,e:2, f:0, a:1},
+ {n:'Talhas, motores de rigging e lingas',      p:300,e:1, f:0, a:0}
+];
+var INICIAL=[11,10,9,4,5,6,7,8,2,3,1,0];   /* estado errado de partida: carregado como estava no galpão */
+var ESPERADO=[8,8,7,6,5,5,5,5,4,3,2,1];    /* etapa esperada por posição, fundo -> porta */
+var MIN_REMEX=3, HORA=420, LIM_TRAS=0.50, PESADO=250;
+
+var ordem, cinta, avaliado;
+
+function total(){ var t=0; VOL.forEach(function(v){t+=v.p;}); return t; }
+
+function reset(){
+  ordem=INICIAL.slice(); cinta={}; avaliado=null;
+  $('#sOrd').textContent='—'; $('#sTmp').textContent='—'; $('#sDan').textContent='—';
+  $('#log').innerHTML='';
+  $('#vd').className='verdict warn';
+  $('#vd').textContent='Carga montada na ordem em que os volumes estavam no galpão.';
+  $('#tot').textContent=total().toLocaleString('pt-BR')+' kg';
+  render();
+}
+
+function render(){
+  var h='';
+  for(var i=0;i<ordem.length;i++){
+    var v=VOL[ordem[i]], cls='vol';
+    if(avaliado){ cls+= (v.e===ESPERADO[i]?' ok':' no'); }
+    h+='<div class="'+cls+'">'
+      +'<div class="pos">'+(i+1)+'</div>'
+      +'<div class="body"><div class="nm">'+v.n+'</div><div class="meta"><span>'+v.p+' kg</span>'
+      +(v.f?'<span class="tag f">FRÁGIL</span>':'')
+      +(v.a?'<span class="tag a">VOLUME ALTO</span>':'')
+      +(avaliado?'<span class="tag e">ETAPA '+v.e+' · '+ET[v.e]+'</span>':'')
+      +'</div></div>'
+      +'<button class="cinta'+(v.a?(cinta[ordem[i]]?' on':''):' off')+'" data-c="'+ordem[i]+'" '
+      +(v.a?'':'disabled')+' title="Cinta de amarração">🪢</button>'
+      +'<div class="arm"><button data-u="'+i+'"'+(i===0?' disabled':'')+'>▲</button>'
+      +'<button data-d="'+i+'"'+(i===ordem.length-1?' disabled':'')+'>▼</button></div>'
+      +'</div>';
+  }
+  $('#pilha').innerHTML=h;
+  /* leitura de eixo ao vivo: o aluno enxerga a distribuição enquanto ordena, não só no Conferir */
+  var pct=traseira(), al=pct>LIM_TRAS;
+  $('#sEix').innerHTML=Math.round(pct*100)+'<small>% · '+Math.round(pct*total())+' kg</small>';
+  $('#sEix').className='val'+(al?' alerta':'');
+  var b=$('#bEix');
+  b.style.width=Math.min(100,pct/0.70*100).toFixed(1)+'%';
+  b.className=al?'alerta':'';
+}
+
+/* Simula a descarga: para cada etapa de montagem, tudo que estiver entre a porta e o
+   volume mais fundo daquela etapa e ainda não for necessário precisa sair e voltar. */
+function descarga(){
+  var fila=ordem.slice().reverse();   /* índice 0 = encostado na porta */
+  var remex=0, linhas=[];
+  for(var E=1;E<=8;E++){
+    var fundo=-1;
+    for(var i=0;i<fila.length;i++){ if(VOL[fila[i]].e===E) fundo=i; }
+    if(fundo<0) continue;
+    var bloq=0;
+    for(i=0;i<fundo;i++){ if(VOL[fila[i]].e>E) bloq++; }
+    if(bloq>0){
+      remex+=bloq;
+      linhas.push('Etapa '+E+' — '+ET[E]+': você descarregou e recolocou <b>'+bloq+' volume'+(bloq>1?'s':'')
+        +'</b> para chegar em <b>'+VOL[fila[fundo]].n+'</b>.');
+    }
+    fila=fila.filter(function(x){ return VOL[x].e!==E; });
+  }
+  return {remex:remex,linhas:linhas};
+}
+
+function danos(){
+  var d=[];
+  for(var i=0;i<ordem.length-1;i++){
+    var A=VOL[ordem[i]], B=VOL[ordem[i+1]];
+    if(A.f && B.p>=PESADO){
+      d.push('<b>'+B.n+'</b> ('+B.p+' kg) entrou logo depois de <b>'+A.n+'</b> e foi empilhado por cima: frágil não vai embaixo.');
+    }
+  }
+  ordem.forEach(function(x){
+    if(VOL[x].a && !cinta[x]) d.push('<b>'+VOL[x].n+'</b>: volume alto sem cinta de amarração — tomba na primeira freada.');
+  });
+  return d;
+}
+
+function traseira(){
+  var t=0; for(var i=ordem.length-4;i<ordem.length;i++) t+=VOL[ordem[i]].p;
+  return t/total();
+}
+
+function conferir(){
+  avaliado=true;
+  var acertos=0;
+  for(var i=0;i<ordem.length;i++){ if(VOL[ordem[i]].e===ESPERADO[i]) acertos++; }
+  var dsc=descarga(), dn=danos(), pctT=traseira();
+  var min=dsc.remex*MIN_REMEX, custo=min/60*HORA;
+
+  $('#sOrd').innerHTML=acertos+'<small style="font-size:10px;color:var(--dim);font-weight:400"> /'+ordem.length+' pos.</small>';
+  $('#sTmp').innerHTML=min+'<small style="font-size:10px;color:var(--dim);font-weight:400"> min</small>';
+  $('#sDan').innerHTML=dn.length+'<small style="font-size:10px;color:var(--dim);font-weight:400"> vol.</small>';
+
+  var log=[];
+  dsc.linhas.forEach(function(l){ log.push('<li>'+l+'</li>'); });
+  dn.forEach(function(l){ log.push('<li class="d">'+l+'</li>'); });
+  if(pctT>LIM_TRAS){
+    log.push('<li class="d">Distribuição de carga: <b>'+Math.round(pctT*100)+'%</b> do peso nos 4 volumes junto da porta. '
+      +'Peso concentrado atrás do eixo traseiro alivia a direção e o caminhão sai de traseira na chuva. Limite: 50%.</li>');
+  }
+  if(dsc.remex>0){
+    log.push('<li>Total: <b>'+dsc.remex+' remexidas</b> × '+MIN_REMEX+' min = <b>'+min+' min ('+Math.floor(min/60)+'h'
+      +('0'+(min%60)).slice(-2)+')</b> só remanejando volume. Custo de hora extra: <b>R$ '
+      +custo.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'</b>.</li>');
+    log.push('<li>O atraso empurra o dia inteiro: rigging sobe tarde, o PA voa tarde, a passagem de som começa '
+      +min+' min depois e o line check entra em cima da abertura da casa.</li>');
+  }
+  if(dsc.remex===0){
+    log.push('<li>Descarga em fluxo contínuo: cada volume saiu do baú na hora em que a equipe precisou dele. '
+      +'O rigging (lingas e talhas) entrou por último justamente porque é o primeiro a subir no evento.</li>');
+  }
+  if(!log.length) log.push('<li>Nenhuma ocorrência: ordem, empilhamento, amarração e eixo dentro do padrão.</li>');
+  $('#log').innerHTML=log.join('');
+
+  var v=$('#vd');
+  if(acertos===ordem.length && dn.length===0 && pctT<=LIM_TRAS){
+    v.className='verdict ok';
+    v.textContent='✓ Baú fechado certo: descarga em fluxo contínuo, zero remexida, zero dano.';
+  } else if(dsc.remex===0 && dn.length===0){
+    v.className='verdict warn';
+    v.textContent='◐ Descarga limpa, mas a carga está mal distribuída no eixo.';
+  } else {
+    v.className='verdict bad';
+    v.textContent='✗ '+(dsc.remex>0?min+' min perdidos na descarga':'Carga danificada')
+      +(dn.length?' · '+dn.length+' volume(s) com dano':'')+'.';
+  }
+  render();
+}
+
+function mover(i,j){
+  var t=ordem[i]; ordem[i]=ordem[j]; ordem[j]=t;
+  avaliado=null; render();
+}
+
+$('#pilha').addEventListener('click',function(ev){
+  var b=ev.target.closest('button'); if(!b||b.disabled) return;
+  if(b.dataset.u!==undefined){ var i=+b.dataset.u; mover(i,i-1); }
+  else if(b.dataset.d!==undefined){ var k=+b.dataset.d; mover(k,k+1); }
+  else if(b.dataset.c!==undefined){ var c=+b.dataset.c; cinta[c]=!cinta[c]; render(); }
+});
+$('#go').onclick=conferir;
+$('#rst').onclick=reset;
+
+(function(){ var h=''; for(var E=1;E<=8;E++){ h+='<i><b>'+E+'</b> '+ET[E]+'</i>'; }
+  $('#seq').innerHTML='<i style="border-color:#075985;color:#7dd3fc">MONTAGEM NO EVENTO →</i>'+h; })();
+
+reset();
+window.__lc={conferir:conferir,descarga:descarga,VOL:VOL,ordem:function(){return ordem;}};
+})();
+</script>
+</body>
+</html>

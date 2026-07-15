@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>SMU PRO · A primeira conversa com o cliente</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0c1017;--panel:#161c26;--panel2:#1b2230;--line:#2a3444;--ink:#e7edf5;--dim:#8794a8;
+        --accent:#f59e0b;--ok:#22c55e;--err:#ef4444;--warn:#f59e0b;--cyan:#38bdf8;}
+  html,body{background:var(--bg);color:var(--ink);
+    font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased;}
+  body{padding:12px;}
+  .app{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:12px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  h1{font-size:15px;margin-bottom:3px;}
+  .sub{font-size:12px;color:var(--dim);margin-bottom:12px;line-height:1.5;}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px;}
+  .stat .k{font-size:10px;color:var(--dim);letter-spacing:.5px;}
+  .stat .val{font-size:15px;font-weight:800;margin-top:2px;}
+  .verdict{font-size:13px;font-weight:700;padding:9px 12px;border-radius:8px;text-align:center;}
+  .verdict.ok{background:#14532d;color:#bbf7d0;}
+  .verdict.bad{background:#450a0a;color:#fca5a5;}
+  .verdict.warn{background:#422006;color:#fde68a;}
+  .note{font-size:12px;color:var(--dim);line-height:1.55;}
+  button{font:inherit;cursor:pointer;}
+
+  .msg{background:#0f2a20;border:1px solid #1f5f45;border-left:3px solid var(--ok);border-radius:10px;padding:11px 12px;}
+  .msg .who{font-size:10px;letter-spacing:.6px;color:#6ee7b7;font-weight:700;margin-bottom:5px;}
+  .msg p{font-size:13px;line-height:1.6;}
+  .msg .hora{font-size:10px;color:var(--dim);margin-top:6px;text-align:right;}
+
+  .bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0 10px;}
+  .slots{display:flex;gap:4px;}
+  .slots i{width:16px;height:16px;border-radius:4px;border:1px solid var(--line);background:#0a0e15;display:block;}
+  .slots i.used{background:var(--accent);border-color:var(--accent);}
+  .cnt{font-size:11px;color:var(--dim);font-weight:700;letter-spacing:.4px;}
+  .acts{margin-left:auto;display:flex;gap:6px;}
+  .acts button{padding:8px 14px;min-height:34px;border-radius:8px;border:1px solid var(--line);
+    background:var(--panel2);color:var(--ink);font-size:12px;font-weight:700;}
+  .acts button.go{background:#42200680;border-color:var(--accent);color:#fde68a;}
+  .acts button:disabled{opacity:.35;cursor:not-allowed;}
+
+  .grid{display:grid;grid-template-columns:1fr;gap:8px;}
+  @media(min-width:680px){ .grid{grid-template-columns:1fr 1fr;} }
+  .q{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 11px;text-align:left;
+     color:var(--ink);font-size:12.5px;line-height:1.45;min-height:38px;width:100%;transition:border-color .12s;}
+  .q:hover:not(:disabled){border-color:#4b5a70;}
+  .q:disabled{cursor:default;}
+  .q.asked{border-color:var(--cyan);}
+  .q.asked.ess{border-color:var(--ok);}
+  .q.asked.filler{border-color:var(--err);}
+  .q .tag{font-size:9px;letter-spacing:.7px;font-weight:800;display:none;margin-bottom:4px;}
+  .q.asked .tag{display:block;}
+  .q.asked.ess .tag{color:#6ee7b7;} .q.asked.filler .tag{color:#fca5a5;}
+  .q .txt{font-weight:600;}
+  .q .ans{display:none;font-size:12px;line-height:1.55;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);color:#cbd5e1;font-style:italic;}
+  .q .imp{display:none;font-size:11.5px;line-height:1.55;margin-top:6px;color:var(--dim);}
+  .q .imp b{color:#fde68a;font-style:normal;}
+  .q.asked .ans,.q.asked .imp{display:block;}
+  .q.dead{opacity:.4;}
+
+  .res{display:none;flex-direction:column;gap:10px;}
+  .res.on{display:flex;}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  @media(min-width:680px){ .stats{grid-template-columns:repeat(3,1fr);} }
+  .lst{list-style:none;display:flex;flex-direction:column;gap:6px;}
+  .lst li{font-size:12px;line-height:1.5;padding:7px 9px;border-radius:7px;background:var(--panel2);border-left:3px solid var(--line);}
+  .lst li.miss{border-left-color:var(--err);}
+  .lst li.waste{border-left-color:var(--warn);}
+  .lst li b{color:var(--ink);}
+  .h3{font-size:11px;letter-spacing:.7px;color:var(--cyan);font-weight:800;margin-bottom:7px;}
+  .lic{font-size:12px;line-height:1.65;color:var(--dim);}
+  .lic b{color:#fde68a;}
+  .lic li{margin-left:16px;margin-bottom:5px;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="card">
+    <h1>A primeira conversa com o cliente</h1>
+    <div class="sub">Chegou um pedido no WhatsApp. Você tem <b>7 perguntas</b> antes de mandar qualquer preço. Escolha as que mudam o orçamento — o resto pergunta depois.</div>
+
+    <div class="msg">
+      <div class="who">CLIENTE · MÁRCIA (MÃE DA ANIVERSARIANTE)</div>
+      <p>“Oi, boa tarde! Queria um som e uma luz pra festa de 15 anos da minha filha, dia 22/08, uns 200 convidados, num salão de festas. Quanto fica?”</p>
+      <div class="hora">14:07 ✓✓</div>
+    </div>
+
+    <div class="bar">
+      <div class="slots" id="slots"></div>
+      <div class="cnt" id="cnt">0 / 7 PERGUNTAS</div>
+      <div class="acts">
+        <button id="check" class="go" disabled>Conferir</button>
+        <button id="reset">Reiniciar</button>
+      </div>
+    </div>
+
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <div class="card res" id="res">
+    <div class="verdict" id="verdict"></div>
+    <div class="stats">
+      <div class="stat"><div class="k">ESSENCIAIS OBTIDAS</div><div class="val" id="sEss">—</div></div>
+      <div class="stat"><div class="k">PERGUNTAS DESPERDIÇADAS</div><div class="val" id="sWaste">—</div></div>
+      <div class="stat"><div class="k">RISCO NÃO ORÇADO</div><div class="val" id="sRisk">—</div></div>
+    </div>
+    <div>
+      <div class="h3">O QUE VOCÊ NÃO PERGUNTOU</div>
+      <ul class="lst" id="lstMiss"></ul>
+    </div>
+    <div>
+      <div class="h3">O QUE ISSO ENSINA</div>
+      <div class="lic">
+        <ul>
+          <li><b>O que você não perguntou vira custo seu.</b> Gerador, mão de obra extra, tenda: se não está no orçamento, sai do seu lucro — ou você vira o cara que remarca o preço em cima da hora.</li>
+          <li><b>O cliente não mente, ele não sabe.</b> “Tem energia” quer dizer “tem tomada”. “Salão de festas” pode ser um deck aberto no 3º andar. Pergunte pelo <b>fato</b>, não pela opinião: “quantos amperes tem o disjuntor?”, e não “tem energia boa?”.</li>
+          <li><b>Orçar sem entender o local é apostar.</b> Preço antes de visita técnica (ou de fotos e do quadro de energia) é chute. Quem chuta baixo ganha o job e perde dinheiro.</li>
+          <li><b>Quem aprova e quem paga podem ser pessoas diferentes.</b> Aprovação sem sinal na conta não trava data nem equipamento.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var $=function(s){return document.querySelector(s);};
+  var MAX=7;
+
+  var QS=[
+    {id:'energia',ess:1,risk:1600,
+     q:'Qual o endereço exato? O local tem energia suficiente pro nosso equipamento — quantos amperes tem o quadro?',
+     a:'“É o Espaço Villa Real, Rua das Acácias, 320. Energia tem sim, tem tomada em tudo quanto é canto.”',
+     imp:'Você pediu foto do quadro. O salão tem <b>um único circuito de 20A</b> na parede da pista, monofásico, sem quadro dedicado. PA + luz + backline não passam disso. <b>Sem gerador não tem show:</b> +R$ 1.600 de gerador 40kVA silenciado que não estava no seu preço.'},
+    {id:'horario',ess:1,risk:0,
+     q:'Até que horas pode ter som no local? Tem restrição de alvará ou vizinhança?',
+     a:'“Ah, é verdade, o síndico falou que o som tem que parar às 22h por causa dos prédios em volta.”',
+     imp:'Isso <b>muda o evento inteiro</b>. Valsa, cerimônia e pista precisam caber antes das 22h. Load-in tem que terminar até as 17h (som só depois do jantar não existe mais). Se você orçou uma festa até 3h, orçou outro evento.'},
+    {id:'coberto',ess:1,risk:900,
+     q:'O local é coberto? A pista e o palco ficam onde exatamente?',
+     a:'“É um salão coberto, mas a pista mesmo é no deck de trás, que é aberto. Fica lindo.”',
+     imp:'PA, luz e mesa vão pra <b>área externa em agosto</b>. Precisa cobertura sobre FOH e palco, cabo com emenda protegida, plano B de chuva e equipamento que aceita sereno. +R$ 900 de tenda e lonas — ou o risco de perder R$ 20 mil de equipamento numa garoa.'},
+    {id:'acesso',ess:1,risk:1200,
+     q:'Como é o acesso pra carga? Caminhão encosta? Tem elevador de carga, escada, quantos degraus?',
+     a:'“O salão fica no 3º andar. Tem elevador, aquele social mesmo. Caminhão para na rua, é rapidinho.”',
+     imp:'<b>Sem elevador de carga:</b> line array, torre e racks sobem por escada. +4 pessoas na equipe e +2h de load-in (e mais 2h de load-out às 23h). +R$ 1.200 de mão de obra que você não cobrou. Caminhão em rua sem baia = multa ou carreto menor com duas viagens.'},
+    {id:'publico',ess:1,risk:0,
+     q:'Quantas pessoas de verdade vão estar lá? Tem lista fechada?',
+     a:'“Convite eu mandei pra 200… mas a lista tá com 260 e sempre aparece gente. Uns 300, vai.”',
+     imp:'Público define <b>tamanho do PA, quantidade de circuitos e equipe</b>. 200 e 300 pessoas não são o mesmo sistema: muda a caixa, muda a energia, muda o preço. Orçar pelo número do convite é orçar pra um evento que não vai acontecer.'},
+    {id:'verba',ess:1,risk:0,
+     q:'Qual a verba que vocês separaram pra som e luz?',
+     a:'“Não sei bem… uns 3 mil? A gente nunca contratou isso antes.”',
+     imp:'Com energia, tenda e mão de obra extra, o custo real já passa de R$ 3 mil <b>antes do seu lucro</b>. Saber a verba na primeira conversa evita você gastar 3 dias montando proposta pra um evento que não fecha — ou te dá a chance de <b>redesenhar o escopo</b> pro que cabe.'},
+    {id:'decisor',ess:1,risk:0,
+     q:'Quem decide o fechamento e quem faz o pagamento? Precisa aprovação de mais alguém?',
+     a:'“Eu decido, mas quem paga é o pai dela, que mora em outro estado. Ele confia em mim.”',
+     imp:'<b>Aprovação não é dinheiro.</b> Sua data só trava com sinal na conta, e o sinal depende de alguém que você nunca falou. Peça o contato do pagador, defina prazo do sinal e deixe claro no contrato: sem sinal, a data volta pro mercado.'},
+
+    {id:'corluz',ess:0,q:'Qual cor de luz vocês querem na pista?',
+     a:'“Ai, rosa! Rosa e dourado, o tema é esse.”',
+     imp:'Informação de <b>ensaio</b>, não de orçamento. LED faz qualquer cor sem mudar o preço. Você gastou uma pergunta com o que se resolve por áudio de 30 segundos na semana do evento.'},
+    {id:'micmarca',ess:0,q:'Prefere microfone de que marca? Shure serve?',
+     a:'“Não faço ideia, você que sabe. O bom, né?”',
+     imp:'O cliente <b>não tem repertório</b> pra responder isso — e a resposta não muda custo nem viabilidade. Escolha técnica é sua. Pergunta desperdiçada.'},
+    {id:'playlist',ess:0,q:'Já tem a playlist da festa?',
+     a:'“Tô montando no Spotify, depois te mando.”',
+     imp:'Playlist é <b>produção de conteúdo</b>, entra na reunião de roteiro. Não define caixa, energia, equipe nem transporte. Pergunta desperdiçada.'},
+    {id:'bolo',ess:0,q:'Que tipo de bolo vai ter? Vai ter hora do bolo?',
+     a:'“Bolo de três andares, ninho com nutella. A hora do bolo é lá pelas 23h.”',
+     imp:'A <b>hora</b> importa — mas isso é roteiro, e ela acabou de te dizer 23h num lugar onde o som para às 22h. O tipo do bolo não importa pra ninguém no seu caminhão. Pergunta desperdiçada.'},
+    {id:'toalha',ess:0,q:'Qual a cor da toalha das mesas?',
+     a:'“Champagne. A decoradora já resolveu tudo isso.”',
+     imp:'Isso é <b>escopo da decoração</b>, não seu. Fazer essa pergunta na primeira conversa também sinaliza pro cliente que você não sabe o que é importante. Pergunta desperdiçada.'},
+    {id:'fumaca',ess:0,q:'Vai querer máquina de fumaça?',
+     a:'“Pode ser! Aquele negócio de fumaça baixa é lindo.”',
+     imp:'Upsell, não viabilidade. E ironicamente <b>depende de coisas que você ainda não perguntou</b>: local coberto, alarme de incêndio, energia. Perguntar isso antes é botar o carro na frente dos bois.'},
+    {id:'dj',ess:0,q:'Qual o nome do DJ que vocês contrataram?',
+     a:'“DJ Léo. Ele é amigo do meu sobrinho.”',
+     imp:'O <b>rider</b> do DJ importa (o que ele leva, o que você fornece) — mas o nome dele, sozinho, não te diz nada e não entra em nenhuma linha do orçamento. Pergunta desperdiçada.'}
+  ];
+
+  var order=[], asked=[], done=false;
+
+  function shuffle(a){ for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i];a[i]=a[j];a[j]=t; } return a; }
+
+  function build(){
+    order=shuffle(QS.slice()); asked=[]; done=false;
+    var g=$('#grid'); g.innerHTML='';
+    order.forEach(function(q){
+      var b=document.createElement('button');
+      b.className='q'; b.dataset.id=q.id;
+      b.innerHTML='<div class="tag"></div><div class="txt">'+q.q+'</div>'+
+                  '<div class="ans">'+q.a+'</div><div class="imp">'+q.imp+'</div>';
+      b.onclick=function(){ ask(q,b); };
+      g.appendChild(b);
+    });
+    $('#res').classList.remove('on');
+    $('#check').disabled=true;
+    paint();
+  }
+
+  function ask(q,b){
+    if(done || asked.length>=MAX || asked.indexOf(q.id)>=0) return;
+    asked.push(q.id);
+    b.classList.add('asked');
+    b.disabled=true;
+    paint();
+  }
+
+  function paint(){
+    var s=$('#slots'); s.innerHTML='';
+    for(var i=0;i<MAX;i++){ var e=document.createElement('i'); if(i<asked.length) e.className='used'; s.appendChild(e); }
+    $('#cnt').textContent=asked.length+' / '+MAX+' PERGUNTAS';
+    $('#check').disabled=(asked.length<MAX);
+    if(asked.length>=MAX){
+      Array.prototype.forEach.call(document.querySelectorAll('.q:not(.asked)'),function(b){ b.disabled=true; b.classList.add('dead'); });
+    }
+  }
+
+  function byId(id){ for(var i=0;i<QS.length;i++) if(QS[i].id===id) return QS[i]; }
+
+  function check(){
+    if(asked.length<MAX) return;
+    done=true;
+    var ess=0, waste=0, risk=0;
+    asked.forEach(function(id){
+      var q=byId(id);
+      var b=document.querySelector('.q[data-id="'+id+'"]');
+      if(q.ess){ ess++; b.classList.add('ess'); b.querySelector('.tag').textContent='✓ ESSENCIAL — ENTROU NO ORÇAMENTO'; }
+      else{ waste++; b.classList.add('filler'); b.querySelector('.tag').textContent='✗ PODIA ESPERAR — PERGUNTA QUEIMADA'; }
+    });
+    var miss=$('#lstMiss'); miss.innerHTML='';
+    QS.forEach(function(q){
+      if(q.ess && asked.indexOf(q.id)<0){
+        risk+=q.risk;
+        var li=document.createElement('li'); li.className='miss';
+        li.innerHTML='<b>'+q.q+'</b><br>'+q.imp;
+        miss.appendChild(li);
+      }
+    });
+    if(waste>0){
+      var li=document.createElement('li'); li.className='waste';
+      li.innerHTML='<b>'+waste+' pergunta(s) gasta(s) com detalhe de acabamento.</b> Cor, marca, playlist e bolo se resolvem depois do contrato assinado — e nenhuma delas muda uma linha do orçamento.';
+      miss.appendChild(li);
+    }
+    if(ess===7){
+      var li2=document.createElement('li');
+      li2.innerHTML='<b>Nenhuma essencial ficou de fora.</b> Você sabe o custo real antes de dizer o preço: gerador, tenda, equipe extra e horário-limite estão todos mapeados. Agora dá pra orçar — ou dizer que não cabe em R$ 3 mil e propor outro escopo.';
+      miss.appendChild(li2);
+    }
+    $('#sEss').innerHTML=ess+' <small style="font-size:10px;color:var(--dim);font-weight:400;">/ 7</small>';
+    $('#sWaste').textContent=waste;
+    $('#sRisk').textContent=risk>0?('R$ '+risk.toLocaleString('pt-BR')):'R$ 0';
+    var v=$('#verdict');
+    if(ess===7){ v.className='verdict ok'; v.textContent='✓ Orçamento com base em fato. Você entendeu o evento antes de precificar.'; }
+    else if(ess>=5){ v.className='verdict warn'; v.textContent='◐ Faltou informação crítica — R$ '+risk.toLocaleString('pt-BR')+' de custo cego + surpresa no dia'; }
+    else { v.className='verdict bad'; v.textContent='✗ Você orçou no escuro. No dia do evento, essas contas aparecem — e o cliente não vai pagar por elas.'; }
+    $('#res').classList.add('on');
+    $('#res').scrollIntoView({behavior:'smooth',block:'start'});
+  }
+
+  $('#check').onclick=check;
+  $('#reset').onclick=build;
+  build();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aquilon Web RCS · Analog Way (réplica de treino)</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0f1115;--panel:#171a20;--panel2:#1e222b;--line:#2c313b;--ink:#e9edf2;--dim:#8b94a1;--accent:#e8482d;--accent2:#2f9be0;--ok:#22c55e;--prog:#e23b3b;--prev:#2ec26b;}
+  html,body{background:var(--bg);color:var(--ink);font-family:'Segoe UI',system-ui,Arial,sans-serif;}
+  body{padding:9px;}
+  .app{max-width:1180px;margin:0 auto;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+  .topbar{display:flex;align-items:center;gap:10px;padding:8px 13px;background:linear-gradient(90deg,#2a0f0a,#12151b);border-bottom:1px solid var(--line);}
+  .topbar .logo{font-weight:900;font-size:15px;} .topbar .logo b{color:var(--accent);} .topbar .ver{font-size:11px;color:var(--dim);} .topbar .sp{flex:1;}
+  .topbar .badge{font-size:10px;background:#2a0f0a;border:1px solid #5a2016;color:#f0a99a;padding:3px 10px;border-radius:20px;}
+  .dlbar{display:flex;align-items:center;gap:10px;background:#1a0f0c;border:1px solid #4a2018;border-radius:8px;padding:8px 12px;margin:9px;flex-wrap:wrap;}
+  .dlbar .t{font-size:12px;color:#e6b3a8;flex:1;min-width:220px;} .dlbar .t b{color:#f7d9d2;}
+  .dlbar a{background:linear-gradient(#e8482d,#c22d16);color:#fff;text-decoration:none;padding:8px 14px;border-radius:6px;font-weight:800;font-size:12.5px;white-space:nowrap;}
+  .work{display:grid;grid-template-columns:1fr;gap:9px;padding:0 9px 9px;}
+  @media(min-width:900px){ .work{grid-template-columns:150px 1fr 240px;} }
+  .col{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px;}
+  .col h3{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:8px;}
+  /* inputs */
+  .inp{display:flex;align-items:center;gap:7px;background:#0e1218;border:1px solid var(--line);border-radius:6px;padding:6px 8px;margin-bottom:5px;cursor:grab;font-size:11.5px;}
+  .inp:hover{border-color:var(--accent2);} .inp .sw{width:22px;height:14px;border-radius:2px;flex-shrink:0;}
+  .inp.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset;}
+  /* screen canvas */
+  .screenwrap{display:flex;flex-direction:column;gap:8px;}
+  .sctabs{display:flex;gap:6px;}
+  .sctab{font-size:11px;font-weight:700;padding:6px 12px;border:1px solid var(--line);border-radius:6px;cursor:pointer;color:var(--dim);background:#0e1218;}
+  .sctab.prev{border-color:var(--prev);color:#9be9bd;} .sctab.prog{border-color:var(--prog);color:#f3b0b0;}
+  .sctab.on{background:#1e222b;}
+  .screen{position:relative;width:100%;aspect-ratio:16/9;background:#05070b;border:2px solid var(--line);border-radius:6px;overflow:hidden;touch-action:none;}
+  .screen.previewing{border-color:var(--prev);} .screen.programming{border-color:var(--prog);}
+  .layer{position:absolute;border:1px solid #ffffff55;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;text-shadow:0 1px 3px #000;cursor:move;overflow:hidden;}
+  .layer.sel{border:2px solid var(--accent);z-index:10;box-shadow:0 0 0 2px #e8482d55;}
+  .layer .rz{position:absolute;right:-1px;bottom:-1px;width:12px;height:12px;background:var(--accent);cursor:nwse-resize;border-radius:2px;}
+  .screen .empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#4b5563;font-size:12px;}
+  .take{display:flex;gap:8px;align-items:center;}
+  .take button{flex:1;font-size:13px;font-weight:900;letter-spacing:.06em;padding:11px;border:none;border-radius:8px;cursor:pointer;}
+  .take .btnTake{background:linear-gradient(#e23b3b,#b81f1f);color:#fff;} .take .btnTake:active{transform:scale(.98);}
+  .take .trans{font-size:11px;color:var(--dim);display:flex;align-items:center;gap:5px;} .take select{background:#0e1218;color:var(--ink);border:1px solid var(--line);border-radius:5px;padding:5px;font-size:11px;}
+  /* layer props + presets */
+  .prop{margin-bottom:8px;} .prop label{font-size:11px;color:var(--dim);display:block;margin-bottom:4px;}
+  .prop .seg{display:flex;gap:4px;flex-wrap:wrap;} .prop .seg button{flex:1;min-width:44px;font-size:10.5px;padding:6px 3px;border:1px solid var(--line);border-radius:5px;background:#0e1218;color:var(--dim);cursor:pointer;} .prop .seg button.on{background:#2a0f0a;border-color:var(--accent);color:#f0a99a;}
+  .addlay{width:100%;font-size:11.5px;font-weight:700;padding:8px;border:1px dashed var(--line);border-radius:7px;background:#0e1218;color:var(--dim);cursor:pointer;margin-bottom:8px;}
+  .presets{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;}
+  .preset{aspect-ratio:1.4/1;border:1px solid var(--line);border-radius:6px;background:#0e1218;color:var(--dim);font-size:11px;font-weight:800;cursor:pointer;}
+  .preset.saved{border-color:var(--accent2);color:#9dd4f5;} .preset.on{background:#123047;}
+  .pmode{display:flex;gap:6px;margin-top:6px;} .pmode button{flex:1;font-size:10px;padding:5px;border:1px solid var(--line);border-radius:5px;background:#0e1218;color:var(--dim);cursor:pointer;} .pmode button.on{background:#123047;border-color:var(--accent2);color:#9dd4f5;}
+  .hint{font-size:11px;color:var(--dim);line-height:1.5;background:#0e1218;border:1px solid var(--line);border-radius:7px;padding:8px 9px;margin-top:8px;} .hint b{color:var(--ink);}
+  .mission{margin:0 9px 9px;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:10px;}
+  .mission h3{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-bottom:7px;}
+  .mlist{list-style:none;display:flex;flex-direction:column;gap:5px;} .mlist li{font-size:11.5px;color:var(--dim);display:flex;gap:7px;align-items:flex-start;} .mlist li .bx{width:15px;height:15px;border-radius:4px;border:1px solid var(--line);flex-shrink:0;margin-top:1px;text-align:center;line-height:14px;font-size:10px;} .mlist li.done{color:var(--ink);} .mlist li.done .bx{background:var(--ok);border-color:var(--ok);color:#04120d;}
+  .note-replica{font-size:10.5px;color:#5f6b7a;text-align:center;padding:4px;}
+  .toast{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);background:#0e1218;border:1px solid var(--accent);color:var(--ink);border-radius:8px;padding:9px 15px;font-size:12.5px;opacity:0;pointer-events:none;transition:.2s;z-index:60;max-width:92vw;text-align:center;} .toast.show{opacity:1;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar"><div class="logo">Analog Way · <b>Aquilon</b></div><span class="ver">Web RCS (LivePremier)</span><span class="sp"></span><span class="badge">Presentation Switcher · seamless</span></div>
+  <div class="dlbar">
+    <div class="t">Software real: <b>Web RCS</b> (HTML5, roda no navegador) — controle das telas, camadas e presets do Aquilon. Existe também o <b>AW Aquilon Simulator</b> oficial para treinar no PC/Mac.</div>
+    <a href="https://www.analogway.com/downloads" target="_blank" rel="noopener">⬇ Downloads / Simulador oficial (analogway.com)</a>
+  </div>
+
+  <div class="work">
+    <!-- INPUTS -->
+    <div class="col">
+      <h3>Inputs (fontes)</h3>
+      <div id="inputs"></div>
+      <div class="hint">Arraste/clique numa fonte e depois numa <b>camada</b> para atribuí-la. O Aquilon compõe <b>várias camadas</b> numa tela — não é só "cortar".</div>
+    </div>
+
+    <!-- SCREEN -->
+    <div class="col">
+      <div class="screenwrap">
+        <div class="sctabs"><div class="sctab prev on" id="tabPrev">PREVIEW</div><div class="sctab prog" id="tabProg">PROGRAM (no ar)</div></div>
+        <div class="screen previewing" id="screen"><div class="empty" id="empty">Tela vazia — adicione camadas →</div></div>
+        <div class="take">
+          <div class="trans">Transição <select id="transSel"><option>Cut</option><option selected>Fade</option><option>Slide</option></select></div>
+          <button class="btnTake" id="btnTake">▶ TAKE (Preview → Program)</button>
+        </div>
+      </div>
+      <div class="hint" id="screenHint"></div>
+    </div>
+
+    <!-- LAYER PROPS + PRESETS -->
+    <div class="col">
+      <h3>Camada selecionada</h3>
+      <button class="addlay" id="addLayer">+ Adicionar camada</button>
+      <div id="layerProps">
+        <div class="prop"><label>Fonte</label><div id="laySrc" style="font-size:12px;font-weight:700;color:#f0a99a">—</div></div>
+        <div class="prop"><label>Tamanho / posição (preset)</label>
+          <div class="seg" id="posSeg">
+            <button data-p="full">Cheia</button><button data-p="left">Esq</button><button data-p="right">Dir</button>
+            <button data-p="pip-br">PiP ↘</button><button data-p="pip-tr">PiP ↗</button><button data-p="center">Centro</button>
+          </div>
+        </div>
+        <div class="prop"><label>Borda</label><div class="seg" id="borderSeg"><button data-b="0" class="on">Off</button><button data-b="1">Fina</button><button data-b="2">Grossa</button></div></div>
+        <button class="addlay" id="delLayer" style="border-style:solid;color:#f3b0b0;border-color:#5a2016">✕ Remover camada</button>
+      </div>
+      <h3 style="margin-top:12px;">Presets / Memories</h3>
+      <div class="presets" id="presets"></div>
+      <div class="pmode"><button data-md="recall" class="on">RECALL</button><button data-md="save">SAVE</button></div>
+    </div>
+  </div>
+
+  <div class="mission">
+    <h3>Missão — montar um look no Aquilon</h3>
+    <ul class="mlist" id="missions"></ul>
+  </div>
+  <div class="note-replica">Réplica de treino do Web RCS (Aquilon) para fins didáticos (SMU Produções). Não é o software oficial nem afiliada à Analog Way. Baixe o Simulador/downloads no site oficial.</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+var $=function(s){return document.querySelector(s);};
+var $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s));};
+var INPUTS=[
+  {id:'IN1',lb:'IN 1 · Slides',bg:'linear-gradient(135deg,#0b3b66,#1e63a8)',c:'#2f9be0'},
+  {id:'IN2',lb:'IN 2 · Câmera',bg:'linear-gradient(135deg,#3a240b,#7a5216)',c:'#f0a92b'},
+  {id:'IN3',lb:'IN 3 · Vídeo',bg:'linear-gradient(135deg,#2a0b3a,#5f1f7a)',c:'#a855f7'},
+  {id:'IN4',lb:'IN 4 · Logo',bg:'linear-gradient(135deg,#0b3a33,#12665a)',c:'#12b886'}
+];
+function inp(id){ return INPUTS.find(function(x){return x.id===id;})||INPUTS[0]; }
+var POS={ full:{x:0,y:0,w:1,h:1}, left:{x:0,y:0,w:.5,h:1}, right:{x:.5,y:0,w:.5,h:1}, center:{x:.2,y:.15,w:.6,h:.7}, 'pip-br':{x:.62,y:.6,w:.34,h:.34}, 'pip-tr':{x:.62,y:.06,w:.34,h:.34} };
+
+// preview layers = list of {src,pos,border}
+var preview=[]; var program=[]; var selInput=null, selLayer=-1;
+var presets={}, pmode='recall';
+var done={addlay:false, assign:false, pos:false, second:false, take:false, save:false, recall:false};
+
+// build inputs
+var inpEl=$('#inputs');
+INPUTS.forEach(function(s){ var d=document.createElement('div'); d.className='inp'; d.dataset.id=s.id; d.innerHTML='<span class="sw" style="background:'+s.c+'"></span>'+s.lb; d.onclick=function(){ selInput=s.id; $$('.inp').forEach(function(x){x.classList.toggle('sel',x.dataset.id===s.id);}); if(selLayer>=0){ preview[selLayer].src=s.id; done.assign=true; render(); } toast('Fonte '+s.lb+' selecionada — clique numa camada para atribuir.'); }; inpEl.appendChild(d); });
+
+// tabs (view only)
+$('#tabPrev').onclick=function(){ view='preview'; setView(); }; $('#tabProg').onclick=function(){ view='program'; setView(); };
+var view='preview';
+function setView(){ $('#tabPrev').classList.toggle('on',view==='preview'); $('#tabProg').classList.toggle('on',view==='program'); var sc=$('#screen'); sc.classList.toggle('previewing',view==='preview'); sc.classList.toggle('programming',view==='program'); render(); }
+
+$('#addLayer').onclick=function(){ if(preview.length>=4){ toast('Máximo de 4 camadas nesta tela.'); return; } preview.push({src:selInput||'IN1', pos:'pip-br', border:0}); selLayer=preview.length-1; done.addlay=true; if(preview.length>=2)done.second=true; render(); toast('Camada '+preview.length+' adicionada.'); };
+$('#delLayer').onclick=function(){ if(selLayer<0)return; preview.splice(selLayer,1); selLayer=Math.min(selLayer,preview.length-1); render(); };
+$$('#posSeg button').forEach(function(b){ b.onclick=function(){ if(selLayer<0){toast('Selecione uma camada.');return;} preview[selLayer].pos=b.dataset.p; done.pos=true; render(); }; });
+$$('#borderSeg button').forEach(function(b){ b.onclick=function(){ if(selLayer<0)return; preview[selLayer].border=+b.dataset.b; render(); }; });
+
+$('#btnTake').onclick=function(){ program=JSON.parse(JSON.stringify(preview)); done.take=true; var sc=$('#screen'); sc.animate([{filter:'brightness(2)'},{filter:'brightness(1)'}],{duration:350}); toast('TAKE — o Preview foi ao ar (Program) com transição '+$('#transSel').value+'.'); view='program'; setView(); };
+
+// presets
+var presEl=$('#presets'); for(var p=1;p<=8;p++){ (function(p){ var b=document.createElement('button'); b.className='preset'; b.dataset.p=p; b.textContent=p; b.onclick=function(){ preset(p); }; presEl.appendChild(b); })(p); }
+$$('.pmode button').forEach(function(b){ b.onclick=function(){ $$('.pmode button').forEach(function(x){x.classList.remove('on');}); b.classList.add('on'); pmode=b.dataset.md; }; });
+function preset(n){ if(pmode==='save'){ presets[n]=JSON.parse(JSON.stringify(preview)); done.save=true; toast('Look salvo no Preset '+n); } else { if(!presets[n]){ toast('Preset '+n+' vazio — salve primeiro (modo SAVE).'); return; } preview=JSON.parse(JSON.stringify(presets[n])); selLayer=preview.length-1; done.recall=true; toast('Preset '+n+' recuperado no Preview.'); } render(); }
+
+// drag layers on screen
+var screen=$('#screen'), dragL=-1, dragMode='', startX, startY, startPos;
+screen.addEventListener('pointerdown',function(e){
+  var t=e.target.closest('.layer'); if(!t)return; var idx=+t.dataset.idx; selLayer=idx;
+  dragMode = e.target.classList.contains('rz')?'resize':'move';
+  var r=screen.getBoundingClientRect(); startX=(e.clientX-r.left)/r.width; startY=(e.clientY-r.top)/r.height; startPos=Object.assign({},resolvePos(preview[idx]));
+  dragL=idx; preview[idx].custom=Object.assign({},startPos); try{screen.setPointerCapture(e.pointerId);}catch(_){}; render();
+});
+screen.addEventListener('pointermove',function(e){ if(dragL<0)return; var r=screen.getBoundingClientRect(); var x=(e.clientX-r.left)/r.width, y=(e.clientY-r.top)/r.height; var L=preview[dragL]; L.pos='custom'; L.custom=L.custom||Object.assign({},startPos);
+  if(dragMode==='move'){ L.custom.x=Math.max(0,Math.min(1-L.custom.w,startPos.x+(x-startX))); L.custom.y=Math.max(0,Math.min(1-L.custom.h,startPos.y+(y-startY))); }
+  else { L.custom.w=Math.max(.12,Math.min(1-L.custom.x,startPos.w+(x-startX))); L.custom.h=Math.max(.12,Math.min(1-L.custom.y,startPos.h+(y-startY))); done.pos=true; }
+  render(); });
+screen.addEventListener('pointerup',function(){ dragL=-1; });
+function resolvePos(L){ return L.pos==='custom'&&L.custom? L.custom : POS[L.pos]; }
+
+function render(){
+  var list = view==='program'? program : preview;
+  var sc=$('#screen'); $$('.layer').forEach(function(x){x.remove();});
+  $('#empty').style.display=list.length?'none':'flex';
+  list.forEach(function(L,i){ var pos=resolvePos(L); var el=document.createElement('div'); el.className='layer'+(view==='preview'&&i===selLayer?' sel':''); el.dataset.idx=i;
+    el.style.left=(pos.x*100)+'%'; el.style.top=(pos.y*100)+'%'; el.style.width=(pos.w*100)+'%'; el.style.height=(pos.h*100)+'%';
+    el.style.background=inp(L.src).bg; el.style.zIndex=i+1; if(L.border)el.style.border=(L.border*2)+'px solid #fff';
+    el.textContent=inp(L.src).lb.split('·')[1]||inp(L.src).lb;
+    if(view==='preview'){ var rz=document.createElement('div'); rz.className='rz'; el.appendChild(rz); }
+    sc.appendChild(el);
+  });
+  // layer props
+  if(selLayer>=0 && preview[selLayer]){ $('#laySrc').textContent=inp(preview[selLayer].src).lb; $$('#posSeg button').forEach(function(b){ b.classList.toggle('on',b.dataset.p===preview[selLayer].pos); }); $$('#borderSeg button').forEach(function(b){ b.classList.toggle('on',+b.dataset.b===preview[selLayer].border); }); }
+  else { $('#laySrc').textContent='—'; }
+  $$('.preset').forEach(function(b){ b.classList.toggle('saved',!!presets[b.dataset.p]); });
+  $('#screenHint').innerHTML = view==='program'? '<b>PROGRAM:</b> é o que está no telão agora. Monte o próximo look no PREVIEW e dê <b>TAKE</b>.' : '<b>PREVIEW:</b> monte o look aqui (camadas, posição, borda) sem afetar o que está no ar. Depois <b>TAKE</b> leva ao PROGRAM com transição seamless.';
+  updateMissions();
+}
+var MISS=[
+  {id:'addlay',t:'Adicionar uma camada (Layer) na tela'},
+  {id:'assign',t:'Atribuir uma fonte (Input) à camada'},
+  {id:'pos',t:'Ajustar tamanho/posição da camada'},
+  {id:'second',t:'Compor com 2+ camadas (ex.: vídeo + PiP)'},
+  {id:'take',t:'Dar TAKE (Preview → Program, seamless)'},
+  {id:'save',t:'Salvar o look num Preset/Memory'},
+  {id:'recall',t:'Recuperar um Preset salvo'},
+];
+function updateMissions(){ var ul=$('#missions'); ul.innerHTML=''; MISS.forEach(function(m){ var d=!!done[m.id]; var li=document.createElement('li'); li.className=d?'done':''; li.innerHTML='<span class="bx">'+(d?'✓':'')+'</span><span>'+m.t+'</span>'; ul.appendChild(li); }); }
+var _tt; function toast(m){ var t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(_tt); _tt=setTimeout(function(){t.classList.remove('show');},2600); }
+window.__aq={preview:preview, program:program, done:done, render:render, presets:presets};
+render();
+})();
+</script>
+</body>
+</html>

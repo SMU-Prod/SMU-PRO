@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RTA — O que é microfonia (SMU)</title>
+<style>
+  :root{--bg:#0b0f17;--panel:#151b28;--line:#26344c;--ink:#e7ecf5;--muted:#8ea0bd;
+    --amber:#F59E0B;--green:#22c55e;--red:#ef4444;--cyan:#22d3ee}
+  *{box-sizing:border-box}html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);font-family:"Space Grotesk",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;padding:10px;user-select:none}
+  h1{font-size:15px;margin:0 0 2px}.sub{font-size:11.5px;color:var(--muted);margin-bottom:8px}
+  .status{display:flex;gap:8px;align-items:center;background:#0c1220;border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:8px;min-height:40px}
+  .dot{width:12px;height:12px;border-radius:50%;background:var(--green);flex:0 0 auto;box-shadow:0 0 8px var(--green)}
+  .dot.bad{background:var(--red);box-shadow:0 0 12px var(--red)}
+  .status .msg{font-size:12.5px;line-height:1.25;flex:1}.status .msg b{color:var(--amber)}
+  .freq{font-size:11px;color:var(--muted);white-space:nowrap}
+  .wrap{background:linear-gradient(180deg,#0e1420,#0a0f18);border:1px solid var(--line);border-radius:12px;padding:8px}
+  canvas{width:100%;height:auto;display:block;border-radius:8px}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  button{font:inherit;font-size:12px;font-weight:700;padding:9px 12px;border-radius:8px;border:1px solid var(--line);
+    background:#111a2b;color:var(--ink);cursor:pointer;flex:1 1 auto;min-width:120px;touch-action:manipulation}
+  button.warn{border-color:var(--red);color:#ffd7d7}
+  button.ok{border-color:var(--green);color:#d7ffe2}
+  button.amber{border-color:var(--amber);color:#ffe6bf}
+  button:active{transform:translateY(1px)}
+  .legend{font-size:10.5px;color:var(--muted);margin-top:8px;line-height:1.35}
+  .legend b{color:var(--ink)}
+</style>
+</head>
+<body>
+  <h1>RTA — o que é a microfonia (feedback)</h1>
+  <div class="sub">O analisador de espectro (RTA) mostra a energia por frequência. Veja um pico nascer, crescer e "apitar" — e como o EQ mata.</div>
+
+  <div class="status">
+    <span class="dot" id="dot"></span>
+    <span class="msg" id="msg">Sistema estável. Suba o ganho para ver a microfonia começar.</span>
+    <span class="freq" id="freq"></span>
+  </div>
+
+  <div class="wrap"><canvas id="rta" width="900" height="340"></canvas></div>
+
+  <div class="controls">
+    <button id="bGain" class="amber">▲ Subir ganho</button>
+    <button id="bFeed" class="warn">🔴 Simular microfonia</button>
+    <button id="bCut" class="ok">✂ Cortar a frequência (EQ)</button>
+    <button id="bAuto">▶ Demo automática</button>
+  </div>
+
+  <div class="legend">
+    <b>Como ler:</b> cada barra é uma faixa de frequência (graves à esquerda, agudos à direita). A microfonia é aquele
+    <b>pico estreito e altíssimo</b> numa frequência só — o som da caixa voltando ao microfone e se realimentando. Quando o
+    <b>ganho antes da realimentação</b> é ultrapassado, o pico dispara. O técnico <b>identifica a frequência</b> e a
+    <b>corta no EQ</b> (o "✂"), derrubando o pico sem baixar o show todo.
+</div>
+
+<script>
+"use strict";
+(function(){
+  const $=id=>document.getElementById(id);
+  const cv=$("rta"), ctx=cv.getContext("2d");
+  const N=31; // bandas 1/3 de oitava (20 Hz .. 20 kHz)
+  const centers=[20,25,31,40,50,63,80,100,125,160,200,250,315,400,500,630,800,1000,1250,1600,2000,2500,3150,4000,5000,6300,8000,10000,12500,16000,20000];
+  const fLabel=i=>{const f=centers[i];return f>=1000?(f/1000)+"k":f+"";};
+  const FB=21; // índice da frequência que realimenta (~2.5 kHz), típico de microfonia de voz
+  // espectro base tipo voz (dB relativos)
+  const base=centers.map((f)=>{
+    let v=0.42;
+    if(f<80)v=0.18; else if(f<250)v=0.55; else if(f<2000)v=0.6; else if(f<6000)v=0.45; else v=0.28;
+    return v;
+  });
+  let peak=0;      // energia extra da microfonia (0..1.6)
+  let gain=0;      // "ganho" acima do limiar (0..1)
+  const THR=0.62;  // limiar de gain-before-feedback
+  let ringPhase=0;
+  let auto=false, autoT=0, autoStage=0;
+
+  function setStatus(bad,msg,f){ $("dot").className="dot"+(bad?" bad":""); $("msg").innerHTML=msg; $("freq").textContent=f||""; }
+
+  function draw(){
+    const W=cv.width,H=cv.height, pad=26, bw=(W-pad*2)/N;
+    ctx.clearRect(0,0,W,H);
+    // grade
+    ctx.strokeStyle="rgba(255,255,255,.05)"; ctx.lineWidth=1;
+    for(let g=0;g<=4;g++){const y=pad+(H-pad*2)*g/4;ctx.beginPath();ctx.moveTo(pad,y);ctx.lineTo(W-pad,y);ctx.stroke();}
+    // barras
+    ringPhase+=0.35;
+    for(let i=0;i<N;i++){
+      let v=base[i];
+      if(i===FB){ v += peak*(0.9+0.1*Math.sin(ringPhase)); }
+      else { v += Math.max(0,peak-0.6)*Math.exp(-Math.abs(i-FB)/2.2)*0.4; } // vizinhança sobe um pouco
+      v=Math.max(0,Math.min(1.15,v));
+      const x=pad+i*bw+1, h=(H-pad*2)*(v/1.15), y=(H-pad)-h;
+      const danger=(i===FB && peak>0.5);
+      const grd=ctx.createLinearGradient(0,y,0,H-pad);
+      if(danger){grd.addColorStop(0,"#ff5b5b");grd.addColorStop(1,"#7a1616");}
+      else{grd.addColorStop(0,"#38d9c6");grd.addColorStop(.6,"#22a58f");grd.addColorStop(1,"#0f5a4e");}
+      ctx.fillStyle=grd; ctx.fillRect(x,y,bw-2,h);
+      if(danger){ ctx.fillStyle="rgba(255,80,80,"+(0.25+0.2*Math.sin(ringPhase))+")"; ctx.fillRect(x-1,pad,bw,H-pad*2); }
+    }
+    // rótulos de eixo (algumas frequências)
+    ctx.fillStyle="rgba(180,200,225,.55)"; ctx.font="10px system-ui"; ctx.textAlign="center";
+    [0,6,11,17,21,24,27,30].forEach(i=>{ctx.fillText(fLabel(i),pad+i*bw+bw/2,H-8);});
+    // marcador da microfonia
+    if(peak>0.5){
+      const x=pad+FB*bw+bw/2;
+      ctx.strokeStyle="rgba(255,90,90,.8)";ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(x,pad);ctx.lineTo(x,H-pad);ctx.stroke();ctx.setLineDash([]);
+      ctx.fillStyle="#ff6b6b";ctx.font="bold 12px system-ui";ctx.fillText("▲ "+fLabel(FB)+"Hz",x,pad-4);
+    }
+  }
+
+  function tick(){
+    // dinâmica da realimentação: se gain passa do limiar, o pico cresce sozinho (loop)
+    if(gain>THR){ peak += (0.02+ (gain-THR)*0.06); }
+    else { peak -= 0.03; }
+    peak=Math.max(0,Math.min(1.55,peak));
+
+    if(peak>0.5){
+      setStatus(true, "<b>MICROFONIA!</b> Um pico dispara e se realimenta sozinho — o apito. Corte a frequência no EQ.", fLabel(FB)+" Hz");
+    } else if(gain>0.3){
+      setStatus(false, "Perto do limite: ganho alto. Mais um pouco e a frequência da sala começa a apitar.", "");
+    } else {
+      setStatus(false, "Sistema estável. Suba o ganho para ver a microfonia começar.", "");
+    }
+
+    if(auto){ autoT++;
+      if(autoStage===0){ gain=Math.min(1,gain+0.012); if(gain>=0.98){autoStage=1;autoT=0;} }        // sobe ganho
+      else if(autoStage===1){ if(peak>1.2 && autoT>30){autoStage=2;autoT=0;} }                        // deixa apitar
+      else if(autoStage===2){ gain=0.2; peak=Math.max(0,peak-0.08); if(peak<=0){autoStage=3;autoT=0;} } // corta (EQ)
+      else if(autoStage===3){ if(autoT>60){autoStage=0;gain=0;} }                                      // pausa e repete
+    }
+    draw(); requestAnimationFrame(tick);
+  }
+
+  $("bGain").onclick=()=>{ auto=false; gain=Math.min(1,gain+0.18); };
+  $("bFeed").onclick=()=>{ auto=false; gain=1; };
+  $("bCut").onclick=()=>{ auto=false; gain=0.2; peak=Math.max(0,peak*0.15); setStatus(false,"<b>Frequência cortada no EQ.</b> O pico caiu e o apito parou — sem baixar o show todo.",""); };
+  $("bAuto").onclick=()=>{ auto=!auto; autoStage=0; autoT=0; gain=0; peak=0; $("bAuto").textContent=auto?"⏸ Pausar demo":"▶ Demo automática"; };
+
+  // começa em demo automática para já "animar"
+  auto=true; $("bAuto").textContent="⏸ Pausar demo";
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1078 @@
+<!doctype html>
+<!--
+  Simulador FIEL — PreSonus StudioLive Série III · aplicativo UC Surface (Universal Control)
+  O simulador É o software UC Surface: tela cheia escura, azul PreSonus, navegação por abas.
+  Fontes oficiais PreSonus:
+   • UC Surface Software Reference Manual (fmicassets/PreSonus)
+   • StudioLive Series III Owner's Manual — presonus.com
+   • Fat Channel KB: support.presonus.com/hc/en-us/articles/210048633
+  Framework invisível (responsivo desktop/tablet/phone, touch-drag, guarda iframe 16:9,
+  leitura de sim_bases em runtime + fallback, botão play com progresso, click-abre-página,
+  navegação sem beco, motor Web Audio) reutilizado do padrão CL5/DiGiCo. Nada visual da Yamaha.
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>PreSonus StudioLive — UC Surface (Simulador fiel · SMU)</title>
+<style>
+  /* ============================================================
+     PreSonus UC Surface — o simulador É o aplicativo de controle.
+     Fundo grafite escuro + azul PreSonus. Sem cromo de janela.
+     ============================================================ */
+  :root{
+    --bg:#0b0e12; --bg2:#0f131a; --pan:#161b22; --pan2:#1c222b; --line:#28303a; --edge:#05070a;
+    --ink:#e6ecf3; --mut:#8a97a6; --dim:#59636f;
+    --pblue:#12a5e5; --pbluehi:#5cc8f2; --green:#3ad07a; --amber:#e8b53a; --red:#e0483f; --purple:#8f7dff;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;height:100dvh}
+  body{background:var(--bg);color:var(--ink);
+    font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;user-select:none;overflow:hidden;touch-action:manipulation;
+    display:flex;flex-direction:column}
+
+  .app{position:fixed;inset:0;display:flex;flex-direction:column;min-height:0;
+    background:radial-gradient(1400px 800px at 50% -20%,#12181f,#080a0e 62%),#080a0e}
+
+  /* ===== TOP STATUS BAR (UC Surface) ===== */
+  .topbar{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:6px 12px;min-height:46px;
+    background:linear-gradient(180deg,#12171e,#0b0f14);border-bottom:1px solid var(--edge);box-shadow:0 2px 8px #0006}
+  .brand{display:flex;align-items:center;gap:9px;flex:0 0 auto}
+  .brand .logo{display:flex;align-items:baseline;gap:0;font-weight:900;letter-spacing:.2px}
+  .brand .logo b{color:var(--ink);font-size:17px}
+  .brand .logo i{color:var(--pblue);font-style:normal;font-size:17px;font-weight:900}
+  .brand .model{font-size:11px;font-weight:800;color:#cdd8e4;letter-spacing:1px;
+    background:linear-gradient(180deg,#101519,#080b0e);border:1px solid #1d3a49;border-radius:5px;padding:3px 8px}
+  .brand .model b{color:var(--pblue)}
+  .uc{font-size:9px;font-weight:800;letter-spacing:1.5px;color:var(--pblue);border:1px solid #1d3a49;border-radius:4px;padding:2px 6px;background:#08131a}
+  .pill{display:flex;align-items:center;gap:6px;font-size:10px;letter-spacing:.5px;color:var(--mut);
+    background:#0a1016;border:1px solid #20303a;border-radius:14px;padding:3px 9px;white-space:nowrap}
+  .pill b{color:var(--ink);font-weight:700}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 7px var(--green)}
+  .dot.warn{background:var(--pblue);box-shadow:0 0 7px var(--pblue)}
+  .bridge{width:150px;height:34px;flex:0 0 auto;background:#05080b;border:1px solid #17222c;border-radius:6px;box-shadow:inset 0 2px 6px #000a}
+  #mbridge{display:block;width:100%;height:100%}
+  .snap{display:flex;align-items:center;gap:8px;background:#08131a;border:1px solid #16394a;border-radius:7px;padding:3px 10px;flex:0 0 auto}
+  .snap .n{font-family:"DS-Digital","Courier New",monospace;font-size:20px;font-weight:800;color:var(--pbluehi);letter-spacing:1.5px;line-height:1;text-shadow:0 0 8px #12a5e555}
+  .snap .l{font-size:8px;color:#5e8195;letter-spacing:1px;line-height:1.1}
+  .spacer{flex:1 1 auto;min-width:6px}
+  .sb{font:inherit;font-size:12px;font-weight:800;border:0;border-radius:8px;padding:8px 14px;cursor:pointer;
+    background:linear-gradient(180deg,#39d98a,#1fae63);color:#04140b;box-shadow:0 2px 6px #0007;white-space:nowrap}
+  .sb:disabled{cursor:wait;background:linear-gradient(180deg,#5cc8f2,#12a5e5);color:#04141a;animation:pulseLoad 1s ease-in-out infinite}
+  @keyframes pulseLoad{0%,100%{filter:brightness(1)}50%{filter:brightness(1.28)}}
+  select#songSel{font:inherit;font-size:11px;color:var(--ink);background:#0a1016;border:1px solid #20303a;border-radius:7px;padding:6px 8px;max-width:210px;cursor:pointer}
+  #audioStatus{font-size:10.5px;color:var(--mut);white-space:nowrap;min-width:96px}
+  .mission{display:flex;align-items:center;gap:9px;background:#0a1016;border:1px solid #20303a;border-radius:8px;padding:5px 11px;flex:1 1 300px;min-width:0;max-width:560px}
+  .mission .idx{font-size:10px;color:var(--pblue);font-weight:800;letter-spacing:.8px;white-space:nowrap}
+  .mission .txt{font-size:11px;line-height:1.25;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mission .txt b{color:#fff} .mission .txt small{color:var(--mut)}
+  .ghost{font:inherit;font-size:10.5px;font-weight:700;color:var(--mut);background:transparent;border:1px solid #29333d;border-radius:6px;padding:5px 9px;cursor:pointer;white-space:nowrap}
+
+  /* ===== UC SURFACE NAV TABS (persistente, nunca beco sem saída) ===== */
+  .tabbar{flex:0 0 auto;display:flex;align-items:stretch;gap:3px;padding:5px 10px;overflow-x:auto;overflow-y:hidden;
+    background:linear-gradient(180deg,#0d1218,#090d12);border-bottom:1px solid var(--edge);scrollbar-width:none}
+  .tabbar::-webkit-scrollbar{height:0}
+  .tab{flex:0 0 auto;font:inherit;font-size:11px;font-weight:700;letter-spacing:.4px;color:#aeb9c6;cursor:pointer;
+    background:linear-gradient(180deg,#212934,#19202a);border:1px solid #0f141a;border-radius:7px;padding:8px 13px;
+    box-shadow:inset 0 1px 0 #ffffff0a;white-space:nowrap}
+  .tab:hover{background:linear-gradient(180deg,#28313d,#1e2530)}
+  .tab.active{color:#04121a;background:linear-gradient(180deg,#5cc8f2,#12a5e5);border-color:#0a6088;box-shadow:0 0 10px #12a5e555}
+  .tab.sof{margin-left:auto}
+  .tab.sof.active{color:#04140b;background:linear-gradient(180deg,#7ff0ac,#22b866);border-color:#0c5e33}
+
+  /* ===== TELA (o touchscreen UC Surface, full-bleed) ===== */
+  .screenwrap{flex:1 1 auto;min-height:0;position:relative;padding:8px;display:flex}
+  .bezel{flex:1;min-width:0;min-height:0;border-radius:10px;padding:6px;
+    background:linear-gradient(180deg,#0b0f14,#05070a);border:1px solid #000;
+    box-shadow:inset 0 3px 14px #000c, 0 0 0 2px #1a232c}
+  #screen{display:block;width:100%;height:100%;border-radius:6px;background:linear-gradient(180deg,#11161d,#0c1015);touch-action:none}
+
+  .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%) translateY(18px);
+    background:#0e141b;border:1px solid var(--pblue);color:var(--ink);padding:9px 15px;border-radius:9px;
+    font-size:12.5px;opacity:0;transition:.24s;pointer-events:none;z-index:60;box-shadow:0 10px 32px #000a}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast b{color:var(--pbluehi)}
+
+  /* ===== RESPONSIVO ===== */
+  body.tablet .tab{padding:9px 11px;font-size:11px}
+  body.tablet .topbar{min-height:44px}
+  body.phone .topbar{flex-wrap:wrap;gap:6px;padding:6px 8px}
+  body.phone .brand .model{display:none}
+  body.phone .uc{display:none}
+  body.phone .bridge{display:none}
+  body.phone .snap{display:none}
+  body.phone .mission{order:5;flex:1 1 100%;max-width:none}
+  body.phone .spacer{display:none}
+  body.phone .tab{padding:10px 12px;font-size:12px}
+  body.phone .tab.sof{margin-left:3px}
+  body.phone select#songSel{max-width:150px}
+  body.phone #audioStatus{display:none}
+  body.phone .screenwrap{padding:5px}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- ===== TOP STATUS BAR ===== -->
+  <div class="topbar">
+    <div class="brand">
+      <span class="logo"><b>Pre</b><i>Sonus</i></span>
+      <span class="model">StudioLive <b>32 · III</b></span>
+      <span class="uc">UC&nbsp;SURFACE</span>
+    </div>
+    <span class="pill"><span class="dot" id="netLed"></span> AVB <b id="netTxt">REDE</b></span>
+    <span class="pill">48 kHz · FLEX DSP</span>
+    <div class="bridge"><canvas id="mbridge"></canvas></div>
+    <div class="snap"><div><div class="n" id="snapNum">001</div></div><div class="l">SCENE<br><span id="snapName">EMPTY</span></div></div>
+    <div class="spacer"></div>
+    <button class="sb" id="playBtn">► Tocar base</button>
+    <select id="songSel"></select>
+    <span id="audioStatus">áudio: —</span>
+    <div class="mission">
+      <span class="idx" id="mIdx">MISSÃO 1/5</span>
+      <span class="txt" id="mTxt">—</span>
+      <button class="ghost" id="mSkip">Pular</button>
+    </div>
+  </div>
+
+  <!-- ===== UC SURFACE TABS ===== -->
+  <div class="tabbar" id="tabs">
+    <button class="tab active" data-mode="overview">MIXER</button>
+    <button class="tab" data-mode="selected">FAT CHANNEL</button>
+    <button class="tab" data-mode="eq">EQ</button>
+    <button class="tab" data-mode="gate">GATE</button>
+    <button class="tab" data-mode="comp">COMP</button>
+    <button class="tab" data-mode="limiter">LIMITER</button>
+    <button class="tab" data-mode="sends">FLEXMIX</button>
+    <button class="tab" data-mode="fx">FLEXFX</button>
+    <button class="tab" data-mode="dca">DCA / MUTE</button>
+    <button class="tab" data-mode="scenes">SCENES</button>
+    <button class="tab" data-mode="meter">RTA · METERS</button>
+    <button class="tab" data-mode="presets">PRESETS</button>
+    <button class="tab sof" id="sofBtn">SENDS ON FADERS</button>
+  </div>
+
+  <!-- ===== TOUCHSCREEN ===== -->
+  <div class="screenwrap"><div class="bezel"><canvas id="screen"></canvas></div></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+(function(){
+  /* ================= MODEL ================= */
+  const MIX_NAMES=["FlexMix 1 Mon","FlexMix 2 Mon","FlexMix 3 IEM","FlexMix 4 IEM","FlexMix 5 Sub","FlexMix 6 Sub","FlexMix 7 FB","FlexMix 8 FB",
+    "FlexMix 9","FlexMix 10","FlexMix 11","FlexMix 12","FlexMix 13","FlexMix 14","FlexMix 15","FlexMix 16",
+    "AUX 17","AUX 18","AUX 19","AUX 20","AUX 21","AUX 22","AUX 23","AUX 24"];
+  const N_MIX=24,N_MTX=8,N_DCA=24,N_MUTE=8,N_SCENE=10,N_FX=4;
+  /* StudioLive Série III (32) = 40 canais de entrada no FLEX DSP; capado em MAXCH=40. */
+  const MAXCH=40, NCH=MAXCH;
+  const COLORS=["#e0483f","#f97316","#12a5e5","#eab308","#3ad07a","#14b8a6","#39c0e6","#3b82f6","#6366f1","#a855f7","#ec4899","#f43f5e"];
+  const NAMES=["Kick In","Snare","Hat","Tom 1","Tom 2","OH L","OH R","Bass DI","Gtr L","Gtr R","Keys L","Keys R","Lead Voc","Voc 2","Voc 3","Coro","Sax","Trumpet","Perc","Play L","Play R","Amb L","Amb R","Talk"];
+  const RAWSRC=[-42,-40,-48,-44,-45,-47,-47,-38,-41,-41,-39,-39,-34,-40,-41,-43,-43,-44,-46,-36,-36,-52,-52,-30];
+  function mkChannel(i){
+    return { i, name:NAMES[i]||("CH "+(i+1)), color:COLORS[i%COLORS.length],
+      gain:20+((i*7)%10)-4, phase:false, phantom:false, hpfOn:false, hpf:80, lpfOn:false, lpf:18000,
+      eq:[{type:'lowshelf',f:120,g:0,q:0.7},{type:'peaking',f:500,g:0,q:1.0},{type:'peaking',f:2500,g:0,q:1.0},{type:'highshelf',f:8000,g:0,q:0.7}],
+      eqType:'STANDARD', eqOn:true,
+      gateOn:false,gateThr:-40,gateRange:-60,gateAtk:1,gateHold:20,gateDecay:200,
+      compOn:false,compThr:-12,compRatio:3,compAtk:20,compRel:150,compKnee:2,compGain:0,
+      limOn:false,limThr:-1,
+      pan:0, fader:-4-((i*5)%8), on:true, cue:false,
+      sends:new Array(N_MIX).fill(-90), sendOn:new Array(N_MIX).fill(false), sendPre:new Array(N_MIX).fill(false),
+      dca:new Array(N_DCA).fill(false), mute:new Array(N_MUTE).fill(false), muteSafe:false,
+      fxSend:new Array(N_FX).fill(-90), fxSendOn:new Array(N_FX).fill(false), src:RAWSRC[i]||-42 };
+  }
+  const CH=Array.from({length:MAXCH},(_,i)=>mkChannel(i));
+
+  /* ===== FlexFX: 4 processadores estéreo, cada um 1 de 9 tipos (4 rev + 4 delay + 1 mod).
+     Todo canal manda p/ os 4 buses; retorno no Main. Ref: StudioLive Series III FLEX DSP. ===== */
+  const FX_TYPES=[
+    {id:'room',    name:'Small Room',      kind:'reverb'},
+    {id:'hall',    name:'Large Hall',      kind:'reverb'},
+    {id:'plate',   name:'Vintage Plate',   kind:'reverb'},
+    {id:'ambience',name:'Ambience',        kind:'reverb'},
+    {id:'mono',    name:'Mono Delay',      kind:'delay'},
+    {id:'filter',  name:'Filter Delay',    kind:'delay'},
+    {id:'stereo',  name:'Stereo Delay',    kind:'delay'},
+    {id:'pingpong',name:'Ping-Pong Delay', kind:'delay'},
+    {id:'chorus',  name:'Chorus',          kind:'mod'}
+  ];
+  function makeFlexFX(){ const start=[1,4,2,6]; // A=Large Hall · B=Mono Delay · C=Vintage Plate · D=Stereo Delay
+    return start.map(t=>({ type:t, on:true, ret:0.35,
+      size:2.2, predelay:20,          // reverb
+      time:0.38, fb:0.35 })); }        // delay/mod
+
+  const state={ sel:12, mode:"overview", sof:-1, sofBus:0, sofType:'mix', master:-3, mono:-3, eqBand:3,
+    knobMode:'gain', scene:0, monitor:-20, dim:false, talkback:false,
+    dcaGain:new Array(N_DCA).fill(0), dcaOn:new Array(N_DCA).fill(true),
+    mixMaster:new Array(N_MIX).fill(0), mixOn:new Array(N_MIX).fill(true),
+    mtxMaster:new Array(N_MTX).fill(0), mtxOn:new Array(N_MTX).fill(true),
+    muteActive:new Array(N_MUTE).fill(false),
+    fxSel:0, flexfx:makeFlexFX() };
+  const scenes=new Array(N_SCENE).fill(null);
+
+  /* ================= HELPERS ================= */
+  const $=s=>document.querySelector(s);
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+  const FMIN=-90,FMAX=10;
+  function faderTxt(db){ return db<=FMIN?"−∞":(db>0?"+":"")+db.toFixed(1); }
+  function panTxt(p){ if(Math.abs(p)<2)return"C"; return (p<0?"L"+Math.round(-p):"R"+Math.round(p)); }
+  function pos2db(p){ if(p<=0.01)return FMIN; return clamp(-60+p*70,FMIN,FMAX); }
+  function db2pos(db){ if(db<=FMIN)return 0; return clamp((db+60)/70,0,1); }
+  function fx(f){ const mn=Math.log10(20),mx=Math.log10(20000); return (Math.log10(f)-mn)/(mx-mn); }
+  function fInv(t){ const mn=Math.log10(20),mx=Math.log10(20000); return Math.pow(10,mn+clamp(t,0,1)*(mx-mn)); }
+  function perf(){ return performance.now(); }
+
+  /* ================= SCREEN COLOR THEME (UC Surface grafite + azul PreSonus) ================= */
+  const SC={ bg0:"#0d1015",bg1:"#151a21", panel:"#1e232b", panelHi:"#262c35", panelLo:"#181c22",
+    border:"#333c47", line:"#2a323c", grid:"#212831",
+    ink:"#e9eef5", mut:"#8b97a6", dim:"#5c6675",
+    amber:"#12a5e5", green:"#3ad07a", red:"#e0483f", cyan:"#39c0e6", purple:"#8f7dff",
+    band:["#e0554e","#e0b84e","#4ec0e0","#8f7dff"] };
+
+  /* ================= biquad magnitude (bate com Web Audio) ================= */
+  const FS=48000;
+  function biquadDb(type,f0,gainDb,Q,f){
+    f0=clamp(f0,10,FS/2-10);Q=Math.max(0.05,Q);
+    const w0=2*Math.PI*f0/FS,cw=Math.cos(w0),sw=Math.sin(w0),A=Math.pow(10,gainDb/40),alpha=sw/(2*Q);
+    let b0,b1,b2,a0,a1,a2;
+    if(type==='peaking'){b0=1+alpha*A;b1=-2*cw;b2=1-alpha*A;a0=1+alpha/A;a1=-2*cw;a2=1-alpha/A;}
+    else if(type==='lowshelf'){const s2=2*Math.sqrt(A)*alpha;b0=A*((A+1)-(A-1)*cw+s2);b1=2*A*((A-1)-(A+1)*cw);b2=A*((A+1)-(A-1)*cw-s2);a0=(A+1)+(A-1)*cw+s2;a1=-2*((A-1)+(A+1)*cw);a2=(A+1)+(A-1)*cw-s2;}
+    else if(type==='highshelf'){const s2=2*Math.sqrt(A)*alpha;b0=A*((A+1)+(A-1)*cw+s2);b1=-2*A*((A-1)+(A+1)*cw);b2=A*((A+1)+(A-1)*cw-s2);a0=(A+1)-(A-1)*cw+s2;a1=2*((A-1)-(A+1)*cw);a2=(A+1)-(A-1)*cw-s2;}
+    else if(type==='highpass'){b0=(1+cw)/2;b1=-(1+cw);b2=(1+cw)/2;a0=1+alpha;a1=-2*cw;a2=1-alpha;}
+    else {b0=(1-cw)/2;b1=1-cw;b2=(1-cw)/2;a0=1+alpha;a1=-2*cw;a2=1-alpha;}
+    const w=2*Math.PI*f/FS,phi=Math.pow(Math.sin(w/2),2);
+    const num=Math.pow(b0+b1+b2,2)-4*(b0*b1+4*b0*b2+b1*b2)*phi+16*b0*b2*phi*phi;
+    const den=Math.pow(a0+a1+a2,2)-4*(a0*a1+4*a0*a2+a1*a2)*phi+16*a0*a2*phi*phi;
+    return 10*Math.log10(Math.max(1e-9,num)/Math.max(1e-9,den));
+  }
+  function eqTypeFactor(t){ return t==='MODERN'?1.45:t==='PASSIVE'?0.6:t==='VINTAGE'?0.82:1; }
+  function eqMag(ch,f){ let g=0; const kf=eqTypeFactor(ch.eqType||'STANDARD');
+    for(const b of ch.eq){ if(b.g!==0) g+=biquadDb(b.type,b.f,b.g,b.q*kf,f); }
+    if(ch.hpfOn) g+=biquadDb('highpass',ch.hpf,0,0.707,f);
+    if(ch.lpfOn) g+=biquadDb('lowpass',ch.lpf,0,0.707,f);
+    return clamp(g,-30,20); }
+
+  const KDEF={ gain:{min:-6,max:60}, hpf:{min:24,max:1000,log:true}, gate:{min:-84,max:0}, comp:{min:-56,max:0}, pan:{min:-63,max:63},
+    monitor:{min:-60,max:0}, eqQ:{min:0.1,max:10,log:true}, eqF:{min:20,max:20000,log:true}, eqG:{min:-15,max:15} };
+
+  function selectChannel(i){ state.sel=i; paintSelected(); drawScreen(); checkMissions(); }
+  let paintSelected=function(){ paintTopHud(); };
+  function paintTopHud(){ var el=document.getElementById('snapNum'); if(el)el.textContent=String(state.scene+1).padStart(3,'0');
+    var nm=document.getElementById('snapName'); if(nm)nm.textContent=scenes[state.scene]?'STORED':'EMPTY'; }
+
+  let renderScreen=function(){}, applyChanAudio=function(){}, applyMonitor=function(){};
+  let _drawReq=0; function drawScreen(){ if(_drawReq)return; _drawReq=requestAnimationFrame(function(){ _drawReq=0; renderScreen(); }); }
+
+  function meterDbOf(i){ const ch=CH[i];
+    if(playing&&ch.hasAudio) return chLevelDb(i)+(ch.on?0:-90);
+    if(!ch.hasAudio) return -90;
+    return ch.src+ch.gain+(ch.on?Math.min(0,ch.fader):-90); }
+
+  function pickInk(hex){ const h=hex.replace('#',''); if(h.length<6)return "#0b0f14";
+    const r=parseInt(h.substr(0,2),16),g=parseInt(h.substr(2,2),16),b=parseInt(h.substr(4,2),16);
+    return (0.299*r+0.587*g+0.114*b)>150?"#0b0f14":"#f4f8ff"; }
+
+  /* ================= SCREEN (canvas) ================= */
+  const cv=$("#screen"), ctx=cv.getContext("2d"); let W=0,H=0,DPR=1;
+  const mb=$("#mbridge"), mbx=mb?mb.getContext("2d"):null; let MBW=0,MBH=0;
+  function sizeCanvas(){ DPR=Math.min(2,window.devicePixelRatio||1);
+    let r=cv.getBoundingClientRect(); W=r.width; H=r.height; cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR); ctx.setTransform(DPR,0,0,DPR,0,0);
+    if(mb){ r=mb.getBoundingClientRect(); MBW=r.width; MBH=r.height; mb.width=Math.round(MBW*DPR); mb.height=Math.round(MBH*DPR); mbx.setTransform(DPR,0,0,DPR,0,0); }
+    drawScreen(); }
+  function roundRect(x,y,w,h,r){ r=Math.max(0,Math.min(r,w/2,h/2)); ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath(); }
+  let hitRegions=[], activeRegion=null;
+  function reg(o){ hitRegions.push(o); return o; }
+  function inRegion(r,p){ if(r.hit==='circle')return Math.hypot(p.x-r.cx,p.y-r.cy)<=(r.rr||12); return p.x>=r.x&&p.x<=r.x+r.w&&p.y>=r.y&&p.y<=r.y+r.h; }
+  function evtPos(e){ const r=cv.getBoundingClientRect(); return {x:e.clientX-r.left,y:e.clientY-r.top}; }
+  cv.addEventListener("pointerdown",e=>{ const p=evtPos(e);
+    for(let i=hitRegions.length-1;i>=0;i--){ const r=hitRegions[i]; if(inRegion(r,p)){ if(r.onDown)r.onDown(p);
+      if(r.onDrag){ activeRegion=r; cv.setPointerCapture(e.pointerId); r.onDrag(p); } drawScreen(); e.preventDefault(); return; } } });
+  cv.addEventListener("pointermove",e=>{ if(!activeRegion)return; activeRegion.onDrag(evtPos(e)); drawScreen(); e.preventDefault(); });
+  const cvUp=()=>{activeRegion=null;}; cv.addEventListener("pointerup",cvUp); cv.addEventListener("pointercancel",cvUp);
+
+  function shade(hex,amt){ const h=hex.replace('#',''); let r=parseInt(h.substr(0,2),16),g=parseInt(h.substr(2,2),16),b=parseInt(h.substr(4,2),16);
+    r=clamp(r+amt,0,255);g=clamp(g+amt,0,255);b=clamp(b+amt,0,255); return "#"+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join(''); }
+  function scrBg(){ const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,SC.bg1); g.addColorStop(1,SC.bg0); ctx.fillStyle=g; ctx.fillRect(0,0,W,H); }
+  function panel(x,y,w,h,title,accent){ const g=ctx.createLinearGradient(0,y,0,y+h); g.addColorStop(0,SC.panelHi); g.addColorStop(1,SC.panelLo);
+    ctx.fillStyle=g; roundRect(x,y,w,h,7); ctx.fill(); ctx.strokeStyle=accent||SC.border; ctx.lineWidth=1; roundRect(x+.5,y+.5,w-1,h-1,7); ctx.stroke();
+    if(title){ ctx.fillStyle=SC.mut; ctx.font="700 9px Inter,system-ui"; ctx.textAlign="left"; ctx.textBaseline="alphabetic"; ctx.fillText(title,x+9,y+13); } }
+  function scrBtn(x,y,w,h,label,active,onClick,col,small){ col=col||SC.amber;
+    const g=ctx.createLinearGradient(0,y,0,y+h); if(active){ g.addColorStop(0,shade(col,20)); g.addColorStop(1,shade(col,-30)); } else { g.addColorStop(0,"#2f3742"); g.addColorStop(1,"#20262e"); }
+    ctx.fillStyle=g; roundRect(x,y,w,h,5); ctx.fill(); ctx.strokeStyle=active?shade(col,-40):"#434b55"; ctx.lineWidth=1; roundRect(x+.5,y+.5,w-1,h-1,5); ctx.stroke();
+    ctx.fillStyle=active?pickInk(col):"#cfe0f0"; ctx.font="700 "+(small?9:10)+"px Inter,system-ui"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(label,x+w/2,y+h/2+.5); ctx.textBaseline="alphabetic";
+    if(onClick) reg({x,y,w,h,onDown:()=>onClick()}); }
+  function scrParam(x,y,w,label,val,min,max,fmt,onSet,opts){ opts=opts||{};
+    if(label){ ctx.fillStyle=SC.mut; ctx.font="700 9px Inter,system-ui"; ctx.textAlign="left"; ctx.fillText(label,x,y-4); }
+    ctx.textAlign="right"; ctx.fillStyle=SC.ink; ctx.font="800 11px Inter,system-ui"; ctx.fillText(fmt(val),x+w,y-4);
+    const th=7; ctx.fillStyle="#12151a"; roundRect(x,y,w,th,4); ctx.fill(); ctx.strokeStyle=SC.line; ctx.lineWidth=1; roundRect(x+.5,y+.5,w-1,th-1,4); ctx.stroke();
+    let t=opts.log?Math.log(Math.max(min,val)/min)/Math.log(max/min):(val-min)/(max-min); t=clamp(t,0,1);
+    ctx.fillStyle=opts.col||SC.amber; roundRect(x,y,t*w,th,4); ctx.fill();
+    ctx.fillStyle="#eef4fb"; ctx.beginPath(); ctx.arc(x+t*w,y+th/2,5.5,0,7); ctx.fill();
+    reg({x:x-4,y:y-10,w:w+8,h:th+20,onDrag:p=>{ let tt=clamp((p.x-x)/w,0,1); let v=opts.log?min*Math.pow(max/min,tt):min+tt*(max-min); if(opts.step)v=Math.round(v/opts.step)*opts.step; onSet(clamp(v,min,max)); }}); }
+  function vmeter(x,y,w,h,dbfs,peakLine){ ctx.fillStyle="#0a0d11"; ctx.fillRect(x,y,w,h);
+    const t=clamp((dbfs+60)/60,0,1),hh=h*t; const g=ctx.createLinearGradient(0,y+h,0,y); g.addColorStop(0,"#2ea85a"); g.addColorStop(.6,"#37c86a"); g.addColorStop(.82,"#e8c33a"); g.addColorStop(1,"#e0483f");
+    ctx.fillStyle=g; ctx.fillRect(x,y+h-hh,w,hh);
+    if(peakLine!==false){ const ty=y+h-h*((-18+60)/60); ctx.strokeStyle="#ffffff40"; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(x,ty); ctx.lineTo(x+w,ty); ctx.stroke(); } }
+
+  function setMode(m){ state.mode=m; document.querySelectorAll('.tab[data-mode]').forEach(t=>t.classList.toggle("active",t.dataset.mode===m)); paintSelected(); drawScreen(); }
+  document.querySelectorAll('.tab[data-mode]').forEach(t=>t.onclick=()=>setMode(t.dataset.mode));
+  function updateSofUi(){ const on=state.sof>=0; const btn=$("#sofBtn"); btn.classList.toggle("active",on);
+    btn.textContent = on ? ("SENDS ▸ "+(state.sofType==='mtx'?"MTX "+(state.sofBus+1):"MIX "+(state.sofBus+1))) : "SENDS ON FADERS"; }
+  function engageSof(type,bus){ if(state.sof>=0 && state.sofType===type && state.sofBus===bus){ state.sof=-1; } else { state.sof=0; state.sofType=type; state.sofBus=bus; } updateSofUi(); drawScreen(); }
+  $("#sofBtn").onclick=()=>{ if(state.sof>=0){ state.sof=-1; updateSofUi(); drawScreen(); } else engageSof('mix',0); };
+
+  renderScreen=function(){ if(!W)return; hitRegions=[]; ctx.clearRect(0,0,W,H); scrBg();
+    switch(state.mode){
+      case "overview": drawOverview(); break; case "selected": drawFatChannel(); break;
+      case "eq": drawEQ(); break; case "gate": drawGate(); break; case "comp": drawComp(); break;
+      case "limiter": drawLimiter(); break; case "sends": drawSends(); break; case "fx": drawFX(); break;
+      case "dca": drawDCA(); break; case "scenes": drawScenes(); break; case "meter": drawMeter(); break;
+      case "presets": drawPresets(); break; default: drawOverview();
+    }
+    if(state.mode!=="overview"){ ctx.fillStyle=SC.dim; ctx.font="700 8px Inter,system-ui"; ctx.textAlign="right";
+      ctx.fillText("SCENE "+String(state.scene+1).padStart(3,'0')+"  ·  CH"+(state.sel+1),W-6,10); ctx.textAlign="left"; }
+  };
+
+  /* ---- shared: EQ graph ---- */
+  function drawEqGraph(gx,gy,gw,gh,ch,interactive){
+    const g=ctx.createLinearGradient(0,gy,0,gy+gh); g.addColorStop(0,"#181d25"); g.addColorStop(1,"#121820");
+    ctx.fillStyle=g; roundRect(gx,gy,gw,gh,6); ctx.fill(); ctx.strokeStyle=SC.border; ctx.lineWidth=1; roundRect(gx+.5,gy+.5,gw-1,gh-1,6); ctx.stroke();
+    ctx.save(); roundRect(gx,gy,gw,gh,6); ctx.clip();
+    ctx.font="8px Inter"; ctx.textAlign="center";
+    [30,100,300,1000,3000,10000].forEach(f=>{ const x=gx+fx(f)*gw; ctx.strokeStyle=SC.grid; ctx.lineWidth=1; ctx.beginPath();ctx.moveTo(x,gy);ctx.lineTo(x,gy+gh);ctx.stroke();
+      ctx.fillStyle=SC.dim; ctx.fillText(f>=1000?(f/1000)+"k":f,x,gy+gh-3); });
+    for(let d=-15;d<=15;d+=5){ const yy=gy+gh/2-d/20*gh/2; ctx.strokeStyle=d===0?"#3a424b":"#1f262e"; ctx.beginPath();ctx.moveTo(gx,yy);ctx.lineTo(gx+gw,yy);ctx.stroke();
+      ctx.fillStyle=SC.dim; ctx.textAlign="left"; ctx.fillText((d>0?"+":"")+d,gx+3,yy-2); ctx.textAlign="center"; }
+    ch.eq.forEach((b,bi)=>{ if(b.g===0)return; ctx.beginPath();
+      for(let px=0;px<=gw;px+=3){ const f=fInv(px/gw),gg=biquadDb(b.type,b.f,b.g,b.q*eqTypeFactor(ch.eqType),f),yy=gy+gh/2-gg/20*gh/2; px===0?ctx.moveTo(gx,yy):ctx.lineTo(gx+px,yy); }
+      ctx.strokeStyle=SC.band[bi]+"55"; ctx.lineWidth=1; ctx.stroke(); });
+    ctx.beginPath();
+    for(let px=0;px<=gw;px+=2){ const f=fInv(px/gw),gg=eqMag(ch,f),yy=gy+gh/2-gg/20*gh/2; px===0?ctx.moveTo(gx,yy):ctx.lineTo(gx+px,yy); }
+    ctx.strokeStyle=ch.color; ctx.lineWidth=2.2; ctx.stroke();
+    ctx.lineTo(gx+gw,gy+gh/2); ctx.lineTo(gx,gy+gh/2); ctx.closePath(); ctx.fillStyle=ch.color+"1c"; ctx.fill();
+    ctx.restore();
+    if(ch.hpfOn){ const x=gx+fx(ch.hpf)*gw; ctx.strokeStyle=SC.amber; ctx.setLineDash([4,3]); ctx.beginPath();ctx.moveTo(x,gy);ctx.lineTo(x,gy+gh);ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle=SC.amber; ctx.beginPath();ctx.arc(x,gy+gh-12,6,0,7);ctx.fill(); ctx.fillStyle="#0b1420";ctx.font="700 8px Inter";ctx.textAlign="center";ctx.fillText("H",x,gy+gh-9);
+      if(interactive) reg({hit:'circle',cx:x,cy:gy+gh-12,rr:15,onDrag:p=>{ ch.hpf=clamp(Math.round(fInv((p.x-gx)/gw)),24,1000); applyChanAudio(ch.i); paintSelected(); checkMissions(); }}); }
+    ch.eq.forEach((b,bi)=>{ const x=gx+fx(b.f)*gw, yy=gy+gh/2-b.g/20*gh/2, selb=state.eqBand===bi;
+      ctx.fillStyle=SC.band[bi]; ctx.beginPath();ctx.arc(x,yy,selb?8:6.5,0,7);ctx.fill();
+      if(selb){ ctx.strokeStyle="#fff"; ctx.lineWidth=1.6; ctx.stroke(); }
+      ctx.fillStyle="#0b1420"; ctx.font="700 8px Inter"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(bi+1,x,yy); ctx.textBaseline="alphabetic";
+      if(interactive) reg({hit:'circle',cx:x,cy:yy,rr:16,onDown:()=>{state.eqBand=bi;paintSelected();},
+        onDrag:p=>{ b.f=clamp(Math.round(fInv((p.x-gx)/gw)),20,20000); b.g=clamp(-(p.y-gy-gh/2)/(gh/2)*15,-15,15); applyChanAudio(ch.i); paintSelected(); checkMissions(); }}); });
+  }
+
+  /* ---- shared: dynamics mini graph ---- */
+  function drawDynMini(x,y,w,h,ch,which){
+    const isGate=which===1; const on=isGate?ch.gateOn:ch.compOn; const col=isGate?SC.green:SC.cyan;
+    panel(x,y,w,h, null, on?col:SC.border);
+    ctx.fillStyle=on?col:SC.mut; ctx.font="800 9px Inter"; ctx.textAlign="left"; ctx.textBaseline="alphabetic";
+    ctx.fillText(isGate?"NOISE GATE ▸":"COMPRESSOR ▸", x+8, y+13);
+    reg({x:x+2,y:y+2,w:w-46,h:16,onDown:()=>setMode(isGate?'gate':'comp')});
+    scrBtn(x+w-40,y+4,34,15,on?"ON":"OFF",on,()=>{ if(isGate)ch.gateOn=!ch.gateOn; else ch.compOn=!ch.compOn; applyChanAudio(ch.i); paintSelected(); checkMissions(); }, col,true);
+    const px0=x+10,py0=y+24,pw=w*0.52,ph=h-34;
+    ctx.strokeStyle=SC.line; ctx.strokeRect(px0,py0,pw,ph);
+    ctx.strokeStyle="#343b43"; ctx.setLineDash([3,3]); ctx.beginPath();ctx.moveTo(px0,py0+ph);ctx.lineTo(px0+pw,py0);ctx.stroke(); ctx.setLineDash([]);
+    if(isGate){ const X=d=>px0+clamp((d+72)/72,0,1)*pw, Y=o=>py0+ph-clamp((o+72)/72,0,1)*ph;
+      ctx.beginPath(); for(let d=-72;d<=0;d+=2){ const o=d>ch.gateThr?d:d+ch.gateRange; const xx=X(d),yy=Y(clamp(o,-72,0)); d===-72?ctx.moveTo(xx,yy):ctx.lineTo(xx,yy); }
+      ctx.strokeStyle=SC.green; ctx.lineWidth=2; ctx.stroke();
+      const tx=X(ch.gateThr); ctx.strokeStyle=SC.red; ctx.setLineDash([3,2]); ctx.beginPath();ctx.moveTo(tx,py0);ctx.lineTo(tx,py0+ph);ctx.stroke(); ctx.setLineDash([]);
+      reg({x:tx-12,y:py0,w:24,h:ph,onDrag:p=>{ ch.gateThr=clamp(Math.round((p.x-px0)/pw*72-72),-72,0); applyChanAudio(ch.i); paintSelected(); }});
+    } else { const ratio=ch.compRatio>=40?40:ch.compRatio; const X=d=>px0+clamp((d+60)/60,0,1)*pw, Y=o=>py0+ph-clamp((o+60)/60,0,1)*ph;
+      ctx.beginPath(); for(let d=-60;d<=0;d+=2){ let o=d>ch.compThr?ch.compThr+(d-ch.compThr)/ratio:d; o+=ch.compGain; const xx=X(d),yy=Y(clamp(o,-60,6)); d===-60?ctx.moveTo(xx,yy):ctx.lineTo(xx,yy); }
+      ctx.strokeStyle=SC.cyan; ctx.lineWidth=2; ctx.stroke();
+      const tx=X(ch.compThr); ctx.strokeStyle=SC.red; ctx.setLineDash([3,2]); ctx.beginPath();ctx.moveTo(tx,py0);ctx.lineTo(tx,py0+ph);ctx.stroke(); ctx.setLineDash([]);
+      reg({x:tx-12,y:py0,w:24,h:ph,onDrag:p=>{ ch.compThr=clamp(Math.round((p.x-px0)/pw*60-60),-54,0); applyChanAudio(ch.i); paintSelected(); }});
+    }
+    const ix=px0+pw+12, iw=x+w-ix-8; let iy=py0+4;
+    ctx.textAlign="left"; ctx.font="700 8px Inter";
+    if(isGate){ ctx.fillStyle=SC.mut; ctx.fillText("THR",ix,iy+3); ctx.fillStyle=SC.ink; ctx.textAlign="right"; ctx.fillText(ch.gateThr+" dB",ix+iw,iy+3); iy+=15;
+      ctx.textAlign="left"; ctx.fillStyle=SC.mut; ctx.fillText("RANGE",ix,iy+3); ctx.fillStyle=SC.ink; ctx.textAlign="right"; ctx.fillText(ch.gateRange+" dB",ix+iw,iy+3); iy+=17;
+      const gr=ch._gr||0, open=gr<0.5; ctx.textAlign="left"; ctx.fillStyle=open?SC.green:SC.red; ctx.beginPath();ctx.arc(ix+5,iy+2,4,0,7);ctx.fill();
+      ctx.fillStyle=SC.ink; ctx.fillText(open?"OPEN":"CLOSED",ix+14,iy+5);
+    } else { const r=ch.compRatio>=40?"∞":ch.compRatio.toFixed(1);
+      ctx.fillStyle=SC.mut; ctx.fillText("THR",ix,iy+3); ctx.fillStyle=SC.ink; ctx.textAlign="right"; ctx.fillText(ch.compThr+" dB",ix+iw,iy+3); iy+=15;
+      ctx.textAlign="left"; ctx.fillStyle=SC.mut; ctx.fillText("RATIO",ix,iy+3); ctx.fillStyle=SC.ink; ctx.textAlign="right"; ctx.fillText(r+":1",ix+iw,iy+3); iy+=17;
+      let gr=0; if(ac&&aNodes[ch.i]&&ch.compOn) gr=-aNodes[ch.i].comp.reduction;
+      ctx.textAlign="left"; ctx.fillStyle=SC.mut; ctx.fillText("GR "+gr.toFixed(1),ix,iy+5);
+      ctx.fillStyle="#12151a"; ctx.fillRect(ix,iy+9,iw,6); ctx.fillStyle=SC.cyan; ctx.fillRect(ix,iy+9,clamp(gr/24,0,1)*iw,6);
+    }
+  }
+
+  /* ---- Fat Channel signal-chain strip (HPF ▸ GATE ▸ COMP ▸ EQ ▸ LIMITER) ---- */
+  function drawChainStrip(x,y,w,h,ch){
+    const tiles=[
+      {id:'selected',lbl:'HPF',on:ch.hpfOn,col:SC.amber,nav:null,tog:()=>{ch.hpfOn=!ch.hpfOn;}},
+      {id:'gate',lbl:'GATE',on:ch.gateOn,col:SC.green,tog:()=>{ch.gateOn=!ch.gateOn;}},
+      {id:'comp',lbl:'COMP',on:ch.compOn,col:SC.cyan,tog:()=>{ch.compOn=!ch.compOn;}},
+      {id:'eq',lbl:'EQ',on:ch.eqOn!==false,col:SC.band[2],tog:()=>{ch.eqOn=(ch.eqOn===false);}},
+      {id:'limiter',lbl:'LIMITER',on:ch.limOn,col:SC.red,tog:()=>{ch.limOn=!ch.limOn;}}
+    ];
+    const n=tiles.length, arrowW=14, tw=(w-(n-1)*arrowW)/n;
+    tiles.forEach((t,ti)=>{ const tx=x+ti*(tw+arrowW);
+      const g=ctx.createLinearGradient(0,y,0,y+h); if(t.on){ g.addColorStop(0,shade(t.col,15)); g.addColorStop(1,shade(t.col,-40)); } else { g.addColorStop(0,"#242a33"); g.addColorStop(1,"#1a1f27"); }
+      ctx.fillStyle=g; roundRect(tx,y,tw,h,6); ctx.fill();
+      ctx.strokeStyle=t.on?shade(t.col,-30):SC.border; ctx.lineWidth=state.mode===t.id?2:1; roundRect(tx+.5,y+.5,tw-1,h-1,6); ctx.stroke();
+      ctx.fillStyle=t.on?pickInk(t.col):SC.mut; ctx.font="800 10px Inter"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(t.lbl,tx+tw/2,y+h/2-4);
+      ctx.font="700 7px Inter"; ctx.fillStyle=t.on?pickInk(t.col):SC.dim; ctx.fillText(t.on?"ON · abrir ▸":"abrir ▸",tx+tw/2,y+h/2+9); ctx.textBaseline="alphabetic";
+      // whole tile opens its page; a small corner toggles ON/OFF
+      reg({x:tx,y,w:tw,h,onDown:()=>setMode(t.id)});
+      if(t.tog){ ctx.fillStyle=t.on?SC.green:"#556"; ctx.beginPath();ctx.arc(tx+tw-9,y+9,4,0,7);ctx.fill();
+        reg({x:tx+tw-20,y:y,w:20,h:20,onDown:()=>{ t.tog(); applyChanAudio(ch.i); paintSelected(); checkMissions(); }}); }
+      if(ti<n-1){ ctx.fillStyle=SC.dim; ctx.font="800 12px Inter"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText("▸",tx+tw+arrowW/2,y+h/2); ctx.textBaseline="alphabetic"; }
+    });
+  }
+
+  /* ================= FAT CHANNEL (home do canal) ================= */
+  function drawFatChannel(){
+    const ch=CH[state.sel], m=8; let y=6; const HH=50;
+    panel(m,y,W-2*m,HH,null,ch.color);
+    ctx.fillStyle=ch.color; roundRect(m+6,y+6,24,22,4); ctx.fill();
+    ctx.fillStyle=pickInk(ch.color); ctx.font="800 12px Inter"; ctx.textAlign="center"; ctx.textBaseline="alphabetic"; ctx.fillText(String(ch.i+1),m+18,y+21);
+    ctx.textAlign="left"; ctx.fillStyle=SC.ink; ctx.font="800 14px Inter"; ctx.fillText(ch.name,m+38,y+16);
+    ctx.fillStyle=SC.mut; ctx.font="700 8px Inter"; ctx.fillText("FAT CHANNEL  ·  CH "+(ch.i+1),m+38,y+27);
+    ctx.textAlign="right"; ctx.fillStyle=ch.on?SC.green:SC.dim; ctx.font="800 12px Inter"; ctx.fillText(faderTxt(ch.fader)+" dB",W-m-118,y+15); ctx.textAlign="left";
+    scrBtn(W-m-112,y+6,34,18,"SEL",true,()=>{},SC.amber,true);
+    scrBtn(W-m-74,y+6,32,18,ch.cue?"SOLO":"SOLO",ch.cue,()=>{ch.cue=!ch.cue;applyCue();},SC.amber,true);
+    scrBtn(W-m-38,y+6,32,18,ch.on?"ON":"MUTE",ch.on,()=>{ch.on=!ch.on;applyChanAudio(ch.i);checkMissions();},ch.on?SC.green:SC.red,true);
+    // input strip: GAIN + polarity + 48V
+    const gRowY=y+30;
+    ctx.fillStyle=SC.amber; ctx.font="800 9px Inter"; ctx.textAlign="left"; ctx.fillText("INPUT GAIN",m+6,gRowY+9);
+    const bxPh=W-m-18, bx48=bxPh-6-30, gsx=m+70, gsw=(bx48-8)-gsx;
+    scrParam(gsx,gRowY+9,gsw,"",ch.gain,-6,60,v=>(v>0?"+":"")+Math.round(v)+" dB",v=>{ch.gain=v;applyChanAudio(ch.i);paintSelected();checkMissions();},{col:SC.amber});
+    scrBtn(bx48,gRowY+1,30,15,"48V",ch.phantom,()=>{ch.phantom=!ch.phantom;paintSelected();},SC.red,true);
+    scrBtn(bxPh,gRowY+1,16,15,"Ø",ch.phase,()=>{ch.phase=!ch.phase;applyChanAudio(ch.i);paintSelected();},SC.amber,true);
+    y+=HH+6;
+    // signal-chain strip
+    const chainH=42; drawChainStrip(m,y,W-2*m,chainH,ch); y+=chainH+6;
+    // main: EQ (left) + Gate/Comp minis (right)
+    const mainH=H-y-6, gx=m, gw=W*0.545-m;
+    drawEqGraph(gx,y,gw,mainH*0.62,ch,true);
+    ctx.fillStyle=SC.mut; ctx.font="700 8px Inter"; ctx.textAlign="left"; ctx.fillText("EQUALIZER · 4-BAND · "+ch.eqType,gx+6,y+11);
+    scrBtn(gx+gw-52,y+2,48,14,"EQ ▸",false,()=>setMode('eq'),SC.band[2],true);
+    // HPF + Limiter + pan below EQ
+    let by=y+mainH*0.62+6; const rowH=(mainH*0.38-12)/2;
+    panel(gx,by,gw,rowH,null);
+    scrBtn(gx+6,by+(rowH-18)/2,54,18,"HPF "+(ch.hpfOn?"ON":"OFF"),ch.hpfOn,()=>{ch.hpfOn=!ch.hpfOn;applyChanAudio(ch.i);paintSelected();checkMissions();},SC.amber,true);
+    scrParam(gx+72,by+rowH/2+3,gw*0.42,"HPF",ch.hpf,24,1000,v=>Math.round(v)+" Hz",v=>{ch.hpf=Math.round(v);ch.hpfOn=true;applyChanAudio(ch.i);paintSelected();checkMissions();},{log:true,col:SC.amber});
+    ctx.fillStyle=SC.mut; ctx.font="700 8px Inter"; ctx.textAlign="left"; ctx.fillText("PAN",gx+gw*0.60,by+rowH/2-4);
+    const pbx=gx+gw*0.60+26,pbw=gw*0.34,pby=by+rowH/2+2;
+    ctx.fillStyle="#12151a"; ctx.fillRect(pbx,pby-3,pbw,6); ctx.fillStyle="#3a424b"; ctx.fillRect(pbx+pbw/2-0.5,pby-6,1,12);
+    const pn=clamp((ch.pan+63)/126,0,1); ctx.fillStyle=ch.color; ctx.beginPath();ctx.arc(pbx+pn*pbw,pby,5,0,7);ctx.fill();
+    reg({x:pbx-4,y:pby-10,w:pbw+8,h:20,onDrag:p=>{ ch.pan=clamp(Math.round(((p.x-pbx)/pbw)*126-63),-63,63); applyChanAudio(ch.i); paintSelected(); }});
+    ctx.fillStyle=SC.ink; ctx.font="800 9px Inter"; ctx.textAlign="right"; ctx.fillText(panTxt(ch.pan),pbx+pbw+22,pby+3); ctx.textAlign="left";
+    by+=rowH+6;
+    panel(gx,by,gw,rowH,null,ch.limOn?SC.red:SC.border);
+    scrBtn(gx+6,by+(rowH-18)/2,66,18,"LIMITER "+(ch.limOn?"ON":"OFF"),ch.limOn,()=>{ch.limOn=!ch.limOn;applyChanAudio(ch.i);paintSelected();checkMissions();},SC.red,true);
+    scrParam(gx+84,by+rowH/2+3,gw*0.42,"THRESHOLD",ch.limThr,-30,0,v=>v.toFixed(0)+" dB",v=>{ch.limThr=Math.round(v);ch.limOn=true;applyChanAudio(ch.i);paintSelected();},{col:SC.red});
+    scrBtn(gx+gw-58,by+(rowH-18)/2,52,18,"LIMIT ▸",false,()=>setMode('limiter'),SC.red,true);
+    // right column: gate + comp minis
+    const rx=W*0.545+2, rw=W-rx-m, dh=(mainH-6)/2;
+    drawDynMini(rx,y,rw,dh,ch,1);
+    drawDynMini(rx,y+dh+6,rw,dh,ch,2);
+  }
+
+  /* ================= MIXER (overview) ================= */
+  let ovBank=0; const N_OVBANK=Math.ceil(MAXCH/16);
+  function drawOverview(){
+    ctx.textBaseline="alphabetic";
+    const from=ovBank*16, list=[]; for(let s=0;s<16;s++){ const ci=from+s; if(ci<MAXCH)list.push(ci); }
+    ctx.fillStyle=SC.amber; ctx.font="800 10px Inter"; ctx.textAlign="left"; ctx.fillText("MIXER · INPUT "+(from+1)+"–"+Math.min(from+16,MAXCH),8,13);
+    ctx.fillStyle=SC.dim; ctx.textAlign="right"; ctx.font="700 8px Inter";
+    ctx.fillText(state.sof>=0?("SENDS ON FADERS ▸ "+(state.sofType==='mtx'?"MTX ":"MIX ")+(state.sofBus+1)):"FAT CHANNEL VIEW",W-8,13);
+    const n=Math.max(1,list.length), top=20, botH=20, gh=H-top-botH-6, gap=3, cw=(W-12-(n-1)*gap)/n;
+    list.forEach((ci,s)=>{ const ch=CH[ci], x=6+s*(cw+gap), y=top;
+      const sof=state.sof>=0;
+      const g=ctx.createLinearGradient(0,y,0,y+gh); g.addColorStop(0,SC.panelHi); g.addColorStop(1,SC.panelLo);
+      ctx.fillStyle=g; roundRect(x,y,cw,gh,5); ctx.fill();
+      ctx.strokeStyle=ci===state.sel?SC.amber:SC.border; ctx.lineWidth=ci===state.sel?1.8:1; roundRect(x+.5,y+.5,cw-1,gh-1,5); ctx.stroke();
+      ctx.fillStyle=ch.color; roundRect(x,y,cw,13,5); ctx.fill(); ctx.fillRect(x,y+7,cw,6);
+      ctx.fillStyle=pickInk(ch.color); ctx.font="800 7px Inter"; ctx.textAlign="center"; ctx.fillText(String(ci+1),x+8,y+9);
+      ctx.fillText(ch.name.slice(0,7),x+cw/2+3,y+9);
+      const ix=x+4, iw=cw-8; let yy=y+17;
+      // Fat Channel mini (EQ thumbnail)
+      const eqH=Math.min(28,gh*0.18); ctx.fillStyle="#121820"; roundRect(ix,yy,iw,eqH,3); ctx.fill();
+      const mid=yy+eqH/2; ctx.strokeStyle=SC.grid; ctx.beginPath();ctx.moveTo(ix,mid);ctx.lineTo(ix+iw,mid);ctx.stroke();
+      ctx.beginPath(); for(let px=0;px<=iw;px+=2){ const f=fInv(px/iw); const yv=clamp(mid-clamp(eqMag(ch,f)/16,-1,1)*(eqH*0.42),yy+2,yy+eqH-2); px===0?ctx.moveTo(ix,yv):ctx.lineTo(ix+px,yv); }
+      ctx.strokeStyle=ch.color; ctx.lineWidth=1.4; ctx.stroke();
+      yy+=eqH+4;
+      // Fat Channel status dots: G C L
+      const inDb=(playing&&ch.hasAudio)?chLevelDb(ci):ch.src+ch.gain;
+      const gOpen=!ch.gateOn||inDb>ch.gateThr;
+      ctx.fillStyle=ch.gateOn?(gOpen?SC.green:SC.red):"#333a43"; ctx.beginPath();ctx.arc(ix+4,yy+3,3,0,7);ctx.fill();
+      ctx.fillStyle=ch.gateOn?SC.ink:SC.dim; ctx.font="700 6.5px Inter"; ctx.textAlign="left"; ctx.fillText("G",ix+9,yy+5.5);
+      ctx.fillStyle=ch.compOn?SC.cyan:"#333a43"; ctx.beginPath();ctx.arc(ix+iw*0.42,yy+3,3,0,7);ctx.fill();
+      ctx.fillStyle=ch.compOn?SC.ink:SC.dim; ctx.fillText("C",ix+iw*0.42+5,yy+5.5);
+      ctx.fillStyle=ch.limOn?SC.red:"#333a43"; ctx.beginPath();ctx.arc(ix+iw*0.74,yy+3,3,0,7);ctx.fill();
+      ctx.fillStyle=ch.limOn?SC.ink:SC.dim; ctx.fillText("L",ix+iw*0.74+5,yy+5.5);
+      yy+=11;
+      ctx.fillStyle="#12151a"; ctx.fillRect(ix,yy,iw,3); ctx.fillStyle="#3a424b"; ctx.fillRect(ix+iw/2-0.5,yy-1,1,5);
+      const pn=clamp((ch.pan+63)/126,0,1); ctx.fillStyle=ch.color; ctx.beginPath();ctx.arc(ix+pn*iw,yy+1.5,2.5,0,7);ctx.fill();
+      yy+=8;
+      // fader (value depends on Sends-on-Faders)
+      const fdb= sof? ch.sends[state.sofBus] : ch.fader;
+      const fzTop=yy, fzBot=y+gh-30; const railX=ix+iw*0.30;
+      ctx.fillStyle="#12151a"; roundRect(railX-2,fzTop,4,fzBot-fzTop,2); ctx.fill();
+      const uY=fzBot-db2pos(0)*(fzBot-fzTop); ctx.strokeStyle="#3a424b"; ctx.setLineDash([2,2]); ctx.beginPath();ctx.moveTo(railX-6,uY);ctx.lineTo(railX+iw*0.24,uY);ctx.stroke(); ctx.setLineDash([]);
+      const capY=fzBot-db2pos(fdb)*(fzBot-fzTop), capW=iw*0.40, capX=railX-capW/2;
+      const capCol= sof?SC.cyan:ch.color;
+      ctx.fillStyle=ch.on?"#22272d":"#181b20"; roundRect(capX,capY-5,capW,10,2); ctx.fill(); ctx.strokeStyle=ch.on?capCol:"#3a424b"; ctx.lineWidth=1.2; roundRect(capX,capY-5,capW,10,2); ctx.stroke();
+      ctx.fillStyle=ch.on?"#dbe4f2":"#5a6b88"; ctx.fillRect(capX+1,capY-1,capW-2,2);
+      vmeter(railX+iw*0.30,fzTop,5,fzBot-fzTop,inDb);
+      ctx.fillStyle=SC.ink; ctx.font="800 7.5px Inter"; ctx.textAlign="left"; ctx.fillText(faderTxt(fdb),ix,fzBot+9);
+      // Mute / Solo buttons (UC Surface bottom of strip)
+      const bY=y+gh-18, halfW=(iw-3)/2;
+      scrBtn(ix,bY,halfW,15,"M",!ch.on,()=>{ch.on=!ch.on;applyChanAudio(ch.i);checkMissions();},SC.red,true);
+      scrBtn(ix+halfW+3,bY,halfW,15,"S",ch.cue,()=>{ch.cue=!ch.cue;applyCue();},SC.amber,true);
+      if(!ch.on){ ctx.fillStyle="rgba(30,6,10,.35)"; roundRect(x,y+13,cw,gh-31,5); ctx.fill(); }
+      // fader drag
+      reg({x:capX-6,y:fzTop-4,w:capW+16,h:fzBot-fzTop+12,onDrag:p=>{ const v=pos2db(1-(p.y-fzTop)/(fzBot-fzTop)); if(sof){ ch.sends[state.sofBus]=v; if(v>FMIN)ch.sendOn[state.sofBus]=true; } else { ch.fader=v; applyChanAudio(ch.i); } checkMissions(); }});
+      // card tap → select + open Fat Channel
+      reg({x,y:y,w:cw,h:eqH+17,onDown:()=>{ selectChannel(ci); setMode('selected'); }});
+    });
+    // bottom bank buttons
+    const by=H-botH-1, bgap=4, bbw=(W-12-(N_OVBANK-1)*bgap)/N_OVBANK;
+    for(let bi=0;bi<N_OVBANK;bi++){ scrBtn(6+bi*(bbw+bgap),by,bbw,botH, (bi*16+1)+"–"+Math.min(bi*16+16,MAXCH), ovBank===bi, ()=>{ ovBank=bi; drawScreen(); }, SC.amber, true); }
+  }
+
+  /* ================= EQ (full) ================= */
+  function drawEQ(){
+    const ch=CH[state.sel], m=8; const gx=m,gy=6,gw=W*0.62-m,gh=H-12;
+    drawEqGraph(gx,gy,gw,gh,ch,true);
+    ctx.fillStyle=ch.color; ctx.font="800 12px Inter"; ctx.textAlign="left"; ctx.fillText("EQ · "+ch.name,gx+8,gy+14);
+    const rx=gx+gw+8, rw=W-rx-m; let yy=gy+2;
+    // EQ ON/OFF (mirrors the Fat Channel chain tile)
+    scrBtn(rx+rw-52,yy,52,18,ch.eqOn!==false?"EQ ON":"EQ OFF",ch.eqOn!==false,()=>{ch.eqOn=(ch.eqOn===false);applyChanAudio(ch.i);paintSelected();checkMissions();},SC.green,true);
+    ctx.fillStyle=SC.mut; ctx.font="700 9px Inter"; ctx.fillText("4-BAND PARAMÉTRICO · CH"+(ch.i+1),rx,yy+10); yy+=20;
+    const bw=(rw-9)/4, bn=["LOW","LO-MID","HI-MID","HIGH"];
+    bn.forEach((nm,bi)=>scrBtn(rx+bi*(bw+3),yy,bw,20,nm,state.eqBand===bi,()=>{state.eqBand=bi;paintSelected();},SC.band[bi],true)); yy+=28;
+    const b=ch.eq[state.eqBand];
+    scrParam(rx,yy+12,rw,"FREQUENCY",b.f,20,20000,v=>Math.round(v)+" Hz",v=>{b.f=Math.round(v);applyChanAudio(ch.i);paintSelected();},{log:true,col:SC.band[state.eqBand]}); yy+=32;
+    scrParam(rx,yy+12,rw,"GAIN",b.g,-15,15,v=>(v>0?"+":"")+v.toFixed(1)+" dB",v=>{b.g=v;applyChanAudio(ch.i);paintSelected();checkMissions();},{col:SC.band[state.eqBand]}); yy+=32;
+    scrParam(rx,yy+12,rw,"Q",b.q,0.10,10,v=>v.toFixed(2),v=>{b.q=v;applyChanAudio(ch.i);paintSelected();},{log:true,col:SC.band[state.eqBand]}); yy+=34;
+    if(state.eqBand===0){ scrBtn(rx,yy,rw/2-3,20,"L.SHELF",b.type==='lowshelf',()=>{b.type='lowshelf';applyChanAudio(ch.i);},SC.band[0],true); scrBtn(rx+rw/2+3,yy,rw/2-3,20,"BELL",b.type==='peaking',()=>{b.type='peaking';applyChanAudio(ch.i);},SC.band[0],true); yy+=26; }
+    else if(state.eqBand===3){ scrBtn(rx,yy,rw/2-3,20,"H.SHELF",b.type==='highshelf',()=>{b.type='highshelf';applyChanAudio(ch.i);},SC.band[3],true); scrBtn(rx+rw/2+3,yy,rw/2-3,20,"BELL",b.type==='peaking',()=>{b.type='peaking';applyChanAudio(ch.i);},SC.band[3],true); yy+=26; }
+    else { ctx.fillStyle=SC.dim; ctx.font="9px Inter"; ctx.fillText("Banda BELL (paramétrica)",rx,yy+13); yy+=26; }
+    scrBtn(rx,yy,rw/2-3,20,"HPF "+(ch.hpfOn?ch.hpf+"Hz":"OFF"),ch.hpfOn,()=>{ch.hpfOn=!ch.hpfOn;applyChanAudio(ch.i);paintSelected();},SC.amber,true);
+    scrBtn(rx+rw/2+3,yy,rw/2-3,20,"LPF "+(ch.lpfOn?"ON":"OFF"),ch.lpfOn,()=>{ch.lpfOn=!ch.lpfOn;applyChanAudio(ch.i);},SC.purple,true); yy+=28;
+    ctx.fillStyle=SC.mut; ctx.font="700 9px Inter"; ctx.fillText("EQ TYPE (Fat Channel)",rx,yy+2); yy+=6;
+    const tw=(rw-9)/4; ["STANDARD","MODERN","VINTAGE","PASSIVE"].forEach((tp,ti)=>scrBtn(rx+ti*(tw+3),yy,tw,20,tp.slice(0,4),ch.eqType===tp,()=>{ch.eqType=tp;applyChanAudio(ch.i);},SC.cyan,true));
+  }
+
+  /* ================= GATE (full) ================= */
+  function drawGate(){
+    const ch=CH[state.sel],m=8,gx=m,gy=6,gw=W*0.52-m,gh=H-12;
+    panel(gx,gy,gw,gh,"NOISE GATE — "+ch.name);
+    const px0=gx+34,py0=gy+26,pw=gw-58,ph=gh-56;
+    const X=d=>px0+clamp((d+72)/72,0,1)*pw, Y=o=>py0+ph-clamp((o+72)/72,0,1)*ph;
+    ctx.strokeStyle=SC.line; ctx.strokeRect(px0,py0,pw,ph);
+    ctx.strokeStyle="#343b43"; ctx.setLineDash([3,3]); ctx.beginPath();ctx.moveTo(X(-72),Y(-72));ctx.lineTo(X(0),Y(0));ctx.stroke(); ctx.setLineDash([]);
+    ctx.beginPath(); for(let d=-72;d<=0;d+=1){ const o=d>ch.gateThr?d:d+ch.gateRange; const yy=Y(clamp(o,-90,0)); d===-72?ctx.moveTo(X(d),yy):ctx.lineTo(X(d),yy); }
+    ctx.strokeStyle=SC.green; ctx.lineWidth=2.2; ctx.stroke();
+    const tx=X(ch.gateThr); ctx.strokeStyle=SC.red; ctx.setLineDash([4,3]); ctx.beginPath();ctx.moveTo(tx,py0);ctx.lineTo(tx,py0+ph);ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle=SC.red; ctx.font="700 9px Inter"; ctx.textAlign="center"; ctx.fillText("THR",tx,py0-2);
+    reg({x:tx-14,y:py0,w:28,h:ph,onDrag:p=>{ ch.gateThr=clamp(Math.round((p.x-px0)/pw*72-72),-72,0); applyChanAudio(ch.i); paintSelected(); }});
+    ctx.fillStyle=SC.dim; ctx.font="8px Inter"; ctx.fillText("ENTRADA (dB)",px0+pw/2,py0+ph+12);
+    const rx=gx+gw+8,rw=W-rx-m; panel(rx,gy,rw,gh,null); let yy=gy+8;
+    ctx.fillStyle=SC.ink; ctx.font="800 11px Inter"; ctx.textAlign="left"; ctx.fillText("NOISE GATE",rx+12,yy+9);
+    scrBtn(rx+rw-60,yy,50,18,ch.gateOn?"ON":"OFF",ch.gateOn,()=>{ch.gateOn=!ch.gateOn;applyChanAudio(ch.i);paintSelected();checkMissions();},SC.green,true); yy+=28;
+    const gr=ch._gr||0,open=gr<0.5; ctx.fillStyle=ch.gateOn?(open?SC.green:SC.red):"#343b43"; ctx.beginPath();ctx.arc(rx+18,yy+5,6,0,7);ctx.fill();
+    ctx.fillStyle=SC.ink; ctx.font="700 10px Inter"; ctx.fillText(ch.gateOn?(open?"OPEN":"CLOSED"):"—",rx+30,yy+8);
+    ctx.fillStyle="#12151a"; ctx.fillRect(rx+rw-74,yy,64,9); ctx.fillStyle=SC.red; ctx.fillRect(rx+rw-74,yy,clamp(gr/60,0,1)*64,9); yy+=26;
+    scrParam(rx+12,yy+12,rw-24,"THRESHOLD",ch.gateThr,-72,0,v=>v+" dB",v=>{ch.gateThr=Math.round(v);applyChanAudio(ch.i);paintSelected();}); yy+=30;
+    scrParam(rx+12,yy+12,rw-24,"RANGE",ch.gateRange,-70,0,v=>(v<=-70?"−∞":v)+" dB",v=>{ch.gateRange=Math.round(v);applyChanAudio(ch.i);}); yy+=30;
+    scrParam(rx+12,yy+12,rw-24,"ATTACK",ch.gateAtk,0,120,v=>v.toFixed(0)+" ms",v=>{ch.gateAtk=v;}); yy+=30;
+    scrParam(rx+12,yy+12,rw-24,"HOLD",ch.gateHold,0.02,1960,v=>(v>=1000?(v/1000).toFixed(2)+"s":v.toFixed(0)+"ms"),v=>{ch.gateHold=v;},{log:true}); yy+=30;
+    scrParam(rx+12,yy+12,rw-24,"RELEASE",ch.gateDecay,5,42300,v=>(v>=1000?(v/1000).toFixed(1)+"s":v.toFixed(0)+"ms"),v=>{ch.gateDecay=v;},{log:true});
+  }
+
+  /* ================= COMP (full) ================= */
+  function drawComp(){
+    const ch=CH[state.sel],m=8,gx=m,gy=6,gw=W*0.52-m,gh=H-12;
+    panel(gx,gy,gw,gh,"COMPRESSOR — "+ch.name);
+    const px0=gx+34,py0=gy+26,pw=gw-58,ph=gh-56;
+    const X=d=>px0+clamp((d+60)/60,0,1)*pw, Y=o=>py0+ph-clamp((o+60)/60,0,1)*ph;
+    ctx.strokeStyle=SC.line; ctx.strokeRect(px0,py0,pw,ph);
+    ctx.strokeStyle="#343b43"; ctx.setLineDash([3,3]); ctx.beginPath();ctx.moveTo(X(-60),Y(-60));ctx.lineTo(X(0),Y(0));ctx.stroke(); ctx.setLineDash([]);
+    const kneeDb=(ch.compKnee==='HARD'||ch.compKnee===0)?0:ch.compKnee*4, ratio=ch.compRatio>=40?40:ch.compRatio;
+    const compFn=d=>{ const t=ch.compThr; let o; if(kneeDb>0&&d>t-kneeDb/2&&d<t+kneeDb/2){ const xk=d-(t-kneeDb/2); o=d+(1/ratio-1)*xk*xk/(2*kneeDb); } else o=d>t?t+(d-t)/ratio:d; return o+ch.compGain; };
+    ctx.beginPath(); for(let d=-60;d<=0;d+=1){ const yy=Y(clamp(compFn(d),-60,6)); d===-60?ctx.moveTo(X(d),yy):ctx.lineTo(X(d),yy); }
+    ctx.strokeStyle=SC.cyan; ctx.lineWidth=2.2; ctx.stroke();
+    const tx=X(ch.compThr); ctx.strokeStyle=SC.red; ctx.setLineDash([4,3]); ctx.beginPath();ctx.moveTo(tx,py0);ctx.lineTo(tx,py0+ph);ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle=SC.red; ctx.font="700 9px Inter"; ctx.textAlign="center"; ctx.fillText("THR",tx,py0-2);
+    reg({x:tx-14,y:py0,w:28,h:ph,onDrag:p=>{ ch.compThr=clamp(Math.round((p.x-px0)/pw*60-60),-54,0); applyChanAudio(ch.i); paintSelected(); checkMissions(); }});
+    ctx.fillStyle=SC.dim; ctx.font="8px Inter"; ctx.fillText("ENTRADA (dB)",px0+pw/2,py0+ph+12);
+    const rx=gx+gw+8,rw=W-rx-m; panel(rx,gy,rw,gh,null); let yy=gy+8;
+    ctx.fillStyle=SC.ink; ctx.font="800 11px Inter"; ctx.textAlign="left"; ctx.fillText("COMPRESSOR",rx+12,yy+9);
+    scrBtn(rx+rw-60,yy,50,18,ch.compOn?"ON":"OFF",ch.compOn,()=>{ch.compOn=!ch.compOn;applyChanAudio(ch.i);paintSelected();checkMissions();},SC.cyan,true); yy+=26;
+    let gr=0; if(ac&&aNodes[ch.i]&&ch.compOn) gr=-aNodes[ch.i].comp.reduction;
+    ctx.fillStyle=SC.mut; ctx.font="8px Inter"; ctx.fillText("GR "+gr.toFixed(1)+" dB",rx+12,yy+8);
+    ctx.fillStyle="#12151a"; ctx.fillRect(rx+78,yy,rw-90,9); ctx.fillStyle=SC.cyan; ctx.fillRect(rx+78,yy,clamp(gr/24,0,1)*(rw-90),9); yy+=24;
+    scrParam(rx+12,yy+12,rw-24,"THRESHOLD",ch.compThr,-54,0,v=>v+" dB",v=>{ch.compThr=Math.round(v);applyChanAudio(ch.i);paintSelected();}); yy+=30;
+    scrParam(rx+12,yy+12,rw-24,"RATIO",ratio,1,40,v=>(v>=40?"∞":v.toFixed(1))+":1",v=>{ch.compRatio=v;applyChanAudio(ch.i);}); yy+=30;
+    scrParam(rx+12,yy+12,rw-24,"ATTACK",ch.compAtk,0,120,v=>v.toFixed(0)+" ms",v=>{ch.compAtk=v;applyChanAudio(ch.i);}); yy+=30;
+    scrParam(rx+12,yy+12,rw-24,"RELEASE",ch.compRel,5,42300,v=>(v>=1000?(v/1000).toFixed(1)+"s":v.toFixed(0)+"ms"),v=>{ch.compRel=v;applyChanAudio(ch.i);},{log:true}); yy+=30;
+    scrParam(rx+12,yy+12,rw-24,"MAKEUP GAIN",ch.compGain,0,18,v=>"+"+v.toFixed(1)+" dB",v=>{ch.compGain=v;applyChanAudio(ch.i);}); yy+=28;
+    ctx.fillStyle=SC.mut; ctx.font="700 9px Inter"; ctx.fillText("KNEE",rx+12,yy+2); const kw=(rw-24-15)/6;
+    ["HARD","1","2","3","4","5"].forEach((kn,ki)=>{ const val=ki===0?'HARD':ki; const act=(ch.compKnee===val)||(ki===0&&(ch.compKnee==='HARD'||ch.compKnee===0)); scrBtn(rx+12+ki*(kw+3),yy+6,kw,18,kn,act,()=>{ch.compKnee=val;applyChanAudio(ch.i);},SC.cyan,true); });
+  }
+
+  /* ================= LIMITER (full) ================= */
+  function drawLimiter(){
+    const ch=CH[state.sel],m=8,gx=m,gy=6,gw=W*0.52-m,gh=H-12;
+    panel(gx,gy,gw,gh,"LIMITER (brick-wall) — "+ch.name);
+    const px0=gx+34,py0=gy+26,pw=gw-58,ph=gh-56;
+    const X=d=>px0+clamp((d+60)/60,0,1)*pw, Y=o=>py0+ph-clamp((o+60)/60,0,1)*ph;
+    ctx.strokeStyle=SC.line; ctx.strokeRect(px0,py0,pw,ph);
+    ctx.strokeStyle="#343b43"; ctx.setLineDash([3,3]); ctx.beginPath();ctx.moveTo(X(-60),Y(-60));ctx.lineTo(X(0),Y(0));ctx.stroke(); ctx.setLineDash([]);
+    ctx.beginPath(); for(let d=-60;d<=0;d+=1){ const o=Math.min(d,ch.limThr); d===-60?ctx.moveTo(X(d),Y(o)):ctx.lineTo(X(d),Y(o)); }
+    ctx.strokeStyle=SC.red; ctx.lineWidth=2.2; ctx.stroke();
+    const tx=X(ch.limThr); ctx.strokeStyle=SC.amber; ctx.setLineDash([4,3]); ctx.beginPath();ctx.moveTo(tx,py0);ctx.lineTo(tx,py0+ph);ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle=SC.amber; ctx.font="700 9px Inter"; ctx.textAlign="center"; ctx.fillText("CEILING",tx,py0-2);
+    reg({x:tx-14,y:py0,w:28,h:ph,onDrag:p=>{ ch.limThr=clamp(Math.round((p.x-px0)/pw*60-60),-30,0); ch.limOn=true; applyChanAudio(ch.i); paintSelected(); checkMissions(); }});
+    ctx.fillStyle=SC.dim; ctx.font="8px Inter"; ctx.fillText("ENTRADA (dB)",px0+pw/2,py0+ph+12);
+    const rx=gx+gw+8,rw=W-rx-m; panel(rx,gy,rw,gh,null); let yy=gy+8;
+    ctx.fillStyle=SC.ink; ctx.font="800 11px Inter"; ctx.textAlign="left"; ctx.fillText("LIMITER",rx+12,yy+9);
+    scrBtn(rx+rw-60,yy,50,18,ch.limOn?"ON":"OFF",ch.limOn,()=>{ch.limOn=!ch.limOn;applyChanAudio(ch.i);paintSelected();checkMissions();},SC.red,true); yy+=30;
+    ctx.fillStyle=SC.mut; ctx.font="8px Inter"; ctx.textAlign="left"; ctx.fillText("O limiter fica no FIM da Fat Channel: HPF ▸ Gate ▸ Comp ▸ EQ ▸ LIMITER.",rx+12,yy); yy+=18;
+    let gr=0; if(ac&&aNodes[ch.i]&&ch.limOn) gr=-aNodes[ch.i].lim.reduction;
+    ctx.fillStyle=SC.mut; ctx.font="700 8px Inter"; ctx.fillText("GAIN REDUCTION "+gr.toFixed(1)+" dB",rx+12,yy+6);
+    ctx.fillStyle="#12151a"; ctx.fillRect(rx+12,yy+10,rw-24,9); ctx.fillStyle=SC.red; ctx.fillRect(rx+12,yy+10,clamp(gr/24,0,1)*(rw-24),9); yy+=32;
+    scrParam(rx+12,yy+12,rw-24,"THRESHOLD / CEILING",ch.limThr,-30,0,v=>v+" dB",v=>{ch.limThr=Math.round(v);applyChanAudio(ch.i);paintSelected();checkMissions();},{col:SC.red}); yy+=34;
+    ctx.fillStyle=SC.dim; ctx.font="8px Inter"; ctx.fillText("Ratio ∞:1 · ataque rápido (brick-wall). Protege a saída do canal contra picos.",rx+12,yy+2);
+  }
+
+  /* ================= FLEXMIX (sends) ================= */
+  function drawSends(){
+    const ch=CH[state.sel];
+    ctx.fillStyle=ch.color; ctx.font="800 12px Inter"; ctx.textAlign="left"; ctx.fillText("FLEXMIX SENDS — "+ch.name+" (CH"+(ch.i+1)+")",10,16);
+    scrBtn(W-150,4,68,18,"16 FLEXMIX",true,()=>{},SC.amber,true); scrBtn(W-78,4,68,18,"8 AUX",false,()=>toast("AUX 17–24"),SC.amber,true);
+    const cols=2,rows=12,top=26,cw=(W-20-10)/cols,rh=(H-top-6)/rows;
+    for(let mn=0;mn<24;mn++){ const col=Math.floor(mn/rows),row=mn%rows; const x=10+col*(cw+10),yy=top+row*rh,on=ch.sendOn[mn];
+      ctx.fillStyle=on?SC.amber:"#333a42"; ctx.beginPath();ctx.arc(x+8,yy+rh/2,5,0,7);ctx.fill();
+      reg({hit:'circle',cx:x+8,cy:yy+rh/2,rr:10,onDown:()=>{ch.sendOn[mn]=!ch.sendOn[mn];checkMissions();}});
+      ctx.fillStyle=on?SC.ink:SC.dim; ctx.font="700 9px Inter"; ctx.textAlign="left"; ctx.fillText(MIX_NAMES[mn],x+18,yy+rh/2-3);
+      const bx=x+18,bw=cw-104,by=yy+rh/2+2,bh=6; ctx.fillStyle="#12151a"; roundRect(bx,by,bw,bh,3); ctx.fill();
+      const t=clamp((ch.sends[mn]-FMIN)/(FMAX-FMIN),0,1); ctx.fillStyle=on?SC.amber:"#3d454e"; roundRect(bx,by,t*bw,bh,3); ctx.fill();
+      reg({x:bx-3,y:by-7,w:bw+6,h:bh+14,onDrag:p=>{ let tt=clamp((p.x-bx)/bw,0,1); ch.sends[mn]=Math.round(FMIN+tt*(FMAX-FMIN)); if(ch.sends[mn]>FMIN)ch.sendOn[mn]=true; checkMissions(); }});
+      ctx.fillStyle=on?SC.ink:SC.dim; ctx.font="700 9px Inter"; ctx.textAlign="right"; ctx.fillText(faderTxt(ch.sends[mn]),x+cw-42,yy+rh/2+2);
+      scrBtn(x+cw-38,yy+rh/2-8,34,16,ch.sendPre[mn]?"PRE":"POST",ch.sendPre[mn],()=>{ch.sendPre[mn]=!ch.sendPre[mn];},SC.cyan,true);
+    }
+  }
+
+  /* ================= FLEXFX (4 buses × 9 tipos) ================= */
+  function drawFX(){
+    const ch=CH[state.sel];
+    const cols=2,rows=2,gp=8,pw=(W-20-gp)/cols,ph=(H-16-gp)/rows;
+    for(let b=0;b<N_FX;b++){ const col=b%cols,row=Math.floor(b/cols); const x=10+col*(pw+gp),y=8+row*(ph+gp);
+      const fxb=state.flexfx[b], tp=FX_TYPES[fxb.type], letter=String.fromCharCode(65+b);
+      panel(x,y,pw,ph,null, b===state.fxSel?SC.amber:SC.border);
+      ctx.fillStyle=SC.amber; ctx.font="800 11px Inter"; ctx.textAlign="left"; ctx.fillText("FLEXFX "+letter,x+10,y+15);
+      scrBtn(x+pw-52,y+6,44,17,fxb.on?"ON":"OFF",fxb.on,()=>{fxb.on=!fxb.on;applyFX();drawScreen();},fxb.on?SC.green:SC.red,true);
+      // type chooser: ◂ name ▸
+      let yy=y+24; ctx.fillStyle="#12151a"; roundRect(x+10,yy,pw-20,20,5); ctx.fill(); ctx.strokeStyle=SC.line; roundRect(x+10.5,yy+.5,pw-21,19,5); ctx.stroke();
+      ctx.fillStyle=SC.ink; ctx.font="800 10px Inter"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(tp.name+"  ·  "+tp.kind.toUpperCase(),x+pw/2,yy+10.5); ctx.textBaseline="alphabetic";
+      scrBtn(x+10,yy,22,20,"◂",false,()=>{ state.fxSel=b; fxb.type=(fxb.type+FX_TYPES.length-1)%FX_TYPES.length; applyFX(); drawScreen(); },SC.cyan,true);
+      scrBtn(x+pw-32,yy,22,20,"▸",false,()=>{ state.fxSel=b; fxb.type=(fxb.type+1)%FX_TYPES.length; applyFX(); drawScreen(); },SC.cyan,true);
+      reg({x:x+34,y:yy,w:pw-68,h:20,onDown:()=>{state.fxSel=b;drawScreen();}});
+      yy+=30;
+      scrParam(x+12,yy,pw-24,"RETURN (Main)",fxb.ret,0,1,v=>Math.round(v*100)+"%",v=>{fxb.ret=v;applyFX();},{col:SC.amber}); yy+=30;
+      if(tp.kind==='reverb'){ scrParam(x+12,yy,pw-24,"DECAY / SIZE",fxb.size,0.3,4,v=>v.toFixed(1)+" s",v=>{fxb.size=v;rebuildImpulse(b);}); yy+=30;
+        scrParam(x+12,yy,pw-24,"PRE-DELAY",fxb.predelay,0,120,v=>v.toFixed(0)+" ms",v=>{fxb.predelay=v;}); yy+=28;
+      } else { scrParam(x+12,yy,pw-24,"TIME",fxb.time,0.05,1.2,v=>Math.round(v*1000)+" ms",v=>{fxb.time=v;applyFX();}); yy+=30;
+        scrParam(x+12,yy,pw-24,"FEEDBACK",fxb.fb,0,0.85,v=>Math.round(v*100)+"%",v=>{fxb.fb=v;applyFX();}); yy+=28;
+      }
+      // selected channel's send to this bus
+      const on=ch.fxSendOn[b];
+      ctx.fillStyle=on?SC.ink:SC.mut; ctx.font="700 8px Inter"; ctx.textAlign="left"; ctx.fillText(ch.name+" → FlexFX "+letter,x+12,yy+2);
+      scrBtn(x+pw-46,yy-8,36,14,on?"SEND":"OFF",on,()=>{ch.fxSendOn[b]=!ch.fxSendOn[b];applyChanAudio(ch.i);checkMissions();},SC.cyan,true);
+      scrParam(x+12,yy+16,pw-24,"",ch.fxSend[b],FMIN,FMAX,v=>faderTxt(v)+" dB",v=>{ch.fxSend[b]=Math.round(v); if(v>FMIN)ch.fxSendOn[b]=true; applyChanAudio(ch.i); checkMissions();},{col:SC.cyan});
+    }
+  }
+
+  /* ================= DCA / MUTE ================= */
+  function drawDCA(){
+    const ch=CH[state.sel];
+    ctx.fillStyle=SC.mut; ctx.font="700 10px Inter"; ctx.textAlign="left"; ctx.fillText("DCA GROUPS 1–24 — arraste o ganho (offset dB), toque ON/MUTE",10,14);
+    const n=N_DCA,top=20,gh=H*0.40,gapx=3,fw=(W-20-(n-1)*gapx)/n;
+    for(let g=0;g<n;g++){ const x=10+g*(fw+gapx),yy=top,fh=gh-28,fcx=x+fw/2;
+      const nmem=CH.reduce((a,c)=>a+(c.dca[g]?1:0),0);
+      ctx.fillStyle="#12151a"; roundRect(fcx-3,yy,6,fh,3); ctx.fill(); ctx.strokeStyle=nmem?SC.amber:SC.line; roundRect(fcx-3+.5,yy+.5,6,fh,3); ctx.stroke();
+      const t=db2pos(state.dcaGain[g]),capY=yy+fh-t*fh; ctx.fillStyle=nmem?SC.amber:SC.dim; ctx.fillRect(fcx-6,capY-3,12,6);
+      reg({x,y:yy,w:fw,h:fh,onDrag:p=>{ state.dcaGain[g]=pos2db(clamp(1-(p.y-yy)/fh,0,1)); for(let i=0;i<NCH;i++)if(CH[i].dca[g])applyChanAudio(i); }});
+      ctx.fillStyle=nmem?SC.ink:SC.mut; ctx.font="700 7px Inter"; ctx.textAlign="center"; ctx.fillText((g+1),fcx,yy+fh+9);
+      scrBtn(x,yy+fh+11,fw,15,state.dcaOn[g]?"ON":"MUT",state.dcaOn[g],()=>{state.dcaOn[g]=!state.dcaOn[g];for(let i=0;i<NCH;i++)if(CH[i].dca[g])applyChanAudio(i);},state.dcaOn[g]?SC.green:SC.red,true);
+    }
+    let yy=top+gh+8; ctx.fillStyle=ch.color; ctx.font="800 11px Inter"; ctx.textAlign="left"; ctx.fillText(ch.name+" → DCA assign (1–24)",10,yy);
+    yy+=6; const bw=(W-20-23*2)/24; for(let g=0;g<24;g++) scrBtn(10+g*(bw+2),yy,bw,20,""+(g+1),ch.dca[g],()=>{ch.dca[g]=!ch.dca[g];applyChanAudio(ch.i);},SC.amber,true);
+    yy+=30; ctx.fillStyle=SC.mut; ctx.font="700 10px Inter"; ctx.textAlign="left"; ctx.fillText("MUTE GROUPS 1–8 — mute-master (vermelho) · abaixo: pertinência do canal",10,yy); yy+=6;
+    const mw=(W-20-7*6-70)/8; for(let g=0;g<8;g++){ const x=10+g*(mw+6);
+      scrBtn(x,yy,mw,20,"MG "+(g+1),state.muteActive[g],()=>{state.muteActive[g]=!state.muteActive[g];for(let i=0;i<NCH;i++)if(CH[i].mute[g])applyChanAudio(i);},SC.red,true);
+      scrBtn(x,yy+24,mw,16,ch.mute[g]?"IN":"—",ch.mute[g],()=>{ch.mute[g]=!ch.mute[g];applyChanAudio(ch.i);},"#4a6285",true); }
+    const sx=W-72; scrBtn(sx,yy,62,20,"SAFE",ch.muteSafe,()=>{ch.muteSafe=!ch.muteSafe;applyChanAudio(ch.i);},SC.green,true);
+    ctx.fillStyle=SC.dim; ctx.font="700 7px Inter"; ctx.textAlign="center"; ctx.fillText("MUTE SAFE",sx+31,yy+34);
+  }
+
+  /* ================= SCENES ================= */
+  function drawScenes(){
+    ctx.fillStyle=SC.mut; ctx.font="700 10px Inter"; ctx.textAlign="left"; ctx.fillText("SCENES — STORE / RECALL (estado completo do mixer). UC Surface.",10,14);
+    const cols=2,rows=5,top=24,gapx=10,gapy=7,cw=(W-20-gapx)/cols,rh=(H-top-6-gapy*(rows-1))/rows;
+    for(let s=0;s<10;s++){ const col=Math.floor(s/rows),row=s%rows; const x=10+col*(cw+gapx),yy=top+row*(rh+gapy),sc=scenes[s];
+      panel(x,yy,cw,rh, null, s===state.scene?SC.amber:SC.border);
+      ctx.fillStyle=SC.dim; ctx.font="700 9px Inter"; ctx.textAlign="left"; ctx.fillText(String(s+1).padStart(3,'0'),x+10,yy+rh/2-4);
+      ctx.fillStyle=sc?SC.ink:SC.dim; ctx.font="800 12px Inter"; ctx.fillText(sc?"Scene "+(s+1):"Scene "+(s+1)+" (vazia)",x+34,yy+rh/2-3);
+      ctx.fillStyle=sc?SC.green:SC.dim; ctx.font="700 9px Inter"; ctx.fillText(sc?("armazenada "+new Date(sc.ts).toLocaleTimeString().slice(0,5)):"—",x+34,yy+rh/2+11);
+      scrBtn(x+cw-146,yy+rh/2-13,66,26,"STORE",false,()=>{ state.scene=s; storeScene(s); paintTopHud(); },SC.amber);
+      scrBtn(x+cw-74,yy+rh/2-13,64,26,"RECALL",false,()=>{ state.scene=s; recallScene(s); paintTopHud(); },SC.green);
+      reg({x,y:yy,w:cw-150,h:rh,onDown:()=>{ state.scene=s; paintTopHud(); drawScreen(); }});
+    }
+  }
+
+  /* ================= RTA · METERS ================= */
+  function drawMeter(){
+    const rtaH=H*0.30, top=20;
+    // RTA band spectrum from selected channel's pre-analyser
+    ctx.fillStyle=SC.mut; ctx.font="700 10px Inter"; ctx.textAlign="left"; ctx.fillText("RTA · analisador de espectro (Main) + medidores dos 40 canais",10,13);
+    const rx=10,ry=top,rw=W-20,rh=rtaH-8; panel(rx,ry,rw,rh,null);
+    const nb=31; const bw=(rw-10)/nb;
+    let spec=null; if(masterAn){ masterAn.getFloatFrequencyData(masterFreq); spec=masterFreq; }
+    for(let k=0;k<nb;k++){ const x=rx+5+k*bw; let db=-90;
+      if(spec){ const f=fInv(k/(nb-1)); const bin=Math.round(f/(ac.sampleRate/2)*(spec.length-1)); db=spec[clamp(bin,0,spec.length-1)]; }
+      const t=clamp((db+90)/90,0,1), hh=(rh-14)*t;
+      const g=ctx.createLinearGradient(0,ry+rh-4,0,ry+rh-4-(rh-14)); g.addColorStop(0,"#2ea85a"); g.addColorStop(.7,"#37c86a"); g.addColorStop(.9,"#e8c33a"); g.addColorStop(1,"#e0483f");
+      ctx.fillStyle=playing?g:"#1b222b"; ctx.fillRect(x,ry+rh-4-hh,bw-2,hh);
+    }
+    ctx.fillStyle=SC.dim; ctx.font="700 7px Inter"; ctx.textAlign="left"; ctx.fillText("20 Hz",rx+6,ry+rh-2); ctx.textAlign="center"; ctx.fillText("1k",rx+rw/2,ry+rh-2); ctx.textAlign="right"; ctx.fillText("20k",rx+rw-6,ry+rh-2);
+    // channel meters
+    const mtop=top+rtaH, n=Math.min(40,MAXCH), bot=H-22, gapx=3, bw2=(W-20-40-(n-1)*gapx)/n;
+    for(let i=0;i<n;i++){ const ch=CH[i],x=10+i*(bw2+gapx); const db=meterDbOf(i);
+      vmeter(x,mtop,bw2,bot-mtop,db); ctx.fillStyle=ch.i===state.sel?SC.amber:SC.dim; ctx.font="700 6px Inter"; ctx.textAlign="center"; ctx.fillText(""+(i+1),x+bw2/2,bot+8);
+      reg({x,y:mtop,w:bw2,h:bot-mtop,onDown:()=>selectChannel(i)});
+    }
+    const mx=W-28; vmeter(mx,mtop,11,bot-mtop,playing?masterLevelDb():-90); vmeter(mx+13,mtop,11,bot-mtop,playing?masterLevelDb()-2:-90);
+    ctx.fillStyle=SC.amber; ctx.font="700 8px Inter"; ctx.textAlign="center"; ctx.fillText("MAIN",mx+12,bot+8);
+  }
+
+  /* ================= FAT CHANNEL PRESETS ================= */
+  const FAT_PRESETS=[
+    {name:"Flat / Reset", d:{hpfOn:false,hpf:80,gateOn:false,compOn:false,limOn:false,eq:[0,0,0,0],eqType:'STANDARD'}},
+    {name:"Male Vocal",   d:{hpfOn:true,hpf:100,gateOn:true,gateThr:-42,compOn:true,compThr:-16,compRatio:3,compGain:4,limOn:true,limThr:-2,eq:[-1,-2,3,4],eqType:'MODERN'}},
+    {name:"Female Vocal", d:{hpfOn:true,hpf:120,gateOn:true,gateThr:-44,compOn:true,compThr:-18,compRatio:2.5,compGain:4,limOn:true,limThr:-2,eq:[-2,-1,2,5],eqType:'MODERN'}},
+    {name:"Kick In",      d:{hpfOn:false,hpf:40,gateOn:true,gateThr:-30,gateRange:-40,compOn:true,compThr:-14,compRatio:4,compGain:3,limOn:false,eq:[5,-4,2,3],eqType:'STANDARD'}},
+    {name:"Snare",        d:{hpfOn:true,hpf:90,gateOn:true,gateThr:-32,compOn:true,compThr:-16,compRatio:4,compGain:3,limOn:false,eq:[2,-3,4,4],eqType:'STANDARD'}},
+    {name:"Bass DI",      d:{hpfOn:true,hpf:40,gateOn:false,compOn:true,compThr:-18,compRatio:3.5,compGain:4,limOn:true,limThr:-3,eq:[3,2,-2,0],eqType:'VINTAGE'}},
+    {name:"E. Guitar",    d:{hpfOn:true,hpf:90,gateOn:true,gateThr:-40,compOn:true,compThr:-16,compRatio:3,compGain:2,limOn:false,eq:[0,1,3,1],eqType:'VINTAGE'}},
+    {name:"Ac. Guitar",   d:{hpfOn:true,hpf:110,gateOn:false,compOn:true,compThr:-18,compRatio:2.5,compGain:3,limOn:false,eq:[-1,-2,2,4],eqType:'STANDARD'}},
+    {name:"Overheads",    d:{hpfOn:true,hpf:300,gateOn:false,compOn:true,compThr:-20,compRatio:2,compGain:2,limOn:false,eq:[-2,0,1,4],eqType:'MODERN'}},
+    {name:"Piano / Keys", d:{hpfOn:true,hpf:60,gateOn:false,compOn:true,compThr:-20,compRatio:2,compGain:2,limOn:false,eq:[1,0,1,2],eqType:'STANDARD'}},
+    {name:"Speech / Podcast", d:{hpfOn:true,hpf:110,gateOn:true,gateThr:-40,compOn:true,compThr:-18,compRatio:4,compGain:5,limOn:true,limThr:-3,eq:[-2,-2,3,3],eqType:'MODERN'}},
+    {name:"Sax / Brass",  d:{hpfOn:true,hpf:120,gateOn:false,compOn:true,compThr:-16,compRatio:3,compGain:3,limOn:true,limThr:-2,eq:[0,1,2,2],eqType:'VINTAGE'}}
+  ];
+  function applyPreset(ch,d){
+    ch.hpfOn=!!d.hpfOn; if(d.hpf!=null)ch.hpf=d.hpf;
+    ch.gateOn=!!d.gateOn; if(d.gateThr!=null)ch.gateThr=d.gateThr; if(d.gateRange!=null)ch.gateRange=d.gateRange;
+    ch.compOn=!!d.compOn; if(d.compThr!=null)ch.compThr=d.compThr; if(d.compRatio!=null)ch.compRatio=d.compRatio; if(d.compGain!=null)ch.compGain=d.compGain;
+    ch.limOn=!!d.limOn; if(d.limThr!=null)ch.limThr=d.limThr;
+    if(d.eq){ d.eq.forEach((g,bi)=>{ ch.eq[bi].g=g; }); ch.eqOn=true; }  // a preset that carries an EQ curve must put the EQ in circuit
+    if(d.eqType)ch.eqType=d.eqType;
+    applyChanAudio(ch.i);
+  }
+  function drawPresets(){
+    const ch=CH[state.sel];
+    ctx.fillStyle=ch.color; ctx.font="800 12px Inter"; ctx.textAlign="left"; ctx.fillText("FAT CHANNEL PRESETS → aplicar em "+ch.name+" (CH"+(ch.i+1)+")",10,15);
+    ctx.fillStyle=SC.mut; ctx.font="700 9px Inter"; ctx.textAlign="right"; ctx.fillText("presets de fábrica (HPF·Gate·Comp·EQ·Limiter)",W-10,15);
+    const cols=3,top=26,gpx=8,gpy=8,rows=Math.ceil(FAT_PRESETS.length/cols),cw=(W-20-(cols-1)*gpx)/cols,rh=(H-top-8-(rows-1)*gpy)/rows;
+    FAT_PRESETS.forEach((pr,pi)=>{ const col=pi%cols,row=Math.floor(pi/cols); const x=10+col*(cw+gpx),y=top+row*(rh+gpy);
+      panel(x,y,cw,rh,null); ctx.fillStyle=SC.ink; ctx.font="800 12px Inter"; ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillText(pr.name,x+12,y+rh/2); ctx.textBaseline="alphabetic";
+      const d=pr.d, tags=[]; if(d.hpfOn)tags.push("HPF"); if(d.gateOn)tags.push("GATE"); if(d.compOn)tags.push("COMP"); if(d.limOn)tags.push("LIM");
+      ctx.fillStyle=SC.dim; ctx.font="700 7px Inter"; ctx.fillText(tags.join(" · ")||"flat",x+12,y+rh-8);
+      scrBtn(x+cw-70,y+rh/2-13,60,26,"APPLY",false,()=>{ applyPreset(ch,d); paintSelected(); toast("Preset <b>"+pr.name+"</b> aplicado ▸ Fat Channel"); setMode('selected'); },SC.amber);
+    });
+  }
+
+  /* ================= TOP BRIDGE METER ================= */
+  function drawTopMeter(){ if(!mbx||!MBW)return; const g=mbx; g.clearRect(0,0,MBW,MBH);
+    g.fillStyle="#05080b"; g.fillRect(0,0,MBW,MBH);
+    const md=playing?masterLevelDb():-90; const labs=["L","R","M"]; const vals=[md,md,playing?md-2:-90];
+    const pad=4, bw=(MBW-pad*2-(labs.length-1)*4)/labs.length;
+    for(let k=0;k<labs.length;k++){ const x=pad+k*(bw+4), y=3, h=MBH-13;
+      g.fillStyle="#0a0f14"; g.fillRect(x,y,bw,h);
+      const t=clamp((vals[k]+60)/60,0,1), hh=h*t; const grd=g.createLinearGradient(0,y+h,0,y);
+      grd.addColorStop(0,"#2ea85a"); grd.addColorStop(.62,"#37c86a"); grd.addColorStop(.82,"#e8c33a"); grd.addColorStop(1,"#e0483f");
+      g.fillStyle=grd; g.fillRect(x,y+h-hh,bw,hh);
+      const ty=y+h-h*((-18+60)/60); g.strokeStyle="#ffffff33"; g.lineWidth=1; g.beginPath(); g.moveTo(x,ty); g.lineTo(x+bw,ty); g.stroke();
+      g.fillStyle="#7f8b9c"; g.font="700 7px Inter,system-ui"; g.textAlign="center"; g.textBaseline="alphabetic"; g.fillText(labs[k],x+bw/2,MBH-2); }
+  }
+
+  /* ================= CUE / SOLO ================= */
+  function anyCue(){ for(let i=0;i<CH.length;i++){ if(CH[i].cue) return true; } return false; }
+  function applyCue(){ for(let i=0;i<CH.length;i++) applyChanAudio(i); drawScreen(); }
+  function clearCue(){ for(let i=0;i<CH.length;i++) CH[i].cue=false; applyCue(); }
+
+  /* ================= MISSIONS ================= */
+  const missions=[
+    { t:'<b>Gain staging:</b> selecione o <b>Lead Voc</b> (CH13) e ajuste o <b>INPUT GAIN</b> para a entrada picar perto de <b>−18 dBFS</b>.',
+      ok:()=>{ const ch=CH[12]; return state.sel===12 && Math.abs(ch.src+ch.gain+18)<=2.5; } },
+    { t:'<b>Fat Channel:</b> ative o <b>HPF</b> do Lead Voc em ~<b>100 Hz</b> (aba HPF / EQ).',
+      ok:()=>{ const ch=CH[12]; return ch.hpfOn && Math.abs(ch.hpf-100)<=25; } },
+    { t:'<b>EQ:</b> na aba <b>EQ</b>, dê brilho — banda <b>HIGH</b> +3 dB ou mais.',
+      ok:()=>{ const ch=CH[12]; return ch.eq[3].g>=3; } },
+    { t:'<b>Compressor:</b> ative o <b>COMP</b> do Lead Voc com threshold ~<b>−18 dB</b>.',
+      ok:()=>{ const ch=CH[12]; return ch.compOn && Math.abs(ch.compThr+18)<=4; } },
+    { t:'<b>FlexFX:</b> na aba <b>FLEXFX</b>, mande o Lead Voc para o <b>FlexFX A</b> a ~<b>−6 dB</b>.',
+      ok:()=>{ const ch=CH[12]; return ch.fxSendOn[0] && Math.abs(ch.fxSend[0]+6)<=4; } }
+  ];
+  let mi=0;
+  function paintMission(){ if(mi>=missions.length){ $("#mIdx").textContent="CONCLUÍDO"; $("#mTxt").innerHTML="🎓 <b>Parabéns!</b> Fluxo Fat Channel completo: gain → HPF → EQ → comp → FlexFX."; $("#mSkip").style.display="none"; return; }
+    $("#mIdx").textContent="MISSÃO "+(mi+1)+"/"+missions.length; $("#mTxt").innerHTML=missions[mi].t; }
+  function checkMissions(){ if(mi>=missions.length)return; try{ if(missions[mi].ok()){ mi++; toast(mi>=missions.length?"Missões concluídas! 🎓":"Missão concluída! ✔"); paintMission(); } }catch(e){} }
+  $("#mSkip").onclick=()=>{ if(mi<missions.length){ mi++; paintMission(); } };
+  let toastT; function toast(msg){ const el=$("#toast"); el.innerHTML=msg; el.classList.add("show"); clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove("show"),1800); }
+
+  /* ================= AUDIO ENGINE ================= */
+  const SB="https://pshynylvvkhhohftouoe.supabase.co/storage/v1/object/public/media/";
+  const sg=(n,c,f,p,h)=>({n,c,f,p,h});
+  const SONGS_FALLBACK=[
+    {label:"Pagodão — Tá Sozinha", folder:"mix-pagodao-tasozinha", stems:[
+      sg("Bumbo","#e0483f","BB.mp3",0,false),sg("Caixa","#f97316","CX.mp3",0,true),sg("Surdo 1","#22a8c0","SD_1.mp3",-8,false),sg("Surdo 2","#eab308","SD_2.mp3",8,false),
+      sg("Chimbal","#84cc16","HH.mp3",-15,true),sg("Repique","#3ad07a","REP.mp3",12,true),sg("Rototom","#14b8a6","ROTANTAN.mp3",-10,true),sg("Timbau","#39c0e6","TIMBAL.mp3",10,true),
+      sg("Tom 1","#3b82f6","TOM1.mp3",-6,true),sg("Tom 2","#6366f1","TOM2.mp3",0,true),sg("Tom 3","#8b5cf6","TOM3.mp3",6,true),sg("Conga Hi","#a855f7","CONGA_HI.mp3",18,true),
+      sg("Conga Low","#c084fc","CONGA_LOW.mp3",-18,true),sg("Baixo","#3ad07a","BASS-02.mp3",0,false),sg("Guitarra","#14b8a6","GT-03.mp3",-20,true),sg("Teclado 1","#6366f1","KEY_1-04.mp3",15,false),
+      sg("Teclado 2","#818cf8","KEY_2-03.mp3",-15,false)]},
+    {label:"Forró — Thullio (c/ voz)", folder:"mix-forro-thullio", stems:[
+      sg("Bumbo","#e0483f","1-KICK-glued.mp3",0,false),sg("Caixa","#f97316","2-CX-glued.mp3",0,true),sg("Esteira","#22a8c0","3-ESTEIRA-glued.mp3",-10,true),sg("Caixa FX","#eab308","4-CX_FX-glued.mp3",10,true),
+      sg("Chimbal","#84cc16","5-HH-glued.mp3",-14,true),sg("Rototom","#3ad07a","6-RTT6-glued.mp3",-8,true),sg("Tom 8","#14b8a6","7-TOM_8-glued.mp3",-6,true),sg("Tom 10","#39c0e6","8-TOM_10-glued.mp3",0,true),
+      sg("Tom 12","#3b82f6","9-TOM_12-glued.mp3",6,true),sg("Surdo 14","#6366f1","10-SD14-glued.mp3",-12,false),sg("Surdo 16","#8b5cf6","11-SD_16-glued.mp3",12,false),sg("OH L","#a855f7","12-OVER_L-glued.mp3",-30,true),
+      sg("OH R","#c084fc","13-OVER_R-glued.mp3",30,true),sg("Repique","#ec4899","14-RPK-glued.mp3",16,true),sg("Baixo","#3ad07a","15-BAIXO-glued.mp3",0,false),sg("Guitarra","#14b8a6","16-GUITA-glued.mp3",-22,true),
+      sg("Sanfona L","#6366f1","17-SANF_L-glued.mp3",-18,true),sg("Sanfona R","#818cf8","18-SANF_R-glued.mp3",18,true),sg("Sanfona Solo","#a855f7","19-SAN_SOLO-glued.mp3",0,true),sg("Voz (Thullio)","#ec4899","20-THULLIO-190905_1154-glued-01.mp3",0,true)]},
+    {label:"Avineh Vinny (c/ voz)", folder:"mix-avineh-3minutos", stems:[
+      sg("Bumbo","#e0483f","01_Bb_01.mp3",0,false),sg("Caixa","#f97316","02_Cx_01.mp3",0,true),sg("Caixa 2","#fb923c","03_Cx2_01.mp3",4,true),sg("Chimbal","#84cc16","04_Ch_01.mp3",-14,true),
+      sg("Tom 8","#eab308","05_T8_01.mp3",-8,true),sg("Tom 10","#3ad07a","06_T10_01.mp3",0,true),sg("Tom 12","#14b8a6","07_T12_01.mp3",8,true),sg("Surdo 14","#39c0e6","08_Sd14_01.mp3",-6,false),
+      sg("Surdo 16","#3b82f6","09_Sd16_01.mp3",6,false),sg("OH L","#6366f1","10_Ov_01.mp3",-28,true),sg("OH R","#818cf8","11_Ov_01.mp3",28,true),sg("Quica","#8b5cf6","12_Qt_01.mp3",-16,true),
+      sg("Conga","#a855f7","13_Cg_01.mp3",16,true),sg("Timbau","#c084fc","14_Tb_01.mp3",12,true),sg("Repique","#d946ef","15_Rp_01.mp3",-12,true),sg("Baixo","#3ad07a","17_Bx_01.mp3",0,false),
+      sg("Guitarra","#14b8a6","18_Gt_01.mp3",-20,true),sg("Teclado","#6366f1","19_KeyMono_01.mp3",0,false),sg("Violão","#22a8c0","24_Ac_01.mp3",-10,true),sg("Sax","#fbbf24","25_Sx_01.mp3",10,true),
+      sg("Vocais L","#ec4899","22_VsL_01.mp3",-16,true),sg("Vocais R","#f472b6","23_VsR_01.mp3",16,true),sg("Voz","#f43f5e","28_Vz_01.mp3",0,true),sg("Backing","#fb7185","29_Bk_01.mp3",-10,true)]},
+    {label:"Samvibe — Roger (c/ voz)", folder:"mix-samvibe", stems:[
+      sg("Bumbo","#e0483f","BB.mp3",0,false),sg("Caixa","#f97316","CX.mp3",0,true),sg("Surdo","#22a8c0","SD.mp3",-6,false),sg("Chimbal","#84cc16","HIHAT.mp3",-14,true),
+      sg("Pandeiro","#eab308","PANDEIRO.mp3",14,true),sg("Tom 1","#3ad07a","TOM1.mp3",-8,true),sg("Tom 2","#14b8a6","TOM2.mp3",0,true),sg("Tom 3","#39c0e6","TOM3.mp3",8,true),
+      sg("Conga 1","#3b82f6","CG1.mp3",-16,true),sg("Conga 2","#6366f1","CG2.mp3",16,true),sg("Timbau","#8b5cf6","TIMBAL.mp3",12,true),sg("OH L","#a855f7","OVER_L.mp3",-28,true),
+      sg("OH R","#c084fc","OVER_R.mp3",28,true),sg("Baixo","#3ad07a","BASS.mp3",0,false),sg("Guitarra","#14b8a6","GUIT.mp3",-20,true),sg("Violão","#22a8c0","VIOLAO.mp3",20,true),
+      sg("Teclado","#6366f1","KEY1.mp3",-10,false),sg("Sampler","#94a3b8","SAMPLER.mp3",10,true),sg("Voz (Roger)","#ec4899","roger.mp3",0,true)]},
+    {label:"Vaneirão — Dany (c/ voz)", folder:"mix-vaneirao", stems:[
+      sg("Bumbo","#e0483f","BB.mp3",0,false),sg("Caixa","#f97316","CX.mp3",0,true),sg("Chimbal","#84cc16","HH.mp3",-14,true),sg("Repique","#eab308","REP.mp3",14,true),
+      sg("Tom 1","#3ad07a","TOM1.mp3",-8,true),sg("Tom 2","#14b8a6","TOM2.mp3",-3,true),sg("Tom 3","#39c0e6","TOM3.mp3",3,true),sg("Tom 4","#3b82f6","TOM4.mp3",8,true),
+      sg("Conga Hi","#6366f1","CONGA_HI.mp3",-16,true),sg("Conga Low","#8b5cf6","CONGA_LOW.mp3",16,true),sg("Baixo","#3ad07a","BASS-01.mp3",0,false),sg("Guitarra","#14b8a6","GT.mp3",-20,true),
+      sg("Violão","#22a8c0","AC.mp3",20,true),sg("Voz (Dany)","#ec4899","DANY.mp3",0,true)]},
+    {label:"Forró Pra Recordar (c/ voz)", folder:"mix-forro-recordar", stems:[
+      sg("Bumbo","#e0483f","1-BB.mp3",0,false),sg("Caixa","#f97316","2-CX.mp3",0,true),sg("Chimbal","#84cc16","3-HH.mp3",-14,true),sg("Tom 1","#eab308","4-TOM1.mp3",-8,true),
+      sg("Tom 2","#3ad07a","5-TOM2.mp3",8,true),sg("Surdo","#14b8a6","6-SD.mp3",-6,false),sg("Conga 1","#39c0e6","7-CG1.mp3",-16,true),sg("Conga 2","#3b82f6","8-CG2.mp3",16,true),
+      sg("Baixo","#3ad07a","9-BASS.mp3",0,false),sg("Guitarra","#14b8a6","10-GT.mp3",-20,true),sg("Sanfona","#22a8c0","11-AC.mp3",20,true),sg("Teclado","#6366f1","12-KEY.mp3",-10,false),
+      sg("Sax","#fbbf24","13-SAX.mp3",10,true),sg("Voz","#ec4899","14-VOZ.mp3",0,true)]}
+  ];
+  let SONGS=SONGS_FALLBACK;
+  (function loadBasesRuntime(){
+    var SB_ANON="__SMU_SUPABASE_ANON_KEY__";
+    try{ if(typeof window!=="undefined" && window.__SMU_SB_ANON) SB_ANON=window.__SMU_SB_ANON; }catch(e){}
+    if(!SB_ANON || SB_ANON.indexOf("__SMU")===0) return;
+    var ROOT=(SB||"").replace("/storage/v1/object/public/media/","");
+    var REST=ROOT+"/rest/v1/sim_bases?select=label,folder,stems&ativo=eq.true&order=ordem";
+    fetch(REST,{headers:{apikey:SB_ANON}})
+      .then(function(r){ return r.ok? r.json() : Promise.reject(r.status); })
+      .then(function(rows){ if(!Array.isArray(rows)||!rows.length) return;
+        var mapped=rows.map(function(r){ var stems=(r.stems||[]).filter(function(x){return x&&x.a!==false;})
+            .map(function(x){return {n:x.n,c:x.c,f:x.f,p:x.p,h:x.h};}); return {label:r.label,folder:r.folder,stems:stems}; })
+          .filter(function(s){return s.stems.length;});
+        if(!mapped.length) return; SONGS=mapped;
+        try{ var sel=document.getElementById("songSel"); if(sel){ sel.innerHTML="";
+          SONGS.forEach(function(s,i){ var o=document.createElement("option"); o.value=i;
+            var extra=(s.stems.length>MAXCH)?(" — "+s.stems.length+" faixas (usa "+MAXCH+")"):"";
+            o.textContent=s.label+extra; sel.appendChild(o); }); sel.value=0; } }catch(e){}
+        try{ var w=(typeof playing!=="undefined"&&playing); if(typeof stopSong==="function")stopSong(true);
+          if(typeof loadSong==="function")loadSong(0); if(w&&typeof playSong==="function")playSong(); }catch(e){}
+      }).catch(function(){});
+  })();
+
+  let ac=null,masterGain=null,monoTrim=null,limM=null,masterAn=null,masterFreq=null,playing=false,loading=false,curSong=0,loadTok=0,realSources=[];
+  let fxBuses=[]; const bufCache={},aNodes=[];
+  function dbToLin(db){ return db<=FMIN?0:Math.pow(10,db/20); }
+  function makeImpulse(seconds){ const rate=ac.sampleRate,len=Math.max(1,Math.floor(clamp(seconds,0.2,5)*rate)),buf=ac.createBuffer(2,len,rate);
+    for(let ch=0;ch<2;ch++){ const d=buf.getChannelData(ch); for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,2.4); } return buf; }
+  function rebuildImpulse(b){ if(fxBuses[b]&&fxBuses[b].conv) fxBuses[b].conv.buffer=makeImpulse(state.flexfx[b].size); }
+  function buildAudioGraph(){
+    ac=new (window.AudioContext||window.webkitAudioContext)();
+    masterGain=ac.createGain(); masterGain.gain.value=dbToLin(state.master);
+    monoTrim=ac.createGain(); monoTrim.gain.value=dbToLin(state.mono);
+    limM=ac.createDynamicsCompressor(); limM.threshold.value=-3; limM.ratio.value=12; limM.attack.value=0.003; limM.release.value=0.12;
+    masterGain.connect(monoTrim); monoTrim.connect(limM); limM.connect(ac.destination);
+    masterAn=ac.createAnalyser(); masterAn.fftSize=1024; masterAn._buf=new Float32Array(masterAn.fftSize); masterFreq=new Float32Array(masterAn.frequencyBinCount); limM.connect(masterAn);
+    // 4 FlexFX buses (each has convolver reverb path + delay path gated by kind)
+    fxBuses=[];
+    for(let b=0;b<N_FX;b++){ const fxb=state.flexfx[b];
+      const inG=ac.createGain(); const ret=ac.createGain(); const an=ac.createAnalyser(); an.fftSize=256; an._buf=new Float32Array(an.fftSize);
+      const conv=ac.createConvolver(); conv.buffer=makeImpulse(fxb.size); const convG=ac.createGain();
+      const dly=ac.createDelay(1.5); dly.delayTime.value=fxb.time; const dfb=ac.createGain(); dfb.gain.value=fxb.fb; const dlyG=ac.createGain();
+      inG.connect(convG); convG.connect(conv); conv.connect(ret);
+      inG.connect(dlyG); dlyG.connect(dly); dly.connect(dfb); dfb.connect(dly); dly.connect(ret);
+      ret.connect(masterGain); ret.connect(an);
+      fxBuses[b]={inG,ret,an,conv,convG,dly,dfb,dlyG};
+    }
+    for(let i=0;i<NCH;i++){
+      const trim=ac.createGain();
+      const hpf=ac.createBiquadFilter();hpf.type="highpass";hpf.frequency.value=20;hpf.Q.value=0.707;
+      const preAn=ac.createAnalyser();preAn.fftSize=256;
+      const gate=ac.createGain();gate.gain.value=1;
+      const comp=ac.createDynamicsCompressor();comp.threshold.value=0;comp.ratio.value=1;comp.attack.value=0.005;comp.release.value=0.15;comp.knee.value=0;
+      const mk=ac.createGain();mk.gain.value=1;
+      const eq0=ac.createBiquadFilter();eq0.type="lowshelf";const eq1=ac.createBiquadFilter();eq1.type="peaking";
+      const eq2=ac.createBiquadFilter();eq2.type="peaking";const eq3=ac.createBiquadFilter();eq3.type="highshelf";
+      const lpf=ac.createBiquadFilter();lpf.type="lowpass";lpf.frequency.value=20000;lpf.Q.value=0.707;
+      const lim=ac.createDynamicsCompressor();lim.threshold.value=0;lim.ratio.value=1;lim.attack.value=0.001;lim.release.value=0.05;lim.knee.value=0;
+      const fdr=ac.createGain();fdr.gain.value=0; const pan=ac.createStereoPanner();
+      const an=ac.createAnalyser();an.fftSize=256;
+      const fxS=[]; for(let b=0;b<N_FX;b++){ const gsend=ac.createGain(); gsend.gain.value=0; fxS.push(gsend); }
+      // Fat Channel signal order: TRIM ▸ HPF ▸ GATE ▸ COMP ▸ EQ ▸ LIMITER ▸ FADER ▸ PAN
+      trim.connect(hpf); hpf.connect(preAn); hpf.connect(gate); gate.connect(comp); comp.connect(mk);
+      mk.connect(eq0); eq0.connect(eq1); eq1.connect(eq2); eq2.connect(eq3); eq3.connect(lpf); lpf.connect(lim);
+      lim.connect(fdr); fdr.connect(pan); pan.connect(masterGain); fdr.connect(an);
+      fxS.forEach((g,b)=>{ fdr.connect(g); g.connect(fxBuses[b].inG); });
+      aNodes[i]={trim,hpf,preAn,preBuf:new Float32Array(preAn.fftSize),gate,comp,mk,eq:[eq0,eq1,eq2,eq3],lpf,lim,fdr,pan,an,buf:new Float32Array(an.fftSize),fxS};
+    }
+    for(let i=0;i<NCH;i++) applyChanAudio(i);
+    applyFX();
+  }
+  applyChanAudio=function(i){
+    if(!ac||!aNodes[i])return; const n=aNodes[i],c=CH[i],t=ac.currentTime;
+    n.trim.gain.setTargetAtTime(dbToLin(c.gain-16)*(c.phase?-1:1),t,0.02);
+    n.hpf.frequency.setTargetAtTime(c.hpfOn?c.hpf:20,t,0.02);
+    n.lpf.frequency.setTargetAtTime(c.lpfOn?c.lpf:20000,t,0.02);
+    const kf=eqTypeFactor(c.eqType);
+    // EQ ON/OFF: a bypassed EQ must be transparent -> flatten every band to 0 dB.
+    c.eq.forEach((b,bi)=>{ const f=n.eq[bi]; if(f.type!==b.type)f.type=b.type; f.frequency.setTargetAtTime(clamp(b.f,20,20000),t,0.02); f.gain.setTargetAtTime((c.eqOn===false)?0:b.g,t,0.02); f.Q.setTargetAtTime(clamp(b.q*kf,0.05,18),t,0.02); });
+    if(c.compOn){ n.comp.threshold.value=c.compThr; n.comp.ratio.value=(c.compRatio>=40?20:Math.max(1,c.compRatio)); n.comp.attack.value=clamp(c.compAtk/1000,0,0.12); n.comp.release.value=clamp(c.compRel/1000,0.005,1.5); n.comp.knee.value=(c.compKnee==='HARD'||c.compKnee===0)?0:clamp(c.compKnee*4,0,30); n.mk.gain.setTargetAtTime(dbToLin(c.compGain),t,0.02); }
+    else { n.comp.threshold.value=0; n.comp.ratio.value=1; n.mk.gain.setTargetAtTime(1,t,0.02); }
+    if(c.limOn){ n.lim.threshold.value=c.limThr; n.lim.ratio.value=20; n.lim.attack.value=0.001; n.lim.knee.value=0; }
+    else { n.lim.threshold.value=0; n.lim.ratio.value=1; }
+    n.pan.pan.setTargetAtTime(clamp(c.pan/63,-1,1),t,0.02);
+    let dcaLin=1,muted=false;
+    for(let g=0;g<N_DCA;g++){ if(c.dca[g]){ if(!state.dcaOn[g])muted=true; dcaLin*=dbToLin(state.dcaGain[g]); } }
+    if(!c.muteSafe){ for(let g=0;g<N_MUTE;g++){ if(c.mute[g]&&state.muteActive[g])muted=true; } }
+    const soloMuted = anyCue() && !c.cue;
+    const audible=c.on&&!muted&&!soloMuted&&c.fader>FMIN&&c.hasAudio;
+    n.fdr.gain.setTargetAtTime(audible?dbToLin(c.fader)*dcaLin:0,t,0.02);
+    for(let b=0;b<N_FX;b++){ n.fxS[b].gain.setTargetAtTime((c.hasAudio&&c.fxSendOn[b]&&c.fxSend[b]>FMIN)?dbToLin(c.fxSend[b]):0,t,0.02); }
+  };
+  function applyFX(){ if(!ac||!fxBuses.length)return; const t=ac.currentTime;
+    for(let b=0;b<N_FX;b++){ const fxb=state.flexfx[b], bus=fxBuses[b], kind=FX_TYPES[fxb.type].kind;
+      const isRev=kind==='reverb';
+      bus.convG.gain.setTargetAtTime(isRev?1:0,t,0.03);
+      bus.dlyG.gain.setTargetAtTime(isRev?0:1,t,0.03);
+      bus.dly.delayTime.setTargetAtTime(clamp(kind==='mod'?0.02+fxb.time*0.03:fxb.time,0,1.5),t,0.03);
+      bus.dfb.gain.setTargetAtTime(isRev?0:clamp(fxb.fb,0,0.9),t,0.03);
+      bus.ret.gain.setTargetAtTime(fxb.on?fxb.ret:0,t,0.03);
+    }
+  }
+  function processGates(){ if(!ac)return; const t=ac.currentTime;
+    for(let i=0;i<NCH;i++){ const n=aNodes[i],c=CH[i]; if(!n)continue;
+      if(!c.gateOn||!playing||!c.hasAudio){ n.gate.gain.setTargetAtTime(1,t,0.01); c._gr=0; continue; }
+      n.preAn.getFloatTimeDomainData(n.preBuf); let s=0; for(let k=0;k<n.preBuf.length;k++)s+=n.preBuf[k]*n.preBuf[k];
+      const rms=Math.sqrt(s/n.preBuf.length),db=rms>1e-5?20*Math.log10(rms):-90; const open=db>c.gateThr,target=open?1:dbToLin(c.gateRange);
+      const tc=Math.max(0.004,(open?c.gateAtk:c.gateDecay)/1000/3); n.gate.gain.setTargetAtTime(target,t,tc); c._gr=open?0:Math.max(0,-c.gateRange); }
+  }
+  function applyMasterAudio(){ if(ac&&masterGain){ masterGain.gain.setTargetAtTime(dbToLin(state.master),ac.currentTime,0.02); monoTrim.gain.setTargetAtTime(dbToLin(state.mono),ac.currentTime,0.02); } }
+  applyMonitor=function(){};
+  function snapCh(c){ return JSON.parse(JSON.stringify({gain:c.gain,phase:c.phase,phantom:c.phantom,hpfOn:c.hpfOn,hpf:c.hpf,lpfOn:c.lpfOn,lpf:c.lpf,eq:c.eq,eqType:c.eqType,eqOn:c.eqOn,gateOn:c.gateOn,gateThr:c.gateThr,gateRange:c.gateRange,gateAtk:c.gateAtk,gateHold:c.gateHold,gateDecay:c.gateDecay,compOn:c.compOn,compThr:c.compThr,compRatio:c.compRatio,compAtk:c.compAtk,compRel:c.compRel,compKnee:c.compKnee,compGain:c.compGain,limOn:c.limOn,limThr:c.limThr,pan:c.pan,fader:c.fader,on:c.on,sends:c.sends,sendOn:c.sendOn,sendPre:c.sendPre,dca:c.dca,mute:c.mute,muteSafe:c.muteSafe,fxSend:c.fxSend,fxSendOn:c.fxSendOn})); }
+  function storeScene(slot){ scenes[slot]={ ch:CH.map(snapCh), master:state.master, mono:state.mono, dcaGain:state.dcaGain.slice(), dcaOn:state.dcaOn.slice(), muteActive:state.muteActive.slice(), flexfx:JSON.parse(JSON.stringify(state.flexfx)), ts:Date.now() }; toast("Scene "+(slot+1)+" <b>armazenada</b> ✔"); }
+  function recallScene(slot){ const s=scenes[slot]; if(!s){ toast("Scene "+(slot+1)+" vazia"); return; }
+    s.ch.forEach((sc,i)=>Object.assign(CH[i],JSON.parse(JSON.stringify(sc)))); state.master=s.master; if(s.mono!=null)state.mono=s.mono;
+    state.dcaGain=s.dcaGain.slice(); state.dcaOn=s.dcaOn.slice(); state.muteActive=s.muteActive.slice(); state.flexfx=JSON.parse(JSON.stringify(s.flexfx));
+    for(let b=0;b<N_FX;b++)rebuildImpulse(b);
+    for(let i=0;i<NCH;i++)applyChanAudio(i); applyMasterAudio(); applyFX();
+    paintSelected(); drawScreen(); toast("Scene "+(slot+1)+" <b>recuperada</b> ▸ faders atualizados"); }
+  function chLevelDb(i){ if(!ac||!aNodes[i])return -90; const n=aNodes[i]; n.an.getFloatTimeDomainData(n.buf); let s=0; for(let k=0;k<n.buf.length;k++)s+=n.buf[k]*n.buf[k]; const rms=Math.sqrt(s/n.buf.length); return rms>1e-5?20*Math.log10(rms):-90; }
+  function masterLevelDb(){ if(!masterAn)return -90; masterAn.getFloatTimeDomainData(masterAn._buf); let s=0; for(let k=0;k<masterAn._buf.length;k++)s+=masterAn._buf[k]*masterAn._buf[k]; const rms=Math.sqrt(s/masterAn._buf.length); return rms>1e-5?20*Math.log10(rms):-90; }
+  function fxBusDb(b){ if(!fxBuses[b])return -90; const n=fxBuses[b], buf=n.an._buf; n.an.getFloatTimeDomainData(buf); let s=0; for(let k=0;k<buf.length;k++)s+=buf[k]*buf[k]; const rms=Math.sqrt(s/buf.length); return rms>1e-5?20*Math.log10(rms):-90; }
+  async function loadBuf(url){ if(bufCache[url])return bufCache[url]; const r=await fetch(url); if(!r.ok)throw new Error("HTTP "+r.status); const ab=await r.arrayBuffer(); const b=await ac.decodeAudioData(ab); bufCache[url]=b; return b; }
+  function setStatus(txt,col){ const el=$("#audioStatus"); if(el){ el.textContent="áudio: "+txt; el.style.color=col||"var(--mut)"; } }
+  function loadSong(idx){ curSong=idx; const song=SONGS[idx];
+    for(let i=0;i<NCH;i++){ const st=song.stems[i],c=CH[i];
+      if(st){ c.name=st.n; c.color=st.c; c.file=st.f; c.pan=st.p; c.hpfOn=st.h; c.hpf=st.h?100:80; c.hasAudio=true; c.on=true; c.fader=-3; c.gain=16; c.phase=false; c.phantom=false; }
+      else { c.name="—"; c.color="#334155"; c.file=null; c.hasAudio=false; c.on=false; } }
+    paintSelected(); drawScreen(); if(ac){ for(let i=0;i<NCH;i++)applyChanAudio(i); } }
+  function setPlayBtn(){ const b=$("#playBtn"); if(!b)return; b.disabled=loading;
+    b.textContent = loading? "CARREGANDO…" : (playing?"⏸ Parar":"► Tocar base");
+    if(!loading) b.style.background = playing? "#e0483f" : ""; }
+  async function playSong(){ if(loading)return; if(playing){ stopSong(); return; }
+    if(!ac)buildAudioGraph(); if(ac.state==="suspended"){ try{await ac.resume();}catch(e){} }
+    const song=SONGS[curSong],base=SB+song.folder+"/",tok=++loadTok; loading=true; setPlayBtn(); setStatus("carregando "+song.label+"…","#12a5e5");
+    let bufs; try{ bufs=await Promise.all(song.stems.map(st=>loadBuf(base+st.f))); }catch(e){ loading=false; setPlayBtn(); setStatus("erro: "+e.message,"#e0483f"); return; }
+    if(tok!==loadTok){ loading=false; setPlayBtn(); return; } stopSong(true); const t0=ac.currentTime+0.12;
+    song.stems.forEach((st,i)=>{ if(i>=MAXCH||!aNodes[i])return; const src=ac.createBufferSource(); src.buffer=bufs[i]; src.loop=true; src.connect(aNodes[i].trim); src.start(t0); realSources.push(src); });
+    for(let i=0;i<NCH;i++)applyChanAudio(i); playing=true; loading=false; setPlayBtn(); setStatus("tocando ♪ "+song.label,"#3ad07a"); }
+  function stopSong(keep){ realSources.forEach(s=>{try{s.stop();}catch(e){}}); realSources=[]; playing=false; if(!loading)setPlayBtn(); if(!keep)setStatus("parado"); }
+
+  /* ================= LOOP ================= */
+  function loop(){ processGates(); drawScreen(); drawTopMeter(); requestAnimationFrame(loop); }
+
+  /* ================= INIT ================= */
+  (function initAudioUI(){ const sel=$("#songSel"); if(sel){ SONGS.forEach((s,i)=>{ const o=document.createElement("option"); o.value=i; o.textContent=s.label; sel.appendChild(o); }); sel.value=0; sel.onchange=()=>{ const w=playing; stopSong(true); loadSong(+sel.value); if(w)playSong(); }; }
+    const pb=$("#playBtn"); if(pb){ pb.onclick=()=>{ playSong(); }; } })();
+  loadSong(0); try{ buildAudioGraph(); }catch(e){}
+  updateSofUi(); paintMission(); paintTopHud();
+
+  /* ===== hook de verificação (headless QA; sem efeito no áudio) ===== */
+  window.__ps={
+    CH, state, MAXCH, N_DCA, N_MUTE, N_FX, FX_TYPES,
+    hitRegions:()=>hitRegions, FAT_PRESETS, applyPreset:(i,p)=>applyPreset(CH[i],FAT_PRESETS[p].d),
+    hpfFreq:i=>(aNodes[i]&&aNodes[i].hpf)?aNodes[i].hpf.frequency.value:null,
+    limReduction:i=>(aNodes[i]&&aNodes[i].lim)?aNodes[i].lim.reduction:null,
+    panVal:i=>(aNodes[i]&&aNodes[i].pan)?aNodes[i].pan.pan.value:null,
+    chainOrder:i=>{ const n=aNodes[i]; if(!n)return null;
+      return {trim:!!n.trim,hpf:!!n.hpf,gate:!!n.gate,comp:!!n.comp,eq:!!n.eq,lim:!!n.lim,fdr:!!n.fdr}; },
+    nScene:()=>N_SCENE, sceneAt:k=>scenes[k], storeScn:k=>storeScene(k), recallScn:k=>recallScene(k),
+    setPlaying:v=>{playing=v;}, processGates:()=>processGates(), srcCount:()=>realSources.length,
+    curLayerBank:()=>ovBank, setSongs:a=>{ SONGS=a; loadSong(0); }, songs:()=>SONGS,
+    chHasAudio:i=>CH[i].hasAudio, flexTime:b=>fxBuses[b]?fxBuses[b].dly.delayTime.value:null,
+    aN:i=>aNodes[i], apply:i=>applyChanAudio(i), applyFX, selectChannel, setMode,
+    sel:()=>state.sel, curMode:()=>state.mode, maxch:()=>CH.length,
+    chFdrGain:i=>(aNodes[i]&&aNodes[i].fdr)?aNodes[i].fdr.gain.value:null,
+    chTrim:i=>(aNodes[i]&&aNodes[i].trim)?aNodes[i].trim.gain.value:null,
+    eqGain:(i,b)=>(aNodes[i]&&aNodes[i].eq[b])?aNodes[i].eq[b].gain.value:null,
+    eqFreq:(i,b)=>(aNodes[i]&&aNodes[i].eq[b])?aNodes[i].eq[b].frequency.value:null,
+    gateGain:i=>(aNodes[i]&&aNodes[i].gate)?aNodes[i].gate.gain.value:null,
+    compReduction:i=>(aNodes[i]&&aNodes[i].comp)?aNodes[i].comp.reduction:null,
+    limThr:i=>(aNodes[i]&&aNodes[i].lim)?aNodes[i].lim.threshold.value:null,
+    limRatio:i=>(aNodes[i]&&aNodes[i].lim)?aNodes[i].lim.ratio.value:null,
+    flexSendGain:(i,b)=>(aNodes[i]&&aNodes[i].fxS[b])?aNodes[i].fxS[b].gain.value:null,
+    flexRetGain:b=>fxBuses[b]?fxBuses[b].ret.gain.value:null,
+    flexBusDb:b=>fxBusDb(b),
+    setFlexType:(b,t)=>{state.flexfx[b].type=t;applyFX();},
+    assignDCA:(i,g,on)=>{CH[i].dca[g]=on;applyChanAudio(i);},
+    setDCAgain:(g,db)=>{state.dcaGain[g]=db;for(let i=0;i<NCH;i++)if(CH[i].dca[g])applyChanAudio(i);},
+    dcaOn:(g,on)=>{state.dcaOn[g]=on;for(let i=0;i<NCH;i++)if(CH[i].dca[g])applyChanAudio(i);},
+    assignMute:(i,g,on)=>{CH[i].mute[g]=on;applyChanAudio(i);},
+    muteGroup:(g,on)=>{state.muteActive[g]=on;for(let i=0;i<NCH;i++)if(CH[i].mute[g])applyChanAudio(i);},
+    muteSafe:(i,on)=>{CH[i].muteSafe=on;applyChanAudio(i);},
+    play:()=>playSong(), stop:()=>stopSong(), isPlaying:()=>playing, isLoading:()=>loading,
+    masterDb:()=>masterLevelDb(), chDb:i=>chLevelDb(i), ac:()=>ac,
+    ovBankSet:i=>{ovBank=i;drawScreen();}, ovBanks:()=>N_OVBANK, songsLen:()=>SONGS.length };
+
+  window.addEventListener("resize",sizeCanvas); setTimeout(sizeCanvas,30); requestAnimationFrame(loop);
+  setInterval(()=>{ const l=$("#netLed"); if(l){ l.classList.toggle("warn"); setTimeout(()=>l.classList.remove("warn"),120); } },4000);
+
+  /* ================= FIT — tela cheia fluida + classes responsivas + guarda iframe 16:9 ================= */
+  function fitConsole(){ const vw=window.innerWidth, vh=window.innerHeight;
+    document.body.classList.toggle('phone', vw<620);
+    document.body.classList.toggle('tablet', vw>=620 && vw<1080);
+    const app=document.getElementById('app');
+    const scrH=(window.screen&&screen.height)||vh; const visH=Math.min(vh,scrH);
+    if(app) app.style.height=visH+"px";   // guarda iframe-mais-alto: nunca ultrapassa a altura visível
+    try{ sizeCanvas(); }catch(e){}
+  }
+  window.addEventListener('resize',fitConsole); setTimeout(fitConsole,45); setTimeout(fitConsole,180);
+})();
+</script>
+</body>
+</html>

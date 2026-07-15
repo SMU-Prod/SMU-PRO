@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>SMU PRO · Quem é quem num evento</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0c1017;--panel:#161c26;--panel2:#1b2230;--line:#2a3444;--ink:#e7edf5;--dim:#8794a8;
+        --accent:#f59e0b;--ok:#22c55e;--err:#ef4444;--warn:#f59e0b;--cyan:#38bdf8;}
+  html,body{background:var(--bg);color:var(--ink);
+    font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased;}
+  body{padding:12px;}
+  .app{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:12px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  h1{font-size:15px;margin-bottom:3px;}
+  .sub{font-size:12px;color:var(--dim);margin-bottom:12px;line-height:1.5;}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px;}
+  .stat .k{font-size:10px;color:var(--dim);letter-spacing:.5px;}
+  .stat .val{font-size:15px;font-weight:800;margin-top:2px;}
+  .verdict{font-size:13px;font-weight:700;padding:9px 12px;border-radius:8px;text-align:center;}
+  .verdict.ok{background:#14532d;color:#bbf7d0;}
+  .verdict.bad{background:#450a0a;color:#fca5a5;}
+  .verdict.warn{background:#422006;color:#fde68a;}
+  .note{font-size:12px;color:var(--dim);line-height:1.55;}
+  button{font:inherit;cursor:pointer;}
+  /* --- tabs --- */
+  .tabs{display:flex;gap:6px;margin-bottom:12px;}
+  .tabs button{flex:1;min-height:36px;font-size:12px;font-weight:700;padding:8px;border:1px solid var(--line);
+    border-radius:8px;background:#0c1119;color:var(--dim);}
+  .tabs button.on{background:#42200680;border-color:var(--accent);color:#fde68a;}
+  .hd{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+  .hd .sc{margin-left:auto;font-size:11px;color:var(--dim);}
+  .hd .sc b{color:var(--accent);font-size:13px;}
+  .btn{min-height:36px;padding:8px 14px;font-size:12px;font-weight:700;border-radius:8px;border:1px solid var(--line);
+    background:#0c1119;color:var(--ink);}
+  .btn.pri{background:#42200680;border-color:var(--accent);color:#fde68a;}
+  .btn:disabled{opacity:.4;cursor:default;}
+  .bar{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
+  /* --- organograma --- */
+  .paltitle{font-size:10px;color:var(--dim);letter-spacing:.5px;margin-bottom:6px;}
+  .pal{display:flex;flex-wrap:wrap;gap:5px;min-height:40px;padding:8px;background:#0a0e15;
+    border:1px solid var(--line);border-radius:9px;}
+  .pc{min-height:34px;padding:6px 9px;font-size:11px;font-weight:600;border-radius:7px;
+    border:1px solid var(--line);background:var(--panel2);color:var(--ink);line-height:1.25;}
+  .pc.sel{border-color:var(--accent);background:#42200680;color:#fde68a;box-shadow:0 0 0 1px var(--accent);}
+  .pinfo{margin-top:8px;font-size:11px;color:var(--dim);line-height:1.5;min-height:32px;
+    background:#0a0e15;border:1px solid var(--line);border-radius:8px;padding:8px;}
+  .pinfo b{color:var(--cyan);}
+  .trees{display:grid;grid-template-columns:1fr;gap:12px;margin-top:12px;}
+  @media(min-width:780px){ .trees{grid-template-columns:1.6fr 1fr;} }
+  .tree{background:#0a0e15;border:1px solid var(--line);border-radius:10px;padding:10px;}
+  .tree>.th{font-size:10px;letter-spacing:.6px;color:var(--accent);font-weight:800;text-align:center;margin-bottom:8px;}
+  .lvl{text-align:center;}
+  .lt{font-size:9.5px;color:var(--dim);letter-spacing:.4px;margin-bottom:4px;}
+  .slots{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;}
+  .slot{min-height:38px;min-width:112px;flex:1 1 112px;max-width:200px;padding:5px 7px;font-size:10.5px;line-height:1.2;
+    border:1px dashed #3a465a;border-radius:8px;background:#0f141d;color:#5c697d;
+    display:flex;align-items:center;justify-content:center;text-align:center;}
+  .slot.filled{border-style:solid;border-color:var(--line);background:var(--panel2);color:var(--ink);font-weight:600;}
+  .slot.ok{border-color:var(--ok);background:#14532d55;color:#bbf7d0;}
+  .slot.bad{border-color:var(--err);background:#450a0a88;color:#fca5a5;}
+  .slot.anchor{border-style:solid;border-color:var(--cyan);background:#0c4a6e55;color:#bae6fd;font-weight:700;cursor:default;}
+  .conn{width:2px;height:11px;background:#3a465a;margin:0 auto;}
+  .errs{margin-top:10px;display:flex;flex-direction:column;gap:5px;}
+  .er{font-size:11px;line-height:1.45;padding:6px 8px;border-radius:7px;border-left:3px solid var(--err);
+    background:#1a0d0d;color:#fca5a5;}
+  /* --- situacoes --- */
+  .qn{font-size:10px;color:var(--dim);letter-spacing:.5px;}
+  .qt{font-size:13.5px;font-weight:700;line-height:1.45;margin:5px 0 12px;}
+  .tg{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:5px;}
+  .tg button{min-height:38px;padding:7px;font-size:11px;font-weight:600;border-radius:7px;
+    border:1px solid var(--line);background:var(--panel2);color:var(--ink);line-height:1.25;text-align:center;}
+  .tg button.pick{border-color:var(--accent);}
+  .tg button.right{border-color:var(--ok);background:#14532d88;color:#bbf7d0;}
+  .tg button.wrong{border-color:var(--err);background:#450a0a99;color:#fca5a5;}
+  .tg button:disabled{cursor:default;}
+  .fb{margin-top:11px;font-size:12px;line-height:1.55;padding:9px 11px;border-radius:8px;}
+  .fb.ok{background:#14532d55;border-left:3px solid var(--ok);color:#d1fae5;}
+  .fb.bad{background:#450a0a66;border-left:3px solid var(--err);color:#fecaca;}
+  .fb b{color:#fff;}
+  .rules{margin-top:12px;display:grid;grid-template-columns:1fr;gap:5px;}
+  @media(min-width:640px){ .rules{grid-template-columns:1fr 1fr;} }
+  .rule{font-size:11px;line-height:1.45;color:var(--dim);background:var(--panel2);border:1px solid var(--line);
+    border-radius:7px;padding:7px 9px;}
+  .rule b{color:var(--ink);}
+  .hide{display:none;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="card">
+    <div class="hd">
+      <div>
+        <h1>Quem é quem num evento — e para quem eu falo</h1>
+        <div class="sub" style="margin:0;">Cadeia de comando de um show. Monte o organograma e depois acerte o destinatário de cada situação.</div>
+      </div>
+      <div class="sc">PLACAR<br><b id="score">0 / 27</b></div>
+    </div>
+    <div class="tabs">
+      <button id="t1" class="on">1 · Montar o organograma</button>
+      <button id="t2">2 · Para quem eu falo?</button>
+    </div>
+
+    <!-- BLOCO 1 -->
+    <div id="b1">
+      <div class="paltitle">FUNÇÕES SOLTAS — toque numa função, depois toque no lugar dela na árvore</div>
+      <div class="pal" id="pal"></div>
+      <div class="pinfo" id="pinfo">Toque numa função para ler o que ela faz. Toque numa função já encaixada para tirá-la de volta.</div>
+      <div class="trees">
+        <div class="tree" id="treeP"><div class="th">CADEIA DA PRODUÇÃO</div><div id="lvP"></div></div>
+        <div class="tree" id="treeA"><div class="th">CADEIA DO ARTISTA</div><div id="lvA"></div></div>
+      </div>
+      <div class="bar">
+        <button class="btn pri" id="check">Conferir organograma</button>
+        <button class="btn" id="clr">Limpar</button>
+      </div>
+      <div class="verdict hide" id="v1" style="margin-top:10px;"></div>
+      <div class="errs" id="errs"></div>
+    </div>
+
+    <!-- BLOCO 2 -->
+    <div id="b2" class="hide">
+      <div class="qn" id="qn"></div>
+      <div class="qt" id="qt"></div>
+      <div class="tg" id="tg"></div>
+      <div class="fb hide" id="fb"></div>
+      <div class="bar"><button class="btn pri hide" id="next">Próxima situação</button></div>
+      <div class="rules">
+        <div class="rule"><b>Cadeia de comando existe para o evento não parar.</b> Se todo mundo fala com o produtor executivo, ele vira gargalo e o show atrasa.</div>
+        <div class="rule"><b>Quem fala com o cliente é o produtor.</b> Técnico que fala direto com o contratante cria promessa que a produção paga depois.</div>
+        <div class="rule"><b>Quem fala com o artista é produtor, empresário ou road manager.</b> Nunca o técnico, nunca o auxiliar.</div>
+        <div class="rule"><b>Cada área tem um chefe.</b> Você fala com o chefe, não com os 8 da equipe.</div>
+        <div class="rule"><b>Pular nível só em emergência.</b> Acidente, fogo, estrutura no ar, risco de vida: fala com quem estiver mais perto, agora.</div>
+        <div class="rule"><b>Conflito entre dois chefes sobe um nível.</b> Chefe não arbitra chefe do mesmo nível — por isso existe o nível de cima.</div>
+      </div>
+    </div>
+
+    <div class="bar" style="border-top:1px solid var(--line);padding-top:12px;margin-top:14px;">
+      <button class="btn" id="reset">Reiniciar</button>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+var $=function(s){return document.querySelector(s);};
+
+var PIECES=[
+ {id:'pex',n:'Produtor Executivo',lv:'L1',d:'Responde pelo evento inteiro. É o único que fala com o contratante. Decide dinheiro, prazo e escopo.'},
+ {id:'ptec',n:'Produtor Técnico',lv:'L2',d:'Contrata e cobra fornecedores: som, luz, LED, palco, energia, rigging. Dono do rider técnico.'},
+ {id:'part',n:'Produtor Artístico',lv:'L2',d:'Line-up, ordem de palco, duração, repertório, hospitality. Interlocutor do empresário e do road manager.'},
+ {id:'ppis',n:'Produtor de Piso',lv:'L2',d:'Roda o dia do evento no chão: credencial, camarim, horário, pessoas. Braço do executivo no local.'},
+ {id:'sm',n:'Coordenador de Palco / Stage Manager',lv:'L3',d:'Manda no palco: quem sobe, quando sobe, quando para. No showtime, o palco obedece a ele.'},
+ {id:'som',n:'Chefe de equipe de som',lv:'L3',d:'Responde pelo PA, pelo monitor e pela equipe de áudio da casa. Ponto único de contato do som.'},
+ {id:'luz',n:'Chefe de luz',lv:'L3',d:'Responde pelo desenho de luz, pela montagem e pela equipe de luz.'},
+ {id:'rig',n:'Rigger chefe',lv:'L3',d:'Responde por tudo que sobe no ar. Palavra final em carga, ponto e voo — inclusive para parar a montagem sozinho.'},
+ {id:'seg',n:'Chefe de segurança',lv:'L3',d:'Responde por público, barricada, evacuação e acesso. Executa a política de acesso, não a define.'},
+ {id:'run',n:'Runner',lv:'L3',d:'Resolve pendência externa e logística miúda: compra, transporte, camarim. Recebe ordem da produção de piso.'},
+ {id:'tec',n:'Técnicos e auxiliares',lv:'L4',d:'Som, luz, palco, LED, roadies. Executam e recebem ordem do chefe da própria área — não da produção direto.'},
+ {id:'emp',n:'Empresário / Manager',lv:'A1',d:'Dono do contrato do artista. Fala com o produtor executivo. Cachê, contrato, exclusividade.'},
+ {id:'rm',n:'Road Manager',lv:'A2',d:'Manda na turnê no dia a dia. É a porta de entrada para qualquer assunto com o artista.'},
+ {id:'foh',n:'Técnico de som do artista (FOH)',lv:'A3',d:'Mixa a casa pelo artista. Combina com o chefe de som da casa — não manda nele.'},
+ {id:'mon',n:'Técnico de monitor',lv:'A3',d:'Cuida do que o artista escuta no palco: wedge, side, in-ear.'},
+ {id:'bck',n:'Backline',lv:'A3',d:'Instrumentos, amplificadores, bateria, afinação e troca de instrumento no palco.'}
+];
+var LVP=[
+ {id:'L0',t:'CONTRATANTE / CLIENTE',anchor:'Contratante / Cliente'},
+ {id:'L1',t:'NÍVEL 1 — PRODUÇÃO EXECUTIVA',n:1},
+ {id:'L2',t:'NÍVEL 2 — PRODUTORES DE ÁREA',n:3},
+ {id:'L3',t:'NÍVEL 3 — CHEFES DE ÁREA',n:6},
+ {id:'L4',t:'NÍVEL 4 — EXECUÇÃO',n:1}
+];
+var LVA=[
+ {id:'A1',t:'CONTRATO DO ARTISTA',n:1},
+ {id:'A2',t:'TURNÊ NO DIA A DIA',n:1},
+ {id:'A3',t:'EQUIPE TÉCNICA DO ARTISTA',n:3}
+];
+var LVNAME={L1:'nível 1 (produção executiva)',L2:'nível 2 (produtor de área)',L3:'nível 3 (chefe de área)',
+ L4:'nível 4 (execução)',A1:'contrato do artista',A2:'turnê do artista',A3:'equipe técnica do artista'};
+
+var TARGETS=[
+ {id:'cli',n:'Cliente / Contratante'},{id:'pex',n:'Produtor Executivo'},{id:'ptec',n:'Produtor Técnico'},
+ {id:'part',n:'Produtor Artístico'},{id:'ppis',n:'Produtor de Piso'},{id:'sm',n:'Stage Manager'},
+ {id:'som',n:'Chefe de som'},{id:'luz',n:'Chefe de luz'},{id:'rig',n:'Rigger chefe'},
+ {id:'seg',n:'Chefe de segurança'},{id:'run',n:'Runner'},{id:'emp',n:'Empresário / Manager'},
+ {id:'rm',n:'Road Manager'},{id:'art',n:'O artista, direto'},{id:'near',n:'Quem estiver mais perto (emergência)'}
+];
+var GEN={
+ cli:'Você não fala com o contratante. Nunca. Quem fala com o cliente é o produtor executivo — qualquer coisa que você prometer, a produção paga depois.',
+ art:'Você não fala direto com o artista. A porta de entrada é o road manager (ou o empresário, se for contrato).',
+ near:'Isso não é emergência. "Quem estiver mais perto" vale para acidente, fogo, estrutura caindo, risco de vida. Fora disso é fura-fila.',
+ pex:'O produtor executivo não é balcão de reclamação. Cada assunto que chega nele fora da ordem é um assunto que ele deixa de resolver — e aí o evento trava.'
+};
+var Q=[
+ {q:'Faltam dois cabos XLR na sub do palco e a passagem de som começa em 20 minutos.',a:'som',
+  w:'Falta de material de áudio é do chefe de som: ele tem o estoque, o multicabo reserva e a equipe. Se ele não tiver, aí sim ele escala para o produtor técnico — com o problema já apurado.',
+  t:{ptec:'O produtor técnico entra depois, se o chefe de som não tiver reserva. Começar por ele é pular o cara que sabe onde está o cabo.'}},
+ {q:'O cliente liga querendo antecipar o show em 30 minutos.',a:'pex',
+  w:'Mudança de horário mexe em contrato, cachê, escala de equipe e horário de fechamento da casa. Só o produtor executivo negocia com o contratante — e é ele que desce a mudança para o resto da cadeia.',
+  t:{sm:'O stage manager cumpre horário, não negocia horário com o cliente.',ppis:'O piso executa o cronograma, não muda o cronograma com o contratante.'}},
+ {q:'Chega o recado de que o artista quer tirar duas músicas do repertório.',a:'rm',
+  w:'Assunto de artista entra pelo road manager. Ele confirma com o artista e leva ao produtor artístico, que reajusta tempo de show, luz, VT e cronograma.',
+  t:{part:'O produtor artístico precisa saber — mas quem traz a informação do lado do artista é o road manager. Você não vai atrás do artista.',luz:'A luz precisa ser avisada depois. Quem muda repertório não é o chefe de luz.'}},
+ {q:'Um auxiliar caiu do praticável durante a montagem e está no chão.',a:'near',
+  w:'Emergência pula nível. Aciona quem estiver mais perto AGORA, brigada/segurança e ambulância; o produtor executivo é avisado em seguida. Cadeia de comando não vale mais que a vida de ninguém.',
+  t:{pex:'Certo depois, não primeiro. Procurar o executivo pelo pátio custa minutos que a pessoa no chão não tem.',
+     seg:'A segurança entra — mas você não atravessa o galpão procurando o chefe dela. Grita para quem está do lado.'}},
+ {q:'O caminhão da empresa de luz não chegou e a montagem já devia ter começado.',a:'ptec',
+  w:'Fornecedor é do produtor técnico: foi ele quem contratou, tem o contato, o contrato e a multa. Ele cobra e, se não resolver, leva ao executivo já com plano B.',
+  t:{luz:'O chefe de luz está esperando o mesmo caminhão. Ele não tem contrato com ninguém.',
+     pex:'Só depois que o produtor técnico esgotou a cobrança e tem uma alternativa na mão.'}},
+ {q:'Um convidado sem credencial quer entrar no backstage e diz que é amigo do artista.',a:'ppis',
+  w:'Acesso é decisão da produção — piso decide, executivo respalda. A segurança cumpre a lista; ela não cria exceção.',
+  t:{seg:'A segurança executa a política de acesso, não a define. Pedir "só esse aí" para a segurança queima o único controle que você tem no backstage.',
+     rm:'O road manager confirma se conhece o cara, mas quem libera acesso é a produção.'}},
+ {q:'O artista quer conversar sobre o cachê que não caiu na conta.',a:'emp',
+  w:'Dinheiro do artista corre por empresário ↔ produtor executivo. Mais ninguém nessa conversa.',
+  t:{pex:'O executivo é uma das pontas — mas quem leva o assunto pelo lado do artista é o empresário. Não é você que abre essa conversa.',
+     ppis:'Produção de piso não fala de cachê. Nem para dar recado.'}},
+ {q:'A talha do truss central está com o cabo torto e a estrutura já está subindo.',a:'rig',
+  w:'Rigging tem palavra própria: o rigger chefe para a subida sozinho, sem pedir autorização a ninguém. Estrutura no ar é risco de vida — não é assunto de comitê.',
+  t:{luz:'A luz está no truss, mas quem manda no ponto de içamento é o rigger.',
+     ptec:'Enquanto você procura o produtor técnico, o truss sobe. Fale com quem pode parar agora.'}},
+ {q:'Quinze minutos para o artista subir e o camarim está sem água nem toalha, como pede o rider.',a:'run',
+  w:'É exatamente o trabalho do runner: resolver pendência externa em minutos. A ordem sai da produção de piso — e o rider de hospitality é obrigação contratual, não favor.',
+  t:{ppis:'O piso aciona o runner, então não está errado avisar. Mas quem resolve é o runner: fale com ele e ganhe 10 minutos.',
+     part:'O produtor artístico fechou o rider. Ele não vai comprar água.'}},
+ {q:'O chefe de luz e o chefe de som estão brigando pelo espaço da torre de FOH.',a:'ptec',
+  w:'Conflito entre dois chefes do mesmo nível sobe um nível: quem arbitra é o produtor técnico, chefe dos dois. É para isso que o nível de cima existe.',
+  t:{sm:'O stage manager manda no palco, não na área de FOH.',
+     pex:'Existe um produtor técnico justamente para o executivo não ter que arbitrar metragem de torre.'}},
+ {q:'O DJ de abertura chegou e ninguém sabe a que horas ele toca nem quanto tempo tem.',a:'part',
+  w:'Line-up, ordem e duração são do produtor artístico: ele montou o cronograma artístico. O stage manager só executa o que já foi fechado.',
+  t:{sm:'O stage manager cumpre o cronograma; ele não decide quanto tempo o DJ toca.',
+     rm:'Road manager é do artista principal. Ele não escala abertura.'}}
+];
+
+var st,sel,ans;
+function reset(){
+  st={};
+  sel=null; ans=[]; qi=0;
+  $('#v1').className='verdict hide'; $('#errs').innerHTML='';
+  $('#pinfo').textContent='Toque numa função para ler o que ela faz. Toque numa função já encaixada para tirá-la de volta.';
+  render(); renderQ(); score();
+}
+function placed(id){ for(var k in st){ if(st[k]===id) return true; } return false; }
+function score(){
+  var s=0,k;
+  for(k in st){ var p=byId(st[k]); if(p && p.lv===k.split('#')[0]) s++; }
+  for(var i=0;i<ans.length;i++){ if(ans[i]===true) s++; }
+  $('#score').textContent=s+' / '+(16+Q.length);
+}
+function byId(id){ for(var i=0;i<PIECES.length;i++){ if(PIECES[i].id===id) return PIECES[i]; } return null; }
+
+/* ---------- bloco 1 ---------- */
+function render(){
+  var pal=$('#pal'); pal.innerHTML='';
+  var free=PIECES.filter(function(p){ return !placed(p.id); });
+  if(!free.length){ pal.innerHTML='<span class="note">Todas as funções encaixadas. Confira o organograma.</span>'; }
+  free.forEach(function(p){
+    var b=document.createElement('button'); b.className='pc'+(sel===p.id?' sel':''); b.textContent=p.n;
+    b.onclick=function(){ sel=(sel===p.id?null:p.id); info(p); render(); };
+    pal.appendChild(b);
+  });
+  $('#lvP').innerHTML=''; $('#lvA').innerHTML='';
+  LVP.forEach(function(l,i){ if(i) $('#lvP').appendChild(conn()); $('#lvP').appendChild(level(l)); });
+  LVA.forEach(function(l,i){ if(i) $('#lvA').appendChild(conn()); $('#lvA').appendChild(level(l)); });
+}
+function conn(){ var d=document.createElement('div'); d.className='conn'; return d; }
+function info(p){ $('#pinfo').innerHTML='<b>'+p.n+'</b> — '+p.d; }
+function level(l){
+  var wrap=document.createElement('div'); wrap.className='lvl';
+  var t=document.createElement('div'); t.className='lt'; t.textContent=l.t; wrap.appendChild(t);
+  var row=document.createElement('div'); row.className='slots'; wrap.appendChild(row);
+  if(l.anchor){ var a=document.createElement('div'); a.className='slot anchor'; a.textContent=l.anchor; row.appendChild(a); return wrap; }
+  for(var i=0;i<l.n;i++){ row.appendChild(slot(l.id,i)); }
+  return wrap;
+}
+function slot(lid,i){
+  var key=lid+'#'+i, pid=st[key], el=document.createElement('div');
+  el.className='slot'+(pid?' filled':'');
+  el.textContent=pid?byId(pid).n:'— vazio —';
+  el.onclick=function(){
+    if(pid){ info(byId(pid)); delete st[key]; sel=pid; }
+    else if(sel){ st[key]=sel; sel=null; }
+    else { return; }
+    $('#v1').className='verdict hide'; $('#errs').innerHTML='';
+    render(); score();
+  };
+  return el;
+}
+$('#check').onclick=function(){
+  var errs=$('#errs'); errs.innerHTML=''; var bad=0, tot=16;
+  var slots=Array.prototype.slice.call(document.querySelectorAll('#b1 .slot'));
+  var idx=0;
+  [].concat(LVP,LVA).forEach(function(l){
+    if(l.anchor){ idx++; return; }
+    for(var i=0;i<l.n;i++){
+      var key=l.id+'#'+i, pid=st[key], el=slots[idx++];
+      if(!pid){ el.className='slot bad'; bad++; addErr(errs,'<b>'+l.t+'</b> — posto vazio. Cadeia com buraco é cadeia quebrada: alguém vai acabar falando com quem não deve.'); continue; }
+      var p=byId(pid);
+      if(p.lv===l.id){ el.className='slot filled ok'; }
+      else{ el.className='slot filled bad'; bad++;
+        addErr(errs,'<b>'+p.n+'</b> não é '+LVNAME[l.id]+' — é '+LVNAME[p.lv]+'. '+p.d); }
+    }
+  });
+  var v=$('#v1'); var ok=tot-bad;
+  if(bad===0){ v.className='verdict ok'; v.textContent='✓ Organograma correto — '+tot+'/'+tot+'. Agora vá para o bloco 2.'; }
+  else if(bad<=3){ v.className='verdict warn'; v.textContent='◐ '+ok+'/'+tot+' — quase. Corrija os postos em vermelho.'; }
+  else { v.className='verdict bad'; v.textContent='✗ '+ok+'/'+tot+' — hierarquia furada. Leia os erros abaixo.'; }
+  score();
+};
+function addErr(c,h){ var d=document.createElement('div'); d.className='er'; d.innerHTML=h; c.appendChild(d); }
+$('#clr').onclick=function(){ st={}; sel=null; $('#v1').className='verdict hide'; $('#errs').innerHTML=''; render(); score(); };
+
+/* ---------- bloco 2 ---------- */
+var qi=0;
+function renderQ(){
+  var q=Q[qi];
+  $('#qn').textContent='SITUAÇÃO '+(qi+1)+' DE '+Q.length+' — para quem você fala PRIMEIRO?';
+  $('#qt').textContent='"'+q.q+'"';
+  $('#fb').className='fb hide'; $('#next').className='btn pri hide';
+  var g=$('#tg'); g.innerHTML='';
+  TARGETS.forEach(function(t){
+    var b=document.createElement('button'); b.textContent=t.n;
+    b.onclick=function(){ answer(t.id); };
+    g.appendChild(b);
+  });
+}
+function answer(pick){
+  var q=Q[qi], right=(pick===q.a);
+  ans[qi]=right;
+  var btns=Array.prototype.slice.call(document.querySelectorAll('#tg button'));
+  btns.forEach(function(b,i){
+    b.disabled=true;
+    if(TARGETS[i].id===q.a) b.className='right';
+    else if(TARGETS[i].id===pick) b.className='wrong';
+  });
+  var fb=$('#fb');
+  var head=right?'✓ Certo — '+name(q.a)+'. ':'✗ Errado. Quem resolve isso é o <b>'+name(q.a)+'</b>. ';
+  var extra='';
+  if(!right){ extra=' <br><br>Sobre a sua escolha (<b>'+name(pick)+'</b>): '+(q.t[pick]||GEN[pick]||'Essa pessoa não tem mandato nem informação para resolver isso. Falar com ela só adiciona um degrau ao problema.'); }
+  fb.className='fb '+(right?'ok':'bad');
+  fb.innerHTML=head+q.w+extra;
+  $('#next').className='btn pri'+(qi>=Q.length-1?' hide':'');
+  if(qi>=Q.length-1){
+    var f=document.createElement('div'); f.className='verdict '+(count()>=Q.length-2?'ok':(count()>=Q.length-5?'warn':'bad'));
+    f.style.marginTop='10px'; f.textContent='Bloco 2 encerrado: '+count()+' / '+Q.length+' destinatários corretos.';
+    fb.parentNode.insertBefore(f,$('#next').parentNode);
+  }
+  score();
+}
+function count(){ var c=0; for(var i=0;i<ans.length;i++){ if(ans[i]===true) c++; } return c; }
+function name(id){ for(var i=0;i<TARGETS.length;i++){ if(TARGETS[i].id===id) return TARGETS[i].n; } return id; }
+$('#next').onclick=function(){ if(qi<Q.length-1){ qi++; renderQ(); } };
+
+/* ---------- tabs / reset ---------- */
+function tab(n){
+  $('#t1').className=n===1?'on':''; $('#t2').className=n===2?'on':'';
+  $('#b1').className=n===1?'':'hide'; $('#b2').className=n===2?'':'hide';
+}
+$('#t1').onclick=function(){ tab(1); };
+$('#t2').onclick=function(){ tab(2); };
+$('#reset').onclick=function(){
+  var ex=document.querySelectorAll('#b2 .verdict');
+  Array.prototype.slice.call(ex).forEach(function(e){ e.parentNode.removeChild(e); });
+  reset(); tab(1);
+};
+reset();
+})();
+</script>
+</body>
+</html>

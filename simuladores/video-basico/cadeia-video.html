@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMU PRO · A Cadeia do Vídeo</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0c1017;--panel:#161c26;--panel2:#1d2431;--line:#2a3444;--ink:#e7edf5;--dim:#8794a8;--accent:#3b82f6;--ok:#22c55e;--err:#ef4444;}
+  html,body{background:var(--bg);color:var(--ink);font-family:'Segoe UI',system-ui,Arial,sans-serif;}
+  body{padding:12px;}
+  .app{max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:12px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  h1{font-size:15px;margin-bottom:3px;} .sub{font-size:12px;color:var(--dim);margin-bottom:12px;}
+  .slots{display:grid;grid-template-columns:1fr;gap:8px;}
+  @media(min-width:640px){ .slots{grid-template-columns:repeat(4,1fr);} }
+  .slot{background:var(--panel2);border:2px dashed var(--line);border-radius:10px;min-height:96px;padding:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;text-align:center;cursor:pointer;transition:.12s;}
+  .slot:hover{border-color:var(--accent);}
+  .slot .num{font-size:10px;color:var(--dim);letter-spacing:.1em;}
+  .slot .ph{font-size:11px;color:var(--dim);}
+  .slot.filled{border-style:solid;background:#0e1a2a;border-color:var(--accent);}
+  .slot.right{border-color:var(--ok);background:#0e2018;}
+  .slot.wrong{border-color:var(--err);background:#2a0e0e;}
+  .slot .ico{font-size:22px;} .slot .nm{font-size:12px;font-weight:700;}
+  .arrow{display:none;} @media(min-width:640px){ .slots{position:relative;} }
+  .tray{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px;}
+  .piece{display:flex;align-items:center;gap:7px;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px 11px;cursor:pointer;font-size:12px;font-weight:700;transition:.12s;}
+  .piece:hover{border-color:var(--accent);} .piece.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset;}
+  .piece.used{opacity:.35;pointer-events:none;}
+  .piece .ico{font-size:17px;}
+  .role{margin-top:14px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:11px;}
+  .role h3{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:8px;}
+  .role .q{font-size:12.5px;margin-bottom:8px;line-height:1.5;}
+  .opts{display:flex;gap:6px;flex-wrap:wrap;}
+  .opts button{font-size:11.5px;padding:7px 11px;border:1px solid var(--line);border-radius:7px;background:#0c1119;color:var(--dim);cursor:pointer;}
+  .opts button:hover{border-color:var(--accent);}
+  .verdict{font-size:13px;font-weight:700;padding:10px;border-radius:9px;text-align:center;margin-top:12px;}
+  .verdict.ok{background:#14532d;color:#bbf7d0;} .verdict.bad{background:#450a0a;color:#fca5a5;} .verdict.idle{background:var(--panel2);color:var(--dim);}
+  .note{font-size:12px;color:var(--dim);line-height:1.55;margin-top:10px;} .note b{color:var(--ink);}
+  .btn{font-size:11.5px;padding:7px 12px;border:1px solid var(--line);border-radius:7px;background:#0c1119;color:var(--ink);cursor:pointer;margin-top:10px;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="card">
+    <h1>Monte a cadeia do vídeo do evento</h1>
+    <div class="sub">Coloque cada equipamento na <b>ordem em que o sinal passa</b>, da fonte até a tela. Clique numa peça e depois no lugar dela.</div>
+    <div class="slots" id="slots"></div>
+    <div class="tray" id="tray"></div>
+    <div class="verdict idle" id="verdict">Monte a cadeia na ordem certa.</div>
+    <div class="note" id="note"></div>
+    <button class="btn" id="reset">Recomeçar</button>
+  </div>
+
+  <div class="card role" id="roleCard" style="display:none">
+    <h3>Agora as funções — quem faz o quê?</h3>
+    <div class="q" id="roleQ"></div>
+    <div class="opts" id="roleOpts"></div>
+    <div class="verdict idle" id="roleVerdict" style="margin-top:10px">Responda para avançar.</div>
+  </div>
+</div>
+<script>
+(function(){
+var $=function(s){return document.querySelector(s);};
+var CHAIN=[
+  {id:'fonte', ico:'💻', nm:'Fonte', desc:'notebook / câmera / playback'},
+  {id:'switcher', ico:'🎛️', nm:'Mesa de corte', desc:'escolhe o que vai ao ar'},
+  {id:'proc', ico:'🟩', nm:'Processadora', desc:'mapeia p/ a tela'},
+  {id:'tela', ico:'🖥️', nm:'Telão / Tela', desc:'o público vê'}
+];
+var slots=[null,null,null,null], sel=null, locked=false;
+function shuffled(){ return [CHAIN[2],CHAIN[0],CHAIN[3],CHAIN[1]]; }
+
+function build(){
+  slots=[null,null,null,null]; sel=null; locked=false;
+  var se=$('#slots'); se.innerHTML='';
+  for(var i=0;i<4;i++){ (function(i){
+    var d=document.createElement('div'); d.className='slot'; d.id='slot-'+i;
+    d.innerHTML='<div class="num">'+(i+1)+'º</div><div class="ph">clique aqui</div>';
+    d.onclick=function(){ place(i); }; se.appendChild(d);
+  })(i); }
+  var te=$('#tray'); te.innerHTML='';
+  shuffled().forEach(function(p){ var b=document.createElement('div'); b.className='piece'; b.id='pc-'+p.id;
+    b.innerHTML='<span class="ico">'+p.ico+'</span>'+p.nm;
+    b.onclick=function(){ sel=p.id; document.querySelectorAll('.piece').forEach(function(x){x.classList.remove('sel');}); b.classList.add('sel'); };
+    te.appendChild(b); });
+  $('#verdict').className='verdict idle'; $('#verdict').textContent='Monte a cadeia na ordem certa.';
+  $('#note').innerHTML=''; $('#roleCard').style.display='none';
+}
+function place(i){
+  if(locked)return;
+  if(!sel){ toastNote('Escolha uma peça abaixo primeiro.'); return; }
+  // remove sel from any other slot
+  for(var k=0;k<4;k++) if(slots[k]===sel) slots[k]=null;
+  slots[i]=sel;
+  render(); sel=null; document.querySelectorAll('.piece').forEach(function(x){x.classList.remove('sel');});
+  check();
+}
+function render(){
+  for(var i=0;i<4;i++){
+    var d=$('#slot-'+i); var id=slots[i];
+    d.className='slot'+(id?' filled':'');
+    if(id){ var p=CHAIN.find(function(x){return x.id===id;});
+      d.innerHTML='<div class="num">'+(i+1)+'º</div><div class="ico">'+p.ico+'</div><div class="nm">'+p.nm+'</div>';
+    } else d.innerHTML='<div class="num">'+(i+1)+'º</div><div class="ph">clique aqui</div>';
+  }
+  document.querySelectorAll('.piece').forEach(function(b){ var id=b.id.replace('pc-',''); b.classList.toggle('used', slots.indexOf(id)>=0); });
+}
+function check(){
+  if(slots.some(function(s){return !s;})) return;
+  var ok=slots.every(function(s,i){ return s===CHAIN[i].id; });
+  var v=$('#verdict');
+  for(var i=0;i<4;i++){ var d=$('#slot-'+i); d.classList.add(slots[i]===CHAIN[i].id?'right':'wrong'); }
+  if(ok){ v.className='verdict ok'; v.textContent='✓ Cadeia correta! É sempre esse caminho.'; locked=true;
+    $('#note').innerHTML='<b>Fonte</b> (notebook, câmera, playback) → <b>mesa de corte</b> (escolhe o que vai ao ar) → <b>processadora/scaler</b> (mapeia a imagem para o formato da tela) → <b>telão</b> (o público vê). Sempre que faltar imagem, teste elo por elo nessa ordem.';
+    startRole();
+  } else { v.className='verdict bad'; v.textContent='✗ Ainda não. Pense: onde a imagem NASCE e onde ela TERMINA?'; }
+}
+function toastNote(m){ $('#note').innerHTML='<b>'+m+'</b>'; }
+$('#reset').onclick=build;
+
+// ---- role quiz ----
+var ROLE=[
+  {q:'Qual equipamento escolhe QUAL fonte vai ao ar num evento com 3 câmeras?', a:'Mesa de corte', opts:['Fonte','Mesa de corte','Processadora','Telão']},
+  {q:'Quem recorta e mapeia a imagem para o formato exato da parede de LED?', a:'Processadora', opts:['Fonte','Mesa de corte','Processadora','Telão']},
+  {q:'O VJ que roda os visuais no notebook é qual elo da cadeia?', a:'Fonte', opts:['Fonte','Mesa de corte','Processadora','Telão']},
+];
+var ri=0;
+function startRole(){ ri=0; $('#roleCard').style.display='block'; showRole(); }
+function showRole(){
+  if(ri>=ROLE.length){ $('#roleQ').innerHTML='<b>Você fechou as funções da cadeia. É esse o mapa mental do técnico de vídeo.</b>'; $('#roleOpts').innerHTML=''; var rv=$('#roleVerdict'); rv.className='verdict ok'; rv.textContent='✓ Concluído!'; return; }
+  var r=ROLE[ri]; $('#roleQ').textContent=(ri+1)+'/'+ROLE.length+' — '+r.q;
+  var oe=$('#roleOpts'); oe.innerHTML='';
+  r.opts.forEach(function(o){ var b=document.createElement('button'); b.textContent=o; b.onclick=function(){
+    var rv=$('#roleVerdict');
+    if(o===r.a){ rv.className='verdict ok'; rv.textContent='✓ Correto!'; ri++; setTimeout(showRole,700); }
+    else { rv.className='verdict bad'; rv.textContent='✗ Não é esse. Pense na função de cada elo.'; }
+  }; oe.appendChild(b); });
+  $('#roleVerdict').className='verdict idle'; $('#roleVerdict').textContent='Responda para avançar.';
+}
+window.__cv={build:build, place:place, get slots(){return slots;}, solve:function(){ slots=CHAIN.map(function(c){return c.id;}); render(); check(); }};
+build();
+})();
+</script>
+</body>
+</html>

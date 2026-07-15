@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>SMU PRO · Orçamento básico de evento</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0c1017;--panel:#161c26;--panel2:#1b2230;--line:#2a3444;--ink:#e7edf5;--dim:#8794a8;
+        --accent:#f59e0b;--ok:#22c55e;--err:#ef4444;--warn:#f59e0b;--cyan:#38bdf8;}
+  html,body{background:var(--bg);color:var(--ink);
+    font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased;}
+  body{padding:12px;}
+  .app{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:12px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  h1{font-size:15px;margin-bottom:3px;}
+  .sub{font-size:12px;color:var(--dim);margin-bottom:12px;line-height:1.5;}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px;}
+  .stat .k{font-size:10px;color:var(--dim);letter-spacing:.5px;}
+  .stat .val{font-size:15px;font-weight:800;margin-top:2px;}
+  .verdict{font-size:13px;font-weight:700;padding:9px 12px;border-radius:8px;text-align:center;}
+  .verdict.ok{background:#14532d;color:#bbf7d0;}
+  .verdict.bad{background:#450a0a;color:#fca5a5;}
+  .verdict.warn{background:#422006;color:#fde68a;}
+  .note{font-size:12px;color:var(--dim);line-height:1.55;}
+  button{font:inherit;cursor:pointer;}
+  .brief{background:#0e1520;border:1px solid var(--line);border-left:3px solid var(--cyan);border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.6;color:#c3cede;}
+  .brief b{color:var(--ink);}
+  .sheet{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:10px;}
+  table{border-collapse:collapse;width:100%;min-width:560px;font-size:12px;}
+  thead th{background:#111823;color:var(--dim);font-size:10px;letter-spacing:.5px;text-align:left;
+    padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap;}
+  tbody td{padding:5px 8px;border-bottom:1px solid #1d2532;vertical-align:middle;}
+  tr.cat td{background:#0f151f;color:var(--accent);font-size:10px;font-weight:800;letter-spacing:1px;padding:6px 8px;}
+  tr.off td.nm{color:#5b6577;}
+  td.nm{line-height:1.35;min-width:200px;}
+  td.nm .u{display:block;color:var(--dim);font-size:10px;}
+  td.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;}
+  td.sub{text-align:right;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums;}
+  tr.off td.sub{color:#4b5566;}
+  input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent);}
+  td.ck{width:34px;text-align:center;}
+  input.q{width:52px;background:#0c1119;border:1px solid var(--line);color:var(--ink);border-radius:5px;
+    padding:6px 4px;font:inherit;font-size:12px;text-align:center;min-height:32px;}
+  input.q:disabled{opacity:.3;}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px;}
+  .btn{background:#0c1119;border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:9px 14px;font-size:12px;font-weight:700;min-height:36px;}
+  .btn.pri{background:#42200680;border-color:var(--accent);color:#fde68a;}
+  select{background:#0c1119;border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:7px 6px;font:inherit;font-size:12px;min-height:34px;}
+  .pick{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--dim);}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
+  @media(min-width:660px){ .stats{grid-template-columns:repeat(4,1fr);} }
+  .chain{display:flex;flex-direction:column;gap:4px;margin-top:10px;font-size:12px;}
+  .chain .l{display:flex;justify-content:space-between;gap:10px;padding:6px 9px;background:var(--panel2);border:1px solid var(--line);border-radius:7px;font-variant-numeric:tabular-nums;}
+  .chain .l.tot{background:#42200630;border-color:var(--accent);font-weight:800;}
+  .chain .l span:first-child{color:var(--dim);}
+  .chain .l.tot span:first-child{color:#fde68a;}
+  .errs{display:flex;flex-direction:column;gap:6px;margin-top:10px;}
+  .e{font-size:12px;line-height:1.5;padding:8px 10px;border-radius:7px;border:1px solid;}
+  .e.bad{background:#2a0d0d;border-color:#7f1d1d;color:#fca5a5;}
+  .e.warn{background:#2a1c06;border-color:#78350f;color:#fde68a;}
+  .e.ok{background:#0d2418;border-color:#14532d;color:#bbf7d0;}
+  .e b{color:#fff;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="card">
+    <h1>O que custa um evento — a primeira planilha</h1>
+    <div class="sub">Monte o orçamento. Marque o que o evento precisa, ajuste as quantidades e os dias. No fim: custo, contingência, sua margem e o preço ao cliente.</div>
+    <div class="brief">
+      <b>O job:</b> show de banda local, <b>300 pessoas</b>, salão de festas alugado pelo contratante.
+      <b>Sexta</b> load-in e montagem · <b>sábado</b> show · <b>domingo de manhã</b> desmontagem — <b>3 dias de operação</b>.
+      O salão entrega <b>63 A trifásico</b> no quadro (energia da casa dá conta). Verba do cliente: <b>R$ 45.000</b>.
+    </div>
+    <div class="sheet" style="margin-top:12px;">
+      <table>
+        <thead><tr><th></th><th>Item</th><th style="text-align:right">Unitário</th><th style="text-align:right">Qtd</th><th style="text-align:right">Dias</th><th style="text-align:right">Subtotal</th></tr></thead>
+        <tbody id="tb"></tbody>
+      </table>
+    </div>
+    <div class="toolbar">
+      <div class="pick">Contingência
+        <select id="cont"><option value="0">0%</option><option value="5">5%</option><option value="10">10%</option><option value="15">15%</option></select>
+      </div>
+      <div class="pick">Sua margem
+        <select id="marg"><option value="0">0%</option><option value="10">10%</option><option value="20">20%</option><option value="30">30%</option></select>
+      </div>
+      <button class="btn pri" id="check">Conferir</button>
+      <button class="btn" id="reset">Reiniciar</button>
+    </div>
+    <div class="chain">
+      <div class="l"><span>Custo lançado por você</span><b id="c1">—</b></div>
+      <div class="l"><span id="c2k">+ Contingência</span><b id="c2">—</b></div>
+      <div class="l"><span id="c3k">+ Sua margem</span><b id="c3">—</b></div>
+      <div class="l tot"><span>= PREÇO AO CLIENTE</span><b id="c4">—</b></div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="k">CUSTO LANÇADO</div><div class="val" id="sOrc">—</div></div>
+      <div class="stat"><div class="k">CUSTO REAL DO EVENTO</div><div class="val" id="sReal">—</div></div>
+      <div class="stat"><div class="k">VERBA DO CLIENTE</div><div class="val">R$ 45.000</div></div>
+      <div class="stat"><div class="k">SOBRA / PREJUÍZO</div><div class="val" id="sRes">—</div></div>
+    </div>
+    <div class="errs" id="errs"></div>
+    <div class="note" style="margin-top:10px;">
+      <b>Custo real do evento</b> é o que a produção vai gastar de verdade — o caminhão roda, a equipe come e trabalha 3 dias, esteja ou não na sua planilha. O que você não lançou não desaparece: sai do seu bolso.
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var $=function(s){return document.querySelector(s);};
+  var VERBA=45000, DIAS=3;
+  var CATS=['SOM','LUZ','PALCO / ESTRUTURA','EQUIPE','TRANSPORTE','ALIMENTAÇÃO','OUTROS'];
+  // c=categoria, n=nome, p=preço unit, u=unidade, eq=qtd que o evento pede, ed=dias que o evento pede (0=sem campo dias)
+  // req=obrigatório para este evento, on/q/d = estado inicial (o orçamento típico de iniciante)
+  var BASE=[
+    {c:0,n:'PA para 300 pessoas (line array compacto + 4 subs)',p:4500,u:'evento',eq:1,ed:0,req:1,on:1,q:1},
+    {c:0,n:'Monitor de palco (wedge 12")',p:320,u:'por unidade',eq:4,ed:0,req:1,on:1,q:4},
+    {c:0,n:'Mesa digital 32 canais + stagebox',p:1200,u:'evento',eq:1,ed:0,req:1,on:1,q:1},
+    {c:0,n:'Kit de microfones, clamps e DIs',p:900,u:'kit',eq:1,ed:0,req:1,on:1,q:1},
+    {c:0,n:'Multicabo 24 vias, cabeamento e pedestais',p:350,u:'kit',eq:1,ed:0,req:1,on:1,q:1},
+    {c:1,n:'Kit de luz (12 PAR LED, 4 moving, mesa, dimmer)',p:3200,u:'kit',eq:1,ed:0,req:1,on:1,q:1},
+    {c:1,n:'Máquina de haze + ventilador',p:250,u:'opcional',eq:1,ed:0,req:0,on:0,q:1},
+    {c:2,n:'Praticável 8×6 m, altura 0,60 m, com saia',p:2400,u:'evento',eq:1,ed:0,req:1,on:1,q:1},
+    {c:2,n:'Grid de treliça Q30: frontal + 2 torres',p:2800,u:'evento',eq:1,ed:0,req:1,on:1,q:1},
+    {c:2,n:'Quadro de distribuição, aterramento e cabos de força',p:800,u:'evento',eq:1,ed:0,req:1,on:1,q:1},
+    {c:2,n:'Gerador 60 kVA silenciado com operador',p:2200,u:'opcional · a casa já tem 63 A',eq:1,ed:0,req:0,on:0,q:1,tag:'ger'},
+    {c:3,n:'Técnico de som (FOH)',p:450,u:'diária por pessoa',eq:1,ed:3,req:1,on:1,q:1,d:1},
+    {c:3,n:'Técnico de monitor',p:400,u:'diária por pessoa',eq:1,ed:3,req:1,on:1,q:1,d:1},
+    {c:3,n:'Operador de luz',p:400,u:'diária por pessoa',eq:1,ed:3,req:1,on:1,q:1,d:1},
+    {c:3,n:'Roadie / montagem',p:250,u:'diária por pessoa',eq:4,ed:3,req:1,on:1,q:4,d:1},
+    {c:3,n:'Produção — o seu serviço',p:600,u:'diária por pessoa',eq:1,ed:3,req:1,on:0,q:1,d:1,tag:'prod'},
+    {c:4,n:'Frete do caminhão truck (ida e volta)',p:1400,u:'evento',eq:1,ed:0,req:1,on:0,q:1},
+    {c:4,n:'Combustível, pedágio e estacionamento da equipe',p:400,u:'evento',eq:1,ed:0,req:1,on:0,q:1},
+    {c:5,n:'Refeição da equipe (8 pessoas × 3 dias)',p:45,u:'por pessoa/dia',eq:24,ed:0,req:1,on:0,q:24},
+    {c:5,n:'Água, gelo e café no backstage',p:180,u:'evento',eq:1,ed:0,req:1,on:0,q:1},
+    {c:5,n:'Camarim da banda (rider de hospitalidade)',p:350,u:'evento',eq:1,ed:0,req:1,on:0,q:1},
+    {c:6,n:'ART e laudo da estrutura (engenheiro)',p:600,u:'evento',eq:1,ed:0,req:1,on:1,q:1},
+    {c:6,n:'Rádios comunicadores (6 un)',p:240,u:'kit',eq:1,ed:0,req:1,on:1,q:1},
+    {c:6,n:'Fita, cabo extra e consumíveis',p:200,u:'evento',eq:1,ed:0,req:1,on:1,q:1}
+  ];
+  var IT=[], checked=false;
+  function byTag(t){ for(var i=0;i<IT.length;i++) if(IT[i].tag===t) return IT[i]; return null; }
+  function reset(){
+    IT=BASE.map(function(o){var x={};for(var k in o)x[k]=o[k];x.d=x.ed?(o.d||1):1;return x;});
+    $('#cont').value='0'; $('#marg').value='0'; checked=false; build(); render();
+  }
+  function brl(v){ return 'R$ '+(Math.round(v*100)/100).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function brl0(v){ return 'R$ '+Math.round(v).toLocaleString('pt-BR'); }
+  function subOf(i){ return i.on ? i.p*(i.q||0)*(i.ed?(i.d||0):1) : 0; }
+  function realOf(i){ return i.req ? i.p*i.eq*(i.ed||1) : (i.on ? subOf(i) : 0); }
+
+  function build(){
+    var h='', lastC=-1;
+    IT.forEach(function(i,ix){
+      if(i.c!==lastC){ lastC=i.c; h+='<tr class="cat"><td colspan="6">'+CATS[i.c]+'</td></tr>'; }
+      h+='<tr data-i="'+ix+'" class="'+(i.on?'':'off')+'">'+
+        '<td class="ck"><input type="checkbox" data-a="on" '+(i.on?'checked':'')+'></td>'+
+        '<td class="nm">'+i.n+'<span class="u">'+i.u+' · '+brl0(i.p)+'</span></td>'+
+        '<td class="num" style="color:var(--dim)">'+brl0(i.p)+'</td>'+
+        '<td class="num"><input class="q" type="number" min="0" max="99" data-a="q" value="'+i.q+'" '+(i.on?'':'disabled')+'></td>'+
+        '<td class="num">'+(i.ed?'<input class="q" type="number" min="0" max="7" data-a="d" value="'+i.d+'" '+(i.on?'':'disabled')+'>':'<span style="color:#3d4757">—</span>')+'</td>'+
+        '<td class="sub" data-s="'+ix+'">—</td></tr>';
+    });
+    $('#tb').innerHTML=h;
+  }
+  function onEdit(e){
+    var t=e.target, tr=t.closest('tr'); if(!tr||!tr.dataset.i) return;
+    var i=IT[+tr.dataset.i], a=t.dataset.a, live=(e.type==='input');
+    if(a==='on'){ i.on=t.checked?1:0; tr.className=i.on?'':'off';
+      tr.querySelectorAll('input.q').forEach(function(x){x.disabled=!i.on;}); }
+    if(a==='q'){ i.q=Math.max(0,Math.min(99,parseInt(t.value,10)||0)); if(!live) t.value=i.q; }
+    if(a==='d'){ i.d=Math.max(0,Math.min(7,parseInt(t.value,10)||0)); if(!live) t.value=i.d; }
+    render();
+  }
+  $('#tb').addEventListener('change',onEdit);
+  $('#tb').addEventListener('input',onEdit);
+
+  function totals(){
+    var orc=0, real=0;
+    IT.forEach(function(i){ orc+=subOf(i); real+=realOf(i); });
+    var c=+$('#cont').value/100, m=+$('#marg').value/100;
+    var cv=orc*c, s=orc+cv, mv=s*m, preco=s+mv;
+    return {orc:orc,real:real,cv:cv,mv:mv,preco:preco,c:c,m:m,res:preco-real};
+  }
+  function render(){
+    IT.forEach(function(i,ix){ var td=$('[data-s="'+ix+'"]'); if(td) td.textContent=i.on?brl0(subOf(i)):'—'; });
+    var t=totals();
+    $('#c1').textContent=brl(t.orc);
+    $('#c2k').textContent='+ Contingência ('+$('#cont').value+'%)'; $('#c2').textContent=brl(t.cv);
+    $('#c3k').textContent='+ Sua margem ('+$('#marg').value+'%)'; $('#c3').textContent=brl(t.mv);
+    $('#c4').textContent=brl(t.preco);
+    $('#sOrc').textContent=brl0(t.orc);
+    $('#sReal').textContent=brl0(t.real);
+    var r=$('#sRes'); r.textContent=(t.res<0?'− ':'')+brl0(Math.abs(t.res));
+    r.style.color=t.res<=0?'var(--err)':(t.res<t.real*0.10?'var(--warn)':'var(--ok)');
+    if(checked) diag(t);
+  }
+  $('#cont').onchange=render; $('#marg').onchange=render;
+
+  function diag(t){
+    var out=[], faltando=t.real-t.orc;
+    // 1. categoria inteira esquecida
+    for(var c=0;c<7;c++){
+      var reqs=IT.filter(function(i){return i.c===c && i.req;});
+      var lanc=reqs.filter(function(i){return i.on;});
+      if(reqs.length && !lanc.length){
+        var v=reqs.reduce(function(a,i){return a+realOf(i);},0);
+        out.push({t:'bad',h:'Categoria <b>'+CATS[c]+'</b> zerada. Isso não deixa de acontecer porque você esqueceu — o gasto é real: <b>'+brl0(v)+'</b> saindo do seu bolso. Esquecer categoria inteira é o erro nº 1 do iniciante.'});
+      }
+    }
+    // 2. diária × dias
+    var dCurto=IT.filter(function(i){return i.ed && i.on && i.d<i.ed;});
+    if(dCurto.length){
+      var perda=dCurto.reduce(function(a,i){return a+i.p*i.eq*(i.ed-i.d);},0);
+      out.push({t:'bad',h:'<b>Diária × dias.</b> A operação é de <b>3 dias</b> (montagem sexta, show sábado, desmontagem domingo) — a equipe é paga pelos 3, não só pelo dia do show. '+dCurto.length+' item(ns) com dias a menos: <b>'+brl0(perda)+'</b> de mão de obra que você vai pagar e não cobrou.'});
+    }
+    // 3. o seu trabalho
+    var prod=byTag('prod');
+    if(!prod.on){
+      out.push({t:'bad',h:'<b>Você não lançou o seu próprio serviço.</b> Produção são 3 diárias de R$ 600 = <b>'+brl0(1800)+'</b>. Sem isso você atendeu o cliente, correu atrás de tudo e trabalhou de graça. O seu trabalho é um custo — lance na planilha.'});
+    } else if(prod.d<3){
+      out.push({t:'warn',h:'Você lançou a produção, mas por <b>'+prod.d+' dia(s)</b>. Você está no evento nos 3.'});
+    }
+    // 4. quantidades
+    var qErr=IT.filter(function(i){return i.req && i.on && i.q<i.eq;});
+    qErr.forEach(function(i){
+      out.push({t:'warn',h:'<b>'+i.n+'</b>: você lançou '+i.q+', o evento pede '+i.eq+'. Diferença de '+brl0(i.p*(i.eq-i.q)*(i.ed?i.d||1:1))+'.'});
+    });
+    // 5. contingência
+    if(t.c<0.05) out.push({t:'bad',h:'<b>Contingência 0%.</b> Cabo que queima, técnico que falta, táxi de emergência, hora extra do salão — evento sem reserva é evento que você paga. Reserve ~10% do custo.'});
+    else if(t.c<0.10) out.push({t:'warn',h:'Contingência de '+(t.c*100)+'% é fina para evento com estrutura. O padrão de mercado é ~10%.'});
+    // 6. margem
+    if(t.m===0) out.push({t:'bad',h:'<b>Margem 0%: preço = custo.</b> Custo é o que sai, preço é o que entra. Sem margem a produtora não paga contador, não compra ferramenta, não sobrevive ao evento que dá errado.'});
+    // 7. gerador desnecessário
+    if(byTag('ger').on) out.push({t:'warn',h:'<b>Gerador '+brl0(2200)+'</b>: a casa entrega 63 A trifásico, que atende esse PA e essa luz. Gordura no orçamento também derruba proposta — o concorrente vai chegar mais barato.'});
+    // 8. resumo do buraco
+    if(faltando>0.5) out.push({t:'bad',h:'Somando tudo: o seu orçamento está <b>'+brl0(faltando)+' abaixo do custo real</b> do evento — e essa diferença sai do seu bolso.'});
+    if(!out.length) out.push({t:'ok',h:'Planilha fechada: todas as categorias lançadas, dias corretos, seu serviço incluído, contingência e margem definidas.'});
+
+    // veredito
+    var v;
+    if(t.res<=0) v={t:'bad',h:'✗ <b>Você vai pagar para trabalhar.</b> Preço ao cliente '+brl0(t.preco)+' contra custo real de '+brl0(t.real)+' — prejuízo de <b>'+brl0(Math.abs(t.res))+'</b>.'};
+    else if(t.preco>VERBA) v={t:'bad',h:'✗ <b>'+brl0(t.preco-VERBA)+' acima da verba.</b> O cliente tem '+brl0(VERBA)+'. Nesse preço não fecha: corte escopo com ele ou recuse o job — não corte da sua margem.'};
+    else if(t.res<t.real*0.10) v={t:'warn',h:'◐ <b>Cobre no osso.</b> Sobram '+brl0(t.res)+' ('+Math.round(t.res/t.real*100)+'% do custo). Um imprevisto come tudo e você termina no zero.'};
+    else v={t:'ok',h:'✓ <b>Cobre os custos e sobra '+brl0(t.res)+'</b> ('+Math.round(t.res/t.real*100)+'% do custo real). Preço de '+brl0(t.preco)+' dentro da verba de '+brl0(VERBA)+'.'};
+    out.unshift(v);
+    $('#errs').innerHTML=out.map(function(o){return '<div class="e '+o.t+'">'+o.h+'</div>';}).join('');
+  }
+  $('#check').onclick=function(){ checked=true; render(); $('#errs').scrollIntoView({behavior:'smooth',block:'nearest'}); };
+  $('#reset').onclick=function(){ reset(); $('#errs').innerHTML=''; };
+  reset();
+})();
+</script>
+</body>
+</html>

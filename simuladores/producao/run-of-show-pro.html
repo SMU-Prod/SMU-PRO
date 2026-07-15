@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>SMU PRO · Run of Show</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0c1017;--panel:#161c26;--panel2:#1b2230;--line:#2a3444;--ink:#e7edf5;--dim:#8794a8;
+        --accent:#f59e0b;--ok:#22c55e;--err:#ef4444;--warn:#f59e0b;--cyan:#38bdf8;--vio:#a78bfa;}
+  html,body{background:var(--bg);color:var(--ink);
+    font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased;}
+  body{padding:12px;}
+  .app{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:12px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  h1{font-size:15px;margin-bottom:3px;}
+  .sub{font-size:12px;color:var(--dim);margin-bottom:12px;line-height:1.5;}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px;}
+  .stat .k{font-size:10px;color:var(--dim);letter-spacing:.5px;}
+  .stat .val{font-size:15px;font-weight:800;margin-top:2px;}
+  .verdict{font-size:13px;font-weight:700;padding:9px 12px;border-radius:8px;text-align:center;}
+  .verdict.ok{background:#14532d;color:#bbf7d0;}
+  .verdict.bad{background:#450a0a;color:#fca5a5;}
+  .verdict.warn{background:#422006;color:#fde68a;}
+  .note{font-size:12px;color:var(--dim);line-height:1.55;}
+  button{font:inherit;cursor:pointer;}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px;}
+  @media(min-width:700px){.stats{grid-template-columns:repeat(5,1fr);}}
+  .stat .val.err{color:#fca5a5;} .stat .val.warn{color:#fde68a;} .stat .val.ok{color:#86efac;}
+  .tl{background:#080b11;border:1px solid var(--line);border-radius:9px;padding:8px 8px 4px;overflow:hidden;position:relative;}
+  .tlrow{position:relative;height:15px;margin-bottom:3px;}
+  .bar{position:absolute;top:0;height:15px;border-radius:3px;font-size:9px;line-height:15px;
+       padding:0 4px;white-space:nowrap;overflow:hidden;color:#06090f;font-weight:700;min-width:3px;}
+  .bar.bad{outline:2px solid var(--err);outline-offset:-1px;}
+  .axis{display:flex;justify-content:space-between;font-size:9px;color:var(--dim);border-top:1px solid var(--line);padding-top:3px;margin-top:4px;}
+  .curfew{position:absolute;top:0;bottom:0;width:2px;background:var(--err);opacity:.85;}
+  .blk{display:grid;grid-template-columns:1fr;gap:6px;padding:7px 8px;border:1px solid var(--line);
+       border-radius:8px;background:var(--panel2);margin-bottom:6px;}
+  @media(min-width:700px){.blk{grid-template-columns:1fr 132px 118px 74px;align-items:center;gap:8px;}}
+  .blk.conf{border-color:var(--err);background:#1e1114;}
+  .blk.off{opacity:.42;}
+  .bn{font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;}
+  .dot{width:9px;height:9px;border-radius:2px;flex-shrink:0;}
+  .grp{display:flex;align-items:center;gap:2px;}
+  .grp button{width:34px;height:34px;border:1px solid var(--line);background:#0c1119;color:var(--ink);
+              border-radius:6px;font-size:14px;line-height:1;}
+  .grp button:active{background:#243044;}
+  .grp .v{flex:1;text-align:center;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;}
+  .grp .v.d{color:var(--accent);} .grp .v.d.trim{color:#fde68a;}
+  .cutb{height:34px;border:1px solid var(--line);background:#0c1119;color:var(--dim);border-radius:6px;font-size:11px;}
+  .cutb.on{background:#450a0a;border-color:var(--err);color:#fca5a5;}
+  .hd{display:grid;grid-template-columns:1fr 132px 118px 74px;gap:8px;font-size:9px;color:var(--dim);
+      letter-spacing:.5px;padding:0 8px 5px;}
+  @media(max-width:699px){.hd{display:none;}}
+  .acts{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+  .acts button{flex:1;min-width:132px;height:36px;border:1px solid var(--line);background:#0c1119;
+               color:var(--ink);border-radius:7px;font-size:11.5px;font-weight:600;}
+  .acts button.inc{border-color:#7c2d12;color:#fdba74;}
+  .acts button.inc.on{background:#450a0a;border-color:var(--err);color:#fca5a5;}
+  .acts button.go{background:#422006;border-color:var(--accent);color:#fde68a;}
+  ul.res{list-style:none;display:flex;flex-direction:column;gap:5px;margin-top:9px;}
+  ul.res li{font-size:11.5px;line-height:1.45;padding:6px 8px;border-radius:6px;border-left:3px solid;background:var(--panel2);}
+  li.e{border-color:var(--err);color:#fecaca;} li.w{border-color:var(--warn);color:#fde68a;} li.i{border-color:var(--cyan);color:#bae6fd;}
+  .flag{font-size:11.5px;padding:7px 9px;border-radius:7px;background:#1c1208;border:1px solid #7c2d12;color:#fdba74;margin-bottom:9px;line-height:1.45;}
+  b{color:var(--ink);}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="card">
+    <h1>Run of Show — o minuto a minuto do dia do evento</h1>
+    <div class="sub">Contrato: <b>SHOW às 21:00</b>, <b>curfew do venue 23:30</b>, equipe de 24 pessoas.
+      O plano abaixo foi montado <b>progressivamente</b> a partir do load-in — do jeito errado.
+      Refaça-o <b>regressivamente</b>: parte da hora que o artista sobe no palco e vá voltando, deixando folga entre os blocos.
+      Depois use os botões de derrapagem e decida o que se comprime — e o que <b>não</b> se corta.</div>
+
+    <div class="stats">
+      <div class="stat"><div class="k">INÍCIO DO DIA</div><div class="val" id="sStart">—</div></div>
+      <div class="stat"><div class="k">FOLGA TOTAL</div><div class="val" id="sSlack">—</div></div>
+      <div class="stat"><div class="k">CONFLITOS</div><div class="val" id="sConf">—</div></div>
+      <div class="stat"><div class="k">CURFEW 23:30</div><div class="val" id="sCurf">—</div></div>
+      <div class="stat"><div class="k">HORA EXTRA</div><div class="val" id="sOt">—</div></div>
+    </div>
+
+    <div class="tl" id="tl"></div>
+    <div class="axis" id="axis"></div>
+
+    <div class="flag" id="flag" style="display:none"></div>
+
+    <div class="acts" style="margin-top:10px">
+      <button class="inc" data-inc="truck">🚚 O caminhão atrasou 2h</button>
+      <button class="inc" data-inc="artist">🎤 O artista chegou tarde</button>
+      <button class="inc" data-inc="rain">🌧️ Chuva: rigging parado 1h</button>
+      <button class="go" id="check">✓ Conferir</button>
+      <button id="reset">↺ Reiniciar</button>
+    </div>
+
+    <div class="hd"><div>BLOCO</div><div>ENTRA ÀS</div><div>DURAÇÃO</div><div>CORTAR</div></div>
+    <div id="list"></div>
+
+    <div class="verdict" id="verdict" style="display:none"></div>
+    <ul class="res" id="res"></ul>
+    <div class="note" style="margin-top:10px">⇤ encosta o bloco no fim da dependência (folga zero). O ± anda de 15 em 15 min.
+      <b>Folga total</b> = soma dos respiros na corrente que leva ao SHOW — buffer sobrando num ramo paralelo (energia, por exemplo) não protege o horário do palco.</div>
+  </div>
+</div>
+<script>
+(function(){
+var $=function(s){return document.querySelector(s);};
+var SHOW_ALVO=21*60, CURFEW=23*60+30, CREW=24, HORA=45, JORNADA=12*60;
+
+var DEF=[
+ {id:'chegada',n:'Chegada da equipe / briefing',dur:30,min:15,safe:30,dep:[],c:'#64748b',
+  noCut:'Cortar o briefing: 24 pessoas entram sem saber a ordem de montagem. O atraso volta multiplicado.',
+  soft:'Briefing espremido — a equipe descobre o desenho do palco no meio da montagem.'},
+ {id:'loadin',n:'Load-in / descarga do caminhão',dur:60,min:45,safe:60,dep:['chegada'],c:'#38bdf8',
+  noCut:'Não existe evento sem descarregar o caminhão.',
+  soft:'Load-in apressado é caixa quebrada e case perdido no load-out.'},
+ {id:'energia',n:'Energia e aterramento',dur:60,min:60,safe:60,dep:['loadin'],c:'#f59e0b',
+  noCut:'Energia e aterramento não se cortam: sem terra é choque na equipe e ruído em todo o sistema.',
+  soft:'Aterramento medido às pressas.'},
+ {id:'rigging',n:'Montagem de estrutura / rigging',dur:210,min:150,safe:210,dep:['loadin','energia'],c:'#38bdf8',
+  noCut:'Sem estrutura não há ponto de voo para PA e luz.',
+  soft:'Rigging comprimido é carga voando sobre a cabeça do público sem conferência de ponto. Isso não se acelera.'},
+ {id:'pa',n:'Montagem de PA e luz',dur:150,min:105,safe:150,dep:['rigging'],c:'#38bdf8',
+  noCut:'Sem PA não há show.',
+  soft:'PA e luz no aperto: sobra sistema pendurado sem alinhamento e fixture sem endereço.'},
+ {id:'patch',n:'Patch e line check',dur:75,min:75,safe:75,dep:['pa','energia'],c:'#f59e0b',
+  noCut:'Line check não se corta. É o único momento em que se confirma que cada canal sai do palco e chega no FOH.',
+  soft:'Line check não tem versão curta.'},
+ {id:'soundcheck',n:'Passagem de som do artista',dur:60,min:30,safe:45,dep:['patch'],c:'#f59e0b',cut:1,
+  cutMsg:'Soundcheck cortado: o artista sobe no escuro e o primeiro ajuste de monitor vira a primeira música. É a decisão menos ruim quando o dia derrapa, mas tem preço.',
+  soft:'Soundcheck abaixo de 45 min: dá pra fechar monitor e voz, não dá pra fechar a banda inteira.'},
+ {id:'libera',n:'Liberação do palco / limpeza',dur:30,min:15,safe:30,dep:['soundcheck'],c:'#22c55e',
+  noCut:'É a liberação que tira cabo solto e case do caminho antes de entrar público.',
+  soft:'Liberação corrida deixa case e cabo à vista quando a casa abre.'},
+ {id:'portas',n:'Abertura de portas / entrada de público',dur:60,min:30,safe:45,dep:['libera'],c:'#22c55e',
+  noCut:'A casa precisa de uma janela para entrar.',
+  soft:'Menos de 45 min de portas: fila na rua e público entrando com a banda tocando.'},
+ {id:'abertura',n:'Banda de abertura',dur:40,min:20,safe:30,dep:['portas'],c:'#22c55e',cut:1,
+  cutMsg:'Banda de abertura cortada: recupera 40 min, mas há cachê contratado e público que comprou por ela. É corte de produção, não de técnica — avise a banda antes, não no palco.',
+  soft:'Set de abertura reduzido — combine o corte com a banda, não anuncie no microfone.'},
+ {id:'virada',n:'Virada de palco (change over)',dur:25,min:15,safe:20,dep:['abertura'],c:'#a78bfa',
+  noCut:'Virada zero não existe: alguém tem que tirar o backline da abertura e subir o do headliner.',
+  soft:'Virada abaixo de 20 min só fecha com backline duplicado e equipe extra no palco.'},
+ {id:'show',n:'SHOW (headliner)',dur:90,min:75,safe:90,dep:['virada'],c:'#a78bfa',
+  noCut:'Cortar o show é cancelar o evento.',
+  soft:'Show encurtado: é o público que paga a conta do atraso do dia.'},
+ {id:'encerramento',n:'Encerramento / esvaziar a casa',dur:30,min:20,safe:30,dep:['show'],c:'#64748b',
+  noCut:'Não se começa load-out com público na casa.',
+  soft:'Esvaziar a casa em menos de 20 min é empurrar público.'},
+ {id:'loadout',n:'Load-out',dur:120,min:90,safe:120,dep:['encerramento'],c:'#64748b',
+  noCut:'O caminhão não carrega sozinho.',
+  soft:'Load-out apertado é equipamento arrebentado e conferência de case pela metade.'}
+];
+
+var S=[], M={}, INC={}, checked=false;
+
+function build(){
+  S=DEF.map(function(d){var o={};for(var k in d)o[k]=d[k];o.base=d.dur;o.cutOn=false;return o;});
+  M={}; S.forEach(function(b){M[b.id]=b;});
+  INC={}; checked=false;
+  var t=8*60;                       // plano ingênuo: progressivo, a partir do load-in, folga zero
+  S.forEach(function(b){b.start=t;t+=b.dur;});
+}
+function fmt(m){var d=m>=1440?' +1':'';m=((m%1440)+1440)%1440;
+  return String(m/60|0).padStart(2,'0')+':'+String(m%60).padStart(2,'0')+d;}
+function endOf(b){return b.start+b.dur;}
+function depEnds(b){var out=[];b.dep.forEach(function(d){var db=M[d];
+  if(db.cutOn)depEnds(db).forEach(function(x){out.push(x);});else out.push({b:db,end:endOf(db)});});return out;}
+function live(){return S.filter(function(b){return !b.cutOn;});}
+
+function analyze(){
+  var errs=[],warns=[],infos=[],conf={};
+  live().forEach(function(b){
+    depEnds(b).forEach(function(d){
+      if(b.start<d.end){conf[b.id]=1;conf[d.b.id]=1;
+        errs.push('<b>'+b.n+'</b> entra '+(d.end-b.start)+' min antes de <b>'+d.b.n+'</b> terminar ('+fmt(d.end)+'). Um bloco não começa dentro do outro.');}
+    });
+  });
+  // regras duras de ofício
+  if(!M.patch.cutOn&&!M.energia.cutOn&&M.patch.start<endOf(M.energia)){conf.patch=1;
+    errs.push('<b>Line check antes da energia fechada</b>: sem terra medido não existe sinal limpo — e existe choque. Energia e aterramento vêm antes do patch, sempre.');}
+  if(!M.portas.cutOn&&!M.pa.cutOn&&M.portas.start<endOf(M.pa)){conf.portas=1;conf.pa=1;
+    errs.push('<b>Casa aberta com palco em montagem</b>: público embaixo de PA e ponto de rigging que ainda estão subindo. Não se abre porta com montagem no palco.');}
+  if(!M.portas.cutOn&&!M.soundcheck.cutOn&&M.portas.start<endOf(M.soundcheck)){conf.portas=1;
+    errs.push('<b>Portas abrem com soundcheck rolando</b>: a passagem tem que acabar e o palco ser liberado antes de entrar público.');}
+  // horário contratado do show
+  var atraso=M.show.start-SHOW_ALVO;
+  if(atraso>0){conf.show=1;warns.push('<b>SHOW atrasado '+atraso+' min</b> (contratado 21:00, seu plano põe às '+fmt(M.show.start)+'). Atraso de headliner cobra pedágio no curfew e na hora extra.');}
+  else if(atraso<0)warns.push('<b>SHOW adiantado '+(-atraso)+' min</b> ('+fmt(M.show.start)+'). O público comprou 21:00 — a casa ainda está enchendo.');
+  // portas vs primeiro ato
+  var primeiro=M.abertura.cutOn?M.show:M.abertura;
+  if(!M.portas.cutOn){var janela=primeiro.start-M.portas.start;
+    if(janela<45)warns.push('<b>Casa aberta em cima da hora</b>: só '+janela+' min entre abrir portas e '+primeiro.n+'. Público entrando com o show começando = fila na rua e reclamação de imagem.');}
+  // curfew
+  var fimShow=M.show.cutOn?0:endOf(M.show), over=Math.max(0,fimShow-CURFEW);
+  var multa=Math.ceil(over/15)*2000;
+  if(over>0){conf.show=1;errs.push('<b>Curfew estourado em '+over+' min</b>: o show acaba '+fmt(fimShow)+' e o limite do venue é 23:30. Multa estimada de <b>R$ '+multa.toLocaleString('pt-BR')+'</b> — e, na segunda vez, a casa não te aluga mais.');}
+  else if(fimShow>CURFEW-20)warns.push('Show acaba '+fmt(fimShow)+', a '+(CURFEW-fimShow)+' min do curfew. Uma música extra de bis e vira multa.');
+  // hora extra
+  var l=live(); if(!l.length)l=[M.chegada];
+  var ini=l[0].start, fim=endOf(l[l.length-1]);
+  var excesso=Math.max(0,fim-ini-JORNADA), hx=Math.ceil(excesso/60), custoHx=hx*CREW*HORA;
+  if(hx>0)infos.push('Jornada de <b>'+Math.round((fim-ini)/6)/10+'h</b> (chegada '+fmt(ini)+' → fim do load-out '+fmt(fim)+'): '+hx+'h além das 12h contratadas × 24 pessoas × R$ 45/h = <b>R$ '+custoHx.toLocaleString('pt-BR')+'</b> de hora extra.');
+  // folga: só os respiros na corrente crítica que leva ao SHOW (gap em ramo paralelo não é buffer)
+  var folga=0, node=M.show.cutOn?null:M.show, g=0;
+  while(node&&g++<40){
+    var d=depEnds(node); if(!d.length)break;
+    var mx=d[0]; d.forEach(function(x){if(x.end>mx.end)mx=x;});
+    if(node.start>mx.end)folga+=node.start-mx.end;
+    node=mx.b;
+  }
+  if(folga<30)warns.push('<b>Folga total de '+folga+' min</b>. Dia sem buffer é dia que atrasa: qualquer imprevisto de 10 min empurra tudo até o show. Deixe respiro entre os blocos, principalmente antes do soundcheck e da abertura de portas.');
+  else if(folga<45)warns.push('<b>Folga total de '+folga+' min</b> — magra. O primeiro imprevisto come todo o buffer do dia.');
+  // cortes e compressões
+  S.forEach(function(b){
+    if(b.cutOn){ if(b.cut)warns.push('✂ '+b.cutMsg); else {conf[b.id]=1;errs.push('✂ <b>'+b.n+' cortado</b> — '+b.noCut);} }
+    else if(b.dur<b.safe)warns.push('▸ <b>'+b.n+'</b> em '+b.dur+' min (mínimo profissional '+b.safe+'). '+b.soft);
+  });
+  // restrições impostas pelas derrapagens
+  if(INC.truck&&M.loadin.start<10*60){conf.loadin=1;
+    errs.push('O caminhão só encosta às 10:00 — <b>load-in não pode começar '+fmt(M.loadin.start)+'</b>. Puxe o load-in e refaça o dia a partir daí.');}
+  if(INC.artist&&!M.soundcheck.cutOn&&M.soundcheck.start<19*60){conf.soundcheck=1;
+    errs.push('O artista só chega às 19:00 — <b>soundcheck não pode começar '+fmt(M.soundcheck.start)+'</b>. Comprima, empurre ou corte a passagem: line check e energia continuam intocáveis.');}
+  return {errs:errs,warns:warns,infos:infos,conf:conf,folga:folga,over:over,multa:multa,
+          hx:hx,custoHx:custoHx,ini:ini,fim:fim,fimShow:fimShow};
+}
+
+function render(){
+  var a=analyze();
+  $('#sStart').textContent=fmt(a.ini);
+  var sl=$('#sSlack');sl.textContent=a.folga+' min';sl.className='val '+(a.folga<30?'err':a.folga<45?'warn':'ok');
+  var sc=$('#sConf');sc.textContent=a.errs.length;sc.className='val '+(a.errs.length?'err':'ok');
+  var cf=$('#sCurf');
+  cf.textContent=a.over>0?'+'+a.over+' min · R$ '+(a.multa/1000)+'k':(a.fimShow>CURFEW-20?'no limite':'ok · '+fmt(a.fimShow));
+  cf.className='val '+(a.over>0?'err':a.fimShow>CURFEW-20?'warn':'ok');
+  var ot=$('#sOt');ot.textContent=a.hx?'R$ '+a.custoHx.toLocaleString('pt-BR'):'—';
+  ot.className='val '+(a.hx>2?'err':a.hx?'warn':'ok');
+
+  // timeline
+  var l=live(); if(!l.length)l=[M.chegada];
+  var t0=Math.min.apply(null,l.map(function(b){return b.start;}));
+  var t1=Math.max.apply(null,l.map(endOf)); t1=Math.max(t1,CURFEW+15);
+  var span=Math.max(60,t1-t0), h='';
+  S.forEach(function(b){
+    if(b.cutOn){h+='<div class="tlrow"></div>';return;}
+    var L=(b.start-t0)/span*100, W=b.dur/span*100;
+    h+='<div class="tlrow"><div class="bar'+(a.conf[b.id]?' bad':'')+'" style="left:'+L.toFixed(2)+'%;width:'+
+       Math.max(0.6,W).toFixed(2)+'%;background:'+b.c+'">'+(W>9?b.n.split(' ')[0]:'')+'</div></div>';
+  });
+  h+='<div class="curfew" style="left:'+((CURFEW-t0)/span*100).toFixed(2)+'%"></div>';
+  $('#tl').innerHTML=h;
+  var ax='';for(var i=0;i<5;i++)ax+='<span>'+fmt(Math.round(t0+span*i/4))+'</span>';
+  $('#axis').innerHTML=ax;
+
+  // linhas
+  var rows='';
+  S.forEach(function(b){
+    rows+='<div class="blk'+(a.conf[b.id]?' conf':'')+(b.cutOn?' off':'')+'" data-id="'+b.id+'">'+
+      '<div class="bn"><span class="dot" style="background:'+b.c+'"></span>'+b.n+'</div>'+
+      '<div class="grp"><button data-a="s-">−</button><span class="v">'+fmt(b.start)+'</span>'+
+        '<button data-a="s+">+</button><button data-a="snap" title="encostar na dependência">⇤</button></div>'+
+      '<div class="grp"><button data-a="d-">−</button><span class="v d'+(b.dur<b.safe?' trim':'')+'">'+b.dur+
+        'min</span><button data-a="d+">+</button></div>'+
+      '<button class="cutb'+(b.cutOn?' on':'')+'" data-a="cut">'+(b.cutOn?'cortado':'cortar')+'</button></div>';
+  });
+  $('#list').innerHTML=rows;
+
+  if(!checked){$('#verdict').style.display='none';$('#res').innerHTML='';return;}
+  var v=$('#verdict');v.style.display='block';
+  if(a.errs.length){v.className='verdict bad';v.textContent='✗ '+a.errs.length+' conflito(s) — este dia não roda como está';}
+  else if(a.warns.length){v.className='verdict warn';v.textContent='◐ Roda, mas com risco: '+a.warns.length+' ponto(s) de atenção';}
+  else{v.className='verdict ok';v.textContent='✓ Run of Show fecha: sem conflito, com buffer, dentro do curfew';}
+  var li='';
+  a.errs.forEach(function(x){li+='<li class="e">'+x+'</li>';});
+  a.warns.forEach(function(x){li+='<li class="w">'+x+'</li>';});
+  a.infos.forEach(function(x){li+='<li class="i">'+x+'</li>';});
+  $('#res').innerHTML=li;
+}
+
+$('#list').addEventListener('click',function(e){
+  var btn=e.target.closest('button');if(!btn)return;
+  var b=M[btn.closest('.blk').dataset.id], a=btn.dataset.a;
+  if(a==='s-')b.start=Math.round((b.start-15)/15)*15;      // ± anda na grade de 15 min
+  else if(a==='s+')b.start=Math.round((b.start+15)/15)*15;
+  else if(a==='d-')b.dur=Math.max(b.min,b.dur-15);
+  else if(a==='d+')b.dur=Math.min(b.base+120,b.dur+15);
+  else if(a==='cut')b.cutOn=!b.cutOn;
+  else if(a==='snap'){var d=depEnds(b);if(d.length)b.start=Math.max.apply(null,d.map(function(x){return x.end;}));}
+  b.start=Math.max(4*60,Math.min(26*60,b.start));
+  render();
+});
+document.querySelectorAll('[data-inc]').forEach(function(bt){
+  bt.onclick=function(){
+    var k=bt.dataset.inc; if(INC[k])return;
+    INC[k]=1; bt.classList.add('on'); checked=true;
+    if(k==='rain'){M.rigging.dur+=60;M.rigging.min+=60;M.rigging.safe+=60;M.rigging.base+=60;}
+    var f=$('#flag'), t=[];
+    if(INC.truck)t.push('🚚 <b>Caminhão atrasou 2h</b>: o load-in não começa antes das <b>10:00</b>.');
+    if(INC.artist)t.push('🎤 <b>Artista chegou tarde</b>: a passagem de som não começa antes das <b>19:00</b>.');
+    if(INC.rain)t.push('🌧️ <b>Chuva</b>: rigging parou 1h — a montagem de estrutura agora leva <b>270 min</b> e não se acelera.');
+    t.push('Recalcule. Comprima o que se comprime, corte o que se corta, e assuma o custo da decisão.');
+    f.innerHTML=t.join('<br>'); f.style.display='block';
+    render();
+  };
+});
+$('#check').onclick=function(){checked=true;render();};
+$('#reset').onclick=function(){
+  build(); $('#flag').style.display='none';
+  document.querySelectorAll('[data-inc]').forEach(function(b){b.classList.remove('on');});
+  render();
+};
+build(); render();
+})();
+</script>
+</body>
+</html>

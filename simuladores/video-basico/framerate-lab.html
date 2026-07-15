@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMU PRO · Frame Rate e Sincronismo</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0c1017;--panel:#161c26;--panel2:#1d2431;--line:#2a3444;--ink:#e7edf5;--dim:#8794a8;--accent:#3b82f6;--ok:#22c55e;--err:#ef4444;--warn:#f59e0b;}
+  html,body{background:var(--bg);color:var(--ink);font-family:'Segoe UI',system-ui,Arial,sans-serif;}
+  body{padding:12px;}
+  .app{max-width:880px;margin:0 auto;display:flex;flex-direction:column;gap:12px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  h1{font-size:15px;margin-bottom:3px;} .sub{font-size:12px;color:var(--dim);margin-bottom:12px;}
+  .canwrap{background:#05070b;border:1px solid var(--line);border-radius:9px;overflow:hidden;}
+  #cv{width:100%;display:block;aspect-ratio:16/6;}
+  .row{display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap;}
+  .row label{font-size:12px;color:var(--dim);width:130px;flex-shrink:0;}
+  .seg{display:flex;gap:5px;flex-wrap:wrap;flex:1;}
+  .seg button{flex:1;min-width:56px;font-size:11.5px;font-weight:700;padding:7px 4px;border:1px solid var(--line);border-radius:7px;background:#0c1119;color:var(--dim);cursor:pointer;}
+  .seg button.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .verdict{font-size:13px;font-weight:700;padding:10px;border-radius:9px;text-align:center;margin-top:12px;}
+  .verdict.ok{background:#14532d;color:#bbf7d0;} .verdict.bad{background:#450a0a;color:#fca5a5;} .verdict.warn{background:#422006;color:#fde68a;}
+  .note{font-size:12px;color:var(--dim);line-height:1.55;margin-top:10px;} .note b{color:var(--ink);}
+  .miss{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:10px;margin-top:12px;}
+  .miss h3{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--warn);margin-bottom:7px;}
+  .mlist{list-style:none;display:flex;flex-direction:column;gap:5px;}
+  .mlist li{font-size:11.5px;color:var(--dim);display:flex;gap:7px;align-items:flex-start;}
+  .mlist li .bx{width:15px;height:15px;border-radius:4px;border:1px solid var(--line);flex-shrink:0;text-align:center;line-height:14px;font-size:10px;}
+  .mlist li.done{color:var(--ink);} .mlist li.done .bx{background:var(--ok);border-color:var(--ok);color:#04120d;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="card">
+    <h1>Frame rate e sincronismo — veja com os olhos</h1>
+    <div class="sub">A barra abaixo se move em tempo real. Mude o <b>frame rate</b> e veja a fluidez. Depois case a <b>fonte</b> com o <b>sistema</b> e observe o que acontece quando não batem.</div>
+    <div class="canwrap"><canvas id="cv" width="900" height="338"></canvas></div>
+
+    <div class="row"><label>Frame rate</label>
+      <div class="seg" id="fpsSeg"><button data-f="24">24 fps</button><button data-f="30">30 fps</button><button data-f="50">50 fps</button><button data-f="60" class="on">60 fps</button></div>
+    </div>
+    <div class="row"><label>Varredura</label>
+      <div class="seg" id="scanSeg"><button data-s="p" class="on">1080p (progressivo)</button><button data-s="i">1080i (entrelaçado)</button></div>
+    </div>
+    <div class="row"><label>Fonte (o vídeo)</label>
+      <div class="seg" id="srcSeg"><button data-v="24">24</button><button data-v="30">30</button><button data-v="50">50</button><button data-v="60" class="on">60</button></div>
+    </div>
+    <div class="row"><label>Sistema (a tela)</label>
+      <div class="seg" id="sysSeg"><button data-v="50">50 Hz</button><button data-v="60" class="on">60 Hz</button></div>
+    </div>
+    <div class="verdict ok" id="verdict"></div>
+    <div class="note" id="note"></div>
+
+    <div class="miss">
+      <h3>Missão</h3>
+      <ul class="mlist" id="missions"></ul>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+var $=function(s){return document.querySelector(s);};
+var $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s));};
+var fps=60, scan='p', src=60, sys=60;
+var done={low:false, inter:false, mismatch:false, match:false};
+var cv=$('#cv'), ctx=cv.getContext('2d');
+function seg(id,cb){ $$('#'+id+' button').forEach(function(b){ b.onclick=function(){ $$('#'+id+' button').forEach(function(x){x.classList.remove('on');}); b.classList.add('on'); cb(b); }; }); }
+seg('fpsSeg',function(b){ fps=+b.dataset.f; if(fps<=24)done.low=true; upd(); });
+seg('scanSeg',function(b){ scan=b.dataset.s; if(scan==='i')done.inter=true; upd(); });
+seg('srcSeg',function(b){ src=+b.dataset.v; upd(); });
+seg('sysSeg',function(b){ sys=+b.dataset.v; upd(); });
+
+function upd(){
+  var v=$('#verdict'), n=$('#note');
+  var match = (src===sys) || (sys===60 && src===30) || (sys===60 && src===24 && false) || (sys===50 && src===25);
+  var clean = (src===sys) || (sys===60&&src===30) || (sys===50&&src===25);
+  if(clean){ done.match=true; v.className='verdict ok'; v.textContent='✓ Fonte e sistema casados — movimento limpo'; }
+  else { done.mismatch=true; v.className='verdict bad'; v.textContent='✗ '+src+' fps num sistema de '+sys+' Hz — o movimento "engasga" (judder)'; }
+  n.innerHTML = (fps<=24? '<b>24 fps</b> é o "look de cinema": movimento com mais borrão e leve tranco. ' : fps>=60? '<b>60 fps</b> é o mais fluido — padrão para telão e câmera ao vivo. ' : '<b>'+fps+' fps</b> — meio-termo. ')
+    + (scan==='i'? 'No <b>1080i (entrelaçado)</b> cada quadro vem em duas metades alternadas: em movimento rápido aparecem "dentes" na borda. O <b>1080p</b> manda o quadro inteiro — sempre prefira progressivo. ' : 'O <b>1080p (progressivo)</b> manda o quadro inteiro de uma vez — imagem limpa. ')
+    + (clean? 'Como a fonte divide certinho no sistema, cada quadro aparece pelo mesmo tempo.' : 'Quando a fonte <b>não divide certinho</b> no sistema (ex.: 50 fps em 60 Hz), alguns quadros duram mais que outros — é o <b>judder</b>. Por isso o técnico casa o frame rate da fonte com o do sistema.');
+  missions();
+}
+var MISS=[{id:'low',t:'Ver a diferença de fluidez em 24 fps'},{id:'inter',t:'Testar o entrelaçado (1080i) e ver os "dentes"'},{id:'mismatch',t:'Provocar um judder (fonte ≠ sistema)'},{id:'match',t:'Casar fonte e sistema (movimento limpo)'}];
+function missions(){ var ul=$('#missions'); ul.innerHTML=''; MISS.forEach(function(m){ var d=!!done[m.id]; var li=document.createElement('li'); li.className=d?'done':''; li.innerHTML='<span class="bx">'+(d?'✓':'')+'</span><span>'+m.t+'</span>'; ul.appendChild(li); }); }
+
+// animation: bar moving; sample position at `fps`; judder when src/sys mismatch
+var last=0, phase=0, shown=0, acc=0;
+function loop(now){
+  var dt=(now-last)/1000; if(!last)dt=0; last=now;
+  phase=(phase+dt*0.35)%1;
+  // quantize to fps
+  acc+=dt; var step=1/fps;
+  if(acc>=step){ acc=acc%step; shown=phase;
+    // judder: if src doesn't divide sys, occasionally repeat/skip a frame
+    if(!((src===sys)||(sys===60&&src===30)||(sys===50&&src===25))){ if(Math.floor(now/ (1000/ Math.min(src,sys)))%3===0) shown=Math.max(0,phase-0.03); }
+  }
+  draw(shown);
+  requestAnimationFrame(loop);
+}
+function draw(p){
+  var W=cv.width,H=cv.height; ctx.fillStyle='#05070b'; ctx.fillRect(0,0,W,H);
+  // track
+  ctx.fillStyle='#131b28'; ctx.fillRect(0,H*0.35,W,H*0.3);
+  var x=p*(W-70)+10, y=H*0.5;
+  // interlace tearing effect
+  if(scan==='i'){
+    ctx.fillStyle='#3b82f6'; ctx.fillRect(x,y-26,54,26);
+    ctx.fillStyle='#60a5fa'; ctx.fillRect(x-7,y,54,26);
+    ctx.fillStyle='#0b0f16'; for(var ly=y-26;ly<y+26;ly+=4){ ctx.fillRect(0,ly,W,2); }
+  } else {
+    ctx.fillStyle='#3b82f6'; ctx.fillRect(x,y-26,54,52);
+  }
+  ctx.fillStyle='#64748b'; ctx.font='12px Segoe UI'; ctx.textAlign='left';
+  ctx.fillText(fps+' fps · '+(scan==='p'?'1080p':'1080i')+' · fonte '+src+' → sistema '+sys+' Hz', 12, 22);
+}
+requestAnimationFrame(loop);
+window.__fr={upd:upd, done:done, set:function(o){ if(o.fps)fps=o.fps; if(o.src)src=o.src; if(o.sys)sys=o.sys; if(o.scan)scan=o.scan; upd(); }};
+upd();
+})();
+</script>
+</body>
+</html>

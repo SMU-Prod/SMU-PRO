@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>SMU PRO · Briefing — as perguntas e os buracos</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0c1017;--panel:#161c26;--panel2:#1b2230;--line:#2a3444;--ink:#e7edf5;--dim:#8794a8;
+        --accent:#f59e0b;--ok:#22c55e;--err:#ef4444;--warn:#f59e0b;--cyan:#38bdf8;}
+  html,body{background:var(--bg);color:var(--ink);
+    font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased;}
+  body{padding:12px;}
+  .app{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:12px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  h1{font-size:15px;margin-bottom:3px;}
+  .sub{font-size:12px;color:var(--dim);margin-bottom:12px;line-height:1.5;}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px;}
+  .stat .k{font-size:10px;color:var(--dim);letter-spacing:.5px;}
+  .stat .val{font-size:15px;font-weight:800;margin-top:2px;}
+  .verdict{font-size:13px;font-weight:700;padding:9px 12px;border-radius:8px;text-align:center;}
+  .verdict.ok{background:#14532d;color:#bbf7d0;}
+  .verdict.bad{background:#450a0a;color:#fca5a5;}
+  .verdict.warn{background:#422006;color:#fde68a;}
+  .note{font-size:12px;color:var(--dim);line-height:1.55;}
+  button{font:inherit;cursor:pointer;}
+
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  @media(min-width:660px){ .stats{grid-template-columns:repeat(4,1fr);} }
+  .stat .val small{font-size:10px;color:var(--dim);font-weight:400;}
+
+  .msg{display:flex;gap:9px;align-items:flex-start;background:#0f141d;border:1px solid var(--line);
+    border-left:2px solid var(--cyan);border-radius:9px;padding:10px 11px;}
+  .msg .av{width:28px;height:28px;flex-shrink:0;border-radius:50%;background:#1e3a52;color:#bae6fd;
+    font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;}
+  .msg .bd{font-size:11.5px;line-height:1.55;color:#c7d2e0;}
+  .msg .bd b{color:var(--ink);}
+  .msg .who{font-size:9px;letter-spacing:.7px;color:var(--cyan);font-weight:800;margin-bottom:3px;}
+
+  .qs{display:grid;grid-template-columns:1fr;gap:7px;}
+  @media(min-width:680px){ .qs{grid-template-columns:1fr 1fr;} }
+  .q{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px 10px;
+    display:flex;gap:8px;align-items:flex-start;min-height:40px;font-size:11.5px;line-height:1.45;color:#c7d2e0;}
+  .q .bx{width:16px;height:16px;flex-shrink:0;margin-top:1px;border:1px solid #3a4658;border-radius:4px;
+    background:#0c1119;font-size:10px;font-weight:800;color:#0c1017;display:flex;align-items:center;justify-content:center;}
+  .q.on{border-color:var(--accent);background:#2a1c06;color:#fde68a;}
+  .q.on .bx{background:var(--accent);border-color:var(--accent);}
+  .q.on .bx:after{content:"✓";}
+  .qs.locked .q{pointer-events:none;}
+  .q.r3{border-color:var(--ok);background:#0d2818;color:#bbf7d0;}
+  .q.r2{border-color:#b45309;background:#2a1c06;color:#fdba74;}
+  .q.r0{border-color:var(--err);background:#1f0d0d;color:#fca5a5;}
+  .q.miss{border-color:var(--err);border-style:dashed;background:#150b0b;color:#fca5a5;}
+  .q.mute{opacity:.4;}
+  .q .tag{font-size:8.5px;font-weight:800;letter-spacing:.5px;margin-left:auto;flex-shrink:0;
+    border:1px solid currentColor;border-radius:4px;padding:1px 4px;opacity:.9;}
+  .qfb{font-size:10.5px;line-height:1.45;color:#93a2b6;margin-top:5px;padding-top:5px;border-top:1px solid #2a344455;}
+
+  .acs{display:grid;grid-template-columns:1fr;gap:8px;}
+  @media(min-width:680px){ .acs{grid-template-columns:1fr 1fr;} }
+  .ac{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px;
+    display:flex;flex-direction:column;gap:7px;}
+  .ac .top{font-size:9px;letter-spacing:.7px;color:var(--cyan);font-weight:800;}
+  .ac .say{font-size:11.5px;line-height:1.5;color:#dfe8f5;font-style:italic;}
+  .ac .say:before{content:"“";} .ac .say:after{content:"”";}
+  .opts{display:flex;gap:5px;}
+  .opts button{flex:1;min-height:36px;font-size:11px;font-weight:700;border:1px solid var(--line);
+    border-radius:7px;background:#0c1119;color:var(--dim);}
+  .opts button.on[data-a="1"]{background:#3b1414;border-color:var(--err);color:#fca5a5;}
+  .opts button.on[data-a="0"]{background:#052e1a;border-color:var(--ok);color:#bbf7d0;}
+  .acs.locked .opts button{pointer-events:none;opacity:.5;}
+  .acs.locked .opts button.on{opacity:1;}
+  .fb{display:none;font-size:11px;line-height:1.5;border-radius:7px;padding:8px 9px;}
+  .fb.show{display:block;}
+  .fb.right{background:#0d2818;color:#a8ecc4;border:1px solid #14532d;}
+  .fb.wrong{background:#1f0d0d;color:#fca5a5;border:1px solid #7f1d1d;}
+  .fb .hd{font-weight:800;color:var(--ink);font-size:10.5px;margin-bottom:3px;}
+  .fb .li{margin-top:4px;color:#c7d2e0;}
+  .fb .li b{color:var(--ink);}
+
+  .acts{display:flex;gap:8px;}
+  .acts button{flex:1;min-height:40px;border-radius:8px;font-size:13px;font-weight:700;border:1px solid var(--line);}
+  .go{background:var(--accent);border-color:var(--accent)!important;color:#1a1206;}
+  .go:disabled{opacity:.35;cursor:default;}
+  .ghost{background:#0c1119;color:var(--dim);}
+  .hide{display:none;}
+  .bill{display:grid;grid-template-columns:1fr;gap:3px;font-size:11px;color:#c7d2e0;}
+  .bill div{display:flex;justify-content:space-between;gap:10px;padding:4px 8px;background:#0f141d;
+    border:1px solid var(--line);border-radius:6px;}
+  .bill div.tot{background:#2a1c06;border-color:var(--accent);color:#fde68a;font-weight:800;}
+  .bill b{white-space:nowrap;}
+  ul.les{list-style:none;display:flex;flex-direction:column;gap:5px;}
+  ul.les li{font-size:11.5px;line-height:1.5;color:#c7d2e0;padding-left:14px;position:relative;}
+  ul.les li:before{content:"▸";position:absolute;left:0;color:var(--accent);}
+  ul.les li b{color:var(--ink);}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="card">
+    <h1>Briefing: as 8 perguntas e os buracos</h1>
+    <div class="sub">O cliente mandou um pedido vago e quer orçamento até sexta. Você tem <b>uma conversa</b> antes de orçar. Escolha as <b>8 perguntas que precisam ser feitas AGORA</b> — as que mudam o orçamento em ordem de grandeza ou decidem se o evento existe. Depois, com as respostas na mão, ache os <b>buracos</b>.</div>
+    <div class="msg">
+      <div class="av">MT</div>
+      <div class="bd">
+        <div class="who">MARCELO TAVARES · MARKETING · VERDANA ALIMENTOS · HOJE 09:14</div>
+        Oi, tudo bem? Queria um show da banda <b>Maré Alta</b> pro aniversário de 30 anos da empresa, <b>dia 14/03</b>, uns <b>800 convidados</b>, num <b>galpão</b> que a gente alugou em Cotia. Já falei com o pessoal da banda e eles toparam. É simples, viu — só o show mesmo, som e luz. Pode passar um orçamento até sexta?
+      </div>
+    </div>
+    <div class="stats" style="margin-top:10px">
+      <div class="stat"><div class="k">PERGUNTAS ESCOLHIDAS</div><div class="val" id="sel">0 <small>/ 8</small></div></div>
+      <div class="stat"><div class="k">CRÍTICAS COBERTAS</div><div class="val" id="crit">— <small>/ 8</small></div></div>
+      <div class="stat"><div class="k">BURACOS ACERTADOS</div><div class="val" id="hit">— <small>/ 14</small></div></div>
+      <div class="stat"><div class="k">ORÇAMENTO REAL</div><div class="val" id="real">? <small>× R$ 40 mil</small></div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h1>Bloco 1 · As perguntas</h1>
+    <div class="sub">Marque 8. Você não tem crédito para 16 perguntas numa primeira conversa — priorize o que muda o número.</div>
+    <div class="qs" id="qs"></div>
+    <div class="acts" style="margin-top:12px">
+      <button class="go" id="ask" disabled>Enviar as perguntas</button>
+      <button class="ghost" id="reset">Reiniciar</button>
+    </div>
+  </div>
+
+  <div class="card hide" id="b2">
+    <h1>Bloco 2 · Os buracos</h1>
+    <div class="sub">O Marcelo respondeu tudo — e respondeu de <b>boa-fé</b>. Item por item: isso é um <b>red flag</b> (muda o orçamento, atrasa ou inviabiliza) ou é <b>sem problema</b>?</div>
+    <div class="acs" id="acs"></div>
+    <div class="acts" style="margin-top:12px">
+      <button class="go" id="check" disabled>Conferir os buracos</button>
+    </div>
+  </div>
+
+  <div class="card hide" id="b3">
+    <h1>Veredito</h1>
+    <div class="verdict" id="vd" style="margin-bottom:12px"></div>
+    <div class="sub" style="margin-bottom:8px">A conta real do evento que o Marcelo chamou de "simples, só o show":</div>
+    <div class="bill" id="bill"></div>
+    <div class="sub" style="margin:12px 0 8px">O que fica:</div>
+    <ul class="les">
+      <li><b>Briefing malfeito = orçamento errado = prejuízo seu.</b> O que você não perguntou vira custo não previsto — e o cliente não paga depois. Ele vai dizer, com razão, que aprovou o número que você mandou.</li>
+      <li><b>O cliente não mente, ele não sabe.</b> "Tem energia" quer dizer que tem tomada, não 150 kVA trifásicos. "Falei com a banda" quer dizer que mandou direct, não que tem contrato. Traduzir isso é trabalho seu.</li>
+      <li><b>Orçar antes de visitar e entender o local é apostar.</b> Galpão vazio na foto é bonito; o quadro de energia, o pé-direito e o portão do caminhão é que dizem o preço.</li>
+      <li><b>Quem aprova e quem paga podem ser pessoas diferentes.</b> Descubra no dia 1 quem assina o contrato, qual CNPJ, qual alçada e qual prazo — antes de bancar a produção com dinheiro seu.</li>
+      <li><b>Verba real se pergunta direto, sem rodeio.</b> Não é falta de educação, é método. Cliente que esconde a verba não está comprando: está pesquisando preço com você de graça.</li>
+    </ul>
+    <div class="acts" style="margin-top:12px"><button class="ghost" id="reset2">Reiniciar</button></div>
+  </div>
+
+</div>
+<script>
+(function(){
+var $=function(s){return document.querySelector(s);};
+var $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s));};
+
+/* w:3 = pergunta AGORA (ordem de grandeza / viabilidade) | w:2 = essencial, mas cabe na visita técnica | w:0 = pode esperar */
+var QS=[
+ {w:3,t:"O galpão tem energia para show? Quantos kVA, é trifásico, onde fica o quadro e qual a demanda contratada?",
+  f:"Crítica. Um show de 800 pax pede ~150 kVA. Se o galpão não tem, entra gerador — R$ 20 mil que você não previu."},
+ {w:3,t:"O teto tem estrutura homologada para rigging, com laudo e ART? Ou vai precisar de ground support?",
+  f:"Crítica. Ground support é o segundo maior item do orçamento depois do cachê. Perguntar depois é comer o prejuízo."},
+ {w:3,t:"O local tem alvará para evento e AVCB? Para qual capacidade de público?",
+  f:"Crítica. Sem alvará não existe evento — existe multa e embargo no dia. Isso decide se você aceita o job."},
+ {w:3,t:"Qual o horário limite de som na região (curfew)? Tem restrição do condomínio, da prefeitura ou da vizinhança?",
+  f:"Crítica. Curfew define a grade inteira. Descobrir na véspera que o som cai às 22h é reprogramar o evento."},
+ {w:3,t:"O artista está fechado? Tem contrato assinado, cachê definido e rider técnico e de camarim em mãos?",
+  f:"Crítica. Sem contrato não há atração, e sem rider não há orçamento — só chute. Tudo depende disso."},
+ {w:3,t:"Qual é a verba real aprovada para o evento? Qual número já passou pela diretoria?",
+  f:"Crítica. Sem verba você não sabe se está desenhando um evento ou perdendo duas semanas montando proposta."},
+ {w:3,t:"Quem é o responsável legal pelo contrato: quem assina, quem aprova e quem paga? Qual CNPJ e qual prazo?",
+  f:"Crítica. Aprovar e pagar costumam ser pessoas (e cidades) diferentes. Isso define seu fluxo de caixa e seu risco."},
+ {w:3,t:"Qual o acesso de caminhão (portão, manobra, piso) e a partir de que dia e hora temos o galpão para load-in?",
+  f:"Crítica. Se o galpão só abre no dia, não existe montagem — existe hora extra, equipe dobrada ou show cancelado."},
+ {w:2,t:"Quem paga o ECAD e a licença já foi solicitada?",
+  f:"Essencial, mas não muda a ordem de grandeza: entra na proposta como linha com ressalva. Cobre antes de assinar."},
+ {w:2,t:"Quantos banheiros o galpão tem, com esgoto, e para quantas pessoas foram dimensionados?",
+  f:"Essencial — vira custo de químicos —, mas é item de visita técnica. Não decide se o evento existe."},
+ {w:2,t:"O público fica em pé ou sentado? Tem jantar, mesas, área VIP?",
+  f:"Essencial para desenhar planta e capacidade, mas resolve na visita técnica. Não muda a ordem de grandeza."},
+ {w:2,t:"O piso aguenta a carga do ground support e do backline? O galpão é todo coberto e fechado?",
+  f:"Essencial — e vai ao laudo —, mas é item de visita técnica com o engenheiro, não de primeira conversa."},
+ {w:0,t:"Qual vai ser a cor predominante da iluminação? Âmbar ou azul?",
+  f:"Pode esperar. Isso se resolve na reunião criativa, depois que o evento for viável. Você gastou um slot com decoração."},
+ {w:0,t:"Que marca de microfone o vocalista prefere — Shure ou Sennheiser?",
+  f:"Pode esperar. Está no rider técnico, que você ainda nem pediu. Slot desperdiçado."},
+ {w:0,t:"Qual a playlist da discotecagem depois do show?",
+  f:"Pode esperar. Nenhuma resposta aqui muda o orçamento em um real relevante."},
+ {w:0,t:"O bolo de 30 anos vai ser cortado no palco? Qual a cor do tapete da entrada?",
+  f:"Pode esperar. É a pergunta que o cliente adora responder — e que não te protege de nada."}
+];
+
+var AC=[
+ {c:"ENERGIA",s:"Energia tem sim! O galpão era uma metalúrgica, tem tomada em toda parede. O zelador falou que o quadro é de uns 30 kVA.",r:1,
+  i:"Show de 800 pax com PA, luz e LED pede ~150 kVA. 30 kVA não liga nem a luz. <b>Gerador 180 kVA + reserva + cabeamento + operador 24h: ~R$ 22.000</b> que não estavam na sua conta.",
+  a:"Visita técnica com eletricista, medir o padrão de entrada e fotografar o quadro. Nunca puxar show de quadro de metalúrgica. Gerador entra na proposta com operador — e o cliente vê a linha."},
+ {c:"RIGGING",s:"O teto é de telha metálica com aquelas tesouras. Deve dar pra pendurar, né? Ano passado a gente pendurou uma faixa lá.",r:1,
+  i:"Tesoura de telhado não é ponto de rigging. Sem laudo estrutural e ART, não se pendura um grid de som e luz. <b>Ground support 12×8: ~R$ 32.000 + carga no piso.</b>",
+  a:"Exigir laudo de engenheiro com ART para qualquer ponto. Não tendo, orçar ground support. Faixa de 3 kg não é referência para 2 toneladas de PA e truss."},
+ {c:"ALVARÁ",s:"O galpão tem alvará de funcionamento comercial, tá tudo certo. Evento eu acho que dá no mesmo, né? É privado, não vende ingresso.",r:1,
+  i:"Alvará comercial não autoriza evento com 800 pessoas. Falta licença de evento e AVCB para o público. <b>Risco: embargo na porta e prejuízo integral</b> — com o caminhão já descarregado.",
+  a:"Licença é obrigação do contratante, mas quem toma o prejuízo é você. Prazo de prefeitura e bombeiros: 30-60 dias — 14/03 já está apertado. Contrato com condição suspensiva: sem licença, sem evento, sem multa para você."},
+ {c:"CURFEW",s:"O condomínio industrial libera barulho até as 22h. O show é das 22h à meia-noite, então tranquilo.",r:1,
+  i:"O show <b>começa</b> na hora em que o som tem que <b>parar</b>. Do jeito que está, o evento é inviável: PM na porta, multa e show cortado no terceiro tema.",
+  a:"Duas saídas: puxar o show para 20h-22h, ou autorização por escrito do condomínio e do órgão competente. Sem uma das duas, não se assina — e não se orça como se estivesse resolvido."},
+ {c:"ARTISTA",s:"Falei com o empresário da banda pelo WhatsApp e ele topou. O contrato a gente assina mais pra frente, é de boa.",r:1,
+  i:"WhatsApp com alguém que se apresenta como empresário não é atração fechada. <b>Sem contrato, cachê e rider, o orçamento inteiro é ficção</b> — o cachê pode vir 40% maior e a data pode simplesmente cair.",
+  a:"Pedir contrato, cachê, rider técnico e rider de camarim antes de qualquer número. Conferir com o escritório oficial se aquele empresário é o empresário. Só então orçar."},
+ {c:"VERBA",s:"A verba é uns R$ 40 mil. Mas se precisar de um pouquinho mais a gente vê com a diretoria.",r:1,
+  i:"O evento que ele descreveu custa <b>~R$ 182.000</b>. A verba cobre 22%. Não é negociação de margem: é um evento <b>4,5× maior</b> que o dinheiro que existe.",
+  a:"Levar a conta aberta na primeira reunião, item por item. Oferecer cenários reais: reduzir público, trocar a atração, mudar para um local com estrutura e energia. Nunca 'cortar por dentro' para caber — quem corta por dentro paga a diferença do próprio bolso."},
+ {c:"BANHEIROS",s:"Banheiro tem 4, dois de cada. Era metalúrgica com 40 funcionários, sempre deu conta.",r:1,
+  i:"4 banheiros para 800 pessoas em 4 horas de evento com bar aberto: fila, sujeira e reclamação. <b>Químicos + esgotamento e higienização: ~R$ 11.000.</b>",
+  a:"Dimensionar por público e duração, com acessível, e incluir na proposta como linha visível. Banheiro é o item que o cliente não vê no orçamento e lembra pelo resto da vida."},
+ {c:"LOAD-IN",s:"O galpão é nosso a partir do dia 14 de manhã. A chave o proprietário entrega umas 8h.",r:1,
+  i:"Montar ground support, PA, luz, LED, palco e passar som em 8 horas, com o evento no mesmo dia: <b>impossível sem equipe dobrada e hora extra</b> — e ainda assim sem margem para erro.",
+  a:"Exigir o galpão a partir do dia 12. Se o proprietário não libera, ou muda a data, ou muda o local. Cronograma de montagem é anexo do contrato, não é combinado verbal."},
+ {c:"QUEM PAGA",s:"Eu aprovo o projeto aqui. Quem paga é o financeiro da matriz em Curitiba, em 60 dias após a nota. E acima de R$ 30 mil a diretora precisa validar.",r:1,
+  i:"Você banca cachê, gerador, estrutura e equipe com <b>capital próprio por 60 dias</b> — e quem aprova nem tem alçada para o valor. O Marcelo é interlocutor, não é cliente.",
+  a:"Sinal de 50% na assinatura e saldo antes do load-in, em contrato, com o CNPJ que assina. Descobrir a alçada e falar com a diretora no dia 1. Sem sinal, não se compra nada de fornecedor."},
+ {c:"ECAD",s:"ECAD? Nunca ouvi falar. Não é evento pago, ninguém compra ingresso, então não deve pagar nada, né?",r:1,
+  i:"Execução pública de música paga ECAD mesmo em evento fechado e gratuito. <b>~R$ 6.000 em licença</b> e risco de interdição por fiscalização no dia.",
+  a:"Calcular pela tabela (área, público, tipo de evento), solicitar a licença com antecedência e definir <b>por escrito no contrato</b> quem paga. Se ficar em branco, quem paga é você."},
+ {c:"PISO",s:"O piso é de concreto industrial, daqueles grossos, aguentava empilhadeira carregada o dia inteiro.",r:0,
+  i:"Sem problema. Piso de concreto industrial de metalúrgica aguenta ground support, backline e público com folga.",
+  a:"Registrar na visita técnica e seguir. Nem tudo que o cliente fala é armadilha — parte do briefing é boa notícia, e reconhecer isso te dá tempo para os problemas reais."},
+ {c:"LAYOUT",s:"O pessoal fica em pé, mas os 80 diretores e convidados sênior ficam sentados em mesas na frente do palco.",r:0,
+  i:"Sem problema. Pista em pé com área de mesas na frente é layout corriqueiro em evento corporativo.",
+  a:"Desenhar planta com barricada, corredor de circulação e saídas — e checar se a mesa não invade a área de cobertura do PA. É trabalho de planta, não é buraco de briefing."},
+ {c:"LOCAL",s:"O galpão fica em Cotia, uns 45 km do centro de São Paulo. Tem estacionamento pra caramba.",r:0,
+  i:"Sem problema. Entra em logística: frete, deslocamento e alimentação de equipe. Custa dinheiro, mas é previsível e cabe na planilha.",
+  a:"Precificar frete e diária de equipe corretamente e seguir. Distância não é red flag — red flag é distância que você descobre depois de fechar o preço."},
+ {c:"DATA",s:"Dia 14/03, uma sexta-feira. A empresa escolheu porque é a data exata dos 30 anos.",r:0,
+  i:"Sem problema. Sexta é dia bom para evento corporativo e a data tem razão de ser — o que ajuda a defender o cronograma com o cliente.",
+  a:"Usar a data simbólica a seu favor: é o argumento para o cliente liberar o galpão antes e correr atrás da licença agora."}
+];
+
+var BILL=[
+ ["Cachê Maré Alta + produção do artista","R$ 50.000"],
+ ["Som, luz, LED e palco para 800 pax","R$ 36.000"],
+ ["Ground support 12×8 (teto sem laudo)","R$ 32.000"],
+ ["Gerador 180 kVA + cabeamento + operador","R$ 22.000"],
+ ["Segurança, brigada, ambulância e bombeiro civil","R$ 13.000"],
+ ["Banheiros químicos + esgotamento","R$ 11.000"],
+ ["Equipe de produção, frete, logística e alimentação","R$ 12.000"],
+ ["ECAD, licenças e taxas","R$ 6.000"]
+];
+
+var picked=[], ans={}, phase=1;
+
+function renderQ(){
+  var el=$('#qs'); el.innerHTML='';
+  QS.forEach(function(q,k){
+    var d=document.createElement('div');
+    d.className='q'+(picked.indexOf(k)>=0?' on':'');
+    d.innerHTML='<span class="bx"></span><span>'+q.t+'</span>';
+    d.addEventListener('click',function(){ toggle(k); });
+    el.appendChild(d);
+  });
+  $('#sel').innerHTML=picked.length+' <small>/ 8</small>';
+  $('#ask').disabled=picked.length!==8;
+}
+function toggle(k){
+  if(phase!==1) return;
+  var i=picked.indexOf(k);
+  if(i>=0) picked.splice(i,1);
+  else { if(picked.length>=8) return; picked.push(k); }
+  renderQ();
+}
+function gradeQ(){
+  phase=2;
+  var el=$('#qs'); el.className='qs locked'; el.innerHTML='';
+  var crit=0;
+  QS.forEach(function(q,k){
+    var sel=picked.indexOf(k)>=0, cls='q', tag='', show=false;
+    if(sel&&q.w===3){ cls+=' r3'; tag='AGORA'; show=true; crit++; }
+    else if(sel&&q.w===2){ cls+=' r2'; tag='PODE ESPERAR'; show=true; }
+    else if(sel&&q.w===0){ cls+=' r0'; tag='SLOT PERDIDO'; show=true; }
+    else if(!sel&&q.w===3){ cls+=' miss'; tag='FALTOU'; show=true; }
+    else { cls+=' mute'; }
+    var d=document.createElement('div'); d.className=cls;
+    d.innerHTML='<span style="flex:1"><span>'+q.t+'</span>'+(show?'<div class="qfb">'+q.f+'</div>':'')+'</span>'+
+      (tag?'<span class="tag">'+tag+'</span>':'');
+    el.appendChild(d);
+  });
+  $('#crit').innerHTML=crit+' <small>/ 8</small>';
+  $('#ask').disabled=true; $('#ask').textContent='Perguntas enviadas ✓';
+  $('#b2').classList.remove('hide');
+  renderAC();
+  $('#b2').scrollIntoView({behavior:'smooth',block:'start'});
+  return crit;
+}
+function renderAC(){
+  var el=$('#acs'); el.innerHTML='';
+  AC.forEach(function(a,k){
+    var d=document.createElement('div'); d.className='ac';
+    d.innerHTML='<div class="top">'+a.c+' · MARCELO RESPONDEU</div><div class="say">'+a.s+'</div>'+
+      '<div class="opts"><button data-a="1">🚩 Red flag</button><button data-a="0">✓ Sem problema</button></div>'+
+      '<div class="fb"></div>';
+    Array.prototype.slice.call(d.querySelectorAll('button')).forEach(function(b){
+      b.addEventListener('click',function(){
+        ans[k]=+b.dataset.a;
+        Array.prototype.slice.call(d.querySelectorAll('button')).forEach(function(x){x.classList.remove('on');});
+        b.classList.add('on');
+        $('#check').disabled=Object.keys(ans).length!==AC.length;
+      });
+    });
+    el.appendChild(d);
+  });
+  $('#check').disabled=true;
+}
+function gradeAC(crit){
+  phase=3;
+  $('#acs').className='acs locked';
+  var hits=0, missed=[];
+  $$('#acs .ac').forEach(function(d,k){
+    var a=AC[k], ok=ans[k]===a.r;
+    if(ok) hits++; else if(a.r===1) missed.push(a.c);
+    var fb=d.querySelector('.fb');
+    fb.className='fb show '+(ok?'right':'wrong');
+    fb.innerHTML='<div class="hd">'+(ok?'✓ ':'✗ ')+(a.r?'RED FLAG':'SEM PROBLEMA')+'</div>'+
+      '<div class="li"><b>Impacto:</b> '+a.i+'</div><div class="li"><b>Atitude do produtor:</b> '+a.a+'</div>';
+  });
+  $('#hit').innerHTML=hits+' <small>/ '+AC.length+'</small>';
+  $('#real').innerHTML='4,5× <small>R$ 182 mil</small>';
+  $('#check').disabled=true; $('#check').textContent='Conferido ✓';
+  var b=$('#bill'); b.innerHTML='';
+  BILL.forEach(function(r){ b.innerHTML+='<div><span>'+r[0]+'</span><b>'+r[1]+'</b></div>'; });
+  b.innerHTML+='<div class="tot"><span>TOTAL REAL DO EVENTO "SIMPLES"</span><b>R$ 182.000</b></div>'+
+    '<div class="tot" style="background:#450a0a;border-color:#7f1d1d;color:#fca5a5"><span>VERBA DECLARADA PELO CLIENTE</span><b>R$ 40.000</b></div>';
+  var score=crit+hits, max=8+AC.length, v=$('#vd');
+  if(crit>=7&&hits>=12){ v.className='verdict ok';
+    v.innerHTML='Briefing bem feito — '+score+'/'+max+'. Você achou os buracos antes de assinar. Este job pode não acontecer, e tudo bem: prejuízo evitado também é lucro.'; }
+  else if(crit>=5&&hits>=9){ v.className='verdict warn';
+    v.innerHTML='Briefing incompleto — '+score+'/'+max+'. Dá para orçar, mas ainda tem buraco aberto. Cada pergunta que ficou de fora é uma linha do orçamento que você vai pagar.'; }
+  else { v.className='verdict bad';
+    v.innerHTML='Briefing furado — '+score+'/'+max+'. Com essas informações você mandaria um orçamento errado, o cliente aprovaria, e a diferença sairia do seu bolso no dia 14/03.'; }
+  if(missed.length) v.innerHTML+='<div style="font-weight:400;font-size:11px;margin-top:6px;opacity:.9">Red flags que passaram batido: '+missed.join(' · ')+'</div>';
+  $('#b3').classList.remove('hide');
+  $('#b3').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function reset(){
+  picked=[]; ans={}; phase=1;
+  $('#qs').className='qs';
+  $('#ask').disabled=true; $('#ask').textContent='Enviar as perguntas';
+  $('#check').textContent='Conferir os buracos';
+  $('#b2').classList.add('hide'); $('#b3').classList.add('hide');
+  $('#crit').innerHTML='— <small>/ 8</small>';
+  $('#hit').innerHTML='— <small>/ '+AC.length+'</small>';
+  $('#real').innerHTML='? <small>× R$ 40 mil</small>';
+  renderQ();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+var critScore=0;
+$('#ask').addEventListener('click',function(){ critScore=gradeQ(); });
+$('#check').addEventListener('click',function(){ gradeAC(critScore); });
+$('#reset').addEventListener('click',reset);
+$('#reset2').addEventListener('click',reset);
+$('#hit').innerHTML='— <small>/ '+AC.length+'</small>';
+renderQ();
+})();
+</script>
+</body>
+</html>
