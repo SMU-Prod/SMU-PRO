@@ -1,0 +1,141 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Simulador — Endereçamento e Patch DMX</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#0b0e14;color:#e7ecf3;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;overflow:hidden}
+body{display:flex;align-items:center;justify-content:center}
+.console{width:1010px;height:625px;background:linear-gradient(180deg,#121722,#0d111a);border:1px solid #223049;border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:12px;box-shadow:0 10px 40px #0008}
+h1{font-size:15px;font-weight:700;color:#cfe0ff}
+.sub{font-size:11.5px;color:#8aa0c2;line-height:1.4}
+.main{display:grid;grid-template-columns:1.25fr .75fr;gap:16px;flex:1;min-height:0}
+.left{display:flex;flex-direction:column;gap:8px;min-height:0}
+.fixtures{display:flex;flex-direction:column;gap:7px;overflow:auto;padding-right:4px}
+.fx{display:grid;grid-template-columns:26px 1fr auto auto;gap:9px;align-items:center;background:#0e1421;border:1px solid #22314c;border-radius:9px;padding:7px 9px}
+.fx.sel{border-color:#3f7bd6;box-shadow:0 0 0 1px #3f7bd6}
+.fx .ic{width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px}
+.fx .nm{font-size:12px;font-weight:700}.fx .md{font-size:10.5px;color:#8298bd}
+.mode select{background:#0c1220;color:#dce7fb;border:1px solid #2b3c58;border-radius:6px;font-size:11px;padding:3px 4px}
+.addr{display:flex;align-items:center;gap:4px}
+.addr button{width:24px;height:24px;padding:0;font-size:15px;line-height:1}
+.addr input{width:52px;text-align:center;background:#0c1220;color:#fff;border:1px solid #2b3c58;border-radius:6px;font-size:12px;padding:4px;font-variant-numeric:tabular-nums}
+.chspan{font-size:10px;color:#7f96bb;min-width:66px;text-align:right}
+.chspan.bad{color:#ff7b7b;font-weight:700}
+.universe{background:#0a0f1a;border:1px solid #22314c;border-radius:9px;padding:8px}
+.ubar{display:grid;grid-template-columns:repeat(32,1fr);gap:1px;margin-top:5px}
+.cell{height:11px;background:#141c2c;border-radius:1px}
+.uleg{font-size:10px;color:#7f96bb;display:flex;justify-content:space-between}
+.right{display:flex;flex-direction:column;gap:10px;min-width:0}
+.stage{flex:1;background:#04060a;border:1px solid #1c2740;border-radius:10px;position:relative;overflow:hidden;min-height:120px}
+.stage canvas{width:100%;height:100%;display:block}
+.mission{background:#0e1626;border:1px solid #24406e;border-radius:10px;padding:9px 11px;font-size:11.5px;line-height:1.45}
+.mrow{display:flex;align-items:center;gap:8px;margin-top:4px}.dot{width:13px;height:13px;border-radius:50%;border:2px solid #37507a;flex:none}.dot.ok{background:#39d98a;border-color:#39d98a}
+.btns{display:flex;gap:7px;flex-wrap:wrap}
+button{background:#1b2740;color:#dce7fb;border:1px solid #33507f;border-radius:8px;padding:6px 10px;font-size:11.5px;font-weight:600;cursor:pointer}
+button:hover{background:#233459}
+button.p{background:#1e5a3a;border-color:#2f8f5b}button.p:hover{background:#256e47}
+</style></head>
+<body>
+<div class="console" id="console">
+  <div><h1>Endereçamento e Patch DMX <span style="font-weight:400;color:#7f96bb;font-size:12px">— Universo 1</span></h1>
+    <div class="sub">Dê a cada fixture um <b>endereço inicial</b> sem sobrepor. Cada modo ocupa um número de canais (<b>footprint</b>). A próxima fixture começa <b>depois</b> da anterior.</div></div>
+  <div class="main">
+    <div class="left">
+      <div class="fixtures" id="fixtures"></div>
+      <div class="universe">
+        <div class="uleg"><span>Mapa do Universo (canais 1–512 · mostrando 1–256)</span><span id="usumm"></span></div>
+        <div class="ubar" id="ubar"></div>
+        <div class="uleg" style="margin-top:4px"><span>1</span><span>64</span><span>128</span><span>192</span><span>256</span></div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="stage"><canvas id="cv"></canvas></div>
+      <div class="btns">
+        <button id="check" class="p">▶ Channel check (testar selecionada)</button>
+        <button id="auto">Auto-endereçar em sequência</button>
+      </div>
+      <div class="mission" id="mission"></div>
+      <div class="btns"><button id="next">Próxima missão ▸</button></div>
+    </div>
+  </div>
+</div>
+<script>
+const MODES={ 'PAR LED':[{n:'3ch (RGB)',f:3},{n:'4ch (RGBW)',f:4},{n:'8ch (Dim+RGB+...)',f:8}],
+ 'Moving Wash':[{n:'12ch básico',f:12},{n:'16ch estendido',f:16}],
+ 'Moving Spot':[{n:'16ch',f:16},{n:'24ch',f:24}] };
+const FX=[
+ {nm:'PAR LED 1',type:'PAR LED',ic:'🔴',col:'#ff5a5a',mode:0,addr:1},
+ {nm:'PAR LED 2',type:'PAR LED',ic:'🟢',col:'#48e06a',mode:0,addr:1},
+ {nm:'Moving Wash',type:'Moving Wash',ic:'🔵',col:'#4d8bff',mode:0,addr:1},
+ {nm:'Moving Spot',type:'Moving Spot',ic:'⚪',col:'#ffe08a',mode:0,addr:1},
+];
+let sel=0, testing=-1, testT=0;
+const foot=fx=>MODES[fx.type][fx.mode].f;
+const fixturesEl=document.getElementById('fixtures');
+function buildFixtures(){fixturesEl.innerHTML='';FX.forEach((fx,i)=>{
+ const el=document.createElement('div');el.className='fx'+(i===sel?' sel':'');
+ const opts=MODES[fx.type].map((m,mi)=>`<option value="${mi}" ${mi===fx.mode?'selected':''}>${m.n}</option>`).join('');
+ el.innerHTML=`<div class="ic" style="background:${fx.col}22;color:${fx.col}">${fx.ic}</div>
+  <div><div class="nm">${fx.nm}</div><div class="md">${fx.type} · ${foot(fx)} canais</div></div>
+  <div class="mode"><select data-mode>${opts}</select></div>
+  <div class="addr"><button data-dn>−</button><input data-addr value="${fx.addr}"><button data-up>+</button></div>`;
+ fixturesEl.appendChild(el);
+ el.onclick=()=>{sel=i;buildFixtures();draw();};
+ el.querySelector('[data-mode]').onchange=e=>{fx.mode=+e.target.value;update();};
+ el.querySelector('[data-addr]').onchange=e=>{fx.addr=clamp(parseInt(e.target.value)||1);update();};
+ el.querySelector('[data-up]').onclick=ev=>{ev.stopPropagation();fx.addr=clamp(fx.addr+1);update();};
+ el.querySelector('[data-dn]').onclick=ev=>{ev.stopPropagation();fx.addr=clamp(fx.addr-1);update();};
+});
+ // spans de canal e conflito
+ FX.forEach((fx,i)=>{const el=fixturesEl.children[i];const end=fx.addr+foot(fx)-1;
+  const bad=conflicts(i);const span=document.createElement('div');span.className='chspan'+(bad?' bad':'');
+  span.textContent=(bad?'⚠ ':'')+'ch '+fx.addr+'–'+end;el.appendChild(span);});
+}
+function clamp(v){return Math.max(1,Math.min(512,v));}
+function conflicts(i){const a1=FX[i].addr,a2=a1+foot(FX[i])-1;return FX.some((o,j)=>{if(j===i)return false;const b1=o.addr,b2=o.addr+foot(o)-1;return a1<=b2&&b1<=a2;});}
+function anyConflict(){return FX.some((_,i)=>conflicts(i));}
+// universo bar
+const ubar=document.getElementById('ubar');const CELLS=256;
+for(let i=0;i<CELLS;i++){const c=document.createElement('div');c.className='cell';ubar.appendChild(c);}
+function paintUniverse(){const cells=ubar.children;for(let i=0;i<CELLS;i++)cells[i].style.background='#141c2c';
+ // marca ocupação; conflito = vermelho
+ const owner=new Array(CELLS).fill(-1);
+ FX.forEach((fx,i)=>{for(let c=fx.addr;c<fx.addr+foot(fx);c++){const idx=c-1;if(idx<0||idx>=CELLS)continue;
+   if(owner[idx]===-1){owner[idx]=i;cells[idx].style.background=fx.col;}else{cells[idx].style.background='#ff4d4d';}}});
+ document.getElementById('usumm').textContent=anyConflict()?'⚠ há sobreposição':'sem conflitos ✓';
+ document.getElementById('usumm').style.color=anyConflict()?'#ff7b7b':'#39d98a';
+}
+// stage canvas — desenha 4 fixtures e pisca a testada
+const cv=document.getElementById('cv');const ctx=cv.getContext('2d');
+function sizeCanvas(){const r=cv.getBoundingClientRect();const dpr=Math.min(2,devicePixelRatio||1);cv.width=r.width*dpr;cv.height=r.height*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);draw();}
+function draw(){const r=cv.getBoundingClientRect();const W=r.width,H=r.height;ctx.clearRect(0,0,W,H);ctx.fillStyle='#04060a';ctx.fillRect(0,0,W,H);
+ ctx.fillStyle='#7f96bb';ctx.font='10.5px system-ui';ctx.fillText('Palco — channel check',10,15);
+ const n=FX.length;const gap=W/(n+1);
+ FX.forEach((fx,i)=>{const x=gap*(i+1),y=H*0.3;const lit=(i===testing);const active=(i===sel);
+  ctx.fillStyle=active?'#22304a':'#141b28';ctx.strokeStyle=active?'#3f7bd6':'#26324a';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.roundRect(x-16,y-12,32,24,5);ctx.fill();ctx.stroke();
+  if(lit){const bg=ctx.createLinearGradient(0,y,0,H*0.95);bg.addColorStop(0,hex(fx.col,0.8));bg.addColorStop(1,hex(fx.col,0));
+   ctx.beginPath();ctx.moveTo(x-8,y+10);ctx.lineTo(x-34,H*0.92);ctx.lineTo(x+34,H*0.92);ctx.lineTo(x+8,y+10);ctx.closePath();ctx.fillStyle=bg;ctx.fill();
+   ctx.fillStyle=hex(fx.col,1);ctx.beginPath();ctx.arc(x,y,6,0,7);ctx.fill();}
+  ctx.fillStyle=lit?'#fff':'#6b7f9e';ctx.font='9px system-ui';ctx.textAlign='center';ctx.fillText('@'+fx.addr,x,y+34);ctx.textAlign='left';});
+ if(testing>=0){ctx.fillStyle='#39d98a';ctx.font='11px system-ui';ctx.fillText('▶ Testando '+FX[testing].nm+' (endereço '+FX[testing].addr+')',10,H-12);}
+}
+function hex(h,a){const c=h.replace('#','');return `rgba(${parseInt(c.substr(0,2),16)},${parseInt(c.substr(2,2),16)},${parseInt(c.substr(4,2),16)},${a})`;}
+function update(){buildFixtures();paintUniverse();draw();checkMission();}
+document.getElementById('check').onclick=()=>{testing=sel;draw();clearTimeout(testT);testT=setTimeout(()=>{testing=-1;draw();},1400);};
+document.getElementById('auto').onclick=()=>{let a=1;FX.forEach(fx=>{fx.addr=a;a+=foot(fx);});update();};
+// missões
+const M=[
+ {t:'Toda fixture no endereço 1 se sobrepõe. <b>Endereça as 4 sem nenhum conflito</b> (mapa todo sem vermelho).',ok:()=>!anyConflict()},
+ {t:'Coloque o <b>Moving Spot no modo 24ch</b> e re-endereça tudo em sequência sem sobrepor.',ok:()=>FX[3].mode===1&&!anyConflict()},
+ {t:'Faça o <b>PAR LED 1 e o PAR LED 2 no MESMO endereço</b> de propósito (clones que reagem juntos) — e mantenha os movings sem conflito com eles.',ok:()=>FX[0].addr===FX[1].addr && FX[0].mode===FX[1].mode && !overlapMovings()},
+ {t:'Volte a um patch limpo: use “Auto-endereçar” e confira no <b>channel check</b>.',ok:()=>!anyConflict()&&sequential()},
+];
+function overlapMovings(){const set=[2,3];return !set.some(i=>{const a1=FX[i].addr,a2=a1+foot(FX[i])-1;return [0,1].some(j=>{const b1=FX[j].addr,b2=b1+foot(FX[j])-1;return a1<=b2&&b1<=a2;})|| (i===2&&(function(){const b1=FX[3].addr,b2=b1+foot(FX[3])-1;return a1<=b2&&b1<=a2;})());});}
+function sequential(){let a=1;for(const fx of FX){if(fx.addr!==a)return false;a+=foot(fx);}return true;}
+let mi=0;
+function drawMission(){document.getElementById('mission').innerHTML=`<div><b>Missão ${mi+1}/${M.length}:</b> ${M[mi].t}</div><div class="mrow"><span class="dot" id="mdot"></span><span id="mstat">…</span></div>`;}
+function checkMission(){const dot=document.getElementById('mdot');if(!dot)return;let ok=false;try{ok=M[mi].ok();}catch(e){}if(ok){dot.classList.add('ok');document.getElementById('mstat').textContent='✓ Correto! Próxima missão.';}else{dot.classList.remove('ok');document.getElementById('mstat').textContent='Ajuste os endereços…';}}
+document.getElementById('next').onclick=()=>{mi=(mi+1)%M.length;drawMission();update();};
+function fit(){const DW=1010,DH=625;const vw=innerWidth,vh=innerHeight;const scrH=(window.screen&&screen.height)||vh;const iframeTaller=vh>scrH+8;const visH=Math.min(vh,scrH);const headerAllow=iframeTaller?84:(vh>700?24:6);const effVh=Math.max(240,visH-headerAllow);const z=Math.min(vw/DW,effVh/DH);document.getElementById('console').style.zoom=z;requestAnimationFrame(sizeCanvas);}
+addEventListener('resize',fit);buildFixtures();paintUniverse();drawMission();fit();setTimeout(fit,60);
+</script></body></html>

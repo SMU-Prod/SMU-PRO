@@ -1,0 +1,179 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Simulador — Avolites Titan (réplica funcional)</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif}
+html,body{height:100%;background:#0a0a0b;color:#e9edf2;overflow:hidden}
+body{display:flex;align-items:center;justify-content:center}
+.console{width:1280px;height:720px;background:#131417;border:1px solid #2a2a2e;border-radius:10px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 48px #000a}
+.brand{height:30px;background:linear-gradient(90deg,#20222a,#131417);display:flex;align-items:center;justify-content:space-between;padding:0 14px;border-bottom:1px solid #2a2a2e}
+.brand b{font-size:13px;letter-spacing:1px;color:#d6def0;font-weight:800}.brand b span{color:#f0a52e}
+.brand .s{font-size:10px;color:#6b7280}
+.top{flex:1;display:grid;grid-template-columns:1.1fr 1fr;gap:2px;background:#0a0a0b;min-height:0}
+.pane{background:#17181c;display:flex;flex-direction:column;min-height:0}
+.ph{font-size:10px;letter-spacing:1px;color:#7b8494;padding:5px 10px;background:#1e2026;border-bottom:1px solid #26272b;text-transform:uppercase;font-weight:700}
+/* fixtures grid */
+.fxgrid{flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:10px;align-content:start}
+.fxcell{background:#1b1d22;border:1px solid #2a2c33;border-radius:8px;padding:8px 6px;text-align:center;cursor:pointer;position:relative}
+.fxcell.sel{border-color:#f0a52e;box-shadow:0 0 0 1px #f0a52e;background:#2a2418}
+.fxcell .n{font-size:14px;font-weight:800;color:#dfe4ea}
+.fxcell .nm{font-size:9px;color:#8b93a1;margin-top:2px}
+.fxcell .sw{width:100%;height:6px;border-radius:3px;margin-top:6px;background:#000}
+.plan{flex:1;position:relative}.plan canvas{width:100%;height:100%;display:block}
+/* mid: attribute banks + wheels */
+.mid{height:150px;background:#17181c;border-top:1px solid #26272b;display:grid;grid-template-columns:150px 1fr;gap:2px}
+.banks{display:flex;flex-direction:column;background:#14151a}
+.bank{flex:1;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#9aa2b0;cursor:pointer;border-bottom:1px solid #202127;letter-spacing:.5px}
+.bank.on{color:#0a0a0b}
+.bank[data-b="Intensity"].on{background:#e0b93a}.bank[data-b="Position"].on{background:#4d86e0}.bank[data-b="Colour"].on{background:#e05a86}.bank[data-b="Beam"].on{background:#5ac2a0}
+.wheels{display:grid;grid-template-columns:repeat(3,1fr) 1.2fr;gap:1px;background:#0a0a0b}
+.wheel{background:#17181c;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:ns-resize;touch-action:none;padding:6px}
+.wheel .wl{font-size:10px;color:#8b93a1;text-transform:uppercase;font-weight:700;letter-spacing:.5px}
+.wheel .wd{width:56px;height:56px;border-radius:50%;background:repeating-conic-gradient(#26282e 0 12deg,#1c1e23 12deg 24deg);border:2px solid #3a3d44;position:relative}
+.wheel .wd i{position:absolute;left:50%;top:5px;width:3px;height:18px;background:#f0a52e;margin-left:-1.5px;transform-origin:50% 23px;border-radius:2px}
+.wheel .wv{font-size:12px;font-weight:700;color:#e9edf2;font-variant-numeric:tabular-nums}
+.palette{background:#17181c;display:flex;flex-direction:column;padding:6px;gap:4px}
+.palette .pl{font-size:9px;color:#8b93a1;text-transform:uppercase;font-weight:700}
+.swatches{flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.swatches div{border-radius:4px;cursor:pointer;border:1px solid #333}
+/* bottom: playbacks + control keys */
+.bottom{height:250px;display:grid;grid-template-columns:1fr 260px;gap:2px;background:#0a0a0b}
+.pbwrap{background:#17181c;display:flex;flex-direction:column;min-height:0}
+.pbrow{flex:1;display:grid;grid-template-columns:repeat(10,1fr);gap:5px;padding:8px}
+.pb{background:#1b1d22;border:1px solid #2a2c33;border-radius:6px;display:flex;flex-direction:column;align-items:center;padding:5px 3px;gap:5px}
+.pb.armed{border-color:#e05a5a;box-shadow:0 0 0 1px #e05a5a}
+.pb.has{border-color:#5ac2a0}
+.pb .pn{font-size:8px;color:#7b8494;height:18px;text-align:center;overflow:hidden;line-height:1.05}
+.pb .pt{position:relative;width:20px;flex:1;min-height:70px;background:#0f1012;border:1px solid #2a2c31;border-radius:4px;touch-action:none;cursor:pointer}
+.pb .pf{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(0deg,#2f6a8a,#4aa0c8);border-radius:0 0 3px 3px}
+.pb .pk{position:absolute;left:-2px;right:-2px;height:8px;background:#cfd6e0;border-radius:2px}
+.pb .fl{font-size:8px;font-weight:800;color:#0a0a0b;background:#8b93a1;border:none;border-radius:3px;padding:3px 0;width:100%;cursor:pointer}
+.pb .num{font-size:8px;color:#5b6472}
+.ctrl{background:#17181c;display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:1fr;gap:6px;padding:8px}
+.ck{border-radius:7px;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;cursor:pointer;user-select:none;background:#232529;border:1px solid #33363d;color:#dfe4ea;flex-direction:column;line-height:1.1;text-align:center}
+.ck:active{background:#3a3d44}
+.ck.locate{background:#22303e;color:#7fb2ff}.ck.rec{background:#3a2020;color:#ff8a8a}.ck.rec.on{background:#7a2020;color:#fff}.ck.clear{background:#2e2a1e;color:#ffcf6b}
+.ck small{font-size:8px;color:#7b8494;font-weight:500;margin-top:2px}
+.ck.num{font-size:14px}
+.mbar{height:40px;background:#0e1626;border-top:1px solid #24406e;display:flex;align-items:center;gap:10px;padding:0 12px;font-size:11.5px}
+.mbar .dot{width:12px;height:12px;border-radius:50%;border:2px solid #37507a;flex:none}.mbar .dot.ok{background:#39d98a;border-color:#39d98a}
+.mbar b{color:#f0c26b}.mbar button{margin-left:auto;background:#241f14;color:#ffdca0;border:1px solid #5a4a2a;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer}
+.status{position:absolute;bottom:6px;left:10px;font-size:10px;color:#7b8494}
+</style></head>
+<body>
+<div class="console" id="console">
+  <div class="brand"><b>Avol<span>i</span>tes · Titan</b><span class="s">réplica funcional de estudo · SMU</span></div>
+  <div class="top">
+    <div class="pane"><div class="ph">Fixtures — toque para selecionar (ou digite o nº e Enter)</div><div class="fxgrid" id="fxgrid"></div></div>
+    <div class="pane"><div class="ph">Visualiser — palco</div><div class="plan"><canvas id="cv"></canvas><div class="status" id="status"></div></div></div>
+  </div>
+  <div class="mid">
+    <div class="banks" id="banks"></div>
+    <div class="wheels" id="wheels"></div>
+  </div>
+  <div class="bottom">
+    <div class="pbwrap"><div class="ph">Playbacks — Record grava aqui; o fader toca; Flash dá 100%</div><div class="pbrow" id="pbrow"></div></div>
+    <div class="ctrl" id="ctrl"></div>
+  </div>
+  <div class="mbar"><span class="dot" id="mdot"></span><span id="mtext"></span><button id="mnext">Próxima ▸</button></div>
+</div>
+<script>
+const N=8;
+const fx=[]; for(let i=0;i<N;i++)fx.push({id:i+1,name:(i<4?'PAR ':'Moving ')+(i+1),dim:0,pan:128,tilt:128,r:0,g:0,b:0,sel:false,prog:{}});
+const pbs=[]; for(let i=0;i<10;i++)pbs.push({cue:null,fader:0,label:''});
+let bank='Intensity'; let recArm=false; let numBuf='';
+const selected=()=>fx.filter(f=>f.sel);
+function flash(m){document.getElementById('status').textContent=m;}
+function markProg(attr){selected().forEach(f=>f.prog[attr]=true);}
+
+// ── Fixtures grid ──
+const fxgrid=document.getElementById('fxgrid');
+function buildGrid(){fxgrid.innerHTML='';fx.forEach(f=>{const el=document.createElement('div');el.className='fxcell'+(f.sel?' sel':'');
+ const on=f.dim>4; const col=on?`rgb(${f.r},${f.g},${f.b})`:'#000';
+ el.innerHTML=`<div class="n">${f.id}</div><div class="nm">${f.name}</div><div class="sw" style="background:${col};opacity:${on?(0.25+0.75*f.dim/255):1}"></div>`;
+ el.onclick=()=>{f.sel=!f.sel;render();};fxgrid.appendChild(el);});}
+
+// ── Attribute banks + wheels ──
+const BANKS={
+ Intensity:[{k:'dim',lbl:'Dimmer',disp:v=>Math.round(v/2.55)+'%'}],
+ Position:[{k:'pan',lbl:'Pan',disp:v=>Math.round(v/255*540-270)+'°'},{k:'tilt',lbl:'Tilt',disp:v=>Math.round(v/255*270-135)+'°'}],
+ Colour:[{k:'r',lbl:'Red',disp:v=>''+v},{k:'g',lbl:'Green',disp:v=>''+v},{k:'b',lbl:'Blue',disp:v=>''+v}],
+ Beam:[{k:'dim',lbl:'Dimmer',disp:v=>Math.round(v/2.55)+'%'}],
+};
+const banksEl=document.getElementById('banks');
+function buildBanks(){banksEl.innerHTML='';Object.keys(BANKS).forEach(b=>{const el=document.createElement('div');el.className='bank'+(b===bank?' on':'');el.dataset.b=b;el.textContent=b;el.onclick=()=>{bank=b;render();};banksEl.appendChild(el);});}
+function avg(k){const s=selected();return s.length?s.reduce((a,f)=>a+f[k],0)/s.length:0;}
+function setAttr(k,v){const s=selected();if(!s.length){flash('Selecione fixtures primeiro');return;}v=Math.max(0,Math.min(255,v));s.forEach(f=>{f[k]=Math.round(v);if(k==='dim')f.prog.dim=true;else if(k==='pan')f.prog.pan=true;else if(k==='tilt')f.prog.tilt=true;else f.prog.colour=true;});render();}
+const wheelsEl=document.getElementById('wheels');
+function buildWheels(){wheelsEl.innerHTML='';const attrs=BANKS[bank];
+ for(let i=0;i<3;i++){const a=attrs[i];const w=document.createElement('div');w.className='wheel';
+  if(a){const cur=avg(a.k);w.innerHTML=`<div class="wl">${a.lbl}</div><div class="wd"><i style="transform:rotate(${cur/255*300-150}deg)"></i></div><div class="wv">${a.disp(cur)}</div>`;
+   w.addEventListener('pointerdown',e=>{const sy=e.clientY,sv=avg(a.k);const mv=ev=>{if(!ev.buttons){cl();return;}setAttr(a.k,sv+(sy-ev.clientY)*2);};const cl=()=>{removeEventListener('pointermove',mv);removeEventListener('pointerup',cl);};addEventListener('pointermove',mv);addEventListener('pointerup',cl);});}
+  else{w.style.opacity=.25;w.innerHTML='<div class="wl">—</div><div class="wd"></div><div class="wv"></div>';}
+  wheelsEl.appendChild(w);}
+ // paleta de cores
+ const pal=document.createElement('div');pal.className='palette';pal.innerHTML='<div class="pl">Colour palette</div>';
+ const sw=document.createElement('div');sw.className='swatches';
+ [['Vermelho',255,0,0],['Verde',0,255,0],['Azul',0,0,255],['Branco',255,255,255],['Âmbar',255,150,0],['Magenta',255,0,255],['Ciano',0,255,255],['Rosa',255,80,160]].forEach(([nm,r,g,b])=>{
+  const d=document.createElement('div');d.style.background=`rgb(${r},${g},${b})`;d.title=nm;d.onclick=()=>{const s=selected();if(!s.length){flash('Selecione fixtures primeiro');return;}s.forEach(f=>{f.r=r;f.g=g;f.b=b;f.prog.colour=true;});render();};sw.appendChild(d);});
+ pal.appendChild(sw);wheelsEl.appendChild(pal);
+}
+
+// ── Playbacks ──
+const pbrow=document.getElementById('pbrow');
+function storePB(i){const snap=fx.map(f=>({dim:f.dim,pan:f.pan,tilt:f.tilt,r:f.r,g:f.g,b:f.b}));pbs[i].cue=snap;pbs[i].label='PB '+(i+1);pbs[i].fader=1;recArm=false;flash('Gravado no Playback '+(i+1));}
+function buildPBs(){pbrow.innerHTML='';pbs.forEach((p,i)=>{const el=document.createElement('div');el.className='pb'+(recArm?' armed':'')+(p.cue?' has':'');
+ el.innerHTML=`<div class="pn">${p.cue?p.label:''}</div><div class="pt" data-pb="${i}"><div class="pf" style="height:${p.fader*100}%"></div><div class="pk" style="bottom:${p.fader*100}%"></div></div><button class="fl" data-fl="${i}">FLASH</button><div class="num">${i+1}</div>`;
+ pbrow.appendChild(el);
+ el.querySelector('.pt').addEventListener('pointerdown',function(e){ if(recArm){storePB(i);render();return;} const r=this.getBoundingClientRect(); const set=cy=>{let v=1-(cy-r.top)/r.height;v=Math.max(0,Math.min(1,v));p.fader=v;render();}; set(e.clientY); const mv=ev=>{if(!ev.buttons){cl();return;}set(ev.clientY);};const cl=()=>{removeEventListener('pointermove',mv);removeEventListener('pointerup',cl);};addEventListener('pointermove',mv);addEventListener('pointerup',cl);});
+ el.querySelector('[data-fl]').onclick=()=>{if(!p.cue){flash('Playback '+(i+1)+' vazio');return;}p.fader=p.fader>0.5?0:1;render();};
+});}
+
+// ── Control keys ──
+const ctrlEl=document.getElementById('ctrl');
+const CK=[['7','num'],['8','num'],['9','num'],['4','num'],['5','num'],['6','num'],['1','num'],['2','num'],['3','num'],['Locate|abre a seleção','locate'],['0','num'],['Enter|seleciona nº','ent'],['Clear|limpa programmer','clear'],['Record|grava no PB','rec'],['All|seleciona tudo','all']];
+function buildCtrl(){ctrlEl.innerHTML='';CK.forEach(([t,cls])=>{const el=document.createElement('div');el.className='ck '+cls;const parts=t.split('|');el.innerHTML=parts[0]+(parts[1]?`<small>${parts[1]}</small>`:'');el.onclick=()=>ckPress(parts[0]);ctrlEl.appendChild(el);});}
+function ckPress(t){
+ if(/^\d$/.test(t)){numBuf+=t;flash('Fixture '+numBuf+' …');return;}
+ if(t==='Enter'){if(numBuf){const n=parseInt(numBuf);fx.forEach(f=>f.sel=false);const f=fx.find(x=>x.id===n);if(f)f.sel=true;numBuf='';render();}return;}
+ if(t==='All'){fx.forEach(f=>f.sel=true);render();return;}
+ if(t==='Locate'){const s=selected();if(!s.length){flash('Selecione fixtures primeiro');return;}s.forEach(f=>{f.dim=255;f.pan=128;f.tilt=128;f.r=255;f.g=255;f.b=255;f.prog.dim=true;f.prog.colour=true;f.prog.pan=true;f.prog.tilt=true;});flash('Locate — seleção aberta (branco, centralizado)');render();return;}
+ if(t==='Clear'){fx.forEach(f=>{f.prog={};f.sel=false;f.dim=0;});numBuf='';flash('Programmer limpo');render();return;}
+ if(t==='Record'){recArm=!recArm;flash(recArm?'REC armado — toque num Playback':'Record cancelado');render();return;}
+}
+document.addEventListener('keydown',e=>{if(/^\d$/.test(e.key))ckPress(e.key);else if(e.key==='Enter')ckPress('Enter');else return;});
+
+// ── Output & plan ──
+function output(){const out=fx.map(f=>({dim:0,r:f.r,g:f.g,b:f.b,pan:f.pan,tilt:f.tilt}));
+ pbs.forEach(p=>{if(p.cue&&p.fader>0){p.cue.forEach((c,i)=>{const d=Math.round(c.dim*p.fader);if(d>out[i].dim){out[i].dim=d;out[i].r=c.r;out[i].g=c.g;out[i].b=c.b;out[i].pan=c.pan;out[i].tilt=c.tilt;}});}});
+ fx.forEach((f,i)=>{if(f.prog.dim){out[i].dim=Math.max(out[i].dim,f.dim);}if(f.prog.colour){out[i].r=f.r;out[i].g=f.g;out[i].b=f.b;}if(f.prog.pan)out[i].pan=f.pan;if(f.prog.tilt)out[i].tilt=f.tilt;});
+ return out;}
+const cv=document.getElementById('cv');const ctx=cv.getContext('2d');
+function sizeCanvas(){const r=cv.getBoundingClientRect();const dpr=Math.min(2,devicePixelRatio||1);cv.width=r.width*dpr;cv.height=r.height*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);drawPlan();}
+function drawPlan(){const r=cv.getBoundingClientRect();const W=r.width,H=r.height;ctx.clearRect(0,0,W,H);ctx.fillStyle='#0c0d0f';ctx.fillRect(0,0,W,H);
+ const out=output();const cols=4,rows=2,mx=W/(cols+1),my=H/(rows+1);
+ fx.forEach((f,i)=>{const cx=mx*((i%cols)+1),cy=my*(Math.floor(i/cols)+1);const o=out[i];const d=o.dim/255;
+  if(d>0.02){const bg=ctx.createRadialGradient(cx,cy,2,cx,cy,50);bg.addColorStop(0,`rgba(${o.r},${o.g},${o.b},${Math.min(0.9,d)})`);bg.addColorStop(1,`rgba(${o.r},${o.g},${o.b},0)`);ctx.fillStyle=bg;ctx.beginPath();ctx.arc(cx,cy,50,0,7);ctx.fill();}
+  ctx.fillStyle=f.sel?'#3a2f18':'#1a1c20';ctx.strokeStyle=f.sel?'#f0a52e':'#2f333a';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,13,0,7);ctx.fill();ctx.stroke();
+  ctx.globalAlpha=0.35+0.65*d;ctx.fillStyle=`rgb(${o.r},${o.g},${o.b})`;ctx.beginPath();ctx.arc(cx,cy,7,0,7);ctx.fill();ctx.globalAlpha=1;
+  ctx.fillStyle='#6b7280';ctx.font='9px system-ui';ctx.textAlign='center';ctx.fillText(f.name,cx,cy+26);});
+ ctx.textAlign='left';}
+
+// ── Missões ──
+const M=[
+ {t:'Selecione os fixtures <b>1 a 4</b> (toque neles) e aperte <b>Locate</b> para abri-los em branco.',ok:()=>[0,1,2,3].every(i=>fx[i].sel&&fx[i].dim>240&&fx[i].r>240)},
+ {t:'Com fixtures selecionados, escolha uma <b>cor</b> na paleta (aba Colour) — ex.: azul.',ok:()=>selected().some(f=>f.prog.colour)&&fx.some(f=>f.prog.colour&&(f.b>150||f.r>150||f.g>150))},
+ {t:'Aperte <b>Record</b> e toque no <b>Playback 1</b> para gravar o look.',ok:()=>!!pbs[0].cue},
+ {t:'Aperte <b>Clear</b> e depois <b>suba o fader do Playback 1</b> para tocar o cue de volta.',ok:()=>fx.every(f=>!f.prog.dim)&&pbs[0].cue&&pbs[0].fader>0.1},
+];
+let mi=0;
+function drawM(){document.getElementById('mtext').innerHTML='<b>Missão '+(mi+1)+'/'+M.length+':</b> '+M[mi].t;}
+function checkM(){const dot=document.getElementById('mdot');let ok=false;try{ok=M[mi].ok();}catch(e){}dot.classList.toggle('ok',ok);}
+document.getElementById('mnext').onclick=()=>{mi=(mi+1)%M.length;drawM();render();};
+
+let _raf=0;function render(){if(_raf)return;_raf=requestAnimationFrame(()=>{_raf=0;renderNow();});}
+function renderNow(){buildGrid();buildBanks();buildWheels();buildPBs();drawPlan();checkM();
+ [...document.querySelectorAll('.ck.rec')].forEach(el=>el.classList.toggle('on',recArm));}
+function fit(){const DW=1280,DH=720;const vw=innerWidth,vh=innerHeight;const scrH=(window.screen&&screen.height)||vh;const iframeTaller=vh>scrH+8;const visH=Math.min(vh,scrH);const headerAllow=iframeTaller?84:(vh>700?24:6);const effVh=Math.max(240,visH-headerAllow);const z=Math.min(vw/DW,effVh/DH);document.getElementById('console').style.zoom=z;requestAnimationFrame(sizeCanvas);}
+addEventListener('resize',fit);
+buildCtrl();drawM();renderNow();fit();setTimeout(fit,60);
+</script></body></html>

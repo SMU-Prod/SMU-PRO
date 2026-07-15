@@ -1,0 +1,182 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Simulador — Cuelist: montando o show de uma música</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;-webkit-tap-highlight-color:transparent}
+html,body{background:#0a0c10;color:#e9edf2}body{padding:10px}
+.app{max-width:1020px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+h1{font-size:clamp(15px,4vw,20px);font-weight:800;color:#eaf0ff}
+.t{font-size:12px;color:#9daecb;line-height:1.45}
+.mission{background:#0e1626;border:1px solid #24406e;border-radius:11px;padding:10px 12px;font-size:12.5px;line-height:1.5}
+.mission b{color:#8fd0ff}
+.mrow{display:flex;align-items:center;gap:8px;margin-top:6px}
+.dot{width:14px;height:14px;border-radius:50%;border:2px solid #37507a;flex:none}.dot.ok{background:#39d98a;border-color:#39d98a}
+.btn{background:#1b2740;color:#dce7fb;border:1px solid #33507f;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer}
+.btn.go{background:#1e5a3a;border-color:#2f8f5b}.btn.rec{background:#5a3a10;border-color:#c98a2a}
+.stage{width:100%;aspect-ratio:16/6;background:#04060a;border:1px solid #1c2740;border-radius:12px;overflow:hidden}
+@media(max-width:560px){.stage{aspect-ratio:4/2.2}}
+.stage canvas{width:100%;height:100%;display:block}
+.gt{font-size:10px;font-weight:800;color:#8aa0c2;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
+.box{background:#10141d;border:1px solid #222c40;border-radius:12px;padding:10px}
+.song{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+.song .sec{background:#0d1119;border:2px solid #26314a;border-radius:8px;padding:7px 4px;text-align:center;font-size:10px;font-weight:800;color:#8fa4c4}
+.song .sec.cur{border-color:#ffcf5a;color:#ffe9b0;background:#2a2415}
+.song .sec small{display:block;font-size:8px;color:#6b7f9e;font-weight:600}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.sl{display:flex;flex-direction:column;gap:3px;min-width:110px;flex:1}
+.sl label{display:flex;justify-content:space-between;font-size:10px;font-weight:700;color:#cfe0ff}
+.sl label span{color:#8aa0c2}
+input[type=range]{width:100%;height:22px;-webkit-appearance:none;background:transparent}
+input[type=range]::-webkit-slider-runnable-track{height:6px;background:#26303f;border-radius:4px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:19px;height:19px;border-radius:50%;background:#e7ecf3;margin-top:-6.5px}
+.pal{display:flex;gap:5px;flex-wrap:wrap}
+.pal div{width:28px;height:28px;border-radius:6px;border:1px solid #333;cursor:pointer}
+.cues{width:100%;border-collapse:collapse;font-size:11px}
+.cues th{background:#151b28;color:#8aa0c2;font-size:9.5px;text-transform:uppercase;padding:5px;text-align:left}
+.cues td{padding:5px;border-bottom:1px solid #1a2233;color:#c6d2ea}
+.cues tr.cur{background:#16223a}
+.cues tr.cur td:first-child{color:#ffd24d;font-weight:800}
+.cues input{width:52px;background:#131a28;border:1px solid #2b3852;border-radius:6px;color:#ffd24d;font-weight:700;text-align:center;padding:4px;font-size:11px}
+.cues .x{color:#ff9a9a;cursor:pointer;font-weight:800}
+.cues .sw{display:inline-block;width:14px;height:14px;border-radius:3px;border:1px solid #333;vertical-align:middle}
+.pb{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.gobtn{background:#1e5a3a;border:1px solid #2f8f5b;border-radius:10px;color:#eafff2;font-size:18px;font-weight:800;padding:14px 26px;cursor:pointer;letter-spacing:2px}
+.gobtn:active{background:#256e47}
+.now{font-size:11px;color:#8aa0c2}
+.now b{color:#ffd24d}
+.hint{font-size:10.5px;color:#8296b8;line-height:1.5}
+</style></head><body>
+<div class="app">
+ <h1>🎵 Cuelist — monte o show de uma música</h1>
+ <div class="t">O show não é feito ao vivo no improviso: é <b>gravado em cues</b>, cada um com seu <b>tempo de fade</b>, e rodado no <b>GO</b> na deixa da música. Monte o look de cada trecho, grave o cue com o tempo certo e rode a lista do início ao fim.</div>
+ <div class="mission" id="mission"></div>
+ <div class="stage"><canvas id="cv"></canvas></div>
+ <div class="box"><div class="gt">Estrutura da música (a deixa de cada cue)</div>
+  <div class="song" id="song"></div></div>
+ <div class="box"><div class="gt">Monte o look ao vivo (programmer)</div>
+  <div class="row">
+   <div class="sl"><label>PARs (frente) <span id="v0">0%</span></label><input id="s0" type="range" min="0" max="255" value="0"></div>
+   <div class="sl"><label>Movers (contra) <span id="v1">0%</span></label><input id="s1" type="range" min="0" max="255" value="0"></div>
+   <div class="sl"><label>Ribalta (cyc) <span id="v2">0%</span></label><input id="s2" type="range" min="0" max="255" value="0"></div>
+  </div>
+  <div class="row"><span class="hint">Cor do look:</span><div class="pal" id="pal"></div>
+   <button class="btn rec" id="rec">▶ GRAVAR CUE</button>
+   <span class="hint" id="recst">Monte o look e grave — o cue entra no fim da lista.</span></div>
+ </div>
+ <div class="box"><div class="gt">Cuelist</div>
+  <table class="cues"><thead><tr><th>Cue</th><th>Deixa</th><th>Look</th><th>Fade (s)</th><th></th></tr></thead><tbody id="clist"></tbody></table>
+  <div class="row pb" style="margin-top:10px">
+   <button class="gobtn" id="go">GO ▶</button>
+   <button class="btn" id="back">◂ BACK</button>
+   <button class="btn" id="rew">⏮ Início</button>
+   <span class="now" id="now">Parado</span>
+  </div>
+  <div class="hint" id="fadest" style="margin-top:6px"></div>
+ </div>
+</div>
+<script>
+'use strict';
+const SECS=[{n:'Intro',d:'escuro/leve'},{n:'Verso',d:'frontal suave'},{n:'Refrão',d:'tudo forte'},{n:'Ponte',d:'contra + cyc'},{n:'Final',d:'blackout'}];
+// live programmer
+let live={g:[0,0,0],rgb:[255,255,255]};
+// cues: {look:{g,rgb}, fade, sec}
+let cues=[]; let cur=-1;
+// output (o que está no palco), com fade
+let out={g:[0,0,0],rgb:[255,255,255]};
+let fadeFrom=null,fadeTo=null,fadeT0=0,fadeDur=0;
+const songEl=document.getElementById('song');
+function buildSong(){songEl.innerHTML='';
+ SECS.forEach((s,i)=>{const d=document.createElement('div');d.className='sec'+(cur>=0&&cues[cur]&&cues[cur].sec===i?' cur':'');
+  d.innerHTML=s.n+'<small>'+s.d+'</small>';songEl.appendChild(d);});}
+// sliders
+[0,1,2].forEach(i=>{const s=document.getElementById('s'+i);
+ s.addEventListener('input',()=>{live.g[i]=+s.value;document.getElementById('v'+i).textContent=Math.round(s.value/2.55)+'%';applyLive();});});
+const palEl=document.getElementById('pal');
+[['Branco',255,255,255],['Vermelho',255,0,0],['Azul',0,60,255],['Âmbar',255,150,0],['Magenta',255,0,255],['Ciano',0,255,255]].forEach(c=>{
+ const d=document.createElement('div');d.style.background='rgb('+c[1]+','+c[2]+','+c[3]+')';d.title=c[0];
+ d.onclick=()=>{live.rgb=[c[1],c[2],c[3]];applyLive();};palEl.appendChild(d);});
+function applyLive(){fadeFrom=null;out={g:[...live.g],rgb:[...live.rgb]};}
+// gravar cue
+document.getElementById('rec').onclick=()=>{
+ const sec=cues.length; if(sec>=SECS.length){document.getElementById('recst').textContent='A lista já tem os 5 cues da música.';return;}
+ cues.push({look:{g:[...live.g],rgb:[...live.rgb]},fade:3,sec});
+ document.getElementById('recst').innerHTML='<span style="color:#7fd0a0">✓ Cue '+cues.length+' gravado para o trecho <b>'+SECS[sec].n+'</b> — ajuste o fade na tabela.</span>';
+ buildCues();check();};
+function nameColor(rgb){const [r,g,b]=rgb;
+ if(r>200&&g>200&&b>200)return 'Branco';if(r>180&&g<90&&b<90)return 'Vermelho';if(b>180&&r<90)return 'Azul';
+ if(r>200&&g>120&&b<80)return 'Âmbar';if(r>180&&b>180&&g<90)return 'Magenta';if(g>180&&b>180&&r<90)return 'Ciano';return 'Cor';}
+function buildCues(){const el=document.getElementById('clist');el.innerHTML='';
+ cues.forEach((c,i)=>{const tr=document.createElement('tr');if(i===cur)tr.className='cur';
+  const lv=Math.round((c.look.g[0]+c.look.g[1]+c.look.g[2])/3/2.55);
+  tr.innerHTML='<td>'+(i+1)+'</td><td>'+SECS[c.sec].n+'</td>'+
+   '<td><span class="sw" style="background:rgb('+c.look.rgb.join(',')+')"></span> '+lv+'%</td>';
+  const td=document.createElement('td');const inp=document.createElement('input');inp.type='number';inp.min=0;inp.max=20;inp.step=0.5;inp.value=c.fade;
+  inp.addEventListener('change',()=>{c.fade=Math.max(0,Math.min(20,+inp.value||0));buildCues();check();});
+  td.appendChild(inp);tr.appendChild(td);
+  const x=document.createElement('td');x.className='x';x.textContent='✕';x.onclick=()=>{cues.splice(i,1);cues.forEach((cc,j)=>cc.sec=j);if(cur>=cues.length)cur=cues.length-1;buildCues();buildSong();check();};
+  tr.appendChild(x);el.appendChild(tr);});}
+// playback com fade
+function goCue(dir){
+ if(!cues.length)return;
+ const next=Math.max(0,Math.min(cues.length-1,cur+dir));
+ if(next===cur&&dir!==0)return;
+ cur=next;const c=cues[cur];
+ fadeFrom={g:[...out.g],rgb:[...out.rgb]};fadeTo={g:[...c.look.g],rgb:[...c.look.rgb]};
+ fadeDur=c.fade*1000;fadeT0=performance.now();
+ buildCues();buildSong();check();}
+document.getElementById('go').onclick=()=>{if(cur<cues.length-1)goCue(+1);else{cur=-1;out={g:[0,0,0],rgb:[255,255,255]};goCue(+1);}};
+document.getElementById('back').onclick=()=>goCue(-1);
+document.getElementById('rew').onclick=()=>{cur=-1;out={g:[0,0,0],rgb:[255,255,255]};fadeFrom=null;buildCues();buildSong();check();};
+function tickFade(){
+ if(fadeFrom&&fadeTo){const t=fadeDur<=0?1:Math.min(1,(performance.now()-fadeT0)/fadeDur);
+  out.g=[0,1,2].map(i=>fadeFrom.g[i]+(fadeTo.g[i]-fadeFrom.g[i])*t);
+  out.rgb=[0,1,2].map(i=>Math.round(fadeFrom.rgb[i]+(fadeTo.rgb[i]-fadeFrom.rgb[i])*t));
+  if(t>=1){fadeFrom=null;}
+  const c=cues[cur];
+  document.getElementById('fadest').innerHTML=t<1?('⏳ Fade em curso: <b>'+(c?c.fade:0)+'s</b> — '+Math.round(t*100)+'%'):'';
+ }
+ document.getElementById('now').innerHTML=cur>=0&&cues[cur]?('Tocando <b>Cue '+(cur+1)+'</b> — '+SECS[cues[cur].sec].n+' (fade '+cues[cur].fade+'s)'):'Parado';
+}
+// palco
+const cv=document.getElementById('cv');const ctx=cv.getContext('2d');
+function sizeC(){const r=cv.getBoundingClientRect();const dpr=Math.min(2,devicePixelRatio||1);cv.width=r.width*dpr;cv.height=r.height*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);}
+function paint(){const r=cv.getBoundingClientRect();const W=r.width,H=r.height;ctx.clearRect(0,0,W,H);
+ ctx.fillStyle='#04060a';ctx.fillRect(0,0,W,H);
+ const [R,G,B]=out.rgb;
+ // cyc (ribalta)
+ const cyc=out.g[2]/255;
+ if(cyc>0.02){const g=ctx.createLinearGradient(0,H*0.8,0,H*0.1);g.addColorStop(0,'rgba('+R+','+G+','+B+','+(0.55*cyc)+')');g.addColorStop(1,'rgba('+R+','+G+','+B+',0)');ctx.fillStyle=g;ctx.fillRect(0,H*0.1,W,H*0.72);}
+ // movers (contra)
+ const mv=out.g[1]/255;
+ if(mv>0.02)for(let i=0;i<4;i++){const x=W*(0.2+i*0.2),y=H*0.14;
+  const g=ctx.createLinearGradient(x,y,x,H*0.85);g.addColorStop(0,'rgba('+R+','+G+','+B+','+(0.6*mv)+')');g.addColorStop(1,'rgba('+R+','+G+','+B+',0)');
+  ctx.beginPath();ctx.moveTo(x-5,y);ctx.lineTo(x-W*0.03,H*0.85);ctx.lineTo(x+W*0.03,H*0.85);ctx.lineTo(x+5,y);ctx.closePath();ctx.fillStyle=g;ctx.fill();}
+ // PARs (frente)
+ const pr=out.g[0]/255;
+ if(pr>0.02)for(let i=0;i<4;i++){const x=W*(0.14+i*0.24),y=H*0.95;
+  const g=ctx.createLinearGradient(0,y,0,H*0.35);g.addColorStop(0,'rgba('+R+','+G+','+B+','+(0.45*pr)+')');g.addColorStop(1,'rgba('+R+','+G+','+B+',0)');
+  ctx.beginPath();ctx.moveTo(x-6,y);ctx.lineTo(x-W*0.07,H*0.35);ctx.lineTo(x+W*0.07,H*0.35);ctx.lineTo(x+6,y);ctx.closePath();ctx.fillStyle=g;ctx.fill();}
+ // artista
+ const lit=pr;const cx=W*0.5,gy=H*0.86;
+ ctx.fillStyle='rgb('+Math.round(30+180*lit)+','+Math.round(28+160*lit)+','+Math.round(28*1+150*lit)+')';
+ ctx.beginPath();ctx.ellipse(cx,gy-H*0.2,W*0.012,H*0.05,0,0,7);ctx.fill();
+ ctx.beginPath();ctx.moveTo(cx-W*0.018,gy);ctx.lineTo(cx-W*0.012,gy-H*0.17);ctx.lineTo(cx+W*0.012,gy-H*0.17);ctx.lineTo(cx+W*0.018,gy);ctx.closePath();ctx.fill();
+ ctx.fillStyle='#5f7392';ctx.font='9.5px system-ui';ctx.textAlign='left';
+ ctx.fillText(cur>=0&&cues[cur]?('Cue '+(cur+1)+' · '+SECS[cues[cur].sec].n):'Programmer (ao vivo)',10,H-8);
+}
+function loop(){tickFade();paint();requestAnimationFrame(loop);}
+// cenários
+const M=[
+ {t:'<b>Grave os 5 cues da música</b>, um por trecho, na ordem: Intro (leve) → Verso (frontal) → Refrão (tudo forte) → Ponte (contra+cyc) → Final (blackout: tudo em 0). Monte o look e aperte GRAVAR CUE.',
+  ok:()=>cues.length===5},
+ {t:'<b>Dê os tempos certos:</b> refrão entra <b>rápido</b> (fade ≤ 1s — tem que bater na batida) e a ponte entra <b>suave</b> (fade ≥ 4s). Ajuste na coluna Fade.',
+  ok:()=>cues.length===5&&cues[2].fade<=1&&cues[3].fade>=4},
+ {t:'<b>Rode o show:</b> volte ao Início e aperte <b>GO</b> até o último cue — a lista inteira, como no show. O Final tem que apagar o palco (blackout).',
+  ok:()=>cues.length===5&&cur===4&&cues[4].look.g.every(v=>v<20)},
+];
+let mi=0;
+function drawM(){document.getElementById('mission').innerHTML='<div><b>Cenário '+(mi+1)+'/'+M.length+':</b> '+M[mi].t+'</div><div class="mrow"><span class="dot" id="mdot"></span><span id="mstat">Programe a lista…</span></div><button class="btn go" id="mnext" style="margin-top:8px">Próximo ▸</button>';
+ document.getElementById('mnext').onclick=()=>{mi=(mi+1)%M.length;drawM();check();};check();}
+function check(){const dot=document.getElementById('mdot');if(!dot)return;let ok=false;try{ok=M[mi].ok();}catch(e){}
+ dot.classList.toggle('ok',ok);document.getElementById('mstat').textContent=ok?'✓ Show montado como profissional!':'Programe a lista…';}
+buildSong();buildCues();drawM();sizeC();loop();addEventListener('resize',sizeC);
+</script></body></html>

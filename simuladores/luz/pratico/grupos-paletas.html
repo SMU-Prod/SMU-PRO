@@ -1,0 +1,188 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Simulador — Grupos e Paletas (o jeito profissional de programar)</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;-webkit-tap-highlight-color:transparent}
+html,body{background:#0a0c10;color:#e9edf2}body{padding:10px}
+.app{max-width:1020px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+h1{font-size:clamp(15px,4vw,20px);font-weight:800;color:#eaf0ff}
+.t{font-size:12px;color:#9daecb;line-height:1.45}
+.mission{background:#0e1626;border:1px solid #24406e;border-radius:11px;padding:10px 12px;font-size:12.5px;line-height:1.5}
+.mission b{color:#8fd0ff}
+.mrow{display:flex;align-items:center;gap:8px;margin-top:6px}
+.dot{width:14px;height:14px;border-radius:50%;border:2px solid #37507a;flex:none}.dot.ok{background:#39d98a;border-color:#39d98a}
+.btn{background:#1b2740;color:#dce7fb;border:1px solid #33507f;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer}
+.btn.go{background:#1e5a3a;border-color:#2f8f5b}.btn.rec{background:#5a3a10;border-color:#c98a2a}.btn.rec.on{background:#c98a2a;color:#101010}
+.stage{width:100%;aspect-ratio:16/6.5;background:#04060a;border:1px solid #1c2740;border-radius:12px;overflow:hidden}
+@media(max-width:560px){.stage{aspect-ratio:4/2.4}}
+.stage canvas{width:100%;height:100%;display:block}
+.gt{font-size:10px;font-weight:800;color:#8aa0c2;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
+.box{background:#10141d;border:1px solid #222c40;border-radius:12px;padding:10px}
+.fxsel{display:grid;grid-template-columns:repeat(auto-fit,minmax(64px,1fr));gap:5px}
+.fxsel button{background:#171d2b;border:1px solid #2a3550;border-radius:8px;color:#c6d2ea;font-size:10px;font-weight:700;padding:7px 3px;cursor:pointer;line-height:1.2}
+.fxsel button small{display:block;font-size:8px;color:#7487a8}
+.fxsel button.sel{border-color:#ffcf5a;box-shadow:0 0 0 1px #ffcf5a;background:#2a2415}
+.pods{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:6px}
+.pod{background:#0d1119;border:2px dashed #2a3550;border-radius:9px;padding:8px 6px;text-align:center;cursor:pointer;font-size:10px;color:#5f7392;min-height:52px;display:flex;flex-direction:column;justify-content:center;gap:2px}
+.pod.full{border-style:solid;border-color:#4d86e0;background:#0e1a30;color:#bcd8ff}
+.pod .nm{font-size:10.5px;font-weight:800;color:#cfe0ff}
+.pod .ct{font-size:8.5px;color:#7487a8}
+.pod.rec{border-color:#c98a2a;background:#2a1f0c}
+.pod.color .sw{width:100%;height:12px;border-radius:3px;margin-top:3px;border:1px solid #333}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.sl{display:flex;flex-direction:column;gap:3px;min-width:120px;flex:1}
+.sl label{display:flex;justify-content:space-between;font-size:10px;font-weight:700;color:#cfe0ff}
+.sl label span{color:#8aa0c2}
+input[type=range]{width:100%;height:22px;-webkit-appearance:none;background:transparent}
+input[type=range]::-webkit-slider-runnable-track{height:6px;background:#26303f;border-radius:4px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:19px;height:19px;border-radius:50%;background:#e7ecf3;margin-top:-6.5px}
+.pal{display:flex;gap:5px;flex-wrap:wrap}
+.pal div{width:28px;height:28px;border-radius:6px;border:1px solid #333;cursor:pointer}
+.hint{font-size:10.5px;color:#8296b8;margin-top:6px;line-height:1.5}
+.hint b{color:#8fd0ff}
+</style></head><body>
+<div class="app">
+ <h1>🎨 Grupos e Paletas — o jeito profissional de programar</h1>
+ <div class="t">Amador acerta fixture por fixture. <b>Profissional cria GRUPOS</b> (seleção pronta) e <b>PALETAS</b> (cor/posição salvas) — e monta o show em segundos. Melhor: mudou a cor da paleta, <b>todas as cenas que a usam mudam junto</b>.</div>
+ <div class="mission" id="mission"></div>
+ <div class="stage"><canvas id="cv"></canvas></div>
+ <div class="box"><div class="gt">1 · Selecione as fixtures</div>
+  <div class="fxsel" id="fxsel"></div>
+  <div class="row"><button class="btn" id="selall">All</button><button class="btn" id="selnone">Clear seleção</button>
+   <button class="btn rec" id="recg">REC GRUPO</button><span class="hint" id="ghint">Selecione e aperte REC GRUPO, depois toque num slot vazio.</span></div>
+ </div>
+ <div class="box"><div class="gt">2 · Grupos (toque para selecionar na hora)</div>
+  <div class="pods" id="groups"></div></div>
+ <div class="box"><div class="gt">3 · Atributos da seleção</div>
+  <div class="row">
+   <div class="sl"><label>Dimmer <span id="dv">0%</span></label><input id="dim" type="range" min="0" max="255" value="0"></div>
+   <div class="sl"><label>Pan <span id="pv">0°</span></label><input id="pan" type="range" min="0" max="255" value="128"></div>
+   <div class="sl"><label>Tilt <span id="tv">0°</span></label><input id="tilt" type="range" min="0" max="255" value="128"></div>
+  </div>
+  <div class="row"><div class="pal" id="pal"></div></div>
+ </div>
+ <div class="box"><div class="gt">4 · Paletas de COR (grave o que está na seleção)</div>
+  <div class="row"><button class="btn rec" id="recc">REC PALETA DE COR</button><span class="hint">Ajuste a cor → REC → toque num slot. Depois é só tocar na paleta para aplicar.</span></div>
+  <div class="pods" id="cpals" style="margin-top:8px"></div></div>
+ <div class="box"><div class="gt">5 · Paletas de POSIÇÃO</div>
+  <div class="row"><button class="btn rec" id="recp">REC PALETA DE POSIÇÃO</button><span class="hint">Mire com Pan/Tilt → REC → slot. Reutilize em todas as cenas.</span></div>
+  <div class="pods" id="ppals" style="margin-top:8px"></div></div>
+</div>
+<script>
+'use strict';
+const N=8;
+const fx=[];for(let i=0;i<N;i++)fx.push({id:i+1,nome:(i<4?'PAR ':'Mover ')+(i+1),tipo:i<4?'par':'mov',dim:0,pan:128,tilt:128,r:255,g:255,b:255,sel:false});
+const groups=[null,null,null,null];   // {nome, ids[]}
+const cpals=[null,null,null,null];    // {nome, rgb}
+const ppals=[null,null,null,null];    // {nome, pan, tilt}
+let recMode=null; // 'g'|'c'|'p'
+const sel=()=>fx.filter(f=>f.sel);
+// ── fixtures ──
+const fxselEl=document.getElementById('fxsel');
+function buildFx(){fxselEl.innerHTML='';
+ fx.forEach(f=>{const b=document.createElement('button');b.className=f.sel?'sel':'';
+  b.innerHTML=f.id+'<small>'+f.nome+'</small>';
+  b.onclick=()=>{f.sel=!f.sel;buildFx();draw();check();};fxselEl.appendChild(b);});}
+document.getElementById('selall').onclick=()=>{fx.forEach(f=>f.sel=true);buildFx();draw();check();};
+document.getElementById('selnone').onclick=()=>{fx.forEach(f=>f.sel=false);buildFx();draw();check();};
+// ── rec buttons ──
+function setRec(m){recMode=recMode===m?null:m;
+ ['recg','recc','recp'].forEach(id=>document.getElementById(id).classList.toggle('on',
+  (id==='recg'&&recMode==='g')||(id==='recc'&&recMode==='c')||(id==='recp'&&recMode==='p')));
+ document.getElementById('ghint').textContent=recMode?'REC armado — toque num slot para gravar.':'Selecione e aperte REC GRUPO, depois toque num slot vazio.';
+ buildPods();}
+document.getElementById('recg').onclick=()=>setRec('g');
+document.getElementById('recc').onclick=()=>setRec('c');
+document.getElementById('recp').onclick=()=>setRec('p');
+// ── pods (grupos/paletas) ──
+function buildPods(){
+ const g=document.getElementById('groups');g.innerHTML='';
+ groups.forEach((gr,i)=>{const d=document.createElement('div');d.className='pod'+(gr?' full':'')+(recMode==='g'?' rec':'');
+  d.innerHTML=gr?('<div class="nm">'+gr.nome+'</div><div class="ct">'+gr.ids.length+' fixtures</div>'):'<div>Grupo '+(i+1)+'<br><span style="font-size:8px">vazio</span></div>';
+  d.onclick=()=>{
+   if(recMode==='g'){ if(!sel().length){flash('Selecione fixtures antes de gravar o grupo');return;}
+    const ids=sel().map(f=>f.id); const nome=ids.every(id=>id<=4)?'PARs':ids.every(id=>id>4)?'Movers':'Grupo '+(i+1);
+    groups[i]={nome,ids}; setRec(null); return; }
+   if(gr){fx.forEach(f=>f.sel=gr.ids.includes(f.id));buildFx();draw();check();}
+  };
+  g.appendChild(d);});
+ const c=document.getElementById('cpals');c.innerHTML='';
+ cpals.forEach((p,i)=>{const d=document.createElement('div');d.className='pod color'+(p?' full':'')+(recMode==='c'?' rec':'');
+  d.innerHTML=p?('<div class="nm">'+p.nome+'</div><div class="sw" style="background:rgb('+p.rgb.join(',')+')"></div>'):'<div>Cor '+(i+1)+'<br><span style="font-size:8px">vazio</span></div>';
+  d.onclick=()=>{
+   if(recMode==='c'){ if(!sel().length){flash('Selecione fixtures antes');return;}
+    const f=sel()[0]; const rgb=[f.r,f.g,f.b];
+    cpals[i]={nome:nameColor(rgb),rgb}; setRec(null); return; }
+   if(p){ if(!sel().length){flash('Selecione fixtures para aplicar a paleta');return;}
+    sel().forEach(f=>{f.r=p.rgb[0];f.g=p.rgb[1];f.b=p.rgb[2];f.cpal=i;});draw();check();}
+  };
+  c.appendChild(d);});
+ const pp=document.getElementById('ppals');pp.innerHTML='';
+ ppals.forEach((p,i)=>{const d=document.createElement('div');d.className='pod'+(p?' full':'')+(recMode==='p'?' rec':'');
+  d.innerHTML=p?('<div class="nm">'+p.nome+'</div><div class="ct">P'+Math.round(p.pan/255*540-270)+'° T'+Math.round(p.tilt/255*270-135)+'°</div>'):'<div>Pos '+(i+1)+'<br><span style="font-size:8px">vazio</span></div>';
+  d.onclick=()=>{
+   if(recMode==='p'){ const s=sel().filter(f=>f.tipo==='mov'); if(!s.length){flash('Selecione MOVERS para gravar posição');return;}
+    ppals[i]={nome:'Pos '+(i+1),pan:s[0].pan,tilt:s[0].tilt}; setRec(null); return; }
+   if(p){ const s=sel().filter(f=>f.tipo==='mov'); if(!s.length){flash('Selecione movers para aplicar');return;}
+    s.forEach(f=>{f.pan=p.pan;f.tilt=p.tilt;f.ppal=i;});syncSliders();draw();check();}
+  };
+  pp.appendChild(d);});
+}
+function nameColor(rgb){const [r,g,b]=rgb;
+ if(r>200&&g>200&&b>200)return 'Branco'; if(r>180&&g<90&&b<90)return 'Vermelho'; if(g>180&&r<90&&b<90)return 'Verde';
+ if(b>180&&r<90&&g<90)return 'Azul'; if(r>180&&b>180&&g<90)return 'Magenta'; if(g>180&&b>180&&r<90)return 'Ciano';
+ if(r>200&&g>120&&b<80)return 'Âmbar'; return 'Cor';}
+function flash(m){document.getElementById('ghint').textContent=m;}
+// ── atributos ──
+const dimI=document.getElementById('dim'),panI=document.getElementById('pan'),tiltI=document.getElementById('tilt');
+dimI.addEventListener('input',()=>{sel().forEach(f=>f.dim=+dimI.value);document.getElementById('dv').textContent=Math.round(dimI.value/2.55)+'%';draw();check();});
+panI.addEventListener('input',()=>{sel().forEach(f=>{if(f.tipo==='mov'){f.pan=+panI.value;f.ppal=undefined;}});document.getElementById('pv').textContent=Math.round(panI.value/255*540-270)+'°';draw();check();});
+tiltI.addEventListener('input',()=>{sel().forEach(f=>{if(f.tipo==='mov'){f.tilt=+tiltI.value;f.ppal=undefined;}});document.getElementById('tv').textContent=Math.round(tiltI.value/255*270-135)+'°';draw();check();});
+function syncSliders(){const s=sel();if(!s.length)return;panI.value=s[0].pan;tiltI.value=s[0].tilt;
+ document.getElementById('pv').textContent=Math.round(panI.value/255*540-270)+'°';document.getElementById('tv').textContent=Math.round(tiltI.value/255*270-135)+'°';}
+const palEl=document.getElementById('pal');
+[['Branco',255,255,255],['Vermelho',255,0,0],['Verde',0,255,0],['Azul',0,0,255],['Âmbar',255,150,0],['Magenta',255,0,255],['Ciano',0,255,255]].forEach(c=>{
+ const d=document.createElement('div');d.style.background='rgb('+c[1]+','+c[2]+','+c[3]+')';d.title=c[0];
+ d.onclick=()=>{if(!sel().length){flash('Selecione fixtures primeiro');return;}sel().forEach(f=>{f.r=c[1];f.g=c[2];f.b=c[3];f.cpal=undefined;});draw();check();};palEl.appendChild(d);});
+// ── palco ──
+const cv=document.getElementById('cv');const ctx=cv.getContext('2d');
+function sizeC(){const r=cv.getBoundingClientRect();const dpr=Math.min(2,devicePixelRatio||1);cv.width=r.width*dpr;cv.height=r.height*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);draw();}
+let _raf=0;function draw(){if(_raf)return;_raf=requestAnimationFrame(()=>{_raf=0;paint();});}
+function paint(){const r=cv.getBoundingClientRect();const W=r.width,H=r.height;ctx.clearRect(0,0,W,H);
+ ctx.fillStyle='#04060a';ctx.fillRect(0,0,W,H);
+ const gap=W/(N+1);
+ fx.forEach((f,i)=>{const x=gap*(i+1),y=H*0.16;const d=f.dim/255;
+  if(d>0.02){
+   const tx=f.tipo==='mov'?x+(f.pan/255-0.5)*W*0.22:x, ty=f.tipo==='mov'?H*0.55+(f.tilt/255)*H*0.4:H*0.95;
+   const g=ctx.createLinearGradient(x,y,tx,ty);
+   g.addColorStop(0,'rgba('+f.r+','+f.g+','+f.b+','+Math.min(0.85,0.15+0.6*d)+')');g.addColorStop(1,'rgba('+f.r+','+f.g+','+f.b+',0)');
+   const w=f.tipo==='mov'?10:gap*0.35;
+   ctx.beginPath();ctx.moveTo(x-5,y+8);ctx.lineTo(tx-w,ty);ctx.lineTo(tx+w,ty);ctx.lineTo(x+5,y+8);ctx.closePath();ctx.fillStyle=g;ctx.fill();
+   const pg=ctx.createRadialGradient(tx,ty,1,tx,ty,w*1.8);pg.addColorStop(0,'rgba('+f.r+','+f.g+','+f.b+','+0.5*d+')');pg.addColorStop(1,'rgba(0,0,0,0)');
+   ctx.fillStyle=pg;ctx.beginPath();ctx.arc(tx,ty,w*1.8,0,7);ctx.fill();}
+  ctx.fillStyle=f.sel?'#3a3115':'#1a1d24';ctx.strokeStyle=f.sel?'#ffcf5a':'#2a2f39';ctx.lineWidth=2;
+  ctx.beginPath();ctx.roundRect(x-11,y-6,22,14,3);ctx.fill();ctx.stroke();
+  ctx.globalAlpha=0.3+0.7*d;ctx.fillStyle='rgb('+f.r+','+f.g+','+f.b+')';ctx.beginPath();ctx.arc(x,y+11,4,0,7);ctx.fill();ctx.globalAlpha=1;
+  ctx.fillStyle='#6b7f9e';ctx.font='8px system-ui';ctx.textAlign='center';ctx.fillText(f.nome,x,y-11);});
+ ctx.textAlign='left';ctx.fillStyle='#5f7392';ctx.font='9.5px system-ui';
+ ctx.fillText('Selecionados: '+(sel().length?sel().map(f=>f.id).join(', '):'nenhum'),10,H-8);
+}
+// ── cenários ──
+const gPARs=()=>groups.find(g=>g&&g.ids.length===4&&g.ids.every(id=>id<=4));
+const gMovs=()=>groups.find(g=>g&&g.ids.length===4&&g.ids.every(id=>id>4));
+const M=[
+ {t:'<b>Crie os 2 grupos de trabalho:</b> selecione os 4 <b>PARs</b> (1–4) → REC GRUPO → slot. Depois os 4 <b>Movers</b> (5–8) → REC GRUPO → outro slot. Grupo é a seleção que você vai usar a noite toda.',
+  ok:()=>!!gPARs()&&!!gMovs()},
+ {t:'<b>Grave 3 paletas de cor:</b> com qualquer seleção, escolha uma cor e grave — precisa ter <b>Vermelho, Azul e Âmbar</b> nas paletas. (Ajuste a cor → REC PALETA DE COR → slot.)',
+  ok:()=>['Vermelho','Azul','Âmbar'].every(n=>cpals.some(p=>p&&p.nome===n))},
+ {t:'<b>Grave 2 paletas de posição:</b> selecione os <b>Movers</b>, mire com Pan/Tilt e grave duas posições diferentes (ex.: uma na plateia, outra no centro do palco).',
+  ok:()=>{const p=ppals.filter(Boolean);return p.length>=2&&Math.abs(p[0].tilt-p[1].tilt)+Math.abs(p[0].pan-p[1].pan)>40;}},
+ {t:'<b>Monte o look em 4 toques (o teste do profissional):</b> toque no <b>grupo Movers</b> → toque numa <b>paleta de posição</b> → toque na paleta <b>Azul</b> → suba o Dimmer a 100%. Se você criou tudo direito, o look sai em segundos.',
+  ok:()=>{const mv=fx.filter(f=>f.tipo==='mov');return mv.every(f=>f.sel&&f.dim>240&&f.cpal!=null&&cpals[f.cpal]&&cpals[f.cpal].nome==='Azul'&&f.ppal!=null);}},
+];
+let mi=0;
+function drawM(){document.getElementById('mission').innerHTML='<div><b>Cenário '+(mi+1)+'/'+M.length+':</b> '+M[mi].t+'</div><div class="mrow"><span class="dot" id="mdot"></span><span id="mstat">Programe…</span></div><button class="btn go" id="mnext" style="margin-top:8px">Próximo ▸</button>';
+ document.getElementById('mnext').onclick=()=>{mi=(mi+1)%M.length;drawM();check();};check();}
+function check(){const dot=document.getElementById('mdot');if(!dot)return;let ok=false;try{ok=M[mi].ok();}catch(e){}
+ dot.classList.toggle('ok',ok);document.getElementById('mstat').textContent=ok?'✓ Isso é programar como profissional!':'Programe…';}
+buildFx();buildPods();drawM();sizeC();addEventListener('resize',sizeC);
+</script></body></html>

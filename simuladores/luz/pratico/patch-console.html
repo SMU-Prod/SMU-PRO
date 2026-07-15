@@ -1,0 +1,155 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Simulador — Patch no Console (do rider ao universo)</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;-webkit-tap-highlight-color:transparent}
+html,body{background:#0a0c10;color:#e9edf2}body{padding:10px}
+.app{max-width:1020px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+h1{font-size:clamp(15px,4vw,20px);font-weight:800;color:#eaf0ff}
+.t{font-size:12px;color:#9daecb;line-height:1.45}
+.mission{background:#0e1626;border:1px solid #24406e;border-radius:11px;padding:10px 12px;font-size:12.5px;line-height:1.5}
+.mission b{color:#8fd0ff}
+.mrow{display:flex;align-items:center;gap:8px;margin-top:6px}
+.dot{width:14px;height:14px;border-radius:50%;border:2px solid #37507a;flex:none}.dot.ok{background:#39d98a;border-color:#39d98a}
+.btn{background:#1b2740;color:#dce7fb;border:1px solid #33507f;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer}
+.btn.go{background:#1e5a3a;border-color:#2f8f5b}.btn.warn{background:#5a2020;border-color:#8f2f2f}
+.gt{font-size:10px;font-weight:800;color:#8aa0c2;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
+.box{background:#10141d;border:1px solid #222c40;border-radius:12px;padding:10px}
+.rider{font-size:11.5px;color:#c6d2ea;line-height:1.9;background:#0d1119;border:1px solid #1f2839;border-radius:9px;padding:9px 11px}
+.rider b{color:#ffd24d}.rider .q{color:#7fd0a0;font-weight:800}
+.lib{display:flex;flex-wrap:wrap;gap:6px}
+.lib .fx{background:#1a2233;border:1px solid #2c3a58;border-radius:8px;padding:6px 9px;font-size:10.5px;font-weight:700;color:#cfe0ff;cursor:pointer}
+.lib .fx.sel{border-color:#ffcf5a;background:#2a2415}
+.lib .fx small{display:block;color:#7fa0d0;font-size:9px;font-weight:600}
+.ctrls{display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-top:8px}
+.f{display:flex;flex-direction:column;gap:3px}
+.f label{font-size:9.5px;color:#8aa0c2;font-weight:800;text-transform:uppercase}
+.f select,.f input{background:#131a28;border:1px solid #2b3852;border-radius:7px;color:#ffd24d;font-weight:700;padding:7px;font-size:12px;min-width:76px}
+.uni{display:flex;flex-direction:column;gap:6px}
+.ubar{background:#0d1119;border:1px solid #1f2839;border-radius:9px;padding:8px}
+.ubar .un{font-size:10px;font-weight:800;color:#8aa0c2;margin-bottom:5px}
+.cells{display:grid;grid-template-columns:repeat(64,1fr);gap:1px}
+.cell{height:13px;background:#141c2c;border-radius:1px}
+.leg{font-size:9px;color:#5f7392;display:flex;justify-content:space-between;margin-top:3px}
+.plist{width:100%;border-collapse:collapse;font-size:11px;margin-top:6px}
+.plist th{background:#151b28;color:#8aa0c2;font-size:9.5px;text-transform:uppercase;padding:5px;text-align:left}
+.plist td{padding:5px;border-bottom:1px solid #1a2233;color:#c6d2ea}
+.plist tr.conf td{background:#2a1212}
+.plist .x{color:#ff9a9a;cursor:pointer;font-weight:800}
+.stt{font-size:11.5px;font-weight:700;margin-top:6px}
+</style></head><body>
+<div class="app">
+ <h1>📋 Patch no Console — do rider técnico ao universo</h1>
+ <div class="t">Chegou o <b>rider</b>. Antes de programar qualquer coisa, o operador faz o <b>patch</b>: escolher o perfil certo, o <b>modo</b>, e dar universo + endereço a cada fixture <b>sem sobrepor</b>. Escolha a fixture na biblioteca, defina modo/universo/endereço e adicione ao patch.</div>
+ <div class="mission" id="mission"></div>
+ <div class="box"><div class="gt">Rider técnico do show</div>
+  <div class="rider" id="rider"></div></div>
+ <div class="box"><div class="gt">Biblioteca de fixtures (perfis oficiais) · escolha e configure</div>
+  <div class="lib" id="lib"></div>
+  <div class="ctrls">
+   <div class="f"><label>Modo</label><select id="mode"></select></div>
+   <div class="f"><label>Universo</label><select id="uni"><option value="1">U1</option><option value="2">U2</option></select></div>
+   <div class="f"><label>Endereço</label><input id="addr" type="number" min="1" max="512" value="1"></div>
+   <div class="f"><label>Qtd</label><input id="qty" type="number" min="1" max="8" value="1"></div>
+   <button class="btn go" id="add">+ Adicionar ao patch</button>
+   <button class="btn" id="auto">Auto-endereçar em sequência</button>
+  </div>
+  <div class="stt" id="addst"></div></div>
+ <div class="box"><div class="gt">Universos (ocupação ao vivo)</div>
+  <div class="uni" id="unis"></div></div>
+ <div class="box"><div class="gt">Patch do show</div>
+  <table class="plist"><thead><tr><th>#</th><th>Fixture</th><th>Modo</th><th>Uni</th><th>Faixa</th><th>Ch</th><th></th></tr></thead><tbody id="plist"></tbody></table>
+  <div class="stt" id="patchst"></div></div>
+</div>
+<script>
+'use strict';
+// biblioteca (perfis reais/oficiais MA)
+const LIB=[
+ {nome:'Robe MegaPointe',modes:[{n:'Mode 1',f:39},{n:'Mode 2',f:24}]},
+ {nome:'Clay Paky Sharpy',modes:[{n:'Standard',f:16}]},
+ {nome:'Martin MAC Aura XB',modes:[{n:'Std RGB',f:14},{n:'Extended',f:22}]},
+ {nome:'PAR LED RGBW',modes:[{n:'4CH',f:4},{n:'8CH',f:8}]},
+ {nome:'LED Bar (cyc)',modes:[{n:'10CH',f:10},{n:'30CH',f:30}]},
+ {nome:'Dimmer (PAR 64)',modes:[{n:'1CH',f:1}]},
+];
+// rider: o que o show pede (nome, modo exigido, qtd, universo exigido)
+const RIDER=[
+ {nome:'Robe MegaPointe',mode:'Mode 1',qty:4,uni:2},
+ {nome:'Clay Paky Sharpy',mode:'Standard',qty:4,uni:2},
+ {nome:'Martin MAC Aura XB',mode:'Std RGB',qty:6,uni:1},
+ {nome:'PAR LED RGBW',mode:'8CH',qty:8,uni:1},
+ {nome:'LED Bar (cyc)',mode:'30CH',qty:2,uni:1},
+ {nome:'Dimmer (PAR 64)',mode:'1CH',qty:6,uni:1},
+];
+let patch=[]; // {nome,mode,f,uni,addr}
+let selLib=0;
+const libEl=document.getElementById('lib'),modeEl=document.getElementById('mode');
+function buildLib(){libEl.innerHTML='';
+ LIB.forEach((l,i)=>{const d=document.createElement('div');d.className='fx'+(selLib===i?' sel':'');
+  d.innerHTML=l.nome+'<small>'+l.modes.map(m=>m.n+' ('+m.f+'ch)').join(' · ')+'</small>';
+  d.onclick=()=>{selLib=i;buildLib();buildModes();};libEl.appendChild(d);});}
+function buildModes(){modeEl.innerHTML='';
+ LIB[selLib].modes.forEach((m,i)=>{const o=document.createElement('option');o.value=i;o.textContent=m.n+' — '+m.f+'ch';modeEl.appendChild(o);});}
+function riderNeed(nome,mode){const r=RIDER.find(r=>r.nome===nome&&r.mode===mode);return r||null;}
+function buildRider(){const el=document.getElementById('rider');
+ el.innerHTML=RIDER.map(r=>{const have=patch.filter(p=>p.nome===r.nome&&p.mode===r.mode&&p.uni===r.uni).length;
+  const ok=have===r.qty;
+  return (ok?'<span class="q">✓</span> ':'<span style="color:#ffb066">•</span> ')+'<b>'+r.qty+'×</b> '+r.nome+' em <b>'+r.mode+'</b> no <b>U'+r.uni+'</b> <span style="color:#7487a8">(patchado: '+have+'/'+r.qty+')</span>';}).join('<br>');}
+function conflicts(p){const a1=p.addr,a2=p.addr+p.f-1;
+ return patch.some(o=>{if(o===p||o.uni!==p.uni)return false;const b1=o.addr,b2=o.addr+o.f-1;return a1<=b2&&b1<=a2;});}
+function anyConf(){return patch.some(conflicts);}
+function overflow(p){return p.addr+p.f-1>512;}
+// universos
+function buildUnis(){const el=document.getElementById('unis');el.innerHTML='';
+ [1,2].forEach(u=>{const d=document.createElement('div');d.className='ubar';
+  const used=patch.filter(p=>p.uni===u).reduce((a,p)=>a+p.f,0);
+  d.innerHTML='<div class="un">Universo '+u+' — '+used+'/512 canais usados</div>';
+  const cells=document.createElement('div');cells.className='cells';
+  const owner=new Array(512).fill(null);
+  patch.filter(p=>p.uni===u).forEach((p,pi)=>{for(let c=p.addr;c<p.addr+p.f;c++){const i=c-1;if(i<0||i>=512)continue;owner[i]=owner[i]==null?pi:'C';}});
+  // 64 blocos de 8 canais p/ caber na tela
+  for(let b=0;b<64;b++){const seg=owner.slice(b*8,b*8+8);const c=document.createElement('div');c.className='cell';
+   const conf=seg.includes('C'); const any=seg.some(x=>x!=null);
+   c.style.background=conf?'#ff4d4d':(any?'#4d86e0':'#141c2c');
+   c.title='canais '+(b*8+1)+'–'+(b*8+8);cells.appendChild(c);}
+  d.appendChild(cells);
+  const lg=document.createElement('div');lg.className='leg';lg.innerHTML='<span>1</span><span>128</span><span>256</span><span>384</span><span>512</span>';
+  d.appendChild(lg);el.appendChild(d);});}
+function buildPlist(){const el=document.getElementById('plist');el.innerHTML='';
+ patch.forEach((p,i)=>{const c=conflicts(p)||overflow(p);const tr=document.createElement('tr');if(c)tr.className='conf';
+  tr.innerHTML='<td>'+(i+1)+'</td><td>'+p.nome+'</td><td>'+p.mode+'</td><td>U'+p.uni+'</td><td>'+p.addr+'–'+(p.addr+p.f-1)+(c?' ⚠':'')+'</td><td>'+p.f+'</td>';
+  const x=document.createElement('td');x.className='x';x.textContent='✕';x.onclick=()=>{patch.splice(i,1);refresh();};tr.appendChild(x);
+  el.appendChild(tr);});
+ const n=patch.length;
+ document.getElementById('patchst').innerHTML=n?(anyConf()?'<span style="color:#ff9a9a">⚠ Há sobreposição — duas fixtures no mesmo canal reagem juntas!</span>':'<span style="color:#7fd0a0">✓ '+n+' fixtures patchadas, sem conflito</span>'):'<span style="color:#5f7392">Patch vazio.</span>';}
+document.getElementById('add').onclick=()=>{
+ const l=LIB[selLib], m=l.modes[+modeEl.value], uni=+document.getElementById('uni').value;
+ let addr=+document.getElementById('addr').value||1; const qty=Math.max(1,Math.min(8,+document.getElementById('qty').value||1));
+ for(let i=0;i<qty;i++){patch.push({nome:l.nome,mode:m.n,f:m.f,uni,addr});addr+=m.f;}
+ document.getElementById('addr').value=addr;
+ document.getElementById('addst').innerHTML='<span style="color:#8fd0ff">+ '+qty+'× '+l.nome+' ('+m.n+') no U'+uni+'</span>';
+ refresh();};
+document.getElementById('auto').onclick=()=>{
+ // re-endereça tudo em sequência por universo, na ordem do patch
+ const next={1:1,2:1};
+ patch.forEach(p=>{p.addr=next[p.uni];next[p.uni]+=p.f;});
+ document.getElementById('addst').innerHTML='<span style="color:#8fd0ff">Auto-endereçado em sequência (sem buracos).</span>';
+ refresh();};
+function refresh(){buildRider();buildUnis();buildPlist();check();}
+// ── cenários ──
+const riderDone=()=>RIDER.every(r=>patch.filter(p=>p.nome===r.nome&&p.mode===r.mode&&p.uni===r.uni).length===r.qty);
+const M=[
+ {t:'<b>Cumpra o rider:</b> patchie TODAS as fixtures pedidas, cada uma no <b>modo</b> e no <b>universo</b> exigidos. Atenção ao modo: PAR LED tem que ser <b>8CH</b> e a LED Bar <b>30CH</b> (modo errado = footprint errado).',
+  ok:()=>riderDone()},
+ {t:'<b>Sem sobreposição:</b> além do rider completo, o patch não pode ter NENHUM conflito (nem estourar o canal 512). Use "Auto-endereçar" se embolar.',
+  ok:()=>riderDone()&&!anyConf()&&!patch.some(overflow)},
+ {t:'<b>Conta de engenheiro:</b> com o rider cumprido e sem conflito, responda mentalmente — o U1 comporta tudo que o rider pede nele? (4×39 + 4×16 no U2; e no U1: 6×14 + 8×8 + 2×30 + 6×1). Conclua com os dois universos <b>sem conflito</b> e cada fixture no universo certo.',
+  ok:()=>riderDone()&&!anyConf()&&patch.every(p=>{const r=RIDER.find(r=>r.nome===p.nome&&r.mode===p.mode);return r&&p.uni===r.uni;})},
+];
+let mi=0;
+function drawM(){document.getElementById('mission').innerHTML='<div><b>Cenário '+(mi+1)+'/'+M.length+':</b> '+M[mi].t+'</div><div class="mrow"><span class="dot" id="mdot"></span><span id="mstat">Monte o patch…</span></div><div style="margin-top:8px"><button class="btn warn" id="mclear">Limpar patch</button> <button class="btn go" id="mnext">Próximo ▸</button></div>';
+ document.getElementById('mclear').onclick=()=>{patch=[];refresh();};
+ document.getElementById('mnext').onclick=()=>{mi=(mi+1)%M.length;drawM();check();};check();}
+function check(){const dot=document.getElementById('mdot');if(!dot)return;let ok=false;try{ok=M[mi].ok();}catch(e){}
+ dot.classList.toggle('ok',ok);document.getElementById('mstat').textContent=ok?'✓ Patch aprovado — pode programar o show!':'Monte o patch…';}
+buildLib();buildModes();refresh();drawM();
+</script></body></html>

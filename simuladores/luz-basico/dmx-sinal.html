@@ -1,0 +1,111 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Simulador — Sinal DMX e Daisy Chain</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#0b0e14;color:#e7ecf3;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;overflow:hidden}
+body{display:flex;align-items:center;justify-content:center}
+.console{width:1010px;height:610px;background:linear-gradient(180deg,#121722,#0d111a);border:1px solid #223049;border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:12px;box-shadow:0 10px 40px #0008}
+h1{font-size:15px;font-weight:700;color:#cfe0ff}
+.sub{font-size:11.5px;color:#8aa0c2;line-height:1.4}
+.stage{flex:1;background:#04060a;border:1px solid #1c2740;border-radius:12px;position:relative;overflow:hidden}
+.stage canvas{width:100%;height:100%;display:block}
+.controls{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.card{background:#0e1421;border:1px solid #22314c;border-radius:10px;padding:9px 11px}
+.card h3{font-size:11px;color:#9db6df;margin-bottom:6px;font-weight:700}
+.opt{display:flex;gap:6px;flex-wrap:wrap}
+.opt button{flex:1;min-width:0}
+button{background:#1b2740;color:#dce7fb;border:1px solid #33507f;border-radius:8px;padding:6px 8px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap}
+button:hover{background:#233459}button.sel{background:#2b5aa8;border-color:#4d86e0}
+.bot{display:grid;grid-template-columns:2fr 1fr;gap:12px;align-items:stretch}
+.mission{background:#0e1626;border:1px solid #24406e;border-radius:10px;padding:9px 11px;font-size:11.5px;line-height:1.45}
+.mrow{display:flex;align-items:center;gap:8px;margin-top:4px}.dot{width:13px;height:13px;border-radius:50%;border:2px solid #37507a;flex:none}.dot.ok{background:#39d98a;border-color:#39d98a}
+.status{border-radius:10px;padding:9px 11px;font-size:12px;font-weight:600;display:flex;flex-direction:column;justify-content:center;gap:3px}
+.status small{font-weight:400;font-size:10.5px;opacity:.85}
+</style></head>
+<body>
+<div class="console" id="console">
+  <div><h1>Como o sinal DMX viaja — Daisy Chain</h1>
+    <div class="sub">A mesa manda os 512 valores em cadeia: <b>OUT</b> de uma fixture vai no <b>IN</b> da próxima. Use <b>cabo DMX</b> (não de microfone) e <b>terminador</b> na última. Veja o sinal chegar (ou falhar).</div></div>
+  <div class="stage"><canvas id="cv"></canvas></div>
+  <div class="controls">
+    <div class="card"><h3>Nº de fixtures na linha</h3><div class="opt" id="nfx"></div></div>
+    <div class="card"><h3>Tipo de cabo</h3><div class="opt" id="cable">
+      <button data-cable="dmx">Cabo DMX 120Ω</button><button data-cable="mic">Cabo de microfone</button></div></div>
+    <div class="card"><h3>Terminador na última</h3><div class="opt" id="term">
+      <button data-term="1">Com terminador</button><button data-term="0">Sem terminador</button></div></div>
+    <div class="card"><h3>Simulação</h3><div class="opt"><button id="play">▶ Enviar frame DMX</button></div></div>
+  </div>
+  <div class="bot">
+    <div class="mission" id="mission"></div>
+    <div class="status" id="status"></div>
+  </div>
+</div>
+<script>
+const st={n:4,cable:'mic',term:0,anim:0};
+const nfxEl=document.getElementById('nfx');[2,4,8,16].forEach(n=>{const b=document.createElement('button');b.textContent=n;b.dataset.n=n;b.onclick=()=>{st.n=n;syncBtns();draw();check();};nfxEl.appendChild(b);});
+document.querySelectorAll('[data-cable]').forEach(b=>b.onclick=()=>{st.cable=b.dataset.cable;syncBtns();draw();check();});
+document.querySelectorAll('[data-term]').forEach(b=>b.onclick=()=>{st.term=+b.dataset.term;syncBtns();draw();check();});
+function syncBtns(){nfxEl.querySelectorAll('button').forEach(b=>b.classList.toggle('sel',+b.dataset.n===st.n));
+ document.querySelectorAll('[data-cable]').forEach(b=>b.classList.toggle('sel',b.dataset.cable===st.cable));
+ document.querySelectorAll('[data-term]').forEach(b=>b.classList.toggle('sel',+b.dataset.term===st.term));}
+// qualidade do sinal
+function quality(){
+ // cabo de microfone: erro cresce com nº de fixtures. sem terminador: erro em linhas longas.
+ let ok=true, reason=[];
+ if(st.cable==='mic'){ok=false;reason.push('cabo de microfone (75Ω) em DMX causa erros intermitentes');}
+ if(!st.term && st.n>=4){ok=false;reason.push('linha longa sem terminador reflete o sinal');}
+ if(!st.term && st.n<4){reason.push('curta funciona sem terminador, mas o certo é terminar');}
+ return {ok,reason};
+}
+const cv=document.getElementById('cv');const ctx=cv.getContext('2d');
+function sizeCanvas(){const r=cv.getBoundingClientRect();const dpr=Math.min(2,devicePixelRatio||1);cv.width=r.width*dpr;cv.height=r.height*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);draw();}
+function draw(){const r=cv.getBoundingClientRect();const W=r.width,H=r.height;ctx.clearRect(0,0,W,H);ctx.fillStyle='#04060a';ctx.fillRect(0,0,W,H);
+ const q=quality();const y=H*0.4;
+ const showN=Math.min(st.n,8);const total=showN+1;const gap=W/(total+1);
+ // mesa
+ const mx=gap*0.9;ctx.fillStyle='#1a2740';ctx.strokeStyle='#3f7bd6';ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(mx-26,y-22,52,44,7);ctx.fill();ctx.stroke();
+ ctx.fillStyle='#cfe0ff';ctx.font='10px system-ui';ctx.textAlign='center';ctx.fillText('MESA',mx,y+2);ctx.fillText('DMX OUT',mx,y+16);
+ // fixtures
+ const xs=[mx];
+ for(let i=0;i<showN;i++){const x=gap*(i+2);xs.push(x);const good=q.ok;
+  // cabo do anterior
+  const px=xs[i];const cableCol=st.cable==='mic'?'#c9622e':'#3f7bd6';
+  ctx.strokeStyle=cableCol;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(px+26,y);ctx.lineTo(x-18,y);ctx.stroke();
+  // fixture box
+  ctx.fillStyle='#141b28';ctx.strokeStyle='#26324a';ctx.lineWidth=1.5;ctx.beginPath();ctx.roundRect(x-18,y-16,36,32,6);ctx.fill();ctx.stroke();
+  // luz acesa se sinal ok (com leve piscar se ruim)
+  let on = good ? 1 : (Math.random()<0.45?1:0.15);
+  const col=`rgba(120,190,255,${on})`;ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,y,6,0,7);ctx.fill();
+  if(!good && on<0.5){ctx.fillStyle='#ff6b6b';ctx.font='9px system-ui';ctx.fillText('erro',x,y+27);}else{ctx.fillStyle='#7f96bb';ctx.font='9px system-ui';ctx.fillText('IN→OUT',x,y+27);}
+ }
+ // terminador ou ponta aberta
+ const lastx=xs[xs.length-1];
+ if(st.term){ctx.strokeStyle='#39d98a';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(lastx+18,y);ctx.lineTo(lastx+40,y);ctx.stroke();ctx.fillStyle='#39d98a';ctx.beginPath();ctx.arc(lastx+44,y,5,0,7);ctx.fill();ctx.fillStyle='#39d98a';ctx.font='9px system-ui';ctx.fillText('120Ω',lastx+44,y+20);}
+ else{ctx.strokeStyle='#ff7b7b';ctx.setLineDash([4,3]);ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(lastx+18,y);ctx.lineTo(lastx+42,y);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#ff7b7b';ctx.font='9px system-ui';ctx.fillText('ponta aberta',lastx+30,y+20);}
+ if(st.n>showN){ctx.fillStyle='#7f96bb';ctx.font='10px system-ui';ctx.fillText('… +'+(st.n-showN)+' fixtures',W-70,y);}
+ ctx.textAlign='left';
+ // pacote animado
+ if(st.anim>0){const p=(1-st.anim);const px=mx+ (lastx-mx)*p;ctx.fillStyle='#ffe08a';ctx.beginPath();ctx.arc(px,y-30,5,0,7);ctx.fill();ctx.fillStyle='#ffe08a';ctx.font='9px system-ui';ctx.fillText('frame',px-12,y-38);}
+}
+function animate(){if(st.anim>0){st.anim-=0.02;if(st.anim<0)st.anim=0;draw();requestAnimationFrame(animate);}}
+document.getElementById('play').onclick=()=>{st.anim=1;animate();};
+function setStatus(){const q=quality();const el=document.getElementById('status');
+ if(q.ok){el.style.background='#12331f';el.style.borderLeft='4px solid #39d98a';el.innerHTML='✓ Sinal íntegro<small>Todas as fixtures respondem estáveis.</small>';}
+ else{el.style.background='#331515';el.style.borderLeft='4px solid #ff6b6b';el.innerHTML='⚠ Sinal com falha<small>'+q.reason.join('; ')+'.</small>';}
+}
+const M=[
+ {t:'A linha está com <b>cabo de microfone</b> e piscando. Troque para <b>cabo DMX</b>.',ok:()=>st.cable==='dmx'},
+ {t:'Com 8 fixtures e <b>sem terminador</b> o sinal reflete. Ligue o <b>terminador 120Ω</b>.',ok:()=>st.n>=8&&st.term===1&&st.cable==='dmx'},
+ {t:'Monte uma linha <b>100% correta</b>: cabo DMX + terminador, com qualquer nº de fixtures.',ok:()=>quality().ok},
+];
+let mi=0;
+function drawMission(){document.getElementById('mission').innerHTML=`<div><b>Missão ${mi+1}/${M.length}:</b> ${M[mi].t}</div><div class="mrow"><span class="dot" id="mdot"></span><span id="mstat">…</span></div>`;}
+function check(){setStatus();const dot=document.getElementById('mdot');if(!dot)return;if(M[mi].ok()){dot.classList.add('ok');document.getElementById('mstat').textContent='✓ Feito! Próxima missão.';}else{dot.classList.remove('ok');document.getElementById('mstat').textContent='Ajuste a ligação…';}}
+document.getElementById('next').onclick=()=>{};
+document.getElementById('mission').addEventListener('click',()=>{});
+// botão próxima dentro da mission card via status? add a next button
+const nb=document.createElement('button');nb.textContent='Próxima missão ▸';nb.style.marginTop='6px';nb.onclick=()=>{mi=(mi+1)%M.length;drawMission();check();};
+document.getElementById('mission').after(nb);nb.parentNode&&0;
+function fit(){const DW=1010,DH=610;const vw=innerWidth,vh=innerHeight;const scrH=(window.screen&&screen.height)||vh;const iframeTaller=vh>scrH+8;const visH=Math.min(vh,scrH);const headerAllow=iframeTaller?84:(vh>700?24:6);const effVh=Math.max(240,visH-headerAllow);const z=Math.min(vw/DW,effVh/DH);document.getElementById('console').style.zoom=z;requestAnimationFrame(sizeCanvas);}
+addEventListener('resize',fit);syncBtns();drawMission();check();fit();setTimeout(fit,60);
+</script></body></html>

@@ -1,0 +1,85 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Simulador — RDM: endereçando sem subir na truss</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;-webkit-tap-highlight-color:transparent}
+html,body{background:#0a0c10;color:#e9edf2}body{padding:10px}
+.app{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+h1{font-size:clamp(15px,4vw,20px);font-weight:800;color:#eaf0ff}
+.t{font-size:12px;color:#9daecb;line-height:1.45}
+.mission{background:#0e1626;border:1px solid #24406e;border-radius:11px;padding:10px 12px;font-size:12.5px;line-height:1.5}
+.mission b{color:#8fd0ff}
+.mrow{display:flex;align-items:center;gap:8px;margin-top:6px}
+.dot{width:14px;height:14px;border-radius:50%;border:2px solid #37507a;flex:none}.dot.ok{background:#39d98a;border-color:#39d98a}
+.btn{background:#1b2740;color:#dce7fb;border:1px solid #33507f;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;margin-top:8px}
+.btn.go{background:#1e5a3a;border-color:#2f8f5b}
+.tool{background:#10141d;border:1px solid #222c40;border-radius:12px;padding:10px}
+.tool .gt{font-size:10px;font-weight:800;color:#8aa0c2;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
+.disc{display:flex;flex-direction:column;gap:6px}
+.dev{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;background:#0d1119;border:1px solid #1f2839;border-radius:9px;padding:8px 10px;font-size:11.5px}
+.dev.conf{border-color:#8f5a2f;background:#170f08}
+.dev .nm{font-weight:800;color:#c6d2ea}.dev .un{display:block;font-size:9px;color:#7487a8;font-weight:600}
+.dev .ft{font-size:10px;color:#8aa0c2}
+.dev input{width:64px;background:#131a28;border:1px solid #2b3852;border-radius:7px;color:#ffd24d;font-weight:700;text-align:center;padding:6px;font-size:12px}
+.dev .rng{font-size:10px;color:#8aa0c2;text-align:right;min-width:64px}
+.dev .rng.bad{color:#ff9a9a;font-weight:800}
+.plan{font-size:11px;color:#a9bcd8;line-height:1.7;background:#0d1119;border:1px solid #1f2839;border-radius:9px;padding:8px 10px}
+.log{font-family:Consolas,monospace;font-size:10.5px;color:#7fd0a0;background:#060a08;border:1px solid #14301f;border-radius:9px;padding:8px 10px;min-height:38px;white-space:pre-wrap}
+.empty{font-size:11px;color:#5f7392;padding:8px}
+</style></head><body>
+<div class="app">
+ <h1>📡 RDM — enderece a truss inteira do chão</h1>
+ <div class="t">A truss já está <b>no ar</b> (içada a 8 m) e ninguém vai descer ela para mexer em menu de fixture. Use o <b>RDM</b> (DMX bidirecional) para descobrir as fixtures e corrigir os endereços <b>remotamente</b>.</div>
+ <div class="mission" id="mission"></div>
+ <div class="tool">
+  <div class="gt">Controlador RDM (na saída da mesa · splitter RDM na linha)</div>
+  <button class="btn go" id="disc">🔍 DISCOVERY — descobrir fixtures na linha</button>
+  <div class="log" id="log">aguardando discovery…</div>
+  <div class="disc" id="devs"><div class="empty">Nenhuma fixture descoberta ainda.</div></div>
+ </div>
+ <div class="plan"><b>Plano de patch (o que a mesa espera):</b><br>Sharpy L → <b>33</b> (16ch: 33–48) · Sharpy R → <b>49</b> (16ch: 49–64) · Aura L → <b>65</b> (14ch: 65–78) · Aura R → <b>79</b> (14ch: 79–92) · Barra LED → <b>93</b> (8ch: 93–100)</div>
+</div>
+<script>
+'use strict';
+// fixtures reais na linha (endereços atuais vindos "de fábrica"/do último evento — bagunçados)
+const DEVS=[
+ {uid:'52a1:00234061',nome:'Sharpy L',modelo:'Clay Paky Sharpy',foot:16,alvo:33,addr:1},
+ {uid:'52a1:00234117',nome:'Sharpy R',modelo:'Clay Paky Sharpy',foot:16,alvo:49,addr:1},
+ {uid:'4d50:0088412a',nome:'Aura L',modelo:'Martin MAC Aura XB',foot:14,alvo:65,addr:65},
+ {uid:'4d50:00884203',nome:'Aura R',modelo:'Martin MAC Aura XB',foot:14,alvo:79,addr:70},
+ {uid:'21a4:00120995',nome:'Barra LED',modelo:'LED Bar RGBW',foot:8,alvo:93,addr:200},
+];
+let discovered=false;
+const devsEl=document.getElementById('devs'),logEl=document.getElementById('log');
+function overlaps(d){const a1=d.addr,a2=d.addr+d.foot-1;return DEVS.some(o=>{if(o===d)return false;const b1=o.addr,b2=o.addr+o.foot-1;return a1<=b2&&b1<=a2;});}
+document.getElementById('disc').onclick=()=>{
+ if(discovered)return;
+ logEl.textContent='> broadcast DISC_UNIQUE_BRANCH…\n';
+ let i=0;
+ const t=setInterval(()=>{
+  if(i>=DEVS.length){clearInterval(t);logEl.textContent+='> discovery completo: '+DEVS.length+' dispositivos RDM.\n> GET DMX_START_ADDRESS de cada um…ok';discovered=true;build();check();return;}
+  logEl.textContent+='> achou '+DEVS[i].uid+' — '+DEVS[i].modelo+'\n';i++;
+ },380);
+};
+function build(){
+ if(!discovered){devsEl.innerHTML='<div class="empty">Nenhuma fixture descoberta ainda.</div>';return;}
+ devsEl.innerHTML='';
+ DEVS.forEach(d=>{const conf=overlaps(d);const el=document.createElement('div');el.className='dev'+(conf?' conf':'');
+  el.innerHTML='<div><span class="nm">'+d.nome+' — '+d.modelo+'</span><span class="un">UID '+d.uid+' · footprint '+d.foot+'ch · alvo do patch: <b>'+d.alvo+'</b></span></div>';
+  const inp=document.createElement('input');inp.type='number';inp.min=1;inp.max=512;inp.value=d.addr;
+  inp.addEventListener('change',()=>{d.addr=Math.max(1,Math.min(512,+inp.value||1));logEl.textContent='> SET DMX_START_ADDRESS '+d.addr+' → '+d.uid+' … ACK ✓';build();check();});
+  const rng=document.createElement('div');rng.className='rng'+(conf?' bad':'');rng.textContent=d.addr+'–'+(d.addr+d.foot-1)+(conf?' ⚠':'');
+  el.appendChild(inp);el.appendChild(rng);devsEl.appendChild(el);});
+}
+const M=[
+ {t:'Rode o <b>DISCOVERY</b> e observe o problema: os DOIS Sharpys vieram de fábrica no endereço <b>1</b> (conflito — reagem juntos!) e os outros também estão fora do plano.',
+  ok:()=>discovered},
+ {t:'<b>SET remoto:</b> corrija o endereço de cada fixture pelo RDM até TODAS baterem com o plano de patch (33 · 49 · 65 · 79 · 93) — sem nenhuma sobreposição.',
+  ok:()=>discovered&&DEVS.every(d=>d.addr===d.alvo)},
+];
+let mi=0;
+function drawM(){document.getElementById('mission').innerHTML='<div><b>Cenário '+(mi+1)+'/'+M.length+':</b> '+M[mi].t+'</div><div class="mrow"><span class="dot" id="mdot"></span><span id="mstat">Trabalhe no controlador…</span></div><button class="btn" id="mnext">Próximo ▸</button>';
+ document.getElementById('mnext').onclick=()=>{mi=(mi+1)%M.length;drawM();check();};check();}
+function check(){const dot=document.getElementById('mdot');if(!dot)return;let ok=false;try{ok=M[mi].ok();}catch(e){}
+ dot.classList.toggle('ok',ok);document.getElementById('mstat').textContent=ok?'✓ Feito — e ninguém subiu na truss!':'Trabalhe no controlador…';}
+build();drawM();
+</script></body></html>

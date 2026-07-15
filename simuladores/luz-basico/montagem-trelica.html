@@ -1,0 +1,218 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Simulador — Montagem na Treliça: do clamp ao funcionamento</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;-webkit-tap-highlight-color:transparent}
+html,body{background:#0a0c10;color:#e9edf2}body{padding:10px}
+.app{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+h1{font-size:clamp(15px,4vw,20px);font-weight:800;color:#eaf0ff}
+.t{font-size:12px;color:#9daecb;line-height:1.45}
+.mission{background:#0e1626;border:1px solid #24406e;border-radius:11px;padding:10px 12px;font-size:12.5px;line-height:1.5}
+.mission b{color:#8fd0ff}
+.mrow{display:flex;align-items:center;gap:8px;margin-top:6px}
+.dot{width:14px;height:14px;border-radius:50%;border:2px solid #37507a;flex:none}.dot.ok{background:#39d98a;border-color:#39d98a}
+.btn{background:#1b2740;color:#dce7fb;border:1px solid #33507f;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer}
+.btn.go{background:#1e5a3a;border-color:#2f8f5b}
+.truss{position:relative;width:100%;height:230px;background:#04060a;border:1px solid #1c2740;border-radius:12px;overflow:hidden}
+.truss canvas{width:100%;height:100%;display:block}
+.gt{font-size:10px;font-weight:800;color:#8aa0c2;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
+.box{background:#10141d;border:1px solid #222c40;border-radius:12px;padding:10px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;min-height:26px}
+.chip{background:#1a2233;border:1px solid #2c3a58;border-radius:999px;padding:5px 10px;font-size:10.5px;font-weight:700;color:#cfe0ff;cursor:pointer}
+.chip.sel{border-color:#ffcf5a;background:#2a2415}
+.slots{display:grid;grid-template-columns:repeat(6,1fr);gap:5px}
+.slot{background:#0d1119;border:2px dashed #26314a;border-radius:9px;min-height:40px;padding:4px;text-align:center;font-size:9px;color:#5f7392;cursor:pointer;display:flex;flex-direction:column;justify-content:center;gap:2px}
+.slot.tgt{border-color:#ffcf5a;border-style:solid}
+.slot .oc{font-size:10px;font-weight:800;color:#cfe0ff}
+.rig{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:8px}
+.fxcard{background:#0d1119;border:2px solid #26314a;border-radius:12px;padding:10px}
+.fxcard.done{border-color:#2f8f5b}
+.fxcard h3{font-size:12px;font-weight:800;display:flex;justify-content:space-between;align-items:center}
+.fxcard h3 .tag{font-size:9px;padding:2px 7px;border-radius:999px;background:#16233c;color:#9db6df;font-weight:800}
+.secure{display:flex;gap:6px;margin:7px 0}
+.secure .sbtn{flex:1;background:#131a28;border:2px solid #2b3852;border-radius:8px;padding:7px 4px;font-size:10.5px;font-weight:800;color:#8fa4c4;cursor:pointer;text-align:center}
+.secure .sbtn.on{border-color:#39d98a;color:#7fd0a0;background:#0d1f16}
+.panelfx{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;background:#080b10;border:1px solid #1c2433;border-radius:10px;padding:9px}
+.lcd{background:#041008;border:2px solid #14301f;border-radius:7px;padding:7px 10px;font-family:Consolas,monospace;font-size:19px;font-weight:800;color:#39d98a;letter-spacing:2px;text-align:center;min-width:104px;text-shadow:0 0 8px #39d98a66}
+.lcd.edit{animation:blinklcd .6s infinite alternate}
+@keyframes blinklcd{from{color:#39d98a}to{color:#0d3a22}}
+.mbtns{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.mbtns button{background:#1a212f;border:1px solid #2c3850;border-radius:7px;color:#cfe0ff;font-size:11px;font-weight:800;padding:8px 6px;cursor:pointer;min-width:42px}
+.mbtns button:active{background:#2a3a56}
+.fxcard .st{font-size:10px;margin-top:6px;font-weight:700}
+.patchsheet{font-size:11.5px;color:#a9bcd8;line-height:1.8;background:#0d1119;border:1px solid #1f2839;border-radius:9px;padding:8px 10px}
+.patchsheet b{color:#ffd24d}
+.check{display:flex;gap:6px;flex-wrap:wrap}
+.dmxline{font-size:11px;color:#8296b8;margin-top:6px;line-height:1.5}
+.dmxline b{color:#8fd0ff}
+.cable{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px}
+.cable .cb{background:#131a28;border:2px solid #2b3852;border-radius:8px;padding:6px 9px;font-size:10.5px;font-weight:800;color:#8fa4c4;cursor:pointer}
+.cable .cb.on{border-color:#4d86e0;color:#bcd8ff;background:#0e1a30}
+.cable .arrow{color:#44536e;font-weight:800}
+</style></head><body>
+<div class="app">
+ <h1>🔧 Montagem na Treliça — do clamp ao aparelho funcionando</h1>
+ <div class="t">O trabalho do ajudante, do início ao fim: <b>1)</b> pendurar cada aparelho na treliça com <b>garra + cabo de safety</b> · <b>2)</b> cabear a linha DMX em cadeia com <b>terminador</b> · <b>3)</b> configurar o <b>endereço no display de cada aparelho</b> (MENU/▲/▼/ENTER) até casar com o mapa da mesa · <b>4)</b> passar no <b>teste canal a canal</b>.</div>
+ <div class="mission" id="mission"></div>
+ <div class="truss"><canvas id="cv"></canvas></div>
+ <div class="box"><div class="gt">1 · Pendurar na treliça (toque no aparelho, depois na posição)</div>
+  <div class="chips" id="pool"></div>
+  <div class="slots" id="slots" style="margin-top:8px"></div></div>
+ <div class="box"><div class="gt">2 · Cabear: mesa → DMX IN/OUT em cadeia → terminador (toque nos trechos na ordem)</div>
+  <div class="cable" id="cable"></div>
+  <div class="dmxline" id="cablest"></div></div>
+ <div class="box"><div class="gt">3 · Configurar o endereço NO APARELHO (painel traseiro real)</div>
+  <div class="patchsheet"><b>MAPA DA MESA (patch):</b> PAR LED 1 → <b>A001</b> · PAR LED 2 → <b>A009</b> · PAR LED 3 → <b>A017</b> · PAR LED 4 → <b>A025</b> · Mini Mover L → <b>A033</b> · Mini Mover R → <b>A047</b> <span style="color:#7487a8">(PAR LED = 8 canais · Mini Mover = 14 canais)</span></div>
+  <div class="rig" id="rig" style="margin-top:8px"></div></div>
+ <div class="box"><div class="gt">4 · Channel check — teste pelo controle da mesa</div>
+  <div class="check" id="check"></div>
+  <div class="dmxline" id="checkst">Pendure, cabeie e enderece primeiro.</div></div>
+</div>
+<script>
+'use strict';
+// aparelhos: endereço vem "de fábrica" errado/zoneado — o aluno configura no display
+const FIX=[
+ {id:0,nome:'PAR LED 1',foot:8, alvo:1,  addr:1,   tipo:'par'},
+ {id:1,nome:'PAR LED 2',foot:8, alvo:9,  addr:1,   tipo:'par'},
+ {id:2,nome:'PAR LED 3',foot:8, alvo:17, addr:25,  tipo:'par'},
+ {id:3,nome:'PAR LED 4',foot:8, alvo:25, addr:170, tipo:'par'},
+ {id:4,nome:'Mini Mover L',foot:14,alvo:33, addr:33, tipo:'mov'},
+ {id:5,nome:'Mini Mover R',foot:14,alvo:47, addr:33, tipo:'mov'},
+];
+FIX.forEach(f=>{f.slot=null;f.clamp=false;f.safety=false;f.edit=false;});
+let picked=null;
+// cabeamento: sequência mesa→f0→f1..→f5→term
+const CABLE_STEPS=['Mesa→1º aparelho','1→2','2→3','3→4','4→5','5→6','Terminador na última'];
+let cabled=new Array(CABLE_STEPS.length).fill(false);
+const hungAll=()=>FIX.every(f=>f.slot!=null&&f.clamp&&f.safety);
+const cableAll=()=>cabled.every(Boolean);
+const addrOK=(f)=>f.addr===f.alvo;
+function overlaps(f){const a1=f.addr,a2=f.addr+f.foot-1;return FIX.some(o=>{if(o===f)return false;const b1=o.addr,b2=o.addr+o.foot-1;return a1<=b2&&b1<=a2;});}
+// ── pendurar ──
+const poolEl=document.getElementById('pool'),slotsEl=document.getElementById('slots');
+function buildHang(){
+ poolEl.innerHTML='';
+ FIX.filter(f=>f.slot==null).forEach(f=>{const c=document.createElement('div');c.className='chip'+(picked===f.id?' sel':'');
+  c.textContent=f.nome;c.onclick=()=>{picked=picked===f.id?null:f.id;buildHang();};poolEl.appendChild(c);});
+ if(FIX.every(f=>f.slot!=null))poolEl.innerHTML='<span style="font-size:11px;color:#7fd0a0;font-weight:700">✓ Todos na treliça — agora trave garra e safety em CADA um</span>';
+ slotsEl.innerHTML='';
+ for(let i=0;i<6;i++){const s=document.createElement('div');s.className='slot'+(picked!=null?' tgt':'');
+  const f=FIX.find(x=>x.slot===i);
+  s.innerHTML='<span>P'+(i+1)+'</span>'+(f?'<span class="oc">'+f.nome+'</span>':'');
+  s.onclick=()=>{if(picked==null)return;if(FIX.find(x=>x.slot===i))return;FIX[picked].slot=i;picked=null;buildHang();buildRig();draw();check();};
+  slotsEl.appendChild(s);}
+}
+// ── cabear ──
+const cableEl=document.getElementById('cable');
+function buildCable(){cableEl.innerHTML='';
+ CABLE_STEPS.forEach((t,i)=>{const b=document.createElement('div');b.className='cb'+(cabled[i]?' on':'');b.textContent=(cabled[i]?'✓ ':'')+t;
+  b.onclick=()=>{ // só na ordem
+   if(i>0&&!cabled[i-1]){document.getElementById('cablest').innerHTML='<b>Na ordem!</b> O DMX é uma cadeia: OUT de um aparelho no IN do próximo. Faça o trecho anterior primeiro.';return;}
+   cabled[i]=!cabled[i]; if(!cabled[i])for(let j=i+1;j<cabled.length;j++)cabled[j]=false;
+   buildCable();check();};
+  cableEl.appendChild(b);
+  if(i<CABLE_STEPS.length-1){const a=document.createElement('span');a.className='arrow';a.textContent='→';cableEl.appendChild(a);}});
+ document.getElementById('cablest').innerHTML=cableAll()?'✓ Linha completa: mesa → 6 aparelhos em cadeia → <b>terminador 120Ω</b> na saída da última.':'A linha DMX sai da mesa, entra no IN, sai no OUT para o próximo — e a última leva o terminador.';
+}
+// ── painel do aparelho (display + MENU/▲/▼/ENTER) ──
+const rigEl=document.getElementById('rig');
+function lcdText(f){return (f.edit?'':'')+'A'+String(f.addr).padStart(3,'0');}
+function buildRig(){rigEl.innerHTML='';
+ FIX.forEach(f=>{const ok=f.slot!=null&&f.clamp&&f.safety&&addrOK(f);
+  const d=document.createElement('div');d.className='fxcard'+(ok?' done':'');
+  d.innerHTML='<h3>'+f.nome+' <span class="tag">'+f.foot+' canais · alvo A'+String(f.alvo).padStart(3,'0')+'</span></h3>';
+  const sec=document.createElement('div');sec.className='secure';
+  [['clamp','Garra na treliça'],['safety','Cabo de safety']].forEach(([k,t])=>{const b=document.createElement('div');b.className='sbtn'+(f[k]?' on':'');b.textContent=(f[k]?'✓ ':'')+t;
+   b.onclick=()=>{ if(f.slot==null){b.textContent='Pendure primeiro!';setTimeout(buildRig,700);return;} f[k]=!f[k];buildRig();draw();check();};sec.appendChild(b);});
+  d.appendChild(sec);
+  const p=document.createElement('div');p.className='panelfx';
+  p.innerHTML='<div><div class="lcd'+(f.edit?' edit':'')+'">'+lcdText(f)+'</div><div style="font-size:9px;color:#5f7392;margin-top:3px;text-align:center">'+(f.edit?'EDITANDO — ▲/▼ muda · ENTER grava':'display · MENU p/ editar')+'</div></div>';
+  const mb=document.createElement('div');mb.className='mbtns';
+  [['MENU',()=>{f.edit=true;}],['▲',()=>{if(f.edit)f.addr=Math.min(512,f.addr+1);}],['▼',()=>{if(f.edit)f.addr=Math.max(1,f.addr-1);}],['ENTER',()=>{f.edit=false;}]].forEach(([t,fn])=>{
+   const b=document.createElement('button');b.textContent=t;
+   let hold=null;
+   b.onclick=()=>{fn();buildRig();check();};
+   if(t==='▲'||t==='▼'){ // segurar acelera (como no aparelho real)
+    b.addEventListener('pointerdown',()=>{hold=setInterval(()=>{fn();const l=d.querySelector('.lcd');if(l)l.textContent=lcdText(f);},110);});
+    ['pointerup','pointerleave','pointercancel'].forEach(ev=>b.addEventListener(ev,()=>{if(hold){clearInterval(hold);hold=null;buildRig();check();}}));}
+   mb.appendChild(b);});
+  p.appendChild(mb);d.appendChild(p);
+  const st=document.createElement('div');st.className='st';
+  const probs=[];
+  if(f.slot==null)probs.push('não pendurado');else{if(!f.clamp)probs.push('sem garra');if(!f.safety)probs.push('SEM SAFETY ⚠');}
+  if(!addrOK(f))probs.push('endereço não casa com a mesa (A'+String(f.addr).padStart(3,'0')+' ≠ A'+String(f.alvo).padStart(3,'0')+')');
+  else if(overlaps(f))probs.push('sobreposição!');
+  st.innerHTML=probs.length?'<span style="color:#ffb066">'+probs.join(' · ')+'</span>':'<span style="color:#7fd0a0">✓ fixado com safety, endereçado, pronto</span>';
+  d.appendChild(st);rigEl.appendChild(d);});
+}
+// ── channel check ──
+let lastTest=-1,testT=null;
+const checkEl=document.getElementById('check');
+function buildCheck(){checkEl.innerHTML='';
+ FIX.forEach((f,i)=>{const b=document.createElement('button');b.className='btn';b.textContent='Testar '+f.nome;
+  b.onclick=()=>{ if(!hungAll()||!cableAll()){document.getElementById('checkst').innerHTML='<b>Ainda não:</b> primeiro tudo pendurado (garra+safety) e a linha cabeada com terminador.';return;}
+   lastTest=i;clearTimeout(testT);testT=setTimeout(()=>{lastTest=-1;draw();},1500);
+   // quem acende? o aparelho cujo ENDEREÇO REAL cobre o canal-alvo do teste
+   const alvoCh=f.alvo; const respondem=FIX.filter(o=>alvoCh>=o.addr&&alvoCh<=o.addr+o.foot-1);
+   let msg;
+   if(respondem.length===1&&respondem[0]===f)msg='<b style="color:#7fd0a0">✓ '+f.nome+' acendeu!</b> Endereço casado com a mesa.';
+   else if(respondem.length===0)msg='<b style="color:#ffb066">Nada acendeu…</b> ninguém está no A'+String(alvoCh).padStart(3,'0')+'. Confira o display do aparelho.';
+   else msg='<b style="color:#ff9a9a">⚠ '+respondem.map(r=>r.nome).join(' e ')+' acendeu no lugar!</b> Endereço errado/duplicado — ajuste no display.';
+   document.getElementById('checkst').innerHTML=msg;
+   draw();check();};
+  checkEl.appendChild(b);});
+}
+// ── treliça no canvas ──
+const cv=document.getElementById('cv');const ctx=cv.getContext('2d');
+function sizeC(){const r=cv.getBoundingClientRect();const dpr=Math.min(2,devicePixelRatio||1);cv.width=r.width*dpr;cv.height=r.height*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);draw();}
+let _raf=0;function draw(){if(_raf)return;_raf=requestAnimationFrame(()=>{_raf=0;paint();});}
+function paint(){const r=cv.getBoundingClientRect();const W=r.width,H=r.height;ctx.clearRect(0,0,W,H);
+ ctx.fillStyle='#04060a';ctx.fillRect(0,0,W,H);
+ const y=H*0.3,x0=W*0.07,x1=W*0.93;
+ // treliça box-truss: 2 banzos + diagonais + montantes
+ ctx.strokeStyle='#5a6a80';ctx.lineWidth=3;
+ [[y,y],[y+16,y+16]].forEach(([a])=>{ctx.beginPath();ctx.moveTo(x0,a);ctx.lineTo(x1,a);ctx.stroke();});
+ ctx.lineWidth=1.5;
+ for(let x=x0;x<x1-18;x+=22){ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+11,y+16);ctx.lineTo(x+22,y);ctx.stroke();}
+ for(let x=x0;x<=x1;x+=66){ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y+16);ctx.stroke();}
+ // pontos de fixação + aparelhos
+ for(let i=0;i<6;i++){const x=x0+(x1-x0)*(i+0.5)/6;
+  const f=FIX.find(o=>o.slot===i);
+  ctx.fillStyle='#26314a';ctx.font='9px system-ui';ctx.textAlign='center';ctx.fillText('P'+(i+1),x,y-8);
+  if(!f)continue;
+  // garra
+  ctx.strokeStyle=f.clamp?'#8aa0c2':'#5a3020';ctx.lineWidth=2.5;
+  ctx.beginPath();ctx.arc(x,y+16,7,0.2,Math.PI-0.2,true);ctx.stroke();
+  // safety (laço verde)
+  if(f.safety){ctx.strokeStyle='#39d98a';ctx.lineWidth=2;ctx.beginPath();ctx.arc(x+9,y+13,6,0,7);ctx.stroke();}
+  // corpo
+  const lit=lastTest>=0&&(function(){const alvo=FIX[lastTest].alvo;return alvo>=f.addr&&alvo<=f.addr+f.foot-1;})();
+  ctx.fillStyle=f.clamp&&f.safety?'#1b212e':'#2a1b12';ctx.strokeStyle=lit?'#ffd24d':'#3a4658';ctx.lineWidth=2;
+  ctx.beginPath();ctx.roundRect(x-14,y+24,28,f.tipo==='mov'?26:18,4);ctx.fill();ctx.stroke();
+  if(lit){const g=ctx.createLinearGradient(0,y+44,0,H*0.98);
+   g.addColorStop(0,'rgba(255,220,120,0.7)');g.addColorStop(1,'rgba(255,220,120,0)');
+   ctx.beginPath();ctx.moveTo(x-8,y+44);ctx.lineTo(x-W*0.05,H*0.98);ctx.lineTo(x+W*0.05,H*0.98);ctx.lineTo(x+8,y+44);ctx.closePath();ctx.fillStyle=g;ctx.fill();}
+  ctx.fillStyle='#9db2cc';ctx.font='8px system-ui';ctx.fillText('A'+String(f.addr).padStart(3,'0'),x,y+(f.tipo==='mov'?62:54));
+  if(!f.safety){ctx.fillStyle='#ff9a9a';ctx.font='bold 8.5px system-ui';ctx.fillText('SEM SAFETY',x,y+(f.tipo==='mov'?73:65));}
+ }
+ ctx.fillStyle='#5f7392';ctx.font='9.5px system-ui';ctx.textAlign='left';
+ ctx.fillText('Treliça (box truss) · garra apertada = arco claro · safety = laço verde · teste acende o facho',10,H-8);
+}
+// ── missões ──
+const M=[
+ {t:'<b>Pendure e TRAVE:</b> os 6 aparelhos na treliça, cada um com <b>garra apertada + cabo de safety</b>. Aparelho sem safety é reprovação na hora (peça caindo mata).',
+  ok:()=>hungAll()},
+ {t:'<b>Cabeie a linha DMX:</b> mesa → IN/OUT em cadeia pelos 6 aparelhos → <b>terminador</b> na saída da última. Na ordem certa.',
+  ok:()=>hungAll()&&cableAll()},
+ {t:'<b>Faça os endereços CASAREM:</b> no display de cada aparelho (MENU → ▲/▼ → ENTER), configure o endereço que a mesa espera. Repare: os PAR LED 1 e 2 vieram AMBOS em A001 de fábrica, e o Mover R copiou o L!',
+  ok:()=>FIX.every(f=>addrOK(f))},
+ {t:'<b>Channel check final:</b> com tudo pendurado, cabeado e endereçado, teste os 6 pelo controle — cada teste deve acender o aparelho CERTO (e só ele).',
+  ok:()=>hungAll()&&cableAll()&&FIX.every(f=>addrOK(f)&&!overlaps(f))},
+];
+let mi=0;
+function drawM(){document.getElementById('mission').innerHTML='<div><b>Etapa '+(mi+1)+'/'+M.length+':</b> '+M[mi].t+'</div><div class="mrow"><span class="dot" id="mdot"></span><span id="mstat">Mãos à obra…</span></div><button class="btn go" id="mnext" style="margin-top:8px">Próxima etapa ▸</button>';
+ document.getElementById('mnext').onclick=()=>{mi=(mi+1)%M.length;drawM();check();};check();}
+function check(){const dot=document.getElementById('mdot');if(!dot)return;let ok=false;try{ok=M[mi].ok();}catch(e){}
+ dot.classList.toggle('ok',ok);document.getElementById('mstat').textContent=ok?'✓ Etapa concluída como profissional!':'Mãos à obra…';}
+buildHang();buildCable();buildRig();buildCheck();drawM();sizeC();
+addEventListener('resize',sizeC);
+</script></body></html>

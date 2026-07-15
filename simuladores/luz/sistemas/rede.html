@@ -1,0 +1,98 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Simulador — Rede de Luz (Art-Net/sACN)</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;-webkit-tap-highlight-color:transparent}
+html,body{background:#0a0c10;color:#e9edf2}body{padding:10px}
+.app{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+h1{font-size:clamp(15px,4vw,20px);font-weight:800;color:#eaf0ff}
+.t{font-size:12px;color:#9daecb;line-height:1.45}
+.mission{background:#0e1626;border:1px solid #24406e;border-radius:11px;padding:10px 12px;font-size:12.5px;line-height:1.5}
+.mission b{color:#8fd0ff}
+.mrow{display:flex;align-items:center;gap:8px;margin-top:6px}
+.dot{width:14px;height:14px;border-radius:50%;border:2px solid #37507a;flex:none}.dot.ok{background:#39d98a;border-color:#39d98a}
+.btn{background:#1b2740;color:#dce7fb;border:1px solid #33507f;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;margin-top:8px}
+.btn.warn{background:#5a2020;border-color:#8f2f2f}
+.net{background:#10141d;border:1px solid #222c40;border-radius:12px;padding:10px}
+.net .gt{font-size:10px;font-weight:800;color:#8aa0c2;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
+.consoleBox{background:#0d1421;border:1px solid #26314a;border-radius:10px;padding:8px 10px;font-size:11.5px;color:#bcd0ec}
+.nodes{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px;margin-top:8px}
+.node{background:#0d1119;border:2px solid #26314a;border-radius:12px;padding:10px}
+.node.dead{opacity:.45;border-color:#5a2020}
+.node h3{font-size:12.5px;font-weight:800;display:flex;justify-content:space-between;align-items:center}
+.node h3 .st{font-size:9px;padding:2px 7px;border-radius:999px;background:#12331f;color:#7fd0a0;font-weight:800}
+.node.dead h3 .st{background:#331515;color:#ff9a9a}
+.port{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:11px}
+.port .pn{width:58px;color:#8aa0c2;font-weight:700}
+.port select{flex:1;background:#131a28;border:1px solid #2b3852;border-radius:7px;color:#ffd24d;font-weight:700;padding:6px;font-size:12px}
+.rig{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:6px;margin-top:8px}
+.seg{background:#0d1119;border:1px solid #1f2839;border-radius:9px;padding:8px;font-size:11px}
+.seg .nm{font-weight:800;color:#c6d2ea}
+.seg .need{color:#8aa0c2;font-size:10px}
+.seg .st{margin-top:5px;font-size:10.5px;font-weight:800}
+.seg.ok .st{color:#7fd0a0}.seg.bad .st{color:#ff9a9a}
+.info{font-size:11px;color:#8296b8;line-height:1.5;background:#0d1119;border:1px solid #1f2839;border-radius:9px;padding:8px 10px}
+</style></head><body>
+<div class="app">
+ <h1>🌐 Rede de Luz — roteie os universos (Art-Net/sACN)</h1>
+ <div class="t">A mesa manda <b>4 universos</b> por UM cabo de rede. Os <b>nodes</b> convertem para DMX físico: configure <b>qual universo sai em cada porta</b> de cada node, de acordo com o que está plugado nela.</div>
+ <div class="mission" id="mission"></div>
+ <div class="net">
+  <div class="gt">Console → switch → nodes</div>
+  <div class="consoleBox">🎛 <b>Console</b> — transmite U1, U2, U3, U4 via sACN → <b>switch gigabit dedicado</b> → nodes (etherCON)</div>
+  <div class="nodes" id="nodes"></div>
+ </div>
+ <div class="net"><div class="gt">O que está plugado em cada porta (rig)</div><div class="rig" id="rig"></div></div>
+ <div class="info"><b>Regra:</b> o universo configurado na porta TEM que ser o universo que o equipamento daquela linha espera. Universo errado = o rig "ouve" dados de outras fixtures (caos). Porta sem universo = linha morta.</div>
+</div>
+<script>
+'use strict';
+// nodes: 2× node de 2 portas. portas: node,port -> universo (0=off)
+const NODES=[{id:'N1',nome:'Node 1 (palco L)',alive:true,ports:[0,0]},{id:'N2',nome:'Node 2 (palco R)',alive:true,ports:[0,0]}];
+// segmentos do rig: o que cada linha DMX física alimenta e que universo espera
+const SEGS=[
+ {nome:'Rack dimmer + ribalta',need:1,node:0,port:0},
+ {nome:'PAR LEDs (frente)',need:2,node:0,port:1},
+ {nome:'Movings (truss)',need:3,node:1,port:0},
+ {nome:'Pixel bar (fundo)',need:4,node:1,port:1},
+];
+let failMode=false;
+const nodesEl=document.getElementById('nodes'),rigEl=document.getElementById('rig');
+function portUni(n,p){const nd=NODES[n];return nd.alive?nd.ports[p]:0;}
+function segOK(s){ // em failMode, o segmento pode ser replugado: procura QUALQUER porta viva com o universo certo
+ if(!failMode)return portUni(s.node,s.port)===s.need;
+ return NODES.some((nd,ni)=>nd.alive&&nd.ports.some(u=>u===s.need));}
+function build(){
+ nodesEl.innerHTML='';
+ NODES.forEach((nd,ni)=>{const d=document.createElement('div');d.className='node'+(nd.alive?'':' dead');
+  d.innerHTML='<h3>'+nd.nome+' <span class="st">'+(nd.alive?'ONLINE':'SEM ENERGIA')+'</span></h3>';
+  nd.ports.forEach((u,pi)=>{const p=document.createElement('div');p.className='port';
+   p.innerHTML='<span class="pn">Porta '+String.fromCharCode(65+pi)+' (XLR)</span>';
+   const sel=document.createElement('select');
+   ['— off —','Universo 1','Universo 2','Universo 3','Universo 4'].forEach((t,i)=>{const o=document.createElement('option');o.value=i;o.textContent=t;if(i===u)o.selected=true;sel.appendChild(o);});
+   sel.disabled=!nd.alive;
+   sel.addEventListener('change',()=>{nd.ports[pi]=+sel.value;build();check();});
+   p.appendChild(sel);d.appendChild(p);});
+  nodesEl.appendChild(d);});
+ rigEl.innerHTML='';
+ SEGS.forEach(s=>{const ok=segOK(s);const d=document.createElement('div');d.className='seg '+(ok?'ok':'bad');
+  const plug=failMode?'em QUALQUER porta viva':'na porta '+String.fromCharCode(65+s.port)+' do '+NODES[s.node].id;
+  d.innerHTML='<div class="nm">'+s.nome+'</div><div class="need">espera <b>U'+s.need+'</b> · plugado '+plug+'</div><div class="st">'+(ok?'✓ recebendo U'+s.need:'✗ sem dados / universo errado')+'</div>';
+  rigEl.appendChild(d);});
+}
+const M=[
+ {t:'<b>Configure os nodes:</b> cada porta com o universo que a linha plugada nela espera — dimmer=U1 (N1·A), PAR LED=U2 (N1·B), movings=U3 (N2·A), pixel bar=U4 (N2·B). Deixe os 4 segmentos verdes.',
+  ok:()=>SEGS.every(segOK)},
+ {t:'<b>⚡ Pane no show:</b> o Node 2 perdeu energia! Os movings e a pixel bar caíram. O roadie replugou as DUAS linhas órfãs nas portas do <b>Node 1</b> — reconfigure as portas do N1 para atender <b>U3 e U4</b> (o dimmer e os LEDs foram remanejados para o splitter). Aperte "Injetar pane" primeiro.',
+  setup:()=>{failMode=true;NODES[1].alive=false;build();},
+  ok:()=>failMode&&!NODES[1].alive&&[3,4].every(u=>NODES[0].alive&&NODES[0].ports.includes(u))},
+];
+let mi=0;
+function drawM(){const c=M[mi];
+ document.getElementById('mission').innerHTML='<div><b>Cenário '+(mi+1)+'/'+M.length+':</b> '+c.t+'</div><div class="mrow"><span class="dot" id="mdot"></span><span id="mstat">Configure a rede…</span></div>'+(c.setup?'<button class="btn warn" id="msetup">⚡ Injetar pane no Node 2</button> ':'')+'<button class="btn" id="mnext">Próximo ▸</button>';
+ document.getElementById('mnext').onclick=()=>{mi=(mi+1)%M.length;if(mi===0){failMode=false;NODES[1].alive=true;}drawM();build();check();};
+ const ms=document.getElementById('msetup');if(ms)ms.onclick=()=>{c.setup();check();};
+ check();}
+function check(){const dot=document.getElementById('mdot');if(!dot)return;let ok=false;try{ok=M[mi].ok();}catch(e){}
+ dot.classList.toggle('ok',ok);document.getElementById('mstat').textContent=ok?'✓ Rede no ar — show salvo!':'Configure a rede…';}
+build();drawM();
+</script></body></html>
