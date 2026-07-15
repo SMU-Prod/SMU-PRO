@@ -287,6 +287,14 @@ export type LiveAttendance = {
   ip: string | null; user_agent: string | null;
 };
 
+export type LiveAttendanceInsert = {
+  live_event_id: string; user_id: string;
+  joined_at?: string; last_seen_at?: string; duracao_segundos?: number;
+  ip?: string | null; user_agent?: string | null;
+};
+
+export type LiveAttendanceUpdate = { last_seen_at?: string; duracao_segundos?: number };
+
 export type LiveMessage = {
   id: string; live_event_id: string; user_id: string;
   texto: string; oculto: boolean; created_at: string;
@@ -318,7 +326,7 @@ export type Database = {
       settings: { Row: Setting; Insert: SettingInsert; Update: SettingUpdate; Relationships: [] };
       ai_animations: { Row: AiAnimation; Insert: AiAnimationInsert; Update: AiAnimationUpdate; Relationships: [] };
       live_events: { Row: LiveEvent; Insert: LiveEventInsert; Update: LiveEventUpdate; Relationships: [] };
-      live_attendance: { Row: LiveAttendance; Insert: never; Update: never; Relationships: [] };
+      live_attendance: { Row: LiveAttendance; Insert: LiveAttendanceInsert; Update: LiveAttendanceUpdate; Relationships: [] };
       live_messages: { Row: LiveMessage; Insert: LiveMessageInsert; Update: never; Relationships: [] };
     };
     Views: {
@@ -336,6 +344,7 @@ export type Database = {
       course_type: CourseType; access_type: AccessType; enrollment_status: EnrollmentStatus;
       payment_provider: PaymentProvider; content_type: ContentType; activity_type: ActivityType;
       notification_type: NotificationType;
+      live_type: LiveType; live_portal: LivePortalDb; live_access: LiveAccess; live_provider: LiveProvider; live_status: LiveStatus;
     };
     CompositeTypes: Record<never, never>;
   };

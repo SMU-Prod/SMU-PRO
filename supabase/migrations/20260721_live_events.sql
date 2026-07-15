@@ -115,6 +115,7 @@ ALTER TABLE live_attendance ENABLE ROW LEVEL SECURITY;
 ALTER TABLE live_messages ENABLE ROW LEVEL SECURITY;
 
 -- Live aberta vai para o YouTube listado — a agenda dela e publica por definicao.
+DROP POLICY IF EXISTS "anon_le_live_aberta" ON live_events;
 CREATE POLICY "anon_le_live_aberta" ON live_events
   FOR SELECT USING (acesso = 'aberto');
 
@@ -122,6 +123,7 @@ CREATE POLICY "anon_le_live_aberta" ON live_events
 -- Falha FECHADO de proposito: quando a live restrita (Cloudflare) chegar, o
 -- chat dela NAO sera legivel pela anon key e o Realtime vai parar de entregar
 -- — o que nos obriga a resolver a identidade direito, em vez de vazar calado.
+DROP POLICY IF EXISTS "anon_le_chat_de_live_aberta" ON live_messages;
 CREATE POLICY "anon_le_chat_de_live_aberta" ON live_messages
   FOR SELECT USING (
     oculto = false
@@ -134,3 +136,19 @@ CREATE POLICY "anon_le_chat_de_live_aberta" ON live_messages
 -- live_attendance NAO recebe policy: guarda ip e user_agent por aluno (PII, e
 -- e o log de auditoria NR-01 Anexo II 4.7.1). Ninguem alem do service_role
 -- encosta nela.
+
+-- ============================================================
+-- Trigger: manter updated_at em dia
+-- ============================================================
+CREATE OR REPLACE FUNCTION update_live_events_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS live_events_updated_at ON live_events;
+CREATE TRIGGER live_events_updated_at
+  BEFORE UPDATE ON live_events
+  FOR EACH ROW EXECUTE FUNCTION update_live_events_updated_at();
