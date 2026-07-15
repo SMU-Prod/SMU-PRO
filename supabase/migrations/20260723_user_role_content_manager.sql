@@ -1,0 +1,24 @@
+-- ╔══════════════════════════════════════════════════╗
+-- ║  user_role: content_manager ("Operador")         ║
+-- ╚══════════════════════════════════════════════════╝
+--
+-- BUG PRE-EXISTENTE, sem relacao com lives.
+--
+-- O TypeScript declara `UserRole` com "content_manager" e o painel
+-- src/app/(admin)/admin/usuarios/page.tsx oferece o cargo no seletor com o label
+-- "Operador" — mas o ENUM do Postgres nunca teve esse valor. Salvar "Operador"
+-- estourava `invalid input value for enum user_role`. Verificado contra o banco:
+-- o enum tinha visitor/trainee/junior/pleno/projeto_cultural/admin/instrutor.
+--
+-- Consequencia silenciosa: TODA checagem `role === "content_manager"` espalhada
+-- pelo codigo (admin/layout.tsx, actions/courses.ts, actions/lives.ts,
+-- api/admin/bases) era codigo morto — nenhum usuario podia ter o cargo.
+--
+-- Corrigido no sentido de fazer o banco alcancar a intencao do produto: o cargo
+-- passa a existir e ganha os direitos que o codigo JA concedia a ele (gerenciar
+-- conteudo, mas nao operacoes destrutivas, que exigem assertAdminOnly).
+--
+-- ADD VALUE fica numa migration isolada de proposito: o Postgres nao deixa usar
+-- um valor de enum recem-adicionado na MESMA transacao que o adicionou.
+
+ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'content_manager';
