@@ -11,8 +11,6 @@ const isPublicRoute = createRouteMatcher([
   "/certificado(.*)",
   "/pagamento/sucesso",
   "/api/webhooks/(.*)",
-  // DEV-ONLY: página de laboratório do editor (a própria página retorna 404 em produção)
-  ...(process.env.NODE_ENV !== "production" ? ["/editor-lab(.*)"] : []),
 ]);
 
 // Rotas exclusivas de admin
