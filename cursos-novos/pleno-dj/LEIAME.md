@@ -31,6 +31,24 @@ faz a auditoria acusar de inventado justamente o que está escrito nele. Foi ass
 recusa a dar veredito quando lê menos de 5 controles de um manual: prefere dizer *"não sei"* a dizer
 *"aprovado"*.
 
+### ⚠️ Passar no teste NÃO garante que OUTRO PDF saia inteiro
+
+O `pdftext.teste.mjs` prova que os **2 bugs conhecidos** não voltaram — nada além disso.
+Caso real (sessão SOM/DSP, 15/07): o manual do **dbx VENU360** passou no teste e mesmo assim
+**engoliu prosa** — saiu `"the COPY/PAS the processing module"`. As linhas de parâmetro com
+`[range]` vieram íntegras; o texto corrido, não. Se tivessem concluído dali que "Bessel não existe
+no manual", falha de extração viraria fato errado. Confirmaram cruzando com **PyMuPDF**.
+
+**Como se protege agora:** glifo fora do `/ToUnicode` não some mais calado — vira **`�`** no texto,
+e o `pdftext.mjs` fecha com `[⚠️ BURACOS] N glifo(s)`. Olhe esse rodapé **no PDF que você está
+usando**. Medido na frota: HDJ-X10 3634 buracos, Technics 460, DJM-A9 247, CDJ-3000 114, V10 61 —
+Denon, MPC e SP-404 zero. Os buracos caem em fontes que o PDF embutiu sem mapa (inclusive CJK), e
+**não** atingiram as tabelas de spec — por isso as conclusões deste curso valem. Mas em outro
+documento podem cair justo no que você quer.
+
+**Regra prática:** `N > 0` → o texto tem furos. Dá para usar, mas **jamais** conclua *"o fabricante
+não publica X"* sem conferir aquela passagem em outro leitor (PyMuPDF, Acrobat).
+
 ---
 
 ## O que cada coisa faz

@@ -76,9 +76,17 @@ for (const c of CASOS) {
     if (!ok) falhas++;
     console.log(`   ${ok ? "✓" : "✗"} ${agulha.padEnd(20)} ${oque}`);
   }
+  const buracos = (txt.match(/�/g) || []).length;
+  if (buracos) console.log(`   ⚠️  ${buracos} buraco(s) "�" NESTE pdf: as âncoras acima saíram, mas há trecho incompleto.`);
 }
 
 console.log(falhas
   ? `\n❌ ${falhas} item(ns) faltando: a extração está INCOMPLETA. NÃO conclua "o fabricante não publica X" com esta ferramenta até consertar.`
-  : "\n✅ os manuais saem completos — a ferramenta está lendo o texto inteiro.");
+  : "\n✅ estes 2 manuais saem completos — o decodificador (array TJ, /Length do CF) não regrediu.");
+console.log(
+  "\n⚠️  ESTE TESTE NÃO É CARTA-BRANCA PARA OUTRO PDF.\n" +
+  "   Ele prova que os 2 bugs conhecidos não voltaram — não que QUALQUER manual sai inteiro.\n" +
+  '   Caso real (sessão SOM/DSP, VENU360): passou aqui e mesmo assim engoliu prosa ("COPY/PAS…").\n' +
+  '   No PDF que você for usar: rode pdftext.mjs e olhe o rodapé "[⚠️ BURACOS] N glifos".\n' +
+  "   Se N > 0, o texto tem furos — confira em outro leitor antes de afirmar que algo NÃO existe.");
 process.exit(falhas ? 1 : 0);
