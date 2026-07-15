@@ -1,4 +1,5 @@
 import { requireAdminRole } from "@/lib/actions/users";
+import { getPortal, filterCoursesByPortal } from "@/lib/portal";
 import { createAdminClient } from "@/lib/supabase/server";
 import { getServerT, getServerLocale } from "@/lib/i18n/server";
 import { courseMeta } from "@/lib/i18n/courses-meta";
@@ -33,23 +34,34 @@ export default async function AdminRelatoriosPage() {
     receitaPorMes[mes] = (receitaPorMes[mes] ?? 0) + (p.valor_pago ?? 0);
   }
 
-  // Distribuição por nível
-  const { data: coursesByLevel } = await supabase
+  // Distribuição por nível — só os cursos DESTA escola (cada domínio é uma escola).
+  // Sem o filtro, o relatório do Backstage contava os cursos do aula e vice-versa.
+  const { data: coursesByLevelRaw } = await supabase
     .from("courses")
-    .select("nivel")
+    .select("nivel, categorias")
     .eq("ativo", true);
+
+  const coursesByLevel = filterCoursesByPortal(coursesByLevelRaw ?? [], await getPortal());
 
   const nivelCount: Record<string, number> = {};
   for (const c of coursesByLevel ?? []) {
     nivelCount[c.nivel] = (nivelCount[c.nivel] ?? 0) + 1;
   }
 
-  // Top cursos por alunos
-  const { data: topCursos } = await (supabase as any)
-    .from("admin_course_stats")
-    .select("id, titulo, total_alunos, total_certificados, progresso_medio, nivel, avaliacao_media")
-    .order("total_alunos", { ascending: false })
-    .limit(10);
+  // Top cursos por alunos — só os DESTA escola. A view admin_course_stats não expõe
+  // `categorias`, então resolvemos os ids do portal na tabela courses e escopamos a
+  // consulta; assim o "top 10" é 10 desta escola, e não 10 das duas misturadas.
+  const { data: idsRaw } = await supabase.from("courses").select("id, categorias");
+  const idsDaEscola = filterCoursesByPortal((idsRaw ?? []) as any[], await getPortal()).map((c: any) => c.id);
+
+  const { data: topCursos } = idsDaEscola.length
+    ? await (supabase as any)
+        .from("admin_course_stats")
+        .select("id, titulo, total_alunos, total_certificados, progresso_medio, nivel, avaliacao_media")
+        .in("id", idsDaEscola)
+        .order("total_alunos", { ascending: false })
+        .limit(10)
+    : { data: [] };
 
   // A view admin_course_stats não expõe slug; buscamos p/ traduzir o título (courseMeta).
   const lang = await getServerLocale();

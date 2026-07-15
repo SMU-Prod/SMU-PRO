@@ -1,13 +1,21 @@
 import type { MetadataRoute } from "next";
+import { getPortal } from "@/lib/portal";
 
 /**
- * robots.txt dinâmico
+ * robots.txt dinâmico, resolvido POR DOMÍNIO.
  * - Permite crawl de todas as páginas públicas
  * - Bloqueia /admin, /dashboard, /api, /pagamento (privado)
- * - Aponta para o sitemap gerado dinamicamente
+ * - Aponta para o sitemap DESTA escola
+ *
+ * O baseUrl era fixo em smuproducoes.com: o robots do aula mandava o Google no
+ * sitemap do www, ou seja, na escola errada. Cada domínio é uma escola.
  */
-export default function robots(): MetadataRoute.Robots {
-  const baseUrl = "https://smuproducoes.com";
+export const dynamic = "force-dynamic";
+
+export default async function robots(): Promise<MetadataRoute.Robots> {
+  const baseUrl = (await getPortal()) === "aula"
+    ? "https://aula.smuproducoes.com"
+    : "https://smuproducoes.com";
 
   return {
     rules: [

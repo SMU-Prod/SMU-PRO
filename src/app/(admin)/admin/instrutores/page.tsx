@@ -1,4 +1,5 @@
 import { requireAdminRole } from "@/lib/actions/users";
+import { getPortal, filterCoursesByPortal } from "@/lib/portal";
 import { createAdminClient } from "@/lib/supabase/server";
 import { Header } from "@/components/layout/header";
 import { InstructorManager } from "@/components/admin/instructor-manager";
@@ -16,14 +17,16 @@ export default async function AdminInstrutoresPage() {
     .eq("ativo", true)
     .order("nome");
 
-  // Load ALL active courses (not just NR)
+  // Cursos ativos DESTA escola (cada domínio é uma escola independente).
+  // Sem o filtro, o seletor oferecia curso do aula para vincular instrutor no
+  // Backstage — e o vínculo ficaria invisível no painel dono do curso.
   const { data: allCourses } = await supabase
     .from("courses")
-    .select("id, titulo")
+    .select("id, titulo, categorias")
     .eq("ativo", true)
     .order("titulo");
 
-  const courses = allCourses ?? [];
+  const courses = filterCoursesByPortal(allCourses ?? [], await getPortal());
 
   // Load lessons for all courses (for per-lesson assignment)
   const courseIds = courses.map((c: any) => c.id);

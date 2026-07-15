@@ -1,38 +1,46 @@
 import type { MetadataRoute } from "next";
 import { createAdminClient } from "@/lib/supabase/server";
-
-const BASE_URL = "https://smuproducoes.com";
+import { getPortal, filterCoursesByPortal } from "@/lib/portal";
 
 /**
- * Sitemap dinâmico — indexa automaticamente:
- * - Páginas estáticas (home, catálogo, login, cadastro)
- * - Todos os cursos ativos (/cursos/[slug])
- * - Todas as categorias com cursos (/cursos/categoria/[slug])
- * - Posts do blog (/blog/[slug]) — quando existirem
+ * Sitemap dinâmico, resolvido POR DOMÍNIO — cada domínio é uma escola independente
+ * (smuproducoes.com = Backstage/eventos · aula.smuproducoes.com = cursos avulsos).
  *
- * Revalidação: a cada 1 hora (ISR)
+ * Antes tinha DOIS defeitos, os dois silenciosos (ninguém vê na tela — aparece no
+ * Google semanas depois):
+ *  1. `BASE_URL` fixo em smuproducoes.com: o sitemap do aula mandava o Google
+ *     indexar os cursos dele em URLs do www — que, por causa do filtro de portal,
+ *     não mostram nada. Estávamos apontando o robô para páginas vazias.
+ *  2. Sem filtro de escola: cada sitemap listava os cursos dos dois lados.
+ *
+ * force-dynamic (não ISR): o conteúdo varia por Host, e cache de 1h serviria o
+ * sitemap de uma escola para a outra.
  */
-export const revalidate = 3600;
+export const dynamic = "force-dynamic";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const supabase = createAdminClient();
+  const portal = await getPortal();
+  const BASE_URL = portal === "aula" ? "https://aula.smuproducoes.com" : "https://smuproducoes.com";
 
-  // ── Cursos ativos ──────────────────────────────────────────────
-  const { data: courses } = await supabase
+  // ── Cursos ativos DESTA escola ────────────────────────────────
+  const { data: rows } = await supabase
     .from("courses")
-    .select("slug, updated_at, categoria")
+    .select("slug, updated_at, categoria, categorias")
     .eq("ativo", true)
     .order("updated_at", { ascending: false });
 
-  const courseEntries: MetadataRoute.Sitemap = (courses ?? []).map((c) => ({
+  const courses = filterCoursesByPortal(rows ?? [], portal);
+
+  const courseEntries: MetadataRoute.Sitemap = courses.map((c) => ({
     url: `${BASE_URL}/cursos/${c.slug}`,
     lastModified: c.updated_at ? new Date(c.updated_at) : new Date(),
     changeFrequency: "weekly",
     priority: 0.8,
   }));
 
-  // ── Categorias únicas ─────────────────────────────────────────
-  const categorias = [...new Set((courses ?? []).map((c) => c.categoria).filter(Boolean))];
+  // ── Categorias únicas (só as que existem NESTA escola) ────────
+  const categorias = [...new Set(courses.map((c) => c.categoria).filter(Boolean))];
   const categoryEntries: MetadataRoute.Sitemap = categorias.map((cat) => ({
     url: `${BASE_URL}/cursos/categoria/${cat}`,
     lastModified: new Date(),
