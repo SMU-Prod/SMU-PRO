@@ -267,15 +267,27 @@ export async function setLiveStatus(id: string, status: LiveStatus) {
   await assertLiveInPortal(id);
 
   const supabaseCheck = createAdminClient();
-  const { data: atual } = await supabaseCheck.from("live_events").select("criado_por").eq("id", id).single();
+  const { data: atual } = await supabaseCheck
+    .from("live_events").select("criado_por, inicio_real").eq("id", id).single();
   if (!atual) throw new Error("Live não encontrada");
   assertLiveOwnership(atual as Pick<LiveEvent, "criado_por">, userUuid, role);
 
   const agora = new Date().toISOString();
+
+  // Reabrir uma live encerrada precisa ser possível: encerrar por engano no meio
+  // da transmissão, ou a transmissão cair e voltar, não podem matar o evento.
+  //
+  // Ao voltar para o ar:
+  //   - inicio_real só é gravado se ainda estiver vazio. Sobrescrever apagaria o
+  //     horário REAL do início, que é o fato que o log de auditoria (NR-01 Anexo
+  //     II) precisa guardar — o segundo start não é o início da aula.
+  //   - fim_real é limpo: `ao_vivo` carregando um fim no passado é estado incoerente.
   const extra =
-    status === "ao_vivo" ? { inicio_real: agora }
-    : status === "encerrado" ? { fim_real: agora }
-    : {};
+    status === "ao_vivo"
+      ? { inicio_real: (atual as any).inicio_real ?? agora, fim_real: null }
+      : status === "encerrado"
+        ? { fim_real: agora }
+        : {};
 
   const supabase = createAdminClient();
   const { error } = await (supabase as any)
