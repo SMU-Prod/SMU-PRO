@@ -46,7 +46,17 @@ export function LiveRoom({ event, chatSlot }: { event: LiveEvent; chatSlot: Reac
   return (
     <div className="flex flex-col lg:flex-row h-[100dvh] bg-background">
       {aoVivo && <AttendanceHeartbeat liveEventId={event.id} />}
-      <div className={cn("flex flex-col w-full", chatOpen ? "shrink-0 lg:w-[65%]" : "flex-1 lg:w-full")}>
+      {/* Com o chat recolhido a coluna toma a tela inteira, mas o vídeo NÃO cresce:
+          em retrato quem limita é a largura, não a altura (390px de tela = 219px de
+          altura em 16:9). Sem centralizar, o player fica colado no topo com metade
+          da tela preta embaixo, parecendo quebrado. Vídeo maior no celular se
+          resolve girando para paisagem / tela cheia, não com layout. */}
+      <div
+        className={cn(
+          "flex flex-col w-full",
+          chatOpen ? "shrink-0 lg:w-[65%]" : "flex-1 justify-center lg:justify-start lg:w-full"
+        )}
+      >
         <div className="shrink-0">
           {aoVivo ? (
             <LivePlayer event={event} />
