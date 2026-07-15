@@ -34,9 +34,14 @@ export default clerkMiddleware(async (auth, req) => {
   return NextResponse.next();
 });
 
+// A lista de extensões abaixo é o que o middleware NÃO intercepta. Faltar uma
+// extensão aqui não dá erro visível: o arquivo leva 307 para /login e o <video>
+// (ou <img>) simplesmente fica vazio, mostrando o poster para sempre. Foi o que
+// aconteceu com mp4 — o vídeo da landing nunca tocou, e o componente estava certo.
+// Ao adicionar mídia nova em public/, confira se a extensão está aqui.
 export const config = {
   matcher: [
-    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|avif|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest|mp4|webm|mov|m4v|mp3|wav|ogg)).*)",
     "/(api|trpc)(.*)",
   ],
 };
