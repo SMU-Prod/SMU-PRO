@@ -7,6 +7,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { LiveEvent, LiveType, LivePortalDb } from "@/types/database";
 
+/**
+ * `datetime-local` guarda/exibe wall-clock LOCAL sem offset (nao UTC). O save
+ * (abaixo) faz `new Date(inicio).toISOString()`, que interpreta essa string
+ * como horario local — entao o prefill precisa produzir a MESMA coisa, senao
+ * cada edicao desloca o horario pelo offset do fuso (e acumula a cada save).
+ */
+function paraInputLocal(iso: string): string {
+  const d = new Date(iso);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+}
+
 export function LiveForm({ live }: { live?: LiveEvent }) {
   const router = useRouter();
   const [erro, setErro] = useState<string | null>(null);
@@ -19,7 +30,7 @@ export function LiveForm({ live }: { live?: LiveEvent }) {
   const [portal, setPortal] = useState<LivePortalDb>(live?.portal ?? "main");
   const [youtubeId, setYoutubeId] = useState(live?.youtube_id ?? "");
   const [inicio, setInicio] = useState(
-    live?.inicio_previsto ? new Date(live.inicio_previsto).toISOString().slice(0, 16) : "",
+    live?.inicio_previsto ? paraInputLocal(live.inicio_previsto) : "",
   );
 
   async function salvar(e: React.FormEvent) {

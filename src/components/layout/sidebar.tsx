@@ -30,6 +30,7 @@ import {
   GraduationCap,
   Wallet,
   Music,
+  Radio,
 } from "lucide-react";
 
 interface NavItem {
@@ -42,6 +43,7 @@ interface NavItem {
 const studentNav: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Meus Cursos", href: "/dashboard/cursos", icon: BookOpen },
+  { label: "Ao Vivo", href: "/ao-vivo", icon: Radio },
   { label: "Trilha de Aprendizado", href: "/dashboard/trilha", icon: TrendingUp },
   { label: "Certificados", href: "/dashboard/certificados", icon: Award },
   { label: "Pagamentos", href: "/dashboard/pagamentos", icon: CreditCard },
@@ -51,6 +53,7 @@ const studentNav: NavItem[] = [
 const adminNav: NavItem[] = [
   { label: "Visão Geral", href: "/admin", icon: BarChart3 },
   { label: "Cursos", href: "/admin/cursos", icon: Layers },
+  { label: "Lives", href: "/admin/lives", icon: Radio },
   { label: "Bases dos simuladores", href: "/admin/bases", icon: Music },
   { label: "Trilhas", href: "/admin/trilhas", icon: TrendingUp },
   { label: "Blog", href: "/admin/blog", icon: BookOpen },

@@ -14,8 +14,10 @@ export async function listLiveMessages(liveEventId: string): Promise<LiveMessage
   const { data } = await supabase
     .from("live_messages").select("*")
     .eq("live_event_id", liveEventId).eq("oculto", false)
-    .order("created_at", { ascending: true }).limit(200);
-  return (data ?? []) as LiveMessage[];
+    .order("created_at", { ascending: false }).limit(200);
+  // Buscamos as 200 mais RECENTES (desc) para nao deixar quem entra tarde
+  // preso no inicio da transmissao; revertemos aqui para devolver ordem cronologica.
+  return ((data ?? []) as LiveMessage[]).reverse();
 }
 
 export async function sendLiveMessage(liveEventId: string, texto: string): Promise<void> {

@@ -152,3 +152,14 @@ DROP TRIGGER IF EXISTS live_events_updated_at ON live_events;
 CREATE TRIGGER live_events_updated_at
   BEFORE UPDATE ON live_events
   FOR EACH ROW EXECUTE FUNCTION update_live_events_updated_at();
+
+-- ============================================================
+-- Realtime
+-- ============================================================
+-- A publication supabase_realtime e opt-in por tabela. Sem esta linha o chat
+-- assina o canal com sucesso, o RLS deixa passar, e nenhum evento chega —
+-- falha silenciosa que parece bug de cliente. Vai junto da policy acima, que
+-- existe exatamente para o mesmo caminho.
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE live_messages;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { listLivesForAdmin } from "@/lib/actions/lives";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { LiveStatusButton } from "@/components/admin/live-status-button";
 
 export default async function AdminLivesPage() {
   const lives = await listLivesForAdmin();
@@ -18,21 +19,20 @@ export default async function AdminLivesPage() {
       ) : (
         <ul className="space-y-2">
           {lives.map((l) => (
-            <li key={l.id}>
-              <Link
-                href={`/admin/lives/${l.id}`}
-                className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface px-4 py-3 hover:border-amber-500 transition-colors"
-              >
-                <div className="min-w-0">
-                  <p className="font-medium text-foreground truncate">{l.titulo}</p>
-                  <p className="text-xs text-muted">
-                    {new Date(l.inicio_previsto).toLocaleString("pt-BR")} · {l.tipo} · {l.portal}
-                  </p>
-                </div>
-                <Badge variant={l.status === "ao_vivo" ? "default" : "secondary"} className="shrink-0">
-                  {l.status}
-                </Badge>
+            <li
+              key={l.id}
+              className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface px-4 py-3 hover:border-amber-500 transition-colors"
+            >
+              <Link href={`/admin/lives/${l.id}`} className="min-w-0 flex-1">
+                <p className="font-medium text-foreground truncate">{l.titulo}</p>
+                <p className="text-xs text-muted">
+                  {new Date(l.inicio_previsto).toLocaleString("pt-BR")} · {l.tipo} · {l.portal}
+                </p>
               </Link>
+              <Badge variant={l.status === "ao_vivo" ? "default" : "secondary"} className="shrink-0">
+                {l.status}
+              </Badge>
+              <LiveStatusButton id={l.id} status={l.status} />
             </li>
           ))}
         </ul>

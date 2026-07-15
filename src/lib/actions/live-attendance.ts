@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { headers } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/server";
 import { accumulateWatchTime } from "@/lib/live/rules";
+import { getPortal, liveBelongsToPortal } from "@/lib/portal";
 
 /**
  * Heartbeat de presença. Chamado a cada 30s pelo cliente.
@@ -24,6 +25,16 @@ export async function registrarPresenca(liveEventId: string): Promise<void> {
     .from("users").select("id").eq("clerk_id", userId).single();
   const userUuid = userRow?.id;
   if (!userUuid) return;
+
+  // Mesma guarda de live-chat.ts: so grava presenca de live ao vivo e da
+  // escola certa. Sem isto, qualquer logado gravava linha contra live
+  // agendada/encerrada/cancelada ou da outra escola — num log com retencao
+  // regulatoria de 2 anos (NR-01 Anexo II 4.7.1).
+  const { data: live } = await supabase
+    .from("live_events").select("status, portal").eq("id", liveEventId).single();
+  if (!live) return;
+  const portal = await getPortal();
+  if ((live as any).status !== "ao_vivo" || !liveBelongsToPortal((live as any).portal, portal)) return;
 
   const h = await headers();
   const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
