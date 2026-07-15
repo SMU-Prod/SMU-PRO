@@ -88,4 +88,21 @@ describe("accumulateWatchTime", () => {
     );
     expect(r).toBe(200);
   });
+
+  it("ignora heartbeat duplicado (delta zero) sem somar nada", () => {
+    const r = accumulateWatchTime(
+      { duracao_segundos: 42, last_seen_at: "2026-07-15T10:00:00.000Z" },
+      "2026-07-15T10:00:00.000Z",
+    );
+    expect(r).toBe(42);
+  });
+
+  it("nao corrompe o total quando a data e invalida (NaN envenenaria o log)", () => {
+    const r = accumulateWatchTime(
+      { duracao_segundos: 42, last_seen_at: "data-invalida" },
+      "2026-07-15T10:00:00.000Z",
+    );
+    expect(r).toBe(42);
+    expect(Number.isNaN(r)).toBe(false);
+  });
 });

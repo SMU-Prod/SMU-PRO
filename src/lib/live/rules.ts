@@ -20,9 +20,10 @@ export type ValidateLiveInput = {
 export type ValidationResult = { ok: true } | { ok: false; erro: string };
 
 /**
- * Espelha os CHECK constraints da migration 20260721. Existe em duplicata de
- * propósito: o banco é a rede de segurança, isto aqui é a mensagem de erro
- * legível que o admin vê antes de tentar gravar.
+ * Espelha os CHECK constraints da migration 20260721 que não dependem de
+ * campos populados pelo servidor. Existe em duplicata de propósito: o banco
+ * é a rede de segurança, isto aqui é a mensagem de erro legível que o admin
+ * vê antes de tentar gravar.
  */
 export function validateLiveEvent(input: ValidateLiveInput): ValidationResult {
   const { portal, acesso, provider, course_id, youtube_id } = input;
@@ -60,6 +61,10 @@ export function accumulateWatchTime(
   maxGapSegundos = 90,
 ): number {
   const delta = (new Date(agoraIso).getTime() - new Date(prev.last_seen_at).getTime()) / 1000;
+  // Data inválida (unparseable) vira NaN aqui, e NaN<=0 e NaN>maxGapSegundos são
+  // ambos false — sem essa guarda o NaN passaria batido pelos dois checks abaixo
+  // e seria persistido, envenenando a linha para sempre (o NaN vira o próximo `prev`).
+  if (Number.isNaN(delta)) return prev.duracao_segundos;
   if (delta <= 0) return prev.duracao_segundos;        // relógio para trás / heartbeat duplicado
   if (delta > maxGapSegundos) return prev.duracao_segundos; // esteve ausente — não conta o buraco
   return prev.duracao_segundos + Math.round(delta);
