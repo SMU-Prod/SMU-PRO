@@ -29,10 +29,15 @@ Começa direto no primeiro `<h2>`. O player já aplica a tipografia do site.
 ## Tabelas
 
 Quando a informação for comparativa (preço, prazo, quem faz o quê), **use tabela** — é o que separa
-material de universidade de material de blog. Formato:
+material de universidade de material de blog.
+
+⚠️ **Tabela SEMPRE vai dentro de um container rolável.** `width:100%` **não** impede vazamento: as
+células têm largura mínima de conteúdo, e uma tabela de 4 colunas estoura os 375px do celular e faz
+a **página inteira** rolar de lado. Formato obrigatório:
 
 ```html
-<table style="width:100%;border-collapse:collapse;font-size:14px;margin:16px 0">
+<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin:16px 0">
+<table style="width:100%;min-width:560px;border-collapse:collapse;font-size:14px">
 <thead><tr style="background:#1b2230">
   <th style="padding:8px;border:1px solid #2a3444;text-align:left">Coluna</th>
   <th style="padding:8px;border:1px solid #2a3444;text-align:left">Coluna</th>
@@ -42,7 +47,43 @@ material de universidade de material de blog. Formato:
       <td style="padding:8px;border:1px solid #2a3444">Célula</td></tr>
 </tbody>
 </table>
+</div>
 ```
+
+## Diagramas (SVG inline)
+
+Foto precisa de gerador de imagem; **diagrama não**. Para organograma, linha do tempo, cascata de
+custo e fluxo de decisão, diagrama é melhor que foto. Use SVG inline — sem arquivo externo, sem custo.
+
+⚠️ **A armadilha do tamanho de fonte, que já quebrou os 11 diagramas uma vez (15/07):**
+`font-size` no SVG está em **unidades do viewBox**, não em pixels de tela. Num viewBox de 800
+renderizado numa coluna de ~332px (tela de 375), a escala é **0,41** — uma fonte 13 vira **5,4px na
+tela**. Ilegível. **Não adianta exigir "mínimo 13px" sem dizer em qual escala.**
+
+Formato obrigatório (o `min-width` é o que segura a legibilidade: 760/800 = 0,95 → fonte 13 sai a
+~12,3px na tela, e o diagrama rola no próprio container em vez de arrastar a página):
+
+```html
+<figure style="margin:18px 0">
+  <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+  <svg viewBox="0 0 800 ALTURA" style="width:100%;min-width:760px;height:auto;display:block"
+       xmlns="http://www.w3.org/2000/svg" role="img" aria-label="DESCRIÇÃO ACESSÍVEL">
+    ...
+  </svg>
+  </div>
+  <figcaption style="font-size:13px;color:#94a3b8;margin-top:6px;line-height:1.4">Legenda que ENSINA.</figcaption>
+</figure>
+```
+
+Regras: `viewBox` sempre 800 de largura · **fonte mínima 13 em unidades de viewBox** · sem
+`<foreignObject>` · sem `width`/`height` fixos no `<svg>` raiz · cores do tema escuro (blocos
+`#161c26`/`#1b2230`, borda `#2a3444`, texto `#e7edf5`, fraco `#8794a8`, âmbar `#f59e0b`, ok
+`#22c55e`, erro `#ef4444`) — **nada de fundo branco** · `aria-label` descritivo, porque o SVG é a
+única versão daquela informação para quem usa leitor de tela.
+
+**Valide medindo no navegador, não no código:** renderize num iframe de 375px e confira
+`documentElement.scrollWidth <= 375` (a página não rola) e `font-size × (larguraRenderizada/800) >= 11`
+(o texto é legível). Foi essa medição que pegou o bug — a validação estática dizia "ok".
 
 ## Voz
 

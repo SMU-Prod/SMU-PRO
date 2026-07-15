@@ -1,0 +1,1367 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador – Documentação de Evento</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #eef2f6;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    padding: 20px;
+    min-height: 100vh;
+  }
+  .device {
+    background: #20252f;
+    border: 1px solid #10141b;
+    border-radius: 12px;
+    padding: 16px;
+    color: #cbd5e1;
+    max-width: 860px;
+    margin: 0 auto;
+  }
+  .device-label {
+    font-size: 10px;
+    letter-spacing: .14em;
+    color: #5b6675;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+  }
+  h1 {
+    font-size: 15px;
+    font-weight: 700;
+    color: #e2e8f0;
+    margin-bottom: 4px;
+  }
+  .subtitle {
+    font-size: 11px;
+    color: #64748b;
+    margin-bottom: 14px;
+  }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+  .tab-btn {
+    padding: 6px 13px;
+    border-radius: 6px;
+    border: 1px solid #2d3748;
+    background: #1a1f29;
+    color: #64748b;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all .2s;
+    white-space: nowrap;
+  }
+  .tab-btn:hover { background: #252b38; color: #94a3b8; }
+  .tab-btn.active {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    color: #fff;
+    font-weight: 600;
+  }
+  .tab-btn.done {
+    border-color: #22c55e;
+    color: #22c55e;
+  }
+  .tab-btn.done.active {
+    background: #166534;
+    border-color: #22c55e;
+    color: #86efac;
+  }
+
+  /* PANEL */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* DOC SECTION */
+  .doc-section {
+    background: #1a1f29;
+    border: 1px solid #2d3748;
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+  .doc-section h2 {
+    font-size: 12px;
+    font-weight: 700;
+    color: #94a3b8;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .badge {
+    font-size: 9px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    font-weight: 700;
+    letter-spacing: .05em;
+  }
+  .badge-ok { background: #14532d; color: #86efac; }
+  .badge-warn { background: #78350f; color: #fde68a; }
+  .badge-err { background: #7f1d1d; color: #fca5a5; }
+
+  /* CHECKLIST */
+  .check-list { display: flex; flex-direction: column; gap: 6px; }
+  .check-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: #20252f;
+    border: 1px solid #2d3748;
+    border-radius: 6px;
+    padding: 9px 12px;
+    cursor: pointer;
+    transition: border-color .15s;
+    user-select: none;
+  }
+  .check-item:hover { border-color: #3b82f6; }
+  .check-item.checked { border-color: #22c55e; background: #0f2818; }
+  .check-item.blocker { border-color: #ef4444; background: #1f0a0a; }
+  .check-item.blocker.checked { border-color: #22c55e; background: #0f2818; }
+  .check-box {
+    width: 18px; height: 18px;
+    border-radius: 4px;
+    border: 2px solid #475569;
+    flex-shrink: 0;
+    margin-top: 1px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .15s;
+  }
+  .check-item.checked .check-box {
+    background: #22c55e;
+    border-color: #22c55e;
+    color: #fff;
+  }
+  .check-item.blocker:not(.checked) .check-box { border-color: #ef4444; }
+  .check-label { font-size: 12px; color: #94a3b8; line-height: 1.5; }
+  .check-item.checked .check-label { color: #cbd5e1; }
+  .blocker-tag {
+    font-size: 9px;
+    background: #7f1d1d;
+    color: #fca5a5;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-weight: 700;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+
+  /* PROGRESS BAR */
+  .progress-bar {
+    height: 6px;
+    background: #2d3748;
+    border-radius: 3px;
+    margin: 10px 0 6px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: #3b82f6;
+    transition: width .4s ease;
+  }
+  .progress-label {
+    font-size: 10px;
+    color: #64748b;
+    text-align: right;
+  }
+
+  /* STAGE PLAN BUILDER */
+  .stage-container {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16/9;
+    background: #141820;
+    border: 1px solid #2d3748;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: crosshair;
+  }
+  .stage-zone {
+    position: absolute;
+    border: 1px dashed #2d3748;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    color: #334155;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+  }
+  .stage-element {
+    position: absolute;
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    color: #fff;
+    font-weight: 700;
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+    border: 2px solid rgba(255,255,255,0.15);
+    transform: translate(-50%, -50%);
+    transition: box-shadow .15s;
+    text-align: center;
+    line-height: 1.1;
+  }
+  .stage-element:active { cursor: grabbing; box-shadow: 0 0 12px rgba(59,130,246,0.5); }
+
+  .palette {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .palette-item {
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 2px solid rgba(255,255,255,0.1);
+    color: #fff;
+    user-select: none;
+    transition: opacity .15s;
+  }
+  .palette-item:hover { opacity: 0.8; }
+  .palette-item:active { opacity: 0.6; }
+
+  .stage-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    color: #64748b;
+  }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  /* RUN OF SHOW BUILDER */
+  .ros-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .ros-table th {
+    background: #161b24;
+    color: #64748b;
+    font-size: 10px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: 7px 10px;
+    text-align: left;
+    border-bottom: 1px solid #2d3748;
+  }
+  .ros-table td {
+    padding: 6px 10px;
+    border-bottom: 1px solid #1e2535;
+    color: #94a3b8;
+    vertical-align: middle;
+  }
+  .ros-row { transition: background .15s; }
+  .ros-row:hover { background: #1a1f29; }
+  .ros-row.dragging { opacity: 0.4; }
+  .ros-row.drag-over { background: #1e3a5f; border-top: 2px solid #3b82f6; }
+  .ros-row td:first-child { cursor: grab; color: #475569; font-size: 14px; }
+  .ros-row td:first-child:active { cursor: grabbing; }
+
+  .time-col { color: #3b82f6 !important; font-weight: 600; font-family: monospace; }
+  .dept-badge {
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 700;
+  }
+  .dept-SOM { background: #1e3a5f; color: #60a5fa; }
+  .dept-LUZ { background: #3b1e5f; color: #c084fc; }
+  .dept-VIDEO { background: #1a3040; color: #38bdf8; }
+  .dept-PALCO { background: #0f2818; color: #86efac; }
+  .dept-PROD { background: #78350f; color: #fbbf24; }
+
+  .ros-conflict {
+    background: #1f0a0a !important;
+    border-left: 3px solid #ef4444;
+  }
+  .conflict-badge {
+    font-size: 10px;
+    color: #ef4444;
+    font-weight: 700;
+    margin-left: 6px;
+  }
+
+  /* INPUTS */
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .field-row.single { grid-template-columns: 1fr; }
+  .field-group { display: flex; flex-direction: column; gap: 4px; }
+  .field-group label { font-size: 10px; color: #64748b; letter-spacing: .06em; text-transform: uppercase; }
+  .field-group input, .field-group select, .field-group textarea {
+    background: #161b24;
+    border: 1px solid #2d3748;
+    border-radius: 5px;
+    color: #cbd5e1;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color .15s;
+    width: 100%;
+  }
+  .field-group input:focus, .field-group select:focus, .field-group textarea:focus {
+    border-color: #3b82f6;
+  }
+  .field-group textarea { resize: vertical; min-height: 60px; }
+  .field-group input.filled { border-color: #22c55e; }
+  .field-group input.empty-req { border-color: #ef4444; }
+
+  /* OS CALCULATOR */
+  .os-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .os-line label { font-size: 11px; color: #64748b; min-width: 160px; }
+  .os-line input[type=number] {
+    background: #161b24;
+    border: 1px solid #2d3748;
+    border-radius: 5px;
+    color: #cbd5e1;
+    padding: 5px 8px;
+    font-size: 12px;
+    font-family: monospace;
+    width: 100px;
+    outline: none;
+  }
+  .os-line input:focus { border-color: #3b82f6; }
+  .os-line .unit { font-size: 11px; color: #475569; }
+  .os-total-row {
+    border-top: 1px solid #2d3748;
+    margin-top: 8px;
+    padding-top: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .os-total-label { font-size: 12px; color: #94a3b8; font-weight: 600; }
+  .os-total-value { font-size: 20px; color: #22c55e; font-weight: 700; font-family: monospace; }
+  .margin-indicator {
+    padding: 4px 10px;
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: 700;
+    font-family: monospace;
+  }
+  .margin-ok { background: #14532d; color: #86efac; }
+  .margin-warn { background: #78350f; color: #fde68a; }
+  .margin-err { background: #7f1d1d; color: #fca5a5; }
+
+  /* SCORE PANEL */
+  .score-panel {
+    background: #161b24;
+    border: 1px solid #2d3748;
+    border-radius: 8px;
+    padding: 14px;
+    margin-top: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .score-big {
+    font-size: 40px;
+    font-weight: 900;
+    font-family: monospace;
+    color: #3b82f6;
+    line-height: 1;
+  }
+  .score-label { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: .1em; }
+  .score-desc { font-size: 12px; color: #94a3b8; max-width: 380px; }
+  .score-alerts { display: flex; flex-direction: column; gap: 5px; }
+  .alert-item {
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .alert-ok { background: #0f2818; color: #86efac; }
+  .alert-warn { background: #78350f; color: #fde68a; }
+  .alert-err { background: #7f1d1d; color: #fca5a5; }
+
+  /* BUTTON */
+  .btn {
+    padding: 7px 16px;
+    border-radius: 6px;
+    border: none;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity .15s;
+    letter-spacing: .04em;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn-blue { background: #3b82f6; color: #fff; }
+  .btn-green { background: #22c55e; color: #fff; }
+  .btn-red { background: #ef4444; color: #fff; }
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid #2d3748;
+    color: #64748b;
+  }
+  .btn-ghost:hover { border-color: #475569; color: #94a3b8; }
+
+  .row-btns { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+
+  /* TOOLTIP */
+  .tip {
+    font-size: 10px;
+    color: #475569;
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+
+  @media (max-width: 600px) {
+    .field-row { grid-template-columns: 1fr; }
+    .tabs { gap: 3px; }
+    .tab-btn { font-size: 11px; padding: 5px 9px; }
+    /* Alvo de toque: engorda a altura sem mexer na fonte. */
+    .tab-btn, .btn { min-height: 34px; }
+  }
+</style>
+</head>
+<body>
+<script>/*SMU-ZOOM*/(function(){var z=1,sc=null,MIN=1,MAX=2.5,STEP=0.25;function wrap(){if(sc)return;sc=document.createElement('div');sc.id='smu-sc';sc.style.transformOrigin='0 0';[].slice.call(document.body.children).filter(function(el){return (el.id||'').indexOf('smu-')!==0;}).forEach(function(k){sc.appendChild(k);});document.body.insertBefore(sc,document.body.firstChild);document.documentElement.style.overflow='auto';document.body.style.overflow='auto';document.body.style.margin='0';}function apply(){if(!sc)wrap();sc.style.transform='scale('+z+')';var w=sc.offsetWidth,h=sc.offsetHeight;document.body.style.width=(z>1?(w*z)+'px':'');document.body.style.height=(z>1?(h*z)+'px':'');var l=document.getElementById('smu-zl');if(l)l.textContent=Math.round(z*100)+'%';}function ui(){if(document.getElementById('smu-zoom'))return;var b=document.createElement('div');b.id='smu-zoom';b.style.cssText='position:fixed;left:10px;bottom:10px;z-index:99999;display:flex;align-items:center;gap:5px;background:#0e1420;border:1px solid #2c3340;border-radius:22px;padding:5px 8px;box-shadow:0 2px 10px rgba(0,0,0,.4);font-family:system-ui,sans-serif';function mk(t){var x=document.createElement('button');x.textContent=t;x.style.cssText='width:32px;height:32px;border-radius:50%;border:1px solid #2c3340;background:#171c26;color:#e5e7eb;font-size:18px;cursor:pointer;padding:0;line-height:1';return x;}var ic=document.createElement('span');ic.textContent='\U0001F50D';ic.style.fontSize='14px';var mi=mk('−'),lab=document.createElement('span'),pl=mk('+');lab.id='smu-zl';lab.style.cssText='font-size:12px;color:#cbd5e1;min-width:44px;text-align:center;cursor:pointer';lab.textContent='100%';b.appendChild(ic);b.appendChild(mi);b.appendChild(lab);b.appendChild(pl);document.body.appendChild(b);mi.onclick=function(){z=Math.max(MIN,Math.round((z-STEP)*100)/100);apply();};pl.onclick=function(){z=Math.min(MAX,Math.round((z+STEP)*100)/100);apply();};lab.onclick=function(){z=1;apply();};}if(document.readyState!=='loading')ui();else document.addEventListener('DOMContentLoaded',ui);})();</script>
+
+
+<div class="device">
+  <div class="device-label">SMU PRO · PRODUTOR PLENO</div>
+  <h1>Documentação Técnica de Evento</h1>
+  <p class="subtitle">Monte o pacote completo: Rider Técnico · Stage Plan · Ordem de Serviço · Run of Show</p>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab-btn active" id="tab-rider" onclick="switchTab('rider')">1 · Rider Técnico</button>
+    <button class="tab-btn" id="tab-stage" onclick="switchTab('stage')">2 · Stage Plan</button>
+    <button class="tab-btn" id="tab-os" onclick="switchTab('os')">3 · Ordem de Serviço</button>
+    <button class="tab-btn" id="tab-ros" onclick="switchTab('ros')">4 · Run of Show</button>
+    <button class="tab-btn" id="tab-score" onclick="switchTab('score')">✦ Avaliação</button>
+  </div>
+
+  <!-- =========================================================
+       PANEL 1 – RIDER TÉCNICO
+  ========================================================= -->
+  <div class="panel active" id="panel-rider">
+    <div class="doc-section">
+      <h2>Informações do Evento <span class="badge badge-warn" id="badge-rider">Incompleto</span></h2>
+      <div class="field-row">
+        <div class="field-group">
+          <label>Nome do Evento</label>
+          <input type="text" id="ev-nome" placeholder="Ex: Congresso Nacional de TI 2026" oninput="validateRider()">
+        </div>
+        <div class="field-group">
+          <label>Data do Evento</label>
+          <input type="date" id="ev-data" oninput="validateRider()">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field-group">
+          <label>Local / Venue</label>
+          <input type="text" id="ev-local" placeholder="Ex: Centro de Convenções Rebouças" oninput="validateRider()">
+        </div>
+        <div class="field-group">
+          <label>Capacidade estimada (público)</label>
+          <input type="number" id="ev-pax" placeholder="Ex: 500" min="1" oninput="validateRider()">
+        </div>
+      </div>
+    </div>
+
+    <div class="doc-section">
+      <h2>Demandas Técnicas por Área</h2>
+      <div class="check-list" id="rider-checks">
+        <!-- Som -->
+        <div class="check-item blocker" id="rc-som" onclick="toggleCheck(this,'rc-som')">
+          <div class="check-box">✓</div>
+          <div class="check-label"><strong>SOM:</strong> Sistema PA principal + monitor de palco definidos <span class="blocker-tag">BLOQUEADOR</span></div>
+        </div>
+        <div class="check-item" id="rc-mic" onclick="toggleCheck(this,'rc-mic')">
+          <div class="check-box">✓</div>
+          <div class="check-label"><strong>SOM:</strong> Relação de microfones e canais de mesa discriminados</div>
+        </div>
+        <!-- Luz -->
+        <div class="check-item blocker" id="rc-luz" onclick="toggleCheck(this,'rc-luz')">
+          <div class="check-box">✓</div>
+          <div class="check-label"><strong>LUZ:</strong> Quantidade e tipo de fixtures especificados (PAR, moving head, etc.) <span class="blocker-tag">BLOQUEADOR</span></div>
+        </div>
+        <div class="check-item" id="rc-dmx" onclick="toggleCheck(this,'rc-dmx')">
+          <div class="check-box">✓</div>
+          <div class="check-label"><strong>LUZ:</strong> Topologia DMX / protocolo de controle indicado</div>
+        </div>
+        <!-- Vídeo -->
+        <div class="check-item blocker" id="rc-video" onclick="toggleCheck(this,'rc-video')">
+          <div class="check-box">✓</div>
+          <div class="check-label"><strong>VÍDEO:</strong> Resolução e tipo de tela/projeção definidos <span class="blocker-tag">BLOQUEADOR</span></div>
+        </div>
+        <div class="check-item" id="rc-sinal" onclick="toggleCheck(this,'rc-sinal')">
+          <div class="check-box">✓</div>
+          <div class="check-label"><strong>VÍDEO:</strong> Origem e roteamento de sinal de vídeo documentados</div>
+        </div>
+        <!-- Infra -->
+        <div class="check-item" id="rc-eletrica" onclick="toggleCheck(this,'rc-eletrica')">
+          <div class="check-box">✓</div>
+          <div class="check-label"><strong>INFRA:</strong> Demanda elétrica total em kVA informada</div>
+        </div>
+        <div class="check-item" id="rc-backline" onclick="toggleCheck(this,'rc-backline')">
+          <div class="check-box">✓</div>
+          <div class="check-label"><strong>BACKLINE:</strong> Lista de backline e insumos de responsabilidade do venue ou contratante especificada</div>
+        </div>
+        <div class="check-item" id="rc-contato" onclick="toggleCheck(this,'rc-contato')">
+          <div class="check-box">✓</div>
+          <div class="check-label"><strong>CONTATO:</strong> Nome e WhatsApp do responsável técnico por área inseridos</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="doc-section">
+      <h2>Observações Técnicas</h2>
+      <div class="field-row single">
+        <div class="field-group">
+          <textarea id="ev-obs" placeholder="Restrições do venue, pedidos especiais, alertas de segurança…" oninput="validateRider()"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="progress-bar"><div class="progress-fill" id="rider-prog" style="width:0%"></div></div>
+    <div class="progress-label" id="rider-prog-label">0 / 9 itens</div>
+    <p class="tip">Itens marcados como BLOQUEADOR impedem aprovação do pacote se não estiverem marcados.</p>
+    <div class="row-btns">
+      <button class="btn btn-blue" onclick="switchTab('stage')">Próximo: Stage Plan →</button>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       PANEL 2 – STAGE PLAN
+  ========================================================= -->
+  <div class="panel" id="panel-stage">
+    <div class="doc-section">
+      <h2>Monte o Stage Plan <span class="badge badge-warn" id="badge-stage">Incompleto</span></h2>
+      <p class="tip" style="margin-bottom:8px">Arraste elementos da paleta para posicioná-los no palco. Você precisa posicionar pelo menos 1 item de cada categoria obrigatória.</p>
+
+      <div class="palette" id="stage-palette">
+        <div class="palette-item" style="background:#1e40af" data-type="PA" data-label="PA" onclick="addElement(this)">🔊 PA</div>
+        <div class="palette-item" style="background:#1e40af" data-type="MON" data-label="MON" onclick="addElement(this)">📻 Monitor</div>
+        <div class="palette-item" style="background:#5b21b6" data-type="PAR" data-label="PAR" onclick="addElement(this)">💡 PAR</div>
+        <div class="palette-item" style="background:#5b21b6" data-type="MH" data-label="M.H." onclick="addElement(this)">🎭 Moving</div>
+        <div class="palette-item" style="background:#0e7490" data-type="PROJ" data-label="PROJ" onclick="addElement(this)">📽 Projetor</div>
+        <div class="palette-item" style="background:#0e7490" data-type="LED" data-label="LED" onclick="addElement(this)">📺 LED</div>
+        <div class="palette-item" style="background:#065f46" data-type="MESA" data-label="Mesa" onclick="addElement(this)">🎤 Mesa</div>
+        <div class="palette-item" style="background:#065f46" data-type="MIC" data-label="Mic" onclick="addElement(this)">🎙 Mic</div>
+        <div class="palette-item" style="background:#78350f" data-type="GEN" data-label="GER" onclick="addElement(this)">⚡ Gerador</div>
+      </div>
+
+      <div class="stage-container" id="stage-canvas">
+        <!-- zones -->
+        <div class="stage-zone" style="left:0;top:0;width:100%;height:20%;border:none;background:#0d1117;border-bottom:1px dashed #1e293b;">FUNDO DO PALCO</div>
+        <div class="stage-zone" style="left:0;top:20%;width:100%;height:60%;border:none;">ÁREA DE PALCO</div>
+        <div class="stage-zone" style="left:0;top:80%;width:100%;height:20%;border:none;background:#0d1117;border-top:1px dashed #1e293b;">PLATEIA / FRENTE</div>
+      </div>
+
+      <div class="stage-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#1e40af"></div>Som</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#5b21b6"></div>Luz</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#0e7490"></div>Vídeo</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#065f46"></div>Backline</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#78350f"></div>Infra</div>
+      </div>
+
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span id="stage-status" style="font-size:12px;color:#64748b">Adicione elementos ao palco</span>
+        <button class="btn btn-ghost" onclick="clearStage()">Limpar palco</button>
+      </div>
+
+      <div id="stage-checklist" style="margin-top:10px;display:flex;flex-direction:column;gap:4px"></div>
+    </div>
+
+    <div class="progress-bar"><div class="progress-fill" id="stage-prog" style="width:0%"></div></div>
+    <div class="progress-label" id="stage-prog-label">0 / 3 categorias</div>
+    <div class="row-btns">
+      <button class="btn btn-ghost" onclick="switchTab('rider')">← Rider</button>
+      <button class="btn btn-blue" onclick="switchTab('os')">Próximo: Ordem de Serviço →</button>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       PANEL 3 – ORDEM DE SERVIÇO
+  ========================================================= -->
+  <div class="panel" id="panel-os">
+    <div class="doc-section">
+      <h2>Ordem de Serviço – Custos e Aprovação <span class="badge badge-warn" id="badge-os">Incompleto</span></h2>
+
+      <div class="field-row">
+        <div class="field-group">
+          <label>Número OS</label>
+          <input type="text" id="os-num" placeholder="OS-2026-001" oninput="calcOS()">
+        </div>
+        <div class="field-group">
+          <label>Responsável pela OS</label>
+          <input type="text" id="os-resp" placeholder="Nome do produtor" oninput="calcOS()">
+        </div>
+      </div>
+
+      <p style="font-size:11px;color:#64748b;margin-bottom:8px;margin-top:4px">Insira os valores de cada serviço para gerar o resumo financeiro:</p>
+
+      <!-- SOM -->
+      <div style="margin-bottom:10px">
+        <p style="font-size:10px;color:#60a5fa;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px">Som</p>
+        <div class="os-line"><label>Sistema PA</label><input type="number" id="c-pa" placeholder="0" min="0" oninput="calcOS()"><span class="unit">R$</span></div>
+        <div class="os-line"><label>Mesa de som + mic</label><input type="number" id="c-mesa-som" placeholder="0" min="0" oninput="calcOS()"><span class="unit">R$</span></div>
+        <div class="os-line"><label>Técnico de som</label><input type="number" id="c-tec-som" placeholder="0" min="0" oninput="calcOS()"><span class="unit">R$</span></div>
+      </div>
+      <!-- LUZ -->
+      <div style="margin-bottom:10px">
+        <p style="font-size:10px;color:#c084fc;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px">Iluminação</p>
+        <div class="os-line"><label>Rig de luz (fixtures)</label><input type="number" id="c-rig" placeholder="0" min="0" oninput="calcOS()"><span class="unit">R$</span></div>
+        <div class="os-line"><label>Técnico de luz</label><input type="number" id="c-tec-luz" placeholder="0" min="0" oninput="calcOS()"><span class="unit">R$</span></div>
+      </div>
+      <!-- VÍDEO -->
+      <div style="margin-bottom:10px">
+        <p style="font-size:10px;color:#38bdf8;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px">Vídeo</p>
+        <div class="os-line"><label>Tela / projeção / LED</label><input type="number" id="c-tela" placeholder="0" min="0" oninput="calcOS()"><span class="unit">R$</span></div>
+        <div class="os-line"><label>Switcher + Operador</label><input type="number" id="c-switcher" placeholder="0" min="0" oninput="calcOS()"><span class="unit">R$</span></div>
+      </div>
+      <!-- INFRA -->
+      <div style="margin-bottom:10px">
+        <p style="font-size:10px;color:#fbbf24;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px">Infraestrutura</p>
+        <div class="os-line"><label>Montagem / Desmontagem</label><input type="number" id="c-montagem" placeholder="0" min="0" oninput="calcOS()"><span class="unit">R$</span></div>
+        <div class="os-line"><label>Transporte / Logística</label><input type="number" id="c-frete" placeholder="0" min="0" oninput="calcOS()"><span class="unit">R$</span></div>
+      </div>
+
+      <!-- MARGEM -->
+      <div style="margin-bottom:10px;background:#161b24;border-radius:6px;padding:10px;border:1px solid #2d3748">
+        <div class="os-line"><label>Margem de segurança (%)</label><input type="number" id="c-margem" value="20" min="0" max="100" oninput="calcOS()"><span class="unit">%</span></div>
+        <p class="tip">Margem recomendada: 15–30% sobre custo direto para cobrir imprevistos.</p>
+      </div>
+
+      <div class="os-total-row">
+        <div>
+          <div class="os-total-label">Total de Custo Direto</div>
+          <div style="font-size:12px;color:#64748b" id="os-custo-label">R$ 0,00</div>
+        </div>
+        <div style="text-align:right">
+          <div class="os-total-label">Valor de Proposta</div>
+          <div class="os-total-value" id="os-total">R$ 0,00</div>
+          <div class="margin-indicator" id="os-margin-badge" style="margin-top:4px">–</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="progress-bar"><div class="progress-fill" id="os-prog" style="width:0%"></div></div>
+    <div class="progress-label" id="os-prog-label">Preencha os dados da OS</div>
+    <div class="row-btns">
+      <button class="btn btn-ghost" onclick="switchTab('stage')">← Stage Plan</button>
+      <button class="btn btn-blue" onclick="switchTab('ros')">Próximo: Run of Show →</button>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       PANEL 4 – RUN OF SHOW
+  ========================================================= -->
+  <div class="panel" id="panel-ros">
+    <div class="doc-section">
+      <h2>Run of Show – Cronograma de Execução <span class="badge badge-warn" id="badge-ros">Incompleto</span></h2>
+      <p class="tip" style="margin-bottom:8px">Reordene as atividades arrastando as linhas (⠿). Resolva os conflitos de horário antes de aprovar.</p>
+
+      <table class="ros-table">
+        <thead>
+          <tr>
+            <th style="width:28px"></th>
+            <th>Horário</th>
+            <th>Duração</th>
+            <th>Atividade</th>
+            <th>Dept.</th>
+            <th>Responsável</th>
+          </tr>
+        </thead>
+        <tbody id="ros-body">
+        </tbody>
+      </table>
+
+      <div id="ros-conflict-alert" style="display:none;margin-top:8px;padding:8px 12px;background:#1f0a0a;border:1px solid #ef4444;border-radius:6px;font-size:12px;color:#fca5a5">
+        ⚠ Conflito detectado: duas atividades sobrepõem o mesmo slot. Reordene para corrigir.
+      </div>
+      <div id="ros-ok-alert" style="display:none;margin-top:8px;padding:8px 12px;background:#0f2818;border:1px solid #22c55e;border-radius:6px;font-size:12px;color:#86efac">
+        ✓ Cronograma sem conflitos – todas as atividades em sequência válida.
+      </div>
+
+      <div class="row-btns" style="margin-top:10px">
+        <button class="btn btn-ghost" onclick="shuffleROS()">🔀 Embaralhar (simular erro)</button>
+        <button class="btn btn-green" onclick="sortROS()">Ordenar cronologicamente</button>
+      </div>
+    </div>
+
+    <!-- Adicionar item -->
+    <div class="doc-section">
+      <h2>Adicionar Atividade</h2>
+      <div class="field-row">
+        <div class="field-group">
+          <label>Horário (HH:MM)</label>
+          <input type="time" id="new-hora" value="08:00">
+        </div>
+        <div class="field-group">
+          <label>Duração (min)</label>
+          <input type="number" id="new-dur" value="30" min="5" max="480">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field-group">
+          <label>Atividade</label>
+          <input type="text" id="new-atv" placeholder="Ex: Montagem de rig de luz">
+        </div>
+        <div class="field-group">
+          <label>Departamento</label>
+          <select id="new-dept">
+            <option value="SOM">Som</option>
+            <option value="LUZ">Luz</option>
+            <option value="VIDEO">Vídeo</option>
+            <option value="PALCO">Palco</option>
+            <option value="PROD">Produção</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row single">
+        <div class="field-group">
+          <label>Responsável</label>
+          <input type="text" id="new-resp" placeholder="Nome ou cargo">
+        </div>
+      </div>
+      <button class="btn btn-blue" onclick="addRosRow()">+ Adicionar ao Run of Show</button>
+    </div>
+
+    <div class="progress-bar"><div class="progress-fill" id="ros-prog" style="width:0%"></div></div>
+    <div class="progress-label" id="ros-prog-label">0 atividades · 0 conflitos</div>
+    <div class="row-btns">
+      <button class="btn btn-ghost" onclick="switchTab('os')">← Ordem de Serviço</button>
+      <button class="btn btn-blue" onclick="switchTab('score')">Ver Avaliação →</button>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       PANEL 5 – SCORE
+  ========================================================= -->
+  <div class="panel" id="panel-score">
+    <div class="doc-section">
+      <h2>Avaliação do Pacote de Documentação</h2>
+
+      <div class="score-panel">
+        <div>
+          <div class="score-label">Pontuação</div>
+          <div class="score-big" id="score-val">0</div>
+          <div style="font-size:10px;color:#475569">/100 pontos</div>
+        </div>
+        <div>
+          <div class="score-label" style="margin-bottom:4px">Situação</div>
+          <div class="score-desc" id="score-desc">Conclua os módulos para ver a avaliação.</div>
+        </div>
+        <div class="score-alerts" id="score-alerts"></div>
+      </div>
+    </div>
+
+    <div class="doc-section" id="score-detail">
+      <h2>Detalhamento por módulo</h2>
+      <div id="score-modules" style="display:flex;flex-direction:column;gap:8px;margin-top:4px"></div>
+    </div>
+
+    <div class="row-btns">
+      <button class="btn btn-ghost" onclick="switchTab('ros')">← Run of Show</button>
+      <button class="btn btn-green" onclick="calcScore()">Recalcular</button>
+      <button class="btn btn-blue" onclick="exportReport()">Exportar Resumo</button>
+    </div>
+
+    <div id="export-area" style="display:none;margin-top:14px">
+      <div class="doc-section">
+        <h2>Resumo exportado</h2>
+        <pre id="export-text" style="font-size:11px;color:#94a3b8;white-space:pre-wrap;line-height:1.6;font-family:monospace;background:#161b24;padding:10px;border-radius:6px;border:1px solid #2d3748"></pre>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<p style="text-align:center;font-size:11px;color:#475569;margin-top:14px;padding-bottom:8px">
+  Preencha cada aba em ordem · Itens BLOQUEADORES travam a aprovação · Arraste linhas do Run of Show para reordenar
+</p>
+
+<script>
+// =====================================================
+// STATE
+// =====================================================
+var state = {
+  rider: { fields: false, checks: {}, total: 0 },
+  stage: { elements: [], cats: {} },
+  os: { num: false, resp: false, cost: 0, total: 0 },
+  ros: { rows: [], conflicts: 0 }
+};
+
+// =====================================================
+// TAB SWITCHING
+// =====================================================
+function switchTab(id) {
+  document.querySelectorAll('.panel').forEach(function(p){ p.classList.remove('active'); });
+  document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+  document.getElementById('panel-'+id).classList.add('active');
+  document.getElementById('tab-'+id).classList.add('active');
+  if (id === 'score') calcScore();
+}
+
+// =====================================================
+// RIDER
+// =====================================================
+var riderChecks = {};
+
+function toggleCheck(el, id) {
+  el.classList.toggle('checked');
+  riderChecks[id] = el.classList.contains('checked');
+  validateRider();
+}
+
+function validateRider() {
+  var nome = document.getElementById('ev-nome').value.trim();
+  var data = document.getElementById('ev-data').value;
+  var local = document.getElementById('ev-local').value.trim();
+  var pax = document.getElementById('ev-pax').value;
+
+  var fieldsFilled = nome && data && local && pax;
+
+  // mark fields
+  ['ev-nome','ev-data','ev-local','ev-pax'].forEach(function(id){
+    var el = document.getElementById(id);
+    var val = el.value.trim();
+    if (val) { el.classList.add('filled'); el.classList.remove('empty-req'); }
+    else { el.classList.add('empty-req'); el.classList.remove('filled'); }
+  });
+
+  var checkIds = ['rc-som','rc-mic','rc-luz','rc-dmx','rc-video','rc-sinal','rc-eletrica','rc-backline','rc-contato'];
+  var checkedCount = 0;
+  checkIds.forEach(function(id){
+    if (riderChecks[id]) checkedCount++;
+  });
+
+  var total = (fieldsFilled ? 4 : 0) + checkedCount;
+  var max = 4 + checkIds.length;
+
+  var pct = Math.round(total / max * 100);
+  document.getElementById('rider-prog').style.width = pct + '%';
+  document.getElementById('rider-prog-label').textContent = checkedCount + ' / ' + checkIds.length + ' itens de checklist';
+
+  var blockers = ['rc-som','rc-luz','rc-video'];
+  var blockersOk = blockers.every(function(id){ return riderChecks[id]; });
+  var complete = fieldsFilled && blockersOk && checkedCount >= 6;
+
+  var badge = document.getElementById('badge-rider');
+  if (complete) {
+    badge.textContent = 'Completo'; badge.className = 'badge badge-ok';
+    document.getElementById('tab-rider').classList.add('done');
+  } else {
+    badge.textContent = 'Incompleto'; badge.className = 'badge badge-warn';
+    document.getElementById('tab-rider').classList.remove('done');
+  }
+
+  state.rider = { fields: !!fieldsFilled, checks: Object.assign({}, riderChecks), total: checkedCount };
+}
+
+// =====================================================
+// STAGE PLAN
+// =====================================================
+var stageElements = [];
+var draggingEl = null;
+var dragOffX = 0, dragOffY = 0;
+
+var CATS = {
+  PA: 'som', MON: 'som', PAR: 'luz', MH: 'luz',
+  PROJ: 'video', LED: 'video', MESA: 'backline', MIC: 'backline', GEN: 'infra'
+};
+var CAT_COLORS = {
+  som: '#1e40af', luz: '#5b21b6', video: '#0e7490', backline: '#065f46', infra: '#78350f'
+};
+var REQUIRED_CATS = ['som','luz','video'];
+
+function addElement(paletteItem) {
+  var type = paletteItem.getAttribute('data-type');
+  var label = paletteItem.getAttribute('data-label');
+  var cat = CATS[type];
+  var color = CAT_COLORS[cat];
+
+  var canvas = document.getElementById('stage-canvas');
+  var rect = canvas.getBoundingClientRect();
+
+  // Default position: random in center area
+  var px = 20 + Math.random() * 60; // %
+  var py = 25 + Math.random() * 50;
+
+  var el = document.createElement('div');
+  el.className = 'stage-element';
+  el.style.background = color;
+  el.style.left = px + '%';
+  el.style.top = py + '%';
+  el.textContent = label;
+  el.setAttribute('data-type', type);
+  el.setAttribute('data-cat', cat);
+  el.setAttribute('data-id', Date.now() + Math.random());
+
+  // Add remove on double-click
+  el.addEventListener('dblclick', function(e){
+    e.stopPropagation();
+    canvas.removeChild(el);
+    stageElements = stageElements.filter(function(s){ return s !== el; });
+    updateStageCats();
+  });
+
+  makeDraggable(el, canvas);
+  canvas.appendChild(el);
+  stageElements.push(el);
+  updateStageCats();
+}
+
+function makeDraggable(el, canvas) {
+  var startX, startY, startLeft, startTop;
+
+  el.addEventListener('pointerdown', function(e){
+    e.preventDefault();
+    el.setPointerCapture(e.pointerId);
+    var rect = canvas.getBoundingClientRect();
+    startX = e.clientX;
+    startY = e.clientY;
+    startLeft = parseFloat(el.style.left);
+    startTop = parseFloat(el.style.top);
+  });
+
+  el.addEventListener('pointermove', function(e){
+    if (!el.hasPointerCapture(e.pointerId)) return;
+    var rect = canvas.getBoundingClientRect();
+    var dx = (e.clientX - startX) / rect.width * 100;
+    var dy = (e.clientY - startY) / rect.height * 100;
+    var newL = Math.max(2, Math.min(98, startLeft + dx));
+    var newT = Math.max(2, Math.min(98, startTop + dy));
+    el.style.left = newL + '%';
+    el.style.top = newT + '%';
+  });
+}
+
+function updateStageCats() {
+  var cats = {};
+  stageElements.forEach(function(el){
+    var c = el.getAttribute('data-cat');
+    if (c) cats[c] = (cats[c] || 0) + 1;
+  });
+
+  var list = document.getElementById('stage-checklist');
+  list.innerHTML = '';
+  var found = 0;
+  REQUIRED_CATS.forEach(function(cat){
+    var ok = !!cats[cat];
+    if (ok) found++;
+    var div = document.createElement('div');
+    div.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:11px;color:' + (ok ? '#86efac' : '#f87171');
+    div.innerHTML = (ok ? '✓' : '✗') + ' ' + cat.charAt(0).toUpperCase() + cat.slice(1) + ' posicionado no palco' + (cats[cat] ? ' (' + cats[cat] + ')' : '');
+    list.appendChild(div);
+  });
+
+  var pct = Math.round(found / REQUIRED_CATS.length * 100);
+  document.getElementById('stage-prog').style.width = pct + '%';
+  document.getElementById('stage-prog-label').textContent = found + ' / ' + REQUIRED_CATS.length + ' categorias';
+  document.getElementById('stage-status').textContent = stageElements.length + ' elemento(s) no palco · duplo-clique para remover';
+
+  var complete = found >= REQUIRED_CATS.length;
+  var badge = document.getElementById('badge-stage');
+  if (complete) {
+    badge.textContent = 'Completo'; badge.className = 'badge badge-ok';
+    document.getElementById('tab-stage').classList.add('done');
+  } else {
+    badge.textContent = 'Incompleto'; badge.className = 'badge badge-warn';
+    document.getElementById('tab-stage').classList.remove('done');
+  }
+  state.stage = { elements: stageElements.length, cats: cats };
+}
+
+function clearStage() {
+  var canvas = document.getElementById('stage-canvas');
+  stageElements.forEach(function(el){ if(el.parentNode) canvas.removeChild(el); });
+  stageElements = [];
+  updateStageCats();
+}
+
+// =====================================================
+// ORDEM DE SERVIÇO
+// =====================================================
+function getVal(id) {
+  var el = document.getElementById(id);
+  return el ? (parseFloat(el.value) || 0) : 0;
+}
+
+function calcOS() {
+  var fields = ['c-pa','c-mesa-som','c-tec-som','c-rig','c-tec-luz','c-tela','c-switcher','c-montagem','c-frete'];
+  var custo = 0;
+  fields.forEach(function(id){ custo += getVal(id); });
+
+  var margem = Math.max(0, Math.min(100, getVal('c-margem')));
+  var total = custo * (1 + margem / 100);
+
+  var fmt = function(v){ return 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}); };
+  document.getElementById('os-custo-label').textContent = fmt(custo);
+  document.getElementById('os-total').textContent = fmt(total);
+
+  var badge = document.getElementById('os-margin-badge');
+  if (margem < 10) {
+    badge.textContent = 'Margem crítica (' + margem + '%)';
+    badge.className = 'margin-indicator margin-err';
+  } else if (margem < 15) {
+    badge.textContent = 'Margem baixa (' + margem + '%)';
+    badge.className = 'margin-indicator margin-warn';
+  } else {
+    badge.textContent = 'Margem saudável (' + margem + '%)';
+    badge.className = 'margin-indicator margin-ok';
+  }
+
+  var osNum = document.getElementById('os-num').value.trim();
+  var osResp = document.getElementById('os-resp').value.trim();
+  var complete = osNum && osResp && custo > 0;
+
+  var pct = 0;
+  if (osNum) pct += 30;
+  if (osResp) pct += 30;
+  if (custo > 0) pct += 40;
+  document.getElementById('os-prog').style.width = pct + '%';
+  document.getElementById('os-prog-label').textContent = complete ? 'OS preenchida · Total: ' + fmt(total) : 'Preencha número OS, responsável e ao menos 1 custo';
+
+  var badgeEl = document.getElementById('badge-os');
+  if (complete) {
+    badgeEl.textContent = 'Completo'; badgeEl.className = 'badge badge-ok';
+    document.getElementById('tab-os').classList.add('done');
+  } else {
+    badgeEl.textContent = 'Incompleto'; badgeEl.className = 'badge badge-warn';
+    document.getElementById('tab-os').classList.remove('done');
+  }
+
+  state.os = { num: !!osNum, resp: !!osResp, cost: custo, total: total, margem: margem };
+}
+
+// =====================================================
+// RUN OF SHOW
+// =====================================================
+var rosData = [
+  { hora: '07:00', dur: 60, atv: 'Acesso para montagem – infraestrutura', dept: 'PROD', resp: 'Coordenador Geral' },
+  { hora: '08:00', dur: 120, atv: 'Montagem de rig de iluminação', dept: 'LUZ', resp: 'Técnico de Luz' },
+  { hora: '08:00', dur: 90, atv: 'Instalação do PA e monitor de palco', dept: 'SOM', resp: 'Técnico de Som' },
+  { hora: '09:30', dur: 60, atv: 'Instalação de tela LED / projeção', dept: 'VIDEO', resp: 'Operador de Vídeo' },
+  { hora: '10:30', dur: 30, atv: 'Passagem de cabo e patch', dept: 'SOM', resp: 'Técnico de Som' },
+  { hora: '11:00', dur: 45, atv: 'Focus de luz e programação de cenas', dept: 'LUZ', resp: 'Técnico de Luz' },
+  { hora: '11:45', dur: 30, atv: 'Teste de vídeo – entrada de sinal', dept: 'VIDEO', resp: 'Operador de Vídeo' },
+  { hora: '12:15', dur: 30, atv: 'Passagem de som / soundcheck', dept: 'SOM', resp: 'Técnico de Som' },
+  { hora: '13:00', dur: 60, atv: 'Abertura de portas / recepção de público', dept: 'PROD', resp: 'Produção' },
+  { hora: '14:00', dur: 30, atv: 'Abertura oficial do evento', dept: 'PALCO', resp: 'MC / Apresentador' },
+];
+
+function timeToMin(hhmm) {
+  var p = hhmm.split(':');
+  return parseInt(p[0]) * 60 + parseInt(p[1]);
+}
+
+function minToTime(m) {
+  var h = Math.floor(m / 60);
+  var min = m % 60;
+  return (h < 10 ? '0' : '') + h + ':' + (min < 10 ? '0' : '') + min;
+}
+
+function checkConflicts(rows) {
+  // Only flag rows from SAME dept that overlap
+  var conflicts = new Set();
+  for (var i = 0; i < rows.length; i++) {
+    var a = rows[i];
+    var aStart = timeToMin(a.hora);
+    var aEnd = aStart + a.dur;
+    for (var j = i + 1; j < rows.length; j++) {
+      var b = rows[j];
+      if (a.dept !== b.dept) continue;
+      var bStart = timeToMin(b.hora);
+      var bEnd = bStart + b.dur;
+      if (aStart < bEnd && bStart < aEnd) {
+        conflicts.add(i);
+        conflicts.add(j);
+      }
+    }
+  }
+  return conflicts;
+}
+
+function renderROS() {
+  var tbody = document.getElementById('ros-body');
+  tbody.innerHTML = '';
+  var conflicts = checkConflicts(rosData);
+  var hasConflict = conflicts.size > 0;
+
+  rosData.forEach(function(row, idx) {
+    var isConflict = conflicts.has(idx);
+    var tr = document.createElement('tr');
+    tr.className = 'ros-row' + (isConflict ? ' ros-conflict' : '');
+    tr.setAttribute('draggable', 'true');
+    tr.setAttribute('data-idx', idx);
+
+    tr.innerHTML =
+      '<td style="text-align:center;font-size:16px;color:#475569">⠿</td>' +
+      '<td class="time-col">' + row.hora + (isConflict ? '<span class="conflict-badge">⚠ conflito</span>' : '') + '</td>' +
+      '<td style="color:#64748b;font-family:monospace">' + row.dur + 'min</td>' +
+      '<td>' + row.atv + '</td>' +
+      '<td><span class="dept-badge dept-' + row.dept + '">' + row.dept + '</span></td>' +
+      '<td style="color:#64748b;font-size:11px">' + row.resp + '</td>';
+
+    // Drag events
+    tr.addEventListener('dragstart', function(e){
+      e.dataTransfer.setData('text/plain', idx);
+      tr.classList.add('dragging');
+    });
+    tr.addEventListener('dragend', function(){ tr.classList.remove('dragging'); });
+    tr.addEventListener('dragover', function(e){
+      e.preventDefault();
+      tr.classList.add('drag-over');
+    });
+    tr.addEventListener('dragleave', function(){ tr.classList.remove('drag-over'); });
+    tr.addEventListener('drop', function(e){
+      e.preventDefault();
+      tr.classList.remove('drag-over');
+      var fromIdx = parseInt(e.dataTransfer.getData('text/plain'));
+      var toIdx = idx;
+      if (fromIdx === toIdx) return;
+      var moved = rosData.splice(fromIdx, 1)[0];
+      rosData.splice(toIdx, 0, moved);
+      renderROS();
+    });
+
+    tbody.appendChild(tr);
+  });
+
+  var confl = conflicts.size > 0 ? Math.ceil(conflicts.size / 2) : 0;
+  document.getElementById('ros-conflict-alert').style.display = hasConflict ? '' : 'none';
+  document.getElementById('ros-ok-alert').style.display = hasConflict ? 'none' : '';
+
+  var pct = hasConflict ? Math.max(10, Math.round((1 - confl / rosData.length) * 100)) : 100;
+  document.getElementById('ros-prog').style.width = pct + '%';
+  document.getElementById('ros-prog-label').textContent = rosData.length + ' atividade(s) · ' + confl + ' conflito(s) de horário';
+
+  var complete = rosData.length >= 5 && !hasConflict;
+  var badge = document.getElementById('badge-ros');
+  if (complete) {
+    badge.textContent = 'Completo'; badge.className = 'badge badge-ok';
+    document.getElementById('tab-ros').classList.add('done');
+  } else if (rosData.length >= 5) {
+    badge.textContent = 'Conflito'; badge.className = 'badge badge-err';
+    document.getElementById('tab-ros').classList.remove('done');
+  } else {
+    badge.textContent = 'Incompleto'; badge.className = 'badge badge-warn';
+    document.getElementById('tab-ros').classList.remove('done');
+  }
+  state.ros = { rows: rosData.length, conflicts: confl };
+}
+
+function addRosRow() {
+  var hora = document.getElementById('new-hora').value || '09:00';
+  var dur = parseInt(document.getElementById('new-dur').value) || 30;
+  var atv = document.getElementById('new-atv').value.trim();
+  var dept = document.getElementById('new-dept').value;
+  var resp = document.getElementById('new-resp').value.trim();
+  if (!atv) { alert('Digite o nome da atividade.'); return; }
+  rosData.push({ hora: hora, dur: dur, atv: atv, dept: dept, resp: resp || '–' });
+  document.getElementById('new-atv').value = '';
+  document.getElementById('new-resp').value = '';
+  renderROS();
+}
+
+function shuffleROS() {
+  for (var i = rosData.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var tmp = rosData[i]; rosData[i] = rosData[j]; rosData[j] = tmp;
+  }
+  renderROS();
+}
+
+function sortROS() {
+  rosData.sort(function(a, b){ return timeToMin(a.hora) - timeToMin(b.hora); });
+  renderROS();
+}
+
+// =====================================================
+// SCORE
+// =====================================================
+function calcScore() {
+  var scores = {};
+  var alerts = [];
+
+  // RIDER (30 pts)
+  var riderScore = 0;
+  if (state.rider.fields) riderScore += 10;
+  var blockers = ['rc-som','rc-luz','rc-video'];
+  var blockersOk = blockers.every(function(id){ return state.rider.checks[id]; });
+  if (blockersOk) riderScore += 12;
+  riderScore += Math.min(8, state.rider.total);
+  scores.rider = { pts: Math.min(30, riderScore), max: 30, label: 'Rider Técnico' };
+  if (!blockersOk) alerts.push({ type:'err', msg: 'Rider: itens BLOQUEADORES não marcados (Som, Luz ou Vídeo).' });
+
+  // STAGE (20 pts)
+  var stageCats = state.stage.cats || {};
+  var stageFound = ['som','luz','video'].filter(function(c){ return !!stageCats[c]; }).length;
+  var stageScore = Math.round(stageFound / 3 * 20);
+  scores.stage = { pts: stageScore, max: 20, label: 'Stage Plan' };
+  if (stageFound < 3) alerts.push({ type:'warn', msg: 'Stage Plan: posicione pelo menos 1 elemento de Som, Luz e Vídeo.' });
+
+  // OS (25 pts)
+  var osScore = 0;
+  if (state.os.num) osScore += 8;
+  if (state.os.resp) osScore += 7;
+  if (state.os.cost > 0) osScore += 5;
+  if (state.os.margem >= 15) osScore += 5;
+  scores.os = { pts: Math.min(25, osScore), max: 25, label: 'Ordem de Serviço' };
+  if (state.os.margem > 0 && state.os.margem < 15) alerts.push({ type:'warn', msg: 'OS: margem abaixo de 15% – risco de prejuízo operacional.' });
+
+  // ROS (25 pts)
+  var rosScore = 0;
+  if (state.ros.rows >= 5) rosScore += 15;
+  else rosScore += state.ros.rows * 3;
+  if (state.ros.conflicts === 0 && state.ros.rows >= 5) rosScore += 10;
+  scores.ros = { pts: Math.min(25, rosScore), max: 25, label: 'Run of Show' };
+  if (state.ros.conflicts > 0) alerts.push({ type:'err', msg: 'Run of Show: ' + state.ros.conflicts + ' conflito(s) de horário detectado(s).' });
+  if (state.ros.rows < 5) alerts.push({ type:'warn', msg: 'Run of Show: adicione ao menos 5 atividades.' });
+
+  var total = scores.rider.pts + scores.stage.pts + scores.os.pts + scores.ros.pts;
+  document.getElementById('score-val').textContent = total;
+
+  var scoreEl = document.getElementById('score-val');
+  if (total >= 85) { scoreEl.style.color = '#22c55e'; }
+  else if (total >= 60) { scoreEl.style.color = '#f59e0b'; }
+  else { scoreEl.style.color = '#ef4444'; }
+
+  var desc = '';
+  if (total >= 85) desc = 'Pacote aprovado! Documentação robusta, pronta para envio ao cliente e à equipe técnica.';
+  else if (total >= 60) desc = 'Documentação parcialmente completa. Resolva os alertas antes de fechar o evento.';
+  else desc = 'Documentação insuficiente. Conclua os módulos obrigatórios para garantir a execução segura do evento.';
+  document.getElementById('score-desc').textContent = desc;
+
+  var alertsEl = document.getElementById('score-alerts');
+  alertsEl.innerHTML = '';
+  if (alerts.length === 0) {
+    alertsEl.innerHTML = '<div class="alert-item alert-ok">✓ Nenhum alerta pendente – ótimo trabalho!</div>';
+  } else {
+    alerts.forEach(function(a){
+      var div = document.createElement('div');
+      div.className = 'alert-item alert-' + (a.type === 'err' ? 'err' : 'warn');
+      div.textContent = (a.type === 'err' ? '✗ ' : '⚠ ') + a.msg;
+      alertsEl.appendChild(div);
+    });
+  }
+
+  var modEl = document.getElementById('score-modules');
+  modEl.innerHTML = '';
+  Object.values(scores).forEach(function(s){
+    var pct = Math.round(s.pts / s.max * 100);
+    var color = pct >= 80 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444';
+    var div = document.createElement('div');
+    div.style.cssText = 'display:flex;align-items:center;gap:10px;';
+    div.innerHTML =
+      '<span style="font-size:11px;color:#94a3b8;min-width:150px">' + s.label + '</span>' +
+      '<div style="flex:1;height:8px;background:#2d3748;border-radius:4px;overflow:hidden">' +
+        '<div style="width:' + pct + '%;height:100%;background:' + color + ';border-radius:4px;transition:width .4s"></div>' +
+      '</div>' +
+      '<span style="font-size:11px;color:' + color + ';font-family:monospace;min-width:52px;text-align:right">' + s.pts + '/' + s.max + ' pts</span>';
+    modEl.appendChild(div);
+  });
+
+  return total;
+}
+
+function exportReport() {
+  var total = calcScore();
+  var ev = {
+    nome: document.getElementById('ev-nome').value || '–',
+    data: document.getElementById('ev-data').value || '–',
+    local: document.getElementById('ev-local').value || '–',
+    pax: document.getElementById('ev-pax').value || '–',
+  };
+  var osNum = document.getElementById('os-num').value || '–';
+  var osResp = document.getElementById('os-resp').value || '–';
+
+  var lines = [
+    '══════════════════════════════════════',
+    '  PACOTE DE DOCUMENTAÇÃO – SMU PRO',
+    '══════════════════════════════════════',
+    'Evento : ' + ev.nome,
+    'Data   : ' + ev.data,
+    'Local  : ' + ev.local,
+    'Público: ' + ev.pax + ' pessoas',
+    '',
+    '── RIDER TÉCNICO ──────────────────────',
+    'Itens marcados: ' + state.rider.total + '/9',
+    'Campos: ' + (state.rider.fields ? 'Completo' : 'Incompleto'),
+    '',
+    '── STAGE PLAN ─────────────────────────',
+    'Elementos no palco: ' + (state.stage.elements || 0),
+    'Categorias cobertas: Som=' + (state.stage.cats && state.stage.cats.som ? 'SIM' : 'NÃO') +
+      ' Luz=' + (state.stage.cats && state.stage.cats.luz ? 'SIM' : 'NÃO') +
+      ' Vídeo=' + (state.stage.cats && state.stage.cats.video ? 'SIM' : 'NÃO'),
+    '',
+    '── ORDEM DE SERVIÇO ───────────────────',
+    'Nº OS    : ' + osNum,
+    'Responsável: ' + osResp,
+    'Custo direto: R$ ' + (state.os.cost || 0).toLocaleString('pt-BR', {minimumFractionDigits:2}),
+    'Valor proposta: R$ ' + (state.os.total || 0).toLocaleString('pt-BR', {minimumFractionDigits:2}),
+    'Margem: ' + (state.os.margem || 0) + '%',
+    '',
+    '── RUN OF SHOW ────────────────────────',
+    'Atividades: ' + state.ros.rows,
+    'Conflitos: ' + state.ros.conflicts,
+    '',
+    '══════════════════════════════════════',
+    '  PONTUAÇÃO FINAL: ' + total + '/100',
+    (total >= 85 ? '  STATUS: ✓ APROVADO' : total >= 60 ? '  STATUS: ⚠ PARCIAL' : '  STATUS: ✗ PENDENTE'),
+    '══════════════════════════════════════',
+  ];
+
+  document.getElementById('export-area').style.display = '';
+  document.getElementById('export-text').textContent = lines.join('\n');
+}
+
+// =====================================================
+// INIT
+// =====================================================
+renderROS();
+calcOS();
+validateRider();
+updateStageCats();
+</script>
+</body>
+</html>

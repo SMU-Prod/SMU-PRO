@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>SMU PRO · Canal certo e nome de arquivo certo</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0c1017;--panel:#161c26;--panel2:#1b2230;--line:#2a3444;--ink:#e7edf5;--dim:#8794a8;
+        --accent:#f59e0b;--ok:#22c55e;--err:#ef4444;--warn:#f59e0b;--cyan:#38bdf8;}
+  html,body{background:var(--bg);color:var(--ink);
+    font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased;}
+  body{padding:12px;overflow-x:hidden;}
+  .app{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:12px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  h1{font-size:15px;margin-bottom:3px;}
+  .sub{font-size:12px;color:var(--dim);margin-bottom:12px;line-height:1.5;}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px;min-width:0;}
+  .stat .k{font-size:10px;color:var(--dim);letter-spacing:.5px;}
+  .stat .val{font-size:15px;font-weight:800;margin-top:2px;}
+  .verdict{font-size:13px;font-weight:700;padding:9px 12px;border-radius:8px;text-align:center;line-height:1.5;}
+  .verdict.ok{background:#14532d;color:#bbf7d0;}
+  .verdict.bad{background:#450a0a;color:#fca5a5;}
+  .verdict.warn{background:#422006;color:#fde68a;}
+  .note{font-size:12px;color:var(--dim);line-height:1.55;}
+  button{font:inherit;cursor:pointer;}
+  /* ---- específico ---- */
+  .pill{font-size:10px;font-weight:700;letter-spacing:.6px;padding:4px 8px;border-radius:999px;
+        background:#0c1119;border:1px solid var(--line);color:var(--dim);display:inline-block;margin-bottom:10px;}
+  .pill.acc{border-color:var(--accent);color:#fde68a;}
+  .item{background:var(--panel2);border:1px solid var(--line);border-left:3px solid var(--accent);
+        border-radius:9px;padding:12px;margin-bottom:12px;min-width:0;}
+  .item .when{font-size:10px;color:var(--accent);letter-spacing:.7px;font-weight:700;margin-bottom:5px;}
+  .item .txt{font-size:13.5px;line-height:1.55;margin-bottom:10px;}
+  .fn{font-family:ui-monospace,'SFMono-Regular',Consolas,monospace;font-size:11.5px;line-height:1.5;
+      overflow-wrap:anywhere;word-break:break-word;}
+  .bad-fn{color:#fca5a5;background:#0c1119;border:1px solid #7f1d1d;border-radius:7px;padding:8px 9px;margin-bottom:7px;}
+  .ctx{font-size:11.5px;color:var(--dim);line-height:1.5;margin-bottom:10px;}
+  .opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;}
+  .opts.one{grid-template-columns:minmax(0,1fr);}
+  @media(min-width:640px){ .opts{grid-template-columns:repeat(3,minmax(0,1fr));} }
+  .opt{position:relative;display:block;min-height:40px;min-width:24px;padding:9px 10px;border-radius:9px;
+       border:1px solid var(--line);background:#0c1119;color:var(--ink);font-size:12.5px;font-weight:600;
+       line-height:1.35;transition:.12s;cursor:pointer;min-width:0;}
+  .opt input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none;}
+  .opt small{display:block;font-size:10.5px;color:var(--dim);font-weight:400;margin-top:3px;line-height:1.4;}
+  .opt:hover{border-color:var(--accent);}
+  .opt.sel{border-color:var(--accent);background:#1a1408;}
+  .opt.right{border-color:var(--ok);background:#052e16;}
+  .opt.wrong{border-color:var(--err);background:#450a0a;}
+  .opt.dim{opacity:.4;}
+  .locked .opt{cursor:default;}
+  .fb{display:none;margin-top:10px;background:#0c1119;border:1px solid var(--line);border-radius:9px;padding:10px;}
+  .fb.on{display:block;}
+  .fb .v{font-size:11.5px;font-weight:800;letter-spacing:.4px;margin-bottom:6px;}
+  .fb .v.g{color:var(--ok);} .fb .v.r{color:var(--err);}
+  .fb p{font-size:12px;line-height:1.6;color:#c7d2de;}
+  .fb p+p{margin-top:6px;}
+  .fb p.w{color:#fca5a5;}
+  .fb b{color:var(--ink);}
+  .go{width:100%;min-height:44px;border-radius:9px;border:1px solid var(--accent);
+      background:#42200680;color:#fde68a;font-size:13.5px;font-weight:700;}
+  .go:hover{background:#5a2c08;}
+  .go.gh{border-color:var(--line);background:#0c1119;color:var(--ink);}
+  .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0;}
+  .lessons{margin-top:12px;border-top:1px solid var(--line);padding-top:10px;}
+  .lessons li{font-size:12px;color:var(--dim);line-height:1.6;margin-left:16px;}
+  .lessons li b{color:var(--accent);}
+  .lessons li code{font-family:ui-monospace,Consolas,monospace;font-size:11px;color:#fde68a;overflow-wrap:anywhere;}
+  #miss{display:none;font-size:12px;color:#fca5a5;text-align:center;margin-bottom:8px;}
+  #miss.on{display:block;}
+  #res{display:none;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="card">
+    <h1>Canal certo e nome de arquivo certo</h1>
+    <div class="sub">Duas coisas que o produtor faz o dia inteiro e que custam dinheiro quando saem erradas. Responda tudo e clique em <b>Conferir</b>.</div>
+    <span class="pill acc">BLOCO 1 · QUAL CANAL?</span>
+    <div class="note" style="margin-bottom:12px;">Sete situações reais. Escolha por onde essa mensagem tem que sair. <b>WhatsApp não é contrato, e rádio não é reservado.</b></div>
+    <div id="canais"></div>
+  </div>
+
+  <div class="card">
+    <span class="pill acc">BLOCO 2 · ARRUMA O NOME</span>
+    <div class="note" style="margin-bottom:12px;">Seis arquivos chegaram com nome ruim. Escolha o nome que entra na pasta. Padrão: <b>data ISO AAAA-MM-DD · sem espaço e sem acento · versão explícita v1/v2/v3 · <code style="color:#fde68a">_FINAL</code> é proibido</b>.</div>
+    <div id="arquivos"></div>
+  </div>
+
+  <div class="card" id="acao">
+    <div id="miss"></div>
+    <button class="go" id="check">Conferir</button>
+  </div>
+
+  <div class="card" id="res">
+    <h1>Resultado</h1>
+    <div class="sub">Onde a sua comunicação deixa rastro e onde ela vaza.</div>
+    <div class="verdict" id="rv"></div>
+    <div class="grid3">
+      <div class="stat"><div class="k">CANAL</div><div class="val" id="s1">—</div></div>
+      <div class="stat"><div class="k">ARQUIVO</div><div class="val" id="s2">—</div></div>
+      <div class="stat"><div class="k">APROVEITAMENTO</div><div class="val" id="s3">—</div></div>
+    </div>
+    <div class="lessons">
+      <ul>
+        <li><b>E-mail é para o que muda dinheiro, prazo ou escopo.</b> Aprovação por áudio no grupo não se cobra.</li>
+        <li><b>Rádio é o agora — e todo mundo ouve.</b> Bronca e dinheiro não passam por ali.</li>
+        <li><b>Mensagem não lida não é aviso dado.</b> Urgência real é ligação.</li>
+        <li><b>Conflito é presencial.</b> Sempre, e só com quem é do assunto.</li>
+        <li><b>Nome de arquivo é ferramenta, não enfeite:</b> <code>2026-03-14_showX_rider-tecnico_v3.pdf</code> ordena sozinho, abre em qualquer lugar e não gera dúvida às 08h.</li>
+      </ul>
+    </div>
+    <button class="go gh" id="again" style="margin-top:12px;">↺ Reiniciar</button>
+  </div>
+</div>
+<script>
+(function(){
+  var $=function(s){return document.querySelector(s);};
+  var $$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s));};
+
+  var CANAIS=[
+    {k:'radio',n:'Rádio / HT',d:'O agora, no ar'},
+    {k:'grupo',n:'Grupo',d:'Mural da equipe'},
+    {k:'dm',n:'Mensagem direta',d:'Uma pessoa só'},
+    {k:'lig',n:'Ligação',d:'Urgência real'},
+    {k:'mail',n:'E-mail',d:'Fica registrado'},
+    {k:'pres',n:'Presencial',d:'Cara a cara'}
+  ];
+  var NM={}; CANAIS.forEach(function(c){NM[c.k]=c.n;});
+
+  var SITS=[
+    {w:'11:20 · CORREDOR DO VENUE', a:'mail',
+     t:'O cliente te para no corredor: "manda o bar ficar aberto mais duas horas, depois a gente acerta o valor". E já saiu andando.',
+     ok:'E-mail, na hora, do celular, ali mesmo. Duas horas de bar mudam <b>dinheiro, prazo e escopo</b> ao mesmo tempo — e o que muda dinheiro precisa de rastro. Escreva o que foi pedido, o custo estimado e o prazo de resposta: "sem retorno até 18h, mantemos o encerramento contratado". Silêncio não é sim.',
+     no:'WhatsApp não é contrato. "Deixa comigo" no corredor é a frase que mais custou dinheiro na produção brasileira: na hora de cobrar as duas horas, áudio no grupo não sustenta nada.'},
+    {w:'09:05 · MONTAGEM', a:'radio',
+     t:'O praticável central precisa subir em 20 minutos. O chefe de palco está a 40 m de você, atrás do PA ligado.',
+     ok:'Rádio: é o agora operacional, curto e objetivo — e com protocolo. Chama, espera, fala, confirma: "Palco, produção" / "Palco na escuta" / "Sobe o praticável central em 20 minutos" / "Entendido, praticável central em 20 minutos". Sem o "entendido" você não fechou o loop.',
+     no:'Mensagem escrita não serve aqui: o celular dele está no bolso, embaixo de um PA ligado. E ninguém lê e-mail com o palco montando.'},
+    {w:'07:30 · CHEGADA DA EQUIPE', a:'grupo',
+     t:'O almoço da equipe mudou de 12h para 13h e o ponto de retirada passou para o portão B. Vale para as 30 pessoas da montagem.',
+     ok:'Grupo — é exatamente para isso que ele existe: aviso que vale para todos, uma vez, escrito e consultável. <b>Grupo é mural:</b> você prega o aviso e sai. Uma mensagem, um assunto.',
+     no:'No rádio isso ocupa o canal de todas as áreas por um assunto que não é do agora. E mandar 30 mensagens diretas é criar 30 chances de esquecer alguém.'},
+    {w:'15:40 · FOCO DE LUZ', a:'pres',
+     t:'O técnico de luz errou o foco pela segunda vez e queimou 25 minutos do cronograma. Você está irritado e precisa resolver isso com ele.',
+     ok:'Presencial, sempre. <b>Conflito e assunto sensível se resolvem cara a cara</b> — é o único canal em que você lê a reação do outro e ele não vira réu de plateia. Você anda até a mesa de luz e fala com ele. Só com ele.',
+     no:'Bronca no rádio é bronca para o evento inteiro — inclusive para o cliente, que está com um HT na cintura. Rádio não é reservado. No grupo é pior: fica escrito e vira humilhação com print.'},
+    {w:'13:00 · TRANSPORTE', a:'dm',
+     t:'O motorista da van precisa do número do voo do artista, do horário de pouso e do telefone do produtor da banda para buscar às 14h.',
+     ok:'Mensagem direta. É <b>assunto de uma pessoa só</b>, e o motorista precisa do dado na mão dele — não perdido em 200 mensagens de outro assunto.',
+     no:'No grupo você entregou o telefone do artista para todo mundo que tem o número do grupo — inclusive quem saiu da equipe semana passada. Rádio nem pensar: número falado no ar é número entregue ao evento inteiro.'},
+    {w:'23:40 · LOAD-OUT', a:'lig',
+     t:'O caminhão do backline sai em 20 minutos e o motorista não apareceu. Você mandou três mensagens nos últimos 40 minutos. Nenhuma foi lida.',
+     ok:'Liga. Urgência real é ligação — e <b>mensagem não lida não é aviso dado</b>. Você não avisou porque digitou; avisou quando o outro respondeu. Se ele não atender, você já sabe que precisa do plano B agora, e não às 00h10.',
+     no:'Mandar a quarta mensagem é repetir três vezes o que já falhou. E-mail às 23h40 é carta para o além.'},
+    {w:'17:15 · TELEFONE', a:'mail',
+     t:'O fornecedor liga: o gerador de 150 kVA quebrou e ele vai mandar um de 180 kVA, sem custo adicional. Você concorda no telefone.',
+     ok:'Concordou no telefone — agora manda o e-mail de confirmação em seguida. Dois minutos, com o modelo, a potência e o "sem custo adicional" escrito. <b>Ligação resolve o agora, mas não deixa rastro:</b> combinado que muda escopo tem que virar texto.',
+     no:'Se ficar só na ligação, o "sem custo" vira R$ 3.800 na fatura e a sua palavra contra a dele. E deixar para escrever depois do evento é deixar para nunca.'}
+  ];
+
+  var FILES=[
+    {bad:'rider final FINAL (2).pdf',
+     ctx:'Rider técnico do Show X, terceira versão, evento em 14/03/2026.',
+     opts:[
+      {n:'2026-03-14_showX_rider-tecnico_v3.pdf', y:'Data ISO na frente ordena sozinho; sem espaço e sem parênteses; versão explícita <b>v3</b>; e "rider-tecnico" diz o que é fora de contexto — às 08h, para quem não é você.'},
+      {n:'rider_tecnico_showX_FINAL_v3.pdf', y:'<b>_FINAL continua aí</b> — e nunca é. Sem data na frente, o arquivo não ordena por data em pasta nenhuma.'},
+      {n:'14-03-2026_showX_rider-tecnico_v3.pdf', y:'Data invertida: numa pasta com 40 arquivos, <b>14-03 vem antes de 02-11</b> e a ordem cronológica some. Data é ISO ou não é data.'}
+     ]},
+    {bad:'orçamento show são paulo.xlsx',
+     ctx:'Primeira versão do orçamento do Festival SP, montada em 09/05/2026.',
+     opts:[
+      {n:'2026-05-09_festival-sp_orcamento_v1.xlsx', y:'Sem acento, sem espaço, data ISO e versão. Chato de digitar, perfeito de achar — é esse o trabalho dele.'},
+      {n:'2026-05-09_festival-são-paulo_orçamento_v1.xlsx', y:'<b>Acento quebra link e sincronização.</b> No caminho, "orçamento" vira <code>or%C3%A7amento</code> — e o link que você mandou para o cliente morre.'},
+      {n:'orcamento_festival_sp_v1.xlsx', y:'Sem data. Ano que vem tem outro Festival SP, e os dois arquivos vão se chamar a mesma coisa.'}
+     ]},
+    {bad:'WhatsApp Image 2026-03-01 at 14.22.31.jpeg',
+     ctx:'Foto do quadro de energia tirada na visita técnica do Show X, em 01/03/2026.',
+     opts:[
+      {n:'2026-03-01_showX_foto-quadro-energia_v1.jpeg', y:'O nome diz o que é sem abrir o arquivo. Foto de visita técnica é documento: entra na pasta <code>06-plantas</code> com nome de documento.'},
+      {n:'WhatsApp_Image_2026-03-01_v1.jpeg', y:'Você tirou os espaços e não resolveu nada: <b>o nome continua não dizendo o que é.</b> Daqui a dois anos são 90 arquivos "WhatsApp Image" na pasta.'},
+      {n:'foto_quadro_energia_showX.jpeg', y:'Diz o que é — mas sem data não ordena, e sem versão você não sabe se é a foto da visita ou a do dia do evento.'}
+     ]},
+    {bad:'Doc1.docx',
+     ctx:'Checklist de montagem do casamento Lima, escrito em 20/04/2026.',
+     opts:[
+      {n:'2026-04-20_casamento-lima_checklist-montagem_v1.docx', y:'Data, evento, documento, versão. Outra pessoa acha esse arquivo às 03h da manhã sem te ligar — e é para isso que o padrão existe.'},
+      {n:'Doc1_casamento-lima_v1.docx', y:'<b>Doc1 não é informação</b> — é o nome que o Word deu. Nome de arquivo é escolha sua, não default de programa.'},
+      {n:'checklist montagem casamento Lima 20-04.docx', y:'Espaço, maiúscula solta, data invertida e sem versão. Quatro regras quebradas num nome só.'}
+     ]},
+    {bad:'contrato assinado ok.pdf',
+     ctx:'Contrato do cliente do Show X, assinado, recebido em 11/02/2026.',
+     opts:[
+      {n:'2026-02-11_showX_contrato-cliente_assinado_v1.pdf', y:'"contrato-cliente" separa do contrato de fornecedor e do de equipe, que vivem na mesma pasta <code>01-contratos</code>. E "assinado" é status, não versão — por isso o <b>v1</b> continua ali.'},
+      {n:'2026-02-11_showX_contrato_ok_FINAL.pdf', y:'"ok" e "_FINAL" não são versão. Quando chegar o aditivo — e chega —, esse nome não tem para onde crescer.'},
+      {n:'contrato-cliente_showX_assinado_v1.pdf', y:'Bom nome, faltou o começo: <b>sem data ISO não ordena</b> junto com o resto da pasta.'}
+     ]},
+    {bad:'14-03 planilha.xlsx',
+     ctx:'Fechamento financeiro do Show X, fechado em 14/03/2026.',
+     opts:[
+      {n:'2026-03-14_showX_fechamento-financeiro_v1.xlsx', y:'Ano completo (14-03 de qual ano?), evento nomeado e documento nomeado. É o arquivo que você vai abrir daqui a dois anos para orçar o mesmo cliente em uma hora.'},
+      {n:'2026-03-14_planilha_v1.xlsx', y:'<b>"planilha" não é documento.</b> A pasta <code>03-financeiro</code> inteira é planilha — orçamento, fechamento, controle de nota. Qual é esta?'},
+      {n:'14-03-2026_showX_fechamento-financeiro_v1.xlsx', y:'Só faltou a data em ISO — e é justamente ela que faz a pasta se ordenar sozinha, sem você mexer.'}
+     ]}
+  ];
+
+  var order=[], locked=false;
+
+  function shuffle(a){ for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i]; a[i]=a[j]; a[j]=t; } return a; }
+  function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function build(){
+    var h='';
+    SITS.forEach(function(s,i){
+      h+='<div class="item" data-c="'+i+'"><div class="when">SITUAÇÃO '+(i+1)+' · '+s.w+'</div><div class="txt">'+s.t+'</div><div class="opts">';
+      CANAIS.forEach(function(c){
+        h+='<label class="opt"><input type="radio" name="c'+i+'" value="'+c.k+'">'+c.n+'<small>'+c.d+'</small></label>';
+      });
+      h+='</div><div class="fb"></div></div>';
+    });
+    $('#canais').innerHTML=h;
+
+    order=[]; h='';
+    FILES.forEach(function(f,i){
+      var idx=shuffle([0,1,2]); order.push(idx);
+      h+='<div class="item" data-f="'+i+'"><div class="when">ARQUIVO '+(i+1)+'</div>'+
+         '<div class="bad-fn fn">'+esc(f.bad)+'</div><div class="ctx">'+f.ctx+'</div><div class="opts one">';
+      idx.forEach(function(o){
+        h+='<label class="opt"><input type="radio" name="f'+i+'" value="'+o+'"><span class="fn">'+esc(f.opts[o].n)+'</span></label>';
+      });
+      h+='</div><div class="fb"></div></div>';
+    });
+    $('#arquivos').innerHTML=h;
+
+    $$('.opt input').forEach(function(inp){
+      inp.addEventListener('change',function(){
+        if(locked){ inp.checked=false; return; }
+        $$('input[name="'+inp.name+'"]').forEach(function(o){ o.closest('.opt').classList.toggle('sel',o.checked); });
+      });
+    });
+  }
+
+  function val(n){ var c=document.querySelector('input[name="'+n+'"]:checked'); return c?c.value:null; }
+
+  function check(){
+    var pend=[];
+    SITS.forEach(function(s,i){ if(!val('c'+i)) pend.push('Canal '+(i+1)); });
+    FILES.forEach(function(f,i){ if(!val('f'+i)) pend.push('Arquivo '+(i+1)); });
+    if(pend.length){ var m=$('#miss'); m.className='on'; m.textContent='Faltam '+pend.length+' resposta(s): '+pend.join(', ')+'.'; return; }
+    $('#miss').className=''; locked=true;
+
+    var h1=0;
+    SITS.forEach(function(s,i){
+      var pick=val('c'+i), right=(pick===s.a); if(right) h1++;
+      var box=document.querySelector('[data-c="'+i+'"]');
+      box.classList.add('locked');
+      $$('.opt',box).forEach(function(L){
+        var v=L.querySelector('input').value;
+        if(v===s.a) L.classList.add('right'); else if(v===pick) L.classList.add('wrong'); else L.classList.add('dim');
+        L.classList.remove('sel');
+      });
+      var fb=box.querySelector('.fb'); fb.className='fb on';
+      fb.innerHTML='<div class="v '+(right?'g':'r')+'">'+(right?'✓ CORRETO — ':'✗ ERRADO — O CANAL É: ')+NM[s.a].toUpperCase()+'</div>'+
+                   '<p>'+s.ok+'</p><p class="w">'+s.no+'</p>';
+    });
+
+    var h2=0;
+    FILES.forEach(function(f,i){
+      var pick=parseInt(val('f'+i),10), right=(pick===0); if(right) h2++;
+      var box=document.querySelector('[data-f="'+i+'"]');
+      box.classList.add('locked');
+      $$('.opt',box).forEach(function(L){
+        var v=parseInt(L.querySelector('input').value,10);
+        if(v===0) L.classList.add('right'); else if(v===pick) L.classList.add('wrong'); else L.classList.add('dim');
+        L.classList.remove('sel');
+      });
+      var fb=box.querySelector('.fb'); fb.className='fb on';
+      var html='<div class="v '+(right?'g':'r')+'">'+(right?'✓ CORRETO':'✗ ERRADO')+'</div><p>'+f.opts[0].y+'</p>';
+      if(!right) html+='<p class="w"><b class="fn">'+esc(f.opts[pick].n)+'</b> — '+f.opts[pick].y+'</p>';
+      fb.innerHTML=html;
+    });
+
+    var tot=SITS.length+FILES.length, hits=h1+h2, pct=Math.round(hits/tot*100);
+    $('#s1').textContent=h1+' / '+SITS.length;
+    $('#s2').textContent=h2+' / '+FILES.length;
+    $('#s3').textContent=pct+'%';
+    var v=$('#rv');
+    if(pct===100){ v.className='verdict ok'; v.textContent='Sua comunicação deixa rastro e sua pasta se ordena sozinha. É esse produtor que consegue cobrar a hora extra e achar o rider às 03h da manhã.'; }
+    else if(pct>=77){ v.className='verdict warn'; v.textContent='Quase. Os itens em vermelho são os que vazam: releia o motivo, porque cada um deles tem preço em dinheiro ou em atrito.'; }
+    else { v.className='verdict bad'; v.textContent='Você está combinando o evento de boca e salvando arquivo com o nome que o programa deu. Nos dois casos a conta chega — e chega no seu bolso.'; }
+    $('#check').style.display='none';
+    $('#res').style.display='block';
+    $('#res').scrollIntoView({behavior:'smooth',block:'start'});
+  }
+
+  function reset(){
+    locked=false;
+    $('#res').style.display='none';
+    $('#check').style.display='block';
+    $('#miss').className='';
+    build();
+    window.scrollTo(0,0);
+  }
+
+  $('#check').addEventListener('click',check);
+  $('#again').addEventListener('click',reset);
+  build();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMU PRO · Equipe e Fornecedores</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #eef2f6;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    padding: 20px;
+    min-height: 100vh;
+  }
+  .device {
+    background: #20252f;
+    border: 1px solid #10141b;
+    border-radius: 12px;
+    color: #cbd5e1;
+    padding: 16px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  .device-title {
+    font-size: 10px;
+    letter-spacing: .14em;
+    color: #5b6675;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+  }
+  h2 {
+    font-size: 15px;
+    color: #e2e8f0;
+    margin-bottom: 4px;
+  }
+  .subtitle {
+    font-size: 11px;
+    color: #64748b;
+    margin-bottom: 14px;
+  }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 14px;
+    border-bottom: 1px solid #2d3440;
+    padding-bottom: 0;
+  }
+  .tab-btn {
+    padding: 6px 14px;
+    border: none;
+    background: transparent;
+    color: #64748b;
+    font-size: 12px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    border-radius: 4px 4px 0 0;
+    transition: color .2s, border-color .2s;
+  }
+  .tab-btn.active {
+    color: #3b82f6;
+    border-bottom-color: #3b82f6;
+    background: #1a1f28;
+  }
+  .tab-btn:hover:not(.active) { color: #94a3b8; }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* PANEL SECTIONS */
+  .panel-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .card {
+    background: #1a1f28;
+    border: 1px solid #2d3440;
+    border-radius: 8px;
+    padding: 12px;
+    flex: 1;
+    min-width: 200px;
+  }
+  .card-title {
+    font-size: 10px;
+    letter-spacing: .1em;
+    color: #5b6675;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  /* HIERARCHY TREE */
+  .hier-tree {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .hier-level {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .level-label {
+    font-size: 10px;
+    color: #5b6675;
+    width: 60px;
+    flex-shrink: 0;
+    text-align: right;
+  }
+  .role-chip {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid transparent;
+    user-select: none;
+    transition: transform .1s;
+  }
+  .role-chip:hover { transform: scale(1.05); }
+  .role-chip.coord { background: #1e3a5f; color: #60a5fa; border-color: #1d4ed8; }
+  .role-chip.tech  { background: #1a2e1a; color: #4ade80; border-color: #15803d; }
+  .role-chip.oper  { background: #2d1f0f; color: #fb923c; border-color: #c2410c; }
+  .role-chip.supp  { background: #2e1b47; color: #c084fc; border-color: #7e22ce; }
+  .role-chip.selected { box-shadow: 0 0 0 2px #f59e0b; }
+
+  /* BRIEFING CHECKLIST */
+  .brief-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 7px 0;
+    border-bottom: 1px solid #1a1f28;
+    cursor: pointer;
+    transition: background .15s;
+    border-radius: 4px;
+    padding-left: 4px;
+  }
+  .brief-item:hover { background: #1a1f28; }
+  .brief-item:last-child { border-bottom: none; }
+  .chk-box {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #3b82f6;
+    border-radius: 3px;
+    flex-shrink: 0;
+    margin-top: 1px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background .15s;
+  }
+  .chk-box.checked { background: #3b82f6; border-color: #3b82f6; }
+  .chk-box.checked::after { content: '✓'; color: white; font-size: 10px; font-weight: bold; }
+  .brief-text { font-size: 12px; }
+  .brief-label { color: #cbd5e1; font-weight: 600; }
+  .brief-desc { color: #64748b; font-size: 10px; margin-top: 1px; }
+  .critical-tag {
+    font-size: 9px;
+    background: #7f1d1d;
+    color: #fca5a5;
+    border-radius: 4px;
+    padding: 1px 5px;
+    margin-left: 4px;
+  }
+
+  /* SCALE BUILDER */
+  .scale-grid {
+    display: grid;
+    grid-template-columns: 100px repeat(3, 1fr);
+    gap: 2px;
+    font-size: 11px;
+  }
+  .sg-header {
+    background: #10141b;
+    padding: 5px;
+    color: #5b6675;
+    text-align: center;
+    border-radius: 3px;
+    font-size: 10px;
+    letter-spacing: .06em;
+  }
+  .sg-role {
+    background: #10141b;
+    padding: 5px 7px;
+    color: #94a3b8;
+    border-radius: 3px;
+    font-weight: 600;
+  }
+  .sg-cell {
+    padding: 4px;
+    border-radius: 3px;
+    text-align: center;
+  }
+  .cell-btn {
+    width: 28px;
+    height: 22px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: bold;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background .1s;
+    vertical-align: middle;
+  }
+  .cell-btn.minus { background: #374151; color: #9ca3af; }
+  .cell-btn.minus:hover { background: #ef4444; color: white; }
+  .cell-btn.plus  { background: #374151; color: #9ca3af; }
+  .cell-btn.plus:hover  { background: #22c55e; color: white; }
+  .cell-count {
+    display: inline-block;
+    width: 24px;
+    text-align: center;
+    color: #e2e8f0;
+    font-size: 12px;
+    font-weight: 700;
+    vertical-align: middle;
+  }
+
+  /* CONTRACT BUILDER */
+  .contract-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .form-row {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .form-label {
+    font-size: 10px;
+    color: #5b6675;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+  .form-select, .form-input {
+    background: #10141b;
+    border: 1px solid #2d3440;
+    border-radius: 5px;
+    color: #cbd5e1;
+    padding: 6px 10px;
+    font-size: 12px;
+    width: 100%;
+    outline: none;
+    transition: border-color .15s;
+  }
+  .form-select:focus, .form-input:focus { border-color: #3b82f6; }
+  .form-select option { background: #1a1f28; }
+
+  /* ALERT BADGES */
+  .alert-bar {
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 11px;
+    margin-top: 10px;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+  }
+  .alert-bar.ok     { background: #052e16; color: #4ade80; border: 1px solid #15803d; }
+  .alert-bar.warn   { background: #431407; color: #fb923c; border: 1px solid #c2410c; }
+  .alert-bar.danger { background: #450a0a; color: #f87171; border: 1px solid #b91c1c; }
+  .alert-bar.info   { background: #0c1a2e; color: #60a5fa; border: 1px solid #1d4ed8; }
+  .alert-icon { font-size: 14px; flex-shrink: 0; }
+
+  /* ROLE DETAIL PANEL */
+  .role-detail {
+    background: #10141b;
+    border: 1px solid #2d3440;
+    border-radius: 6px;
+    padding: 10px;
+    margin-top: 10px;
+    font-size: 11px;
+    min-height: 80px;
+  }
+  .role-detail h4 { color: #e2e8f0; margin-bottom: 5px; font-size: 12px; }
+  .role-detail p { color: #64748b; line-height: 1.5; }
+  .role-detail ul { color: #94a3b8; padding-left: 14px; line-height: 1.7; }
+
+  /* SCORE BAR */
+  .score-section {
+    background: #10141b;
+    border-radius: 8px;
+    padding: 10px;
+    margin-top: 12px;
+  }
+  .score-title { font-size: 10px; color: #5b6675; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 6px; }
+  .score-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .score-label { font-size: 10px; color: #94a3b8; width: 130px; }
+  .score-track { flex: 1; height: 6px; background: #1a1f28; border-radius: 3px; overflow: hidden; }
+  .score-fill { height: 100%; border-radius: 3px; transition: width .4s ease; }
+  .score-val { font-size: 10px; color: #e2e8f0; width: 30px; text-align: right; font-weight: 700; }
+
+  /* SUMMARY */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .sum-card {
+    background: #10141b;
+    border: 1px solid #2d3440;
+    border-radius: 6px;
+    padding: 10px;
+    text-align: center;
+  }
+  .sum-num { font-size: 22px; font-weight: 800; color: #e2e8f0; }
+  .sum-sub { font-size: 9px; color: #5b6675; letter-spacing: .06em; text-transform: uppercase; margin-top: 2px; }
+
+  /* DRAG-DROP ZONES */
+  .supply-board {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .supply-col {
+    flex: 1;
+    min-width: 170px;
+    background: #10141b;
+    border: 1px solid #2d3440;
+    border-radius: 6px;
+    padding: 8px;
+    min-height: 150px;
+  }
+  .supply-col-title {
+    font-size: 10px;
+    letter-spacing: .08em;
+    color: #5b6675;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    border-bottom: 1px solid #1a1f28;
+    padding-bottom: 4px;
+  }
+  .supplier-chip {
+    background: #1a1f28;
+    border: 1px solid #2d3440;
+    border-radius: 5px;
+    padding: 5px 8px;
+    font-size: 11px;
+    color: #cbd5e1;
+    margin-bottom: 4px;
+    cursor: grab;
+    user-select: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background .15s, border-color .15s;
+  }
+  .supplier-chip:active { cursor: grabbing; }
+  .supplier-chip:hover { background: #20252f; border-color: #3b82f6; }
+  .supplier-chip.dragging { opacity: .4; }
+  .supplier-chip .chip-cat {
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 8px;
+  }
+  .cat-av   { background: #0c1a2e; color: #60a5fa; }
+  .cat-luz  { background: #1a2e1a; color: #4ade80; }
+  .cat-str  { background: #2e1b47; color: #c084fc; }
+  .cat-back { background: #2d1a00; color: #fbbf24; }
+  .cat-sec  { background: #200a0a; color: #f87171; }
+
+  .drop-zone {
+    min-height: 60px;
+    border: 2px dashed #2d3440;
+    border-radius: 5px;
+    padding: 6px;
+    transition: border-color .2s, background .2s;
+  }
+  .drop-zone.drag-over { border-color: #3b82f6; background: #0c1a2e; }
+
+  /* BTNS */
+  .btn {
+    padding: 7px 16px;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .15s, transform .1s;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn-primary { background: #3b82f6; color: white; }
+  .btn-primary:hover { background: #2563eb; }
+  .btn-ok { background: #15803d; color: #4ade80; }
+  .btn-warn { background: #92400e; color: #fbbf24; }
+  .btn-sm { padding: 4px 10px; font-size: 11px; }
+
+  /* FOOTER */
+  .footer-legend {
+    text-align: center;
+    color: #475569;
+    font-size: 11px;
+    margin-top: 12px;
+  }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .summary-grid { grid-template-columns: repeat(2, 1fr); }
+    .scale-grid { grid-template-columns: 80px repeat(3, 1fr); }
+    /* As 5 abas não cabem em 375px: quebram em linha, sem esticar a página. */
+    .tabs { flex-wrap: wrap; }
+    /* Alvo de toque: engorda a altura sem mexer na fonte. */
+    .tab-btn { min-height: 34px; }
+  }
+</style>
+</head>
+<body>
+<script>/*SMU-ZOOM*/(function(){var z=1,sc=null,MIN=1,MAX=2.5,STEP=0.25;function wrap(){if(sc)return;sc=document.createElement('div');sc.id='smu-sc';sc.style.transformOrigin='0 0';[].slice.call(document.body.children).filter(function(el){return (el.id||'').indexOf('smu-')!==0;}).forEach(function(k){sc.appendChild(k);});document.body.insertBefore(sc,document.body.firstChild);document.documentElement.style.overflow='auto';document.body.style.overflow='auto';document.body.style.margin='0';}function apply(){if(!sc)wrap();sc.style.transform='scale('+z+')';var w=sc.offsetWidth,h=sc.offsetHeight;document.body.style.width=(z>1?(w*z)+'px':'');document.body.style.height=(z>1?(h*z)+'px':'');var l=document.getElementById('smu-zl');if(l)l.textContent=Math.round(z*100)+'%';}function ui(){if(document.getElementById('smu-zoom'))return;var b=document.createElement('div');b.id='smu-zoom';b.style.cssText='position:fixed;left:10px;bottom:10px;z-index:99999;display:flex;align-items:center;gap:5px;background:#0e1420;border:1px solid #2c3340;border-radius:22px;padding:5px 8px;box-shadow:0 2px 10px rgba(0,0,0,.4);font-family:system-ui,sans-serif';function mk(t){var x=document.createElement('button');x.textContent=t;x.style.cssText='width:32px;height:32px;border-radius:50%;border:1px solid #2c3340;background:#171c26;color:#e5e7eb;font-size:18px;cursor:pointer;padding:0;line-height:1';return x;}var ic=document.createElement('span');ic.textContent='\U0001F50D';ic.style.fontSize='14px';var mi=mk('−'),lab=document.createElement('span'),pl=mk('+');lab.id='smu-zl';lab.style.cssText='font-size:12px;color:#cbd5e1;min-width:44px;text-align:center;cursor:pointer';lab.textContent='100%';b.appendChild(ic);b.appendChild(mi);b.appendChild(lab);b.appendChild(pl);document.body.appendChild(b);mi.onclick=function(){z=Math.max(MIN,Math.round((z-STEP)*100)/100);apply();};pl.onclick=function(){z=Math.min(MAX,Math.round((z+STEP)*100)/100);apply();};lab.onclick=function(){z=1;apply();};}if(document.readyState!=='loading')ui();else document.addEventListener('DOMContentLoaded',ui);})();</script>
+
+
+<div class="device">
+  <div class="device-title">SMU PRO · PRODUTOR PLENO</div>
+  <h2>Equipe &amp; Fornecedores</h2>
+  <p class="subtitle">Monte a estrutura operacional do seu evento: hierarquia, escala, briefing e contratos</p>
+
+  <!-- SUMÁRIO RÁPIDO -->
+  <div class="summary-grid" id="summaryGrid">
+    <div class="sum-card">
+      <div class="sum-num" id="sumTeam">0</div>
+      <div class="sum-sub">profissionais</div>
+    </div>
+    <div class="sum-card">
+      <div class="sum-num" id="sumSupply">0</div>
+      <div class="sum-sub">fornecedores</div>
+    </div>
+    <div class="sum-card">
+      <div class="sum-num" id="sumBrief" style="color:#f59e0b">0%</div>
+      <div class="sum-sub">briefing OK</div>
+    </div>
+    <div class="sum-card">
+      <div class="sum-num" id="sumReady" style="color:#ef4444">NÃO</div>
+      <div class="sum-sub">pronto p/ evento</div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('hier')">1 · Hierarquia</button>
+    <button class="tab-btn" onclick="switchTab('scale')">2 · Escala</button>
+    <button class="tab-btn" onclick="switchTab('brief')">3 · Briefing</button>
+    <button class="tab-btn" onclick="switchTab('contract')">4 · Contratos</button>
+    <button class="tab-btn" onclick="switchTab('supply')">5 · Fornecedores</button>
+  </div>
+
+  <!-- TAB 1: HIERARQUIA -->
+  <div class="tab-panel active" id="tab-hier">
+    <div class="panel-row">
+      <div class="card" style="flex:1.5">
+        <div class="card-title">Organograma do Evento</div>
+        <div class="hier-tree">
+          <div class="hier-level">
+            <span class="level-label">Nível 1</span>
+            <span class="role-chip coord" data-role="diretor" onclick="selectRole(this)">Diretor de Produção</span>
+          </div>
+          <div class="hier-level">
+            <span class="level-label">Nível 2</span>
+            <span class="role-chip coord" data-role="prod_exec" onclick="selectRole(this)">Produtor Executivo</span>
+            <span class="role-chip coord" data-role="coord_tec" onclick="selectRole(this)">Coord. Técnico</span>
+          </div>
+          <div class="hier-level">
+            <span class="level-label">Nível 3</span>
+            <span class="role-chip tech" data-role="rt_audio" onclick="selectRole(this)">RT Áudio</span>
+            <span class="role-chip tech" data-role="rt_luz" onclick="selectRole(this)">RT Iluminação</span>
+            <span class="role-chip tech" data-role="rt_video" onclick="selectRole(this)">RT Vídeo</span>
+            <span class="role-chip tech" data-role="rt_back" onclick="selectRole(this)">RT Backstage</span>
+          </div>
+          <div class="hier-level">
+            <span class="level-label">Nível 4</span>
+            <span class="role-chip oper" data-role="op_audio" onclick="selectRole(this)">Op. Áudio</span>
+            <span class="role-chip oper" data-role="op_luz" onclick="selectRole(this)">Op. Luz</span>
+            <span class="role-chip oper" data-role="op_video" onclick="selectRole(this)">Op. Vídeo</span>
+            <span class="role-chip oper" data-role="rigging" onclick="selectRole(this)">Rigging</span>
+            <span class="role-chip oper" data-role="runner" onclick="selectRole(this)">Runner</span>
+          </div>
+          <div class="hier-level">
+            <span class="level-label">Suporte</span>
+            <span class="role-chip supp" data-role="recep" onclick="selectRole(this)">Recepção</span>
+            <span class="role-chip supp" data-role="segur" onclick="selectRole(this)">Segurança</span>
+            <span class="role-chip supp" data-role="logis" onclick="selectRole(this)">Logística</span>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="flex:1">
+        <div class="card-title">Clique em um cargo</div>
+        <div class="role-detail" id="roleDetail">
+          <p style="color:#374151">Clique em qualquer cargo no organograma para ver responsabilidades e quem reporta a quem.</p>
+        </div>
+        <div class="alert-bar info" style="margin-top:8px">
+          <span class="alert-icon">💡</span>
+          <span>Cada nível responde apenas ao nível imediatamente acima. Conflitos são resolvidos na cadeia — nunca entre níveis.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Score hierarquia -->
+    <div class="score-section">
+      <div class="score-title">Clareza Hierárquica do Evento</div>
+      <div class="score-row">
+        <span class="score-label">Liderança definida</span>
+        <div class="score-track"><div class="score-fill" id="sf1" style="width:0%;background:#22c55e"></div></div>
+        <span class="score-val" id="sv1">0%</span>
+      </div>
+      <div class="score-row">
+        <span class="score-label">Técnicos responsáveis</span>
+        <div class="score-track"><div class="score-fill" id="sf2" style="width:0%;background:#3b82f6"></div></div>
+        <span class="score-val" id="sv2">0%</span>
+      </div>
+      <div class="score-row">
+        <span class="score-label">Operação escalada</span>
+        <div class="score-track"><div class="score-fill" id="sf3" style="width:0%;background:#a78bfa"></div></div>
+        <span class="score-val" id="sv3">0%</span>
+      </div>
+    </div>
+
+    <div id="hierAlert" style="margin-top:8px"></div>
+  </div>
+
+  <!-- TAB 2: ESCALA -->
+  <div class="tab-panel" id="tab-scale">
+    <div class="panel-row">
+      <div class="card" style="flex:2">
+        <div class="card-title">Escala de Pessoal por Turno</div>
+        <div class="scale-grid">
+          <div class="sg-header"></div>
+          <div class="sg-header">Montagem<br><span style="font-size:9px;color:#374151">D-1</span></div>
+          <div class="sg-header">Show Day<br><span style="font-size:9px;color:#374151">D0 manhã</span></div>
+          <div class="sg-header">Evento<br><span style="font-size:9px;color:#374151">D0 noite</span></div>
+
+          <div class="sg-role">Coord. Técnico</div>
+          <div class="sg-cell" id="cell-coord_tec-0"><button class="cell-btn minus" onclick="adj('coord_tec',0,-1)">−</button><span class="cell-count" id="cnt-coord_tec-0">0</span><button class="cell-btn plus" onclick="adj('coord_tec',0,1)">+</button></div>
+          <div class="sg-cell" id="cell-coord_tec-1"><button class="cell-btn minus" onclick="adj('coord_tec',1,-1)">−</button><span class="cell-count" id="cnt-coord_tec-1">0</span><button class="cell-btn plus" onclick="adj('coord_tec',1,1)">+</button></div>
+          <div class="sg-cell" id="cell-coord_tec-2"><button class="cell-btn minus" onclick="adj('coord_tec',2,-1)">−</button><span class="cell-count" id="cnt-coord_tec-2">0</span><button class="cell-btn plus" onclick="adj('coord_tec',2,1)">+</button></div>
+
+          <div class="sg-role">RT Áudio</div>
+          <div class="sg-cell"><button class="cell-btn minus" onclick="adj('rt_audio',0,-1)">−</button><span class="cell-count" id="cnt-rt_audio-0">0</span><button class="cell-btn plus" onclick="adj('rt_audio',0,1)">+</button></div>
+          <div class="sg-cell"><button class="cell-btn minus" onclick="adj('rt_audio',1,-1)">−</button><span class="cell-count" id="cnt-rt_audio-1">0</span><button class="cell-btn plus" onclick="adj('rt_audio',1,1)">+</button></div>
+          <div class="sg-cell"><button class="cell-btn minus" onclick="adj('rt_audio',2,-1)">−</button><span class="cell-count" id="cnt-rt_audio-2">0</span><button class="cell-btn plus" onclick="adj('rt_audio',2,1)">+</button></div>
+
+          <div class="sg-role">RT Iluminação</div>
+          <div class="sg-cell"><button class="cell-btn minus" onclick="adj('rt_luz',0,-1)">−</button><span class="cell-count" id="cnt-rt_luz-0">0</span><button class="cell-btn plus" onclick="adj('rt_luz',0,1)">+</button></div>
+          <div class="sg-cell"><button class="cell-btn minus" onclick="adj('rt_luz',1,-1)">−</button><span class="cell-count" id="cnt-rt_luz-1">0</span><button class="cell-btn plus" onclick="adj('rt_luz',1,1)">+</button></div>
+          <div class="sg-cell"><button class="cell-btn minus" onclick="adj('rt_luz',2,-1)">−</button><span class="cell-count" id="cnt-rt_luz-2">0</span><button class="cell-btn plus" onclick="adj('rt_luz',2,1)">+</button></div>
+
+          <div class="sg-role">Op. Áudio</div>
+          <div class="sg-cell"><button class="cell-btn minus" onclick="adj('op_audio',0,-1)">−</button><span class="cell-count" id="cnt-op_audio-0">0</span><button class="cell-btn plus" onclick="adj('op_audio',0,1)">+</button></div>
+          <div class="sg-cell"><button class="cell-btn minus" onclick="adj('op_audio',1,-1)">−</button><span class="cell-count" id="cnt-op_audio-1">0</span><button class="cell-btn plus" onclick="adj('op_audio',1,1)">+</button></div>
+          <div class="sg-cell"><button class="cell-btn minus" onclick="adj('op_audio',2,-1)">−</button><span class="cell-count" id="cnt-op_audio-2">0</span><button class="cell-btn plus" onclick="adj('op_audio',2,1)">+</button></div>
+
+          <div class="sg-role">Op. Luz/Vídeo</div>
+          <div class="sg-cell"><button class="cell-btn minus" onclick="adj('op_luz',0,-1)">−</button><span class="cell-count" id="cnt-op_luz-0">0</span><button class="cell-btn plus" onclick="adj('op_luz',0,1)">+</button></div>
+          <div class="sg-cell"><button class="cell-btn minus" onclick="adj('op_luz',1,-1)">−</button><span class="cell-count" id="cnt-op_luz-1">0</span><button class="cell-btn plus" onclick="adj('op_luz',1,1)">+</button></div>
+          <div class="sg-cell"><button class="cell-btn minus" onclick="adj('op_luz',2,-1)">−</button><span class="cell-count" id="cnt-op_luz-2">0</span><button class="cell-btn plus" onclick="adj('op_luz',2,1)">+</button></div>
+
+          <div class="sg-role">Rigging</div>
+          <div class="sg-cell"><button class="cell-btn minus" onclick="adj('rigging',0,-1)">−</button><span class="cell-count" id="cnt-rigging-0">0</span><button class="cell-btn plus" onclick="adj('rigging',0,1)">+</button></div>
+          <div class="sg-cell"><button class="cell-btn minus" onclick="adj('rigging',1,-1)">−</button><span class="cell-count" id="cnt-rigging-1">0</span><button class="cell-btn plus" onclick="adj('rigging',1,1)">+</button></div>
+          <div class="sg-cell"><button class="cell-btn minus" onclick="adj('rigging',2,-1)">−</button><span class="cell-count" id="cnt-rigging-2">0</span><button class="cell-btn plus" onclick="adj('rigging',2,1)">+</button></div>
+
+          <div class="sg-role">Runner</div>
+          <div class="sg-cell"><button class="cell-btn minus" onclick="adj('runner',0,-1)">−</button><span class="cell-count" id="cnt-runner-0">0</span><button class="cell-btn plus" onclick="adj('runner',0,1)">+</button></div>
+          <div class="sg-cell"><button class="cell-btn minus" onclick="adj('runner',1,-1)">−</button><span class="cell-count" id="cnt-runner-1">0</span><button class="cell-btn plus" onclick="adj('runner',1,1)">+</button></div>
+          <div class="sg-cell"><button class="cell-btn minus" onclick="adj('runner',2,-1)">−</button><span class="cell-count" id="cnt-runner-2">0</span><button class="cell-btn plus" onclick="adj('runner',2,1)">+</button></div>
+
+          <div class="sg-role">Recepção</div>
+          <div class="sg-cell"><button class="cell-btn minus" onclick="adj('recep',0,-1)">−</button><span class="cell-count" id="cnt-recep-0">0</span><button class="cell-btn plus" onclick="adj('recep',0,1)">+</button></div>
+          <div class="sg-cell"><button class="cell-btn minus" onclick="adj('recep',1,-1)">−</button><span class="cell-count" id="cnt-recep-1">0</span><button class="cell-btn plus" onclick="adj('recep',1,1)">+</button></div>
+          <div class="sg-cell"><button class="cell-btn minus" onclick="adj('recep',2,-1)">−</button><span class="cell-count" id="cnt-recep-2">0</span><button class="cell-btn plus" onclick="adj('recep',2,1)">+</button></div>
+        </div>
+      </div>
+      <div class="card" style="flex:1">
+        <div class="card-title">Totais por Turno</div>
+        <div style="font-size:11px;color:#94a3b8;margin-bottom:6px">Clique + / − para ajustar a escala de cada função por período.</div>
+        <div style="background:#10141b;border-radius:6px;padding:8px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <span style="font-size:10px;color:#5b6675">Montagem</span>
+            <span style="font-size:13px;font-weight:700;color:#e2e8f0" id="turno0Total">0</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <span style="font-size:10px;color:#5b6675">Show Day manhã</span>
+            <span style="font-size:13px;font-weight:700;color:#e2e8f0" id="turno1Total">0</span>
+          </div>
+          <div style="display:flex;justify-content:space-between">
+            <span style="font-size:10px;color:#5b6675">Evento noite</span>
+            <span style="font-size:13px;font-weight:700;color:#e2e8f0" id="turno2Total">0</span>
+          </div>
+        </div>
+        <div id="scaleAlert" style="margin-top:8px"></div>
+        <button class="btn btn-primary btn-sm" style="margin-top:8px;width:100%" onclick="applyTemplate()">Aplicar template básico</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: BRIEFING -->
+  <div class="tab-panel" id="tab-brief">
+    <div class="panel-row">
+      <div class="card" style="flex:1.8">
+        <div class="card-title">Checklist de Briefing Técnico</div>
+        <div id="briefList">
+          <!-- itens gerados por JS -->
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px">
+          <button class="btn btn-primary btn-sm" onclick="markAllBrief()">Marcar todos</button>
+          <button class="btn btn-sm" style="background:#374151;color:#94a3b8" onclick="clearBrief()">Limpar</button>
+        </div>
+      </div>
+      <div class="card" style="flex:1">
+        <div class="card-title">Status do Briefing</div>
+        <div style="text-align:center;padding:12px 0">
+          <div style="font-size:40px;font-weight:800;color:#e2e8f0" id="briefPct">0%</div>
+          <div style="font-size:10px;color:#5b6675;margin-bottom:8px">itens concluídos</div>
+          <div style="background:#10141b;border-radius:6px;height:8px;overflow:hidden">
+            <div id="briefBar" style="height:100%;width:0%;background:#3b82f6;border-radius:6px;transition:width .4s ease"></div>
+          </div>
+        </div>
+        <div id="briefBlockers" style="margin-top:6px"></div>
+        <div class="alert-bar info" style="margin-top:8px">
+          <span class="alert-icon">📋</span>
+          <span>Itens <span style="color:#f87171">críticos</span> bloqueiam o evento se não forem concluídos 24h antes.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 4: CONTRATOS -->
+  <div class="tab-panel" id="tab-contract">
+    <div class="panel-row">
+      <div class="card" style="flex:1.2">
+        <div class="card-title">Simulador de Contratação</div>
+        <div class="contract-form">
+          <div class="form-row">
+            <label class="form-label">Tipo de profissional / fornecedor</label>
+            <select class="form-select" id="ctType" onchange="evalContract()">
+              <option value="">— selecione —</option>
+              <option value="freelancer">Freelancer (pessoa física)</option>
+              <option value="pj">Pessoa Jurídica (PJ)</option>
+              <option value="clt">Empregado CLT</option>
+              <option value="fornecedor">Fornecedor de equipamento</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label class="form-label">Prazo de contratação antes do evento</label>
+            <select class="form-select" id="ctPrazo" onchange="evalContract()">
+              <option value="">— selecione —</option>
+              <option value="30">30+ dias antes</option>
+              <option value="15">15 a 29 dias antes</option>
+              <option value="7">7 a 14 dias antes</option>
+              <option value="3">3 a 6 dias antes</option>
+              <option value="1">1 a 2 dias antes</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label class="form-label">Pagamento previsto</label>
+            <select class="form-select" id="ctPgto" onchange="evalContract()">
+              <option value="">— selecione —</option>
+              <option value="antecipado">50% antecipado + 50% no dia</option>
+              <option value="total_antes">100% antecipado</option>
+              <option value="no_dia">100% no dia</option>
+              <option value="pos">100% pós evento</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label class="form-label">Acordo por escrito?</label>
+            <select class="form-select" id="ctEscrito" onchange="evalContract()">
+              <option value="">— selecione —</option>
+              <option value="sim_ass">Contrato assinado (papel ou digital)</option>
+              <option value="sim_whats">Acordo formalizado por e-mail/WhatsApp</option>
+              <option value="verbal">Apenas verbal</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label class="form-label">Multa por cancelamento definida?</label>
+            <select class="form-select" id="ctMulta" onchange="evalContract()">
+              <option value="">— selecione —</option>
+              <option value="sim">Sim, cláusula escrita</option>
+              <option value="nao">Não</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="flex:1">
+        <div class="card-title">Avaliação do Contrato</div>
+        <div id="ctResult">
+          <div style="color:#374151;font-size:11px">Preencha os campos ao lado para ver a análise.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 5: FORNECEDORES -->
+  <div class="tab-panel" id="tab-supply">
+    <div style="font-size:11px;color:#64748b;margin-bottom:10px">
+      Arraste cada fornecedor para a coluna correta de status. O evento só pode ocorrer quando todos os fornecedores críticos estiverem confirmados.
+    </div>
+    <div class="supply-board" id="supplyBoard">
+      <div class="supply-col">
+        <div class="supply-col-title">Não contatado</div>
+        <div class="drop-zone" id="zone-pending"
+          ondragover="dzOver(event)" ondragleave="dzLeave(event)" ondrop="dzDrop(event,'pending')">
+          <div class="supplier-chip" draggable="true" data-id="sup1" data-cat="av" data-critico="1" ondragstart="chipDrag(event)">
+            Empresa de Áudio <span class="chip-cat cat-av">Áudio</span>
+          </div>
+          <div class="supplier-chip" draggable="true" data-id="sup2" data-cat="luz" data-critico="1" ondragstart="chipDrag(event)">
+            Empresa de Luz <span class="chip-cat cat-luz">Luz</span>
+          </div>
+          <div class="supplier-chip" draggable="true" data-id="sup3" data-cat="str" data-critico="1" ondragstart="chipDrag(event)">
+            Estrutura/Palco <span class="chip-cat cat-str">Estrutura</span>
+          </div>
+          <div class="supplier-chip" draggable="true" data-id="sup4" data-cat="back" data-critico="0" ondragstart="chipDrag(event)">
+            Buffet / Catering <span class="chip-cat cat-back">Alim.</span>
+          </div>
+          <div class="supplier-chip" draggable="true" data-id="sup5" data-cat="sec" data-critico="1" ondragstart="chipDrag(event)">
+            Segurança Privada <span class="chip-cat cat-sec">Seg.</span>
+          </div>
+          <div class="supplier-chip" draggable="true" data-id="sup6" data-cat="av" data-critico="0" ondragstart="chipDrag(event)">
+            Transmissão Online <span class="chip-cat cat-av">Streaming</span>
+          </div>
+          <div class="supplier-chip" draggable="true" data-id="sup7" data-cat="luz" data-critico="0" ondragstart="chipDrag(event)">
+            Decoração Floral <span class="chip-cat cat-luz">Decor.</span>
+          </div>
+        </div>
+      </div>
+      <div class="supply-col">
+        <div class="supply-col-title">Em negociação</div>
+        <div class="drop-zone" id="zone-neg"
+          ondragover="dzOver(event)" ondragleave="dzLeave(event)" ondrop="dzDrop(event,'neg')">
+        </div>
+      </div>
+      <div class="supply-col">
+        <div class="supply-col-title">Contratado (sem briefing)</div>
+        <div class="drop-zone" id="zone-contracted"
+          ondragover="dzOver(event)" ondragleave="dzLeave(event)" ondrop="dzDrop(event,'contracted')">
+        </div>
+      </div>
+      <div class="supply-col">
+        <div class="supply-col-title" style="color:#22c55e">Pronto (briefing OK)</div>
+        <div class="drop-zone" id="zone-ready"
+          ondragover="dzOver(event)" ondragleave="dzLeave(event)" ondrop="dzDrop(event,'ready')">
+        </div>
+      </div>
+    </div>
+    <div id="supplyAlert" style="margin-top:10px"></div>
+  </div>
+
+</div><!-- /device -->
+
+<div class="footer-legend">
+  Navegue pelas abas em ordem · Clique, arraste e ajuste para montar a operação do evento · O painel de resumo atualiza em tempo real
+</div>
+
+<script>
+// ========================
+// ESTADO GLOBAL
+// ========================
+const state = {
+  roleViewed: {},
+  scale: {},
+  briefChecked: {},
+  supplyZones: { pending:[], neg:[], contracted:[], ready:[] },
+};
+
+// Roles data
+const ROLES = {
+  diretor: {
+    label: 'Diretor de Produção',
+    cls: 'coord',
+    reporta: '—',
+    recebe: 'Produtor Exec., Coord. Técnico',
+    resp: ['Visão estratégica do evento', 'Aprovação final de budget e cronograma', 'Interface com cliente/contratante', 'Resolução de crises macro'],
+  },
+  prod_exec: {
+    label: 'Produtor Executivo',
+    cls: 'coord',
+    reporta: 'Diretor de Produção',
+    recebe: 'RTs e equipe de suporte',
+    resp: ['Gestão operacional do evento', 'Contratação e pagamento de fornecedores', 'Coordenação de cronograma e escala', 'Comunicação interna entre equipes'],
+  },
+  coord_tec: {
+    label: 'Coordenador Técnico',
+    cls: 'coord',
+    reporta: 'Diretor de Produção',
+    recebe: 'RT Áudio, RT Luz, RT Vídeo, RT Backstage',
+    resp: ['Supervisão técnica de todas as áreas', 'Aprovação de rider técnico', 'Solução de problemas técnicos em campo', 'Homologação de equipamentos'],
+  },
+  rt_audio: {
+    label: 'RT Áudio (Responsável Técnico)',
+    cls: 'tech',
+    reporta: 'Coord. Técnico',
+    recebe: 'Op. Áudio',
+    resp: ['Aprovação do patch de áudio', 'Supervisão da montagem do som', 'Sound check e ajustes de PA/monitor', 'Controle de ganhos e dinâmica durante o show'],
+  },
+  rt_luz: {
+    label: 'RT Iluminação',
+    cls: 'tech',
+    reporta: 'Coord. Técnico',
+    recebe: 'Op. Luz',
+    resp: ['Programação de cenas e cues de luz', 'Supervisão de rigging de fixtures', 'Alinhamento com direção artística', 'Operação ou supervisão durante show'],
+  },
+  rt_video: {
+    label: 'RT Vídeo',
+    cls: 'tech',
+    reporta: 'Coord. Técnico',
+    recebe: 'Op. Vídeo',
+    resp: ['Configuração de matrix e switcher', 'Definição de fluxo de sinal (câmera→telão→transmissão)', 'Alinhamento de conteúdo com cliente', 'Supervisão de qualidade de imagem'],
+  },
+  rt_back: {
+    label: 'RT Backstage',
+    cls: 'tech',
+    reporta: 'Coord. Técnico',
+    recebe: 'Rigging, Runners',
+    resp: ['Gestão de palco e bastidores', 'Controle de fluxo de artistas/palestrantes', 'Comunicação com camarim', 'Segurança backstage'],
+  },
+  op_audio: {
+    label: 'Operador de Áudio',
+    cls: 'oper',
+    reporta: 'RT Áudio',
+    recebe: '—',
+    resp: ['Operação da mesa de som durante o show', 'Controle de monitores de palco', 'Gerenciamento de in-ears e RF', 'Relatório de falhas ao RT'],
+  },
+  op_luz: {
+    label: 'Operador de Luz/Vídeo',
+    cls: 'oper',
+    reporta: 'RT Iluminação / RT Vídeo',
+    recebe: '—',
+    resp: ['Operação de console de iluminação', 'Operação de switcher de vídeo', 'Execução de cues pré-programados', 'Acompanhamento do roteiro do show'],
+  },
+  op_video: {
+    label: 'Operador de Vídeo',
+    cls: 'oper',
+    reporta: 'RT Vídeo',
+    recebe: '—',
+    resp: ['Operação de câmeras e switcher', 'Controle de playback e conteúdo', 'Transmissão ao vivo', 'Log de erros de sinal'],
+  },
+  rigging: {
+    label: 'Rigging',
+    cls: 'oper',
+    reporta: 'RT Backstage',
+    recebe: '—',
+    resp: ['Montagem e desmontagem de estruturas suspensas', 'Verificação de cargas e pontos de sustentação', 'Uso obrigatório de EPI (capacete, cinto, luva)', 'NUNCA improvisar ancoragem — risco de vida'],
+  },
+  runner: {
+    label: 'Runner',
+    cls: 'oper',
+    reporta: 'RT Backstage / Prod. Exec.',
+    recebe: '—',
+    resp: ['Apoio logístico geral', 'Transporte de materiais e riders', 'Recepção de fornecedores e artistas', 'Suporte onde for necessário'],
+  },
+  recep: {
+    label: 'Recepção',
+    cls: 'supp',
+    reporta: 'Produtor Executivo',
+    recebe: '—',
+    resp: ['Credenciamento e controle de acesso', 'Atendimento ao público e convidados', 'Distribuição de materiais', 'Interface inicial entre público e evento'],
+  },
+  segur: {
+    label: 'Segurança Privada',
+    cls: 'supp',
+    reporta: 'Produtor Executivo',
+    recebe: '—',
+    resp: ['Controle de acesso a áreas restritas', 'Prevenção de conflitos', 'Evacuação em emergências', 'Comunicação com coord. de segurança do venue'],
+  },
+  logis: {
+    label: 'Logística',
+    cls: 'supp',
+    reporta: 'Produtor Executivo',
+    recebe: '—',
+    resp: ['Controle de entrada e saída de equipamentos', 'Checklist de carga e descarga', 'Rastreamento de pedidos de fornecedores', 'Relatório de perdas/danos'],
+  },
+};
+
+// Briefing items
+const BRIEF_ITEMS = [
+  { id:'b1', label:'Roteiro técnico do show', desc:'Minutagem de entradas, cues, playbacks e falas.', critico:true },
+  { id:'b2', label:'Rider técnico aprovado', desc:'Lista de equipamentos com especificações do artista/palestrante.', critico:true },
+  { id:'b3', label:'Mapa de palco assinado', desc:'Stage plot com posição de cada elemento.', critico:true },
+  { id:'b4', label:'Canal de comunicação definido', desc:'Walkie, app de grupo ou headset entre todos os RTs.', critico:true },
+  { id:'b5', label:'Ponto de energia mapeado', desc:'Carga disponível por quadro, responsável elétrico identificado.', critico:true },
+  { id:'b6', label:'Contato de emergência do venue', desc:'Bombeiro, SAMU, segurança do local.', critico:true },
+  { id:'b7', label:'Cronograma de montagem compartilhado', desc:'Todos os fornecedores com hora de entrada e saída.', critico:false },
+  { id:'b8', label:'Senha de Wi-Fi e rede do venue', desc:'Essencial para transmissão e operação de mesas digitais.', critico:false },
+  { id:'b9', label:'Política de acesso ao backstage', desc:'Quem pode entrar, crachá e responsável.', critico:false },
+  { id:'b10',label:'Plano B de gerador', desc:'Contato e tempo de resposta em caso de queda de energia.', critico:false },
+  { id:'b11',label:'Alinhamento de look & feel com o cliente', desc:'Paleta de cores, identidade visual aprovada.', critico:false },
+  { id:'b12',label:'Briefing de segurança com equipe', desc:'Saídas de emergência, pontos de encontro, protocolos.', critico:false },
+];
+
+// Scale rows
+const SCALE_ROLES = ['coord_tec','rt_audio','rt_luz','op_audio','op_luz','rigging','runner','recep'];
+SCALE_ROLES.forEach(r => { state.scale[r] = [0,0,0]; });
+
+// Drag state
+let dragChipId = null;
+
+// ========================
+// TABS
+// ========================
+function switchTab(id) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+// ========================
+// TAB 1: HIERARQUIA
+// ========================
+function selectRole(chip) {
+  document.querySelectorAll('.role-chip').forEach(c => c.classList.remove('selected'));
+  chip.classList.add('selected');
+  const roleKey = chip.dataset.role;
+  const r = ROLES[roleKey];
+  if (!r) return;
+  state.roleViewed[roleKey] = true;
+
+  const det = document.getElementById('roleDetail');
+  det.innerHTML = `
+    <h4>${r.label}</h4>
+    <div style="font-size:10px;color:#5b6675;margin-bottom:4px">
+      Reporta a: <span style="color:#3b82f6">${r.reporta}</span> &nbsp;|&nbsp;
+      Recebe: <span style="color:#a78bfa">${r.recebe}</span>
+    </div>
+    <ul>${r.resp.map(x=>`<li>${x}</li>`).join('')}</ul>
+  `;
+  updateHierScores();
+  updateSummary();
+}
+
+function updateHierScores() {
+  const leadership = ['diretor','prod_exec','coord_tec'];
+  const techs = ['rt_audio','rt_luz','rt_video','rt_back'];
+  const opers = ['op_audio','op_luz','rigging','runner'];
+
+  const lv = leadership.filter(k=>state.roleViewed[k]).length;
+  const tv = techs.filter(k=>state.roleViewed[k]).length;
+  const ov = opers.filter(k=>state.roleViewed[k]).length;
+
+  const lp = Math.round(lv/leadership.length*100);
+  const tp = Math.round(tv/techs.length*100);
+  const op = Math.round(ov/opers.length*100);
+
+  setScore('sf1','sv1',lp);
+  setScore('sf2','sv2',tp);
+  setScore('sf3','sv3',op);
+
+  const total = Object.keys(state.roleViewed).length;
+  const msg = document.getElementById('hierAlert');
+  if (total >= 10) {
+    msg.innerHTML = '<div class="alert-bar ok"><span class="alert-icon">✅</span><span>Hierarquia compreendida! Você conhece as responsabilidades de toda a equipe.</span></div>';
+  } else if (total >= 5) {
+    msg.innerHTML = '<div class="alert-bar warn"><span class="alert-icon">⚠️</span><span>Explore os demais cargos para completar o entendimento da estrutura.</span></div>';
+  } else {
+    msg.innerHTML = '';
+  }
+}
+
+function setScore(fillId, valId, pct) {
+  document.getElementById(fillId).style.width = pct + '%';
+  document.getElementById(valId).textContent = pct + '%';
+}
+
+// ========================
+// TAB 2: ESCALA
+// ========================
+function adj(role, turno, delta) {
+  const cur = state.scale[role][turno];
+  const next = Math.max(0, cur + delta);
+  state.scale[role][turno] = next;
+  document.getElementById('cnt-' + role + '-' + turno).textContent = next;
+  updateTurnTotals();
+  updateSummary();
+  checkScaleAlerts();
+}
+
+function updateTurnTotals() {
+  [0,1,2].forEach(t => {
+    const total = SCALE_ROLES.reduce((acc, r) => acc + state.scale[r][t], 0);
+    document.getElementById('turno' + t + 'Total').textContent = total;
+  });
+}
+
+function checkScaleAlerts() {
+  const alerts = [];
+  // Coord técnico deve estar no evento
+  if (state.scale['coord_tec'][2] < 1) alerts.push({type:'danger', msg:'Coord. Técnico ausente no turno do Evento — impossível sem responsável técnico de plantão.'});
+  // RT áudio em show
+  if (state.scale['rt_audio'][2] < 1) alerts.push({type:'warn', msg:'Sem RT de Áudio no turno do show.'});
+  // RT luz em show
+  if (state.scale['rt_luz'][2] < 1) alerts.push({type:'warn', msg:'Sem RT de Iluminação no turno do show.'});
+  // Rigging deve estar na montagem
+  if (state.scale['rigging'][0] < 1) alerts.push({type:'warn', msg:'Sem Rigging na Montagem — estruturas suspensas exigem especialista habilitado.'});
+
+  const div = document.getElementById('scaleAlert');
+  if (alerts.length === 0) {
+    div.innerHTML = '<div class="alert-bar ok"><span class="alert-icon">✅</span><span>Escala adequada para o evento.</span></div>';
+  } else {
+    div.innerHTML = alerts.map(a =>
+      `<div class="alert-bar ${a.type}" style="margin-bottom:4px"><span class="alert-icon">${a.type==='danger'?'🚨':'⚠️'}</span><span>${a.msg}</span></div>`
+    ).join('');
+  }
+}
+
+function applyTemplate() {
+  // Template básico de um show médio
+  const tpl = {
+    coord_tec: [1,1,1],
+    rt_audio:  [1,1,1],
+    rt_luz:    [0,1,1],
+    op_audio:  [0,1,2],
+    op_luz:    [0,1,1],
+    rigging:   [2,1,0],
+    runner:    [2,2,2],
+    recep:     [0,2,3],
+  };
+  Object.entries(tpl).forEach(([role, arr]) => {
+    state.scale[role] = [...arr];
+    arr.forEach((v,t) => {
+      document.getElementById('cnt-'+role+'-'+t).textContent = v;
+    });
+  });
+  updateTurnTotals();
+  updateSummary();
+  checkScaleAlerts();
+}
+
+// ========================
+// TAB 3: BRIEFING
+// ========================
+function renderBriefList() {
+  const container = document.getElementById('briefList');
+  container.innerHTML = BRIEF_ITEMS.map(item => `
+    <div class="brief-item" onclick="toggleBrief('${item.id}')">
+      <div class="chk-box ${state.briefChecked[item.id]?'checked':''}" id="chk-${item.id}"></div>
+      <div class="brief-text">
+        <div class="brief-label">${item.label}${item.critico?'<span class="critical-tag">CRÍTICO</span>':''}</div>
+        <div class="brief-desc">${item.desc}</div>
+      </div>
+    </div>
+  `).join('');
+  updateBriefPct();
+}
+
+function toggleBrief(id) {
+  state.briefChecked[id] = !state.briefChecked[id];
+  const box = document.getElementById('chk-' + id);
+  if (box) box.className = 'chk-box ' + (state.briefChecked[id]?'checked':'');
+  updateBriefPct();
+  updateSummary();
+}
+
+function updateBriefPct() {
+  const total = BRIEF_ITEMS.length;
+  const done = BRIEF_ITEMS.filter(i => state.briefChecked[i.id]).length;
+  const pct = Math.round(done/total*100);
+  document.getElementById('briefPct').textContent = pct + '%';
+  document.getElementById('briefBar').style.width = pct + '%';
+
+  // Color
+  const bar = document.getElementById('briefBar');
+  if (pct >= 80) bar.style.background = '#22c55e';
+  else if (pct >= 50) bar.style.background = '#f59e0b';
+  else bar.style.background = '#ef4444';
+
+  // Blockers
+  const critBlockers = BRIEF_ITEMS.filter(i => i.critico && !state.briefChecked[i.id]);
+  const bd = document.getElementById('briefBlockers');
+  if (critBlockers.length === 0) {
+    bd.innerHTML = '<div class="alert-bar ok"><span class="alert-icon">✅</span><span>Todos os itens críticos concluídos.</span></div>';
+  } else {
+    bd.innerHTML = `<div class="alert-bar danger"><span class="alert-icon">🚨</span><span>${critBlockers.length} item(s) crítico(s) pendentes bloqueiam o evento.</span></div>`;
+  }
+}
+
+function markAllBrief() {
+  BRIEF_ITEMS.forEach(i => { state.briefChecked[i.id] = true; });
+  renderBriefList();
+  updateSummary();
+}
+
+function clearBrief() {
+  state.briefChecked = {};
+  renderBriefList();
+  updateSummary();
+}
+
+// ========================
+// TAB 4: CONTRATOS
+// ========================
+function evalContract() {
+  const type   = document.getElementById('ctType').value;
+  const prazo  = document.getElementById('ctPrazo').value;
+  const pgto   = document.getElementById('ctPgto').value;
+  const escrito= document.getElementById('ctEscrito').value;
+  const multa  = document.getElementById('ctMulta').value;
+
+  if (!type || !prazo || !pgto || !escrito || !multa) {
+    document.getElementById('ctResult').innerHTML = '<div style="color:#374151;font-size:11px">Preencha todos os campos para a análise.</div>';
+    return;
+  }
+
+  const issues = [];
+  const oks = [];
+  let score = 0;
+
+  // Tipo
+  if (type === 'freelancer') {
+    issues.push('Freelancer PF: exige emissão de RPA ou nota fiscal — verifique habitualidade para não caracterizar vínculo CLT.');
+  } else if (type === 'clt') {
+    oks.push('CLT: maior proteção legal para o trabalhador e empresa.');
+    score += 2;
+  } else if (type === 'pj') {
+    oks.push('PJ: exige contrato de prestação de serviço com escopo definido.');
+    score += 1;
+  } else if (type === 'fornecedor') {
+    oks.push('Fornecedor: contrato de locação/serviço com especificação técnica detalhada.');
+    score += 1;
+  }
+
+  // Prazo
+  if (prazo === '30') { oks.push('Prazo excelente: 30+ dias permite substituição em caso de desistência.'); score += 3; }
+  else if (prazo === '15') { oks.push('Prazo adequado para maioria dos serviços.'); score += 2; }
+  else if (prazo === '7')  { issues.push('Menos de 15 dias: risco de indisponibilidade do profissional/equipamento.'); score += 1; }
+  else if (prazo === '3')  { issues.push('Prazo crítico: praticamente sem margem para substituição.'); }
+  else if (prazo === '1')  { issues.push('RISCO ALTO: contratação de última hora. Apenas em emergência.'); }
+
+  // Pagamento
+  if (pgto === 'antecipado') { oks.push('Pagamento parcial antecipado: protege tanto o fornecedor quanto o contratante.'); score += 2; }
+  else if (pgto === 'total_antes') { issues.push('100% antecipado: risco caso o fornecedor não cumpra o contrato.'); score += 1; }
+  else if (pgto === 'no_dia')   { issues.push('100% no dia: muitos fornecedores exigem sinal — risco de cancelamento.'); score += 1; }
+  else if (pgto === 'pos')      { issues.push('Pós-evento: poucos fornecedores aceitam; risco de recusa de serviço.'); }
+
+  // Escrito
+  if (escrito === 'sim_ass')    { oks.push('Contrato assinado: maior segurança jurídica.'); score += 3; }
+  else if (escrito === 'sim_whats') { issues.push('Acordo digital informal: tem validade mas é frágil. Prefira contrato assinado.'); score += 1; }
+  else if (escrito === 'verbal')    { issues.push('RISCO ALTO: acordo verbal não tem comprovação em disputas. Formalize SEMPRE.'); }
+
+  // Multa
+  if (multa === 'sim') { oks.push('Cláusula de multa definida: protege o evento em caso de cancelamento.'); score += 2; }
+  else { issues.push('Sem multa por cancelamento: se o fornecedor cancelar, você fica sem proteção financeira.'); }
+
+  const maxScore = 13;
+  const pct = Math.round(score/maxScore*100);
+  let status, statusColor;
+  if (pct >= 75) { status = 'Contratação sólida'; statusColor = '#22c55e'; }
+  else if (pct >= 45) { status = 'Risco moderado'; statusColor = '#f59e0b'; }
+  else { status = 'Alto risco'; statusColor = '#ef4444'; }
+
+  document.getElementById('ctResult').innerHTML = `
+    <div style="text-align:center;padding:8px 0">
+      <div style="font-size:28px;font-weight:800;color:${statusColor}">${pct}%</div>
+      <div style="font-size:11px;color:${statusColor};font-weight:600;margin-bottom:8px">${status}</div>
+      <div style="background:#10141b;border-radius:4px;height:6px;overflow:hidden;margin-bottom:10px">
+        <div style="height:100%;width:${pct}%;background:${statusColor};border-radius:4px;transition:width .4s"></div>
+      </div>
+    </div>
+    ${oks.map(o=>`<div style="font-size:10px;color:#4ade80;margin-bottom:3px">✓ ${o}</div>`).join('')}
+    ${issues.map(i=>`<div style="font-size:10px;color:#fca5a5;margin-bottom:3px">✗ ${i}</div>`).join('')}
+  `;
+}
+
+// ========================
+// TAB 5: FORNECEDORES (DRAG & DROP)
+// ========================
+function chipDrag(e) {
+  dragChipId = e.currentTarget.dataset.id;
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+function dzOver(e) {
+  e.preventDefault();
+  e.currentTarget.classList.add('drag-over');
+  e.dataTransfer.dropEffect = 'move';
+}
+
+function dzLeave(e) {
+  e.currentTarget.classList.remove('drag-over');
+}
+
+function dzDrop(e, zoneName) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if (!dragChipId) return;
+
+  // Find chip in DOM
+  const chip = document.querySelector('[data-id="' + dragChipId + '"]');
+  if (!chip) return;
+  chip.classList.remove('dragging');
+
+  // Move chip to target zone
+  const targetZone = document.getElementById('zone-' + zoneName);
+  targetZone.appendChild(chip);
+  dragChipId = null;
+
+  updateSupplyStatus();
+  updateSummary();
+}
+
+function updateSupplyStatus() {
+  const readyZone = document.getElementById('zone-ready');
+  const allChips = document.querySelectorAll('.supplier-chip');
+  const criticalChips = Array.from(allChips).filter(c => c.dataset.critico === '1');
+  const readyChips = Array.from(readyZone.querySelectorAll('.supplier-chip'));
+  const readyCritical = readyChips.filter(c => c.dataset.critico === '1');
+
+  const totalSupply = allChips.length;
+  const readyCount = readyChips.length;
+  const critPending = criticalChips.filter(c => !readyChips.includes(c)).length;
+
+  document.getElementById('sumSupply').textContent = readyCount + '/' + totalSupply;
+
+  const alerts = [];
+  if (critPending > 0) {
+    alerts.push({type:'danger', msg:`${critPending} fornecedor(es) crítico(s) ainda não estão prontos. O evento não pode acontecer.`});
+  } else if (readyCount < totalSupply) {
+    alerts.push({type:'warn', msg:`Todos os fornecedores críticos estão prontos, mas ${totalSupply-readyCount} fornecedor(es) ainda não foram finalizados.`});
+  } else {
+    alerts.push({type:'ok', msg:'Todos os fornecedores estão prontos! O evento pode ocorrer.'});
+  }
+
+  document.getElementById('supplyAlert').innerHTML = alerts.map(a =>
+    `<div class="alert-bar ${a.type}"><span class="alert-icon">${a.type==='danger'?'🚨':a.type==='warn'?'⚠️':'✅'}</span><span>${a.msg}</span></div>`
+  ).join('');
+
+  return {readyCount, critPending, totalSupply, readyCritical: readyCritical.length, critTotal: criticalChips.length};
+}
+
+// ========================
+// SUMMARY GLOBAL
+// ========================
+function updateSummary() {
+  // Team total
+  const teamTotal = SCALE_ROLES.reduce((acc, r) => acc + Math.max(...state.scale[r]), 0);
+  document.getElementById('sumTeam').textContent = teamTotal;
+
+  // Brief pct
+  const done = BRIEF_ITEMS.filter(i => state.briefChecked[i.id]).length;
+  const pct = Math.round(done/BRIEF_ITEMS.length*100);
+  const briefEl = document.getElementById('sumBrief');
+  briefEl.textContent = pct + '%';
+  briefEl.style.color = pct >= 80 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444';
+
+  // Supply
+  const supState = updateSupplyStatus();
+
+  // Ready?
+  const hierOk = Object.keys(state.roleViewed).length >= 5;
+  const scaleOk = state.scale['coord_tec'][2] >= 1 && state.scale['rt_audio'][2] >= 1;
+  const briefOk = BRIEF_ITEMS.filter(i => i.critico && !state.briefChecked[i.id]).length === 0 && done >= 6;
+  const supplyOk = supState && supState.critPending === 0;
+
+  const readyEl = document.getElementById('sumReady');
+  if (hierOk && scaleOk && briefOk && supplyOk) {
+    readyEl.textContent = 'SIM';
+    readyEl.style.color = '#22c55e';
+  } else {
+    readyEl.textContent = 'NÃO';
+    readyEl.style.color = '#ef4444';
+  }
+}
+
+// ========================
+// INIT
+// ========================
+renderBriefList();
+updateTurnTotals();
+checkScaleAlerts();
+updateSummary();
+
+// Drag end handler
+document.addEventListener('dragend', () => {
+  document.querySelectorAll('.supplier-chip').forEach(c => c.classList.remove('dragging'));
+});
+</script>
+
+</body>
+</html>

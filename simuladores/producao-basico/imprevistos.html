@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>SMU PRO · Deu errado: e agora?</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0c1017;--panel:#161c26;--panel2:#1b2230;--line:#2a3444;--ink:#e7edf5;--dim:#8794a8;
+        --accent:#f59e0b;--ok:#22c55e;--err:#ef4444;--warn:#f59e0b;--cyan:#38bdf8;}
+  html,body{background:var(--bg);color:var(--ink);
+    font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased;}
+  body{padding:12px;overflow-x:hidden;}
+  .app{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:12px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  h1{font-size:15px;margin-bottom:3px;}
+  .sub{font-size:12px;color:var(--dim);margin-bottom:12px;line-height:1.5;}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px;min-width:0;}
+  .stat .k{font-size:10px;color:var(--dim);letter-spacing:.5px;}
+  .stat .val{font-size:15px;font-weight:800;margin-top:2px;}
+  .verdict{font-size:13px;font-weight:700;padding:9px 12px;border-radius:8px;text-align:center;line-height:1.5;}
+  .verdict.ok{background:#14532d;color:#bbf7d0;}
+  .verdict.bad{background:#450a0a;color:#fca5a5;}
+  .verdict.warn{background:#422006;color:#fde68a;}
+  .note{font-size:12px;color:var(--dim);line-height:1.55;}
+  button{font:inherit;cursor:pointer;}
+  /* ---- específico ---- */
+  .bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+  .pill{font-size:10px;font-weight:700;letter-spacing:.6px;padding:4px 8px;border-radius:999px;
+        background:#0c1119;border:1px solid var(--line);color:var(--dim);}
+  .pill.acc{border-color:var(--accent);color:#fde68a;}
+  .pill.g{border-color:#166534;color:#86efac;} .pill.r{border-color:#7f1d1d;color:#fca5a5;}
+  .track{height:5px;border-radius:3px;background:#0c1119;border:1px solid var(--line);overflow:hidden;flex:1;min-width:80px;}
+  .track i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s;}
+  .sit{background:var(--panel2);border:1px solid var(--line);border-left:3px solid var(--accent);
+       border-radius:9px;padding:13px;margin-bottom:12px;min-width:0;}
+  .sit.risk{border-left-color:var(--err);}
+  .sit .when{font-size:10px;color:var(--accent);letter-spacing:.7px;font-weight:700;margin-bottom:6px;}
+  .sit.risk .when{color:#fca5a5;}
+  .sit .txt{font-size:14px;line-height:1.6;}
+  .opts{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;}
+  .opt{min-height:46px;min-width:24px;text-align:left;padding:10px 12px;border-radius:9px;border:1px solid var(--line);
+       background:#0c1119;color:var(--ink);font-size:12.5px;font-weight:600;line-height:1.4;transition:.12s;width:100%;}
+  .opt:hover:not(:disabled){border-color:var(--accent);background:#12181f;}
+  .opt small{display:block;font-size:10.5px;color:var(--dim);font-weight:400;margin-top:3px;line-height:1.4;}
+  .opt:disabled{cursor:default;opacity:.42;}
+  .opt.right{border-color:var(--ok);background:#052e16;opacity:1;}
+  .opt.wrong{border-color:var(--err);background:#450a0a;opacity:1;}
+  .fb{margin-top:12px;display:none;}
+  .fb.on{display:block;}
+  .fb .body{margin-top:9px;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:12px;}
+  .fb .body p{font-size:12.5px;line-height:1.6;color:#c7d2de;}
+  .fb .body p+p{margin-top:8px;}
+  .fb .body b{color:var(--ink);}
+  .fb .body .warnline{color:#fca5a5;}
+  .go{margin-top:10px;width:100%;min-height:44px;border-radius:9px;border:1px solid var(--accent);
+      background:#42200680;color:#fde68a;font-size:13.5px;font-weight:700;}
+  .go:hover{background:#5a2c08;}
+  .go.gh{border-color:var(--line);background:#0c1119;color:var(--ink);}
+  .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0;}
+  .rev{list-style:none;display:flex;flex-direction:column;gap:6px;margin-top:10px;}
+  .rev li{display:flex;gap:8px;font-size:11.5px;line-height:1.45;background:var(--panel2);
+          border:1px solid var(--line);border-radius:7px;padding:8px 9px;}
+  .rev li .m{font-weight:800;flex-shrink:0;width:14px;}
+  .rev li.g .m{color:var(--ok);} .rev li.r .m{color:var(--err);}
+  .rev li .lbl{color:var(--dim);}
+  .lessons{margin-top:12px;border-top:1px solid var(--line);padding-top:10px;}
+  .lessons li{font-size:12px;color:var(--dim);line-height:1.6;margin-left:16px;}
+  .lessons li b{color:var(--accent);}
+  .next-step{margin-top:12px;background:#0c1119;border:1px solid var(--accent);border-radius:9px;padding:12px;}
+  .next-step .k{font-size:10px;color:var(--accent);letter-spacing:.7px;font-weight:700;margin-bottom:6px;}
+  .next-step p{font-size:12.5px;line-height:1.6;color:#c7d2de;}
+  .next-step p+p{margin-top:7px;}
+  .next-step b{color:var(--ink);}
+  #final{display:none;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="card" id="quiz">
+    <h1>Deu errado: e agora?</h1>
+    <div class="sub">Um evento, do atraso da montagem ao fechamento financeiro. Dez coisas dão errado — como em todo evento. Você decide cada uma. <b>Comprime-se o que custa qualidade; nunca o que custa segurança.</b></div>
+    <div class="bar">
+      <span class="pill acc" id="cnt">IMPREVISTO 1 / 10</span>
+      <span class="pill g" id="pg">0 certas</span>
+      <span class="pill r" id="pr">0 erradas</span>
+      <span class="track"><i id="trk"></i></span>
+    </div>
+    <div class="sit" id="sit">
+      <div class="when" id="when"></div>
+      <div class="txt" id="txt"></div>
+    </div>
+    <div class="opts" id="opts"></div>
+    <div class="fb" id="fb">
+      <div class="verdict" id="fv"></div>
+      <div class="body" id="fbody"></div>
+      <button class="go" id="next">Próximo imprevisto →</button>
+    </div>
+  </div>
+
+  <div class="card" id="final">
+    <h1>Fim do curso · seu perfil de produtor</h1>
+    <div class="sub">Dez imprevistos, dez decisões. É por elas que você vai ser lembrado.</div>
+    <div class="verdict" id="finalV"></div>
+    <div class="grid3">
+      <div class="stat"><div class="k">ACERTOS</div><div class="val" id="fA">—</div></div>
+      <div class="stat"><div class="k">SEGURANÇA</div><div class="val" id="fS">—</div></div>
+      <div class="stat"><div class="k">APROVEITAMENTO</div><div class="val" id="fP">—</div></div>
+    </div>
+    <div class="note" id="fNote" style="margin-top:8px;"></div>
+    <ul class="rev" id="rev"></ul>
+    <div class="lessons">
+      <ul>
+        <li><b>Comprime-se o que custa qualidade, nunca o que custa segurança.</b> Soundcheck e virada encolhem. Energia, rigging e line check, não.</li>
+        <li><b>Decisão de segurança tem dono:</b> o produtor decide, com o rigger. Parar o evento é decisão profissional, não derrota.</li>
+        <li><b>O load-out é a hora mais perigosa</b> — e é onde equipamento some. Confira o material contra a lista, na saída. O que sumiu, você paga.</li>
+        <li><b>Pagar em dia é o que faz a boa equipe atender seu telefone da próxima vez.</b> O mercado de eventos é pequeno e fala.</li>
+      </ul>
+    </div>
+    <div class="next-step">
+      <div class="k">FECHO DO CURSO</div>
+      <p>Você começou sem saber o que um produtor faz. Agora sabe: ele conduz, orça, contrata, planeja o dia de trás para frente, comunica com rastro e responde pelo conjunto. Nada disso é talento — é ofício, e ofício se aprende fazendo, errando barato e anotando.</p>
+      <p><b>O produtor não é lembrado pelo evento perfeito — é lembrado por como resolveu o problema.</b> O evento em que tudo deu certo ninguém comenta. O evento em que o gerador morreu às 21h40 e o show saiu às 22h10 é o que faz o cliente te ligar de novo.</p>
+      <p id="pathLine"></p>
+    </div>
+    <button class="go gh" id="again">↺ Reiniciar</button>
+  </div>
+</div>
+<script>
+(function(){
+  var $=function(s){return document.querySelector(s);};
+  var $$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s));};
+
+  /* opts[0] é sempre a correta no dado; a ordem na tela é embaralhada a cada render. */
+  var SITS=[
+    {w:'17:00 · ATRASO DE 1H30', risk:false, tag:'Compressão de cronograma',
+     t:'A montagem atrasou 1h30. Os portões abrem às 19h e esse horário não se move. Você precisa recuperar o tempo em algum lugar.',
+     o:[{t:'Comprimo o soundcheck: de 90 para 30 minutos',s:'O show sai pior, mas sai'},
+        {t:'Corto o line check — é só testar canal',s:'Ganho 25 minutos limpos'},
+        {t:'Acelero o rigging: mais dois montadores e sem conferir linga',s:'Recupero a hora inteira'}],
+     ok:'Soundcheck é o <b>primeiro a encolher, sempre</b>. De 90 para 30. Comprime-se o que custa qualidade — o show sai pior, mas sai, e sai com todo mundo inteiro. Ensaio, passagem de luz e ajuste fino de telão são os próximos da fila.',
+     no:'Line check parece candidato a corte porque "é só testar" — mas é ele que impede o show de começar com um canal mudo e um curto no palco. E rigging sem conferência é o que cai em cima de alguém. Atrasar o show é ruim; ferir alguém acaba com a sua carreira e com a vida de outra pessoa.'},
+
+    {w:'17:40 · ENERGIA', risk:true, tag:'Aterramento fora do padrão',
+     t:'O eletricista pede 40 minutos para refazer o aterramento, que ficou fora do padrão. O cliente está no seu ouvido: "isso a gente vê depois, abre o portão".',
+     o:[{t:'Seguro o portão. Aterramento não tem versão rápida',s:'Explico ao cliente em risco e em custo'},
+        {t:'Abro o portão e o eletricista termina durante o show',s:'Ninguém vai perceber'},
+        {t:'Abro e mando avisar os músicos para não encostarem no microfone',s:'Contorno até acabar'}],
+     ok:'Energia e aterramento <b>não se cortam nunca</b> — com o cliente no ouvido ou sem. Aterramento malfeito é choque em quem pega no microfone. Você segura o portão, explica ao cliente em risco e em custo, e o eletricista termina o serviço.',
+     no:'Refazer aterramento com público dentro é mexer em quadro energizado com 3.000 pessoas em volta. E "avisa para não encostar no microfone" é a confissão de que você sabia do risco e liberou mesmo assim — em processo, isso tem outro nome.'},
+
+    {w:'20:10 · VIRADA', risk:false, tag:'Compressão de cronograma',
+     t:'A banda de abertura saiu 12 minutos atrasada. A virada para o headliner está orçada em 30 minutos e o horário limite da prefeitura é meia-noite.',
+     o:[{t:'Comprimo a virada: mais gente no palco e backline pré-cabeado nos bastidores',s:'30 minutos viram 15'},
+        {t:'Corto o line check do headliner e ganho os 12 minutos de uma vez',s:'A banda já tocou aqui antes'},
+        {t:'Aviso o cliente que o show vai passar da meia-noite',s:'Meia hora não mata ninguém'}],
+     ok:'Virada é o <b>segundo item da lista de compressão</b>. Com mais braços no palco e o backline pré-cabeado e pré-testado nos bastidores, 30 minutos viram 15 — e você recupera os 12 sem tirar nada de segurança.',
+     no:'Line check não entra nessa conta: ele é o que impede o headliner de abrir o show com o canal do vocal mudo. E estourar o horário limite é multa, boletim de ocorrência e alvará no ano que vem — o problema volta multiplicado.'},
+
+    {w:'18:20 · VENTO', risk:true, tag:'Decisão de segurança',
+     t:'Evento ao ar livre. O vento aumentou, a treliça de fundo está no ar com 400 kg de fixture e o público começou a entrar. O cliente quer seguir; o artista tem voo às 6h.',
+     o:[{t:'Decido eu, com o rigger: ele dá o limite técnico, eu assumo a consequência',s:'Decisão de segurança tem dono'},
+        {t:'É decisão do cliente — o evento é dele e o dinheiro também',s:'Quem paga escolhe o risco'},
+        {t:'Sigo. Se piorar de verdade, eu paro',s:'Ainda dá para segurar'}],
+     ok:'<b>O produtor decide, junto com o rigger.</b> O rigger tem a avaliação técnica — sabe o que aquela estrutura suporta. Você tem a decisão e assume as consequências: cronograma, dinheiro, cliente. Um não substitui o outro.',
+     no:'Quem <b>não</b> decide isso é o cliente, o artista e a bilheteria. E "se piorar eu paro" é decidir tarde: a essa altura o público já está embaixo da estrutura. O critério de parada se combina antes de subir a treliça — combinado antes é técnico; combinado durante é briga.'},
+
+    {w:'21:15 · TEMPORAL', risk:true, tag:'Parar o evento',
+     t:'Rajada de 60 km/h. O rigger diz que a estrutura está no limite. Parar significa 40 minutos de público na chuva, cliente furioso e talvez o show não voltar.',
+     o:[{t:'Paro. Tiro o público do raio da estrutura e comunico do palco',s:'Com informação e horário'},
+        {t:'Seguro mais 20 minutos: a previsão diz que passa',s:'O rigger disse "no limite", não "passou"'},
+        {t:'Baixo o volume e mando a banda tocar acústico',s:'Reduzo o evento sem parar'}],
+     ok:'<b>Parar o evento é uma decisão profissional, não uma derrota.</b> Interromper por 40 minutos e retomar é trabalho bem feito. Cancelar é trabalho bem feito. E quem comunica é você, do palco, com informação e horário — não um boato correndo pela plateia.',
+     no:'Quem segurou o evento no vento e teve sorte não foi corajoso: apostou a vida dos outros e ganhou dessa vez. E acústico não muda nada — o que está no limite é a treliça, não o som.'},
+
+    {w:'21:40 · GERADOR', risk:false, tag:'Gestão de crise',
+     t:'O gerador principal morre no meio do terceiro bloco. Tudo apaga. Há um gerador de backup no pátio, 3.000 pessoas no escuro e um cliente te procurando.',
+     o:[{t:'Luz de emergência, voz no palco informando, e o eletricista faz a transferência',s:'Pânico primeiro, conserto depois'},
+        {t:'Espero o eletricista resolver em silêncio: em 10 minutos volta',s:'Ninguém percebe'},
+        {t:'Mando a banda voltar assim que a luz acender, sem line check',s:'Recupero o tempo perdido'}],
+     ok:'Escuro com 3.000 pessoas é risco de pânico <b>antes</b> de ser problema técnico: luz e voz primeiro, conserto depois. A transferência é do eletricista, não sua. E é este evento — não o perfeito — que o cliente vai lembrar: o gerador morreu às 21h40 e o show saiu às 22h10.',
+     no:'Dez minutos de silêncio no escuro é o tempo de a plateia inventar a própria versão e começar a empurrar. E voltar sem line check depois de uma queda de energia é subir sem saber quantos canais sobreviveram.'},
+
+    {w:'01:20 · LOAD-OUT', risk:true, tag:'Desmontagem',
+     t:'A equipe está de pé desde as 6h. Um montador sobe no truss para tirar os últimos fixtures sem cinto, "porque é rapidinho". O venue quer o galpão vazio às 3h.',
+     o:[{t:'Paro o serviço. Cinto, ou o fixture desce amanhã',s:'Trabalho em altura tem regra'},
+        {t:'Deixo: ele é experiente e o truss está baixo',s:'São dois fixtures'},
+        {t:'Peço para outro segurar a escada',s:'Reduzo o risco e ganho tempo'}],
+     ok:'O load-out é <b>a hora mais perigosa do evento</b>: a equipe está a 19 horas de pé e o venue apertando. Cansaço é a causa mais comum de acidente na desmontagem — gente em altura, com peso, à 1h da manhã, no automático. Trabalho em altura tem regra, e ela não muda de horário.',
+     no:'"É rapidinho" e "ele é experiente" são as duas frases que aparecem em todo laudo de acidente. E a pressa do venue não é sua: você negocia a hora, paga a extra — mas não troca prazo por risco.'},
+
+    {w:'02:40 · CONFERÊNCIA', risk:false, tag:'Desmontagem',
+     t:'O baú está quase fechado. Faltam 20 minutos para o prazo do venue e o motorista já está reclamando. Conferir a lista de material item por item leva 25.',
+     o:[{t:'Confiro. Item por item, com o baú aberto, antes de fechar',s:'Os 25 minutos são mais baratos que um mic'},
+        {t:'Fecho e confiro amanhã na locadora, com calma',s:'Vai estar tudo lá'},
+        {t:'Confiro só os cases de microfone — o resto é grande demais para sumir',s:'Meio-termo'}],
+     ok:'<b>Conferência de material contra a lista, na saída.</b> Não é desconfiança da equipe: é que o microfone que sumiu não sumiu no show — sumiu no load-out, no escuro, com case aberto e gente de fora circulando. E <b>o que sumiu, você paga</b>.',
+     no:'Amanhã na locadora você não tem como provar onde sumiu, e a conta é sua por contrato — descobre três dias depois, quando o fornecedor cobrar. E conferir pela metade não protege: some cabo, some clamp, some garra, e a fatura soma tudo.'},
+
+    {w:'D+5 · PÓS-EVENTO', risk:false, tag:'Pagamento',
+     t:'O cliente atrasou o pagamento final em 30 dias. Você tem em caixa o suficiente para pagar equipe e fornecedores no prazo combinado, mas o seu mês fica apertado.',
+     o:[{t:'Pago todo mundo no prazo combinado e cobro o cliente separadamente',s:'O atraso dele não é problema da equipe'},
+        {t:'Aviso a equipe que o pagamento sai quando o cliente pagar',s:'Todo mundo entende'},
+        {t:'Pago os fornecedores, que têm contrato, e seguro o cachê dos freelas',s:'Priorizo quem pode me processar'}],
+     ok:'<b>Pagar em dia é o que faz a boa equipe atender seu telefone da próxima vez.</b> O atraso do cliente é assunto entre você e ele — a equipe não financia isso. O mercado de eventos é pequeno e fala: em duas semanas todo mundo sabe quem paga e quem enrola.',
+     no:'Quem atrasa cachê monta a próxima equipe com quem sobrou — e a diferença aparece no palco. E o freela é justamente quem menos aguenta 30 dias: ele vive daquele cachê. Segurar o dele e pagar o resto é escolher quem você não vai ter mais.'},
+
+    {w:'D+7 · FECHAMENTO', risk:false, tag:'Pós-evento',
+     t:'Evento entregue, todo mundo pago. Sobrou o fechamento financeiro — e você tem outro orçamento para entregar essa semana.',
+     o:[{t:'Fecho orçado versus gasto linha por linha e escrevo a meia página na pasta do evento',s:'É o trabalho que ninguém vê'},
+        {t:'Pulo o relatório: o evento saiu bem e eu lembro de tudo',s:'Foi ontem'},
+        {t:'Faço o fechamento e guardo na minha pasta pessoal do computador',s:'É material meu'}],
+     ok:'Orçado <i>versus</i> gasto, linha por linha: é aqui que você descobre se ganhou dinheiro e, mais importante, <b>onde</b> errou a conta. Meia página basta: o que deu certo, o que deu errado, quanto tempo cada bloco levou de verdade. <b>Cinco eventos com relatório e o seu cronograma para de ser chute.</b>',
+     no:'Você não lembra: em três meses não vai saber se a virada levou 20 ou 40 minutos, e vai chutar o próximo cronograma igual a este. E arquivo na sua máquina não é arquivo — é o rider que ninguém acha quando você não está. Tudo na pasta do evento, em <code>08-pos-evento</code>.'}
+  ];
+
+  var idx=0, hits=0, miss=0, log=[], view=[];
+
+  function shuffle(a){ for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i]; a[i]=a[j]; a[j]=t; } return a; }
+
+  function render(){
+    var s=SITS[idx];
+    $('#cnt').textContent='IMPREVISTO '+(idx+1)+' / '+SITS.length;
+    $('#pg').textContent=hits+' certas'; $('#pr').textContent=miss+' erradas';
+    $('#trk').style.width=(idx/SITS.length*100)+'%';
+    $('#when').textContent=s.w+' · '+s.tag.toUpperCase();
+    $('#txt').textContent=s.t;
+    $('#sit').className='sit'+(s.risk?' risk':'');
+    $('#fb').classList.remove('on');
+    view=shuffle([0,1,2]);
+    var h='';
+    view.forEach(function(o){
+      h+='<button class="opt" data-o="'+o+'">'+s.o[o].t+'<small>'+s.o[o].s+'</small></button>';
+    });
+    $('#opts').innerHTML=h;
+    $$('#opts .opt').forEach(function(b){
+      b.addEventListener('click',function(){ if(!b.disabled) answer(parseInt(b.dataset.o,10)); });
+    });
+  }
+
+  function answer(o){
+    var s=SITS[idx], right=(o===0);
+    right?hits++:miss++;
+    log.push({w:s.w,tag:s.tag,right:right,pick:o,risk:s.risk});
+    $$('#opts .opt').forEach(function(b){
+      b.disabled=true;
+      var v=parseInt(b.dataset.o,10);
+      if(v===0) b.classList.add('right'); else if(v===o) b.classList.add('wrong');
+    });
+    var v=$('#fv');
+    v.className='verdict '+(right?'ok':(s.risk?'bad':'warn'));
+    v.textContent=right?('✓ Correto — '+s.tag):((s.risk?'✗ Errado — decisão de segurança: ':'✗ Errado — ')+s.o[0].t);
+    $('#fbody').innerHTML='<p>'+s.ok+'</p><p class="warnline">'+s.no+'</p>';
+    $('#fb').classList.add('on');
+    $('#pg').textContent=hits+' certas'; $('#pr').textContent=miss+' erradas';
+    $('#next').textContent=(idx===SITS.length-1)?'Ver seu perfil de produtor →':'Próximo imprevisto →';
+  }
+
+  function finish(){
+    $('#quiz').style.display='none'; $('#final').style.display='block';
+    var risk=log.filter(function(L){return L.risk;});
+    var riskHits=risk.filter(function(L){return L.right;}).length;
+    var pct=Math.round(hits/SITS.length*100);
+    $('#fA').textContent=hits+' / '+SITS.length;
+    $('#fS').textContent=riskHits+' / '+risk.length;
+    $('#fP').textContent=pct+'%';
+
+    var v=$('#finalV'), note='', path='';
+    if(riskHits<risk.length){
+      v.className='verdict bad';
+      v.textContent='Perfil: produtor que entrega o evento e aposta a segurança dos outros. Nenhum acerto compensa isso.';
+      note='Você errou '+(risk.length-riskHits)+' de '+risk.length+' decisão(ões) de segurança. Essas são as únicas que não têm segunda chance: rigging, energia e trabalho em altura não perdoam aproveitamento de 80%. Refaça e olhe só os itens em vermelho.';
+      path='O caminho do <b>Pleno — Produtor</b> só faz sentido depois que essas quatro decisões estiverem automáticas. Reinicie e feche a segurança em 4/4 antes de seguir.';
+    } else if(hits===SITS.length){
+      v.className='verdict ok';
+      v.textContent='Perfil: produtor que resolve. Comprimiu o que custava qualidade, não tocou no que custava segurança, conferiu a saída e pagou todo mundo em dia.';
+      note='Zero erros em dez imprevistos — inclusive nas quatro decisões de segurança. É esse produtor que o cliente liga de novo, e é essa a equipe que atende o telefone.';
+      path='Próximo passo: <b>Pleno — Produtor</b>. Contrato e aditivo, orçamento que sobrevive à negociação, cadeia de comando em equipe grande, gestão de crise e operação de eventos de porte. Aqui você aprendeu a fazer o evento acontecer. Lá você aprende a fazer ele dar lucro.';
+    } else if(hits>=8){
+      v.className='verdict ok';
+      v.textContent='Perfil: produtor sólido. Segurança em dia — o que faltou foi conta, conferência ou fechamento.';
+      note='Você não colocou ninguém em risco, e isso é a base. Os erros restantes custam dinheiro e reputação, não vida: revise-os no vermelho acima e eles somem com repetição.';
+      path='Próximo passo: <b>Pleno — Produtor</b>. Contrato e aditivo, orçamento que sobrevive à negociação, cadeia de comando em equipe grande, gestão de crise e operação de eventos de porte. Aqui você aprendeu a fazer o evento acontecer. Lá você aprende a fazer ele dar lucro.';
+    } else {
+      v.className='verdict warn';
+      v.textContent='Perfil: produtor que segura o dia, mas paga caro por ele. A segurança você respeitou; o resto foi no improviso.';
+      note='O evento saiu e ninguém se machucou — mas você comprimiu o que não devia, ou deixou material e fechamento para depois. Imprevisto não é exceção: é linha de orçamento (10% de contingência) e folga de cronograma (10% a 15% do dia).';
+      path='Antes do <b>Pleno — Produtor</b>, refaça este exercício até fechar 8/10. Lá o cenário é maior: contrato e aditivo, orçamento que sobrevive à negociação, cadeia de comando e eventos de porte.';
+    }
+    $('#fNote').innerHTML=note;
+    $('#pathLine').innerHTML=path;
+
+    var html='';
+    log.forEach(function(L,n){
+      html+='<li class="'+(L.right?'g':'r')+'"><span class="m">'+(L.right?'✓':'✗')+'</span><span><b>'+L.w+'</b> — '+
+            '<span class="lbl">'+L.tag+(L.risk?' · segurança':'')+'</span>'+
+            (L.right?'':' — <span class="lbl">'+SITS[n].o[0].t+'</span>')+'</span></li>';
+    });
+    $('#rev').innerHTML=html;
+  }
+
+  $('#next').addEventListener('click',function(){ idx++; if(idx>=SITS.length) finish(); else render(); window.scrollTo(0,0); });
+  $('#again').addEventListener('click',function(){
+    idx=0; hits=0; miss=0; log=[];
+    $('#final').style.display='none'; $('#quiz').style.display='block'; render(); window.scrollTo(0,0);
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

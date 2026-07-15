@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMU PRO · Produtor e Tipos de Produção</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #eef2f6;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .device {
+    background: #20252f;
+    border: 1px solid #10141b;
+    border-radius: 12px;
+    padding: 16px;
+    width: 100%;
+    max-width: 820px;
+    color: #cbd5e1;
+  }
+  .device-title {
+    font-size: 10px;
+    letter-spacing: .14em;
+    color: #5b6675;
+    margin-bottom: 14px;
+    text-transform: uppercase;
+  }
+  h2 {
+    font-size: 15px;
+    color: #e2e8f0;
+    margin-bottom: 4px;
+    font-weight: 600;
+  }
+  .subtitle {
+    font-size: 12px;
+    color: #64748b;
+    margin-bottom: 16px;
+  }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid #2d3748;
+    padding-bottom: 0;
+  }
+  .tab {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: #64748b;
+    font-size: 12px;
+    padding: 6px 14px;
+    cursor: pointer;
+    transition: all .2s;
+    margin-bottom: -1px;
+    font-family: inherit;
+  }
+  .tab:hover { color: #cbd5e1; }
+  .tab.active {
+    color: #3b82f6;
+    border-bottom-color: #3b82f6;
+  }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* PANEL COMUM */
+  .panel {
+    background: #161b24;
+    border: 1px solid #2d3748;
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+  .panel-title {
+    font-size: 11px;
+    letter-spacing: .08em;
+    color: #475569;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  /* ===== ABA 1: CLASSIFICADOR DE CENÁRIOS ===== */
+  .scenario-card {
+    background: #1e2535;
+    border: 2px solid #2d3748;
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: border-color .2s;
+  }
+  .scenario-card p {
+    font-size: 13px;
+    line-height: 1.5;
+    color: #94a3b8;
+    margin-bottom: 10px;
+  }
+  .scenario-card .scenario-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #cbd5e1;
+    margin-bottom: 6px;
+  }
+  .tipo-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+  }
+  .tipo-btn {
+    background: #2d3748;
+    border: 1px solid #3f4f63;
+    border-radius: 20px;
+    color: #94a3b8;
+    font-size: 11px;
+    padding: 4px 12px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all .18s;
+  }
+  .tipo-btn:hover { background: #3b4a62; color: #cbd5e1; }
+  .tipo-btn.selected-ok {
+    background: #14532d;
+    border-color: #22c55e;
+    color: #22c55e;
+  }
+  .tipo-btn.selected-wrong {
+    background: #450a0a;
+    border-color: #ef4444;
+    color: #ef4444;
+  }
+  /* Alvo de toque em celular/tablet (nao afeta desktop) */
+  @media (max-width: 600px), (pointer: coarse) {
+    .tipo-btn { min-height: 34px; }
+  }
+  .scenario-feedback {
+    font-size: 12px;
+    margin-top: 8px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    display: none;
+    line-height: 1.5;
+  }
+  .scenario-feedback.ok {
+    background: #052e16;
+    border: 1px solid #22c55e;
+    color: #4ade80;
+    display: block;
+  }
+  .scenario-feedback.erro {
+    background: #2d0a0a;
+    border: 1px solid #ef4444;
+    color: #f87171;
+    display: block;
+  }
+  .placar {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+  .placar-item {
+    font-size: 12px;
+    color: #64748b;
+  }
+  .placar-item span {
+    font-size: 18px;
+    font-weight: 700;
+    display: block;
+  }
+  .placar-item.acertos span { color: #22c55e; }
+  .placar-item.erros span { color: #ef4444; }
+  .placar-item.total span { color: #3b82f6; }
+
+  /* ===== ABA 2: MONTADOR DE PERFIL ===== */
+  .perfil-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  @media (max-width: 560px) { .perfil-grid { grid-template-columns: 1fr; } }
+  .skill-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .skill-label {
+    font-size: 11px;
+    color: #94a3b8;
+    width: 130px;
+    flex-shrink: 0;
+  }
+  .skill-slider {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    border-radius: 4px;
+    background: #2d3748;
+    outline: none;
+    cursor: pointer;
+  }
+  .skill-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: #3b82f6;
+    cursor: pointer;
+  }
+  .skill-val {
+    font-size: 11px;
+    color: #64748b;
+    width: 22px;
+    text-align: right;
+  }
+  .perfil-resultado {
+    background: #1e2535;
+    border: 1px solid #2d3748;
+    border-radius: 8px;
+    padding: 14px;
+  }
+  .perfil-nome {
+    font-size: 16px;
+    font-weight: 700;
+    color: #e2e8f0;
+    margin-bottom: 4px;
+  }
+  .perfil-desc {
+    font-size: 12px;
+    color: #94a3b8;
+    line-height: 1.6;
+    margin-bottom: 10px;
+  }
+  .perfil-tag {
+    display: inline-block;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    margin: 2px;
+    font-weight: 600;
+    letter-spacing: .04em;
+  }
+  .tag-blue { background: #1e3a5f; color: #3b82f6; border: 1px solid #3b82f6; }
+  .tag-purple { background: #2d1b4e; color: #a78bfa; border: 1px solid #a78bfa; }
+  .tag-yellow { background: #3d2e00; color: #f59e0b; border: 1px solid #f59e0b; }
+  .tag-green { background: #052e16; color: #22c55e; border: 1px solid #22c55e; }
+  .tag-red { background: #2d0a0a; color: #ef4444; border: 1px solid #ef4444; }
+
+  .barra-perfil {
+    margin-bottom: 6px;
+  }
+  .barra-label {
+    font-size: 10px;
+    color: #64748b;
+    margin-bottom: 2px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .barra-track {
+    height: 6px;
+    background: #2d3748;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .barra-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width .4s;
+  }
+
+  /* ===== ABA 3: FLUXO DE PRODUÇÃO ===== */
+  .fases-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .fase-row {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .fase-header {
+    background: #1e2535;
+    border: 1px solid #2d3748;
+    border-radius: 6px;
+    padding: 8px 10px;
+    width: 110px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .fase-nome {
+    font-size: 11px;
+    font-weight: 600;
+    color: #cbd5e1;
+  }
+  .fase-tempo {
+    font-size: 10px;
+    color: #64748b;
+    margin-top: 2px;
+  }
+  .fase-tarefas {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    align-items: flex-start;
+    padding: 6px;
+  }
+  .tarefa-chip {
+    font-size: 11px;
+    padding: 4px 9px;
+    border-radius: 14px;
+    cursor: grab;
+    user-select: none;
+    border: 1px solid transparent;
+    transition: opacity .2s, transform .1s;
+  }
+  .tarefa-chip:active { cursor: grabbing; transform: scale(1.05); }
+  .tarefa-chip.disponivel {
+    background: #2d3748;
+    color: #94a3b8;
+    border-color: #3f4f63;
+  }
+  .tarefa-chip.alocada {
+    opacity: .45;
+    cursor: not-allowed;
+  }
+
+  /* Drop zones */
+  .drop-zone {
+    border: 2px dashed #2d3748;
+    border-radius: 8px;
+    padding: 8px;
+    min-height: 48px;
+    transition: border-color .2s, background .2s;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    align-items: flex-start;
+  }
+  .drop-zone.over {
+    border-color: #3b82f6;
+    background: #1a2540;
+  }
+  .drop-zone .tarefa-chip {
+    cursor: pointer;
+  }
+  .drop-zone .tarefa-chip:hover {
+    opacity: .8;
+  }
+  .fase-placeholder {
+    font-size: 11px;
+    color: #3f4f63;
+    padding: 4px;
+    pointer-events: none;
+  }
+
+  .btn-verificar {
+    background: #1d4ed8;
+    border: none;
+    border-radius: 6px;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 8px 18px;
+    cursor: pointer;
+    margin-top: 10px;
+    font-family: inherit;
+    transition: background .2s;
+  }
+  .btn-verificar:hover { background: #2563eb; }
+  .btn-reset {
+    background: #374151;
+    border: none;
+    border-radius: 6px;
+    color: #94a3b8;
+    font-size: 12px;
+    padding: 8px 14px;
+    cursor: pointer;
+    margin-top: 10px;
+    margin-left: 8px;
+    font-family: inherit;
+    transition: background .2s;
+  }
+  .btn-reset:hover { background: #4b5563; }
+
+  .resultado-fases {
+    background: #1e2535;
+    border: 1px solid #2d3748;
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 12px;
+    font-size: 12px;
+    line-height: 1.6;
+    display: none;
+  }
+  .resultado-fases.visivel { display: block; }
+  .resultado-fases h4 { color: #e2e8f0; margin-bottom: 6px; font-size: 13px; }
+
+  .tarefa-banco {
+    background: #1e2535;
+    border: 1px solid #2d3748;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+  }
+  .banco-titulo {
+    font-size: 10px;
+    color: #475569;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .banco-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  /* Legenda */
+  .rodape {
+    max-width: 820px;
+    width: 100%;
+    margin-top: 12px;
+    font-size: 11px;
+    color: #475569;
+    line-height: 1.6;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<script>/*SMU-ZOOM*/(function(){var z=1,sc=null,MIN=1,MAX=2.5,STEP=0.25;function wrap(){if(sc)return;sc=document.createElement('div');sc.id='smu-sc';sc.style.transformOrigin='0 0';[].slice.call(document.body.children).filter(function(el){return (el.id||'').indexOf('smu-')!==0;}).forEach(function(k){sc.appendChild(k);});document.body.insertBefore(sc,document.body.firstChild);document.documentElement.style.overflow='auto';document.body.style.overflow='auto';document.body.style.margin='0';}function apply(){if(!sc)wrap();sc.style.transform='scale('+z+')';var w=sc.offsetWidth,h=sc.offsetHeight;document.body.style.width=(z>1?(w*z)+'px':'');document.body.style.height=(z>1?(h*z)+'px':'');var l=document.getElementById('smu-zl');if(l)l.textContent=Math.round(z*100)+'%';}function ui(){if(document.getElementById('smu-zoom'))return;var b=document.createElement('div');b.id='smu-zoom';b.style.cssText='position:fixed;left:10px;bottom:10px;z-index:99999;display:flex;align-items:center;gap:5px;background:#0e1420;border:1px solid #2c3340;border-radius:22px;padding:5px 8px;box-shadow:0 2px 10px rgba(0,0,0,.4);font-family:system-ui,sans-serif';function mk(t){var x=document.createElement('button');x.textContent=t;x.style.cssText='width:32px;height:32px;border-radius:50%;border:1px solid #2c3340;background:#171c26;color:#e5e7eb;font-size:18px;cursor:pointer;padding:0;line-height:1';return x;}var ic=document.createElement('span');ic.textContent='\U0001F50D';ic.style.fontSize='14px';var mi=mk('−'),lab=document.createElement('span'),pl=mk('+');lab.id='smu-zl';lab.style.cssText='font-size:12px;color:#cbd5e1;min-width:44px;text-align:center;cursor:pointer';lab.textContent='100%';b.appendChild(ic);b.appendChild(mi);b.appendChild(lab);b.appendChild(pl);document.body.appendChild(b);mi.onclick=function(){z=Math.max(MIN,Math.round((z-STEP)*100)/100);apply();};pl.onclick=function(){z=Math.min(MAX,Math.round((z+STEP)*100)/100);apply();};lab.onclick=function(){z=1;apply();};}if(document.readyState!=='loading')ui();else document.addEventListener('DOMContentLoaded',ui);})();</script>
+
+
+<div class="device">
+  <div class="device-title">SMU PRO · PRODUTOR</div>
+  <h2>Quem é o Produtor e os Tipos de Produção</h2>
+  <p class="subtitle">Explore os papéis, perfis e etapas da produção de eventos ao vivo</p>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('classificador')">Classificar Cenários</button>
+    <button class="tab" onclick="switchTab('perfil')">Montar Perfil</button>
+    <button class="tab" onclick="switchTab('fluxo')">Fluxo de Produção</button>
+  </div>
+
+  <!-- ABA 1: CLASSIFICADOR -->
+  <div id="tab-classificador" class="tab-panel active">
+    <div class="panel">
+      <div class="panel-title">Placar</div>
+      <div class="placar">
+        <div class="placar-item acertos"><span id="sc-acertos">0</span>Acertos</div>
+        <div class="placar-item erros"><span id="sc-erros">0</span>Erros</div>
+        <div class="placar-item total"><span id="sc-total">0</span>de 6</div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Leia o cenário e identifique o tipo de produção</div>
+      <div id="cenarios-container"></div>
+    </div>
+  </div>
+
+  <!-- ABA 2: PERFIL -->
+  <div id="tab-perfil" class="tab-panel">
+    <div class="panel">
+      <div class="panel-title">Ajuste as competências e descubra seu perfil de produtor</div>
+      <div class="perfil-grid">
+        <div>
+          <div class="skill-row"><span class="skill-label">Gestão de equipes</span><input type="range" class="skill-slider" id="sk-equipes" min="0" max="10" value="5" oninput="calcPerfil()"><span class="skill-val" id="vl-equipes">5</span></div>
+          <div class="skill-row"><span class="skill-label">Negociação / contratos</span><input type="range" class="skill-slider" id="sk-negoc" min="0" max="10" value="5" oninput="calcPerfil()"><span class="skill-val" id="vl-negoc">5</span></div>
+          <div class="skill-row"><span class="skill-label">Controle financeiro</span><input type="range" class="skill-slider" id="sk-financ" min="0" max="10" value="5" oninput="calcPerfil()"><span class="skill-val" id="vl-financ">5</span></div>
+          <div class="skill-row"><span class="skill-label">Conhecimento técnico AV</span><input type="range" class="skill-slider" id="sk-av" min="0" max="10" value="5" oninput="calcPerfil()"><span class="skill-val" id="vl-av">5</span></div>
+        </div>
+        <div>
+          <div class="skill-row"><span class="skill-label">Criatividade / conceito</span><input type="range" class="skill-slider" id="sk-criativ" min="0" max="10" value="5" oninput="calcPerfil()"><span class="skill-val" id="vl-criativ">5</span></div>
+          <div class="skill-row"><span class="skill-label">Logística / operações</span><input type="range" class="skill-slider" id="sk-logist" min="0" max="10" value="5" oninput="calcPerfil()"><span class="skill-val" id="vl-logist">5</span></div>
+          <div class="skill-row"><span class="skill-label">Relacionamento cliente</span><input type="range" class="skill-slider" id="sk-cliente" min="0" max="10" value="5" oninput="calcPerfil()"><span class="skill-val" id="vl-cliente">5</span></div>
+          <div class="skill-row"><span class="skill-label">Cronograma / prazos</span><input type="range" class="skill-slider" id="sk-cronogr" min="0" max="10" value="5" oninput="calcPerfil()"><span class="skill-val" id="vl-cronogr">5</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="perfil-resultado" id="perfil-resultado">
+      <div class="perfil-nome" id="perfil-nome">—</div>
+      <div style="margin-bottom:8px" id="perfil-tags"></div>
+      <div class="perfil-desc" id="perfil-desc">Ajuste os sliders para revelar seu perfil.</div>
+      <div style="margin-top:10px">
+        <div class="barra-perfil"><div class="barra-label"><span>Produtor Executivo</span><span id="pct-exec">0%</span></div><div class="barra-track"><div class="barra-fill" id="bar-exec" style="width:0%;background:#3b82f6"></div></div></div>
+        <div class="barra-perfil"><div class="barra-label"><span>Produtor Técnico</span><span id="pct-tec">0%</span></div><div class="barra-track"><div class="barra-fill" id="bar-tec" style="width:0%;background:#a78bfa"></div></div></div>
+        <div class="barra-perfil"><div class="barra-label"><span>Produtor Criativo</span><span id="pct-cria">0%</span></div><div class="barra-track"><div class="barra-fill" id="bar-cria" style="width:0%;background:#f59e0b"></div></div></div>
+        <div class="barra-perfil"><div class="barra-label"><span>Coordenador Operacional</span><span id="pct-coord">0%</span></div><div class="barra-track"><div class="barra-fill" id="bar-coord" style="width:0%;background:#22c55e"></div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ABA 3: FLUXO -->
+  <div id="tab-fluxo" class="tab-panel">
+    <div class="panel">
+      <div class="panel-title">Arraste as tarefas para a fase correta do projeto</div>
+      <div class="tarefa-banco">
+        <div class="banco-titulo">Banco de tarefas — arraste para a fase certa</div>
+        <div class="banco-chips" id="banco"></div>
+      </div>
+      <div class="fases-container" id="fases-container"></div>
+      <div>
+        <button class="btn-verificar" onclick="verificarFluxo()">Verificar</button>
+        <button class="btn-reset" onclick="resetFluxo()">Reiniciar</button>
+      </div>
+      <div class="resultado-fases" id="resultado-fases"></div>
+    </div>
+  </div>
+</div>
+
+<div class="rodape">
+  <strong>Aba 1:</strong> Clique no tipo correto para cada cenário. &nbsp;|&nbsp;
+  <strong>Aba 2:</strong> Mova os sliders de competência e veja seu perfil se formar em tempo real. &nbsp;|&nbsp;
+  <strong>Aba 3:</strong> Arraste as tarefas para a fase correta da produção.
+</div>
+
+<script>
+// ===================== ABA 1: CLASSIFICADOR =====================
+
+const TIPOS = [
+  "Produção Institucional",
+  "Produção de Shows",
+  "Produção Corporativa",
+  "Produção Social/Festas",
+  "Produção Esportiva",
+  "Produção Híbrida"
+];
+
+const CENARIOS = [
+  {
+    titulo: "Cenário A",
+    texto: "Uma empresa contrata você para organizar a convenção anual de vendedores. O evento acontece num hotel, inclui palestras, premiação e jantar para 300 pessoas. O cliente quer alinhamento com a cultura da marca e mensuração de engajamento dos participantes.",
+    correto: "Produção Corporativa",
+    feedback_ok: "Correto! Eventos corporativos têm como cliente final uma empresa, foco em comunicação interna ou externa, e exigem alinhamento com objetivos de negócio — como motivação de equipe, lançamento de produto ou comunicação de marca.",
+    feedback_erro: "Este é um evento Corporativo. Apesar de ter elementos de festa (jantar, premiação), o cliente é uma empresa com objetivos de negócio — convenção, treinamento ou reunião estratégica são sempre produção corporativa."
+  },
+  {
+    titulo: "Cenário B",
+    texto: "Você é contratado por uma gravadora para produzir uma turnê de 12 cidades com um artista nacional. Envolve rider técnico, camarim, equipe de som e luz, transporte de equipamentos, hospedagem da equipe artística e venda de ingressos.",
+    correto: "Produção de Shows",
+    feedback_ok: "Exato! Produção de shows e turnês envolve rider técnico (exigências do artista), equipe de palco, logística de equipment e gestão de bilheteria. O foco é a experiência do público e a execução ao vivo do espetáculo.",
+    feedback_erro: "Este é um show / turnê. O indício mais claro: rider técnico do artista, venda de ingressos ao público e itinerância entre cidades. Produção de shows tem dinâmica própria — diferente de eventos corporativos ou sociais."
+  },
+  {
+    titulo: "Cenário C",
+    texto: "Uma família contrata sua equipe para o casamento de 200 convidados. Você cuida de fornecedores (buffet, flores, DJ, fotógrafo), cronograma da cerimônia, chegada dos noivos e animação da pista. O orçamento e as preferências pessoais guiam todas as decisões.",
+    correto: "Produção Social/Festas",
+    feedback_ok: "Certo! Produção social/festas tem como cliente direto o contratante (família, aniversariante) e como foco a experiência pessoal dos convidados. Casamentos, 15 anos e festas de aniversário entram nesta categoria.",
+    feedback_erro: "Este é um evento Social/Festa. O cliente é pessoa física (família), as decisões seguem gosto pessoal, e o objetivo é celebração — não comunicação empresarial nem espetáculo para público pagante."
+  },
+  {
+    titulo: "Cenário D",
+    texto: "Uma federação de futebol contrata sua produtora para o evento de abertura do campeonato estadual: show pirotécnico, entrada das equipes com efeitos especiais de CO₂, DJ, telões LED e locução ao vivo. O evento ocorre dentro de um estádio com transmissão ao vivo.",
+    correto: "Produção Esportiva",
+    feedback_ok: "Perfeito! Produção esportiva acontece em estádios/arenas e combina entretenimento com os protocolos do esporte (federações, regulamentos, segurança de campo). A transmissão ao vivo impõe timings rígidos — é uma das produções mais complexas operacionalmente.",
+    feedback_erro: "Este é um evento Esportivo. A combinação de estádio, federação, transmissão ao vivo e protocolos esportivos caracteriza esta categoria. Diferente de um show isolado — aqui o esporte é o produto principal e o entretenimento é suporte."
+  },
+  {
+    titulo: "Cenário E",
+    texto: "Um órgão público contrata sua empresa para a solenidade de posse do novo secretário: montagem de palanque, bandeiras, protocolo de mesa, trilha sonora ao vivo e cobertura fotográfica. A licitação exige nota fiscal e documentação completa.",
+    correto: "Produção Institucional",
+    feedback_ok: "Correto! Produção institucional atende governos, autarquias e entidades. Tem rito de protocolo, linguagem formal, e frequentemente passa por licitação. Solenidades de posse, formaturas oficiais e inaugurações públicas são exemplos clássicos.",
+    feedback_erro: "Este é um evento Institucional. Órgão público + protocolo formal + licitação = produção institucional. Diferente de corporativo (empresa privada) ou social (pessoa física) — aqui a formalidade é obrigatória por lei."
+  },
+  {
+    titulo: "Cenário F",
+    texto: "Uma startup de tecnologia lança um produto simultaneamente em São Paulo (presencial, 500 pessoas) e online (streaming para 8.000 espectadores). Você cuida da experiência física, da transmissão ao vivo, do chat interativo e da sincronização entre os dois ambientes.",
+    correto: "Produção Híbrida",
+    feedback_ok: "Excelente! Produção híbrida combina presencial e remoto de forma simultânea e integrada. Exige duas produções paralelas (palco + transmissão) com um ponto de controle único. É uma das modalidades que mais cresceu após 2020.",
+    feedback_erro: "Este é um evento Híbrido. Quando o mesmo evento acontece presencialmente E online ao mesmo tempo, com interação entre os dois ambientes, é produção híbrida — exige domínio tanto de AV ao vivo quanto de streaming e experiência digital."
+  }
+];
+
+let acertos = 0, erros = 0, respondidos = {};
+
+function initClassificador() {
+  const container = document.getElementById('cenarios-container');
+  container.innerHTML = '';
+  acertos = 0; erros = 0; respondidos = {};
+  atualizarPlacar();
+
+  CENARIOS.forEach((c, i) => {
+    const card = document.createElement('div');
+    card.className = 'scenario-card';
+    card.id = 'card-' + i;
+
+    let btns = TIPOS.map(t =>
+      `<button class="tipo-btn" onclick="responder(${i},'${t}')">${t}</button>`
+    ).join('');
+
+    card.innerHTML = `
+      <div class="scenario-title">${c.titulo}</div>
+      <p>${c.texto}</p>
+      <div class="tipo-buttons">${btns}</div>
+      <div class="scenario-feedback" id="fb-${i}"></div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+function responder(idx, tipo) {
+  if (respondidos[idx]) return;
+  respondidos[idx] = true;
+
+  const c = CENARIOS[idx];
+  const fb = document.getElementById('fb-' + idx);
+  const btns = document.querySelectorAll('#card-' + idx + ' .tipo-btn');
+
+  btns.forEach(b => {
+    b.disabled = true;
+    if (b.textContent === tipo) {
+      b.className = 'tipo-btn ' + (tipo === c.correto ? 'selected-ok' : 'selected-wrong');
+    }
+    if (b.textContent === c.correto && tipo !== c.correto) {
+      b.className = 'tipo-btn selected-ok';
+    }
+  });
+
+  if (tipo === c.correto) {
+    acertos++;
+    fb.className = 'scenario-feedback ok';
+    fb.textContent = '✓ ' + c.feedback_ok;
+  } else {
+    erros++;
+    fb.className = 'scenario-feedback erro';
+    fb.textContent = '✗ ' + c.feedback_erro;
+  }
+
+  atualizarPlacar();
+}
+
+function atualizarPlacar() {
+  document.getElementById('sc-acertos').textContent = acertos;
+  document.getElementById('sc-erros').textContent = erros;
+  document.getElementById('sc-total').textContent = Object.keys(respondidos).length;
+}
+
+// ===================== ABA 2: PERFIL =====================
+
+const PERFIS = [
+  {
+    nome: "Produtor Executivo",
+    cor: "tag-blue",
+    desc: "Você tem perfil de liderança estratégica: negocia contratos, gere equipes e responde pelo resultado geral do projeto. É o interlocutor principal do cliente e toma as grandes decisões de escopo, prazo e orçamento.",
+    tags: ["Liderança", "Contratos", "Estratégia"],
+    tagCores: ["tag-blue", "tag-blue", "tag-blue"],
+    pesos: { equipes: 0.35, negoc: 0.3, financ: 0.2, av: 0.05, criativ: 0.05, logist: 0.0, cliente: 0.1, cronogr: 0.1 }
+  },
+  {
+    nome: "Produtor Técnico",
+    cor: "tag-purple",
+    desc: "Seu domínio está nos bastidores técnicos: áudio, vídeo, iluminação, estrutura. Você faz a ponte entre o conceito do evento e a execução real dos equipamentos e fornecedores especializados.",
+    tags: ["AV", "Estrutura", "Riders"],
+    tagCores: ["tag-purple", "tag-purple", "tag-purple"],
+    pesos: { equipes: 0.1, negoc: 0.1, financ: 0.1, av: 0.4, criativ: 0.05, logist: 0.25, cliente: 0.05, cronogr: 0.1 }
+  },
+  {
+    nome: "Produtor Criativo",
+    cor: "tag-yellow",
+    desc: "Você pensa no conceito, na narrativa e na experiência do público. Cria a identidade visual, propõe a direção artística e garante que cada detalhe comunique a mensagem certa.",
+    tags: ["Conceito", "Direção artística", "Experiência"],
+    tagCores: ["tag-yellow", "tag-yellow", "tag-yellow"],
+    pesos: { equipes: 0.1, negoc: 0.05, financ: 0.05, av: 0.15, criativ: 0.45, logist: 0.05, cliente: 0.15, cronogr: 0.05 }
+  },
+  {
+    nome: "Coordenador Operacional",
+    cor: "tag-green",
+    desc: "Você é o motor da execução: cuida do cronograma minuto a minuto, coordena fornecedores no dia, resolve imprevistos em tempo real e garante que o evento aconteça dentro do planejado.",
+    tags: ["Operação", "Cronograma", "Logística"],
+    tagCores: ["tag-green", "tag-green", "tag-green"],
+    pesos: { equipes: 0.2, negoc: 0.05, financ: 0.1, av: 0.1, criativ: 0.0, logist: 0.3, cliente: 0.1, cronogr: 0.3 }
+  }
+];
+
+const SKILLS = ['equipes','negoc','financ','av','criativ','logist','cliente','cronogr'];
+
+function getSkillVals() {
+  let vals = {};
+  SKILLS.forEach(s => {
+    const el = document.getElementById('sk-' + s);
+    vals[s] = parseInt(el.value);
+    document.getElementById('vl-' + s).textContent = el.value;
+  });
+  return vals;
+}
+
+function calcPerfil() {
+  const vals = getSkillVals();
+
+  // Calcular score para cada perfil
+  let scores = PERFIS.map(p => {
+    let score = 0;
+    SKILLS.forEach(s => { score += (vals[s] / 10) * (p.pesos[s] || 0); });
+    return score;
+  });
+
+  // Normalizar para 100%
+  const total = scores.reduce((a,b) => a+b, 0) || 1;
+  const pcts = scores.map(s => Math.round((s / total) * 100));
+
+  // Barras
+  const barIds = ['exec','tec','cria','coord'];
+  barIds.forEach((id, i) => {
+    document.getElementById('bar-' + id).style.width = pcts[i] + '%';
+    document.getElementById('pct-' + id).textContent = pcts[i] + '%';
+  });
+
+  // Perfil dominante
+  let maxIdx = pcts.indexOf(Math.max(...pcts));
+  const p = PERFIS[maxIdx];
+  document.getElementById('perfil-nome').textContent = p.nome;
+  document.getElementById('perfil-desc').textContent = p.desc;
+
+  let tagsHtml = p.tags.map((t, ti) =>
+    `<span class="perfil-tag ${p.tagCores[ti]}">${t}</span>`
+  ).join('');
+
+  // Tags de skills altas
+  SKILLS.forEach(s => {
+    if (vals[s] >= 8) {
+      const labMap = {equipes:'Lider de equipe',negoc:'Negociador',financ:'Controle $',av:'Expert AV',criativ:'Criativo',logist:'Logístico',cliente:'Foco cliente',cronogr:'Pontual'};
+      tagsHtml += `<span class="perfil-tag tag-green">${labMap[s]}</span>`;
+    }
+  });
+
+  document.getElementById('perfil-tags').innerHTML = tagsHtml;
+}
+
+// ===================== ABA 3: FLUXO =====================
+
+const FASES_DEF = [
+  { nome: "Pré-produção", tempo: "Semanas antes", cor: "#3b82f6", placeholder: "Solte tarefas aqui" },
+  { nome: "Produção", tempo: "Dias antes / montagem", cor: "#a78bfa", placeholder: "Solte tarefas aqui" },
+  { nome: "Execução", tempo: "Dia do evento", cor: "#22c55e", placeholder: "Solte tarefas aqui" },
+  { nome: "Pós-produção", tempo: "Após o evento", cor: "#f59e0b", placeholder: "Solte tarefas aqui" }
+];
+
+const TAREFAS_DEF = [
+  { id: 't1', label: 'Briefing com o cliente', fase: 0 },
+  { id: 't2', label: 'Orçamento e proposta', fase: 0 },
+  { id: 't3', label: 'Contratação de fornecedores', fase: 0 },
+  { id: 't4', label: 'Cronograma geral', fase: 0 },
+  { id: 't5', label: 'Aprovação de layout', fase: 0 },
+  { id: 't6', label: 'Montagem de palco/estrutura', fase: 1 },
+  { id: 't7', label: 'Instalação de AV', fase: 1 },
+  { id: 't8', label: 'Teste de equipamentos', fase: 1 },
+  { id: 't9', label: 'Ensaio geral (rehearsal)', fase: 1 },
+  { id: 't10', label: 'Credenciamento de equipe', fase: 1 },
+  { id: 't11', label: 'Abertura de portas', fase: 2 },
+  { id: 't12', label: 'Operação de áudio ao vivo', fase: 2 },
+  { id: 't13', label: 'Gestão de cronograma D-day', fase: 2 },
+  { id: 't14', label: 'Resolução de imprevistos', fase: 2 },
+  { id: 't15', label: 'Desmontagem', fase: 3 },
+  { id: 't16', label: 'Prestação de contas', fase: 3 },
+  { id: 't17', label: 'Relatório final ao cliente', fase: 3 },
+  { id: 't18', label: 'Avaliação de fornecedores', fase: 3 }
+];
+
+let draggedId = null;
+let tarefaAtual = {}; // id -> faseIndex ou null
+
+function initFluxo() {
+  // Inicializa estado
+  tarefaAtual = {};
+  TAREFAS_DEF.forEach(t => { tarefaAtual[t.id] = null; });
+
+  // Banco
+  const banco = document.getElementById('banco');
+  banco.innerHTML = '';
+  TAREFAS_DEF.forEach(t => {
+    banco.appendChild(criarChip(t.id, t.label, true));
+  });
+
+  // Fases
+  const fc = document.getElementById('fases-container');
+  fc.innerHTML = '';
+  FASES_DEF.forEach((f, fi) => {
+    const row = document.createElement('div');
+    row.className = 'fase-row';
+
+    const header = document.createElement('div');
+    header.className = 'fase-header';
+    header.style.borderLeft = '3px solid ' + f.cor;
+    header.innerHTML = `<div class="fase-nome">${f.nome}</div><div class="fase-tempo">${f.tempo}</div>`;
+
+    const zone = document.createElement('div');
+    zone.className = 'drop-zone';
+    zone.id = 'zone-' + fi;
+    zone.dataset.fase = fi;
+    zone.innerHTML = `<span class="fase-placeholder">${f.placeholder}</span>`;
+
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('over'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault();
+      zone.classList.remove('over');
+      if (draggedId) moverTarefa(draggedId, fi);
+    });
+
+    row.appendChild(header);
+    row.appendChild(zone);
+    fc.appendChild(row);
+  });
+
+  document.getElementById('resultado-fases').className = 'resultado-fases';
+}
+
+function criarChip(id, label, noBanco) {
+  const chip = document.createElement('div');
+  chip.className = 'tarefa-chip disponivel';
+  chip.id = 'chip-' + id;
+  chip.textContent = label;
+  chip.draggable = true;
+  chip.dataset.tid = id;
+
+  chip.addEventListener('dragstart', () => { draggedId = id; });
+  chip.addEventListener('dragend', () => { draggedId = null; });
+
+  // Clique para voltar ao banco
+  if (!noBanco) {
+    chip.title = 'Clique para devolver ao banco';
+    chip.addEventListener('click', () => moverTarefa(id, null));
+  }
+
+  return chip;
+}
+
+function moverTarefa(tid, faseIdx) {
+  tarefaAtual[tid] = faseIdx;
+  renderFluxo();
+}
+
+function renderFluxo() {
+  // Limpa banco
+  const banco = document.getElementById('banco');
+  banco.innerHTML = '';
+
+  // Limpa zones
+  FASES_DEF.forEach((f, fi) => {
+    const zone = document.getElementById('zone-' + fi);
+    zone.innerHTML = '';
+    const ph = document.createElement('span');
+    ph.className = 'fase-placeholder';
+    ph.textContent = f.placeholder;
+    zone.appendChild(ph);
+  });
+
+  TAREFAS_DEF.forEach(t => {
+    const fi = tarefaAtual[t.id];
+    if (fi === null || fi === undefined) {
+      banco.appendChild(criarChip(t.id, t.label, true));
+    } else {
+      const zone = document.getElementById('zone-' + fi);
+      // Remove placeholder se há tarefas
+      const ph = zone.querySelector('.fase-placeholder');
+      if (ph) ph.remove();
+      const chip = criarChip(t.id, t.label, false);
+      zone.appendChild(chip);
+    }
+  });
+
+  // Banco: drop de volta
+  banco.addEventListener('dragover', e => e.preventDefault());
+  banco.addEventListener('drop', e => {
+    e.preventDefault();
+    if (draggedId) moverTarefa(draggedId, null);
+  });
+}
+
+function verificarFluxo() {
+  let totalAlocadas = 0;
+  let corretas = 0;
+  let erradas = [];
+
+  TAREFAS_DEF.forEach(t => {
+    const fi = tarefaAtual[t.id];
+    if (fi !== null && fi !== undefined) {
+      totalAlocadas++;
+      if (fi === t.fase) {
+        corretas++;
+      } else {
+        erradas.push({ label: t.label, colocou: FASES_DEF[fi].nome, correto: FASES_DEF[t.fase].nome });
+      }
+    }
+  });
+
+  const res = document.getElementById('resultado-fases');
+  res.className = 'resultado-fases visivel';
+
+  if (totalAlocadas === 0) {
+    res.innerHTML = '<p style="color:#64748b">Aloque pelo menos uma tarefa antes de verificar.</p>';
+    return;
+  }
+
+  let html = `<h4>Resultado: ${corretas}/${totalAlocadas} alocadas corretamente</h4>`;
+
+  if (erradas.length === 0 && totalAlocadas === TAREFAS_DEF.length) {
+    html += `<p style="color:#22c55e;margin-bottom:6px">Perfeito! Todas as ${TAREFAS_DEF.length} tarefas na fase certa. Você domina o fluxo de produção!</p>`;
+  } else if (erradas.length === 0) {
+    html += `<p style="color:#22c55e;margin-bottom:6px">Ótimo! As tarefas alocadas estão corretas. Ainda faltam ${TAREFAS_DEF.length - totalAlocadas} no banco.</p>`;
+  } else {
+    html += `<p style="color:#f59e0b;margin-bottom:8px">Revise as tarefas abaixo:</p><ul style="padding-left:16px;color:#94a3b8;font-size:12px;line-height:1.8">`;
+    erradas.forEach(e => {
+      html += `<li><strong style="color:#e2e8f0">${e.label}</strong> — você colocou em <span style="color:#ef4444">${e.colocou}</span>, mas pertence à <span style="color:#22c55e">${e.correto}</span></li>`;
+    });
+    html += '</ul>';
+  }
+
+  res.innerHTML = html;
+}
+
+function resetFluxo() {
+  initFluxo();
+}
+
+// ===================== TABS =====================
+
+function switchTab(nome) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + nome).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ===================== INIT =====================
+initClassificador();
+calcPerfil();
+initFluxo();
+</script>
+</body>
+</html>

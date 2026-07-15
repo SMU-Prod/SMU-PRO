@@ -10,7 +10,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { COURSE, MODULES, LAYOUT, readFrag, readQuiz, readSim } from "./build.mjs";
+import { COURSE, MODULES, LAYOUT, MIGRAR, F, readFrag, readQuiz, readSim } from "./build.mjs";
+import { conferirFaixa, donoDoId } from "../_REGISTRO-IDS.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DRY = process.argv.includes("--dry");
@@ -57,13 +58,47 @@ const modById = Object.fromEntries(MODULES.map(m=>[m.n,m]));
   }
 
   // sanidade: toda aula com id declarado no LAYOUT existe mesmo?
+  // ---------- 1b) TRAVA DE FAIXA ----------
+  // Nada é escrito fora da faixa deste curso (cursos-novos/_REGISTRO-IDS.mjs).
+  // Foi assim que o Módulo 8 do Pleno — Vídeo foi roubado: id de outro curso + PATCH.
+  const nativos = [...MODULES.filter(m=>m.nativo).map(m=>m.id), ...LAYOUT.filter(l=>!l.novo).map(l=>l.id)];
+  conferirFaixa(F, [...MODULES.map(m=>m.id), ...LAYOUT.map(l=>l.id)], nativos);
+  for (const it of [...MODULES, ...LAYOUT]) {
+    const dono = donoDoId(it.id);
+    if (dono && dono !== F.slug)
+      throw new Error(`Id ${it.id} ("${it.titulo}") está na faixa de "${dono}", não de "${F.slug}". Gere pelo M()/A().`);
+  }
+  console.log(`1b) Trava de faixa: ${MODULES.length+LAYOUT.length} ids conferidos · faixa mod ${F.mod}-* / aula ${F.aula}-* · ${nativos.length} nativos.`);
+
+  // ---------- 1c) MIGRAÇÃO DE ID ----------
+  // Move aula que nasceu na faixa errada. ABORTA se houver progresso — nunca apagar aluno.
+  let nMig=0;
+  for (const m of MIGRAR) {
+    const velha = await get(`/lessons?id=eq.${m.de}&select=id,titulo`);
+    if (!velha.length) continue;                       // já migrada
+    const prog = await get(`/progress?lesson_id=eq.${m.de}&select=id`);
+    if (prog.length) throw new Error(
+      `ABORTADO: a aula "${m.oq}" (${m.de}) tem ${prog.length} registro(s) de PROGRESSO. ` +
+      `Migrar o id apagaria o progresso do aluno. Migre os registros de progress primeiro, à mão.`);
+    if (DRY) { console.log(`   [DRY] migraria ${m.de.slice(-6)} -> ${m.para.slice(-6)}  ${m.oq}`); nMig++; continue; }
+    await del(`/quizzes?lesson_id=eq.${m.de}`);
+    await del(`/ai_animations?lesson_id=eq.${m.de}`);
+    await del(`/lessons?id=eq.${m.de}`);              // o fluxo normal recria na faixa certa
+    nMig++;
+    console.log(`   migrado ${m.de.slice(-6)} -> ${m.para.slice(-6)}  ${m.oq}`);
+  }
+  console.log(`1c) Migração de id: ${nMig} aula(s) movida(s) para a faixa ${F.aula}-*.`);
+
   // Sanidade. Toda aula do LAYOUT tem id explícito; as `novo:true` podem ainda não existir.
   const semId = LAYOUT.filter(x=>!x.id);
   if (semId.length) throw new Error(`Aula sem id explícito no LAYOUT (id posicional é proibido): ${semId.map(x=>x.titulo).join(", ")}`);
   const dups = LAYOUT.map(x=>x.id).filter((v,i,a)=>a.indexOf(v)!==i);
   if (dups.length) throw new Error(`Id de aula repetido no LAYOUT: ${[...new Set(dups)].join(", ")}`);
 
-  const existingIds = new Set(before.flatMap(m=>(m.lessons||[]).map(l=>l.id)));
+  // `before` é o snapshot ANTES da migração: os ids antigos ainda aparecem nele.
+  // Sem descontá-los, o check abaixo os acusaria de órfãos e abortaria o próprio deploy.
+  const migrados = new Set(MIGRAR.map(m=>m.de));
+  const existingIds = new Set(before.flatMap(m=>(m.lessons||[]).map(l=>l.id)).filter(id=>!migrados.has(id)));
   const preexist = LAYOUT.filter(x=>!x.novo);
   const missing = preexist.filter(x=>!existingIds.has(x.id));
   if (missing.length) throw new Error(`Aulas pré-existentes declaradas que sumiram do banco: ${missing.map(m=>m.titulo).join(", ")}`);
@@ -150,6 +185,24 @@ const modById = Object.fromEntries(MODULES.map(m=>[m.n,m]));
     }
     console.log(`   M${it.mod}.${ordem} ${it.novo?"NOVA":"keep"} ${it.titulo.slice(0,46)}${it.sim?" +sim":""}`);
   }
+
+  // ---------- 5b) RESÍDUO DE MÓDULO ----------
+  // Trocar o esquema de id de módulo deixa o antigo para trás, VAZIO, e o aluno vê
+  // "Módulo 4" duas vezes na tela. Aconteceu em 15/07 (a4/a8/a9 -> 04/09/10).
+  // Módulo deste curso que não está no MODULES: remove se vazio, ABORTA se tiver aula.
+  const declarados = new Set(MODULES.map(m=>m.id));
+  const noBanco = await get(`/modules?course_id=eq.${COURSE}&select=id,titulo,ordem`);
+  let nRes=0;
+  for (const m of noBanco.filter(m=>!declarados.has(m.id))) {
+    const ls = await get(`/lessons?module_id=eq.${m.id}&select=id`);
+    if (ls.length) throw new Error(
+      `Módulo "${m.titulo}" (${m.id}) não está no MODULES mas tem ${ls.length} aula(s). ` +
+      `Não vou apagar aula por conta própria — declare-o no build ou mova as aulas antes.`);
+    await del(`/modules?id=eq.${m.id}`);
+    nRes++;
+    console.log(`   resíduo removido: M${m.ordem} "${m.titulo.slice(0,42)}" (vazio)`);
+  }
+  if (nRes) console.log(`5b) ${nRes} módulo(s) residual(is) removido(s).`);
 
   // ---------- 6) CURSO ----------
   const carga = LAYOUT.reduce((a,x)=>a+x.dur,0);

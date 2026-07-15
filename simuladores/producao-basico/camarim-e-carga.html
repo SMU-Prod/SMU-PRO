@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>SMU PRO · Camarim e transporte: as duas contas</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0c1017;--panel:#161c26;--panel2:#1b2230;--line:#2a3444;--ink:#e7edf5;--dim:#8794a8;
+        --accent:#f59e0b;--ok:#22c55e;--err:#ef4444;--warn:#f59e0b;--cyan:#38bdf8;}
+  html,body{background:var(--bg);color:var(--ink);
+    font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased;}
+  body{padding:12px;}
+  .app{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:12px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  h1{font-size:15px;margin-bottom:3px;}
+  .sub{font-size:12px;color:var(--dim);margin-bottom:12px;line-height:1.5;}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px;}
+  .stat .k{font-size:10px;color:var(--dim);letter-spacing:.5px;}
+  .stat .val{font-size:15px;font-weight:800;margin-top:2px;}
+  .verdict{font-size:13px;font-weight:700;padding:9px 12px;border-radius:8px;text-align:center;}
+  .verdict.ok{background:#14532d;color:#bbf7d0;}
+  .verdict.bad{background:#450a0a;color:#fca5a5;}
+  .verdict.warn{background:#422006;color:#fde68a;}
+  .note{font-size:12px;color:var(--dim);line-height:1.55;}
+  button{font:inherit;cursor:pointer;}
+
+  h2{font-size:11px;letter-spacing:1px;color:var(--accent);font-weight:800;margin-bottom:8px;}
+  .brief{background:#0e1520;border:1px solid var(--line);border-left:3px solid var(--cyan);border-radius:8px;
+    padding:10px 12px;font-size:12px;line-height:1.6;color:#c3cede;}
+  .brief b{color:var(--ink);}
+  .brief .cit{font-style:italic;color:#e7edf5;}
+
+  /* comitiva */
+  .rost{display:flex;flex-direction:column;gap:4px;margin-top:10px;}
+  .rost .r{display:flex;justify-content:space-between;gap:8px;align-items:baseline;font-size:11px;
+    background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:6px 9px;}
+  .rost .r span{color:var(--dim);line-height:1.35;}
+  .rost .r b{font-variant-numeric:tabular-nums;flex-shrink:0;}
+  .rost .r.eq{background:#42200630;border-color:#3a2a10;}
+  .rost .r.eq span,.rost .r.eq b{color:#fde68a;}
+
+  .qrow{display:flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--line);
+    border-radius:8px;padding:7px 9px;margin-bottom:6px;min-height:46px;}
+  .qrow .l{flex:1;min-width:0;}
+  .qrow .l b{font-size:12px;font-weight:600;display:block;line-height:1.3;}
+  .qrow .l span{font-size:10px;color:var(--dim);display:block;margin-top:2px;line-height:1.35;}
+  input.q{width:58px;flex-shrink:0;background:#0c1119;border:1px solid var(--line);color:var(--ink);
+    border-radius:6px;padding:6px 4px;font:inherit;font-size:14px;font-weight:700;text-align:center;min-height:36px;}
+
+  /* veiculos */
+  .veic{display:flex;flex-direction:column;gap:5px;margin-top:10px;}
+  .veic label{display:flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--line);
+    border-radius:8px;padding:6px 8px;min-height:46px;cursor:pointer;}
+  .veic label.sel{border-color:var(--accent);background:#42200630;}
+  .veic input[type=radio]{width:19px;height:19px;flex-shrink:0;accent-color:var(--accent);}
+  .veic .vn{flex:1;min-width:0;}
+  .veic .vn b{font-size:12px;display:block;}
+  .veic .vn span{font-size:10px;color:var(--dim);display:block;line-height:1.3;margin-top:1px;}
+  .veic .cap{font-size:10px;color:var(--dim);text-align:right;flex-shrink:0;font-variant-numeric:tabular-nums;line-height:1.4;}
+  .veic .cap b{color:#c3cede;display:block;font-weight:700;}
+
+  .carga{display:flex;flex-direction:column;gap:3px;margin-top:8px;}
+  .carga .c{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--dim);
+    padding:4px 9px;border-bottom:1px solid #1d2532;}
+  .carga .c b{color:#c3cede;font-variant-numeric:tabular-nums;flex-shrink:0;font-weight:600;}
+  .carga .c.tot{border-bottom:0;color:#fde68a;font-weight:700;padding-top:6px;}
+  .carga .c.tot b{color:#fde68a;}
+
+  .gauge{margin-top:8px;}
+  .gauge .g{margin-bottom:8px;}
+  .gauge .gl{display:flex;justify-content:space-between;font-size:10px;color:var(--dim);
+    letter-spacing:.5px;margin-bottom:3px;font-variant-numeric:tabular-nums;}
+  .gauge .gl b{color:var(--ok);}
+  .gauge .gl b.over{color:var(--err);}
+  .bar{height:9px;border-radius:5px;background:#0c1119;border:1px solid var(--line);overflow:hidden;position:relative;}
+  .bar i{display:block;height:100%;background:var(--ok);width:0;transition:width .15s linear;}
+  .bar i.over{background:var(--err);}
+
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
+  @media(min-width:660px){ .stats{grid-template-columns:repeat(3,1fr);} }
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
+  .btn{background:#0c1119;border:1px solid var(--line);color:var(--ink);border-radius:8px;
+    padding:9px 14px;font-size:12px;font-weight:700;min-height:38px;flex:1;}
+  .btn.pri{background:#42200680;border-color:var(--accent);color:#fde68a;}
+  .errs{display:flex;flex-direction:column;gap:6px;margin-top:10px;}
+  .e{font-size:12px;line-height:1.55;padding:8px 10px;border-radius:7px;border:1px solid;}
+  .e.bad{background:#2a0d0d;border-color:#7f1d1d;color:#fca5a5;}
+  .e.warn{background:#2a1c06;border-color:#78350f;color:#fde68a;}
+  .e.ok{background:#0d2418;border-color:#14532d;color:#bbf7d0;}
+  .e b{color:#fff;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="card">
+    <h1>Camarim e transporte — as duas contas que o iniciante erra</h1>
+    <div class="sub">Job: show de banda, casa de 800 lugares. Duas decisões suas: quantas refeições pedir para o camarim e qual veículo contratar para a carga. Preencha os dois blocos e clique em <b>Conferir</b>.</div>
+  </div>
+
+  <div class="card">
+    <h2>BLOCO 1 · CONTAR A COMITIVA</h2>
+    <div class="brief">
+      <b>Rider de camarim — cláusula 4.1:</b><br>
+      <span class="cit">"A CONTRATANTE fornecerá refeição quente às 16h30 para a comitiva de 14 (catorze) pessoas, sendo 2 (dois) vegetarianos e 1 (um) intolerante a lactose."</span>
+    </div>
+    <div class="rost" id="rost"></div>
+    <div class="note" style="margin:10px 0 8px;">Monte o <b>pedido do restaurante</b>. Uma refeição por pessoa, às 16h30.</div>
+    <div id="ped"></div>
+    <div class="stats">
+      <div class="stat"><div class="k">REFEIÇÕES PEDIDAS</div><div class="val" id="sPed">—</div></div>
+      <div class="stat"><div class="k">COMITIVA (RIDER)</div><div class="val">14</div></div>
+      <div class="stat"><div class="k">DIFERENÇA</div><div class="val" id="sDif">—</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>BLOCO 2 · CABE NO VEÍCULO?</h2>
+    <div class="brief">
+      <b>A carga do evento</b> — todo veículo tem <b>dois limites ao mesmo tempo</b>: <b>cubagem</b> (m³) e <b>carga útil</b> (kg). Escolha o veículo que atende os dois.
+    </div>
+    <div class="carga" id="carga"></div>
+    <div class="veic" id="veic"></div>
+    <div class="gauge">
+      <div class="g">
+        <div class="gl"><span>CUBAGEM OCUPADA</span><b id="gm3">selecione um veículo</b></div>
+        <div class="bar"><i id="bm3"></i></div>
+      </div>
+      <div class="g">
+        <div class="gl"><span>CARGA ÚTIL OCUPADA</span><b id="gkg">selecione um veículo</b></div>
+        <div class="bar"><i id="bkg"></i></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="toolbar">
+      <button class="btn pri" id="check">Conferir</button>
+      <button class="btn" id="reset">Reiniciar</button>
+    </div>
+    <div class="stats" style="grid-template-columns:1fr 1fr;">
+      <div class="stat"><div class="k">PLACAR</div><div class="val" id="sPlac">—</div></div>
+      <div class="stat"><div class="k">APROVEITAMENTO</div><div class="val" id="sPct">—</div></div>
+    </div>
+    <div class="errs" id="errs"></div>
+    <div class="note" style="margin-top:10px;">
+      As duas contas têm a mesma raiz: <b>o iniciante conta o que enxerga</b> — a banda no palco, o espaço no baú — e ignora o que está escrito no rider e na balança.
+    </div>
+  </div>
+
+</div>
+<script>
+(function(){
+  var $=function(s){return document.querySelector(s);};
+
+  /* ---------- BLOCO 1: comitiva ---------- */
+  /* Anexo do rider: quem viaja com o artista e come no camarim. A soma É os 14 da cláusula. */
+  var ROSTER=[
+    {n:'Artista',q:1},
+    {n:'Banda (guitarra, baixo, bateria, teclas, backing)',q:5},
+    {n:'Equipe técnica do artista (FOH, monitor, backline, iluminador)',q:4},
+    {n:'Produção do artista (road manager + assistente de palco)',q:2},
+    {n:'Segurança pessoal',q:2}
+  ];
+  var COMITIVA=14, VEG=2, LAC=1, ONI=COMITIVA-VEG-LAC; /* 11 */
+
+  /* Estado inicial errado de propósito: o pedido que o iniciante faz olhando só para a banda. */
+  var PED=[
+    {id:'oni',n:'Refeição onívora',u:'prato padrão do restaurante',ini:6},
+    {id:'veg',n:'Refeição vegetariana',u:'sem carne, sem caldo de carne',ini:0},
+    {id:'lac',n:'Refeição sem lactose',u:'restrição de saúde, não preferência',ini:0}
+  ];
+  var qtd={}, veic=null, checked=false;
+
+  /* ---------- BLOCO 2: carga e veículos ---------- */
+  var CARGA=[
+    {n:'PA: line array compacto + 4 subgraves em cases',m3:5.0,kg:1150},
+    {n:'Luz: 12 PAR LED, 4 moving heads, mesa e dimmer',m3:2.5,kg:380},
+    {n:'Backline: bateria, amps e teclado em cases',m3:3.0,kg:420},
+    {n:'Treliça Q30, bases e sapatas',m3:2.5,kg:980},
+    {n:'Praticáveis do palco e saia',m3:2.0,kg:350},
+    {n:'Cabeamento, quadro de força e ferramentas',m3:1.0,kg:120}
+  ];
+  /* Números de referência de mercado — confirme sempre com a transportadora. */
+  var VEIC=[
+    // "Van" é família, não veículo: Fiorino ~650 kg × Sprinter ~1,5 t. A aula 07 lista as duas
+    // separadas — o sim segue a aula. Ordem de grandeza; o número real está no CRLV do veículo.
+    {id:'fiorino',n:'Fiorino / furgão pequeno',m3:6, kg:650, u:'Microfonia, cabos, apoio'},
+    {id:'van',    n:'Van grande (Sprinter)',m3:13, kg:1500, u:'Backline, som de festa pequena'},
+    {id:'vuc',    n:'VUC',         m3:18,kg:3000, u:'Médio porte; entra onde truck não entra'},
+    {id:'toco',   n:'Toco',        m3:35,kg:6000, u:'Som + luz de show médio'},
+    {id:'truck',  n:'Truck',       m3:50,kg:12000,u:'Show grande; ~3 m de altura, exige manobra'},
+    {id:'carreta',n:'Carreta',     m3:90,kg:25000,u:'Turnê, festival, palco completo'}
+  ];
+  var CERTO='toco';
+  function totM3(){var t=0;CARGA.forEach(function(c){t+=c.m3;});return Math.round(t*10)/10;}
+  function totKg(){var t=0;CARGA.forEach(function(c){t+=c.kg;});return t;}
+  function vBy(id){for(var i=0;i<VEIC.length;i++) if(VEIC[i].id===id) return VEIC[i]; return null;}
+  function nb(v){return v.toLocaleString('pt-BR');}
+
+  function build(){
+    $('#rost').innerHTML=ROSTER.map(function(r){
+      return '<div class="r"><span>'+r.n+'</span><b>'+r.q+'</b></div>';
+    }).join('')+'<div class="r eq"><span>Comitiva que come no camarim</span><b>'+COMITIVA+'</b></div>';
+
+    $('#ped').innerHTML=PED.map(function(p){
+      return '<div class="qrow"><div class="l"><b>'+p.n+'</b><span>'+p.u+'</span></div>'+
+        '<input class="q" type="number" min="0" max="40" step="1" data-p="'+p.id+'" value="'+qtd[p.id]+'"></div>';
+    }).join('');
+
+    $('#carga').innerHTML=CARGA.map(function(c){
+      return '<div class="c"><span>'+c.n+'</span><b>'+c.m3.toFixed(1).replace('.',',')+' m³ · '+nb(c.kg)+' kg</b></div>';
+    }).join('')+'<div class="c tot"><span>CARGA TOTAL DO EVENTO</span><b>'+
+      totM3().toFixed(1).replace('.',',')+' m³ · '+nb(totKg())+' kg</b></div>';
+
+    $('#veic').innerHTML=VEIC.map(function(v){
+      return '<label data-v="'+v.id+'"><input type="radio" name="veic" value="'+v.id+'">'+
+        '<span class="vn"><b>'+v.n+'</b><span>'+v.u+'</span></span>'+
+        '<span class="cap"><b>'+v.m3+' m³</b>'+nb(v.kg)+' kg</span></label>';
+    }).join('');
+  }
+
+  function render(){
+    var ped=qtd.oni+qtd.veg+qtd.lac, dif=ped-COMITIVA;
+    $('#sPed').textContent=ped;
+    var d=$('#sDif');
+    d.textContent=(dif===0?'0':(dif>0?'+'+dif:dif));
+    d.style.color=dif===0?'var(--ok)':(dif<0?'var(--err)':'var(--warn)');
+
+    var m3=totM3(), kg=totKg();
+    var pm=veic?m3/veic.m3:0, pk=veic?kg/veic.kg:0;
+    setBar('#gm3','#bm3',pm,m3.toFixed(1).replace('.',',')+' de '+(veic?veic.m3:'—')+' m³');
+    setBar('#gkg','#bkg',pk,nb(kg)+' de '+(veic?nb(veic.kg):'—')+' kg');
+    if(!veic){
+      $('#gm3').textContent='selecione um veículo'; $('#gkg').textContent='selecione um veículo';
+      $('#gm3').className=''; $('#gkg').className='';
+      $('#bm3').style.width='0'; $('#bkg').style.width='0';
+      $('#bm3').className=''; $('#bkg').className='';
+    }
+    if(checked) diag();
+  }
+  function setBar(lab,bar,p,txt){
+    if(!veic) return;
+    var over=p>1;
+    var l=$(lab); l.textContent=Math.round(p*100)+'% · '+txt; l.className=over?'over':'';
+    var b=$(bar); b.style.width=Math.min(100,p*100).toFixed(1)+'%'; b.className=over?'over':'';
+  }
+
+  function bloco1(){
+    var ped=qtd.oni+qtd.veg+qtd.lac, out=[];
+    var ok=(qtd.oni===ONI && qtd.veg===VEG && qtd.lac===LAC);
+    if(ok){
+      out.push({t:'ok',h:'<b>Comitiva fechada: '+ONI+' + '+VEG+' + '+LAC+' = '+COMITIVA+'.</b> As restrições saem de dentro do total, não somam por fora. Falta um passo no mundo real: <b>reconfirmar o headcount com o road manager por escrito, 72h antes</b> — comitiva muda, banda ganha percussionista, segurança vira dois.'});
+      return {ok:1,out:out};
+    }
+    if(qtd.oni===COMITIVA && (qtd.veg+qtd.lac)===VEG+LAC){
+      out.push({t:'bad',h:'<b>Você somou as restrições por fora: 14 + 3 = 17 refeições para 14 pessoas.</b> Os 2 vegetarianos e o intolerante a lactose <b>estão dentro dos 14</b> — eles são da comitiva, não visitas. Você pagou 3 refeições a mais e ainda mandou prato com carne para quem não come. A conta é <b>11 onívoras + 2 vegetarianas + 1 sem lactose = 14</b>.'});
+    } else if(ped<COMITIVA){
+      var falta=COMITIVA-ped;
+      if(ped<=7){
+        out.push({t:'bad',h:'<b>Comitiva não é a banda.</b> Você pediu '+ped+' refeição(ões) para '+COMITIVA+' pessoas. Comitiva é <b>todo mundo que viaja com o artista e come no camarim</b>: artista + banda + equipe técnica dele (FOH, monitor, backline, iluminador) + produção + segurança. Cinco músicos viram catorze pessoas rápido — está escrito no anexo do rider, é só somar.'});
+      }
+      out.push({t:'bad',h:'<b>Faltam '+falta+' refeições às 16h30</b> — restaurante do evento já fechou a produção do dia e delivery de sábado sai a preço de sábado. Headcount é o erro nº 1 do camarim, não a marca do energético.'});
+    } else if(ped>COMITIVA){
+      out.push({t:'warn',h:'Você pediu <b>'+ped+'</b> refeições para uma comitiva de <b>'+COMITIVA+'</b>. Comida que sobra no camarim é dinheiro seu no lixo — e a <b>sua</b> equipe não come nesta conta: ela sai da linha "alimentação da equipe" do orçamento, não do camarim do artista.'});
+    }
+    if(qtd.veg!==VEG) out.push({t:'bad',h:'<b>Vegetarianas: você pediu '+qtd.veg+', o rider pede '+VEG+'.</b> Restrição alimentar é cláusula assinada e é saúde — não é preferência que se resolve "tirando a carne do prato" na hora.'});
+    if(qtd.lac!==LAC) out.push({t:'bad',h:'<b>Sem lactose: você pediu '+qtd.lac+', o rider pede '+LAC+'.</b> Intolerância não negocia com "só um pouquinho de queijo": é técnico de monitor passando mal às 21h, no meio do show.'});
+    if(qtd.oni!==ONI && qtd.veg===VEG && qtd.lac===LAC) out.push({t:'bad',h:'<b>Onívoras: você pediu '+qtd.oni+', a conta é '+ONI+'.</b> '+COMITIVA+' da comitiva − '+VEG+' vegetarianos − '+LAC+' sem lactose = <b>'+ONI+'</b>.'});
+    return {ok:0,out:out};
+  }
+
+  function bloco2(){
+    var m3=totM3(), kg=totKg(), out=[];
+    if(!veic){ out.push({t:'warn',h:'<b>Nenhum veículo escolhido.</b> Some o peso antes de escolher: a conta que decide o caminhão é a de kg, não a de espaço.'}); return {ok:0,out:out}; }
+    var pm=Math.round(m3/veic.m3*100), pk=Math.round(kg/veic.kg*100);
+    if(veic.id===CERTO){
+      out.push({t:'ok',h:'<b>Toco: '+pm+'% de cubagem e '+pk+'% de carga útil.</b> Os dois limites atendidos com folga, e é o <b>menor veículo que atende os dois</b> — que é exatamente o critério. Folga não é desperdício: é o case extra que aparece na véspera.'});
+      return {ok:1,out:out};
+    }
+    if(pm>100 && pk>100){
+      out.push({t:'bad',h:'<b>'+veic.n+' estoura os dois limites:</b> '+pm+'% de cubagem e '+pk+'% de carga útil. Não é questão de "arrumar melhor lá dentro" — '+nb(kg)+' kg não entram num veículo de '+nb(veic.kg)+' kg de carga útil.'});
+    } else if(pk>100){
+      out.push({t:'bad',h:'<b>A armadilha clássica: cabe em volume e estoura no peso.</b> No '+veic.n+' a carga ocupa '+pm+'% da cubagem ('+m3.toFixed(1).replace('.',',')+' de '+veic.m3+' m³ — sobra espaço no baú) e <b>'+pk+'% da carga útil</b> ('+nb(kg)+' kg num veículo de '+nb(veic.kg)+' kg). Equipamento de evento é <b>denso</b>: caixa de som, treliça e base de ferro pesam antes de encher. Sobrepeso é multa e retenção na balança — e caminhão parado na balança é show que não acontece.'});
+    } else if(pm>100){
+      out.push({t:'bad',h:'<b>'+veic.n+': '+pm+'% de cubagem.</b> O peso cabe, o volume não. '+m3.toFixed(1).replace('.',',')+' m³ não entram em '+veic.m3+' m³ — e o que sobra vira segundo frete de última hora, que custa o dobro.'});
+    } else {
+      out.push({t:'warn',h:'<b>'+veic.n+' cabe — e é caminhão a mais.</b> '+pm+'% de cubagem e '+pk+'% de carga útil: você contratou frete de show grande para carga de show médio. E veículo maior tem custo escondido no acesso: um truck tem ~3 m de altura e precisa de manobra — portão baixo ou pátio apertado, e ele não encosta. <b>O certo é o menor veículo que atende os DOIS limites: o Toco (35 m³ / 6.000 kg).</b>'});
+    }
+    return {ok:0,out:out};
+  }
+
+  function diag(){
+    var b1=bloco1(), b2=bloco2();
+    var ac=b1.ok+b2.ok, pct=Math.round(ac/2*100);
+    $('#sPlac').textContent=ac+' de 2';
+    var p=$('#sPct'); p.textContent=pct+'%';
+    p.style.color=pct===100?'var(--ok)':(pct===0?'var(--err)':'var(--warn)');
+
+    var v;
+    if(ac===2) v={t:'ok',h:'✓ <b>As duas contas fechadas:</b> comitiva de 14 alimentada corretamente e veículo dentro dos dois limites.'};
+    else if(ac===1) v={t:'warn',h:'◐ <b>Uma das duas contas está errada.</b> Leia o diagnóstico e corrija.'};
+    else v={t:'bad',h:'✗ <b>As duas contas erradas.</b> Camarim sem comida e caminhão fora do limite — os dois viram problema no dia, na frente do cliente.'};
+
+    var out=[{t:v.t,h:v.h},{t:'warn',h:'<b>— BLOCO 1 · COMITIVA —</b>'}]
+      .concat(b1.out,[{t:'warn',h:'<b>— BLOCO 2 · VEÍCULO —</b>'}],b2.out);
+    $('#errs').innerHTML=out.map(function(o){return '<div class="e '+o.t+'">'+o.h+'</div>';}).join('');
+  }
+
+  function onPed(e){
+    var t=e.target, id=t.dataset.p; if(!id) return;
+    var v=parseInt(t.value,10); if(isNaN(v)) v=0;
+    v=Math.max(0,Math.min(40,v));
+    qtd[id]=v;
+    if(e.type==='change') t.value=v;
+    render();
+  }
+  $('#ped').addEventListener('input',onPed);
+  $('#ped').addEventListener('change',onPed);
+
+  $('#veic').addEventListener('change',function(e){
+    if(!e.target.name) return;
+    veic=vBy(e.target.value);
+    Array.prototype.forEach.call(document.querySelectorAll('#veic label'),function(l){
+      l.className=(l.dataset.v===e.target.value)?'sel':'';
+    });
+    render();
+  });
+
+  $('#check').onclick=function(){ checked=true; render(); $('#errs').scrollIntoView({behavior:'smooth',block:'nearest'}); };
+  function reset(){
+    PED.forEach(function(p){ qtd[p.id]=p.ini; });
+    veic=null; checked=false;
+    build(); render();
+    $('#errs').innerHTML=''; $('#sPlac').textContent='—';
+    $('#sPct').textContent='—'; $('#sPct').style.color='';
+  }
+  $('#reset').onclick=reset;
+  reset();
+  window.__cc={qtd:function(){return qtd;},veic:function(){return veic;},diag:diag};
+})();
+</script>
+</body>
+</html>

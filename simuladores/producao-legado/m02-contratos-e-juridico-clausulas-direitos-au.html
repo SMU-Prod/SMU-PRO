@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMU PRO · Contratos, ECAD e Seguros</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #eef2f6; font-family: 'Segoe UI', Arial, sans-serif; min-height: 100vh; padding: 24px 16px 40px; }
+  .device { background: #20252f; border: 1px solid #10141b; border-radius: 12px; color: #cbd5e1; padding: 16px; max-width: 860px; margin: 0 auto; }
+  .device-label { font-size: 10px; letter-spacing: .14em; color: #5b6675; margin-bottom: 14px; }
+  h2 { font-size: 15px; color: #e2e8f0; margin-bottom: 4px; }
+  .subtitle { font-size: 11px; color: #64748b; margin-bottom: 16px; }
+
+  /* TABS */
+  .tabs { display: flex; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; }
+  .tab-btn { background: #2a3140; border: 1px solid #374151; color: #94a3b8; padding: 7px 14px; border-radius: 6px; cursor: pointer; font-size: 12px; transition: all .18s; }
+  .tab-btn.active { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+  .tab-btn:hover:not(.active) { background: #333d4f; color: #cbd5e1; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* --- TAB 1: CONTRATO BUILDER --- */
+  .contract-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media(max-width:600px){ .contract-grid{ grid-template-columns:1fr; } }
+  .clause-card { background: #2a3140; border: 2px solid #374151; border-radius: 8px; padding: 10px 12px; cursor: pointer; transition: all .15s; user-select: none; }
+  .clause-card:hover { border-color: #3b82f6; background: #303d52; }
+  .clause-card.selected { border-color: #22c55e; background: #1a2e1a; }
+  .clause-card.critical { border-left: 3px solid #ef4444; }
+  .clause-card.warning { border-left: 3px solid #f59e0b; }
+  .clause-card.good { border-left: 3px solid #22c55e; }
+  .clause-title { font-size: 12px; font-weight: 600; color: #e2e8f0; margin-bottom: 3px; }
+  .clause-desc { font-size: 10px; color: #64748b; line-height: 1.4; }
+  .clause-badge { display: inline-block; font-size: 9px; padding: 1px 5px; border-radius: 3px; margin-top: 4px; font-weight: 700; }
+  .badge-critical { background: #7f1d1d; color: #fca5a5; }
+  .badge-warning { background: #78350f; color: #fde68a; }
+  .badge-good { background: #14532d; color: #86efac; }
+
+  .score-bar-wrap { margin: 14px 0 8px; }
+  .score-label { font-size: 11px; color: #94a3b8; margin-bottom: 4px; display: flex; justify-content: space-between; }
+  .score-bar { background: #374151; border-radius: 4px; height: 10px; overflow: hidden; }
+  .score-fill { height: 100%; border-radius: 4px; transition: width .4s, background .4s; }
+
+  .contract-result { background: #1e293b; border-radius: 8px; padding: 10px 12px; margin-top: 10px; font-size: 12px; line-height: 1.6; min-height: 52px; }
+  .contract-result b { color: #e2e8f0; }
+
+  .select-all-row { display: flex; gap: 8px; margin-bottom: 10px; }
+  .sm-btn { background: #2a3140; border: 1px solid #374151; color: #94a3b8; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 11px; }
+  .sm-btn:hover { background: #3b4255; color: #e2e8f0; }
+  /* Alvo de toque em celular/tablet (nao afeta desktop) */
+  @media (max-width: 600px), (pointer: coarse) { .sm-btn { min-height: 34px; } }
+
+  /* --- TAB 2: ECAD CALCULADORA --- */
+  .ecad-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media(max-width:560px){ .ecad-form{ grid-template-columns:1fr; } }
+  .form-group { display: flex; flex-direction: column; gap: 4px; }
+  .form-group label { font-size: 11px; color: #94a3b8; }
+  .form-group select, .form-group input[type=number] {
+    background: #2a3140; border: 1px solid #374151; color: #e2e8f0;
+    padding: 7px 10px; border-radius: 6px; font-size: 12px; width: 100%;
+  }
+  .form-group select option { background: #1e293b; }
+  .slider-group { display: flex; flex-direction: column; gap: 4px; }
+  .slider-group label { font-size: 11px; color: #94a3b8; display: flex; justify-content: space-between; }
+  input[type=range] { width: 100%; accent-color: #3b82f6; }
+
+  .ecad-result-box { background: #1e293b; border-radius: 8px; padding: 12px 14px; margin-top: 14px; }
+  .ecad-result-box h4 { font-size: 12px; color: #94a3b8; margin-bottom: 8px; }
+  .ecad-line { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-bottom: 1px solid #334155; }
+  .ecad-line:last-child { border-bottom: none; font-weight: 700; font-size: 13px; }
+  .ecad-line span:last-child { color: #f59e0b; }
+  .ecad-line.total span:last-child { color: #22c55e; }
+  .ecad-warn { background: #7f1d1d22; border: 1px solid #ef444433; border-radius: 6px; padding: 7px 10px; margin-top: 8px; font-size: 11px; color: #fca5a5; }
+  .ecad-ok { background: #14532d22; border: 1px solid #22c55e33; border-radius: 6px; padding: 7px 10px; margin-top: 8px; font-size: 11px; color: #86efac; }
+
+  /* --- TAB 3: SEGURO CHECKLIST --- */
+  .ins-types { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap: 8px; margin-bottom: 14px; }
+  .ins-card { background: #2a3140; border: 2px solid #374151; border-radius: 8px; padding: 10px 12px; cursor: pointer; transition: all .15s; }
+  .ins-card:hover { border-color: #a78bfa; }
+  .ins-card.sel { border-color: #22c55e; background: #1a2e1a; }
+  .ins-card .ins-icon { font-size: 20px; margin-bottom: 4px; }
+  .ins-card .ins-name { font-size: 11px; font-weight: 600; color: #e2e8f0; }
+  .ins-card .ins-desc { font-size: 10px; color: #64748b; margin-top: 2px; }
+  .ins-card.mandatory { border-left: 3px solid #ef4444; }
+
+  .event-profile { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  @media(max-width:520px){ .event-profile{ grid-template-columns:1fr; } }
+  .toggle-row { display: flex; align-items: center; gap: 8px; background: #2a3140; border-radius: 6px; padding: 7px 10px; }
+  .toggle-row label { font-size: 11px; color: #94a3b8; flex: 1; }
+  .toggle { position: relative; width: 36px; height: 18px; flex-shrink: 0; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider { position: absolute; inset: 0; background: #374151; border-radius: 9px; cursor: pointer; transition: .2s; }
+  .toggle-slider::before { content:''; position:absolute; height:14px; width:14px; left:2px; bottom:2px; background:#94a3b8; border-radius:50%; transition:.2s; }
+  .toggle input:checked + .toggle-slider { background: #22c55e; }
+  .toggle input:checked + .toggle-slider::before { transform: translateX(18px); background:#fff; }
+
+  .ins-verdict { background: #1e293b; border-radius: 8px; padding: 12px; margin-top: 8px; }
+  .ins-verdict h4 { font-size: 12px; color: #94a3b8; margin-bottom: 8px; }
+  .ins-item { display: flex; align-items: flex-start; gap: 8px; padding: 5px 0; border-bottom: 1px solid #334155; font-size: 11px; }
+  .ins-item:last-child { border-bottom: none; }
+  .ins-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 3px; }
+  .dot-green { background: #22c55e; }
+  .dot-red { background: #ef4444; }
+  .dot-yellow { background: #f59e0b; }
+  .risk-meter { height: 8px; background: #374151; border-radius: 4px; overflow: hidden; margin: 8px 0 4px; }
+  .risk-fill { height: 100%; border-radius: 4px; transition: width .4s, background .4s; }
+
+  /* --- TAB 4: SITUACOES --- */
+  .scenario-list { display: flex; flex-direction: column; gap: 10px; }
+  .scenario { background: #2a3140; border-radius: 8px; padding: 12px 14px; }
+  .scenario h4 { font-size: 12px; color: #e2e8f0; margin-bottom: 6px; }
+  .scenario p { font-size: 11px; color: #94a3b8; margin-bottom: 8px; line-height: 1.5; }
+  .opts { display: flex; flex-direction: column; gap: 5px; }
+  .opt-btn { background: #1e293b; border: 1px solid #374151; color: #94a3b8; padding: 7px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; text-align: left; transition: all .15s; }
+  .opt-btn:hover:not(:disabled) { border-color: #3b82f6; color: #e2e8f0; }
+  .opt-btn.correct { background: #14532d; border-color: #22c55e; color: #86efac; }
+  .opt-btn.wrong { background: #7f1d1d; border-color: #ef4444; color: #fca5a5; }
+  .opt-btn:disabled { cursor: default; opacity: .8; }
+  .scenario-feedback { margin-top: 8px; font-size: 11px; padding: 7px 10px; border-radius: 6px; display: none; line-height: 1.5; }
+  .fb-ok { background: #14532d33; border: 1px solid #22c55e44; color: #86efac; }
+  .fb-err { background: #7f1d1d33; border: 1px solid #ef444444; color: #fca5a5; }
+  .score-total { text-align: center; font-size: 13px; color: #94a3b8; margin-top: 10px; }
+  .score-total span { color: #22c55e; font-weight: 700; font-size: 16px; }
+
+  /* shared */
+  .section-title { font-size: 11px; color: #64748b; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 8px; }
+  .divider { border: none; border-top: 1px solid #2d3748; margin: 12px 0; }
+
+  footer { text-align: center; font-size: 11px; color: #475569; margin-top: 16px; }
+</style>
+</head>
+<body>
+<script>/*SMU-ZOOM*/(function(){var z=1,sc=null,MIN=1,MAX=2.5,STEP=0.25;function wrap(){if(sc)return;sc=document.createElement('div');sc.id='smu-sc';sc.style.transformOrigin='0 0';[].slice.call(document.body.children).filter(function(el){return (el.id||'').indexOf('smu-')!==0;}).forEach(function(k){sc.appendChild(k);});document.body.insertBefore(sc,document.body.firstChild);document.documentElement.style.overflow='auto';document.body.style.overflow='auto';document.body.style.margin='0';}function apply(){if(!sc)wrap();sc.style.transform='scale('+z+')';var w=sc.offsetWidth,h=sc.offsetHeight;document.body.style.width=(z>1?(w*z)+'px':'');document.body.style.height=(z>1?(h*z)+'px':'');var l=document.getElementById('smu-zl');if(l)l.textContent=Math.round(z*100)+'%';}function ui(){if(document.getElementById('smu-zoom'))return;var b=document.createElement('div');b.id='smu-zoom';b.style.cssText='position:fixed;left:10px;bottom:10px;z-index:99999;display:flex;align-items:center;gap:5px;background:#0e1420;border:1px solid #2c3340;border-radius:22px;padding:5px 8px;box-shadow:0 2px 10px rgba(0,0,0,.4);font-family:system-ui,sans-serif';function mk(t){var x=document.createElement('button');x.textContent=t;x.style.cssText='width:32px;height:32px;border-radius:50%;border:1px solid #2c3340;background:#171c26;color:#e5e7eb;font-size:18px;cursor:pointer;padding:0;line-height:1';return x;}var ic=document.createElement('span');ic.textContent='\U0001F50D';ic.style.fontSize='14px';var mi=mk('−'),lab=document.createElement('span'),pl=mk('+');lab.id='smu-zl';lab.style.cssText='font-size:12px;color:#cbd5e1;min-width:44px;text-align:center;cursor:pointer';lab.textContent='100%';b.appendChild(ic);b.appendChild(mi);b.appendChild(lab);b.appendChild(pl);document.body.appendChild(b);mi.onclick=function(){z=Math.max(MIN,Math.round((z-STEP)*100)/100);apply();};pl.onclick=function(){z=Math.min(MAX,Math.round((z+STEP)*100)/100);apply();};lab.onclick=function(){z=1;apply();};}if(document.readyState!=='loading')ui();else document.addEventListener('DOMContentLoaded',ui);})();</script>
+
+
+<div class="device">
+  <div class="device-label">SMU PRO · CONTRATOS, ECAD E SEGUROS</div>
+  <h2>Jurídico para Produtores de Eventos</h2>
+  <p class="subtitle">Monte contratos, calcule ECAD e avalie coberturas de seguro.</p>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('contrato')">📄 Contrato</button>
+    <button class="tab-btn" onclick="switchTab('ecad')">🎵 ECAD</button>
+    <button class="tab-btn" onclick="switchTab('seguro')">🛡️ Seguro</button>
+    <button class="tab-btn" onclick="switchTab('casos')">⚖️ Situações</button>
+  </div>
+
+  <!-- ===== TAB 1: CONTRATO ===== -->
+  <div id="tab-contrato" class="tab-panel active">
+    <p class="section-title">Monte o Contrato — clique nas cláusulas para incluir</p>
+    <div class="select-all-row">
+      <button class="sm-btn" onclick="selectAll()">Marcar todas</button>
+      <button class="sm-btn" onclick="clearAll()">Limpar</button>
+      <button class="sm-btn" onclick="selectMinimo()">Mínimo seguro</button>
+    </div>
+    <div class="contract-grid" id="clauses-grid"></div>
+
+    <div class="score-bar-wrap">
+      <div class="score-label"><span>Proteção do contrato</span><span id="score-pct">0%</span></div>
+      <div class="score-bar"><div class="score-fill" id="score-fill" style="width:0%;background:#ef4444"></div></div>
+    </div>
+
+    <div class="contract-result" id="contract-result">
+      ⬆️ Selecione cláusulas acima para montar o seu contrato e ver a análise.
+    </div>
+  </div>
+
+  <!-- ===== TAB 2: ECAD ===== -->
+  <div id="tab-ecad" class="tab-panel">
+    <p class="section-title">Calculadora ECAD — estime o valor de arrecadação</p>
+    <div class="ecad-form">
+      <div class="form-group">
+        <label>Tipo de evento</label>
+        <select id="ec-tipo" onchange="calcEcad()">
+          <option value="show">Show musical (artista contratado)</option>
+          <option value="baile">Baile / festa com banda ao vivo</option>
+          <option value="corporativo">Evento corporativo com música ao vivo</option>
+          <option value="fundo">Evento com música ambiente (DJ/playlist)</option>
+          <option value="teatro">Peça teatral com trilha sonora</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Local / capacidade</label>
+        <select id="ec-local" onchange="calcEcad()">
+          <option value="1">Até 300 pessoas</option>
+          <option value="2">301 – 1.000 pessoas</option>
+          <option value="3">1.001 – 5.000 pessoas</option>
+          <option value="4">Acima de 5.000 pessoas</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Ingressos cobrados?</label>
+        <select id="ec-ingresso" onchange="calcEcad()">
+          <option value="sim">Sim — entrada paga</option>
+          <option value="nao">Não — evento gratuito</option>
+          <option value="lista">Apenas lista / cortesia</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Duração (horas)</label>
+        <input type="number" id="ec-horas" value="4" min="1" max="12" onchange="calcEcad()" oninput="calcEcad()">
+      </div>
+    </div>
+    <div class="slider-group" style="margin-top:10px;">
+      <label>Valor médio do ingresso: <span id="ec-ingresso-val">R$ 80</span></label>
+      <input type="range" id="ec-preco" min="0" max="500" value="80" step="10" oninput="calcEcad()">
+    </div>
+    <div class="slider-group" style="margin-top:8px;">
+      <label>Capacidade do local: <span id="ec-cap-val">500 pessoas</span></label>
+      <input type="range" id="ec-cap" min="50" max="10000" value="500" step="50" oninput="calcEcad()">
+    </div>
+
+    <div class="ecad-result-box" id="ecad-result"></div>
+  </div>
+
+  <!-- ===== TAB 3: SEGURO ===== -->
+  <div id="tab-seguro" class="tab-panel">
+    <p class="section-title">Perfil do evento — ative os riscos presentes</p>
+    <div class="event-profile" id="risk-toggles"></div>
+
+    <hr class="divider">
+    <p class="section-title">Tipos de seguro — clique para contratar</p>
+    <div class="ins-types" id="ins-cards"></div>
+
+    <div class="ins-verdict" id="ins-verdict">
+      <h4>Análise de cobertura</h4>
+      <p style="font-size:11px;color:#64748b;">Configure o perfil do evento e escolha os seguros acima.</p>
+    </div>
+  </div>
+
+  <!-- ===== TAB 4: SITUAÇÕES ===== -->
+  <div id="tab-casos" class="tab-panel">
+    <p class="section-title">Situações reais — escolha a ação correta do produtor</p>
+    <div class="scenario-list" id="scenario-list"></div>
+    <div class="score-total" id="score-total" style="display:none">
+      Pontuação: <span id="score-val">0</span> / <span id="score-max">0</span>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  📄 Contrato: clique nas cláusulas &nbsp;|&nbsp; 🎵 ECAD: ajuste os parâmetros &nbsp;|&nbsp; 🛡️ Seguro: ative riscos e selecione coberturas &nbsp;|&nbsp; ⚖️ Situações: escolha a ação correta
+</footer>
+
+<script>
+// ============================================================
+// DADOS
+// ============================================================
+
+const CLAUSES = [
+  {id:'objeto', title:'Objeto do contrato', desc:'Define o serviço exato: datas, local, escopo técnico e artístico.', type:'critical', weight:12, mandatory:true,
+   detail:'SEM essa cláusula, não há contrato válido. Descreva o evento com precisão.'},
+  {id:'pagamento', title:'Condições de pagamento', desc:'Valores, parcelas, antecipações, meios de pagamento e penalidades por atraso.', type:'critical', weight:10, mandatory:true,
+   detail:'Defina % de entrada, saldo e multa por atraso (geralmente 2% + juros).'},
+  {id:'cancelamento', title:'Rescisão e cancelamento', desc:'Multas por desistência de ambas as partes, prazos de aviso prévio.', type:'critical', weight:10, mandatory:true,
+   detail:'Padrão: 30% até 90d, 50% até 30d, 100% abaixo de 15d do evento.'},
+  {id:'direitos', title:'Cessão de direitos de imagem', desc:'Autoriza (ou não) uso de fotos e vídeos do evento para fins comerciais.', type:'warning', weight:8,
+   detail:'Sem essa cláusula, qualquer uso de imagem pode gerar ação judicial.'},
+  {id:'ecad', title:'Responsabilidade ECAD', desc:'Define quem é responsável pelo licenciamento e pagamento ao ECAD.', type:'critical', weight:10, mandatory:true,
+   detail:'Por padrão, o produtor é o responsável legal perante o ECAD.'},
+  {id:'rider', title:'Rider técnico e hospitalidade', desc:'Lista de exigências técnicas e de camarim do artista/empresa contratada.', type:'warning', weight:7,
+   detail:'Não atender o rider pode gerar cancelamento sem multa para o contratado.'},
+  {id:'forca', title:'Força maior e caso fortuito', desc:'Exclui penalidades em eventos imprevisíveis: tempestades, greve, pandemia.', type:'good', weight:6,
+   detail:'Inclua situações climáticas extremas — muito comuns em eventos ao ar livre.'},
+  {id:'foro', title:'Foro e legislação aplicável', desc:'Define qual comarca julgará disputas e qual lei rege o contrato.', type:'good', weight:5,
+   detail:'Escolha o foro onde a empresa ou o evento está sediado.'},
+  {id:'seguro', title:'Obrigações de seguro', desc:'Especifica quais seguros (RC, cancelamento) cada parte deve contratar.', type:'warning', weight:8,
+   detail:'Evita discussão posterior sobre quem deveria ter a apólice.'},
+  {id:'exclusividade', title:'Exclusividade e concorrência', desc:'Impede o contratado de atender concorrentes no mesmo período/região.', type:'good', weight:4,
+   detail:'Útil para artistas e fornecedores estratégicos.'},
+  {id:'confidencial', title:'Confidencialidade (NDA)', desc:'Proíbe divulgação de valores, estratégias ou informações do evento.', type:'good', weight:4,
+   detail:'Protege cachês, orçamentos e detalhes operacionais.'},
+  {id:'multa', title:'Cláusula penal (multa por descumprimento)', desc:'Fixa penalidade para qualquer parte que descumprir obrigação contratual.', type:'warning', weight:7,
+   detail:'Facilita execução judicial sem precisar provar o valor do dano.'},
+];
+
+const ECAD_BASE = {
+  show:       { desc:'Show musical', fator: 0.0015 },
+  baile:      { desc:'Baile / banda ao vivo', fator: 0.0010 },
+  corporativo:{ desc:'Evento corporativo ao vivo', fator: 0.0008 },
+  fundo:      { desc:'Música ambiente / DJ', fator: 0.0004 },
+  teatro:     { desc:'Peça teatral com trilha', fator: 0.0005 },
+};
+const ECAD_LOCAL_MULT = [1, 1.3, 1.7, 2.4]; // faixas de capacidade
+const ECAD_ING_MULT = { sim: 1.0, nao: 0.4, lista: 0.6 };
+
+const RISKS = [
+  {id:'publico-grande', label:'Público > 1.000 pessoas', ins:['rc','cancel','vida']},
+  {id:'artista-renomado', label:'Artista / atração de alto cachê', ins:['cancel','rc']},
+  {id:'open-bar', label:'Open bar / bebida alcoólica', ins:['rc']},
+  {id:'estrutura-temp', label:'Palco / estrutura temporária', ins:['rc','engenharia']},
+  {id:'eletrico', label:'Instalações elétricas especiais', ins:['rc','engenharia']},
+  {id:'ao-ar-livre', label:'Evento ao ar livre', ins:['cancel','rc']},
+  {id:'pirotecnia', label:'Efeitos especiais / pirotecnia', ins:['rc','vida','pirotecnia']},
+  {id:'transmissao', label:'Transmissão online / streaming', ins:['cyber','direitos']},
+];
+
+const INSURANCES = [
+  {id:'rc', name:'Responsabilidade Civil', desc:'Cobre danos a terceiros durante o evento.', icon:'🏛️', mandatory_if:['publico-grande','open-bar','estrutura-temp','pirotecnia'], cost:0.003},
+  {id:'cancel', name:'Cancelamento de Evento', desc:'Reembolsa custos se o evento não acontecer.', icon:'🚫', mandatory_if:['artista-renomado','ao-ar-livre'], cost:0.015},
+  {id:'vida', name:'Seguro de Vida Coletivo', desc:'Cobre colaboradores e artistas contratados.', icon:'❤️', mandatory_if:['publico-grande','pirotecnia'], cost:0.002},
+  {id:'engenharia', name:'Risco de Engenharia', desc:'Protege estruturas, equipamentos e montagens.', icon:'🏗️', mandatory_if:['estrutura-temp','eletrico'], cost:0.008},
+  {id:'pirotecnia', name:'Seguro Pirotécnico Especial', desc:'Obrigatório por lei para uso de fogos e efeitos.', icon:'🎆', mandatory_if:['pirotecnia'], cost:0.025},
+  {id:'cyber', name:'Responsabilidade Digital', desc:'Cobre vazamentos de dados e falhas em streaming.', icon:'💻', mandatory_if:['transmissao'], cost:0.005},
+  {id:'direitos', name:'Cobertura de Direitos Autorais', desc:'Protege contra ações por uso não licenciado.', icon:'©️', mandatory_if:['transmissao'], cost:0.004},
+];
+
+const SCENARIOS = [
+  {
+    q:'O artista que você contratou por R$80.000 cancelou 10 dias antes do show alegando "problemas pessoais". O contrato tem cláusula de cancelamento (100% abaixo de 15 dias). O que você faz?',
+    opts:[
+      {t:'Aceitar o cancelamento e absorver o prejuízo', correct:false},
+      {t:'Notificar formalmente e acionar a multa contratual de 100%', correct:true},
+      {t:'Ligar para o empresário e resolver amigavelmente sem registrar', correct:false},
+      {t:'Entrar imediatamente com ação judicial sem notificação prévia', correct:false},
+    ],
+    fb_ok:'Correto! A notificação formal (e-mail / carta com AR) é o primeiro passo. Ela registra o descumprimento e é pré-requisito para exigir a multa e eventualmente ajuizar.',
+    fb_err:'Atenção: sem notificação formal documentada, você perde a prova do descumprimento. A cláusula penal existe para isso — acione-a por escrito primeiro.'
+  },
+  {
+    q:'Você organizou um festival com 3.000 pessoas e música ao vivo durante 8 horas. O escritório do ECAD enviou notificação exigindo o licenciamento. Você…',
+    opts:[
+      {t:'Ignora — o artista é o responsável pelo ECAD', correct:false},
+      {t:'Regulariza o licenciamento antes do evento e guarda o comprovante', correct:true},
+      {t:'Paga só se receber nova notificação após o evento', correct:false},
+      {t:'Solicita que o local do evento cuide do ECAD', correct:false},
+    ],
+    fb_ok:'Exato! O PRODUTOR é o responsável legal pelo licenciamento junto ao ECAD (Lei 9.610/98). O pagamento deve ser feito antes do evento para evitar autuação e multa de até 20x o valor.',
+    fb_err:'Cuidado: a responsabilidade pelo ECAD é do produtor/organizador do evento, independentemente de quem toca. A ignorância da lei não isenta de multa.'
+  },
+  {
+    q:'Você realizou um evento corporativo para 500 pessoas e esqueceu de contratar Seguro de Responsabilidade Civil. Um convidado escorregou na pista e quebrou o pulso. Qual é a situação?',
+    opts:[
+      {t:'O local é responsável — não há problema para você', correct:false},
+      {t:'Você pode ser acionado judicialmente e precisará arcar com indenização do próprio bolso', correct:true},
+      {t:'O seguro de vida do funcionário da empresa-cliente cobre o caso', correct:false},
+      {t:'Acidente doméstico — ninguém é responsável', correct:false},
+    ],
+    fb_ok:'Exato. O produtor é solidariamente responsável pelo evento. Sem RC, a indenização sai do patrimônio da empresa (ou pessoal). Contrate RC antes de qualquer evento com público.',
+    fb_err:'Atenção: a responsabilidade do produtor é objetiva em eventos. O local pode também ser acionado, mas você responde solidariamente. A falta de RC é um risco gravíssimo.'
+  },
+  {
+    q:'O contrato com a produtora de vídeo não tem cláusula de cessão de direitos de imagem. O evento aconteceu e ela quer cobrar extra para liberar o vídeo para uso nas suas redes sociais. O que acontece?',
+    opts:[
+      {t:'Ela não pode cobrar — você pagou pelo serviço', correct:false},
+      {t:'Ela tem razão: sem cessão de direitos explícita, os direitos pertencem ao autor da obra', correct:true},
+      {t:'A Lei de Direitos Autorais não se aplica a vídeos de eventos', correct:false},
+      {t:'Você pode usar o vídeo livremente após 3 meses', correct:false},
+    ],
+    fb_ok:'Correto! Pela Lei 9.610/98, os direitos patrimoniais pertencem ao criador da obra (videomaker). Sem cessão contratual expressa, qualquer uso comercial requer autorização e pode gerar cobrança extra ou processo.',
+    fb_err:'Atenção: direitos autorais sobre obra audiovisual pertencem ao criador por padrão legal. Sempre inclua cláusula de cessão total de direitos nos contratos com fotógrafos e videomakers.'
+  },
+  {
+    q:'Seu evento ao ar livre foi cancelado por chuva intensa (força maior). O seguro de cancelamento cobre, mas o contrato com o buffet não tem cláusula de força maior. O buffet exige o pagamento integral. O que acontece?',
+    opts:[
+      {t:'Força maior anula qualquer contrato automaticamente — não precisa pagar', correct:false},
+      {t:'Sem cláusula de força maior no contrato, o buffet pode exigir o valor contratado', correct:true},
+      {t:'O seguro de cancelamento paga ao buffet diretamente', correct:false},
+      {t:'A chuva é sempre motivo de isenção legal de pagamento', correct:false},
+    ],
+    fb_ok:'Exato! A força maior não opera automaticamente sem cláusula contratual. O buffet pode executar o contrato. Sempre inclua cláusula de força maior definindo quais eventos climáticos isentam de penalidade.',
+    fb_err:'Cuidado: força maior é um conceito que precisa estar previsto no contrato para ser invocado sem penalidade. Sem essa cláusula, a parte inadimplente responde pelos valores.'
+  },
+];
+
+// ============================================================
+// TABS
+// ============================================================
+function switchTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+// ============================================================
+// TAB 1 — CONTRATO
+// ============================================================
+const selectedClauses = new Set();
+
+function buildClauses() {
+  const grid = document.getElementById('clauses-grid');
+  grid.innerHTML = '';
+  CLAUSES.forEach(c => {
+    const div = document.createElement('div');
+    div.className = 'clause-card ' + c.type;
+    div.id = 'clause-' + c.id;
+    div.innerHTML = `
+      <div class="clause-title">${c.title} ${c.mandatory ? '<span style="color:#ef4444;font-size:9px">★ obrigatória</span>' : ''}</div>
+      <div class="clause-desc">${c.desc}</div>
+      <span class="clause-badge badge-${c.type === 'critical' ? 'critical' : c.type === 'warning' ? 'warning' : 'good'}">
+        ${c.type === 'critical' ? 'ESSENCIAL' : c.type === 'warning' ? 'IMPORTANTE' : 'RECOMENDADA'}
+      </span>
+    `;
+    div.onclick = () => toggleClause(c.id);
+    grid.appendChild(div);
+  });
+  updateContractScore();
+}
+
+function toggleClause(id) {
+  if (selectedClauses.has(id)) selectedClauses.delete(id);
+  else selectedClauses.add(id);
+  document.getElementById('clause-' + id).classList.toggle('selected');
+  updateContractScore();
+}
+
+function selectAll() {
+  CLAUSES.forEach(c => {
+    selectedClauses.add(c.id);
+    document.getElementById('clause-' + c.id).classList.add('selected');
+  });
+  updateContractScore();
+}
+
+function clearAll() {
+  CLAUSES.forEach(c => {
+    selectedClauses.delete(c.id);
+    document.getElementById('clause-' + c.id).classList.remove('selected');
+  });
+  updateContractScore();
+}
+
+function selectMinimo() {
+  clearAll();
+  CLAUSES.filter(c => c.mandatory).forEach(c => {
+    selectedClauses.add(c.id);
+    document.getElementById('clause-' + c.id).classList.add('selected');
+  });
+  updateContractScore();
+}
+
+function updateContractScore() {
+  const total = CLAUSES.reduce((s, c) => s + c.weight, 0);
+  const scored = CLAUSES.filter(c => selectedClauses.has(c.id)).reduce((s, c) => s + c.weight, 0);
+  const pct = Math.round(scored / total * 100);
+  document.getElementById('score-pct').textContent = pct + '%';
+  const fill = document.getElementById('score-fill');
+  fill.style.width = pct + '%';
+  fill.style.background = pct < 40 ? '#ef4444' : pct < 70 ? '#f59e0b' : '#22c55e';
+
+  const missing = CLAUSES.filter(c => c.mandatory && !selectedClauses.has(c.id));
+  const result = document.getElementById('contract-result');
+
+  if (selectedClauses.size === 0) {
+    result.innerHTML = '⬆️ Selecione cláusulas acima para montar o seu contrato e ver a análise.';
+    return;
+  }
+
+  let html = `<b>Proteção: ${pct}%</b> — `;
+  if (pct >= 80) html += '<span style="color:#22c55e">Contrato robusto e bem protegido.</span>';
+  else if (pct >= 55) html += '<span style="color:#f59e0b">Contrato razoável, mas com brechas.</span>';
+  else html += '<span style="color:#ef4444">Contrato fraco — risco jurídico alto.</span>';
+
+  if (missing.length) {
+    html += `<br><span style="color:#ef4444">⚠️ Cláusulas essenciais faltando: ${missing.map(c => '<b>' + c.title + '</b>').join(', ')}.</span>`;
+  }
+
+  const present = CLAUSES.filter(c => selectedClauses.has(c.id));
+  if (present.length) {
+    html += `<br><span style="color:#64748b">Incluídas (${present.length}): ${present.map(c => c.title).join(' · ')}</span>`;
+  }
+  result.innerHTML = html;
+}
+
+// ============================================================
+// TAB 2 — ECAD
+// ============================================================
+function calcEcad() {
+  const tipo = document.getElementById('ec-tipo').value;
+  const localIdx = parseInt(document.getElementById('ec-local').value) - 1;
+  const ingresso = document.getElementById('ec-ingresso').value;
+  const horas = Math.max(1, parseFloat(document.getElementById('ec-horas').value) || 1);
+  const preco = parseFloat(document.getElementById('ec-preco').value);
+  const cap = parseFloat(document.getElementById('ec-cap').value);
+
+  document.getElementById('ec-ingresso-val').textContent = 'R$ ' + preco.toFixed(0);
+  document.getElementById('ec-cap-val').textContent = cap.toFixed(0) + ' pessoas';
+
+  const base = ECAD_BASE[tipo];
+  const receitaBruta = ingresso === 'sim' ? preco * cap : ingresso === 'lista' ? preco * cap * 0.3 : 0;
+  const receitaBase = Math.max(cap * 15, receitaBruta); // mínimo por pessoa
+
+  const fator = base.fator * ECAD_LOCAL_MULT[localIdx] * ECAD_ING_MULT[ingresso] * (1 + (horas - 2) * 0.05);
+  const valor = Math.max(120, receitaBase * fator * horas);
+  const iss = valor * 0.05;
+  const total = valor + iss;
+
+  const isento = ingresso === 'nao' && cap < 300;
+
+  const box = document.getElementById('ecad-result');
+  box.innerHTML = `
+    <h4>Estimativa de arrecadação ECAD</h4>
+    <div class="ecad-line"><span>Tipo de evento</span><span>${base.desc}</span></div>
+    <div class="ecad-line"><span>Público estimado</span><span>${cap.toFixed(0)} pessoas</span></div>
+    <div class="ecad-line"><span>Duração</span><span>${horas}h</span></div>
+    <div class="ecad-line"><span>Receita de bilheteria estimada</span><span>R$ ${receitaBruta.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>
+    <hr style="border-color:#334155;margin:4px 0">
+    <div class="ecad-line"><span>Taxa ECAD estimada</span><span>R$ ${valor.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>
+    <div class="ecad-line"><span>ISS sobre ECAD (5%)</span><span>R$ ${iss.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>
+    <div class="ecad-line total"><span>TOTAL A RECOLHER</span><span>R$ ${total.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>
+    ${isento
+      ? '<div class="ecad-ok">✅ Evento pequeno e gratuito pode ser isento — confirme no site do ECAD pelo CNPJ do local.</div>'
+      : '<div class="ecad-warn">⚠️ O ECAD deve ser quitado ANTES do evento. Multa de até 20× o valor em caso de autuação. Emita GRU no ecad.org.br.</div>'
+    }
+    <div style="font-size:10px;color:#475569;margin-top:6px">⚠️ Estimativa orientativa. O valor real é calculado pelo ECAD com base nos formulários preenchidos.</div>
+  `;
+}
+
+// ============================================================
+// TAB 3 — SEGURO
+// ============================================================
+const activeRisks = new Set();
+const activeIns = new Set();
+
+function buildInsurance() {
+  // toggles de risco
+  const riskDiv = document.getElementById('risk-toggles');
+  riskDiv.innerHTML = '';
+  RISKS.forEach(r => {
+    const row = document.createElement('div');
+    row.className = 'toggle-row';
+    row.innerHTML = `
+      <label>${r.label}</label>
+      <label class="toggle">
+        <input type="checkbox" onchange="toggleRisk('${r.id}',this.checked)">
+        <span class="toggle-slider"></span>
+      </label>
+    `;
+    riskDiv.appendChild(row);
+  });
+
+  // cards de seguro
+  const insDiv = document.getElementById('ins-cards');
+  insDiv.innerHTML = '';
+  INSURANCES.forEach(ins => {
+    const div = document.createElement('div');
+    div.className = 'ins-card' + (ins.mandatory_if.length ? ' mandatory' : '');
+    div.id = 'ins-' + ins.id;
+    div.innerHTML = `
+      <div class="ins-icon">${ins.icon}</div>
+      <div class="ins-name">${ins.name}</div>
+      <div class="ins-desc">${ins.desc}</div>
+    `;
+    div.onclick = () => toggleIns(ins.id);
+    insDiv.appendChild(div);
+  });
+
+  updateInsVerdict();
+}
+
+function toggleRisk(id, checked) {
+  if (checked) activeRisks.add(id);
+  else activeRisks.delete(id);
+  updateInsVerdict();
+}
+
+function toggleIns(id) {
+  if (activeIns.has(id)) activeIns.delete(id);
+  else activeIns.add(id);
+  document.getElementById('ins-' + id).classList.toggle('sel');
+  updateInsVerdict();
+}
+
+function updateInsVerdict() {
+  const verdict = document.getElementById('ins-verdict');
+
+  // quais seguros são recomendados pelos riscos ativos
+  const recommended = new Set();
+  RISKS.forEach(r => {
+    if (activeRisks.has(r.id)) r.ins.forEach(i => recommended.add(i));
+  });
+
+  // seguros faltando
+  const missing = [...recommended].filter(i => !activeIns.has(i));
+  const extra = [...activeIns].filter(i => !recommended.has(i));
+  const covered = [...recommended].filter(i => activeIns.has(i));
+
+  const riskScore = activeRisks.size === 0 ? 0 : Math.round(covered.length / recommended.size * 100);
+
+  if (activeRisks.size === 0 && activeIns.size === 0) {
+    verdict.innerHTML = '<h4>Análise de cobertura</h4><p style="font-size:11px;color:#64748b;">Configure o perfil do evento e escolha os seguros acima.</p>';
+    return;
+  }
+
+  let html = '<h4>Análise de cobertura</h4>';
+
+  if (recommended.size === 0 && activeIns.size === 0) {
+    html += '<p style="font-size:11px;color:#64748b">Nenhum risco crítico ativado. Ative os riscos do seu evento para ver recomendações.</p>';
+  } else {
+    html += `<div class="risk-meter"><div class="risk-fill" style="width:${riskScore}%;background:${riskScore >= 80 ? '#22c55e' : riskScore >= 50 ? '#f59e0b' : '#ef4444'}"></div></div>`;
+    html += `<div style="font-size:10px;color:#64748b;margin-bottom:6px">Cobertura: ${riskScore}% dos riscos identificados</div>`;
+
+    missing.forEach(id => {
+      const ins = INSURANCES.find(i => i.id === id);
+      html += `<div class="ins-item"><div class="ins-dot dot-red"></div><div><b style="color:#fca5a5">${ins.icon} ${ins.name}</b><br><span style="color:#64748b">Não contratado — risco exposto.</span></div></div>`;
+    });
+
+    covered.forEach(id => {
+      const ins = INSURANCES.find(i => i.id === id);
+      html += `<div class="ins-item"><div class="ins-dot dot-green"></div><div><b style="color:#86efac">${ins.icon} ${ins.name}</b><br><span style="color:#64748b">Contratado ✓</span></div></div>`;
+    });
+
+    extra.forEach(id => {
+      const ins = INSURANCES.find(i => i.id === id);
+      html += `<div class="ins-item"><div class="ins-dot dot-yellow"></div><div><b style="color:#fde68a">${ins.icon} ${ins.name}</b><br><span style="color:#64748b">Contratado (não exigido pelo perfil atual — pode ser útil).</span></div></div>`;
+    });
+
+    if (riskScore === 100) {
+      html += `<div class="ecad-ok" style="margin-top:8px">✅ Todos os riscos identificados estão cobertos. Guarde as apólices e leve cópias ao evento.</div>`;
+    } else if (riskScore >= 50) {
+      html += `<div class="ecad-warn" style="margin-top:8px">⚠️ Cobertura parcial — eventos com riscos expostos podem gerar responsabilidade pessoal do produtor.</div>`;
+    } else if (riskScore < 50 && recommended.size > 0) {
+      html += `<div class="ecad-warn" style="margin-top:8px">🚨 Cobertura insuficiente. Um único sinistro pode inviabilizar sua empresa.</div>`;
+    }
+  }
+
+  verdict.innerHTML = html;
+}
+
+// ============================================================
+// TAB 4 — SITUAÇÕES
+// ============================================================
+let scenarioAnswers = 0;
+let scenarioCorrect = 0;
+
+function buildScenarios() {
+  const list = document.getElementById('scenario-list');
+  list.innerHTML = '';
+  SCENARIOS.forEach((sc, idx) => {
+    const div = document.createElement('div');
+    div.className = 'scenario';
+    div.id = 'sc-' + idx;
+    let optsHtml = sc.opts.map((o, oi) =>
+      `<button class="opt-btn" id="opt-${idx}-${oi}" onclick="answerScenario(${idx},${oi},${o.correct})">${o.t}</button>`
+    ).join('');
+    div.innerHTML = `
+      <h4>Caso ${idx + 1}</h4>
+      <p>${sc.q}</p>
+      <div class="opts">${optsHtml}</div>
+      <div class="scenario-feedback" id="fb-${idx}"></div>
+    `;
+    list.appendChild(div);
+  });
+}
+
+function answerScenario(idx, optIdx, correct) {
+  // disable all opts for this scenario
+  const sc = SCENARIOS[idx];
+  sc.opts.forEach((o, oi) => {
+    const btn = document.getElementById(`opt-${idx}-${oi}`);
+    btn.disabled = true;
+    if (o.correct) btn.classList.add('correct');
+    else if (oi === optIdx && !correct) btn.classList.add('wrong');
+  });
+
+  const fb = document.getElementById('fb-' + idx);
+  fb.style.display = 'block';
+  if (correct) {
+    fb.className = 'scenario-feedback fb-ok';
+    fb.textContent = '✅ ' + sc.fb_ok;
+    scenarioCorrect++;
+  } else {
+    fb.className = 'scenario-feedback fb-err';
+    fb.textContent = '❌ ' + sc.fb_err;
+  }
+  scenarioAnswers++;
+
+  if (scenarioAnswers === SCENARIOS.length) {
+    const tot = document.getElementById('score-total');
+    tot.style.display = 'block';
+    document.getElementById('score-val').textContent = scenarioCorrect;
+    document.getElementById('score-max').textContent = SCENARIOS.length;
+    document.getElementById('score-val').style.color = scenarioCorrect >= 4 ? '#22c55e' : scenarioCorrect >= 2 ? '#f59e0b' : '#ef4444';
+  }
+}
+
+// ============================================================
+// INIT
+// ============================================================
+buildClauses();
+calcEcad();
+buildInsurance();
+buildScenarios();
+</script>
+</body>
+</html>

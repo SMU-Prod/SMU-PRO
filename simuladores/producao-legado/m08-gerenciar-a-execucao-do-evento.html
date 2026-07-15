@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMU PRO · Gerenciar Execução do Evento</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #eef2f6;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .device {
+    background: #20252f;
+    border: 1px solid #10141b;
+    border-radius: 12px;
+    padding: 12px;
+    color: #cbd5e1;
+    width: 100%;
+    max-width: 900px;
+  }
+  .device-title {
+    font-size: 10px;
+    letter-spacing: .14em;
+    color: #5b6675;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+  .sim-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #161b24;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 10px;
+  }
+  .sim-title { font-size: 14px; font-weight: 700; color: #e2e8f0; }
+  .clock {
+    font-size: 22px;
+    font-weight: 700;
+    color: #22c55e;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.05em;
+  }
+  .clock.atencao { color: #f59e0b; }
+  .clock.perigo { color: #ef4444; }
+  .status-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .status-pill {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    background: #2d3748;
+    color: #94a3b8;
+    border: 1px solid #374151;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .status-pill .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #374151;
+    display: inline-block;
+  }
+  .status-pill.ok .dot { background: #22c55e; }
+  .status-pill.atencao .dot { background: #f59e0b; }
+  .status-pill.perigo .dot { background: #ef4444; }
+  .status-pill.ok { border-color: #166534; color: #22c55e; background: #052e16; }
+  .status-pill.atencao { border-color: #92400e; color: #f59e0b; background: #1c1200; }
+  .status-pill.perigo { border-color: #991b1b; color: #ef4444; background: #1c0202; }
+
+  .grid2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  @media (max-width: 600px) {
+    .grid2 { grid-template-columns: 1fr; }
+    /* Alvo de toque: engorda a altura sem mexer na fonte. */
+    .radio-btn, .btn-acao { min-height: 34px; }
+  }
+
+  .painel {
+    background: #161b24;
+    border-radius: 8px;
+    padding: 12px;
+    border: 1px solid #2d3748;
+  }
+  .painel-title {
+    font-size: 10px;
+    letter-spacing: .12em;
+    color: #5b6675;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .painel-title .badge {
+    background: #2d3748;
+    border-radius: 10px;
+    padding: 1px 7px;
+    font-size: 10px;
+    color: #94a3b8;
+  }
+
+  /* Timeline / Rundown */
+  .rundown { list-style: none; }
+  .rundown li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 7px 0;
+    border-bottom: 1px solid #1e2532;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background .15s;
+    border-radius: 4px;
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+  .rundown li:last-child { border-bottom: none; }
+  .rundown li:hover { background: #1e2a3a; }
+  .rundown li.atual { background: #0d2137; border-left: 3px solid #3b82f6; padding-left: 3px; }
+  .rundown li.concluido { opacity: .45; }
+  .rundown li.atrasado { border-left: 3px solid #ef4444; padding-left: 3px; }
+  .hora-item {
+    font-size: 11px;
+    color: #64748b;
+    min-width: 38px;
+    font-variant-numeric: tabular-nums;
+    margin-top: 1px;
+  }
+  .item-desc { flex: 1; color: #cbd5e1; }
+  .item-desc .dept { font-size: 10px; color: #64748b; margin-top: 2px; }
+  .item-status {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    background: #2d3748;
+    color: #64748b;
+    white-space: nowrap;
+  }
+  .item-status.ok { background: #052e16; color: #22c55e; }
+  .item-status.atrasado { background: #1c0202; color: #ef4444; }
+  .item-status.andamento { background: #1e3a5f; color: #3b82f6; }
+
+  /* Comunicações */
+  .radio-list { list-style: none; }
+  .radio-list li {
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    border: 1px solid transparent;
+  }
+  .radio-list li.urgente { border-color: #ef4444; background: #1c0202; }
+  .radio-list li.atencao { border-color: #f59e0b; background: #1c1200; }
+  .radio-list li.normal { border-color: #2d3748; background: #1a2030; }
+  .radio-list li.resolvido { opacity: .35; border-color: #1e2532; }
+  .radio-desde { font-size: 10px; color: #64748b; min-width: 36px; margin-top: 2px; }
+  .radio-corpo { flex: 1; color: #cbd5e1; }
+  .radio-from { font-size: 10px; color: #a78bfa; font-weight: 600; }
+  .radio-btn {
+    background: none;
+    border: 1px solid #374151;
+    color: #94a3b8;
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-size: 10px;
+    cursor: pointer;
+    transition: all .15s;
+    white-space: nowrap;
+  }
+  .radio-btn:hover { background: #22c55e; border-color: #22c55e; color: #fff; }
+  .radio-btn.urgente-btn:hover { background: #ef4444; border-color: #ef4444; color: #fff; }
+
+  /* Indicadores de frente de trabalho */
+  .indicadores { display: flex; flex-direction: column; gap: 8px; }
+  .indicador {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+  }
+  .ind-label { width: 90px; color: #94a3b8; font-size: 11px; }
+  .bar-track {
+    flex: 1;
+    height: 8px;
+    background: #2d3748;
+    border-radius: 4px;
+    overflow: hidden;
+    cursor: pointer;
+    position: relative;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width .3s, background .3s;
+  }
+  .ind-val { width: 32px; text-align: right; font-size: 11px; color: #e2e8f0; font-variant-numeric: tabular-nums; }
+
+  /* Controles acao */
+  .acoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .btn-acao {
+    padding: 7px 14px;
+    border-radius: 6px;
+    border: none;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .15s;
+    background: #2d3748;
+    color: #cbd5e1;
+    border: 1px solid #374151;
+  }
+  .btn-acao:hover { filter: brightness(1.15); }
+  .btn-acao.primario { background: #1d4ed8; border-color: #1e40af; color: #fff; }
+  .btn-acao.sucesso { background: #166534; border-color: #15803d; color: #22c55e; }
+  .btn-acao.alerta { background: #92400e; border-color: #b45309; color: #fbbf24; }
+  .btn-acao.perigo { background: #7f1d1d; border-color: #b91c1c; color: #fca5a5; }
+  .btn-acao:disabled { opacity: .35; cursor: not-allowed; }
+
+  /* Log de decisões */
+  .log-box {
+    background: #0e1117;
+    border-radius: 6px;
+    padding: 8px 10px;
+    height: 110px;
+    overflow-y: auto;
+    font-size: 11px;
+    font-family: 'Consolas', monospace;
+    color: #64748b;
+    border: 1px solid #1e2532;
+    margin-top: 8px;
+  }
+  .log-box .log-line { padding: 1px 0; border-bottom: 1px solid #1a2030; }
+  .log-box .log-line:last-child { border-bottom: none; }
+  .log-box .log-ok { color: #22c55e; }
+  .log-box .log-atencao { color: #f59e0b; }
+  .log-box .log-perigo { color: #ef4444; }
+  .log-box .log-info { color: #3b82f6; }
+
+  /* Score */
+  .score-area {
+    background: #0e1117;
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    border: 1px solid #1e2532;
+  }
+  .score-item { text-align: center; }
+  .score-val {
+    font-size: 26px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .score-lbl { font-size: 10px; color: #5b6675; margin-top: 2px; text-transform: uppercase; letter-spacing: .1em; }
+
+  /* Modal de incidente */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.75);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.ativo { display: flex; }
+  .modal {
+    background: #20252f;
+    border: 1px solid #374151;
+    border-radius: 12px;
+    padding: 20px;
+    max-width: 420px;
+    width: 90%;
+    color: #cbd5e1;
+    box-shadow: 0 20px 60px rgba(0,0,0,.6);
+  }
+  .modal h2 { font-size: 15px; margin-bottom: 6px; color: #e2e8f0; }
+  .modal .modal-urgente { color: #ef4444; font-size: 11px; font-weight: 700; letter-spacing: .1em; margin-bottom: 10px; text-transform: uppercase; }
+  .modal p { font-size: 13px; color: #94a3b8; margin-bottom: 14px; line-height: 1.5; }
+  .modal-ops { display: flex; flex-direction: column; gap: 8px; }
+  .modal-op {
+    background: #161b24;
+    border: 1px solid #2d3748;
+    border-radius: 8px;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: all .15s;
+    font-size: 12px;
+    color: #cbd5e1;
+    text-align: left;
+  }
+  .modal-op:hover { border-color: #3b82f6; background: #0d2137; }
+  .modal-op .op-title { font-weight: 700; margin-bottom: 2px; color: #e2e8f0; }
+  .modal-op .op-desc { font-size: 11px; color: #64748b; }
+
+  /* Progresso do evento */
+  .event-progress {
+    position: relative;
+    height: 8px;
+    background: #2d3748;
+    border-radius: 4px;
+    margin: 8px 0;
+    overflow: hidden;
+  }
+  .event-progress-fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    background: linear-gradient(90deg, #1d4ed8, #3b82f6);
+    border-radius: 4px;
+    transition: width .5s;
+  }
+
+  .legenda {
+    margin-top: 12px;
+    font-size: 11px;
+    color: #475569;
+    text-align: center;
+    max-width: 900px;
+    width: 100%;
+  }
+
+  /* Blink */
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .blink { animation: blink 1s infinite; }
+
+  /* Notificação flutuante */
+  #notif {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    background: #20252f;
+    border: 1px solid #374151;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 12px;
+    color: #e2e8f0;
+    max-width: 280px;
+    z-index: 200;
+    transform: translateX(120%);
+    transition: transform .3s;
+    box-shadow: 0 8px 24px rgba(0,0,0,.4);
+  }
+  #notif.show { transform: translateX(0); }
+  #notif.ok-notif { border-color: #166534; background: #052e16; color: #22c55e; }
+  #notif.alerta-notif { border-color: #92400e; background: #1c1200; color: #f59e0b; }
+  #notif.perigo-notif { border-color: #991b1b; background: #1c0202; color: #ef4444; }
+</style>
+</head>
+<body>
+<script>/*SMU-ZOOM*/(function(){var z=1,sc=null,MIN=1,MAX=2.5,STEP=0.25;function wrap(){if(sc)return;sc=document.createElement('div');sc.id='smu-sc';sc.style.transformOrigin='0 0';[].slice.call(document.body.children).filter(function(el){return (el.id||'').indexOf('smu-')!==0;}).forEach(function(k){sc.appendChild(k);});document.body.insertBefore(sc,document.body.firstChild);document.documentElement.style.overflow='auto';document.body.style.overflow='auto';document.body.style.margin='0';}function apply(){if(!sc)wrap();sc.style.transform='scale('+z+')';var w=sc.offsetWidth,h=sc.offsetHeight;document.body.style.width=(z>1?(w*z)+'px':'');document.body.style.height=(z>1?(h*z)+'px':'');var l=document.getElementById('smu-zl');if(l)l.textContent=Math.round(z*100)+'%';}function ui(){if(document.getElementById('smu-zoom'))return;var b=document.createElement('div');b.id='smu-zoom';b.style.cssText='position:fixed;left:10px;bottom:10px;z-index:99999;display:flex;align-items:center;gap:5px;background:#0e1420;border:1px solid #2c3340;border-radius:22px;padding:5px 8px;box-shadow:0 2px 10px rgba(0,0,0,.4);font-family:system-ui,sans-serif';function mk(t){var x=document.createElement('button');x.textContent=t;x.style.cssText='width:32px;height:32px;border-radius:50%;border:1px solid #2c3340;background:#171c26;color:#e5e7eb;font-size:18px;cursor:pointer;padding:0;line-height:1';return x;}var ic=document.createElement('span');ic.textContent='\U0001F50D';ic.style.fontSize='14px';var mi=mk('−'),lab=document.createElement('span'),pl=mk('+');lab.id='smu-zl';lab.style.cssText='font-size:12px;color:#cbd5e1;min-width:44px;text-align:center;cursor:pointer';lab.textContent='100%';b.appendChild(ic);b.appendChild(mi);b.appendChild(lab);b.appendChild(pl);document.body.appendChild(b);mi.onclick=function(){z=Math.max(MIN,Math.round((z-STEP)*100)/100);apply();};pl.onclick=function(){z=Math.min(MAX,Math.round((z+STEP)*100)/100);apply();};lab.onclick=function(){z=1;apply();};}if(document.readyState!=='loading')ui();else document.addEventListener('DOMContentLoaded',ui);})();</script>
+
+
+<div class="device">
+  <div class="device-title">SMU PRO · GERENCIAR EXECUÇÃO DO EVENTO</div>
+
+  <!-- Cabeçalho com relógio e progresso -->
+  <div class="sim-header">
+    <div>
+      <div class="sim-title">Produção ao Vivo — Gala Corporativa</div>
+      <div style="font-size:11px;color:#64748b;margin-top:2px">Capacidade: 350 pax · Palco A + Palco B · Horário: 19:00–23:00</div>
+    </div>
+    <div style="text-align:right">
+      <div class="clock" id="clock">19:00</div>
+      <div style="font-size:10px;color:#64748b;margin-top:2px">tempo de evento</div>
+    </div>
+  </div>
+
+  <!-- Progresso geral do evento -->
+  <div style="padding:0 2px;margin-bottom:10px">
+    <div style="display:flex;justify-content:space-between;font-size:10px;color:#5b6675;margin-bottom:4px">
+      <span>Progresso do evento</span>
+      <span id="progresso-pct">0%</span>
+    </div>
+    <div class="event-progress"><div class="event-progress-fill" id="barra-progresso" style="width:0%"></div></div>
+    <div style="display:flex;justify-content:space-between;font-size:10px;color:#374151;margin-top:2px">
+      <span>19:00</span><span>20:00</span><span>21:00</span><span>22:00</span><span>23:00</span>
+    </div>
+  </div>
+
+  <!-- Status das frentes -->
+  <div class="status-bar" id="status-bar">
+    <div class="status-pill ok" id="pill-som"><span class="dot"></span>Áudio</div>
+    <div class="status-pill ok" id="pill-video"><span class="dot"></span>Vídeo</div>
+    <div class="status-pill ok" id="pill-luz"><span class="dot"></span>Iluminação</div>
+    <div class="status-pill ok" id="pill-catering"><span class="dot"></span>Catering</div>
+    <div class="status-pill ok" id="pill-seguranca"><span class="dot"></span>Segurança</div>
+    <div class="status-pill ok" id="pill-recepcao"><span class="dot"></span>Recepção</div>
+  </div>
+
+  <!-- Grid principal -->
+  <div class="grid2">
+
+    <!-- RUNDOWN / ESCALETA -->
+    <div class="painel">
+      <div class="painel-title">
+        📋 Rundown <span class="badge" id="badge-rundown">0 / 0</span>
+      </div>
+      <ul class="rundown" id="rundown-lista"></ul>
+
+      <div class="acoes" style="margin-top:10px">
+        <button class="btn-acao primario" onclick="avancarItem()">▶ Avançar item</button>
+        <button class="btn-acao alerta" onclick="adicionarAtraso()">⏳ Registrar atraso</button>
+        <button class="btn-acao sucesso" onclick="marcarConcluido()">✓ Concluir atual</button>
+      </div>
+    </div>
+
+    <!-- COMUNICAÇÕES -->
+    <div class="painel">
+      <div class="painel-title">
+        📻 Rádio / Comunicações <span class="badge" id="badge-radio">0 pendentes</span>
+      </div>
+      <ul class="radio-list" id="radio-lista" style="max-height:200px;overflow-y:auto"></ul>
+    </div>
+
+  </div>
+
+  <!-- Grid inferior -->
+  <div class="grid2">
+
+    <!-- INDICADORES DE FRENTES -->
+    <div class="painel">
+      <div class="painel-title">📊 Status das Frentes de Trabalho</div>
+      <div class="indicadores">
+        <div class="indicador">
+          <span class="ind-label">Áudio</span>
+          <div class="bar-track" onclick="ajustarFrente('audio',this)">
+            <div class="bar-fill" id="bar-audio" style="width:100%;background:#22c55e"></div>
+          </div>
+          <span class="ind-val" id="val-audio">100%</span>
+        </div>
+        <div class="indicador">
+          <span class="ind-label">Vídeo</span>
+          <div class="bar-track" onclick="ajustarFrente('video',this)">
+            <div class="bar-fill" id="bar-video" style="width:100%;background:#22c55e"></div>
+          </div>
+          <span class="ind-val" id="val-video">100%</span>
+        </div>
+        <div class="indicador">
+          <span class="ind-label">Iluminação</span>
+          <div class="bar-track" onclick="ajustarFrente('luz',this)">
+            <div class="bar-fill" id="bar-luz" style="width:100%;background:#22c55e"></div>
+          </div>
+          <span class="ind-val" id="val-luz">100%</span>
+        </div>
+        <div class="indicador">
+          <span class="ind-label">Catering</span>
+          <div class="bar-track" onclick="ajustarFrente('catering',this)">
+            <div class="bar-fill" id="bar-catering" style="width:95%;background:#22c55e"></div>
+          </div>
+          <span class="ind-val" id="val-catering">95%</span>
+        </div>
+        <div class="indicador">
+          <span class="ind-label">Segurança</span>
+          <div class="bar-track" onclick="ajustarFrente('seguranca',this)">
+            <div class="bar-fill" id="bar-seguranca" style="width:100%;background:#22c55e"></div>
+          </div>
+          <span class="ind-val" id="val-seguranca">100%</span>
+        </div>
+        <div class="indicador">
+          <span class="ind-label">Recepção</span>
+          <div class="bar-track" onclick="ajustarFrente('recepcao',this)">
+            <div class="bar-fill" id="bar-recepcao" style="width:90%;background:#22c55e"></div>
+          </div>
+          <span class="ind-val" id="val-recepcao">90%</span>
+        </div>
+      </div>
+      <div style="margin-top:10px;font-size:11px;color:#5b6675">Clique nas barras para ajustar o status da frente</div>
+    </div>
+
+    <!-- LOG DE DECISÕES -->
+    <div class="painel">
+      <div class="painel-title">📝 Log de Decisões</div>
+      <div class="log-box" id="log-box"></div>
+
+      <!-- Score -->
+      <div class="score-area">
+        <div class="score-item">
+          <div class="score-val" id="score-pontos" style="color:#22c55e">100</div>
+          <div class="score-lbl">Pontos</div>
+        </div>
+        <div class="score-item">
+          <div class="score-val" id="score-decisoes" style="color:#3b82f6">0</div>
+          <div class="score-lbl">Decisões</div>
+        </div>
+        <div class="score-item">
+          <div class="score-val" id="score-atrasos" style="color:#f59e0b">0</div>
+          <div class="score-lbl">Atrasos</div>
+        </div>
+        <div class="score-item">
+          <div class="score-val" id="score-incidentes" style="color:#ef4444">0</div>
+          <div class="score-lbl">Incidentes</div>
+        </div>
+        <div style="flex:1;min-width:120px">
+          <div style="font-size:11px;color:#5b6675;margin-bottom:4px">Satisfação do cliente</div>
+          <div class="bar-track" style="height:12px;cursor:default">
+            <div class="bar-fill" id="bar-satisfacao" style="width:100%;background:#22c55e"></div>
+          </div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:2px;text-align:right" id="val-satisfacao">100%</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Controles de simulação -->
+  <div style="margin-top:10px;background:#161b24;border-radius:8px;padding:12px;border:1px solid #2d3748">
+    <div class="painel-title">⚙️ Controles da Simulação</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button class="btn-acao primario" id="btn-iniciar" onclick="iniciarSimulacao()">▶ Iniciar Simulação</button>
+      <button class="btn-acao" id="btn-pausar" onclick="pausarSimulacao()" disabled>⏸ Pausar</button>
+      <button class="btn-acao perigo" onclick="resetarSimulacao()">↺ Reiniciar</button>
+      <div style="display:flex;align-items:center;gap:8px;margin-left:8px">
+        <span style="font-size:11px;color:#64748b">Velocidade:</span>
+        <input type="range" min="1" max="5" value="2" id="slider-vel" oninput="ajustarVelocidade(this.value)" style="width:100px;accent-color:#3b82f6">
+        <span style="font-size:11px;color:#94a3b8" id="vel-label">2×</span>
+      </div>
+      <button class="btn-acao alerta" onclick="dispararIncidente()" id="btn-incidente">⚡ Simular Incidente</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="legenda">
+  ▶ Inicie a simulação · Avance itens do rundown · Resolva comunicações pelo rádio · Clique nas barras para ajustar frentes · Responda incidentes com a melhor decisão
+</div>
+
+<!-- MODAL DE INCIDENTE -->
+<div class="modal-overlay" id="modal-incidente">
+  <div class="modal">
+    <div class="modal-urgente" id="modal-nivel">⚡ INCIDENTE</div>
+    <h2 id="modal-titulo">Título do Incidente</h2>
+    <p id="modal-desc">Descrição do incidente aqui.</p>
+    <div class="modal-ops" id="modal-ops"></div>
+  </div>
+</div>
+
+<!-- Notificação flutuante -->
+<div id="notif"></div>
+
+<script>
+// =================== DADOS ===================
+
+const RUNDOWN = [
+  { hora: "19:00", desc: "Abertura das portas / Recepção dos convidados", dept: "Recepção + Segurança", durMin: 30 },
+  { hora: "19:30", desc: "Apresentação cultural de abertura", dept: "Palco A · Áudio + Vídeo + Luz", durMin: 15 },
+  { hora: "19:45", desc: "Boas-vindas do CEO", dept: "Palco A · Áudio + Teleprompter", durMin: 10 },
+  { hora: "19:55", desc: "Vídeo institucional (5 min)", dept: "Vídeo · Palco A", durMin: 5 },
+  { hora: "20:00", desc: "Jantar — 1ª parte (entrada)", dept: "Catering + Equipe de Sala", durMin: 30 },
+  { hora: "20:30", desc: "Premiação: Funcionários do Ano", dept: "Palco A · Áudio + Luz", durMin: 25 },
+  { hora: "20:55", desc: "Apresentação musical ao vivo", dept: "Palco A + B · Áudio + Luz", durMin: 30 },
+  { hora: "21:25", desc: "Jantar — 2ª parte (prato principal)", dept: "Catering + Equipe de Sala", durMin: 35 },
+  { hora: "22:00", desc: "Palestra motivacional: keynote speaker", dept: "Palco A · Áudio + Vídeo", durMin: 30 },
+  { hora: "22:30", desc: "Sobremesa + networking aberto", dept: "Catering + Equipe de Sala", durMin: 20 },
+  { hora: "22:50", desc: "Encerramento e agradecimentos finais", dept: "Palco A · Áudio + Luz", durMin: 10 },
+];
+
+const INCIDENTES = [
+  {
+    nivel: "URGENTE",
+    titulo: "Microfone do palestrante caiu",
+    desc: "O microfone de lapela do CEO falhou 2 minutos antes da fala. A equipe de áudio não localizou o backup imediatamente.",
+    ops: [
+      { titulo: "Usar microfone de mão do stage", desc: "Peça ao operador de áudio que entregue o mic de mão; ajuste ganho no console.", pont: 10, impacto: "ok" },
+      { titulo: "Adiar a fala 3 minutos enquanto resolvem", desc: "Risco de atrasar o rundown e expor o problema ao público.", pont: 4, impacto: "atencao" },
+      { titulo: "Cancelar a abertura do CEO", desc: "Impacto severo na satisfação do cliente.", pont: -10, impacto: "perigo" },
+    ]
+  },
+  {
+    nivel: "ALERTA",
+    titulo: "Atraso no catering — entrada ainda não saiu",
+    desc: "Já são 20:05 e as entradas ainda não foram servidas. O chef informa problema com fornecedor de um insumo.",
+    ops: [
+      { titulo: "Ajustar rundown: preencher com entretenimento +5 min", desc: "Chamar mestre de cerimônias para interação com plateia enquanto catering resolve.", pont: 8, impacto: "atencao" },
+      { titulo: "Avisar cliente agora e pedir autorização de ajuste", desc: "Transparência gera confiança, mas expõe a falha.", pont: 6, impacto: "atencao" },
+      { titulo: "Ignorar e esperar — o catering vai se resolver", desc: "Risco de atrasar todo o jantar em cascata.", pont: -5, impacto: "perigo" },
+    ]
+  },
+  {
+    nivel: "URGENTE",
+    titulo: "Projetor do Palco A travou",
+    desc: "Durante o vídeo institucional, o projetor principal travou na tela inicial. A imagem está congelada e o áudio continua.",
+    ops: [
+      { titulo: "Acionar backup imediatamente via switcher", desc: "Se o plano de contingência prevê backup, execute sem hesitar.", pont: 10, impacto: "ok" },
+      { titulo: "Reiniciar o projetor (30 s de tela preta)", desc: "Interrompe o vídeo mas resolve o problema.", pont: 5, impacto: "atencao" },
+      { titulo: "Continuar só com áudio, sem imagem", desc: "Prejudica a experiência; vídeo institucional perde impacto.", pont: 0, impacto: "atencao" },
+    ]
+  },
+  {
+    nivel: "ALERTA",
+    titulo: "Convidado VIP não está na lista de credenciamento",
+    desc: "Um executivo de alto escalão chegou na recepção; o nome não consta na lista. Ele afirma ter sido convidado diretamente pelo CEO.",
+    ops: [
+      { titulo: "Contatar o CEO ou assessoria para confirmação", desc: "Protocolo correto: não autorize sem confirmação, mas trate com respeito.", pont: 10, impacto: "ok" },
+      { titulo: "Liberar o acesso por precaução (é VIP)", desc: "Risco de segurança e contagem de pax acima da capacidade.", pont: 2, impacto: "atencao" },
+      { titulo: "Negar o acesso até ter a lista corrigida", desc: "Cria situação de constrangimento sem tentativa de solução.", pont: -4, impacto: "perigo" },
+    ]
+  },
+  {
+    nivel: "URGENTE",
+    titulo: "Barulho de gerador externo interfere no áudio",
+    desc: "Um gerador de stand vizinho está gerando hum no sistema de áudio. O operador identifica 50 Hz de ground loop.",
+    ops: [
+      { titulo: "Inserir DI-box / isolador de terra no patch", desc: "Solução técnica correta para ground loop.", pont: 10, impacto: "ok" },
+      { titulo: "Pedir para desligar o gerador vizinho", desc: "Pode funcionar, mas depende de terceiro e gera atrito.", pont: 4, impacto: "atencao" },
+      { titulo: "Aumentar o volume para encobrir o hum", desc: "Mascara o problema; causa desconforto auditivo na plateia.", pont: -5, impacto: "perigo" },
+    ]
+  },
+  {
+    nivel: "ALERTA",
+    titulo: "Palestrante keynote quer alterar a ordem dos slides",
+    desc: "Faltam 10 minutos para a palestra. O keynote speaker quer reorganizar 8 slides e adicionar um vídeo de última hora.",
+    ops: [
+      { titulo: "Aceitar somente a reorganização; vídeo fica para depois", desc: "Balanceamento: atende o essencial sem risco técnico alto.", pont: 8, impacto: "ok" },
+      { titulo: "Aceitar tudo e testar agora mesmo", desc: "Risco alto: formato do vídeo pode não ser compatível.", pont: 3, impacto: "atencao" },
+      { titulo: "Negar qualquer mudança (rundown está fechado)", desc: "Rigoroso demais; compromete relação com o palestrante.", pont: 1, impacto: "atencao" },
+    ]
+  },
+  {
+    nivel: "URGENTE",
+    titulo: "Falta de energia no Palco B",
+    desc: "O Palco B perdeu alimentação elétrica. A apresentação musical começa em 8 minutos e usa esse palco.",
+    ops: [
+      { titulo: "Acionar nobreak/gerador de contingência e checar quadro", desc: "Resposta imediata e estruturada; ativa plano de contingência elétrica.", pont: 10, impacto: "ok" },
+      { titulo: "Transferir toda a apresentação para o Palco A", desc: "Solução viável se o Palco A suportar a demanda técnica.", pont: 6, impacto: "atencao" },
+      { titulo: "Adiar a apresentação até resolver o problema", desc: "Gera lacuna no rundown e compromete a satisfação.", pont: 1, impacto: "atencao" },
+    ]
+  },
+];
+
+const RADIOS = [
+  { desde: "19:05", de: "Segurança | Portão A", msg: "Fila de espera está maior que o previsto. Reforço na recepção?", tipo: "atencao", resolvido: false },
+  { desde: "19:22", de: "Operador de Vídeo", msg: "Teleprompter do CEO não subiu. Aguardando confirmação para usar cópia impressa.", tipo: "urgente", resolvido: false },
+  { desde: "19:48", de: "Chef de Catering", msg: "Entrada estará pronta com 5 min de antecedência. Posso antecipar o serviço?", tipo: "normal", resolvido: false },
+  { desde: "20:12", de: "Mestre de Cerimônias", msg: "Ganhador da 1ª premiação não está na mesa. Próximo?", tipo: "urgente", resolvido: false },
+  { desde: "20:52", de: "Técnico de Luz", msg: "Moving head posição 3 piscando. Uso o fixture reserva?", tipo: "atencao", resolvido: false },
+  { desde: "21:30", de: "Coordenador de Sala", msg: "Mesa VIP pediu mesa exclusiva para acompanhante não listado. Autorizo?", tipo: "atencao", resolvido: false },
+];
+
+// =================== ESTADO ===================
+
+let estado = {
+  rodando: false,
+  pausado: false,
+  minuto: 0,         // minutos desde 19:00
+  totalMin: 240,     // 19:00 – 23:00 = 240 min
+  velocidade: 2,     // minutos de evento por segundo real
+  itemAtual: 0,
+  itens: [],         // status de cada item do rundown
+  frentes: { audio: 100, video: 100, luz: 100, catering: 95, seguranca: 100, recepcao: 90 },
+  pontos: 100,
+  decisoes: 0,
+  atrasos: 0,
+  incidentes: 0,
+  satisfacao: 100,
+  radios: [],
+  incidenteAtivo: null,
+  incidentesDisparados: new Set(),
+  timer: null,
+};
+
+// =================== INIT ===================
+
+function inicializarEstado() {
+  estado.itens = RUNDOWN.map((r, i) => ({
+    ...r,
+    status: i === 0 ? 'atual' : 'pendente',
+    atrasoMin: 0,
+  }));
+  estado.radios = RADIOS.map(r => ({ ...r, resolvido: false }));
+}
+
+function renderRundown() {
+  const lista = document.getElementById('rundown-lista');
+  const concluidos = estado.itens.filter(i => i.status === 'concluido').length;
+  document.getElementById('badge-rundown').textContent = concluidos + ' / ' + estado.itens.length;
+
+  lista.innerHTML = '';
+  estado.itens.forEach((item, idx) => {
+    const li = document.createElement('li');
+    li.className = item.status === 'concluido' ? 'concluido' :
+                   item.status === 'atual' ? 'atual' :
+                   item.atrasoMin > 0 ? 'atrasado' : '';
+    li.innerHTML = `
+      <span class="hora-item">${item.hora}</span>
+      <div class="item-desc">
+        <div>${item.desc}</div>
+        <div class="dept">${item.dept}${item.atrasoMin > 0 ? ' · <span style="color:#f59e0b">+'+item.atrasoMin+' min</span>' : ''}</div>
+      </div>
+      <span class="item-status ${item.status === 'concluido' ? 'ok' : item.status === 'atual' ? 'andamento' : item.atrasoMin > 0 ? 'atrasado' : ''}">
+        ${item.status === 'concluido' ? '✓ OK' : item.status === 'atual' ? '▶ Atual' : item.atrasoMin > 0 ? '⏳ +'+item.atrasoMin+'m' : '—'}
+      </span>
+    `;
+    lista.appendChild(li);
+  });
+}
+
+function renderRadios() {
+  const lista = document.getElementById('radio-lista');
+  const pendentes = estado.radios.filter(r => !r.resolvido).length;
+  document.getElementById('badge-radio').textContent = pendentes + ' pendentes';
+
+  lista.innerHTML = '';
+  estado.radios.forEach((radio, idx) => {
+    const li = document.createElement('li');
+    li.className = radio.resolvido ? 'resolvido' : radio.tipo;
+    li.innerHTML = `
+      <span class="radio-desde">${radio.desde}</span>
+      <div class="radio-corpo">
+        <div class="radio-from">${radio.de}</div>
+        <div style="margin-top:2px">${radio.msg}</div>
+      </div>
+      ${!radio.resolvido ? `<button class="radio-btn ${radio.tipo === 'urgente' ? 'urgente-btn' : ''}" onclick="resolverRadio(${idx})">Resolver</button>` : '<span style="font-size:10px;color:#374151">✓</span>'}
+    `;
+    lista.appendChild(li);
+  });
+}
+
+function renderFrentes() {
+  const frentes = estado.frentes;
+  const mapa = {
+    audio: ['bar-audio','val-audio','pill-som'],
+    video: ['bar-video','val-video','pill-video'],
+    luz: ['bar-luz','val-luz','pill-luz'],
+    catering: ['bar-catering','val-catering','pill-catering'],
+    seguranca: ['bar-seguranca','val-seguranca','pill-seguranca'],
+    recepcao: ['bar-recepcao','val-recepcao','pill-recepcao'],
+  };
+  for (const [k, [barId, valId, pillId]] of Object.entries(mapa)) {
+    const v = frentes[k];
+    const bar = document.getElementById(barId);
+    const val = document.getElementById(valId);
+    const pill = document.getElementById(pillId);
+    bar.style.width = v + '%';
+    bar.style.background = v >= 80 ? '#22c55e' : v >= 50 ? '#f59e0b' : '#ef4444';
+    val.textContent = v + '%';
+    pill.className = 'status-pill ' + (v >= 80 ? 'ok' : v >= 50 ? 'atencao' : 'perigo');
+    pill.querySelector('.dot').style.background = v >= 80 ? '#22c55e' : v >= 50 ? '#f59e0b' : '#ef4444';
+  }
+}
+
+function atualizarScore() {
+  document.getElementById('score-pontos').textContent = Math.max(0, estado.pontos);
+  document.getElementById('score-pontos').style.color = estado.pontos >= 70 ? '#22c55e' : estado.pontos >= 40 ? '#f59e0b' : '#ef4444';
+  document.getElementById('score-decisoes').textContent = estado.decisoes;
+  document.getElementById('score-atrasos').textContent = estado.atrasos;
+  document.getElementById('score-incidentes').textContent = estado.incidentes;
+  const sat = estado.satisfacao;
+  document.getElementById('bar-satisfacao').style.width = sat + '%';
+  document.getElementById('bar-satisfacao').style.background = sat >= 80 ? '#22c55e' : sat >= 50 ? '#f59e0b' : '#ef4444';
+  document.getElementById('val-satisfacao').textContent = sat + '%';
+}
+
+// =================== RELÓGIO ===================
+
+function minutosParaHora(min) {
+  const total = 19 * 60 + min;
+  const h = Math.floor(total / 60) % 24;
+  const m = total % 60;
+  return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+}
+
+function atualizarClock() {
+  const hora = minutosParaHora(estado.minuto);
+  const clock = document.getElementById('clock');
+  clock.textContent = hora;
+  clock.className = 'clock' + (estado.minuto > 200 ? ' perigo' : estado.minuto > 120 ? ' atencao' : '');
+
+  const pct = Math.min(100, Math.round(estado.minuto / estado.totalMin * 100));
+  document.getElementById('barra-progresso').style.width = pct + '%';
+  document.getElementById('progresso-pct').textContent = pct + '%';
+}
+
+// =================== SIMULAÇÃO ===================
+
+function tickSimulacao() {
+  if (!estado.rodando || estado.pausado || estado.incidenteAtivo) return;
+
+  estado.minuto += estado.velocidade * 0.5; // ~0.5 seg real = 1 tick
+  if (estado.minuto > estado.totalMin) {
+    estado.minuto = estado.totalMin;
+    pararSimulacao();
+    addLog('ok', '23:00 — Evento encerrado! Simulação concluída.');
+    mostrarNotif('Evento encerrado! Confira seu desempenho.', 'ok');
+    return;
+  }
+
+  atualizarClock();
+  verificarItensAutomacos();
+  verificarIncidentesAutomaticos();
+}
+
+function verificarItensAutomacos() {
+  // Avança automaticamente itens baseado no minuto atual
+  const horaAtual = 19 * 60 + estado.minuto;
+  estado.itens.forEach((item, idx) => {
+    const [h, m] = item.hora.split(':').map(Number);
+    const itemMin = h * 60 + m;
+    if (horaAtual >= itemMin + item.durMin + item.atrasoMin && item.status !== 'concluido') {
+      if (idx < estado.itens.length - 1 && item.status === 'atual') {
+        // Concluir automaticamente
+        item.status = 'concluido';
+        const proximo = estado.itens[idx + 1];
+        if (proximo) proximo.status = 'atual';
+        addLog('info', minutosParaHora(estado.minuto) + ' — Item concluído: ' + item.desc.substring(0, 40));
+        renderRundown();
+      }
+    }
+  });
+}
+
+// Incidentes programados por minuto aproximado
+const INCIDENTES_PROG = [
+  { min: 45, idx: 0 },   // 19:45 — mic CEO
+  { min: 65, idx: 1 },   // 20:05 — catering
+  { min: 55, idx: 2 },   // 19:55 — projetor
+  { min: 72, idx: 3 },   // 20:12 — VIP
+  { min: 35, idx: 4 },   // 19:35 — hum áudio
+  { min: 120, idx: 5 },  // 21:00 — slides keynote
+  { min: 85, idx: 6 },   // 20:25 — energia Palco B
+];
+
+function verificarIncidentesAutomaticos() {
+  if (estado.incidenteAtivo) return;
+  for (const prog of INCIDENTES_PROG) {
+    if (!estado.incidentesDisparados.has(prog.idx) && estado.minuto >= prog.min) {
+      estado.incidentesDisparados.add(prog.idx);
+      dispararIncidenteEspecifico(prog.idx);
+      break;
+    }
+  }
+}
+
+function dispararIncidenteEspecifico(idx) {
+  const inc = INCIDENTES[idx];
+  if (!inc) return;
+  estado.incidenteAtivo = inc;
+  estado.incidentes++;
+
+  document.getElementById('modal-nivel').textContent = '⚡ ' + inc.nivel;
+  document.getElementById('modal-nivel').style.color = inc.nivel === 'URGENTE' ? '#ef4444' : '#f59e0b';
+  document.getElementById('modal-titulo').textContent = inc.titulo;
+  document.getElementById('modal-desc').textContent = inc.desc;
+
+  const ops = document.getElementById('modal-ops');
+  ops.innerHTML = '';
+  inc.ops.forEach((op, i) => {
+    const div = document.createElement('div');
+    div.className = 'modal-op';
+    div.innerHTML = `<div class="op-title">${op.titulo}</div><div class="op-desc">${op.desc}</div>`;
+    div.onclick = () => resolverIncidente(op);
+    ops.appendChild(div);
+  });
+
+  document.getElementById('modal-incidente').classList.add('ativo');
+  addLog('perigo', minutosParaHora(estado.minuto) + ' — INCIDENTE: ' + inc.titulo);
+}
+
+function resolverIncidente(op) {
+  document.getElementById('modal-incidente').classList.remove('ativo');
+  estado.incidenteAtivo = null;
+  estado.decisoes++;
+
+  estado.pontos = Math.max(0, Math.min(100, estado.pontos + op.pont));
+  if (op.impacto === 'ok') {
+    estado.satisfacao = Math.min(100, estado.satisfacao + 2);
+    addLog('ok', 'Decisão correta: "' + op.titulo + '" (+' + op.pont + ' pts)');
+    mostrarNotif('Boa decisão! +' + op.pont + ' pontos', 'ok');
+  } else if (op.impacto === 'atencao') {
+    estado.satisfacao = Math.max(0, estado.satisfacao - 3);
+    addLog('atencao', 'Decisão parcial: "' + op.titulo + '" (' + (op.pont >= 0 ? '+' : '') + op.pont + ' pts)');
+    mostrarNotif('Decisão aceitável. ' + (op.pont >= 0 ? '+' : '') + op.pont + ' pontos', 'alerta');
+  } else {
+    estado.satisfacao = Math.max(0, estado.satisfacao - 10);
+    addLog('perigo', 'Decisão ruim: "' + op.titulo + '" (' + op.pont + ' pts)');
+    mostrarNotif('Decisão prejudicial! ' + op.pont + ' pontos', 'perigo');
+  }
+
+  atualizarScore();
+}
+
+// =================== AÇÕES DO USUÁRIO ===================
+
+function avancarItem() {
+  if (!estado.rodando) { mostrarNotif('Inicie a simulação primeiro.', 'alerta'); return; }
+  const atual = estado.itens.findIndex(i => i.status === 'atual');
+  if (atual === -1) return;
+  const proximo = estado.itens[atual + 1];
+  if (proximo) {
+    estado.itens[atual].status = 'concluido';
+    proximo.status = 'atual';
+    estado.decisoes++;
+    addLog('info', 'Avançado para: ' + proximo.desc.substring(0, 40));
+    mostrarNotif('Rundown avançado.', 'ok');
+    renderRundown();
+    atualizarScore();
+  } else {
+    addLog('ok', 'Todos os itens do rundown foram concluídos!');
+  }
+}
+
+function adicionarAtraso() {
+  if (!estado.rodando) { mostrarNotif('Inicie a simulação primeiro.', 'alerta'); return; }
+  const atual = estado.itens.findIndex(i => i.status === 'atual');
+  if (atual === -1) return;
+  estado.itens[atual].atrasoMin += 5;
+  estado.atrasos++;
+  estado.pontos = Math.max(0, estado.pontos - 3);
+  estado.satisfacao = Math.max(0, estado.satisfacao - 2);
+  addLog('atencao', 'Atraso de +5 min registrado em: ' + estado.itens[atual].desc.substring(0, 35) + ' (-3 pts)');
+  mostrarNotif('+5 min de atraso registrado.', 'alerta');
+  renderRundown();
+  atualizarScore();
+}
+
+function marcarConcluido() {
+  if (!estado.rodando) { mostrarNotif('Inicie a simulação primeiro.', 'alerta'); return; }
+  const atual = estado.itens.findIndex(i => i.status === 'atual');
+  if (atual === -1) return;
+  estado.itens[atual].status = 'concluido';
+  estado.pontos = Math.min(100, estado.pontos + 2);
+  estado.satisfacao = Math.min(100, estado.satisfacao + 1);
+  const proximo = estado.itens[atual + 1];
+  if (proximo) proximo.status = 'atual';
+  estado.decisoes++;
+  addLog('ok', 'Item concluído: ' + estado.itens[atual].desc.substring(0, 40) + ' (+2 pts)');
+  mostrarNotif('Item concluído com sucesso!', 'ok');
+  renderRundown();
+  atualizarScore();
+}
+
+function resolverRadio(idx) {
+  estado.radios[idx].resolvido = true;
+  estado.pontos = Math.min(100, estado.pontos + 3);
+  estado.decisoes++;
+  addLog('ok', 'Comunicação resolvida: ' + estado.radios[idx].de + ' (+3 pts)');
+  mostrarNotif('Comunicação resolvida! +3 pts', 'ok');
+  renderRadios();
+  atualizarScore();
+}
+
+function ajustarFrente(frente, elem) {
+  const rect = elem.getBoundingClientRect();
+  const pct = Math.round(((event.clientX - rect.left) / rect.width) * 100);
+  const valorAnterior = estado.frentes[frente];
+  estado.frentes[frente] = Math.max(0, Math.min(100, pct));
+  const diff = estado.frentes[frente] - valorAnterior;
+
+  if (diff < -20) {
+    estado.pontos = Math.max(0, estado.pontos - 5);
+    estado.satisfacao = Math.max(0, estado.satisfacao - 5);
+    addLog('perigo', 'Frente ' + frente + ' caiu para ' + estado.frentes[frente] + '% (-5 pts)');
+    mostrarNotif('Frente crítica! Tome ação.', 'perigo');
+  } else if (diff > 10) {
+    estado.pontos = Math.min(100, estado.pontos + 2);
+    addLog('ok', 'Frente ' + frente + ' recuperada para ' + estado.frentes[frente] + '% (+2 pts)');
+    mostrarNotif('Frente recuperada! +2 pts', 'ok');
+  }
+
+  renderFrentes();
+  atualizarScore();
+}
+
+function dispararIncidente() {
+  if (!estado.rodando) { mostrarNotif('Inicie a simulação primeiro.', 'alerta'); return; }
+  const naoDisparados = INCIDENTES.map((_, i) => i).filter(i => !estado.incidentesDisparados.has(i));
+  if (naoDisparados.length === 0) {
+    mostrarNotif('Todos os incidentes já foram resolvidos!', 'ok');
+    return;
+  }
+  const idx = naoDisparados[Math.floor(Math.random() * naoDisparados.length)];
+  estado.incidentesDisparados.add(idx);
+  dispararIncidenteEspecifico(idx);
+}
+
+// =================== CONTROLES ===================
+
+function iniciarSimulacao() {
+  if (estado.rodando) return;
+  estado.rodando = true;
+  estado.pausado = false;
+  document.getElementById('btn-iniciar').disabled = true;
+  document.getElementById('btn-pausar').disabled = false;
+  addLog('info', '19:00 — Simulação iniciada. Boa execução!');
+  mostrarNotif('Evento iniciado! Gerencie com foco.', 'ok');
+  estado.timer = setInterval(tickSimulacao, 500);
+}
+
+function pausarSimulacao() {
+  if (!estado.rodando) return;
+  estado.pausado = !estado.pausado;
+  document.getElementById('btn-pausar').textContent = estado.pausado ? '▶ Continuar' : '⏸ Pausar';
+  addLog('info', estado.pausado ? '— Simulação pausada —' : '— Simulação retomada —');
+}
+
+function pararSimulacao() {
+  estado.rodando = false;
+  clearInterval(estado.timer);
+  document.getElementById('btn-iniciar').disabled = false;
+  document.getElementById('btn-pausar').disabled = true;
+  document.getElementById('btn-pausar').textContent = '⏸ Pausar';
+}
+
+function resetarSimulacao() {
+  pararSimulacao();
+  clearInterval(estado.timer);
+  estado = {
+    rodando: false,
+    pausado: false,
+    minuto: 0,
+    totalMin: 240,
+    velocidade: 2,
+    itemAtual: 0,
+    itens: [],
+    frentes: { audio: 100, video: 100, luz: 100, catering: 95, seguranca: 100, recepcao: 90 },
+    pontos: 100,
+    decisoes: 0,
+    atrasos: 0,
+    incidentes: 0,
+    satisfacao: 100,
+    radios: [],
+    incidenteAtivo: null,
+    incidentesDisparados: new Set(),
+    timer: null,
+  };
+  inicializarEstado();
+  atualizarClock();
+  renderRundown();
+  renderRadios();
+  renderFrentes();
+  atualizarScore();
+  document.getElementById('log-box').innerHTML = '';
+  document.getElementById('barra-progresso').style.width = '0%';
+  document.getElementById('progresso-pct').textContent = '0%';
+  document.getElementById('btn-iniciar').disabled = false;
+  document.getElementById('btn-pausar').disabled = true;
+  addLog('info', 'Simulação reiniciada. Pronto para começar!');
+}
+
+function ajustarVelocidade(v) {
+  estado.velocidade = parseInt(v);
+  document.getElementById('vel-label').textContent = v + '×';
+}
+
+// =================== UTILITÁRIOS ===================
+
+function addLog(tipo, msg) {
+  const box = document.getElementById('log-box');
+  const div = document.createElement('div');
+  div.className = 'log-line log-' + tipo;
+  const hora = minutosParaHora(estado.minuto);
+  div.textContent = '[' + hora + '] ' + msg;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+let notifTimer = null;
+function mostrarNotif(msg, tipo) {
+  const el = document.getElementById('notif');
+  el.textContent = msg;
+  el.className = 'show ' + (tipo === 'ok' ? 'ok-notif' : tipo === 'alerta' ? 'alerta-notif' : 'perigo-notif');
+  if (notifTimer) clearTimeout(notifTimer);
+  notifTimer = setTimeout(() => { el.className = ''; }, 2800);
+}
+
+// =================== START ===================
+
+inicializarEstado();
+atualizarClock();
+renderRundown();
+renderRadios();
+renderFrentes();
+atualizarScore();
+addLog('info', 'Simulador carregado. Pressione ▶ Iniciar para começar.');
+</script>
+</body>
+</html>

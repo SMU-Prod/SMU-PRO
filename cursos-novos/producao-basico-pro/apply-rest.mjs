@@ -5,7 +5,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { COURSE, MODULES, LAYOUT, readFrag, readQuiz, readSim } from "./build.mjs";
+import { COURSE, MODULES, LAYOUT, F, A, readFrag, readQuiz, readSim } from "./build.mjs";
+import { conferirFaixa, donoDoId } from "../_REGISTRO-IDS.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DRY = process.argv.includes("--dry");
@@ -24,9 +25,8 @@ const post  = (t,b) => req("POST","/"+t,b,{Prefer:"return=minimal"});
 const patch = (p,b) => req("PATCH",p,b,{Prefer:"return=minimal"});
 const del   = (p)   => req("DELETE",p,null,{Prefer:"return=minimal"});
 
-const LID = n => `7b110000-0000-4000-9000-0000${String(n).padStart(8,"0")}`;
-const QID = n => `7b120000-0000-4000-9000-0000${String(n).padStart(8,"0")}`;
-const QQID= (n,j)=>`7b130000-0000-4000-9000-${String(n).padStart(4,"0")}${String(j).padStart(8,"0")}`;
+// ⚠️ NADA de id posicional. A aula vem de A(modulo, ordem) — o bloco de id carrega o módulo,
+// então dá para ler o id e saber a que módulo ele pertence. Quiz e questões: id do banco.
 
 const modById = Object.fromEntries(MODULES.map(m=>[m.n,m]));
 
@@ -44,13 +44,30 @@ const modById = Object.fromEntries(MODULES.map(m=>[m.n,m]));
     console.log(`   Backup de simuladores: ${anims.length} -> backup-antes-animations.json`);
   }
 
-  // Trava anti-sequestro: nenhum id de módulo meu pode pertencer a outro curso.
+  // ---------- TRAVA DE FAIXA ----------
+  // Nada é escrito fora da faixa deste curso (cursos-novos/_REGISTRO-IDS.mjs).
+  const todosIds = [...MODULES.map(m=>m.id), ...LAYOUT.map((it,i)=>it.id).filter(Boolean)];
+  conferirFaixa(F, todosIds);
   for (const m of MODULES) {
+    const dono = donoDoId(m.id);
+    if (dono && dono !== F.slug)
+      throw new Error(`Id ${m.id} está na faixa de "${dono}", não de "${F.slug}". Gere pelo M().`);
     const ja = await get(`/modules?id=eq.${m.id}&select=id,course_id,titulo`);
     if (ja.length && ja[0].course_id !== COURSE)
-      throw new Error(`COLISÃO DE ID: módulo ${m.id} ("${ja[0].titulo}") pertence ao curso ${ja[0].course_id}. Escolha outro id em build.mjs.`);
+      throw new Error(`COLISÃO: módulo ${m.id} ("${ja[0].titulo}") pertence ao curso ${ja[0].course_id}. Não faça PATCH nele.`);
   }
-  console.log(`   sanidade: nenhum id de módulo colide com outro curso.`);
+  console.log(`   trava de faixa: mod ${F.mod}-* / aula ${F.aula}-* · nenhum id colide com outro curso.`);
+
+  // ---------- PROGRESSO ----------
+  // Este apply DELETA os módulos e recria. Se houver progresso de aluno nas aulas atuais,
+  // a cascata apaga o aluno junto. Aborta em vez de apagar em silêncio.
+  if (oldIds.length) {
+    const prog = await get(`/progress?lesson_id=in.(${oldIds.join(",")})&select=id`);
+    if (prog.length) throw new Error(
+      `ABORTADO: ${prog.length} registro(s) de PROGRESSO nas aulas atuais. Este apply recria o curso ` +
+      `do zero e a cascata apagaria o progresso do aluno. Migre os registros antes, à mão.`);
+    console.log(`   progresso nas aulas atuais: 0 — seguro recriar.`);
+  }
 
   if (DRY) {
     const ordBy={};
@@ -73,7 +90,7 @@ const modById = Object.fromEntries(MODULES.map(m=>[m.n,m]));
   for (let i=0;i<LAYOUT.length;i++){
     const it=LAYOUT[i]; const n=i+1;
     ordByMod[it.mod]=(ordByMod[it.mod]||0)+1; const ordem=ordByMod[it.mod];
-    const lid=LID(n);
+    const lid=A(it.mod, ordem);
     const preview = (it.mod===1 && ordem===1);   // 1ª aula liberada como amostra
 
     await post("lessons", [{ id:lid, module_id:modById[it.mod].id, titulo:it.titulo, tipo:"texto",
@@ -82,16 +99,15 @@ const modById = Object.fromEntries(MODULES.map(m=>[m.n,m]));
 
     const quiz=readQuiz(it.frag);
     if (quiz){
-      const qid=QID(n);
-      await post("quizzes",[{ id:qid, lesson_id:lid, titulo:quiz.titulo }]);
-      const questions=[], options=[];
-      quiz.questoes.forEach((qq,j)=>{
-        const qqid=QQID(n,j+1);
-        questions.push({ id:qqid, quiz_id:qid, texto:qq.texto, explicacao:qq.explicacao||"", ordem:j+1, pontos:1 });
-        qq.opcoes.forEach(([txt,ok],k)=> options.push({ question_id:qqid, texto:txt, correta:!!ok, ordem:k+1 }));
-      });
-      await post("quiz_questions", questions);
-      await post("quiz_options", options);
+      // chaveado pela AULA; ids de quiz/questão vêm do banco — nada posicional para desalinhar
+      const [q] = await req("POST","/quizzes",[{ lesson_id:lid, titulo:quiz.titulo }],{Prefer:"return=representation"});
+      for (let j=0;j<quiz.questoes.length;j++){
+        const qq=quiz.questoes[j];
+        const [qrow] = await req("POST","/quiz_questions",
+          [{ quiz_id:q.id, texto:qq.texto, explicacao:qq.explicacao||"", ordem:j+1, pontos:1 }],
+          {Prefer:"return=representation"});
+        await post("quiz_options", qq.opcoes.map(([txt,ok],k)=>({ question_id:qrow.id, texto:txt, correta:!!ok, ordem:k+1 })));
+      }
       nQ++;
     }
 

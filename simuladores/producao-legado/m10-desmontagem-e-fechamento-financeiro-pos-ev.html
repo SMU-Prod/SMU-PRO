@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMU PRO · Desmontagem &amp; Fechamento Financeiro</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #eef2f6;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .device {
+    background: #20252f;
+    border: 1px solid #10141b;
+    border-radius: 12px;
+    padding: 16px;
+    color: #cbd5e1;
+    width: 100%;
+    max-width: 860px;
+  }
+  .device-title {
+    font-size: 10px;
+    letter-spacing: .14em;
+    color: #5b6675;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+  }
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid #2e3545;
+    padding-bottom: 8px;
+  }
+  .tab {
+    padding: 6px 14px;
+    border-radius: 6px 6px 0 0;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    background: #2a3040;
+    color: #7a8799;
+    transition: all 0.2s;
+  }
+  .tab.active {
+    background: #3b82f6;
+    color: #fff;
+  }
+  .tab:hover:not(.active) {
+    background: #323b4d;
+    color: #cbd5e1;
+  }
+
+  /* === ABAS === */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* === ABA 1: CHECKLIST DESMONTAGEM === */
+  .fase-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .fase-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: #a78bfa;
+  }
+  .fase-progress-bar {
+    flex: 1;
+    height: 6px;
+    background: #2a3040;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .fase-progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: #a78bfa;
+    transition: width 0.3s;
+  }
+  .fase-count {
+    font-size: 10px;
+    color: #5b6675;
+    min-width: 36px;
+    text-align: right;
+  }
+
+  .checklist-grupo {
+    background: #252b38;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    border: 1px solid #2e3545;
+  }
+  .checklist-grupo-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: #1e2330;
+    cursor: pointer;
+    user-select: none;
+  }
+  .checklist-grupo-header:hover { background: #232a3a; }
+  .grupo-icon { font-size: 14px; }
+  .grupo-nome {
+    font-size: 12px;
+    font-weight: 700;
+    color: #e2e8f0;
+    flex: 1;
+  }
+  .grupo-badge {
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 10px;
+    background: #2a3040;
+    color: #7a8799;
+  }
+  .grupo-badge.done { background: #14532d; color: #22c55e; }
+  .grupo-badge.bloqueado { background: #450a0a; color: #ef4444; }
+
+  .checklist-itens { padding: 6px 0; }
+  .check-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 6px 14px;
+    cursor: pointer;
+    transition: background 0.15s;
+    border-radius: 6px;
+    margin: 1px 4px;
+  }
+  .check-item:hover { background: #2e3545; }
+  .check-item.critical { border-left: 3px solid #ef4444; padding-left: 11px; }
+  .check-item.done { opacity: .55; }
+  .check-item input[type="checkbox"] {
+    accent-color: #22c55e;
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    margin-top: 2px;
+    cursor: pointer;
+  }
+  /* Área de toque do checkbox. No desktop tem a mesma geometria do
+     input (15px), então nada muda; no celular cresce para o dedo. */
+  .check-item .cb-hit {
+    display: flex;
+    align-items: flex-start;
+    flex-shrink: 0;
+  }
+  .check-item label {
+    font-size: 12px;
+    line-height: 1.5;
+    color: #cbd5e1;
+    cursor: pointer;
+  }
+  .check-item label .tag {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 4px;
+    margin-left: 4px;
+    background: #450a0a;
+    color: #ef4444;
+    vertical-align: middle;
+  }
+  .check-item.done label { text-decoration: line-through; color: #5b6675; }
+
+  .aviso-bloqueio {
+    margin: 10px 0;
+    padding: 10px 14px;
+    background: #450a0a;
+    border: 1px solid #ef4444;
+    border-radius: 8px;
+    color: #ef4444;
+    font-size: 12px;
+    display: none;
+  }
+  .aviso-bloqueio.visivel { display: block; }
+
+  .status-global {
+    margin-top: 14px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 700;
+    background: #1e2330;
+    border: 1px solid #2e3545;
+    color: #7a8799;
+    transition: all 0.3s;
+  }
+  .status-global.ok { background: #14532d; border-color: #22c55e; color: #22c55e; }
+  .status-global.parcial { background: #3f2b00; border-color: #f59e0b; color: #f59e0b; }
+
+  /* === ABA 2: FECHAMENTO FINANCEIRO === */
+  .ff-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  @media (max-width: 560px) {
+    .ff-grid { grid-template-columns: 1fr; }
+    /* Alvo de toque do checkbox (o input em si continua 15px). */
+    .check-item .cb-hit { min-height: 36px; min-width: 24px; }
+  }
+
+  .ff-card {
+    background: #252b38;
+    border: 1px solid #2e3545;
+    border-radius: 8px;
+    padding: 12px;
+  }
+  .ff-card-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: #5b6675;
+    margin-bottom: 10px;
+  }
+  .ff-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    gap: 8px;
+  }
+  .ff-label {
+    font-size: 11px;
+    color: #94a3b8;
+    flex: 1;
+    min-width: 90px;
+  }
+  .ff-input {
+    width: 120px;
+    background: #1e2330;
+    border: 1px solid #2e3545;
+    border-radius: 6px;
+    color: #e2e8f0;
+    font-size: 12px;
+    padding: 4px 8px;
+    text-align: right;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .ff-input:focus { border-color: #3b82f6; }
+  .ff-input.alerta { border-color: #ef4444; }
+
+  .ff-separador {
+    height: 1px;
+    background: #2e3545;
+    margin: 8px 0;
+  }
+  .ff-total-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
+  }
+  .ff-total-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #e2e8f0;
+  }
+  .ff-total-valor {
+    font-size: 14px;
+    font-weight: 700;
+    color: #3b82f6;
+  }
+
+  .ff-resultado {
+    margin-top: 10px;
+    padding: 14px 16px;
+    border-radius: 10px;
+    background: #1e2330;
+    border: 1px solid #2e3545;
+  }
+  .ff-resultado-linha {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 13px;
+  }
+  .ff-resultado-linha:last-child { margin-bottom: 0; }
+  .ff-resultado-linha .rkey { color: #94a3b8; }
+  .ff-resultado-linha .rval {
+    font-weight: 700;
+    font-size: 14px;
+  }
+  .verde { color: #22c55e; }
+  .amarelo { color: #f59e0b; }
+  .vermelho { color: #ef4444; }
+  .azul { color: #3b82f6; }
+
+  .gauge-wrap {
+    margin: 12px 0 8px;
+    position: relative;
+  }
+  .gauge-track {
+    width: 100%;
+    height: 18px;
+    background: #2a3040;
+    border-radius: 9px;
+    overflow: hidden;
+  }
+  .gauge-fill {
+    height: 100%;
+    border-radius: 9px;
+    transition: width 0.4s, background 0.4s;
+    min-width: 4px;
+  }
+  .gauge-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 9px;
+    color: #5b6675;
+    margin-top: 3px;
+  }
+
+  .ff-alerta-caixa {
+    margin-top: 10px;
+    padding: 9px 13px;
+    border-radius: 7px;
+    font-size: 11px;
+    display: none;
+  }
+  .ff-alerta-caixa.visivel { display: block; }
+  .ff-alerta-caixa.tipo-perigo { background: #450a0a; border: 1px solid #ef4444; color: #ef4444; }
+  .ff-alerta-caixa.tipo-aviso { background: #3f2b00; border: 1px solid #f59e0b; color: #f59e0b; }
+  .ff-alerta-caixa.tipo-ok { background: #14532d; border: 1px solid #22c55e; color: #22c55e; }
+
+  /* === ABA 3: RELATÓRIO DE OCORRÊNCIAS === */
+  .oc-form { margin-bottom: 12px; }
+  .oc-row { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .oc-select, .oc-text {
+    background: #1e2330;
+    border: 1px solid #2e3545;
+    border-radius: 6px;
+    color: #cbd5e1;
+    font-size: 12px;
+    padding: 6px 10px;
+    outline: none;
+  }
+  .oc-select:focus, .oc-text:focus { border-color: #3b82f6; }
+  .oc-select { min-width: 140px; }
+  .oc-text { flex: 1; min-width: 200px; }
+  .oc-impact {
+    background: #1e2330;
+    border: 1px solid #2e3545;
+    border-radius: 6px;
+    color: #cbd5e1;
+    font-size: 12px;
+    padding: 6px 10px;
+    outline: none;
+    width: 130px;
+  }
+  .oc-impact:focus { border-color: #3b82f6; }
+  .btn-add {
+    padding: 6px 14px;
+    background: #3b82f6;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn-add:hover { background: #2563eb; }
+
+  .oc-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 260px;
+    overflow-y: auto;
+  }
+  .oc-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 12px;
+    background: #252b38;
+    border: 1px solid #2e3545;
+    border-radius: 7px;
+    font-size: 12px;
+  }
+  .oc-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 4px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .oc-badge.dano { background: #450a0a; color: #ef4444; }
+  .oc-badge.atraso { background: #3f2b00; color: #f59e0b; }
+  .oc-badge.perda { background: #312e81; color: #a78bfa; }
+  .oc-badge.outro { background: #1e2330; color: #7a8799; }
+  .oc-desc { flex: 1; color: #cbd5e1; }
+  .oc-impacto-val { font-weight: 700; color: #ef4444; white-space: nowrap; }
+  .oc-del {
+    background: none;
+    border: none;
+    color: #5b6675;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0 2px;
+    line-height: 1;
+  }
+  .oc-del:hover { color: #ef4444; }
+  .oc-total-bar {
+    margin-top: 10px;
+    padding: 10px 14px;
+    background: #1e2330;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: 1px solid #2e3545;
+  }
+  .oc-total-label { font-size: 12px; color: #94a3b8; }
+  .oc-total-val { font-size: 15px; font-weight: 700; color: #ef4444; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: #1e2330; }
+  ::-webkit-scrollbar-thumb { background: #2e3545; border-radius: 3px; }
+</style>
+</head>
+<body>
+<script>/*SMU-ZOOM*/(function(){var z=1,sc=null,MIN=1,MAX=2.5,STEP=0.25;function wrap(){if(sc)return;sc=document.createElement('div');sc.id='smu-sc';sc.style.transformOrigin='0 0';[].slice.call(document.body.children).filter(function(el){return (el.id||'').indexOf('smu-')!==0;}).forEach(function(k){sc.appendChild(k);});document.body.insertBefore(sc,document.body.firstChild);document.documentElement.style.overflow='auto';document.body.style.overflow='auto';document.body.style.margin='0';}function apply(){if(!sc)wrap();sc.style.transform='scale('+z+')';var w=sc.offsetWidth,h=sc.offsetHeight;document.body.style.width=(z>1?(w*z)+'px':'');document.body.style.height=(z>1?(h*z)+'px':'');var l=document.getElementById('smu-zl');if(l)l.textContent=Math.round(z*100)+'%';}function ui(){if(document.getElementById('smu-zoom'))return;var b=document.createElement('div');b.id='smu-zoom';b.style.cssText='position:fixed;left:10px;bottom:10px;z-index:99999;display:flex;align-items:center;gap:5px;background:#0e1420;border:1px solid #2c3340;border-radius:22px;padding:5px 8px;box-shadow:0 2px 10px rgba(0,0,0,.4);font-family:system-ui,sans-serif';function mk(t){var x=document.createElement('button');x.textContent=t;x.style.cssText='width:32px;height:32px;border-radius:50%;border:1px solid #2c3340;background:#171c26;color:#e5e7eb;font-size:18px;cursor:pointer;padding:0;line-height:1';return x;}var ic=document.createElement('span');ic.textContent='\U0001F50D';ic.style.fontSize='14px';var mi=mk('−'),lab=document.createElement('span'),pl=mk('+');lab.id='smu-zl';lab.style.cssText='font-size:12px;color:#cbd5e1;min-width:44px;text-align:center;cursor:pointer';lab.textContent='100%';b.appendChild(ic);b.appendChild(mi);b.appendChild(lab);b.appendChild(pl);document.body.appendChild(b);mi.onclick=function(){z=Math.max(MIN,Math.round((z-STEP)*100)/100);apply();};pl.onclick=function(){z=Math.min(MAX,Math.round((z+STEP)*100)/100);apply();};lab.onclick=function(){z=1;apply();};}if(document.readyState!=='loading')ui();else document.addEventListener('DOMContentLoaded',ui);})();</script>
+
+
+<div class="device">
+  <div class="device-title">SMU PRO · DESMONTAGEM &amp; FECHAMENTO PÓS-EVENTO</div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="mudarAba(0)">📋 Desmontagem</button>
+    <button class="tab" onclick="mudarAba(1)">💰 Fechamento Financeiro</button>
+    <button class="tab" onclick="mudarAba(2)">⚠️ Ocorrências</button>
+  </div>
+
+  <!-- ======================= ABA 1: DESMONTAGEM ======================= -->
+  <div class="panel active" id="aba0">
+
+    <div class="fase-header">
+      <span class="fase-label">Progresso geral</span>
+      <div class="fase-progress-bar"><div class="fase-progress-fill" id="progFill" style="width:0%"></div></div>
+      <span class="fase-count" id="progCount">0/0</span>
+    </div>
+
+    <div id="avisosBloqueio"></div>
+
+    <!-- GRUPO 1 -->
+    <div class="checklist-grupo">
+      <div class="checklist-grupo-header" onclick="toggleGrupo('g1')">
+        <span class="grupo-icon">🎪</span>
+        <span class="grupo-nome">1. Encerramento do evento</span>
+        <span class="grupo-badge" id="badge-g1">0/4</span>
+      </div>
+      <div class="checklist-itens" id="g1">
+        <div class="check-item critical" data-grupo="g1" data-id="c1" data-critico="true">
+          <label class="cb-hit"><input type="checkbox" id="c1"></label><label for="c1">Confirmação de encerramento com o cliente/contratante <span class="tag">CRÍTICO</span></label>
+        </div>
+        <div class="check-item" data-grupo="g1" data-id="c2">
+          <label class="cb-hit"><input type="checkbox" id="c2"></label><label for="c2">Público totalmente retirado do local</label>
+        </div>
+        <div class="check-item critical" data-grupo="g1" data-id="c3" data-critico="true">
+          <label class="cb-hit"><input type="checkbox" id="c3"></label><label for="c3">Comunicado ao segurança/coordenação de saída <span class="tag">CRÍTICO</span></label>
+        </div>
+        <div class="check-item" data-grupo="g1" data-id="c4">
+          <label class="cb-hit"><input type="checkbox" id="c4"></label><label for="c4">Registro fotográfico do estado final do espaço</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- GRUPO 2 -->
+    <div class="checklist-grupo">
+      <div class="checklist-grupo-header" onclick="toggleGrupo('g2')">
+        <span class="grupo-icon">🔌</span>
+        <span class="grupo-nome">2. Infraestrutura técnica</span>
+        <span class="grupo-badge" id="badge-g2">0/5</span>
+      </div>
+      <div class="checklist-itens" id="g2">
+        <div class="check-item critical" data-grupo="g2" data-id="c5" data-critico="true">
+          <label class="cb-hit"><input type="checkbox" id="c5"></label><label for="c5">Desligamento seguro de toda a alimentação elétrica <span class="tag">CRÍTICO</span></label>
+        </div>
+        <div class="check-item" data-grupo="g2" data-id="c6">
+          <label class="cb-hit"><input type="checkbox" id="c6"></label><label for="c6">Cabos de sinal desconectados e enrolados corretamente</label>
+        </div>
+        <div class="check-item" data-grupo="g2" data-id="c7">
+          <label class="cb-hit"><input type="checkbox" id="c7"></label><label for="c7">Equipamentos de áudio desligados na sequência correta (fonte por último)</label>
+        </div>
+        <div class="check-item" data-grupo="g2" data-id="c8">
+          <label class="cb-hit"><input type="checkbox" id="c8"></label><label for="c8">Painéis LED/projetores resfriados antes da embalagem</label>
+        </div>
+        <div class="check-item" data-grupo="g2" data-id="c9">
+          <label class="cb-hit"><input type="checkbox" id="c9"></label><label for="c9">Gerador (se usado) desligado e abastecimento verificado</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- GRUPO 3 -->
+    <div class="checklist-grupo">
+      <div class="checklist-grupo-header" onclick="toggleGrupo('g3')">
+        <span class="grupo-icon">📦</span>
+        <span class="grupo-nome">3. Acondicionamento e carga</span>
+        <span class="grupo-badge" id="badge-g3">0/5</span>
+      </div>
+      <div class="checklist-itens" id="g3">
+        <div class="check-item" data-grupo="g3" data-id="c10">
+          <label class="cb-hit"><input type="checkbox" id="c10"></label><label for="c10">Checklist de inventário de saída comparado com o de entrada</label>
+        </div>
+        <div class="check-item critical" data-grupo="g3" data-id="c11" data-critico="true">
+          <label class="cb-hit"><input type="checkbox" id="c11"></label><label for="c11">Itens danificados identificados e registrados antes de embalar <span class="tag">CRÍTICO</span></label>
+        </div>
+        <div class="check-item" data-grupo="g3" data-id="c12">
+          <label class="cb-hit"><input type="checkbox" id="c12"></label><label for="c12">Embalagem original ou cases protetores utilizados</label>
+        </div>
+        <div class="check-item" data-grupo="g3" data-id="c13">
+          <label class="cb-hit"><input type="checkbox" id="c13"></label><label for="c13">Carregamento do veículo respeitando peso e fragilidade</label>
+        </div>
+        <div class="check-item" data-grupo="g3" data-id="c14">
+          <label class="cb-hit"><input type="checkbox" id="c14"></label><label for="c14">Manifesto de carga assinado pelo motorista</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- GRUPO 4 -->
+    <div class="checklist-grupo">
+      <div class="checklist-grupo-header" onclick="toggleGrupo('g4')">
+        <span class="grupo-icon">🏛️</span>
+        <span class="grupo-nome">4. Devolução do espaço</span>
+        <span class="grupo-badge" id="badge-g4">0/4</span>
+      </div>
+      <div class="checklist-itens" id="g4">
+        <div class="check-item critical" data-grupo="g4" data-id="c15" data-critico="true">
+          <label class="cb-hit"><input type="checkbox" id="c15"></label><label for="c15">Vistoria do local com representante do espaço assinada <span class="tag">CRÍTICO</span></label>
+        </div>
+        <div class="check-item" data-grupo="g4" data-id="c16">
+          <label class="cb-hit"><input type="checkbox" id="c16"></label><label for="c16">Limpeza do local conforme contrato (responsabilidade verificada)</label>
+        </div>
+        <div class="check-item" data-grupo="g4" data-id="c17">
+          <label class="cb-hit"><input type="checkbox" id="c17"></label><label for="c17">Chaves/acessos devolvidos e protocolo assinado</label>
+        </div>
+        <div class="check-item" data-grupo="g4" data-id="c18">
+          <label class="cb-hit"><input type="checkbox" id="c18"></label><label for="c18">Registro fotográfico pós-limpeza entregue ao espaço</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="status-global" id="statusGlobal">
+      Marque os itens da desmontagem para liberar o fechamento
+    </div>
+  </div>
+
+  <!-- ======================= ABA 2: FECHAMENTO FINANCEIRO ======================= -->
+  <div class="panel" id="aba1">
+    <div class="ff-grid">
+      <!-- RECEITAS -->
+      <div class="ff-card">
+        <div class="ff-card-title">Receitas</div>
+        <div class="ff-row">
+          <span class="ff-label">Cachê / contrato</span>
+          <input class="ff-input" type="number" id="r_cache" value="15000" step="100" oninput="calcFF()">
+        </div>
+        <div class="ff-row">
+          <span class="ff-label">Locação de equip.</span>
+          <input class="ff-input" type="number" id="r_locacao" value="4500" step="100" oninput="calcFF()">
+        </div>
+        <div class="ff-row">
+          <span class="ff-label">Adicional técnico</span>
+          <input class="ff-input" type="number" id="r_adicional" value="0" step="100" oninput="calcFF()">
+        </div>
+        <div class="ff-row">
+          <span class="ff-label">Outros (patrocínio etc)</span>
+          <input class="ff-input" type="number" id="r_outros" value="0" step="100" oninput="calcFF()">
+        </div>
+        <div class="ff-separador"></div>
+        <div class="ff-total-row">
+          <span class="ff-total-label">Total Receita</span>
+          <span class="ff-total-valor" id="totalReceita">R$ 19.500</span>
+        </div>
+      </div>
+
+      <!-- CUSTOS -->
+      <div class="ff-card">
+        <div class="ff-card-title">Custos Diretos</div>
+        <div class="ff-row">
+          <span class="ff-label">Equipe / cachê pago</span>
+          <input class="ff-input" type="number" id="c_equipe" value="4200" step="100" oninput="calcFF()">
+        </div>
+        <div class="ff-row">
+          <span class="ff-label">Locação de equip. (custo)</span>
+          <input class="ff-input" type="number" id="c_equip" value="2100" step="100" oninput="calcFF()">
+        </div>
+        <div class="ff-row">
+          <span class="ff-label">Transporte / frete</span>
+          <input class="ff-input" type="number" id="c_transp" value="800" step="100" oninput="calcFF()">
+        </div>
+        <div class="ff-row">
+          <span class="ff-label">Alimentação / hospedagem</span>
+          <input class="ff-input" type="number" id="c_alim" value="350" step="100" oninput="calcFF()">
+        </div>
+        <div class="ff-row">
+          <span class="ff-label">Materiais de consumo</span>
+          <input class="ff-input" type="number" id="c_mat" value="180" step="100" oninput="calcFF()">
+        </div>
+        <div class="ff-row">
+          <span class="ff-label">Impostos / NF (estimado %)</span>
+          <input class="ff-input" type="number" id="c_impostos_pct" value="6" step="0.5" min="0" max="100" oninput="calcFF()">
+        </div>
+        <div class="ff-separador"></div>
+        <div class="ff-total-row">
+          <span class="ff-total-label">Total Custos</span>
+          <span class="ff-total-valor" style="color:#ef4444" id="totalCusto">R$ 7.630</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESULTADO -->
+    <div class="ff-resultado">
+      <div class="ff-resultado-linha">
+        <span class="rkey">Receita bruta</span>
+        <span class="rval azul" id="res_receita">R$ 19.500</span>
+      </div>
+      <div class="ff-resultado-linha">
+        <span class="rkey">(-) Custos diretos</span>
+        <span class="rval vermelho" id="res_custos">- R$ 7.630</span>
+      </div>
+      <div class="ff-resultado-linha">
+        <span class="rkey">Resultado bruto</span>
+        <span class="rval" id="res_resultado">R$ 11.870</span>
+      </div>
+
+      <div class="gauge-wrap">
+        <div class="gauge-track">
+          <div class="gauge-fill" id="gaugeFill" style="width:60%; background:#22c55e;"></div>
+        </div>
+        <div class="gauge-labels">
+          <span>0%</span><span>Zona crítica &lt;15%</span><span>Meta ≥30%</span><span>100%</span>
+        </div>
+      </div>
+
+      <div class="ff-resultado-linha" style="margin-top:4px">
+        <span class="rkey">Margem líquida</span>
+        <span class="rval" id="res_margem" style="font-size:18px">60,9%</span>
+      </div>
+      <div class="ff-resultado-linha">
+        <span class="rkey">ROI do evento</span>
+        <span class="rval" id="res_roi">155%</span>
+      </div>
+    </div>
+
+    <div class="ff-alerta-caixa" id="ffAlerta"></div>
+
+    <!-- Ocorrências impactando financeiro -->
+    <div style="margin-top:10px; padding:8px 12px; background:#252b38; border-radius:8px; border:1px solid #2e3545; font-size:11px; color:#7a8799;">
+      Impacto de ocorrências registradas:
+      <span id="oc_impacto_ff" style="font-weight:700; color:#ef4444; margin-left:6px;">R$ 0</span>
+      <span style="margin-left:8px; color:#5b6675;">— veja aba Ocorrências</span>
+    </div>
+  </div>
+
+  <!-- ======================= ABA 3: OCORRÊNCIAS ======================= -->
+  <div class="panel" id="aba2">
+    <div class="oc-form">
+      <div class="oc-row">
+        <select class="oc-select" id="oc_tipo">
+          <option value="dano">Dano a equipamento</option>
+          <option value="perda">Perda de material</option>
+          <option value="atraso">Atraso operacional</option>
+          <option value="outro">Outra ocorrência</option>
+        </select>
+        <input class="oc-text" type="text" id="oc_desc" placeholder="Descreva a ocorrência…" maxlength="100">
+      </div>
+      <div class="oc-row">
+        <label style="font-size:11px;color:#94a3b8;align-self:center;">Impacto financeiro R$:</label>
+        <input class="oc-impact" type="number" id="oc_val" value="0" step="50" min="0" placeholder="0">
+        <button class="btn-add" onclick="addOcorrencia()">+ Registrar</button>
+      </div>
+    </div>
+
+    <div class="oc-lista" id="ocLista">
+      <div style="text-align:center;padding:20px;color:#5b6675;font-size:12px;">Nenhuma ocorrência registrada</div>
+    </div>
+
+    <div class="oc-total-bar" style="margin-top:10px;">
+      <span class="oc-total-label">Total impacto financeiro das ocorrências</span>
+      <span class="oc-total-val" id="ocTotalVal">R$ 0</span>
+    </div>
+
+    <div style="margin-top:10px;padding:10px 14px;background:#252b38;border-radius:8px;border:1px solid #2e3545;font-size:11px;color:#7a8799;line-height:1.7;">
+      <strong style="color:#cbd5e1;">Dica profissional:</strong> Registre <em>toda</em> ocorrência imediatamente, com foto e descrição.
+      Itens registrados antes da devolução do espaço protegem a produtora de disputas de responsabilidade.
+      Ocorrências com impacto financeiro devem ser incluídas no relatório final ao cliente.
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:12px; text-align:center; font-size:11px; color:#475569; max-width:860px;">
+  <strong>Como usar:</strong> Aba 1 — marque cada item da desmontagem (itens CRÍTICO travam o fechamento se não marcados) · Aba 2 — ajuste receitas e custos para ver margem e ROI ao vivo · Aba 3 — registre ocorrências e danos com impacto financeiro
+</div>
+
+<script>
+// ======== ESTADO GLOBAL ========
+const GRUPOS = { g1: 4, g2: 5, g3: 5, g4: 4 };
+const ocorrencias = [];
+
+// ======== ABA ========
+function mudarAba(idx) {
+  document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === idx));
+  document.querySelectorAll('.panel').forEach((p, i) => p.classList.toggle('active', i === idx));
+  if (idx === 1) calcFF();
+}
+
+// ======== TOGGLE GRUPO ========
+function toggleGrupo(gid) {
+  const el = document.getElementById(gid);
+  el.style.display = el.style.display === 'none' ? '' : 'none';
+}
+
+// ======== CHECKLIST ========
+document.querySelectorAll('.check-item input[type="checkbox"]').forEach(cb => {
+  cb.addEventListener('change', function() {
+    const item = this.closest('.check-item');
+    item.classList.toggle('done', this.checked);
+    atualizarChecklist();
+  });
+});
+
+function atualizarChecklist() {
+  // Progresso global
+  const todos = document.querySelectorAll('.check-item input[type="checkbox"]');
+  const marcados = document.querySelectorAll('.check-item input[type="checkbox"]:checked');
+  const total = todos.length;
+  const feitos = marcados.length;
+  document.getElementById('progFill').style.width = (total ? (feitos/total*100) : 0) + '%';
+  document.getElementById('progCount').textContent = feitos + '/' + total;
+
+  // Badges por grupo
+  for (const gid in GRUPOS) {
+    const grpItems = document.querySelectorAll(`[data-grupo="${gid}"] input[type="checkbox"]`);
+    const grpFeitos = document.querySelectorAll(`[data-grupo="${gid}"] input[type="checkbox"]:checked`);
+    const badge = document.getElementById('badge-' + gid);
+    const cnt = `${grpFeitos.length}/${grpItems.length}`;
+    badge.textContent = cnt;
+    badge.className = 'grupo-badge' + (grpFeitos.length === grpItems.length ? ' done' : '');
+  }
+
+  // Itens críticos não marcados
+  const criticos = document.querySelectorAll('.check-item[data-critico="true"] input:not(:checked)');
+  const avisos = document.getElementById('avisosBloqueio');
+  if (criticos.length > 0) {
+    let html = `<div class="aviso-bloqueio visivel">⛔ ${criticos.length} item(ns) CRÍTICO(S) pendente(s) — resolva antes de ir ao fechamento financeiro:</div>`;
+    avisos.innerHTML = html;
+  } else {
+    avisos.innerHTML = '';
+  }
+
+  // Status global
+  const sg = document.getElementById('statusGlobal');
+  if (feitos === total) {
+    sg.textContent = '✅ Desmontagem completa! Prossiga para o Fechamento Financeiro.';
+    sg.className = 'status-global ok';
+  } else if (feitos >= Math.round(total * 0.5)) {
+    sg.textContent = `⚠️ Em andamento — ${total - feitos} item(ns) restante(s).`;
+    sg.className = 'status-global parcial';
+  } else {
+    sg.textContent = `Desmontagem em progresso: ${feitos} de ${total} itens concluídos.`;
+    sg.className = 'status-global';
+  }
+}
+
+// ======== FECHAMENTO FINANCEIRO ========
+function fmtBRL(v) {
+  return 'R$ ' + Math.abs(v).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
+function calcFF() {
+  const r_cache    = parseFloat(document.getElementById('r_cache').value)    || 0;
+  const r_locacao  = parseFloat(document.getElementById('r_locacao').value)  || 0;
+  const r_adic     = parseFloat(document.getElementById('r_adicional').value)|| 0;
+  const r_out      = parseFloat(document.getElementById('r_outros').value)   || 0;
+  const receita = r_cache + r_locacao + r_adic + r_out;
+
+  const c_equipe   = parseFloat(document.getElementById('c_equipe').value)   || 0;
+  const c_equip    = parseFloat(document.getElementById('c_equip').value)    || 0;
+  const c_transp   = parseFloat(document.getElementById('c_transp').value)   || 0;
+  const c_alim     = parseFloat(document.getElementById('c_alim').value)     || 0;
+  const c_mat      = parseFloat(document.getElementById('c_mat').value)      || 0;
+  const impostoPct = parseFloat(document.getElementById('c_impostos_pct').value) || 0;
+  const impostoVal = receita * impostoPct / 100;
+  const custos = c_equipe + c_equip + c_transp + c_alim + c_mat + impostoVal;
+
+  // Ocorrências
+  const ocImpacto = ocorrencias.reduce((s, o) => s + o.val, 0);
+
+  const resultado = receita - custos - ocImpacto;
+  const margem = receita > 0 ? (resultado / receita * 100) : 0;
+  const roi = custos + ocImpacto > 0 ? (resultado / (custos + ocImpacto) * 100) : 0;
+
+  document.getElementById('totalReceita').textContent  = fmtBRL(receita);
+  document.getElementById('totalCusto').textContent    = fmtBRL(custos);
+  document.getElementById('res_receita').textContent   = fmtBRL(receita);
+  document.getElementById('res_custos').textContent    = '- ' + fmtBRL(custos + ocImpacto);
+  document.getElementById('res_resultado').textContent = fmtBRL(resultado);
+  document.getElementById('oc_impacto_ff').textContent = fmtBRL(ocImpacto);
+
+  const margemEl = document.getElementById('res_margem');
+  margemEl.textContent = margem.toFixed(1).replace('.', ',') + '%';
+  margemEl.className = 'rval ' + (margem >= 30 ? 'verde' : margem >= 15 ? 'amarelo' : 'vermelho');
+
+  document.getElementById('res_roi').textContent = roi.toFixed(0) + '%';
+  document.getElementById('res_resultado').className = 'rval ' + (resultado >= 0 ? 'verde' : 'vermelho');
+
+  const gauge = document.getElementById('gaugeFill');
+  const pctGauge = Math.max(0, Math.min(100, margem));
+  gauge.style.width = pctGauge + '%';
+  gauge.style.background = margem >= 30 ? '#22c55e' : margem >= 15 ? '#f59e0b' : '#ef4444';
+
+  // Alertas
+  const alertaEl = document.getElementById('ffAlerta');
+  if (resultado < 0) {
+    alertaEl.className = 'ff-alerta-caixa visivel tipo-perigo';
+    alertaEl.innerHTML = '⛔ <strong>Evento no prejuízo!</strong> Revise os custos ou negocie reajuste com o cliente. Nunca encerre sem entender a causa da perda.';
+  } else if (margem < 15) {
+    alertaEl.className = 'ff-alerta-caixa visivel tipo-aviso';
+    alertaEl.innerHTML = '⚠️ <strong>Margem abaixo de 15%.</strong> Zona de risco: qualquer imprevisto pode virar prejuízo. Renegocie itens de custo variável no próximo evento.';
+  } else if (margem >= 30) {
+    alertaEl.className = 'ff-alerta-caixa visivel tipo-ok';
+    alertaEl.innerHTML = '✅ <strong>Excelente margem!</strong> Evento saudável financeiramente. Documente a estrutura de custos como referência para próximas propostas.';
+  } else {
+    alertaEl.className = 'ff-alerta-caixa visivel tipo-aviso';
+    alertaEl.innerHTML = '⚠️ Margem entre 15% e 30% — aceitável, mas há espaço para otimização de custos.';
+  }
+}
+
+// ======== OCORRÊNCIAS ========
+function addOcorrencia() {
+  const tipo = document.getElementById('oc_tipo').value;
+  const desc = document.getElementById('oc_desc').value.trim();
+  const val  = parseFloat(document.getElementById('oc_val').value) || 0;
+  if (!desc) { document.getElementById('oc_desc').focus(); return; }
+
+  const id = Date.now();
+  ocorrencias.push({ id, tipo, desc, val });
+  document.getElementById('oc_desc').value = '';
+  document.getElementById('oc_val').value = '0';
+  renderOcorrencias();
+  calcFF();
+}
+
+function removeOcorrencia(id) {
+  const idx = ocorrencias.findIndex(o => o.id === id);
+  if (idx !== -1) ocorrencias.splice(idx, 1);
+  renderOcorrencias();
+  calcFF();
+}
+
+const tipoLabel = { dano: 'Dano', perda: 'Perda', atraso: 'Atraso', outro: 'Outro' };
+
+function renderOcorrencias() {
+  const lista = document.getElementById('ocLista');
+  if (ocorrencias.length === 0) {
+    lista.innerHTML = '<div style="text-align:center;padding:20px;color:#5b6675;font-size:12px;">Nenhuma ocorrência registrada</div>';
+    document.getElementById('ocTotalVal').textContent = 'R$ 0';
+    return;
+  }
+  lista.innerHTML = ocorrencias.map(o => `
+    <div class="oc-item">
+      <span class="oc-badge ${o.tipo}">${tipoLabel[o.tipo]}</span>
+      <span class="oc-desc">${o.desc}</span>
+      ${o.val > 0 ? `<span class="oc-impacto-val">- ${fmtBRL(o.val)}</span>` : '<span style="color:#5b6675;font-size:11px;">sem impacto $</span>'}
+      <button class="oc-del" onclick="removeOcorrencia(${o.id})" title="Remover">✕</button>
+    </div>
+  `).join('');
+  const total = ocorrencias.reduce((s, o) => s + o.val, 0);
+  document.getElementById('ocTotalVal').textContent = fmtBRL(total);
+}
+
+// ======== INIT ========
+calcFF();
+atualizarChecklist();
+</script>
+</body>
+</html>

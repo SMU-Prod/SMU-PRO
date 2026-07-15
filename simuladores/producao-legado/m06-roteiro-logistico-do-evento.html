@@ -1,0 +1,1353 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMU PRO · Roteiro Logístico</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #eef2f6;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    min-height: 100vh;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .device {
+    background: #20252f;
+    border: 1px solid #10141b;
+    border-radius: 12px;
+    padding: 14px;
+    width: 100%;
+    max-width: 860px;
+    color: #cbd5e1;
+  }
+  .device-label {
+    font-size: 10px;
+    letter-spacing: .14em;
+    color: #5b6675;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+  }
+  h2 {
+    font-size: 16px;
+    color: #e2e8f0;
+    margin-bottom: 12px;
+    font-weight: 600;
+  }
+  /* Timeline container */
+  .timeline-area {
+    background: #171b24;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+    position: relative;
+    overflow: hidden;
+  }
+  .timeline-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .timeline-title {
+    font-size: 12px;
+    color: #94a3b8;
+    letter-spacing: .06em;
+  }
+  .day-label {
+    font-size: 11px;
+    color: #3b82f6;
+    font-weight: 600;
+  }
+  /* Hour ruler */
+  .hour-ruler {
+    display: flex;
+    margin-bottom: 6px;
+    padding-left: 120px;
+  }
+  .hour-tick {
+    flex: 1;
+    font-size: 9px;
+    color: #475569;
+    text-align: center;
+    border-left: 1px solid #2d3748;
+    padding-bottom: 3px;
+  }
+  /* Task row */
+  .task-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 6px;
+    height: 36px;
+    position: relative;
+  }
+  .task-label {
+    width: 120px;
+    min-width: 120px;
+    font-size: 11px;
+    color: #94a3b8;
+    padding-right: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .task-track {
+    flex: 1;
+    position: relative;
+    height: 28px;
+    background: #1e2535;
+    border-radius: 4px;
+    border: 1px solid #2d3748;
+    cursor: pointer;
+    overflow: hidden;
+  }
+  .task-bar {
+    position: absolute;
+    height: 100%;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: #fff;
+    cursor: grab;
+    user-select: none;
+    transition: filter .15s;
+    white-space: nowrap;
+    overflow: hidden;
+    padding: 0 6px;
+  }
+  .task-bar:hover { filter: brightness(1.2); }
+  .task-bar.dragging { cursor: grabbing; z-index: 10; filter: brightness(1.35); }
+  .task-bar.conflict { border: 2px solid #ef4444; }
+  /* Conflict flash overlay */
+  .conflict-zone {
+    position: absolute;
+    top: 0; bottom: 0;
+    background: rgba(239,68,68,0.18);
+    border-left: 2px solid #ef4444;
+    border-right: 2px solid #ef4444;
+    pointer-events: none;
+    border-radius: 3px;
+  }
+  /* Current time needle */
+  .time-needle {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 2px;
+    background: #f59e0b;
+    pointer-events: none;
+    z-index: 20;
+  }
+  .time-needle::after {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    width: 10px;
+    height: 10px;
+    background: #f59e0b;
+    border-radius: 50%;
+  }
+  /* Controls panel */
+  .controls-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  /* Em telas estreitas a grade de 2 colunas nao cabe: empilha */
+  @media (max-width: 600px) {
+    .controls-grid { grid-template-columns: 1fr; }
+  }
+  .ctrl-card {
+    background: #171b24;
+    border-radius: 8px;
+    padding: 10px 12px;
+    min-width: 0;
+  }
+  .ctrl-title {
+    font-size: 10px;
+    letter-spacing: .1em;
+    color: #5b6675;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .slider-name {
+    font-size: 11px;
+    color: #94a3b8;
+    width: 110px;
+    min-width: 110px;
+  }
+  input[type=range] {
+    flex: 1;
+    min-width: 0;
+    -webkit-appearance: none;
+    height: 5px;
+    border-radius: 3px;
+    background: #2d3748;
+    outline: none;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #3b82f6;
+    cursor: pointer;
+  }
+  .slider-val {
+    font-size: 11px;
+    color: #e2e8f0;
+    width: 34px;
+    text-align: right;
+    font-weight: 600;
+  }
+  /* Checklist */
+  .check-list {
+    list-style: none;
+  }
+  .check-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 5px;
+    font-size: 11px;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 3px 0;
+    border-radius: 4px;
+    transition: background .1s;
+  }
+  .check-item:hover { background: rgba(255,255,255,.03); }
+  .check-box {
+    width: 16px; height: 16px;
+    border: 1.5px solid #3b82f6;
+    border-radius: 3px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-size: 10px;
+    color: #22c55e;
+    transition: background .15s, border-color .15s;
+  }
+  .check-box.checked { background: #22c55e22; border-color: #22c55e; }
+  .check-box.blocked { border-color: #ef4444; background: #ef444422; }
+  .check-label { flex: 1; }
+  .check-critical {
+    font-size: 9px;
+    color: #ef4444;
+    font-weight: 700;
+    letter-spacing: .06em;
+  }
+  /* Status panel */
+  .status-bar {
+    background: #171b24;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+  }
+  .status-pill {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 70px;
+  }
+  .pill-label {
+    font-size: 9px;
+    color: #5b6675;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+  .pill-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: #e2e8f0;
+  }
+  .pill-value.ok { color: #22c55e; }
+  .pill-value.warn { color: #f59e0b; }
+  .pill-value.danger { color: #ef4444; }
+  .status-divider { width: 1px; background: #2d3748; align-self: stretch; margin: 2px 0; }
+  /* Score bar */
+  .score-track {
+    flex: 1;
+    min-width: 160px;
+    height: 10px;
+    background: #2d3748;
+    border-radius: 5px;
+    overflow: hidden;
+    position: relative;
+  }
+  .score-fill {
+    height: 100%;
+    border-radius: 5px;
+    transition: width .4s, background .4s;
+  }
+  /* Alert box */
+  .alert-box {
+    background: #1e2535;
+    border-radius: 6px;
+    padding: 8px 12px;
+    min-height: 36px;
+    font-size: 11px;
+    color: #cbd5e1;
+    margin-bottom: 10px;
+    line-height: 1.5;
+    border-left: 3px solid #3b82f6;
+    transition: border-color .3s;
+  }
+  .alert-box.warn { border-color: #f59e0b; color: #fcd34d; }
+  .alert-box.danger { border-color: #ef4444; color: #fca5a5; }
+  .alert-box.ok { border-color: #22c55e; color: #86efac; }
+  /* Buttons */
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .btn {
+    padding: 7px 14px;
+    border-radius: 6px;
+    border: none;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: .04em;
+    transition: filter .15s, transform .1s;
+  }
+  .btn:hover { filter: brightness(1.15); }
+  .btn:active { transform: scale(.97); }
+  /* Alvo de toque em celular/tablet (nao afeta desktop) */
+  @media (max-width: 600px), (pointer: coarse) { .btn { min-height: 34px; } }
+  .btn-blue { background: #3b82f6; color: #fff; }
+  .btn-green { background: #22c55e; color: #fff; }
+  .btn-red { background: #ef4444; color: #fff; }
+  .btn-gray { background: #374151; color: #cbd5e1; }
+  .btn-yellow { background: #f59e0b; color: #111; }
+  /* Phase indicator */
+  .phase-steps {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .phase-step {
+    flex: 1;
+    min-width: 60px;
+    text-align: center;
+    font-size: 9px;
+    letter-spacing: .05em;
+    padding: 4px 6px;
+    border-radius: 4px;
+    background: #1e2535;
+    color: #475569;
+    border: 1px solid #2d3748;
+    transition: all .3s;
+    cursor: pointer;
+  }
+  .phase-step.active {
+    background: #1e3a5f;
+    color: #93c5fd;
+    border-color: #3b82f6;
+  }
+  .phase-step.done {
+    background: #14532d33;
+    color: #22c55e;
+    border-color: #22c55e55;
+  }
+  /* Resource meters */
+  .resource-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 5px;
+  }
+  .res-label {
+    font-size: 11px;
+    color: #94a3b8;
+    width: 90px;
+    min-width: 90px;
+  }
+  .res-track {
+    flex: 1;
+    height: 8px;
+    background: #2d3748;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .res-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width .3s, background .3s;
+  }
+  .res-val {
+    font-size: 10px;
+    color: #94a3b8;
+    width: 32px;
+    text-align: right;
+  }
+  /* Tab system for phases */
+  .tab-area {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 6px;
+    border-radius: 6px;
+    border: 1px solid #2d3748;
+    background: #1e2535;
+    color: #5b6675;
+    font-size: 10px;
+    cursor: pointer;
+    text-align: center;
+    transition: all .2s;
+    font-weight: 600;
+    letter-spacing: .04em;
+  }
+  .tab-btn.active-tab {
+    background: #1e3a5f;
+    border-color: #3b82f6;
+    color: #93c5fd;
+  }
+  .tab-btn.done-tab {
+    background: #14532d33;
+    border-color: #22c55e55;
+    color: #22c55e;
+  }
+  .tab-content { display: none; }
+  .tab-content.visible { display: block; }
+  /* Tooltip */
+  .tip {
+    font-size: 10px;
+    color: #475569;
+    margin-top: 4px;
+    font-style: italic;
+  }
+  /* Final score card */
+  .final-card {
+    display: none;
+    background: #171b24;
+    border-radius: 10px;
+    padding: 18px;
+    text-align: center;
+    margin-top: 10px;
+  }
+  .final-card.show { display: block; }
+  .final-score-num {
+    font-size: 52px;
+    font-weight: 900;
+    margin: 8px 0;
+  }
+  .final-grade {
+    font-size: 14px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .final-breakdown {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-top: 8px;
+    text-align: left;
+  }
+  .breakdown-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 3px 0;
+    border-bottom: 1px solid #2d3748;
+  }
+</style>
+</head>
+<body>
+<script>/*SMU-ZOOM*/(function(){var z=1,sc=null,MIN=1,MAX=2.5,STEP=0.25;function wrap(){if(sc)return;sc=document.createElement('div');sc.id='smu-sc';sc.style.transformOrigin='0 0';[].slice.call(document.body.children).filter(function(el){return (el.id||'').indexOf('smu-')!==0;}).forEach(function(k){sc.appendChild(k);});document.body.insertBefore(sc,document.body.firstChild);document.documentElement.style.overflow='auto';document.body.style.overflow='auto';document.body.style.margin='0';}function apply(){if(!sc)wrap();sc.style.transform='scale('+z+')';var w=sc.offsetWidth,h=sc.offsetHeight;document.body.style.width=(z>1?(w*z)+'px':'');document.body.style.height=(z>1?(h*z)+'px':'');var l=document.getElementById('smu-zl');if(l)l.textContent=Math.round(z*100)+'%';}function ui(){if(document.getElementById('smu-zoom'))return;var b=document.createElement('div');b.id='smu-zoom';b.style.cssText='position:fixed;left:10px;bottom:10px;z-index:99999;display:flex;align-items:center;gap:5px;background:#0e1420;border:1px solid #2c3340;border-radius:22px;padding:5px 8px;box-shadow:0 2px 10px rgba(0,0,0,.4);font-family:system-ui,sans-serif';function mk(t){var x=document.createElement('button');x.textContent=t;x.style.cssText='width:32px;height:32px;border-radius:50%;border:1px solid #2c3340;background:#171c26;color:#e5e7eb;font-size:18px;cursor:pointer;padding:0;line-height:1';return x;}var ic=document.createElement('span');ic.textContent='\U0001F50D';ic.style.fontSize='14px';var mi=mk('−'),lab=document.createElement('span'),pl=mk('+');lab.id='smu-zl';lab.style.cssText='font-size:12px;color:#cbd5e1;min-width:44px;text-align:center;cursor:pointer';lab.textContent='100%';b.appendChild(ic);b.appendChild(mi);b.appendChild(lab);b.appendChild(pl);document.body.appendChild(b);mi.onclick=function(){z=Math.max(MIN,Math.round((z-STEP)*100)/100);apply();};pl.onclick=function(){z=Math.min(MAX,Math.round((z+STEP)*100)/100);apply();};lab.onclick=function(){z=1;apply();};}if(document.readyState!=='loading')ui();else document.addEventListener('DOMContentLoaded',ui);})();</script>
+
+
+<div class="device">
+  <div class="device-label">SMU PRO · ROTEIRO LOGÍSTICO</div>
+  <h2>Simulador: Monte o Roteiro do Evento</h2>
+
+  <!-- Phase tabs -->
+  <div class="tab-area">
+    <div class="tab-btn active-tab" id="tab-0" onclick="switchTab(0)">D-7 PLANEJ.</div>
+    <div class="tab-btn" id="tab-1" onclick="switchTab(1)">D-1 PREP.</div>
+    <div class="tab-btn" id="tab-2" onclick="switchTab(2)">DIA DO EV.</div>
+    <div class="tab-btn" id="tab-3" onclick="switchTab(3)">PÓS-EV.</div>
+  </div>
+
+  <!-- STATUS BAR always visible -->
+  <div class="status-bar">
+    <div class="status-pill">
+      <div class="pill-label">PONTUAÇÃO</div>
+      <div class="pill-value" id="score-val">0</div>
+    </div>
+    <div class="status-divider"></div>
+    <div class="status-pill">
+      <div class="pill-label">ITENS OK</div>
+      <div class="pill-value ok" id="ok-count">0</div>
+    </div>
+    <div class="status-divider"></div>
+    <div class="status-pill">
+      <div class="pill-label">CRÍTICOS</div>
+      <div class="pill-value danger" id="crit-val">0</div>
+    </div>
+    <div class="status-divider"></div>
+    <div class="status-pill">
+      <div class="pill-label">FASE</div>
+      <div class="pill-value" id="phase-name" style="font-size:12px">D-7</div>
+    </div>
+    <div class="status-divider"></div>
+    <div style="flex:1; min-width:120px;">
+      <div class="pill-label" style="margin-bottom:4px">PROGRESSO GERAL</div>
+      <div class="score-track">
+        <div class="score-fill" id="prog-fill" style="width:0%;background:#3b82f6"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="alert-box" id="alert-box">
+    Selecione a aba de fase e complete os itens do roteiro logístico. Itens em vermelho são <strong>críticos</strong> — travam o evento se não forem resolvidos.
+  </div>
+
+  <!-- TAB 0: D-7 Planejamento -->
+  <div class="tab-content visible" id="tab-content-0">
+    <div class="ctrl-title" style="margin-bottom:8px">D-7 · Semana Anterior — Planejamento & Contratação</div>
+
+    <div class="controls-grid">
+      <div class="ctrl-card">
+        <div class="ctrl-title">Equipe Técnica</div>
+        <div class="slider-row">
+          <div class="slider-name">Técnicos Áudio</div>
+          <input type="range" min="0" max="6" value="0" id="sl-audio" oninput="updateSlider('audio')">
+          <div class="slider-val" id="sv-audio">0</div>
+        </div>
+        <div class="slider-row">
+          <div class="slider-name">Técnicos Vídeo</div>
+          <input type="range" min="0" max="6" value="0" id="sl-video" oninput="updateSlider('video')">
+          <div class="slider-val" id="sv-video">0</div>
+        </div>
+        <div class="slider-row">
+          <div class="slider-name">Iluminadores</div>
+          <input type="range" min="0" max="6" value="0" id="sl-luz" oninput="updateSlider('luz')">
+          <div class="slider-val" id="sv-luz">0</div>
+        </div>
+        <div class="slider-row">
+          <div class="slider-name">Equipe Cenário</div>
+          <input type="range" min="0" max="8" value="0" id="sl-cen" oninput="updateSlider('cen')">
+          <div class="slider-val" id="sv-cen">0</div>
+        </div>
+        <div class="tip">Evento médio: 2 áudio · 2 vídeo · 3 luz · 4 cenário</div>
+      </div>
+
+      <div class="ctrl-card">
+        <div class="ctrl-title">Recursos & Contratação</div>
+        <div class="slider-row">
+          <div class="slider-name">Orçamento (R$ mil)</div>
+          <input type="range" min="5" max="200" value="5" id="sl-orca" oninput="updateSlider('orca')">
+          <div class="slider-val" id="sv-orca">5</div>
+        </div>
+        <div class="slider-row">
+          <div class="slider-name">Veículos Transp.</div>
+          <input type="range" min="0" max="10" value="0" id="sl-veic" oninput="updateSlider('veic')">
+          <div class="slider-val" id="sv-veic">0</div>
+        </div>
+        <div class="slider-row">
+          <div class="slider-name">Antecedência (dias)</div>
+          <input type="range" min="1" max="30" value="1" id="sl-ante" oninput="updateSlider('ante')">
+          <div class="slider-val" id="sv-ante">1</div>
+        </div>
+        <div class="tip">Antecipação &lt; 7 dias: risco de indisponibilidade</div>
+      </div>
+    </div>
+
+    <div class="ctrl-card" style="margin-bottom:10px">
+      <div class="ctrl-title">Checklist D-7 — Documentação & Logística</div>
+      <ul class="check-list" id="checklist-d7"></ul>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-blue" onclick="validatePhase(0)">Validar Planejamento</button>
+      <button class="btn btn-gray" onclick="resetPhase(0)">Limpar</button>
+    </div>
+  </div>
+
+  <!-- TAB 1: D-1 Preparação -->
+  <div class="tab-content" id="tab-content-1">
+    <div class="ctrl-title" style="margin-bottom:8px">D-1 · Véspera — Preparação Operacional</div>
+
+    <div class="ctrl-card" style="margin-bottom:10px">
+      <div class="ctrl-title">Timeline de Montagem (arraste as barras)</div>
+      <div class="timeline-area" id="timeline-d1">
+        <div class="hour-ruler" id="ruler-d1"></div>
+        <!-- Task rows inserted by JS -->
+        <div id="task-rows-d1"></div>
+        <div class="tip" style="margin-top:6px">Arraste as barras para ajustar os horários. Sobreposição = conflito!</div>
+      </div>
+    </div>
+
+    <div class="ctrl-card" style="margin-bottom:10px">
+      <div class="ctrl-title">Checklist D-1 — Preparação no Local</div>
+      <ul class="check-list" id="checklist-d1"></ul>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-blue" onclick="validatePhase(1)">Validar Preparação</button>
+      <button class="btn btn-gray" onclick="resetTimeline()">Resetar Timeline</button>
+    </div>
+  </div>
+
+  <!-- TAB 2: Dia do Evento -->
+  <div class="tab-content" id="tab-content-2">
+    <div class="ctrl-title" style="margin-bottom:8px">DIA DO EVENTO · Execução e Gestão em Tempo Real</div>
+
+    <!-- Clock sim -->
+    <div class="ctrl-card" style="margin-bottom:10px">
+      <div class="ctrl-title">Relógio do Evento</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+        <div style="font-size:36px;font-weight:900;color:#3b82f6;font-variant-numeric:tabular-nums" id="clock-display">08:00</div>
+        <div style="flex:1">
+          <div class="slider-row">
+            <div class="slider-name">Hora do evento</div>
+            <input type="range" min="6" max="24" value="8" step="0.5" id="sl-hora" oninput="updateClock()">
+            <div class="slider-val" id="sv-hora">08:00</div>
+          </div>
+        </div>
+      </div>
+      <div id="event-phase-indicator" style="font-size:11px;color:#f59e0b;font-weight:600"></div>
+    </div>
+
+    <div class="controls-grid">
+      <div class="ctrl-card">
+        <div class="ctrl-title">Recursos em Tempo Real</div>
+        <div class="resource-row">
+          <div class="res-label">Energia (kVA)</div>
+          <div class="res-track"><div class="res-fill" id="res-energia" style="width:0%;background:#22c55e"></div></div>
+          <div class="res-val" id="rv-energia">0%</div>
+        </div>
+        <div class="resource-row">
+          <div class="res-label">Equipe Disponível</div>
+          <div class="res-track"><div class="res-fill" id="res-equipe" style="width:100%;background:#22c55e"></div></div>
+          <div class="res-val" id="rv-equipe">100%</div>
+        </div>
+        <div class="resource-row">
+          <div class="res-label">Comunicação</div>
+          <div class="res-track"><div class="res-fill" id="res-comun" style="width:0%;background:#ef4444"></div></div>
+          <div class="res-val" id="rv-comun">0%</div>
+        </div>
+        <div class="resource-row">
+          <div class="res-label">Estoque Insumos</div>
+          <div class="res-track"><div class="res-fill" id="res-insumos" style="width:0%;background:#ef4444"></div></div>
+          <div class="res-val" id="rv-insumos">0%</div>
+        </div>
+      </div>
+
+      <div class="ctrl-card">
+        <div class="ctrl-title">Ocorrências — Responda às Situações</div>
+        <div id="incident-list" style="font-size:11px;"></div>
+      </div>
+    </div>
+
+    <div class="ctrl-card" style="margin-bottom:10px;margin-top:10px">
+      <div class="ctrl-title">Checklist Dia do Evento</div>
+      <ul class="check-list" id="checklist-dia"></ul>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-blue" onclick="validatePhase(2)">Validar Execução</button>
+      <button class="btn btn-yellow" onclick="triggerIncident()">Simular Ocorrência</button>
+    </div>
+  </div>
+
+  <!-- TAB 3: Pós-evento -->
+  <div class="tab-content" id="tab-content-3">
+    <div class="ctrl-title" style="margin-bottom:8px">PÓS-EVENTO · Desmontagem e Encerramento</div>
+
+    <div class="controls-grid">
+      <div class="ctrl-card">
+        <div class="ctrl-title">Desmontagem</div>
+        <div class="slider-row">
+          <div class="slider-name">Equipe desmontagem</div>
+          <input type="range" min="0" max="10" value="0" id="sl-desm" oninput="updateSlider('desm')">
+          <div class="slider-val" id="sv-desm">0</div>
+        </div>
+        <div class="slider-row">
+          <div class="slider-name">Janela de tempo (h)</div>
+          <input type="range" min="1" max="12" value="1" id="sl-janela" oninput="updateSlider('janela')">
+          <div class="slider-val" id="sv-janela">1</div>
+        </div>
+        <div class="tip">1 técnico ≈ 30 min p/ rack de áudio. Calcule o tempo total.</div>
+      </div>
+
+      <div class="ctrl-card">
+        <div class="ctrl-title">Inventário de Retorno</div>
+        <div class="slider-row">
+          <div class="slider-name">Equipamentos (un.)</div>
+          <input type="range" min="0" max="100" value="0" id="sl-equip" oninput="updateSlider('equip')">
+          <div class="slider-val" id="sv-equip">0</div>
+        </div>
+        <div class="slider-row">
+          <div class="slider-name">Cabos e Acessórios</div>
+          <input type="range" min="0" max="100" value="0" id="sl-cabos" oninput="updateSlider('cabos')">
+          <div class="slider-val" id="sv-cabos">0</div>
+        </div>
+        <div class="tip">Inventário incompleto = perda de material não rastreada.</div>
+      </div>
+    </div>
+
+    <div class="ctrl-card" style="margin-bottom:10px">
+      <div class="ctrl-title">Checklist Pós-evento — Encerramento</div>
+      <ul class="check-list" id="checklist-pos"></ul>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-green" onclick="finalizarRoteiro()">Finalizar Roteiro Completo</button>
+      <button class="btn btn-gray" onclick="validatePhase(3)">Validar Fase</button>
+    </div>
+
+    <div class="final-card" id="final-card">
+      <div style="font-size:11px;color:#5b6675;letter-spacing:.1em;text-transform:uppercase">Roteiro Logístico Concluído</div>
+      <div class="final-score-num" id="final-num">0</div>
+      <div class="final-grade" id="final-grade"></div>
+      <div class="final-breakdown" id="final-breakdown"></div>
+      <button class="btn btn-blue" style="margin-top:14px" onclick="resetAll()">Novo Roteiro</button>
+    </div>
+  </div>
+
+</div>
+
+<p style="color:#475569;font-size:11px;margin-top:12px;text-align:center;max-width:860px">
+  <strong>Como usar:</strong> Avance pelas abas (D-7 → D-1 → Dia → Pós-evento). Em cada fase, ajuste os sliders, complete os checklists e pressione <em>Validar</em>. Na aba D-1, arraste as barras da timeline para encaixar os horários sem conflito. Na aba Dia, simule ocorrências e responda. Itens em vermelho são críticos e penalizam a pontuação.
+</p>
+
+<script>
+// ===================== STATE =====================
+const state = {
+  phase: 0,
+  phaseScores: [0,0,0,0],
+  phaseValidated: [false,false,false,false],
+  checks: { d7: {}, d1: {}, dia: {}, pos: {} },
+  sliders: {},
+  incidents: [],
+  incidentCount: 0,
+  conflictsD1: 0,
+};
+
+// ===================== CHECKLISTS =====================
+const CHECKLISTS = {
+  d7: [
+    { id:'brief',    label:'Briefing técnico com o cliente',       critical:true,  blockedBy:[] },
+    { id:'rider',    label:'Rider técnico da atração confirmado',   critical:true,  blockedBy:['brief'] },
+    { id:'planta',   label:'Planta baixa e mapa do espaço obtidos', critical:true,  blockedBy:['brief'] },
+    { id:'seguro',   label:'Seguro do evento contratado',           critical:true,  blockedBy:[] },
+    { id:'alvara',   label:'Alvará/autorização do local confirmado', critical:true, blockedBy:[] },
+    { id:'contrato', label:'Contratos da equipe assinados',         critical:false, blockedBy:['brief'] },
+    { id:'hotel',    label:'Hospedagem da equipe reservada',        critical:false, blockedBy:[] },
+    { id:'catering', label:'Alimentação da equipe confirmada',      critical:false, blockedBy:[] },
+    { id:'orcbase',  label:'Orçamento base aprovado pelo cliente',  critical:true,  blockedBy:['brief'] },
+    { id:'backup',   label:'Plano de contingência definido',        critical:false, blockedBy:['rider','planta'] },
+  ],
+  d1: [
+    { id:'vistoria',  label:'Vistoria do local realizada',           critical:true,  blockedBy:[] },
+    { id:'energia',   label:'Ponto de energia medido e mapeado',     critical:true,  blockedBy:['vistoria'] },
+    { id:'acesso',    label:'Rota de acesso para carga/descarga ok', critical:true,  blockedBy:['vistoria'] },
+    { id:'recepcao',  label:'Ponto de recepção de equipamentos def.', critical:false, blockedBy:[] },
+    { id:'walkie',    label:'Rádios e walkie-talkies testados',      critical:false, blockedBy:[] },
+    { id:'sinaliz',   label:'Sinalização interna instalada',         critical:false, blockedBy:['acesso'] },
+    { id:'lista',     label:'Lista de pessoal autorizado emitida',   critical:true,  blockedBy:[] },
+    { id:'carga',     label:'Carregamento/despacho dos caminhões ok', critical:true, blockedBy:['acesso','lista'] },
+  ],
+  dia: [
+    { id:'chegada',   label:'Chegada da equipe no horário de call',    critical:true,  blockedBy:[] },
+    { id:'passagem',  label:'Passagem de som/imagem realizada',         critical:true,  blockedBy:['chegada'] },
+    { id:'gfm',       label:'General Field Manager posicionado',        critical:false, blockedBy:[] },
+    { id:'rundown',   label:'Rundown distribuído a toda equipe',        critical:true,  blockedBy:[] },
+    { id:'comm',      label:'Canal de comunicação única ativo',         critical:true,  blockedBy:['gfm'] },
+    { id:'seguranca', label:'Equipe de segurança e rotas de saída ok',  critical:true,  blockedBy:[] },
+    { id:'abertura',  label:'Abertura de casa/ingresso controlado',     critical:false, blockedBy:['seguranca'] },
+    { id:'pontofix',  label:'Ponto fixo de suporte técnico ativo',      critical:false, blockedBy:['passagem'] },
+    { id:'encerra',   label:'Encerramento comunicado com 30 min anteced.', critical:false, blockedBy:[] },
+  ],
+  pos: [
+    { id:'inv',       label:'Inventário de equipamentos realizado',     critical:true,  blockedBy:[] },
+    { id:'avaria',    label:'Avarias documentadas com fotos',           critical:true,  blockedBy:['inv'] },
+    { id:'desm',      label:'Desmontagem concluída no prazo',           critical:true,  blockedBy:[] },
+    { id:'nota',      label:'Nota fiscal / fechamento financeiro emitido', critical:true, blockedBy:[] },
+    { id:'relatorio', label:'Relatório pós-evento redigido',            critical:false, blockedBy:['avaria'] },
+    { id:'feedback',  label:'Feedback coletado com o cliente',          critical:false, blockedBy:['nota'] },
+    { id:'arquivo',   label:'Arquivamento digital do roteiro',          critical:false, blockedBy:['relatorio'] },
+  ],
+};
+
+const PHASE_KEYS = ['d7','d1','dia','pos'];
+const PHASE_NAMES = ['D-7','D-1','Dia do Ev.','Pós-Ev.'];
+
+// ===================== TIMELINE D-1 =====================
+const TIMELINE_TASKS = [
+  { id:'t-desc',  label:'Descarga',     color:'#a78bfa', start:7,  dur:1.5, min:6,  max:12 },
+  { id:'t-cen',   label:'Cenografia',   color:'#3b82f6', start:8,  dur:3,   min:7,  max:16 },
+  { id:'t-luz',   label:'Iluminação',   color:'#f59e0b', start:9,  dur:3,   min:8,  max:18 },
+  { id:'t-audio', label:'Áudio',        color:'#22c55e', start:10, dur:2.5, min:9,  max:18 },
+  { id:'t-video', label:'Vídeo',        color:'#ef4444', start:11, dur:2,   min:10, max:18 },
+  { id:'t-som',   label:'Passagem de som', color:'#64748b', start:13, dur:1, min:12, max:20 },
+];
+
+let tlTasks = [];
+let dragging = null;
+let dragStartX = 0;
+let dragStartHour = 0;
+const TL_START = 6;
+const TL_END = 22;
+const TL_HOURS = TL_END - TL_START;
+
+// ===================== INCIDENTS =====================
+const INCIDENTS = [
+  { msg:'⚡ Queda de energia no setor de palco!',    resp:'Acione grupo-gerador imediatamente.',    key:'energia', impact:'energia' },
+  { msg:'🎤 Mesa de som não liga na passagem!',       resp:'Verifique patch e breaker de energia.',  key:'mesa',    impact:'comun'   },
+  { msg:'🚚 Caminhão com cenografia atrasou 2h!',    resp:'Reordene a equipe para tarefas paralelas.', key:'cam', impact:'equipe' },
+  { msg:'🌧️ Chuva inesperada no espaço descoberto!', resp:'Acione plano de contingência climática.', key:'chuva',  impact:'insumos' },
+  { msg:'👥 Técnico principal desmarcou sem aviso!', resp:'Contate substituto do plano de backup.',  key:'tec',    impact:'equipe' },
+  { msg:'📡 Sistema de comunicação inativo!',        resp:'Distribua walkie-talkies reserva.',       key:'radio',   impact:'comun'  },
+];
+
+// ===================== INIT =====================
+function init() {
+  buildChecklists();
+  buildTimeline();
+  buildIncidentList();
+  updateAll();
+}
+
+function buildChecklists() {
+  Object.keys(CHECKLISTS).forEach(phase => {
+    const ul = document.getElementById('checklist-' + phase);
+    if (!ul) return;
+    ul.innerHTML = '';
+    CHECKLISTS[phase].forEach(item => {
+      state.checks[phase][item.id] = false;
+      const li = document.createElement('li');
+      li.className = 'check-item';
+      li.id = 'ci-' + phase + '-' + item.id;
+      li.onclick = () => toggleCheck(phase, item.id);
+      li.innerHTML = `<div class="check-box" id="cb-${phase}-${item.id}"></div>
+        <span class="check-label">${item.label}</span>
+        ${item.critical ? '<span class="check-critical">CRÍTICO</span>' : ''}`;
+      ul.appendChild(li);
+    });
+  });
+}
+
+function toggleCheck(phase, id) {
+  const item = CHECKLISTS[phase].find(i => i.id === id);
+  if (!item) return;
+  // Check blockedBy
+  const blocked = item.blockedBy.some(dep => !state.checks[phase][dep]);
+  if (blocked && !state.checks[phase][id]) {
+    const deps = item.blockedBy.filter(dep => !state.checks[phase][dep])
+      .map(dep => CHECKLISTS[phase].find(i=>i.id===dep)?.label || dep).join(', ');
+    setAlert(`🔒 Bloqueado! Conclua primeiro: "${deps}"`, 'danger');
+    return;
+  }
+  state.checks[phase][id] = !state.checks[phase][id];
+  updateAll();
+}
+
+// ===================== TIMELINE =====================
+function buildTimeline() {
+  tlTasks = TIMELINE_TASKS.map(t => ({...t}));
+  renderTimeline();
+}
+
+function renderTimeline() {
+  const ruler = document.getElementById('ruler-d1');
+  const rows = document.getElementById('task-rows-d1');
+  if (!ruler || !rows) return;
+
+  ruler.innerHTML = '';
+  for (let h = TL_START; h <= TL_END; h++) {
+    const d = document.createElement('div');
+    d.className = 'hour-tick';
+    d.textContent = h + 'h';
+    ruler.appendChild(d);
+  }
+
+  rows.innerHTML = '';
+  tlTasks.forEach((task, idx) => {
+    const row = document.createElement('div');
+    row.className = 'task-row';
+    row.innerHTML = `<div class="task-label">${task.label}</div><div class="task-track" id="track-${task.id}"></div>`;
+    rows.appendChild(row);
+  });
+
+  tlTasks.forEach(task => {
+    renderBar(task);
+  });
+  checkConflicts();
+}
+
+function pctFromHour(h) {
+  return ((h - TL_START) / TL_HOURS) * 100;
+}
+function hourFromPct(p) {
+  return TL_START + (p / 100) * TL_HOURS;
+}
+
+function renderBar(task) {
+  const track = document.getElementById('track-' + task.id);
+  if (!track) return;
+  let bar = track.querySelector('.task-bar');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.className = 'task-bar';
+    bar.id = 'bar-' + task.id;
+    bar.style.background = task.color;
+    track.appendChild(bar);
+    bar.addEventListener('mousedown', (e) => startDrag(e, task));
+    bar.addEventListener('touchstart', (e) => startDrag(e, task), {passive:false});
+  }
+  const leftPct = pctFromHour(task.start);
+  const widthPct = (task.dur / TL_HOURS) * 100;
+  bar.style.left = leftPct + '%';
+  bar.style.width = widthPct + '%';
+  bar.textContent = `${fmtHour(task.start)}–${fmtHour(task.start + task.dur)}`;
+}
+
+function fmtHour(h) {
+  const hh = Math.floor(h);
+  const mm = Math.round((h - hh) * 60);
+  return `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
+}
+
+function startDrag(e, task) {
+  e.preventDefault();
+  dragging = task;
+  const track = document.getElementById('track-' + task.id);
+  const rect = track.getBoundingClientRect();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const pct = ((clientX - rect.left) / rect.width) * 100;
+  dragStartHour = hourFromPct(pct) - task.start;
+
+  const bar = document.getElementById('bar-' + task.id);
+  if (bar) bar.classList.add('dragging');
+
+  document.addEventListener('mousemove', onDrag);
+  document.addEventListener('mouseup', endDrag);
+  document.addEventListener('touchmove', onDrag, {passive:false});
+  document.addEventListener('touchend', endDrag);
+}
+
+function onDrag(e) {
+  if (!dragging) return;
+  e.preventDefault();
+  const track = document.getElementById('track-' + dragging.id);
+  if (!track) return;
+  const rect = track.getBoundingClientRect();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const pct = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+  let newStart = hourFromPct(pct) - dragStartHour;
+  newStart = Math.max(dragging.min, Math.min(dragging.max - dragging.dur, newStart));
+  newStart = Math.round(newStart * 4) / 4; // snap 15min
+  dragging.start = newStart;
+  renderBar(dragging);
+  checkConflicts();
+}
+
+function endDrag() {
+  if (!dragging) return;
+  const bar = document.getElementById('bar-' + dragging.id);
+  if (bar) bar.classList.remove('dragging');
+  dragging = null;
+  document.removeEventListener('mousemove', onDrag);
+  document.removeEventListener('mouseup', endDrag);
+  document.removeEventListener('touchmove', onDrag);
+  document.removeEventListener('touchend', endDrag);
+  checkConflicts();
+  updateAll();
+}
+
+function checkConflicts() {
+  let conflicts = 0;
+  // Check if áudio comes before vídeo (dependency)
+  const audio = tlTasks.find(t=>t.id==='t-audio');
+  const video = tlTasks.find(t=>t.id==='t-video');
+  const som = tlTasks.find(t=>t.id==='t-som');
+  if (audio && video && som) {
+    if (som.start < audio.start + audio.dur) { conflicts++; }
+    if (som.start < video.start + video.dur) { conflicts++; }
+  }
+  // Desc must come before cenografia
+  const desc = tlTasks.find(t=>t.id==='t-desc');
+  const cen = tlTasks.find(t=>t.id==='t-cen');
+  if (desc && cen && cen.start < desc.start + desc.dur) { conflicts++; }
+  // All tasks must end before 22h
+  tlTasks.forEach(t => {
+    if (t.start + t.dur > TL_END) { conflicts++; }
+    const bar = document.getElementById('bar-' + t.id);
+    if (bar) bar.classList.toggle('conflict', t.start + t.dur > TL_END);
+  });
+  state.conflictsD1 = conflicts;
+  return conflicts;
+}
+
+function resetTimeline() {
+  buildTimeline();
+  updateAll();
+}
+
+// ===================== SLIDERS =====================
+function updateSlider(name) {
+  const el = document.getElementById('sl-' + name);
+  const sv = document.getElementById('sv-' + name);
+  if (el && sv) {
+    sv.textContent = el.value;
+    state.sliders[name] = parseFloat(el.value);
+  }
+  updateAll();
+}
+
+// ===================== CLOCK =====================
+function updateClock() {
+  const sl = document.getElementById('sl-hora');
+  if (!sl) return;
+  const val = parseFloat(sl.value);
+  const hh = Math.floor(val);
+  const mm = Math.round((val - hh) * 60);
+  const fmt = `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
+  const cd = document.getElementById('clock-display');
+  const sv = document.getElementById('sv-hora');
+  if (cd) cd.textContent = fmt;
+  if (sv) sv.textContent = fmt;
+  // Update event phase indicator
+  const ind = document.getElementById('event-phase-indicator');
+  if (ind) {
+    let phase = '';
+    if (val < 8) phase = '🌙 Pré-abertura / Montagem final';
+    else if (val < 10) phase = '🔧 Passagem de som e imagem';
+    else if (val < 12) phase = '🚪 Abertura de casa / Chegada do público';
+    else if (val < 14) phase = '🎤 Evento em andamento';
+    else if (val < 18) phase = '⚡ Pico operacional';
+    else if (val < 20) phase = '🎉 Climax / Encerramento';
+    else phase = '🔄 Desmontagem e saída';
+    ind.textContent = phase;
+  }
+  // Update resources based on time
+  updateResources(val);
+}
+
+function updateResources(hora) {
+  const checks = state.checks.dia || {};
+  const energiaOk = checks['chegada'] && checks['passagem'];
+  const comunicOk = checks['comm'] && checks['gfm'];
+  const insumosOk = checks['rundown'] && checks['seguranca'];
+
+  let energia = 0, equipe = 100, comun = 0, insumos = 0;
+  if (hora >= 8) energia = energiaOk ? 85 : 40;
+  if (hora >= 10) energia = energiaOk ? 100 : 60;
+  if (hora >= 18) energia = Math.max(20, energia - 20);
+  equipe = Math.max(0, 100 - (state.incidents.length * 15));
+  comun = comunicOk ? 95 : 20;
+  insumos = insumosOk ? 80 : 30;
+  if (state.incidents.some(i=>i.key==='radio')) comun = Math.max(5, comun - 50);
+  if (state.incidents.some(i=>i.key==='cam')) equipe = Math.max(10, equipe - 20);
+
+  setRes('energia', energia);
+  setRes('equipe', equipe);
+  setRes('comun', comun);
+  setRes('insumos', insumos);
+}
+
+function setRes(id, pct) {
+  const fill = document.getElementById('res-' + id);
+  const val = document.getElementById('rv-' + id);
+  if (!fill || !val) return;
+  fill.style.width = pct + '%';
+  fill.style.background = pct >= 70 ? '#22c55e' : pct >= 40 ? '#f59e0b' : '#ef4444';
+  val.textContent = Math.round(pct) + '%';
+}
+
+// ===================== INCIDENTS =====================
+function buildIncidentList() {
+  const el = document.getElementById('incident-list');
+  if (!el) return;
+  el.innerHTML = '<div style="color:#475569;font-size:11px">Nenhuma ocorrência registrada. Clique "Simular Ocorrência" para testar sua resposta.</div>';
+}
+
+function triggerIncident() {
+  if (state.incidentCount >= INCIDENTS.length) {
+    setAlert('Todas as ocorrências já foram simuladas!', 'ok');
+    return;
+  }
+  const inc = INCIDENTS[state.incidentCount];
+  state.incidentCount++;
+  state.incidents.push(inc);
+  const el = document.getElementById('incident-list');
+  if (el) {
+    const div = document.createElement('div');
+    div.style.cssText = 'background:#1e2535;border-radius:6px;padding:8px 10px;margin-bottom:6px;border-left:3px solid #ef4444;';
+    div.innerHTML = `<div style="font-size:11px;color:#fca5a5;font-weight:600;margin-bottom:3px">${inc.msg}</div>
+      <div style="font-size:10px;color:#94a3b8">Ação correta: ${inc.resp}</div>
+      <button onclick="resolveIncident('${inc.key}',this)" style="margin-top:5px;padding:3px 10px;background:#3b82f6;border:none;border-radius:4px;color:#fff;font-size:10px;cursor:pointer;font-weight:600">✔ Resolver</button>`;
+    // Remove placeholder
+    const ph = el.querySelector('div');
+    if (ph && ph.textContent.includes('Nenhuma')) ph.remove();
+    el.appendChild(div);
+  }
+  setAlert(`OCORRÊNCIA: ${inc.msg}`, 'danger');
+  updateResources(parseFloat(document.getElementById('sl-hora')?.value || 12));
+  updateAll();
+}
+
+function resolveIncident(key, btn) {
+  state.incidents = state.incidents.filter(i => i.key !== key);
+  const row = btn.closest('div[style]');
+  if (row) {
+    row.style.borderLeftColor = '#22c55e';
+    row.querySelector('div').style.color = '#86efac';
+    btn.remove();
+    const ok = document.createElement('span');
+    ok.style.cssText = 'font-size:10px;color:#22c55e;font-weight:700';
+    ok.textContent = '✔ Resolvido';
+    row.appendChild(ok);
+  }
+  setAlert('Ocorrência resolvida corretamente!', 'ok');
+  updateAll();
+}
+
+// ===================== SCORING =====================
+function calcPhaseScore(phase) {
+  const key = PHASE_KEYS[phase];
+  const checks = state.checks[key];
+  const items = CHECKLISTS[key];
+  let total = 0, done = 0, critOk = true;
+  items.forEach(item => {
+    total++;
+    if (checks[item.id]) done++;
+    else if (item.critical) critOk = false;
+  });
+  let base = (done / total) * 100;
+  // Penalty for critical not done
+  const critPenalty = items.filter(i => i.critical && !checks[i.id]).length * 10;
+  base = Math.max(0, base - critPenalty);
+  // Phase-specific bonuses
+  if (phase === 0) {
+    const s = state.sliders;
+    if (s.audio >= 2 && s.video >= 2 && s.luz >= 3) base = Math.min(100, base + 5);
+    if (s.ante >= 7) base = Math.min(100, base + 10);
+    if (s.veic >= 2) base = Math.min(100, base + 5);
+  }
+  if (phase === 1) {
+    const conflicts = checkConflicts();
+    base = Math.max(0, base - conflicts * 8);
+  }
+  if (phase === 2) {
+    const resolved = INCIDENTS.slice(0, state.incidentCount).filter(i => !state.incidents.find(x=>x.key===i.key)).length;
+    base = Math.min(100, base + resolved * 5);
+    base = Math.max(0, base - state.incidents.length * 3);
+  }
+  if (phase === 3) {
+    const s = state.sliders;
+    if (s.desm >= 4 && s.janela >= 4) base = Math.min(100, base + 8);
+    if (s.equip >= 20 && s.cabos >= 20) base = Math.min(100, base + 5);
+  }
+  return Math.round(base);
+}
+
+function countChecks() {
+  let ok = 0, total = 0, crit = 0;
+  Object.keys(CHECKLISTS).forEach(k => {
+    CHECKLISTS[k].forEach(item => {
+      total++;
+      if (state.checks[k][item.id]) ok++;
+      else if (item.critical) crit++;
+    });
+  });
+  return { ok, total, crit };
+}
+
+// ===================== UPDATE ALL =====================
+function updateAll() {
+  const { ok, total, crit } = countChecks();
+  const scoreEl = document.getElementById('score-val');
+  const okEl = document.getElementById('ok-count');
+  const critEl = document.getElementById('crit-val');
+  const progEl = document.getElementById('prog-fill');
+
+  if (okEl) okEl.textContent = ok;
+  if (critEl) {
+    critEl.textContent = crit;
+    critEl.className = 'pill-value ' + (crit > 5 ? 'danger' : crit > 2 ? 'warn' : 'ok');
+  }
+
+  const progress = Math.round((ok / total) * 100);
+  if (progEl) {
+    progEl.style.width = progress + '%';
+    progEl.style.background = progress >= 80 ? '#22c55e' : progress >= 50 ? '#f59e0b' : '#3b82f6';
+  }
+
+  // Overall score
+  const phaseAvg = state.phaseScores.reduce((a,b)=>a+b,0) / 4;
+  const bonusOk = ok / total * 40;
+  const bonusCrit = Math.max(0, 20 - crit * 4);
+  const totalScore = Math.round(Math.min(100, phaseAvg * 0.6 + bonusOk + bonusCrit));
+  if (scoreEl) scoreEl.textContent = totalScore;
+
+  // Update check boxes
+  Object.keys(CHECKLISTS).forEach(k => {
+    CHECKLISTS[k].forEach(item => {
+      const cb = document.getElementById('cb-' + k + '-' + item.id);
+      if (!cb) return;
+      const blocked = item.blockedBy.some(dep => !state.checks[k][dep]);
+      cb.className = 'check-box' + (state.checks[k][item.id] ? ' checked' : blocked ? ' blocked' : '');
+      cb.textContent = state.checks[k][item.id] ? '✔' : blocked ? '🔒' : '';
+    });
+  });
+}
+
+// ===================== VALIDATE PHASE =====================
+function validatePhase(phase) {
+  const score = calcPhaseScore(phase);
+  state.phaseScores[phase] = score;
+  state.phaseValidated[phase] = true;
+
+  const key = PHASE_KEYS[phase];
+  const items = CHECKLISTS[key];
+  const done = items.filter(i => state.checks[key][i.id]).length;
+  const crits = items.filter(i => i.critical && !state.checks[key][i.id]);
+  const phaseName = PHASE_NAMES[phase];
+
+  let msg = `${phaseName}: ${score} pts · ${done}/${items.length} itens concluídos.`;
+  let type = 'ok';
+  if (crits.length > 0) {
+    msg += ` ⚠️ ${crits.length} item(ns) crítico(s) pendente(s): ${crits.map(i=>i.label).join('; ')}.`;
+    type = crits.length > 2 ? 'danger' : 'warn';
+  }
+  if (phase === 1 && state.conflictsD1 > 0) {
+    msg += ` 🔴 ${state.conflictsD1} conflito(s) na timeline!`;
+    type = 'danger';
+  }
+  setAlert(msg, type);
+
+  // Update tab style
+  const tab = document.getElementById('tab-' + phase);
+  if (tab) {
+    tab.classList.remove('active-tab');
+    tab.classList.add(score >= 60 ? 'done-tab' : 'active-tab');
+    tab.textContent = PHASE_NAMES[phase] + ' ' + (score >= 60 ? '✔' : score + 'pt');
+  }
+  updateAll();
+}
+
+function finalizarRoteiro() {
+  // Validate all phases
+  for (let i = 0; i < 4; i++) {
+    if (!state.phaseValidated[i]) validatePhase(i);
+  }
+  const scores = state.phaseScores;
+  const total = Math.round(scores.reduce((a,b)=>a+b,0)/4);
+  const { ok, total: tot, crit } = countChecks();
+  const finalScore = Math.round(Math.min(100, total * 0.7 + (ok/tot)*30 - crit*2));
+
+  let grade = '', gColor = '';
+  if (finalScore >= 90) { grade = 'ROTEIRO EXCELENTE'; gColor = '#22c55e'; }
+  else if (finalScore >= 75) { grade = 'APROVADO — BOM PLANEJAMENTO'; gColor = '#3b82f6'; }
+  else if (finalScore >= 55) { grade = 'APROVADO COM RESSALVAS'; gColor = '#f59e0b'; }
+  else { grade = 'REPROVADO — REVISE O ROTEIRO'; gColor = '#ef4444'; }
+
+  const card = document.getElementById('final-card');
+  const num = document.getElementById('final-num');
+  const gradeEl = document.getElementById('final-grade');
+  const breakdown = document.getElementById('final-breakdown');
+  if (card && num && gradeEl && breakdown) {
+    card.classList.add('show');
+    num.textContent = finalScore;
+    num.style.color = gColor;
+    gradeEl.textContent = grade;
+    gradeEl.style.color = gColor;
+    breakdown.innerHTML = `
+      <div class="breakdown-item"><span>D-7 Planejamento</span><span style="color:${scores[0]>=60?'#22c55e':'#ef4444'}">${scores[0]} pts</span></div>
+      <div class="breakdown-item"><span>D-1 Preparação</span><span style="color:${scores[1]>=60?'#22c55e':'#ef4444'}">${scores[1]} pts</span></div>
+      <div class="breakdown-item"><span>Dia do Evento</span><span style="color:${scores[2]>=60?'#22c55e':'#ef4444'}">${scores[2]} pts</span></div>
+      <div class="breakdown-item"><span>Pós-Evento</span><span style="color:${scores[3]>=60?'#22c55e':'#ef4444'}">${scores[3]} pts</span></div>
+      <div class="breakdown-item"><span>Itens concluídos</span><span>${ok}/${tot}</span></div>
+      <div class="breakdown-item"><span>Críticos pendentes</span><span style="color:${crit===0?'#22c55e':'#ef4444'}">${crit}</span></div>
+    `;
+  }
+  setAlert(`Roteiro finalizado! Pontuação total: ${finalScore}/100 — ${grade}`, finalScore >= 75 ? 'ok' : finalScore >= 55 ? 'warn' : 'danger');
+}
+
+function resetAll() {
+  state.phaseScores = [0,0,0,0];
+  state.phaseValidated = [false,false,false,false];
+  state.checks = { d7: {}, d1: {}, dia: {}, pos: {} };
+  state.sliders = {};
+  state.incidents = [];
+  state.incidentCount = 0;
+  state.conflictsD1 = 0;
+  // Reset sliders
+  ['audio','video','luz','cen','orca','veic','ante','desm','janela','equip','cabos'].forEach(n => {
+    const el = document.getElementById('sl-' + n);
+    if (el) { el.value = el.min || 0; updateSlider(n); }
+  });
+  buildChecklists();
+  buildTimeline();
+  buildIncidentList();
+  // Reset tabs
+  for (let i = 0; i < 4; i++) {
+    const tab = document.getElementById('tab-' + i);
+    if (tab) { tab.className = 'tab-btn'; tab.textContent = ['D-7 PLANEJ.','D-1 PREP.','DIA DO EV.','PÓS-EV.'][i]; }
+  }
+  const card = document.getElementById('final-card');
+  if (card) card.classList.remove('show');
+  switchTab(0);
+  setAlert('Novo roteiro iniciado. Complete todas as fases!', '');
+  updateAll();
+}
+
+function resetPhase(phase) {
+  const key = PHASE_KEYS[phase];
+  Object.keys(state.checks[key]).forEach(k => state.checks[key][k] = false);
+  updateAll();
+  setAlert(`Fase ${PHASE_NAMES[phase]} resetada.`, '');
+}
+
+// ===================== TABS =====================
+function switchTab(idx) {
+  for (let i = 0; i < 4; i++) {
+    const c = document.getElementById('tab-content-' + i);
+    const t = document.getElementById('tab-' + i);
+    if (c) c.classList.toggle('visible', i === idx);
+    if (t && !t.classList.contains('done-tab')) {
+      t.classList.toggle('active-tab', i === idx);
+    }
+  }
+  state.phase = idx;
+  const phaseEl = document.getElementById('phase-name');
+  if (phaseEl) phaseEl.textContent = PHASE_NAMES[idx];
+}
+
+// ===================== ALERT =====================
+function setAlert(msg, type) {
+  const el = document.getElementById('alert-box');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'alert-box' + (type ? ' ' + type : '');
+}
+
+// ===================== KICK OFF =====================
+init();
+updateClock();
+</script>
+</body>
+</html>

@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>SMU PRO · A ordem de carregar o caminhão</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0c1017;--panel:#161c26;--panel2:#1b2230;--line:#2a3444;--ink:#e7edf5;--dim:#8794a8;
+        --accent:#f59e0b;--ok:#22c55e;--err:#ef4444;--warn:#f59e0b;--cyan:#38bdf8;}
+  html,body{background:var(--bg);color:var(--ink);
+    font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased;}
+  body{padding:12px;}
+  .app{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:12px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  h1{font-size:15px;margin-bottom:3px;}
+  .sub{font-size:12px;color:var(--dim);margin-bottom:12px;line-height:1.5;}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px;}
+  .stat .k{font-size:10px;color:var(--dim);letter-spacing:.5px;}
+  .stat .val{font-size:15px;font-weight:800;margin-top:2px;}
+  .verdict{font-size:13px;font-weight:700;padding:9px 12px;border-radius:8px;text-align:center;line-height:1.45;}
+  .verdict.ok{background:#14532d;color:#bbf7d0;}
+  .verdict.bad{background:#450a0a;color:#fca5a5;}
+  .verdict.warn{background:#422006;color:#fde68a;}
+  .note{font-size:12px;color:var(--dim);line-height:1.55;}
+  button{font:inherit;cursor:pointer;}
+
+  h2{font-size:11px;letter-spacing:1px;color:var(--accent);font-weight:800;margin-bottom:8px;}
+  .rule{background:#0e1520;border:1px solid var(--line);border-left:3px solid var(--cyan);border-radius:8px;
+    padding:10px 12px;font-size:12px;line-height:1.6;color:#c3cede;}
+  .rule b{color:var(--ink);}
+  .rule + .rule{margin-top:6px;}
+
+  .seq{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px;}
+  .seq i{font-style:normal;font-size:10px;padding:4px 7px;border-radius:20px;background:#0c1119;
+    border:1px solid var(--line);color:var(--dim);line-height:1.3;}
+  .seq i b{color:var(--cyan);font-weight:800;}
+  .seq i.hd{border-color:#075985;color:#7dd3fc;font-weight:700;letter-spacing:.5px;}
+
+  .bau{background:#05070b;border:1px solid var(--line);border-radius:10px;padding:8px;margin-top:10px;}
+  .cap{font-size:10px;letter-spacing:.8px;color:var(--dim);text-align:center;padding:5px 2px;font-weight:700;line-height:1.4;}
+  .cap.fundo{border-bottom:1px solid var(--line);margin-bottom:6px;}
+  .cap.porta{color:var(--accent);border-top:2px dashed #3a2a10;margin-top:6px;}
+
+  .vol{display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line);
+    border-left:3px solid #3b4655;border-radius:8px;padding:6px;margin-bottom:5px;min-height:46px;}
+  .vol.ok{border-left-color:var(--ok);}
+  .vol.no{border-left-color:var(--err);}
+  .vol .pos{font-size:10px;color:var(--dim);width:15px;flex-shrink:0;text-align:center;font-weight:700;}
+  .vol .body{flex:1;min-width:0;}
+  .vol .nm{font-size:12px;font-weight:600;line-height:1.3;}
+  .vol .meta{font-size:10px;color:var(--dim);margin-top:2px;display:flex;gap:4px;flex-wrap:wrap;align-items:center;}
+  .tag{padding:1px 5px;border-radius:4px;border:1px solid var(--line);font-size:9px;letter-spacing:.3px;white-space:nowrap;}
+  .tag.f{color:#fca5a5;border-color:#7f1d1d;}
+  .tag.p{color:#fde68a;border-color:#78350f;}
+  .tag.e{color:#7dd3fc;border-color:#075985;}
+  .arm{display:flex;gap:4px;flex-shrink:0;}
+  .arm button{width:34px;height:38px;border:1px solid var(--line);background:#0c1119;color:var(--ink);
+    border-radius:7px;font-size:13px;line-height:1;padding:0;}
+  .arm button:disabled{opacity:.22;cursor:default;}
+
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
+  @media(min-width:660px){ .stats{grid-template-columns:repeat(4,1fr);} }
+  .stat .val small{font-size:10px;color:var(--dim);font-weight:400;}
+  .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+  .acts button{flex:1;min-width:92px;min-height:38px;border-radius:8px;border:1px solid var(--line);
+    font-size:12px;font-weight:700;background:#0c1119;color:var(--ink);}
+  #go{background:#42200680;border-color:var(--accent);color:#fde68a;}
+  #sh,#rst{color:var(--dim);}
+  ul.log{list-style:none;display:flex;flex-direction:column;gap:6px;margin-top:10px;}
+  ul.log li{font-size:12px;line-height:1.55;color:#c3cede;padding-left:15px;position:relative;}
+  ul.log li:before{content:'▸';position:absolute;left:0;color:var(--accent);}
+  ul.log li.d{color:#fca5a5;}
+  ul.log li.d:before{content:'✕';color:var(--err);}
+  ul.log li.g{color:#bbf7d0;}
+  ul.log li.g:before{content:'✓';color:var(--ok);}
+  ul.log li b{color:#fff;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="card">
+    <h1>A ordem de carregar o caminhão</h1>
+    <div class="sub">O baú tem <b>uma porta só</b>. Ordene os 10 volumes do fundo até a porta com ▲▼ e clique em <b>Conferir descarga</b> para ver o que a sua carga custa em minutos, às 7h da manhã.</div>
+    <div class="rule"><b>Regra de ouro:</b> a ordem de descarga é a ordem de montagem <b>invertida</b>. Quem monta primeiro (o rigging: talhas, lingas, treliça) sai primeiro do baú — logo, <b>entra por último</b>, na boca da porta. O que só se usa no fim do dia (microfone, console) entra primeiro e fica no fundo.</div>
+    <div class="rule"><b>Segunda regra:</b> pesado embaixo, leve em cima. Volume marcado <b>PESADO</b> carregado logo depois de um <b>FRÁGIL</b> vai empilhado por cima dele — subgrave sobre case de microfone é kit de mic que você repõe do seu bolso.</div>
+    <div class="seq" id="seq"></div>
+  </div>
+
+  <div class="card">
+    <h2>O BAÚ · FUNDO → PORTA</h2>
+    <div class="bau">
+      <div class="cap fundo">▲ FUNDO DO BAÚ · PAREDE DA CABINE<br>(primeiro a entrar, último a sair)</div>
+      <div id="pilha"></div>
+      <div class="cap porta">▼ PORTA · TRASEIRA<br>(último a entrar, primeiro a sair)</div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="k">POSIÇÕES CERTAS</div><div class="val" id="sOrd">—</div></div>
+      <div class="stat"><div class="k">VOLUMES REMEXIDOS</div><div class="val" id="sRem">—</div></div>
+      <div class="stat"><div class="k">MINUTOS PERDIDOS</div><div class="val" id="sMin">—</div></div>
+      <div class="stat"><div class="k">APROVEITAMENTO</div><div class="val" id="sPct">—</div></div>
+    </div>
+    <div class="acts">
+      <button id="go">Conferir descarga</button>
+      <button id="sh">Embaralhar</button>
+      <button id="rst">Reiniciar</button>
+    </div>
+    <div class="verdict warn" id="vd" style="margin-top:10px;">Carga montada na ordem em que os volumes estavam no galpão.</div>
+    <ul class="log" id="log"></ul>
+    <div class="note" style="margin-top:10px;">
+      Cada volume tirado do baú para alcançar o que está atrás dele é <b>tempo pago duas vezes</b>: uma para tirar, outra para recolocar — porque não dá para deixar case na calçada o dia inteiro. Conta desta simulação: <b>3 min por volume remexido</b>.
+    </div>
+  </div>
+
+</div>
+<script>
+(function(){
+  var $=function(s){return document.querySelector(s);};
+
+  /* Sequência de montagem do evento, do rigging ao line check.
+     A ordem de carga é esta lista lida de baixo para cima. */
+  var ET={
+    1:'Talhas e lingas de rigging', 2:'Treliça e bases', 3:'Praticáveis do palco',
+    4:'Cabos de energia', 5:'Caixas de PA', 6:'Subgraves', 7:'Moving heads',
+    8:'Backline', 9:'Microfones e patch', 10:'Console e line check'
+  };
+  /* n=nome  p=peso kg  e=etapa de montagem  f=frágil/leve (não vai embaixo)  h=pesado (vai no piso) */
+  var VOL=[
+    {n:'Talhas, lingas e cintas de rigging',   p:300, e:1,  f:0, h:0},
+    {n:'Treliça Q30, bases e sapatas',         p:560, e:2,  f:0, h:1},
+    {n:'Praticáveis do palco e saia',          p:420, e:3,  f:0, h:1},
+    {n:'Cabos de energia e quadro de força',   p:240, e:4,  f:0, h:0},
+    {n:'Caixas de PA em carrinho',             p:520, e:5,  f:0, h:1},
+    {n:'Subgraves (4 un)',                     p:480, e:6,  f:0, h:1},
+    {n:'Moving heads (4 un) em case',          p:260, e:7,  f:0, h:0},
+    {n:'Backline: bateria e amps em cases',    p:180, e:8,  f:0, h:0},
+    {n:'Cases de microfone, clamps e DIs',     p:60,  e:9,  f:1, h:0},
+    {n:'Console de FOH em case',               p:110, e:10, f:1, h:0}
+  ];
+  var N=VOL.length, MIN_REMEX=3;
+  /* Estado inicial errado: carregado na ordem em que o material estava encostado no galpão. */
+  var INICIAL=[8,5,7,4,0,1,3,2,6,9];
+  var ordem, avaliado;
+
+  /* etapa esperada em cada posição, do fundo (10) até a porta (1) */
+  function esperado(i){ return N-i; }
+
+  function build(){
+    var h='<i class="hd">MONTAGEM NO EVENTO →</i>';
+    for(var E=1;E<=N;E++) h+='<i><b>'+E+'</b> '+ET[E]+'</i>';
+    $('#seq').innerHTML=h;
+  }
+
+  function render(){
+    var h='';
+    for(var i=0;i<ordem.length;i++){
+      var v=VOL[ordem[i]], cls='vol';
+      if(avaliado) cls+=(v.e===esperado(i)?' ok':' no');
+      h+='<div class="'+cls+'">'
+        +'<div class="pos">'+(i+1)+'</div>'
+        +'<div class="body"><div class="nm">'+v.n+'</div>'
+        +'<div class="meta"><span>'+v.p+' kg</span>'
+        +(v.f?'<span class="tag f">FRÁGIL</span>':'')
+        +(v.h?'<span class="tag p">PESADO</span>':'')
+        +(avaliado?'<span class="tag e">MONTAGEM '+v.e+' · '+ET[v.e]+'</span>':'')
+        +'</div></div>'
+        +'<div class="arm">'
+        +'<button data-u="'+i+'" aria-label="subir"'+(i===0?' disabled':'')+'>▲</button>'
+        +'<button data-d="'+i+'" aria-label="descer"'+(i===ordem.length-1?' disabled':'')+'>▼</button>'
+        +'</div></div>';
+    }
+    $('#pilha').innerHTML=h;
+  }
+
+  /* Descarga: a fila começa na porta (índice 0). Para cada etapa da montagem, tudo que
+     estiver na frente do volume daquela etapa ainda não é necessário — sai e volta. */
+  function descarga(){
+    var fila=ordem.slice().reverse(), remex=0, linhas=[];
+    for(var E=1;E<=N;E++){
+      var idx=-1;
+      for(var i=0;i<fila.length;i++){ if(VOL[fila[i]].e===E){ idx=i; break; } }
+      if(idx<0) continue;
+      if(idx>0){
+        remex+=idx;
+        linhas.push({b:idx,h:'<b>Montagem '+E+' — '+ET[E]+':</b> a equipe tirou e recolocou <b>'+idx+
+          ' volume'+(idx>1?'s':'')+'</b> para chegar em <b>'+VOL[fila[idx]].n+'</b>.'});
+      }
+      fila.splice(idx,1);
+    }
+    return {remex:remex,linhas:linhas};
+  }
+
+  /* Pesado embaixo, leve em cima: um volume PESADO carregado logo depois de um FRÁGIL
+     é empilhado por cima dele. */
+  function danos(){
+    var d=[];
+    for(var i=0;i<ordem.length-1;i++){
+      var A=VOL[ordem[i]], B=VOL[ordem[i+1]];
+      if(A.f && B.h) d.push('<b>'+B.n+'</b> ('+B.p+' kg) entrou logo depois de <b>'+A.n+'</b> ('+A.p+
+        ' kg) e ficou por cima. Pesado embaixo, leve em cima — esse volume chega danificado.');
+    }
+    return d;
+  }
+
+  function conferir(){
+    avaliado=true;
+    var acertos=0;
+    for(var i=0;i<ordem.length;i++) if(VOL[ordem[i]].e===esperado(i)) acertos++;
+    var dsc=descarga(), dn=danos(), min=dsc.remex*MIN_REMEX, pct=Math.round(acertos/N*100);
+
+    $('#sOrd').innerHTML=acertos+'<small> /'+N+'</small>';
+    $('#sRem').innerHTML=dsc.remex+'<small> vol.</small>';
+    $('#sMin').innerHTML=min+'<small> min</small>';
+    var p=$('#sPct'); p.textContent=pct+'%';
+    p.style.color=pct===100?'var(--ok)':(pct<50?'var(--err)':'var(--warn)');
+
+    var log=[];
+    /* o log inteiro seria longo demais para o básico: mostra o começo do dia e resume o resto */
+    dsc.linhas.slice(0,4).forEach(function(l){ log.push('<li>'+l.h+'</li>'); });
+    if(dsc.linhas.length>4) log.push('<li>… e mais '+(dsc.linhas.length-4)+
+      ' etapa(s) da montagem esperando volume sair do fundo do baú.</li>');
+    dn.forEach(function(l){ log.push('<li class="d">'+l+'</li>'); });
+
+    if(dsc.remex>0){
+      log.push('<li><b>'+dsc.remex+' volumes remexidos × '+MIN_REMEX+' min = '+min+' min</b> ('+
+        Math.floor(min/60)+'h'+('0'+(min%60)).slice(-2)+') gastos só tirando e recolocando case na calçada, antes de montar qualquer coisa.</li>');
+      log.push('<li>E esse atraso não fica no load-in: ele empurra o rigging, que empurra a montagem, que empurra o patch, que empurra o line check. '+min+
+        ' min perdidos às 7h viram soundcheck espremido às 18h — ou hora extra da equipe inteira.</li>');
+    } else {
+      log.push('<li class="g">Descarga em fluxo contínuo: <b>zero remexida</b>. Cada volume saiu do baú na hora exata em que a equipe precisou dele — talha e linga na porta porque o rigging sobe primeiro; console lá no fundo porque o line check é o último ato do dia.</li>');
+    }
+    if(acertos<N && dsc.remex===0){
+      log.push('<li>A descarga fluiu, mas há posições fora do lugar em relação à sequência de montagem. Confira as etapas marcadas em azul em cada volume.</li>');
+    }
+    $('#log').innerHTML=log.join('');
+
+    var v=$('#vd');
+    if(acertos===N && !dn.length){
+      v.className='verdict ok';
+      v.innerHTML='✓ <b>Baú fechado certo.</b> Ordem de carga = montagem invertida, zero remexida, zero dano. É esta a conferência que o produtor faz <b>antes de a porta fechar</b> — não na hora de abrir.';
+    } else if(!dsc.remex && !dn.length){
+      v.className='verdict warn';
+      v.innerHTML='◐ Descarga limpa, mas a ordem não bate com a sequência de montagem.';
+    } else {
+      v.className='verdict bad';
+      v.innerHTML='✗ <b>'+min+' min perdidos na descarga</b>'+(dn.length?' · <b>'+dn.length+' volume(s) danificado(s)</b>':'')+
+        '. Caminhão mal carregado é atraso garantido, e o dia inteiro paga a conta.';
+    }
+    render();
+  }
+
+  function mover(i,j){
+    if(j<0||j>=ordem.length) return;
+    var t=ordem[i]; ordem[i]=ordem[j]; ordem[j]=t;
+    avaliado=null; limpar(); render();
+  }
+  function limpar(){
+    $('#sOrd').textContent='—'; $('#sRem').textContent='—'; $('#sMin').textContent='—';
+    $('#sPct').textContent='—'; $('#sPct').style.color=''; $('#log').innerHTML='';
+    $('#vd').className='verdict warn';
+  }
+
+  $('#pilha').addEventListener('click',function(ev){
+    var b=ev.target.closest('button'); if(!b||b.disabled) return;
+    if(b.dataset.u!==undefined){ var i=+b.dataset.u; mover(i,i-1); }
+    else if(b.dataset.d!==undefined){ var k=+b.dataset.d; mover(k,k+1); }
+  });
+  $('#go').onclick=conferir;
+
+  function certa(){ for(var i=0;i<ordem.length;i++) if(VOL[ordem[i]].e!==esperado(i)) return false; return true; }
+  $('#sh').onclick=function(){
+    do{
+      for(var i=ordem.length-1;i>0;i--){
+        var j=Math.floor(Math.random()*(i+1)), t=ordem[i]; ordem[i]=ordem[j]; ordem[j]=t;
+      }
+    } while(certa());
+    avaliado=null; limpar(); render();
+    $('#vd').textContent='Volumes embaralhados. Reordene do fundo até a porta.';
+  };
+  function reset(){
+    ordem=INICIAL.slice(); avaliado=null; limpar(); render();
+    $('#vd').textContent='Carga montada na ordem em que os volumes estavam no galpão.';
+  }
+  $('#rst').onclick=reset;
+
+  build(); reset();
+  window.__oc={conferir:conferir,descarga:descarga,VOL:VOL,ordem:function(){return ordem;},
+               corrigir:function(){ ordem=[9,8,7,6,5,4,3,2,1,0]; avaliado=null; limpar(); render(); }};
+})();
+</script>
+</body>
+</html>

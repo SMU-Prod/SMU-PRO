@@ -63,6 +63,12 @@
   .fadv .cap{position:absolute;left:50%;width:32px;height:15px;transform:translate(-50%,-50%);background:linear-gradient(180deg,#f0f2f5,#b9c0cb);border:1px solid #000;border-radius:3px;box-shadow:0 2px 4px #0009}
   .fadv .cap::after{content:"";position:absolute;left:4px;right:4px;top:50%;height:2px;background:#e2453f;transform:translateY(-50%)}
   .pitchbox .val{font-size:9px;color:var(--amber);font-variant-numeric:tabular-nums}
+  /* RESET + RESET LED lamp: no SL-1200MK7 ficam junto ao PITCH ADJ. LED vermelho, como no real. */
+  .resetbtn{display:flex;align-items:center;gap:4px;font-size:7px;font-weight:800;letter-spacing:.6px;color:#9aa4b2;
+    background:linear-gradient(180deg,#33363c,#22252a);border:1px solid #0a0b0d;border-radius:4px;padding:3px 6px;cursor:pointer;user-select:none;box-shadow:0 2px 3px #0007, inset 0 1px 0 #fff1}
+  .resetbtn .rled{width:5px;height:5px;border-radius:50%;background:#3a0f0c;box-shadow:inset 0 0 2px #000}
+  .resetbtn.on{color:#f4e7d0}
+  .resetbtn.on .rled{background:#e2453f;box-shadow:0 0 7px #e2453f}
 
   .ttbottom{display:flex;align-items:center;gap:12px;margin-top:12px}
   .startstop{width:56px;height:56px;border-radius:50%;border:3px solid #111;cursor:pointer;position:relative;
@@ -220,7 +226,12 @@
           </div>
         </div>
         <div class="ttside">
-          <div class="pitchbox"><div class="lbl">PITCH</div>
+          <div class="pitchbox"><div class="lbl">PITCH ADJ</div>
+            <!-- RESET: no SL-1200MK7 ele NÃO "zera o slider". O manual: "Press [RESET] to light the
+                 pitch control RESET LED lamp. The unit plays at a preset pitch (33-1/3, 45 or 78 rpm)
+                 REGARDLESS OF THE [PITCH ADJ] control" — ou seja, acende o LED e IGNORA o slider,
+                 que fica onde está. Aperta de novo e o slider volta a valer. -->
+            <div class="resetbtn" data-act="reset" data-deck="A"><span class="rled"></span>RESET</div>
             <div class="fadv" data-pitch="A"><div class="cap"></div></div>
             <div class="val" data-pval="A">0.0%</div></div>
         </div>
@@ -228,7 +239,10 @@
       <div class="ttbottom">
         <div class="startstop" data-act="startstop"><span class="led"></span>START<br>STOP</div>
         <div class="speedbtns"><div class="spd on" data-spd="33">33</div><div class="spd" data-spd="45">45</div></div>
-        <div class="target"><span class="t"></span>TARGET</div>
+        <!-- "STROBE": a Technics chama esta luz vermelha de "Strobe light" (é ela que acende os
+             pontos do estroboscópio do prato). "TARGET light" é termo de outras marcas e não
+             existe no manual do SL-1200MK7 — lá a luz do braço é a "Stylus light", outra coisa. -->
+        <div class="target"><span class="t"></span>STROBE</div>
       </div>
     </div>
 
@@ -266,7 +280,8 @@
           </div>
         </div>
         <div class="ttside">
-          <div class="pitchbox"><div class="lbl">PITCH</div>
+          <div class="pitchbox"><div class="lbl">PITCH ADJ</div>
+            <div class="resetbtn" data-act="reset" data-deck="B"><span class="rled"></span>RESET</div>
             <div class="fadv" data-pitch="B"><div class="cap"></div></div>
             <div class="val" data-pval="B">0.0%</div></div>
         </div>
@@ -274,7 +289,10 @@
       <div class="ttbottom">
         <div class="startstop" data-act="startstop"><span class="led"></span>START<br>STOP</div>
         <div class="speedbtns"><div class="spd on" data-spd="33">33</div><div class="spd" data-spd="45">45</div></div>
-        <div class="target"><span class="t"></span>TARGET</div>
+        <!-- "STROBE": a Technics chama esta luz vermelha de "Strobe light" (é ela que acende os
+             pontos do estroboscópio do prato). "TARGET light" é termo de outras marcas e não
+             existe no manual do SL-1200MK7 — lá a luz do braço é a "Stylus light", outra coisa. -->
+        <div class="target"><span class="t"></span>STROBE</div>
       </div>
     </div>
   </div>
@@ -293,6 +311,9 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 
 let AC=null, started=false, xfCurve="sharp";
 const decks={};
+// RESET (por toca-discos): aceso = ignora o PITCH ADJ e roda na rotação nominal.
+// pitchApply guarda o apply() de cada fader para o botão poder reavaliar o pitch sem mexer no fader.
+const pitchReset={A:false,B:false}, pitchApply={};
 
 /* ---------- audio graph ---------- */
 function buildGraph(){
@@ -399,7 +420,13 @@ function bindVFader(el,cb,init){ const cap=el.querySelector(".cap"); let v=init;
   window.addEventListener("resize",place); }
 function bindPitch(el,id){ const cap=el.querySelector(".cap"); let pos=0.5; place();
   function place(){ const h=el.clientHeight; cap.style.top=(6+pos*(h-12))+"px"; }
-  function apply(){ const d=decks[id]; const pct=-(pos-0.5)*2*8; if(d)d.pitch=pct; $(`[data-pval="${id}"]`).textContent=(pct>=0?"+":"")+pct.toFixed(1)+"%"; }
+  function apply(){ const d=decks[id]; const pct=-(pos-0.5)*2*8;
+    // Com o RESET aceso o toca-discos ignora o PITCH ADJ e roda na rotação nominal — o slider
+    // continua onde o DJ deixou (não volta ao meio). Por isso o pitch efetivo é 0, mas o mostrador
+    // segue exibindo a posição real do fader, como no aparelho.
+    if(d) d.pitch = pitchReset[id] ? 0 : pct;
+    $(`[data-pval="${id}"]`).textContent=(pitchReset[id]?"—":((pct>=0?"+":"")+pct.toFixed(1)+"%")); }
+  pitchApply[id]=apply;
   let drag=false; const mv=e=>{ if(!drag)return; const r=el.getBoundingClientRect(); pos=clamp((e.clientY-r.top-6)/(r.height-12),0,1); place(); apply(); };
   el.addEventListener("pointerdown",e=>{if(!started)startAudio();drag=true;el.setPointerCapture(e.pointerId);mv(e);});
   el.addEventListener("pointermove",mv); el.addEventListener("pointerup",()=>drag=false); el.addEventListener("pointercancel",()=>drag=false);
@@ -467,7 +494,9 @@ function init(){
   ["A","B"].forEach(id=>{ bindPlatter($(`[data-platter="${id}"]`),id); bindPitch($(`[data-pitch="${id}"]`),id); });
   $$('.tt').forEach(tt=>{ const id=tt.dataset.deck;
     $(".startstop",tt).addEventListener("pointerdown",e=>{e.preventDefault();startStop(id,$(".startstop",tt));});
-    $$(".spd",tt).forEach(b=>b.addEventListener("pointerdown",()=>{ $$(".spd",tt).forEach(x=>x.classList.remove("on")); b.classList.add("on"); if(decks[id])decks[id].spd=+b.dataset.spd; })); });
+    $$(".spd",tt).forEach(b=>b.addEventListener("pointerdown",()=>{ $$(".spd",tt).forEach(x=>x.classList.remove("on")); b.classList.add("on"); if(decks[id])decks[id].spd=+b.dataset.spd; }));
+    const rb=$(".resetbtn",tt); if(rb) rb.addEventListener("pointerdown",e=>{ e.preventDefault(); if(!started)startAudio();
+      pitchReset[id]=!pitchReset[id]; rb.classList.toggle("on",pitchReset[id]); pitchApply[id]?.(); }); });
   // knobs (visual immediately; audio applied after decks exist)
   $$('.knob[data-knob]').forEach(el=>bindKnob(el,v=>{ const id=el.dataset.knob.slice(-1); if(decks[id])decks[id].trim.gain.value=v; }));
   bindXFader($("[data-xfader]"));

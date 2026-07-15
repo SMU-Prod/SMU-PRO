@@ -50,6 +50,14 @@ Máx. **5 peças** de 23 kg por passageiro/trecho. Bagagem **especial** Brasil: 
 ⚠️ **MITO Nº 3:** "32 kg é o limite por saúde do trabalhador" — **não vale no doméstico brasileiro**.
 As três aceitam **até 45 kg por volume pagando excesso**. 32 kg é limite **internacional/Europa**.
 
+⚠️ **A COBRANÇA É POR VOLUME — inclusive o excesso.** Errei isso uma vez (15/07) e vale registrar:
+**cada** volume acima de 23 kg dispara o **seu próprio** excesso. Duas malas de 33 kg pagam
+**dois** excessos, não um. A conta certa, GOL nacional +48h:
+- 2 × 33 kg → 130 (1ª) + **350** + 155 (2ª) + **350** = **R$ 985**
+- 3 × 22 kg → 130 (1ª) + 155 (2ª) + 210 (3ª) = **R$ 495**
+Mesmos 66 kg, **o dobro do preço**. É a lição central da aula de bagagem — e ela fica mais forte
+com a conta certa do que com a errada.
+
 ## 3. AÉREO — instrumento e equipamento
 
 - **GOL:** "Guitarras e violões podem ser transportados na cabine como bagagem de mão."
@@ -90,6 +98,26 @@ ANTT no ar continua desatualizada, citando a norma revogada**. Não cite a 1.432
 | Remarcação | **não há prazo nem multa na norma**. Único teto: a taxa **não pode ultrapassar o preço do serviço**. Validade do bilhete: **1 ano** |
 | ⭐ Equipamento fora do padrão | **avisar a empresa com ≥ 24 h** de antecedência (dever do usuário). E ainda assim ela **não é obrigada a aceitar** |
 | Seguro de bagagem | **NÃO existe** obrigatório. O que há é **responsabilidade civil da transportadora**. O SRC cobre **pessoas em acidente**, não bagagem |
+
+## 4b. ⚠️ VEÍCULOS DE CARGA — ORDEM DE GRANDEZA, **NÃO É FONTE OFICIAL**
+
+⚠️ **ESTIMADO — conhecimento de mercado, sem fonte citável.** Não veio de norma nem de datasheet.
+Está aqui só para o exercício ter número; **a aula manda o aluno no CRLV** e diz isso na cara.
+
+| Veículo | Cubagem | Carga útil |
+|---|---|---|
+| Fiorino / furgão pequeno | ~6 m³ | ~650 kg |
+| Van grande (Sprinter/Master) | ~13 m³ | ~1,5 t |
+| VUC | ~18 m³ | ~3 t |
+| Toco | ~35 m³ | ~6 t |
+| Truck | ~50 m³ | ~12 t |
+| Carreta / baú | ~90 m³ | ~25 t |
+
+**Causa de um bug real (15/07):** a primeira versão listava só "Van", com 650 kg no pleno e 1,5 t no
+básico — os dois cursos se contradiziam. A causa não era digitação: **"van" é família, não veículo**
+(Fiorino ~650 kg × Sprinter ~1,5 t). Corrigido separando as duas linhas nas duas aulas e no
+`camarim-e-carga.html`. **A capacidade real está no CRLV do veículo contratado** — é isso que a aula
+ensina, e é o único número que não é chute.
 
 ## 5. RODOVIÁRIO — Fretamento (Resolução ANTT nº 4.777/2015, vigente)
 

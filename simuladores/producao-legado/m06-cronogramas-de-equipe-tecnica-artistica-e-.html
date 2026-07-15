@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMU PRO · Cronograma de Equipes</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #eef2f6;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    padding: 24px 16px 40px;
+    min-height: 100vh;
+  }
+  .device {
+    background: #20252f;
+    border: 1px solid #10141b;
+    border-radius: 12px;
+    padding: 16px;
+    max-width: 900px;
+    margin: 0 auto;
+    color: #cbd5e1;
+  }
+  .device-title {
+    font-size: 10px;
+    letter-spacing: .14em;
+    color: #5b6675;
+    margin-bottom: 14px;
+    text-transform: uppercase;
+  }
+  h2 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #e2e8f0;
+    margin-bottom: 4px;
+  }
+  .subtitle {
+    font-size: 11px;
+    color: #64748b;
+    margin-bottom: 16px;
+  }
+
+  /* Layout principal */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 12px;
+  }
+
+  /* Painel esquerdo - banco de tarefas */
+  .task-bank {
+    background: #1a1e27;
+    border-radius: 8px;
+    padding: 10px;
+    border: 1px solid #2d3340;
+  }
+  .task-bank h3 {
+    font-size: 10px;
+    letter-spacing: .1em;
+    color: #5b6675;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .task-item {
+    background: #20252f;
+    border: 1px solid #2d3340;
+    border-radius: 6px;
+    padding: 7px 9px;
+    margin-bottom: 6px;
+    cursor: grab;
+    font-size: 11px;
+    line-height: 1.3;
+    color: #94a3b8;
+    user-select: none;
+    transition: border-color .15s, background .15s;
+    position: relative;
+  }
+  .task-item:hover {
+    border-color: #3b82f6;
+    background: #252b38;
+    color: #cbd5e1;
+  }
+  .task-item.dragging {
+    opacity: .4;
+    cursor: grabbing;
+  }
+  .task-item.used {
+    opacity: .3;
+    cursor: default;
+    pointer-events: none;
+  }
+  .task-tag {
+    display: inline-block;
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    margin-bottom: 3px;
+    letter-spacing: .05em;
+    font-weight: 600;
+  }
+  .tag-tec { background: #1d4ed8; color: #bfdbfe; }
+  .tag-art { background: #7c3aed; color: #ede9fe; }
+  .tag-via { background: #065f46; color: #a7f3d0; }
+  .tag-cri { background: #991b1b; color: #fecaca; font-size: 8px; letter-spacing: .06em; }
+
+  /* Timeline */
+  .timeline-area {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .timeline-header {
+    display: grid;
+    gap: 0;
+  }
+  .day-labels {
+    display: flex;
+    margin-left: 90px;
+  }
+  .day-label {
+    flex: 1;
+    text-align: center;
+    font-size: 9px;
+    color: #5b6675;
+    letter-spacing: .05em;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #2d3340;
+  }
+  .day-label.event-day {
+    color: #f59e0b;
+    font-weight: 700;
+  }
+
+  /* Linhas de equipe */
+  .team-row {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    min-height: 56px;
+  }
+  .team-label {
+    width: 90px;
+    flex-shrink: 0;
+    font-size: 10px;
+    color: #64748b;
+    padding: 4px 6px 4px 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    line-height: 1.3;
+  }
+  .team-label strong {
+    font-size: 11px;
+    color: #94a3b8;
+    display: block;
+    margin-bottom: 2px;
+  }
+  .day-cells {
+    display: flex;
+    flex: 1;
+    gap: 3px;
+  }
+  .day-cell {
+    flex: 1;
+    background: #1a1e27;
+    border: 1px dashed #2d3340;
+    border-radius: 5px;
+    min-height: 56px;
+    padding: 3px;
+    position: relative;
+    transition: border-color .15s, background .15s;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .day-cell.drag-over {
+    border-color: #3b82f6;
+    background: #1e2d44;
+  }
+  .day-cell.event-cell {
+    border-color: #3d3000;
+    background: #1a1700;
+  }
+  .day-cell.drag-over.event-cell {
+    border-color: #f59e0b;
+    background: #2d2200;
+  }
+
+  /* Tarefa dentro da célula */
+  .placed-task {
+    background: #252b38;
+    border-radius: 4px;
+    padding: 3px 5px;
+    font-size: 9px;
+    color: #94a3b8;
+    line-height: 1.2;
+    cursor: pointer;
+    border: 1px solid #2d3340;
+    transition: border-color .12s;
+    position: relative;
+    word-break: break-word;
+  }
+  .placed-task:hover {
+    border-color: #ef4444;
+  }
+  .placed-task .remove-btn {
+    position: absolute;
+    top: 1px;
+    right: 3px;
+    color: #ef4444;
+    font-size: 10px;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity .1s;
+  }
+  .placed-task:hover .remove-btn {
+    opacity: 1;
+  }
+
+  /* Painel de status */
+  .status-panel {
+    background: #1a1e27;
+    border: 1px solid #2d3340;
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+  .status-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: #64748b;
+  }
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .dot-ok { background: #22c55e; }
+  .dot-warn { background: #f59e0b; }
+  .dot-err { background: #ef4444; }
+  .dot-off { background: #374151; }
+
+  .score-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+  }
+  .score-label {
+    font-size: 10px;
+    color: #5b6675;
+  }
+  .score-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: #e2e8f0;
+    transition: color .3s;
+  }
+  .score-value.perfect { color: #22c55e; }
+  .score-value.good { color: #3b82f6; }
+  .score-value.warn { color: #f59e0b; }
+  .score-value.bad { color: #ef4444; }
+
+  /* Alertas */
+  .alerts {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .alert-msg {
+    font-size: 10px;
+    padding: 5px 9px;
+    border-radius: 5px;
+    border-left: 3px solid;
+    animation: fadeIn .2s ease;
+  }
+  @keyframes fadeIn { from { opacity:0; transform: translateY(-3px); } to { opacity:1; transform:none; } }
+  .alert-err { background: #1f0d0d; border-color: #ef4444; color: #fca5a5; }
+  .alert-warn { background: #1f1600; border-color: #f59e0b; color: #fcd34d; }
+  .alert-ok { background: #0d1f12; border-color: #22c55e; color: #86efac; }
+  .alert-info { background: #0d1225; border-color: #3b82f6; color: #93c5fd; }
+
+  /* Botões */
+  .btn-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  .btn {
+    font-size: 10px;
+    padding: 5px 12px;
+    border-radius: 5px;
+    border: 1px solid;
+    cursor: pointer;
+    font-family: inherit;
+    letter-spacing: .04em;
+    transition: opacity .15s, transform .1s;
+    user-select: none;
+  }
+  .btn:hover { opacity: .85; }
+  .btn:active { transform: scale(.97); }
+  .btn-primary { background: #1d4ed8; border-color: #2563eb; color: #dbeafe; }
+  .btn-danger  { background: #991b1b; border-color: #dc2626; color: #fecaca; }
+  .btn-neutral { background: #1e2535; border-color: #2d3340; color: #94a3b8; }
+
+  /* Modal de conflito */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.7);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-box {
+    background: #20252f;
+    border: 1px solid #ef4444;
+    border-radius: 10px;
+    padding: 20px 24px;
+    max-width: 340px;
+    color: #cbd5e1;
+  }
+  .modal-box h4 { color: #ef4444; font-size: 13px; margin-bottom: 8px; }
+  .modal-box p { font-size: 11px; line-height: 1.6; color: #94a3b8; margin-bottom: 14px; }
+  .modal-box .btn { font-size: 11px; }
+
+  /* Legenda de equipes */
+  .legend {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    color: #5b6675;
+  }
+  .legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+  }
+
+  /* Seção de referência de regras */
+  .rules-box {
+    background: #161a22;
+    border: 1px solid #2d3340;
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-top: 10px;
+    font-size: 10px;
+    color: #5b6675;
+    line-height: 1.6;
+  }
+  .rules-box strong { color: #64748b; }
+
+  /* Ajustes de celular — não afetam o desktop */
+  @media (max-width: 600px) {
+    .main-grid { grid-template-columns: 1fr; }
+    .main-grid > * { min-width: 0; }
+    /* A timeline de 7 dias é legitimamente larga: rola dentro do
+       próprio container, sem arrastar a página junto. */
+    .timeline-area { overflow-x: auto; }
+    #team-rows { min-width: 520px; }
+    .day-labels { min-width: 430px; } /* 520 - 90px do team-label */
+    .btn { min-height: 34px; }
+  }
+
+  footer {
+    text-align: center;
+    font-size: 11px;
+    color: #475569;
+    margin-top: 18px;
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+<script>/*SMU-ZOOM*/(function(){var z=1,sc=null,MIN=1,MAX=2.5,STEP=0.25;function wrap(){if(sc)return;sc=document.createElement('div');sc.id='smu-sc';sc.style.transformOrigin='0 0';[].slice.call(document.body.children).filter(function(el){return (el.id||'').indexOf('smu-')!==0;}).forEach(function(k){sc.appendChild(k);});document.body.insertBefore(sc,document.body.firstChild);document.documentElement.style.overflow='auto';document.body.style.overflow='auto';document.body.style.margin='0';}function apply(){if(!sc)wrap();sc.style.transform='scale('+z+')';var w=sc.offsetWidth,h=sc.offsetHeight;document.body.style.width=(z>1?(w*z)+'px':'');document.body.style.height=(z>1?(h*z)+'px':'');var l=document.getElementById('smu-zl');if(l)l.textContent=Math.round(z*100)+'%';}function ui(){if(document.getElementById('smu-zoom'))return;var b=document.createElement('div');b.id='smu-zoom';b.style.cssText='position:fixed;left:10px;bottom:10px;z-index:99999;display:flex;align-items:center;gap:5px;background:#0e1420;border:1px solid #2c3340;border-radius:22px;padding:5px 8px;box-shadow:0 2px 10px rgba(0,0,0,.4);font-family:system-ui,sans-serif';function mk(t){var x=document.createElement('button');x.textContent=t;x.style.cssText='width:32px;height:32px;border-radius:50%;border:1px solid #2c3340;background:#171c26;color:#e5e7eb;font-size:18px;cursor:pointer;padding:0;line-height:1';return x;}var ic=document.createElement('span');ic.textContent='\U0001F50D';ic.style.fontSize='14px';var mi=mk('−'),lab=document.createElement('span'),pl=mk('+');lab.id='smu-zl';lab.style.cssText='font-size:12px;color:#cbd5e1;min-width:44px;text-align:center;cursor:pointer';lab.textContent='100%';b.appendChild(ic);b.appendChild(mi);b.appendChild(lab);b.appendChild(pl);document.body.appendChild(b);mi.onclick=function(){z=Math.max(MIN,Math.round((z-STEP)*100)/100);apply();};pl.onclick=function(){z=Math.min(MAX,Math.round((z+STEP)*100)/100);apply();};lab.onclick=function(){z=1;apply();};}if(document.readyState!=='loading')ui();else document.addEventListener('DOMContentLoaded',ui);})();</script>
+
+
+<div class="device">
+  <div class="device-title">SMU PRO · CRONOGRAMA DE EQUIPES</div>
+  <h2>Monte o Cronograma de Produção</h2>
+  <p class="subtitle">Arraste as tarefas para o dia e equipe corretos. Respeitando janelas de viagem, montagem e ensaios.</p>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#1d4ed8"></div> Técnica</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#7c3aed"></div> Artística</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#065f46"></div> Viagem</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#991b1b"></div> Crítica</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f59e0b; border-radius:50%"></div> Dia do evento</div>
+  </div>
+
+  <div class="main-grid">
+    <!-- Banco de tarefas -->
+    <div class="task-bank">
+      <h3>Tarefas disponíveis</h3>
+      <div id="task-bank-list"></div>
+    </div>
+
+    <!-- Timeline -->
+    <div class="timeline-area">
+      <div class="day-labels" id="day-labels"></div>
+      <div id="team-rows"></div>
+    </div>
+  </div>
+
+  <!-- Status -->
+  <div class="status-panel" id="status-panel">
+    <div class="status-item" id="st-viagem">
+      <div class="status-dot dot-off"></div>
+      <span>Viagem</span>
+    </div>
+    <div class="status-item" id="st-montagem">
+      <div class="status-dot dot-off"></div>
+      <span>Montagem</span>
+    </div>
+    <div class="status-item" id="st-ensaio">
+      <div class="status-dot dot-off"></div>
+      <span>Ensaio</span>
+    </div>
+    <div class="status-item" id="st-soundcheck">
+      <div class="status-dot dot-off"></div>
+      <span>Soundcheck</span>
+    </div>
+    <div class="status-item" id="st-operacao">
+      <div class="status-dot dot-off"></div>
+      <span>Operação</span>
+    </div>
+    <div class="score-bar">
+      <span class="score-label">Cronograma</span>
+      <span class="score-value bad" id="score-value">0%</span>
+    </div>
+  </div>
+
+  <div class="alerts" id="alerts"></div>
+
+  <div class="btn-row">
+    <button class="btn btn-primary" onclick="checkSchedule()">Verificar cronograma</button>
+    <button class="btn btn-neutral" onclick="showHint()">Dica</button>
+    <button class="btn btn-danger" onclick="resetAll()">Reiniciar</button>
+  </div>
+
+  <div class="rules-box">
+    <strong>Regras do cronograma:</strong>
+    D-3: Viagem da equipe técnica chega ao destino →
+    D-2: Montagem de estrutura começa →
+    D-1: Ensaio geral + soundcheck (nunca no dia do evento) →
+    D0: Operação ao vivo (equipe técnica + artística) →
+    D+1: Desmontagem e retorno
+  </div>
+</div>
+
+<!-- Modal conflito -->
+<div class="modal-overlay" id="conflict-modal">
+  <div class="modal-box">
+    <h4>⚠ Conflito de Cronograma</h4>
+    <p id="conflict-msg">Mensagem de conflito aqui.</p>
+    <button class="btn btn-danger" onclick="closeModal()">Entendido</button>
+  </div>
+</div>
+
+<footer>
+  Arraste tarefas do banco para os dias e equipes corretos · Clique numa tarefa colocada para removê-la · "Verificar" analisa o cronograma completo
+</footer>
+
+<script>
+// ============================================================
+// DADOS
+// ============================================================
+const DAYS = [
+  { label: 'D-5', id:'d-5', event: false },
+  { label: 'D-4', id:'d-4', event: false },
+  { label: 'D-3', id:'d-3', event: false },
+  { label: 'D-2', id:'d-2', event: false },
+  { label: 'D-1', id:'d-1', event: false },
+  { label: 'D0 EVENTO', id:'d0', event: true },
+  { label: 'D+1', id:'d1', event: false },
+];
+
+const TEAMS = [
+  { id: 'tec', label: 'Eq. Técnica', sub: 'Áudio/Vídeo/Luz' },
+  { id: 'art', label: 'Eq. Artística', sub: 'Performers/Dir.' },
+  { id: 'via', label: 'Logística', sub: 'Transporte/Hotel' },
+];
+
+// Tarefas disponíveis para arrastar
+const TASKS = [
+  // Viagem/logística
+  { id:'t01', label:'Reserva de voos e hotéis',     tag:'via', tagLabel:'VIAGEM',     tipo:'reserva',     allowTeams:['via'],     allowDays:['d-5','d-4','d-3'], critDays:['d-5','d-4'], critical:false },
+  { id:'t02', label:'Check-in hotel equipe técnica', tag:'via', tagLabel:'VIAGEM',    tipo:'checkin_tec', allowTeams:['via'],     allowDays:['d-3','d-2'],       critDays:['d-3'],       critical:false },
+  { id:'t03', label:'Check-in hotel equipe artística',tag:'via',tagLabel:'VIAGEM',   tipo:'checkin_art', allowTeams:['via'],     allowDays:['d-2','d-1'],       critDays:['d-2','d-1'], critical:false },
+  { id:'t04', label:'Transporte equipamentos (frete)',tag:'via', tagLabel:'VIAGEM',   tipo:'frete',       allowTeams:['via'],     allowDays:['d-4','d-3'],       critDays:['d-4','d-3'], critical:false },
+  // Técnica - pré-evento
+  { id:'t05', label:'Rigging e estruturas',          tag:'tec', tagLabel:'TÉCNICA',    tipo:'rigging',    allowTeams:['tec'],     allowDays:['d-2'],             critDays:['d-2'],       critical:true },
+  { id:'t06', label:'Montagem de áudio',             tag:'tec', tagLabel:'TÉCNICA',    tipo:'audio',      allowTeams:['tec'],     allowDays:['d-2','d-1'],       critDays:['d-2'],       critical:true },
+  { id:'t07', label:'Montagem de vídeo/LED',         tag:'tec', tagLabel:'TÉCNICA',    tipo:'video',      allowTeams:['tec'],     allowDays:['d-2','d-1'],       critDays:['d-2'],       critical:true },
+  { id:'t08', label:'Teste de iluminação',           tag:'tec', tagLabel:'TÉCNICA',    tipo:'luz_teste',  allowTeams:['tec'],     allowDays:['d-1'],             critDays:['d-1'],       critical:false },
+  { id:'t09', label:'Soundcheck / line check',       tag:'tec', tagLabel:'CRÍTICA',    tipo:'soundcheck', allowTeams:['tec'],     allowDays:['d-1'],             critDays:['d-1'],       critical:true },
+  // Artística - pré-evento
+  { id:'t10', label:'Ensaio geral completo',         tag:'art', tagLabel:'CRÍTICA',    tipo:'ensaio',     allowTeams:['art'],     allowDays:['d-1'],             critDays:['d-1'],       critical:true },
+  { id:'t11', label:'Reunião de briefing artístico', tag:'art', tagLabel:'ARTÍSTICA',  tipo:'briefing',   allowTeams:['art'],     allowDays:['d-2','d-1'],       critDays:['d-2'],       critical:false },
+  { id:'t12', label:'Passagem de palco/bloqueio',    tag:'art', tagLabel:'ARTÍSTICA',  tipo:'bloqueio',   allowTeams:['art'],     allowDays:['d-1'],             critDays:['d-1'],       critical:false },
+  // Dia do evento
+  { id:'t13', label:'Operação de áudio ao vivo',     tag:'tec', tagLabel:'CRÍTICA',    tipo:'op_audio',   allowTeams:['tec'],     allowDays:['d0'],              critDays:['d0'],        critical:true },
+  { id:'t14', label:'Operação de vídeo ao vivo',     tag:'tec', tagLabel:'CRÍTICA',    tipo:'op_video',   allowTeams:['tec'],     allowDays:['d0'],              critDays:['d0'],        critical:true },
+  { id:'t15', label:'Operação de iluminação',        tag:'tec', tagLabel:'TÉCNICA',    tipo:'op_luz',     allowTeams:['tec'],     allowDays:['d0'],              critDays:['d0'],        critical:false },
+  { id:'t16', label:'Apresentação artística',        tag:'art', tagLabel:'CRÍTICA',    tipo:'show',       allowTeams:['art'],     allowDays:['d0'],              critDays:['d0'],        critical:true },
+  // Pós-evento
+  { id:'t17', label:'Desmontagem e embalagem',       tag:'tec', tagLabel:'TÉCNICA',    tipo:'desmont',    allowTeams:['tec'],     allowDays:['d1'],              critDays:['d1'],        critical:false },
+  { id:'t18', label:'Retorno logístico (devolução)', tag:'via', tagLabel:'VIAGEM',     tipo:'retorno',    allowTeams:['via'],     allowDays:['d1'],              critDays:['d1'],        critical:false },
+];
+
+// Regras de sequência obrigatória: A deve vir ANTES de B
+const SEQUENCE_RULES = [
+  { before: 'frete',       after: 'rigging',     msg: 'Frete dos equipamentos deve chegar antes do rigging' },
+  { before: 'frete',       after: 'audio',       msg: 'Frete deve chegar antes da montagem de áudio' },
+  { before: 'frete',       after: 'video',       msg: 'Frete deve chegar antes da montagem de vídeo/LED' },
+  { before: 'checkin_tec', after: 'rigging',     msg: 'Equipe técnica precisa fazer check-in antes do rigging' },
+  { before: 'checkin_tec', after: 'audio',       msg: 'Equipe técnica precisa fazer check-in antes da montagem de áudio' },
+  { before: 'audio',       after: 'soundcheck',  msg: 'Áudio precisa ser montado antes do soundcheck' },
+  { before: 'rigging',     after: 'luz_teste',   msg: 'Rigging precisa ser feito antes do teste de iluminação' },
+  { before: 'briefing',    after: 'ensaio',      msg: 'Briefing artístico deve ocorrer antes do ensaio geral' },
+  { before: 'soundcheck',  after: 'show',        msg: 'Soundcheck deve ser feito antes da apresentação' },
+  { before: 'ensaio',      after: 'show',        msg: 'Ensaio geral deve ser feito antes da apresentação' },
+  { before: 'show',        after: 'desmont',     msg: 'Desmontagem ocorre após o evento' },
+];
+
+// Estado: schedule[teamId][dayId] = array de taskIds
+const schedule = {};
+TEAMS.forEach(t => {
+  schedule[t.id] = {};
+  DAYS.forEach(d => { schedule[t.id][d.id] = []; });
+});
+
+let dragTaskId = null;
+let hintIndex = 0;
+const HINTS = [
+  'A equipe técnica deve chegar ao destino com pelo menos 2 dias de antecedência ao evento.',
+  'Nunca agende soundcheck ou ensaio no D0 (dia do evento); o risco de atraso é crítico.',
+  'O frete de equipamentos deve sair antes da equipe técnica de modo que chegue a tempo para montagem.',
+  'Check-in da equipe artística pode ser 1 ou 2 dias antes — eles chegam mais próximos ao evento.',
+  'Desmontagem e retorno logístico ficam no D+1, após o evento.',
+  'O ensaio geral e o soundcheck DEVEM ocorrer no D-1, não antes e nunca no D0.',
+];
+
+// ============================================================
+// RENDER
+// ============================================================
+function init() {
+  renderDayLabels();
+  renderTeamRows();
+  renderTaskBank();
+  updateStatus();
+}
+
+function renderDayLabels() {
+  const el = document.getElementById('day-labels');
+  el.innerHTML = '';
+  DAYS.forEach(d => {
+    const div = document.createElement('div');
+    div.className = 'day-label' + (d.event ? ' event-day' : '');
+    div.textContent = d.label;
+    el.appendChild(div);
+  });
+}
+
+function renderTeamRows() {
+  const container = document.getElementById('team-rows');
+  container.innerHTML = '';
+  TEAMS.forEach(team => {
+    const row = document.createElement('div');
+    row.className = 'team-row';
+
+    const lbl = document.createElement('div');
+    lbl.className = 'team-label';
+    lbl.innerHTML = `<strong>${team.label}</strong>${team.sub}`;
+    row.appendChild(lbl);
+
+    const cells = document.createElement('div');
+    cells.className = 'day-cells';
+
+    DAYS.forEach(day => {
+      const cell = document.createElement('div');
+      cell.className = 'day-cell' + (day.event ? ' event-cell' : '');
+      cell.dataset.team = team.id;
+      cell.dataset.day  = day.id;
+
+      cell.addEventListener('dragover', onDragOver);
+      cell.addEventListener('dragleave', onDragLeave);
+      cell.addEventListener('drop', onDrop);
+
+      cells.appendChild(cell);
+    });
+
+    row.appendChild(cells);
+    container.appendChild(row);
+  });
+  redrawCells();
+}
+
+function redrawCells() {
+  document.querySelectorAll('.day-cell').forEach(cell => {
+    const team = cell.dataset.team;
+    const day  = cell.dataset.day;
+    const taskIds = schedule[team][day];
+    // Limpa conteúdo anterior
+    while (cell.firstChild) cell.removeChild(cell.firstChild);
+    taskIds.forEach(tid => {
+      const task = TASKS.find(t => t.id === tid);
+      if (!task) return;
+      const el = document.createElement('div');
+      el.className = 'placed-task';
+      el.innerHTML = `<span class="task-tag ${getTagClass(task.tag)}">${task.tagLabel}</span><br>${task.label}<span class="remove-btn" onclick="removeTask('${team}','${day}','${tid}')">✕</span>`;
+      cell.appendChild(el);
+    });
+  });
+}
+
+function renderTaskBank() {
+  const container = document.getElementById('task-bank-list');
+  container.innerHTML = '';
+  TASKS.forEach(task => {
+    const used = isTaskUsed(task.id);
+    const el = document.createElement('div');
+    el.className = 'task-item' + (used ? ' used' : '');
+    el.draggable = !used;
+    el.dataset.taskId = task.id;
+    el.innerHTML = `<span class="task-tag ${getTagClass(task.tag)}">${task.tagLabel}</span><br>${task.label}`;
+    el.addEventListener('dragstart', onDragStart);
+    el.addEventListener('dragend',   onDragEnd);
+    container.appendChild(el);
+  });
+}
+
+function getTagClass(tag) {
+  const map = { tec:'tag-tec', art:'tag-art', via:'tag-via' };
+  return map[tag] || 'tag-cri';
+}
+
+function isTaskUsed(tid) {
+  return TEAMS.some(t => DAYS.some(d => schedule[t.id][d.id].includes(tid)));
+}
+
+// ============================================================
+// DRAG & DROP
+// ============================================================
+function onDragStart(e) {
+  dragTaskId = e.currentTarget.dataset.taskId;
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+function onDragEnd(e) {
+  e.currentTarget.classList.remove('dragging');
+  dragTaskId = null;
+}
+
+function onDragOver(e) {
+  e.preventDefault();
+  e.currentTarget.classList.add('drag-over');
+  e.dataTransfer.dropEffect = 'move';
+}
+
+function onDragLeave(e) {
+  e.currentTarget.classList.remove('drag-over');
+}
+
+function onDrop(e) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if (!dragTaskId) return;
+
+  const cell  = e.currentTarget;
+  const team  = cell.dataset.team;
+  const day   = cell.dataset.day;
+  const task  = TASKS.find(t => t.id === dragTaskId);
+  if (!task) return;
+
+  // Validação imediata: equipe correta?
+  if (!task.allowTeams.includes(team)) {
+    showConflict(`<strong>${task.label}</strong> não pode ser atribuída para a <em>${TEAMS.find(t=>t.id===team).label}</em>.<br><br>Esta tarefa é da equipe: <strong>${task.allowTeams.map(id=>TEAMS.find(t=>t.id===id)?.label).join(', ')}</strong>.`);
+    return;
+  }
+
+  // Validação imediata: dia correto?
+  if (!task.allowDays.includes(day)) {
+    const dayLabel = DAYS.find(d=>d.id===day)?.label;
+    const okDays = task.allowDays.map(id=>DAYS.find(d=>d.id===id)?.label).join(', ');
+    showConflict(`<strong>${task.label}</strong> não pode ser agendada em <em>${dayLabel}</em>.<br><br>Dias válidos para esta tarefa: <strong>${okDays}</strong>.`);
+    return;
+  }
+
+  // Já usada?
+  if (isTaskUsed(dragTaskId)) {
+    showConflict(`<strong>${task.label}</strong> já está alocada no cronograma. Remova-a primeiro antes de realocar.`);
+    return;
+  }
+
+  schedule[team][day].push(dragTaskId);
+  redrawCells();
+  renderTaskBank();
+  updateStatus();
+}
+
+function removeTask(team, day, tid) {
+  schedule[team][day] = schedule[team][day].filter(x => x !== tid);
+  redrawCells();
+  renderTaskBank();
+  updateStatus();
+}
+
+// ============================================================
+// STATUS LIVE
+// ============================================================
+function updateStatus() {
+  // Checa tipos presentes
+  const placed = getAllPlaced(); // { tipo: dayIndex }
+
+  const hasType = (tipo) => placed.hasOwnProperty(tipo);
+
+  setDot('st-viagem',    hasType('frete') || hasType('checkin_tec') ? 'ok' : 'off');
+  setDot('st-montagem',  hasType('rigging') && hasType('audio') && hasType('video') ? 'ok' : (hasType('rigging')||hasType('audio')||hasType('video')?'warn':'off'));
+  setDot('st-ensaio',    hasType('ensaio') ? 'ok' : 'off');
+  setDot('st-soundcheck',hasType('soundcheck') ? 'ok' : 'off');
+  setDot('st-operacao',  hasType('show') && hasType('op_audio') ? 'ok' : (hasType('show')||hasType('op_audio')?'warn':'off'));
+
+  // Score
+  const total = TASKS.length;
+  const used  = TASKS.filter(t => isTaskUsed(t.id)).length;
+  const pct   = Math.round((used / total) * 100);
+  const sv = document.getElementById('score-value');
+  sv.textContent = pct + '%';
+  sv.className = 'score-value ' + (pct >= 100 ? 'perfect' : pct >= 70 ? 'good' : pct >= 40 ? 'warn' : 'bad');
+}
+
+function setDot(id, state) {
+  const el = document.getElementById(id);
+  const dot = el.querySelector('.status-dot');
+  dot.className = 'status-dot dot-' + (state === 'ok' ? 'ok' : state === 'warn' ? 'warn' : state === 'err' ? 'err' : 'off');
+}
+
+function getAllPlaced() {
+  // Retorna { tipo: dayIndex } para cada tipo alocado
+  const result = {};
+  TEAMS.forEach(team => {
+    DAYS.forEach((day, di) => {
+      schedule[team.id][day.id].forEach(tid => {
+        const task = TASKS.find(t => t.id === tid);
+        if (task) result[task.tipo] = di;
+      });
+    });
+  });
+  return result;
+}
+
+// ============================================================
+// VERIFICAÇÃO COMPLETA
+// ============================================================
+function checkSchedule() {
+  const alerts = document.getElementById('alerts');
+  alerts.innerHTML = '';
+  const placed = getAllPlaced();
+  let errors = 0;
+  let warnings = 0;
+
+  // 1. Tarefas críticas não alocadas
+  const critTasks = TASKS.filter(t => t.critical);
+  critTasks.forEach(task => {
+    if (!isTaskUsed(task.id)) {
+      addAlert('err', `Tarefa crítica não alocada: <strong>${task.label}</strong>`);
+      errors++;
+    }
+  });
+
+  // 2. Regras de sequência
+  SEQUENCE_RULES.forEach(rule => {
+    const idxBefore = placed[rule.before];
+    const idxAfter  = placed[rule.after];
+    if (idxBefore !== undefined && idxAfter !== undefined) {
+      if (idxBefore >= idxAfter) {
+        addAlert('err', `Sequência incorreta: ${rule.msg}`);
+        errors++;
+      }
+    }
+  });
+
+  // 3. Ensaio/soundcheck no D0
+  if (placed['ensaio'] !== undefined && placed['ensaio'] === 5) {
+    addAlert('err', 'Ensaio geral no dia do evento (D0) é proibido — atrasa a abertura ao público.');
+    errors++;
+  }
+  if (placed['soundcheck'] !== undefined && placed['soundcheck'] === 5) {
+    addAlert('err', 'Soundcheck no dia do evento (D0) é proibido — sem margem para ajustes.');
+    errors++;
+  }
+
+  // 4. Rigging sem frete anterior
+  if (placed['rigging'] !== undefined && placed['frete'] === undefined) {
+    addAlert('warn', 'Rigging alocado mas frete de equipamentos não está no cronograma.');
+    warnings++;
+  }
+
+  // 5. Operação sem ensaio
+  if (placed['show'] !== undefined && placed['ensaio'] === undefined) {
+    addAlert('warn', 'Apresentação alocada mas nenhum ensaio geral foi agendado. Risco alto de falha.');
+    warnings++;
+  }
+
+  // 6. Equipe artística chegando tarde demais
+  if (placed['checkin_art'] !== undefined && placed['ensaio'] !== undefined) {
+    if (placed['checkin_art'] >= placed['ensaio']) {
+      addAlert('warn', 'Check-in artístico no mesmo dia ou depois do ensaio — equipe pode não estar pronta.');
+      warnings++;
+    }
+  }
+
+  // 7. Tarefas não críticas não alocadas
+  const nonCrit = TASKS.filter(t => !t.critical && !isTaskUsed(t.id));
+  if (nonCrit.length > 0 && errors === 0) {
+    addAlert('warn', `${nonCrit.length} tarefa(s) de suporte ainda não alocada(s): ${nonCrit.map(t=>t.label).join(', ')}.`);
+    warnings++;
+  }
+
+  // Resultado final
+  if (errors === 0 && warnings === 0 && TASKS.every(t => isTaskUsed(t.id))) {
+    addAlert('ok', '✓ Cronograma completo e sem conflitos! Todas as equipes estão sincronizadas.');
+  } else if (errors === 0 && warnings > 0) {
+    addAlert('info', `Cronograma viável com ${warnings} aviso(s). Revise os itens acima.`);
+  } else if (errors > 0) {
+    addAlert('err', `${errors} erro(s) crítico(s) encontrado(s). O evento pode ser comprometido.`);
+  }
+}
+
+function addAlert(type, html) {
+  const div = document.createElement('div');
+  div.className = 'alert-msg alert-' + type;
+  div.innerHTML = html;
+  document.getElementById('alerts').appendChild(div);
+}
+
+// ============================================================
+// DICA
+// ============================================================
+function showHint() {
+  const alerts = document.getElementById('alerts');
+  const div = document.createElement('div');
+  div.className = 'alert-msg alert-info';
+  div.textContent = '💡 ' + HINTS[hintIndex % HINTS.length];
+  alerts.innerHTML = '';
+  alerts.appendChild(div);
+  hintIndex++;
+}
+
+// ============================================================
+// MODAL
+// ============================================================
+function showConflict(msg) {
+  document.getElementById('conflict-msg').innerHTML = msg;
+  document.getElementById('conflict-modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('conflict-modal').classList.remove('open');
+}
+
+// ============================================================
+// RESET
+// ============================================================
+function resetAll() {
+  TEAMS.forEach(t => {
+    DAYS.forEach(d => { schedule[t.id][d.id] = []; });
+  });
+  document.getElementById('alerts').innerHTML = '';
+  redrawCells();
+  renderTaskBank();
+  updateStatus();
+}
+
+// ============================================================
+// START
+// ============================================================
+init();
+</script>
+</body>
+</html>

@@ -286,7 +286,9 @@
       <div class="decktabs"><div class="dtab on" data-setdeck="A">DECK 1</div><div class="dtab" data-setdeck="C">DECK 3</div></div>
       <div class="pads" data-pads-side="L"></div>
       <div class="lp" data-loops-side="L">
-        <div class="kb amber" data-act="cuein">IN/CUE</div><div class="kb amber" data-act="cueout">OUT</div>
+        <!-- "LOOP IN / LOOP OUT": o manual do Prime 4+ nomeia o par como "Loop In / Loop Out".
+             "IN/CUE" é o nome do CDJ da Pioneer ("LOOP IN/CUE (IN ADJUST)") e não existe na Denon. -->
+        <div class="kb amber" data-act="cuein">LOOP IN</div><div class="kb amber" data-act="cueout">LOOP OUT</div>
         <div class="kb" data-act="reloop">RELOOP</div><div class="kb" data-act="beatloop" data-len="4">4 LOOP</div>
       </div>
       <div class="deckmid">
@@ -298,7 +300,10 @@
           <div class="marker" data-marker-side="L"></div><div class="hub"><canvas class="art" data-art-side="L" width="66" height="66"></canvas></div><div class="cdinfo">VINYL</div></div>
         <div class="tempo"><div class="tt">TEMPO</div><div class="fadv" data-tempo-side="L"><div class="cap"></div></div><div class="tt" style="color:var(--amber)">±8%</div></div>
       </div>
-      <div class="tledrow"><div class="tled on" data-act="mt">MT</div><div class="tled sync" data-act="sync">SYNC</div><div class="tled on" data-act="master">MASTER</div></div>
+      <div class="tledrow"><!-- "KEY LOCK" é o nome da Denon ("press Key Lock. When Key Lock is activated, the track's key
+           will remain..."). "MT"/"MASTER TEMPO" é da Pioneer e aparece ZERO vezes no manual do
+           Prime 4+. data-act="mt" segue: id interno do motor. -->
+      <div class="tled on" data-act="mt">KEY LOCK</div><div class="tled sync" data-act="sync">SYNC</div><div class="tled on" data-act="master">MASTER</div></div>
     </div>
 
     <div class="mixer">
@@ -322,7 +327,9 @@
       <div class="decktabs"><div class="dtab on" data-setdeck="B">DECK 2</div><div class="dtab" data-setdeck="D">DECK 4</div></div>
       <div class="pads" data-pads-side="R"></div>
       <div class="lp" data-loops-side="R">
-        <div class="kb amber" data-act="cuein">IN/CUE</div><div class="kb amber" data-act="cueout">OUT</div>
+        <!-- "LOOP IN / LOOP OUT": o manual do Prime 4+ nomeia o par como "Loop In / Loop Out".
+             "IN/CUE" é o nome do CDJ da Pioneer ("LOOP IN/CUE (IN ADJUST)") e não existe na Denon. -->
+        <div class="kb amber" data-act="cuein">LOOP IN</div><div class="kb amber" data-act="cueout">LOOP OUT</div>
         <div class="kb" data-act="reloop">RELOOP</div><div class="kb" data-act="beatloop" data-len="4">4 LOOP</div>
       </div>
       <div class="deckmid">
@@ -334,7 +341,10 @@
           <div class="marker" data-marker-side="R"></div><div class="hub"><canvas class="art" data-art-side="R" width="66" height="66"></canvas></div><div class="cdinfo">VINYL</div></div>
         <div class="tempo"><div class="tt">TEMPO</div><div class="fadv" data-tempo-side="R"><div class="cap"></div></div><div class="tt" style="color:var(--amber)">±8%</div></div>
       </div>
-      <div class="tledrow"><div class="tled on" data-act="mt">MT</div><div class="tled sync" data-act="sync">SYNC</div><div class="tled" data-act="master">MASTER</div></div>
+      <div class="tledrow"><!-- "KEY LOCK" é o nome da Denon ("press Key Lock. When Key Lock is activated, the track's key
+           will remain..."). "MT"/"MASTER TEMPO" é da Pioneer e aparece ZERO vezes no manual do
+           Prime 4+. data-act="mt" segue: id interno do motor. -->
+      <div class="tled on" data-act="mt">KEY LOCK</div><div class="tled sync" data-act="sync">SYNC</div><div class="tled" data-act="master">MASTER</div></div>
     </div>
   </div>
 
@@ -441,7 +451,7 @@ function buildDeck(id,buffer){
   const S=SPEC[id];
   const d={ id, buffer, data:buffer.getChannelData(0), len:buffer.length, peaks:buildPeaks(buffer,700),
     baseBpm:S.bpm, bpm:S.bpm, pitch:0, range:8, mt:true, playing:false, pos:0, rate:0,
-    touching:false, targetPos:0, cuePoint:0, hotcues:{}, loopOn:false, loopStart:0, loopEnd:0 };
+    touching:false, targetPos:0, cuePoint:0, hotcues:{}, loopOn:false, loopIn:false, loopStart:0, loopEnd:0 };
   d.pre=AC.createGain(); d.trim=AC.createGain(); d.trim.gain.value=0.9;
   d.eqLow=AC.createBiquadFilter(); d.eqLow.type="lowshelf"; d.eqLow.frequency.value=120;
   d.eqMid=AC.createBiquadFilter(); d.eqMid.type="peaking"; d.eqMid.frequency.value=1000; d.eqMid.Q.value=0.8;
@@ -471,7 +481,7 @@ const secOf=(d,s)=>s/d.buffer.sampleRate;
 const posSec=d=>secOf(d,d.pos);
 const effBpm=d=>d.baseBpm*(1+d.pitch/100);
 const beatLen=d=>60/effBpm(d)*d.buffer.sampleRate;
-function schedule(){ autoCheck(); } // compat: o áudio agora roda no read-head
+function schedule(){ if(typeof autoCheckMissions==="function")autoCheckMissions(); } // compat: áudio roda no read-head
 function applyTempo(d){ d.bpm=effBpm(d); }
 function setPitch(d,pct){ d.pitch=clamp(pct,-d.range,d.range); applyTempo(d); refreshDeckUI(d); syncFxTime(); checkTempoMission(); }
 
@@ -494,7 +504,11 @@ function hotcue(id,c,el){ if(!ready)return; const d=decks[id]; if(d.hotcues[c]==
 function buildChannels(){ const grid=$("#chgrid");
   [{n:1,deck:"A"},{n:2,deck:"B"},{n:3,deck:"C"},{n:4,deck:"D"}].forEach(c=>{ const ch=document.createElement("div"); ch.className="ch"; const dk=c.deck;
     ch.innerHTML=`<div class="cnum">${c.n} · ${dk}</div>
-      <div class="knob" data-ck="trim" data-deck="${dk}" data-min="0" data-max="1.6" data-val="0.9"></div><div class="klabel">TRIM</div>
+<!-- "LEVEL", não "TRIM": TRIM é Pioneer e aparece ZERO vezes no manual do Prime 4+. A Denon
+           chama este knob de "Channel Level" ("Turn this knob to adjust the level of the pre-fader,
+           pre-EQ audio signal for the channel"). O data-ck fica "trim" de propósito: é id interno
+           do motor, trocar não muda nada na tela e só quebraria a lógica. -->
+      <div class="knob" data-ck="trim" data-deck="${dk}" data-min="0" data-max="1.6" data-val="0.9"></div><div class="klabel">LEVEL</div>
       <div class="eqwrap">
         <div class="eqrow"><div class="knob" data-ck="hi" data-deck="${dk}" data-min="-26" data-max="6" data-val="0"></div><div class="klabel">HI</div></div>
         <div class="eqrow"><div class="knob" data-ck="mid" data-deck="${dk}" data-min="-26" data-max="6" data-val="0"></div><div class="klabel">MID</div></div>
@@ -569,8 +583,23 @@ function handleSideAct(side,act,b){ if(!ready){ if(!started)startAudio(); return
     case "master":window._masterDeck=id;$$('.tled[data-act="master"]').forEach(x=>x.classList.remove("on"));b.classList.add("on");refreshDeckUI(d);break;
     case "beatloop": if(d.loopOn){d.loopOn=false;b.classList.remove("on");} else {d.loopStart=d.pos;d.loopEnd=d.pos+beatLen(d)*4;d.loopOn=true;b.classList.add("on");} break;
     case "reloop": if(d.loopEnd>d.loopStart){d.loopOn=!d.loopOn;$(`[data-loops-side="${side}"] [data-act="beatloop"]`).classList.toggle("on",d.loopOn);} break;
-    case "cuein":b.classList.add("on");setTimeout(()=>b.classList.remove("on"),180);break;
-    case "cueout": d.loopOn=false; $(`[data-loops-side="${side}"] [data-act="beatloop"]`).classList.remove("on"); break; } }
+    /* LOOP MANUAL — o par LOOP IN / LOOP OUT do manual do Prime 4+: "press the Manual Loop In
+       button to set the start point, and then press [Loop Out] to set the end point".
+       Antes o LOOP IN só piscava e o LOOP OUT só desligava: dava para o aluno apertar os dois e
+       nunca sair loop nenhum. Agora o IN arma o ponto e o OUT fecha e ativa. */
+    case "cuein": d.loopStart=d.pos; d.loopIn=true; d.loopOn=false;
+      b.classList.add("on"); $(`[data-loops-side="${side}"] [data-act="beatloop"]`).classList.remove("on"); break;
+    case "cueout":
+      if(d.loopIn && d.pos>d.loopStart){                       // fecha o loop armado pelo LOOP IN
+        d.loopEnd=d.pos; d.loopOn=true; d.loopIn=false;
+        $(`[data-loops-side="${side}"] [data-act="cuein"]`).classList.remove("on");
+        b.classList.add("on"); setTimeout(()=>b.classList.remove("on"),180);
+        $(`[data-loops-side="${side}"] [data-act="beatloop"]`).classList.add("on");
+      } else {                                                 // sem IN armado, OUT sai do loop
+        d.loopOn=false; d.loopIn=false;
+        $(`[data-loops-side="${side}"] [data-act="cuein"]`).classList.remove("on");
+        $(`[data-loops-side="${side}"] [data-act="beatloop"]`).classList.remove("on");
+      } break; } }
 function syncDeck(id,b){ const md=decks[window._masterDeck]||decks.A; const d=decks[id]; d.pitch=(md.bpm/d.baseBpm-1)*100; applyTempo(d); if(d._tempoSet&&d._tempoSet[id])d._tempoSet[id](d.pitch);
   const blD=beatLen(d)*4, blM=beatLen(md)*4;
   d.pos=Math.floor(d.pos/blD)*blD+((md.pos%blM)/blM)*blD;
@@ -585,7 +614,7 @@ async function startAudio(){ if(started)return; started=true;
   ready=true;
   $("#acDot").classList.remove("off"); $("#acState").textContent="ligado"; $("#btnStart").textContent="● Áudio ligado";
   if(AC.resume)AC.resume(); IDS.forEach(id=>refreshDeckUI(decks[id])); syncFxTime();
-  setInterval(()=>{ autoCheck(); updatePhase(); },250); }
+  setInterval(()=>{ autoCheckMissions(); updatePhase(); },250); }
 function frame(){ if(started){ drawWaveforms(); updateMeters(); updatePhase(); autoCheckMissions(); IDS.forEach(id=>{ const d=decks[id]; const sec=d.playing?(AC.currentTime-d.startTime):0; const el=$("#time"+id); if(el){ const m=Math.floor(sec/60),s=Math.floor(sec%60); el.textContent=String(m).padStart(2,"0")+":"+String(s).padStart(2,"0"); } }); } requestAnimationFrame(frame); }
 
 function setSideDeck(side,id){ sideDeck[side]=id; $$(`.deckctl[data-side="${side}"] .dtab`).forEach(t=>t.classList.toggle("on",t.dataset.setdeck===id)); drawArtSide(side); highlightActiveLanes();

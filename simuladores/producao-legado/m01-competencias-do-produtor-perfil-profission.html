@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMU PRO · Competências do Produtor</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #eef2f6;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 24px 16px 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .device {
+    background: #20252f;
+    border: 1px solid #10141b;
+    border-radius: 12px;
+    color: #cbd5e1;
+    padding: 16px;
+    width: 100%;
+    max-width: 760px;
+  }
+  .device-title {
+    font-size: 10px;
+    letter-spacing: .14em;
+    color: #5b6675;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+  }
+
+  /* --- TABS --- */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 16px;
+    background: #151921;
+    border-radius: 8px;
+    padding: 4px;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 7px 4px;
+    font-size: 11px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    background: transparent;
+    color: #5b6675;
+    font-weight: 600;
+    letter-spacing: .04em;
+    transition: background .2s, color .2s;
+  }
+  .tab-btn.active {
+    background: #2d3340;
+    color: #e2e8f0;
+  }
+  /* Alvo de toque em celular/tablet (nao afeta desktop) */
+  @media (max-width: 600px), (pointer: coarse) {
+    .tab-btn { min-height: 34px; }
+  }
+
+  /* --- PAINEL DE COMPETÊNCIAS --- */
+  .comp-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .comp-card {
+    background: #151921;
+    border: 1px solid #2d3340;
+    border-radius: 8px;
+    padding: 10px 8px;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+    user-select: none;
+  }
+  .comp-card:hover { border-color: #3b82f6; background: #1a2030; }
+  .comp-card.selected { border-color: #3b82f6; background: #1a2030; }
+  .comp-card.ok { border-color: #22c55e; background: #192a1e; }
+  .comp-card.warn { border-color: #f59e0b; background: #2a1f10; }
+  .comp-card.danger { border-color: #ef4444; background: #2a1515; }
+  .comp-icon { font-size: 20px; margin-bottom: 4px; }
+  .comp-label { font-size: 10px; color: #94a3b8; font-weight: 600; letter-spacing: .05em; }
+  .comp-name { font-size: 12px; color: #e2e8f0; margin-top: 2px; font-weight: 600; }
+  .comp-bar-wrap { margin-top: 6px; background: #20252f; border-radius: 4px; height: 5px; overflow: hidden; }
+  .comp-bar { height: 5px; border-radius: 4px; transition: width .4s; }
+
+  /* Slider de competência */
+  .comp-detail {
+    background: #151921;
+    border: 1px solid #2d3340;
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 14px;
+    display: none;
+  }
+  .comp-detail.visible { display: block; }
+  .comp-detail-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .comp-detail-icon { font-size: 26px; }
+  .comp-detail-name { font-size: 14px; color: #e2e8f0; font-weight: 700; }
+  .comp-detail-desc { font-size: 11px; color: #64748b; margin-top: 2px; }
+  .slider-label-row { display: flex; justify-content: space-between; font-size: 10px; color: #5b6675; margin-bottom: 4px; }
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 4px;
+    background: #2d3340;
+    outline: none;
+    cursor: pointer;
+    margin-bottom: 8px;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: #3b82f6;
+    cursor: pointer;
+    border: 2px solid #1a2030;
+    transition: background .2s;
+  }
+  input[type=range]::-webkit-slider-thumb:hover { background: #60a5fa; }
+  .level-badges { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+  .level-badge {
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 700;
+    background: #2d3340;
+    color: #5b6675;
+    cursor: pointer;
+    transition: background .2s, color .2s;
+  }
+  .level-badge.active-1 { background: #ef4444; color: #fff; }
+  .level-badge.active-2 { background: #f59e0b; color: #111; }
+  .level-badge.active-3 { background: #3b82f6; color: #fff; }
+  .level-badge.active-4 { background: #22c55e; color: #fff; }
+  .level-badge.active-5 { background: #a78bfa; color: #fff; }
+  .comp-feedback { font-size: 11px; color: #94a3b8; min-height: 32px; line-height: 1.5; }
+
+  /* --- CENÁRIO DE DECISÃO --- */
+  .scenario-header { background: #151921; border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; }
+  .scenario-num { font-size: 10px; color: #5b6675; margin-bottom: 4px; letter-spacing: .08em; }
+  .scenario-text { font-size: 13px; color: #e2e8f0; line-height: 1.6; font-weight: 500; }
+  .scenario-role { font-size: 10px; color: #3b82f6; margin-top: 6px; font-weight: 700; letter-spacing: .06em; }
+  .options-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+  .option-btn {
+    background: #151921;
+    border: 1px solid #2d3340;
+    border-radius: 8px;
+    padding: 12px 14px;
+    cursor: pointer;
+    color: #cbd5e1;
+    font-size: 12px;
+    text-align: left;
+    line-height: 1.5;
+    transition: border-color .2s, background .2s;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .option-btn:hover:not(:disabled) { border-color: #3b82f6; background: #1a2030; }
+  .option-btn:disabled { cursor: default; }
+  .option-btn.correct { border-color: #22c55e; background: #192a1e; }
+  .option-btn.wrong { border-color: #ef4444; background: #2a1515; color: #94a3b8; }
+  .option-btn.neutral { border-color: #f59e0b; background: #2a1f10; }
+  .opt-letter {
+    min-width: 22px; height: 22px;
+    border-radius: 50%;
+    background: #2d3340;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700; color: #64748b;
+    flex-shrink: 0;
+  }
+  .opt-letter.c { background: #22c55e; color: #fff; }
+  .opt-letter.w { background: #ef4444; color: #fff; }
+  .opt-letter.n { background: #f59e0b; color: #111; }
+  .scenario-result {
+    background: #151921;
+    border-left: 3px solid #22c55e;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 12px;
+    color: #94a3b8;
+    line-height: 1.6;
+    margin-bottom: 12px;
+    display: none;
+  }
+  .scenario-result.visible { display: block; }
+  .scenario-result.bad { border-left-color: #ef4444; }
+  .scenario-result.warn { border-left-color: #f59e0b; }
+  .next-btn {
+    background: #3b82f6;
+    color: #fff;
+    border: none;
+    border-radius: 7px;
+    padding: 9px 20px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: .05em;
+    display: none;
+    transition: background .2s;
+  }
+  .next-btn:hover { background: #2563eb; }
+  .next-btn.visible { display: inline-block; }
+
+  /* --- MAPA DE PERFIL --- */
+  .profile-wrap { position: relative; width: 100%; padding-bottom: 10px; }
+  .radar-container { display: flex; justify-content: center; align-items: center; }
+  .radar-svg { width: 100%; max-width: 340px; }
+  .profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .profile-item {
+    background: #151921;
+    border: 1px solid #2d3340;
+    border-radius: 7px;
+    padding: 9px 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .profile-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .profile-item-text { font-size: 11px; color: #94a3b8; }
+  .profile-item-val { font-size: 13px; color: #e2e8f0; font-weight: 700; margin-left: auto; }
+
+  /* SCORE / STATUS BAR */
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #151921;
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .status-pill {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    padding: 3px 10px;
+    border-radius: 10px;
+    background: #2d3340;
+    color: #94a3b8;
+  }
+  .status-pill.green { background: #192a1e; color: #22c55e; }
+  .status-pill.yellow { background: #2a1f10; color: #f59e0b; }
+  .status-pill.red { background: #2a1515; color: #ef4444; }
+  .score-label { font-size: 10px; color: #5b6675; margin-left: auto; }
+  .score-val { font-size: 14px; color: #e2e8f0; font-weight: 700; }
+
+  /* RESULTS */
+  .result-box {
+    background: #151921;
+    border-radius: 10px;
+    padding: 18px;
+    text-align: center;
+    display: none;
+  }
+  .result-box.visible { display: block; }
+  .result-emoji { font-size: 40px; margin-bottom: 8px; }
+  .result-title { font-size: 18px; font-weight: 700; color: #e2e8f0; margin-bottom: 6px; }
+  .result-sub { font-size: 12px; color: #64748b; line-height: 1.6; margin-bottom: 14px; }
+  .result-tags { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-bottom: 14px; }
+  .result-tag {
+    font-size: 10px; font-weight: 700;
+    padding: 4px 10px; border-radius: 10px;
+    background: #2d3340; color: #94a3b8;
+  }
+  .reset-btn {
+    background: #a78bfa;
+    color: #fff;
+    border: none;
+    border-radius: 7px;
+    padding: 10px 28px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: .05em;
+    transition: background .2s;
+  }
+  .reset-btn:hover { background: #7c3aed; }
+
+  /* Tab panels */
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+</style>
+</head>
+<body>
+<script>/*SMU-ZOOM*/(function(){var z=1,sc=null,MIN=1,MAX=2.5,STEP=0.25;function wrap(){if(sc)return;sc=document.createElement('div');sc.id='smu-sc';sc.style.transformOrigin='0 0';[].slice.call(document.body.children).filter(function(el){return (el.id||'').indexOf('smu-')!==0;}).forEach(function(k){sc.appendChild(k);});document.body.insertBefore(sc,document.body.firstChild);document.documentElement.style.overflow='auto';document.body.style.overflow='auto';document.body.style.margin='0';}function apply(){if(!sc)wrap();sc.style.transform='scale('+z+')';var w=sc.offsetWidth,h=sc.offsetHeight;document.body.style.width=(z>1?(w*z)+'px':'');document.body.style.height=(z>1?(h*z)+'px':'');var l=document.getElementById('smu-zl');if(l)l.textContent=Math.round(z*100)+'%';}function ui(){if(document.getElementById('smu-zoom'))return;var b=document.createElement('div');b.id='smu-zoom';b.style.cssText='position:fixed;left:10px;bottom:10px;z-index:99999;display:flex;align-items:center;gap:5px;background:#0e1420;border:1px solid #2c3340;border-radius:22px;padding:5px 8px;box-shadow:0 2px 10px rgba(0,0,0,.4);font-family:system-ui,sans-serif';function mk(t){var x=document.createElement('button');x.textContent=t;x.style.cssText='width:32px;height:32px;border-radius:50%;border:1px solid #2c3340;background:#171c26;color:#e5e7eb;font-size:18px;cursor:pointer;padding:0;line-height:1';return x;}var ic=document.createElement('span');ic.textContent='\U0001F50D';ic.style.fontSize='14px';var mi=mk('−'),lab=document.createElement('span'),pl=mk('+');lab.id='smu-zl';lab.style.cssText='font-size:12px;color:#cbd5e1;min-width:44px;text-align:center;cursor:pointer';lab.textContent='100%';b.appendChild(ic);b.appendChild(mi);b.appendChild(lab);b.appendChild(pl);document.body.appendChild(b);mi.onclick=function(){z=Math.max(MIN,Math.round((z-STEP)*100)/100);apply();};pl.onclick=function(){z=Math.min(MAX,Math.round((z+STEP)*100)/100);apply();};lab.onclick=function(){z=1;apply();};}if(document.readyState!=='loading')ui();else document.addEventListener('DOMContentLoaded',ui);})();</script>
+
+<div class="device">
+  <div class="device-title">SMU PRO · Competências do Produtor</div>
+
+  <!-- TABS -->
+  <div class="tabs" role="tablist">
+    <button class="tab-btn active" onclick="switchTab('mapa')" id="tab-mapa">🎯 Meu Perfil</button>
+    <button class="tab-btn" onclick="switchTab('cenarios')" id="tab-cenarios">📋 Decisões</button>
+    <button class="tab-btn" onclick="switchTab('radar')" id="tab-radar">📊 Radar</button>
+  </div>
+
+  <!-- STATUS BAR -->
+  <div class="status-bar" id="statusBar">
+    <span class="status-pill" id="pillPerfil">Perfil: —</span>
+    <span class="status-pill" id="pillDecisao">Decisões: 0/6</span>
+    <span class="score-label">Pontuação</span>
+    <span class="score-val" id="scoreVal">0</span>
+  </div>
+
+  <!-- === PAINEL 1: MAPA DE COMPETÊNCIAS === -->
+  <div class="tab-panel active" id="panel-mapa">
+    <div style="font-size:11px;color:#64748b;margin-bottom:10px;line-height:1.5">
+      Avalie seu nível em cada competência do produtor profissional. Clique num cartão e ajuste o slider.
+    </div>
+    <div class="comp-grid" id="compGrid"></div>
+    <div class="comp-detail" id="compDetail">
+      <div class="comp-detail-header">
+        <div class="comp-detail-icon" id="detailIcon"></div>
+        <div>
+          <div class="comp-detail-name" id="detailName"></div>
+          <div class="comp-detail-desc" id="detailDesc"></div>
+        </div>
+      </div>
+      <div class="slider-label-row">
+        <span>Iniciante</span><span>Pleno</span><span>Especialista</span>
+      </div>
+      <input type="range" id="compSlider" min="0" max="100" value="0" oninput="onSlider(this.value)">
+      <div class="level-badges" id="levelBadges"></div>
+      <div class="comp-feedback" id="compFeedback"></div>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="next-btn visible" style="background:#2d3340;color:#94a3b8" onclick="switchTab('cenarios')">
+        Ir para Decisões →
+      </button>
+      <button class="next-btn visible" style="background:#2d3340;color:#94a3b8" onclick="switchTab('radar')">
+        Ver Radar →
+      </button>
+    </div>
+  </div>
+
+  <!-- === PAINEL 2: CENÁRIOS DE DECISÃO === -->
+  <div class="tab-panel" id="panel-cenarios">
+    <div id="scenarioArea"></div>
+    <div class="result-box" id="resultBox">
+      <div class="result-emoji" id="resultEmoji"></div>
+      <div class="result-title" id="resultTitle"></div>
+      <div class="result-sub" id="resultSub"></div>
+      <div class="result-tags" id="resultTags"></div>
+      <button class="reset-btn" onclick="resetScenarios()">Refazer Cenários</button>
+    </div>
+  </div>
+
+  <!-- === PAINEL 3: RADAR === -->
+  <div class="tab-panel" id="panel-radar">
+    <div class="radar-container">
+      <svg class="radar-svg" viewBox="0 0 340 300" id="radarSvg"></svg>
+    </div>
+    <div class="profile-grid" id="profileGrid"></div>
+    <div style="margin-top:12px;font-size:10px;color:#475569;text-align:center">
+      Radar atualizado em tempo real conforme você ajusta as competências.
+    </div>
+  </div>
+
+</div>
+
+<div style="margin-top:14px;font-size:11px;color:#475569;max-width:760px;text-align:center;line-height:1.6">
+  <strong>Como usar:</strong> no <em>Meu Perfil</em>, clique em cada competência e mova o slider para refletir seu nível atual.
+  Em <em>Decisões</em>, escolha a melhor ação para cada cenário real de produção.
+  O <em>Radar</em> exibe o mapa visual do seu perfil profissional.
+</div>
+
+<script>
+// ============================================================
+// DADOS DE COMPETÊNCIAS
+// ============================================================
+const COMPETENCIAS = [
+  {
+    id:'planejamento',
+    icon:'📋',
+    label:'GESTÃO',
+    name:'Planejamento & Cronograma',
+    desc:'Estruturar o projeto do briefing ao encerramento',
+    color:'#3b82f6',
+    levels:[
+      {max:20, badge:'Iniciante', cls:'active-1', text:'Você ainda depende de modelos prontos para montar um cronograma. Foco: aprenda a usar uma WBS (Work Breakdown Structure) e ferramentas como Trello ou planilhas de Gantt.'},
+      {max:40, badge:'Básico', cls:'active-2', text:'Consegue montar cronogramas simples, mas tem dificuldade em eventos com múltiplas frentes simultâneas. Próximo passo: treine a gestão de dependências entre tarefas.'},
+      {max:60, badge:'Intermediário', cls:'active-3', text:'Planeja com antecedência e identifica gargalos. Trabalhe em estimar buffer de tempo real (geralmente +20–30% do previsto em produção de eventos).'},
+      {max:80, badge:'Avançado', cls:'active-4', text:'Domina cronogramas complexos com frentes técnicas, artísticas e logísticas. Agora foque em delegar e confiar na sua equipe com visibilidade de status.'},
+      {max:100, badge:'Especialista', cls:'active-5', text:'Você estrutura projetos multi-venue com centenas de entregáveis. Mentore sua equipe e documente os processos para que o conhecimento não fique só com você.'},
+    ]
+  },
+  {
+    id:'comunicacao',
+    icon:'🗣️',
+    label:'SOFT SKILL',
+    name:'Comunicação & Briefing',
+    desc:'Alinhar expectativas entre cliente, fornecedores e equipe',
+    color:'#a78bfa',
+    levels:[
+      {max:20, badge:'Iniciante', cls:'active-1', text:'Comunicação reativa: você responde quando perguntado, mas não antecipa mal-entendidos. Pratique briefings escritos com confirmação formal do cliente.'},
+      {max:40, badge:'Básico', cls:'active-2', text:'Faz briefings básicos, mas detalhes técnicos se perdem. Foco: listas de verificação por área (áudio, vídeo, palco, catering) para cada fornecedor.'},
+      {max:60, badge:'Intermediário', cls:'active-3', text:'Alinha equipe e fornecedores com clareza. Desenvolva seu estilo de reunião de briefing: pauta fixa, ata enviada em até 24h, confirmação de recebimento.'},
+      {max:80, badge:'Avançado', cls:'active-4', text:'Comunica com precisão e empatia em situações de pressão. Agora invista em comunicação não-verbal e leitura de sala para antecipar conflitos.'},
+      {max:100, badge:'Especialista', cls:'active-5', text:'Sua comunicação é referência na empresa. Você treina outros produtores e cria templates de comunicação que viram padrão operacional.'},
+    ]
+  },
+  {
+    id:'orcamento',
+    icon:'💰',
+    label:'FINANCEIRO',
+    name:'Orçamento & Custos',
+    desc:'Planejar, negociar e controlar o budget do evento',
+    color:'#22c55e',
+    levels:[
+      {max:20, badge:'Iniciante', cls:'active-1', text:'Ainda erra a ordem de grandeza de alguns insumos. Comece mapeando o custo médio dos principais itens da sua praça (estrutura, A/V, alimentação, segurança).'},
+      {max:40, badge:'Básico', cls:'active-2', text:'Monta planilha de custos mas esquece itens como impostos, frete, hora extra e contingência. Reserve sempre 10–15% para imprevistos.'},
+      {max:60, badge:'Intermediário', cls:'active-3', text:'Controla budget em tempo real e negocia com fornecedores. Aprenda a calcular BEP (ponto de equilíbrio) e margem de contribuição por ingresso ou cota.'},
+      {max:80, badge:'Avançado', cls:'active-4', text:'Você tem histórico de custos por tipo de evento e usa esse dado para precificar com precisão. Próximo nível: gestão de fluxo de caixa e capital de giro de produção.'},
+      {max:100, badge:'Especialista', cls:'active-5', text:'Domina estruturas financeiras complexas: split de receita, coproduções, contratos com variáveis e bônus de performance. Referência no setor.'},
+    ]
+  },
+  {
+    id:'logistica',
+    icon:'🚚',
+    label:'OPERAÇÕES',
+    name:'Logística & Fornecedores',
+    desc:'Coordenar montagem, desmontagem, equipe e insumos',
+    color:'#f59e0b',
+    levels:[
+      {max:20, badge:'Iniciante', cls:'active-1', text:'Ainda depende do fornecedor para saber o que chega e quando. Monte seu próprio checklist de ordem de chegada de materiais e um mapa de slots de montagem.'},
+      {max:40, badge:'Básico', cls:'active-2', text:'Coordena montagem de eventos pequenos, mas perde o fio em eventos com mais de 5 fornecedores simultâneos. Use um mural de operações com horários fixados.'},
+      {max:60, badge:'Intermediário', cls:'active-3', text:'Gerencia múltiplos fornecedores com confiança. Aprofunde-se em contratos: prazo de entrega, multa por atraso, responsabilidade por dano e seguro de equipamentos.'},
+      {max:80, badge:'Avançado', cls:'active-4', text:'Sua logística é milimétrica. Foque agora em planos B documentados: fornecedor reserva, equipamento backup, e protocolo de emergência por área.'},
+      {max:100, badge:'Especialista', cls:'active-5', text:'Você gerencia cadeias logísticas em múltiplas cidades. Tem rede de fornecedores homologados e processos de qualificação formal.'},
+    ]
+  },
+  {
+    id:'tecnico',
+    icon:'🔊',
+    label:'TÉCNICO',
+    name:'Conhecimento Técnico A/V',
+    desc:'Entender sistemas de áudio, vídeo, luz e estrutura',
+    color:'#ef4444',
+    levels:[
+      {max:20, badge:'Iniciante', cls:'active-1', text:'Você conhece os nomes dos equipamentos mas não consegue especificar um rider técnico. Prioridade: entender a cadeia de sinal de áudio e o básico de iluminação cênica.'},
+      {max:40, badge:'Básico', cls:'active-2', text:'Consegue ler um rider e identificar inconsistências básicas. Aprofunde em conversão de potência (watts/dB), tipos de projeção e diferença entre P2 e P4 em LED.'},
+      {max:60, badge:'Intermediário', cls:'active-3', text:'Dialoga com técnicos com segurança. Expanda seu conhecimento para streaming, registro e integração A/V — cada vez mais exigidos nos eventos.'},
+      {max:80, badge:'Avançado', cls:'active-4', text:'Especifica sistemas completos. Agora foque em tendências: sistemas de imersão, mapping 3D, realidade aumentada em eventos ao vivo.'},
+      {max:100, badge:'Especialista', cls:'active-5', text:'Você é referência técnica para a equipe e os fornecedores. Participa da especificação de editais e homologação de equipamentos.'},
+    ]
+  },
+  {
+    id:'crise',
+    icon:'🚨',
+    label:'RESILIÊNCIA',
+    name:'Gestão de Crise',
+    desc:'Tomar decisões rápidas sob pressão no dia do evento',
+    color:'#ef4444',
+    levels:[
+      {max:20, badge:'Iniciante', cls:'active-1', text:'Em momentos de crise você paralisa ou busca alguém para decidir. Treine com simulações: escreva 5 cenários de falha e o que faria em cada um deles.'},
+      {max:40, badge:'Básico', cls:'active-2', text:'Resolve problemas simples, mas eventos complexos te sobrecarregam. Crie um "protocolo de emergência" por área: quem é o responsável, qual é o plano B.'},
+      {max:60, badge:'Intermediário', cls:'active-3', text:'Mantém a calma e decide com as informações disponíveis. Próximo passo: pós-análise de cada crise — o que gerou, o que resolveu, o que evitar.'},
+      {max:80, badge:'Avançado', cls:'active-4', text:'Antecipa riscos antes do evento e tem planos B e C. Compartilhe esse raciocínio com sua equipe para criar uma cultura de resiliência.'},
+      {max:100, badge:'Especialista', cls:'active-5', text:'Você tem um sistema de gestão de riscos formalizado. Cataloga ocorrências e usa dados para reduzir reincidência. Referência em contingência no mercado.'},
+    ]
+  },
+];
+
+// ============================================================
+// CENÁRIOS DE DECISÃO
+// ============================================================
+const SCENARIOS = [
+  {
+    num:'01', role:'COMPETÊNCIA: PLANEJAMENTO',
+    text:'Você recebe o briefing de um evento corporativo para 800 pessoas em 45 dias. Ao levantar os custos, percebe que o budget informado pelo cliente cobre apenas 70% do necessário. O que você faz?',
+    options:[
+      { letter:'A', text:'Aceita o projeto e improvisa durante a execução, cortando o que der.', type:'wrong', key:'w' },
+      { letter:'B', text:'Apresenta ao cliente um comparativo detalhado entre o projeto ideal e o que é viável dentro do budget, com trade-offs claros para cada escolha.', type:'correct', key:'c' },
+      { letter:'C', text:'Recusa o projeto sem apresentar alternativas.', type:'wrong', key:'w' },
+      { letter:'D', text:'Aceita e subcontrata fornecedores mais baratos sem avisar o cliente sobre a mudança de padrão.', type:'wrong', key:'w' },
+    ],
+    result:'A postura correta do produtor profissional é <strong>transparência proativa</strong>: apresentar cenários com custos reais, riscos e alternativas. Aceitar um projeto com budget inadequado sem alinhar expectativas é a causa mais comum de conflito pós-evento e dano à reputação.',
+    resultType:'good',
+    competence:'orcamento',
+    points:20,
+  },
+  {
+    num:'02', role:'COMPETÊNCIA: COMUNICAÇÃO',
+    text:'Faltam 4 horas para o início do evento e o fornecedor de iluminação confirma que um equipamento essencial (followspot) quebrou durante a montagem. O diretor artístico está no local. O que você faz primeiro?',
+    options:[
+      { letter:'A', text:'Conta para o diretor artístico imediatamente e espera a reação dele para decidir o que fazer.', type:'neutral', key:'n' },
+      { letter:'B', text:'Não conta para ninguém e tenta resolver sozinho para não criar pânico.', type:'wrong', key:'w' },
+      { letter:'C', text:'Liga imediatamente para fornecedores alternativos para verificar disponibilidade e custo de substituição, e só depois — com uma solução em mãos — comunica ao diretor e ao cliente.', type:'correct', key:'c' },
+      { letter:'D', text:'Entra em contato com o cliente para comunicar a falha e pedir orientação.', type:'wrong', key:'w' },
+    ],
+    result:'<strong>Comunicação de crise eficiente:</strong> informe problemas já acompanhados de alternativas. Chegar ao cliente ou ao diretor artístico com o problema e a solução ao mesmo tempo demonstra domínio e reduz o impacto emocional. Nunca esconda falhas — elas aparecem; a questão é se você está na frente ou atrás da situação.',
+    resultType:'good',
+    competence:'crise',
+    points:20,
+  },
+  {
+    num:'03', role:'COMPETÊNCIA: TÉCNICO',
+    text:'O cliente quer um painel LED para o fundo do palco de 8m x 4m (32m²). O público mais próximo estará a 5 metros. O fornecedor oferece dois módulos: P3.9 (pixel pitch 3,9mm) ou P6 (pixel pitch 6mm). Qual você especifica?',
+    options:[
+      { letter:'A', text:'P6, porque cobre a área com menos módulos e é mais barato.', type:'wrong', key:'w' },
+      { letter:'B', text:'P3.9, porque para 5m de distância mínima o P6 vai mostrar os pixels nitidamente, prejudicando a imagem.', type:'correct', key:'c' },
+      { letter:'C', text:'Qualquer um serve — o público não percebe a diferença.', type:'wrong', key:'w' },
+      { letter:'D', text:'Pergunta ao técnico do fornecedor sem analisar você mesmo.', type:'neutral', key:'n' },
+    ],
+    result:'<strong>Regra prática de pixel pitch:</strong> distância mínima de visualização confortável (em metros) ≈ pixel pitch (em mm) × 1,0 a 1,5. Para P6 → distância mínima de 6–9m. Com público a 5m, o P6 vai pixelar. O <strong>P3.9</strong> tem distância mínima de ~4–6m, adequado para esse cenário. Conhecer essa relação é indispensável para especificar LED com confiança.',
+    resultType:'good',
+    competence:'tecnico',
+    points:20,
+  },
+  {
+    num:'04', role:'COMPETÊNCIA: LOGÍSTICA',
+    text:'Durante a desmontagem, um equipamento do fornecedor de áudio some do local do evento. O fornecedor alega que sua equipe causou o dano/furto. O contrato foi assinado sem cláusula de responsabilidade. O que você aprende e aplica nos próximos eventos?',
+    options:[
+      { letter:'A', text:'Passa a fazer inventário fotográfico de entrada e saída de todos os equipamentos, com assinatura do responsável por área.', type:'correct', key:'c' },
+      { letter:'B', text:'Para de contratar aquele fornecedor e pronto.', type:'neutral', key:'n' },
+      { letter:'C', text:'Inclui no contrato uma cláusula genérica de "responsabilidade por danos".', type:'neutral', key:'n' },
+      { letter:'D', text:'Exige que o fornecedor pague sem provas, baseado apenas na palavra da equipe.', type:'wrong', key:'w' },
+    ],
+    result:'A alternativa A é a mais robusta: um <strong>inventário fotográfico de entrada e saída</strong> é evidência documentada e incontestável. Combinado com cláusulas contratuais específicas (com detalhamento do equipamento, número de série e valor de reposição), forma um sistema de proteção completo. Conflitos de desmontagem são muito comuns — o produtor profissional previne com processo, não com boa fé.',
+    resultType:'good',
+    competence:'logistica',
+    points:20,
+  },
+  {
+    num:'05', role:'COMPETÊNCIA: ORÇAMENTO',
+    text:'Um cliente aprova o orçamento mas, 15 dias antes do evento, pede "pequenas mudanças": adicionar um coffee break, trocar o sistema de som, e adiantar a abertura em 1h. Você sabe que esses itens somam cerca de R$ 18.000 além do contratado. O que você faz?',
+    options:[
+      { letter:'A', text:'Absorve as mudanças para não perder o cliente e espera recuperar o valor no próximo projeto.', type:'wrong', key:'w' },
+      { letter:'B', text:'Recusa todas as mudanças por não estarem no contrato original.', type:'wrong', key:'w' },
+      { letter:'C', text:'Emite um aditivo contratual detalhando cada alteração, o custo individual e o novo total, com prazo para aprovação formal.', type:'correct', key:'c' },
+      { letter:'D', text:'Executa as mudanças e cobra no fechamento, sem documentar antes.', type:'wrong', key:'w' },
+    ],
+    result:'<strong>Scope creep</strong> (expansão de escopo não controlada) é um dos maiores vilões da lucratividade em eventos. A prática profissional é o <strong>aditivo contratual</strong>: cada mudança deve ser documentada, precificada e aprovada formalmente antes de ser executada. Isso protege o produtor, profissionaliza a relação e educa o cliente sobre o custo real das decisões.',
+    resultType:'good',
+    competence:'orcamento',
+    points:20,
+  },
+  {
+    num:'06', role:'COMPETÊNCIA: GESTÃO DE CRISE',
+    text:'No dia D, 1 hora antes da abertura, o sistema de ar-condicionado do local falha. São 38°C externos, 600 pessoas esperadas, e o local não tem plano de contingência. Qual sua primeira ação como produtor responsável?',
+    options:[
+      { letter:'A', text:'Ativa o protocolo de emergência: verifica rapidamente locação de climatizadores portáteis de emergência na região e aciona o gestor do local para responsabilização.', type:'correct', key:'c' },
+      { letter:'B', text:'Comunica o cancelamento do evento imediatamente.', type:'wrong', key:'w' },
+      { letter:'C', text:'Aguarda o técnico de manutenção do local resolver o problema.', type:'wrong', key:'w' },
+      { letter:'D', text:'Informa ao público na entrada que haverá desconforto e deixa decidirem se entram.', type:'wrong', key:'w' },
+    ],
+    result:'Cancelar é sempre o último recurso — e decisões precipitadas aumentam o dano. O produtor profissional age em <strong>paralelo</strong>: busca solução imediata (climatizadores de emergência), responsabiliza o local (que tem obrigação contratual de entregar o espaço em condições), e só escalona para o cliente com alternativas em mãos. Ter contatos de fornecedores de emergência na sua rede é parte do perfil profissional.',
+    resultType:'good',
+    competence:'crise',
+    points:20,
+  },
+];
+
+// ============================================================
+// ESTADO
+// ============================================================
+const state = {
+  compValues: {},
+  currentScenario: 0,
+  scenarioAnswered: [],
+  score: 0,
+  selectedComp: null,
+};
+
+COMPETENCIAS.forEach(c => { state.compValues[c.id] = 0; });
+
+// ============================================================
+// TABS
+// ============================================================
+function switchTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+  if(name === 'radar') renderRadar();
+}
+
+// ============================================================
+// RENDER COMPETÊNCIAS
+// ============================================================
+function renderCompGrid() {
+  const grid = document.getElementById('compGrid');
+  grid.innerHTML = '';
+  COMPETENCIAS.forEach((c,i) => {
+    const val = state.compValues[c.id];
+    let cls = val === 0 ? '' : val < 30 ? 'warn' : val < 60 ? '' : 'ok';
+    if(state.selectedComp === c.id) cls += ' selected';
+    const pct = val + '%';
+    const barColor = val < 30 ? '#ef4444' : val < 60 ? '#f59e0b' : c.color;
+    grid.innerHTML += `
+      <div class="comp-card ${cls}" onclick="selectComp('${c.id}')">
+        <div class="comp-icon">${c.icon}</div>
+        <div class="comp-label">${c.label}</div>
+        <div class="comp-name">${c.name}</div>
+        <div class="comp-bar-wrap"><div class="comp-bar" style="width:${pct};background:${barColor}"></div></div>
+      </div>`;
+  });
+}
+
+function selectComp(id) {
+  state.selectedComp = id;
+  const c = COMPETENCIAS.find(x => x.id === id);
+  const val = state.compValues[id];
+  document.getElementById('detailIcon').textContent = c.icon;
+  document.getElementById('detailName').textContent = c.name;
+  document.getElementById('detailDesc').textContent = c.desc;
+  document.getElementById('compSlider').value = val;
+  document.getElementById('compDetail').classList.add('visible');
+  renderLevelBadges(c, val);
+  renderFeedback(c, val);
+  renderCompGrid();
+}
+
+function onSlider(val) {
+  if(!state.selectedComp) return;
+  val = parseInt(val);
+  state.compValues[state.selectedComp] = val;
+  const c = COMPETENCIAS.find(x => x.id === state.selectedComp);
+  renderLevelBadges(c, val);
+  renderFeedback(c, val);
+  renderCompGrid();
+  updateStatusBar();
+  if(document.getElementById('panel-radar').classList.contains('active')) renderRadar();
+}
+
+function renderLevelBadges(c, val) {
+  const wrap = document.getElementById('levelBadges');
+  const levelNames = ['Iniciante','Básico','Intermediário','Avançado','Especialista'];
+  const ranges = [20,40,60,80,100];
+  let current = 0;
+  for(let i=0;i<ranges.length;i++) { if(val <= ranges[i]) { current = i; break; } if(i===ranges.length-1) current=i; }
+  wrap.innerHTML = levelNames.map((n,i) => {
+    let cls = val > 0 && i === current ? `active-${i+1}` : '';
+    return `<span class="level-badge ${cls}">${n}</span>`;
+  }).join('');
+}
+
+function renderFeedback(c, val) {
+  if(val === 0) {
+    document.getElementById('compFeedback').textContent = 'Mova o slider para avaliar seu nível nesta competência.';
+    return;
+  }
+  const level = c.levels.find(l => val <= l.max) || c.levels[c.levels.length-1];
+  document.getElementById('compFeedback').textContent = level.text;
+}
+
+// ============================================================
+// STATUS BAR
+// ============================================================
+function updateStatusBar() {
+  const vals = Object.values(state.compValues);
+  const avg = vals.reduce((a,b)=>a+b,0)/vals.length;
+  let perfil='—', pillCls='';
+  if(avg===0){ perfil='—'; pillCls=''; }
+  else if(avg<25){ perfil='Iniciante'; pillCls='red'; }
+  else if(avg<50){ perfil='Em desenvolvimento'; pillCls='yellow'; }
+  else if(avg<75){ perfil='Pleno'; pillCls='green'; }
+  else { perfil='Especialista'; pillCls='green'; }
+
+  const pillP = document.getElementById('pillPerfil');
+  pillP.textContent = 'Perfil: '+perfil;
+  pillP.className = 'status-pill'+(pillCls?' '+pillCls:'');
+
+  const answered = state.scenarioAnswered.length;
+  document.getElementById('pillDecisao').textContent = `Decisões: ${answered}/6`;
+  document.getElementById('scoreVal').textContent = state.score;
+}
+
+// ============================================================
+// CENÁRIOS
+// ============================================================
+function renderScenario() {
+  const area = document.getElementById('scenarioArea');
+  const idx = state.currentScenario;
+
+  if(idx >= SCENARIOS.length) {
+    area.style.display = 'none';
+    showResult();
+    return;
+  }
+
+  area.style.display = 'block';
+  document.getElementById('resultBox').classList.remove('visible');
+  const s = SCENARIOS[idx];
+  const answered = state.scenarioAnswered[idx];
+
+  area.innerHTML = `
+    <div class="scenario-header">
+      <div class="scenario-num">CENÁRIO ${s.num} DE ${SCENARIOS.length}</div>
+      <div class="scenario-text">${s.text}</div>
+      <div class="scenario-role">${s.role}</div>
+    </div>
+    <div class="options-list">
+      ${s.options.map((o,i)=>`
+        <button class="option-btn ${answered ? (o.type==='correct'?'correct': o.type==='neutral'?'neutral':'wrong') : ''}"
+          id="opt_${i}"
+          onclick="answerScenario(${idx},${i})"
+          ${answered?'disabled':''}>
+          <span class="opt-letter ${answered?(o.type==='correct'?'c':o.type==='neutral'?'n':'w'):''}">${o.letter}</span>
+          <span>${o.text}</span>
+        </button>`).join('')}
+    </div>
+    <div class="scenario-result${answered?' visible'+(s.resultType==='good'?'':s.resultType==='warn'?' warn':' bad'):''}" id="scenResult">
+      ${s.result}
+    </div>
+    <button class="next-btn${answered?' visible':''}" id="nextBtn" onclick="nextScenario()">
+      ${idx < SCENARIOS.length-1 ? 'Próximo Cenário →' : 'Ver Resultado Final →'}
+    </button>
+  `;
+}
+
+function answerScenario(idx, optIdx) {
+  if(state.scenarioAnswered[idx] !== undefined) return;
+  const s = SCENARIOS[idx];
+  const opt = s.options[optIdx];
+  const isCorrect = opt.type === 'correct';
+  const isNeutral = opt.type === 'neutral';
+
+  state.scenarioAnswered[idx] = optIdx;
+  if(isCorrect) state.score += s.points;
+  else if(isNeutral) state.score += Math.floor(s.points * 0.4);
+
+  updateStatusBar();
+  renderScenario();
+}
+
+function nextScenario() {
+  state.currentScenario++;
+  renderScenario();
+}
+
+function resetScenarios() {
+  state.currentScenario = 0;
+  state.scenarioAnswered = [];
+  state.score = 0;
+  updateStatusBar();
+  document.getElementById('resultBox').classList.remove('visible');
+  renderScenario();
+}
+
+function showResult() {
+  const box = document.getElementById('resultBox');
+  const pct = (state.score / (SCENARIOS.length * 20)) * 100;
+  let emoji, title, sub;
+  if(pct >= 80){ emoji='🏆'; title='Perfil Sênior'; sub='Você tomou as decisões corretas na maioria dos cenários. Seu raciocínio reflete um produtor experiente, capaz de antecipar riscos e comunicar com clareza.'; }
+  else if(pct >= 50){ emoji='📈'; title='Perfil em Ascensão'; sub='Você acertou boa parte das decisões, mas ainda há pontos de aprimoramento. Revise os cenários que errou e reflita sobre como aplicar esses conceitos no seu dia a dia.'; }
+  else { emoji='📚'; title='Perfil em Desenvolvimento'; sub='Seus resultados mostram que algumas competências centrais do produtor ainda precisam de prática. Não se preocupe — a lógica vem com experiência e estudo. Refaça os cenários com calma.'; }
+
+  document.getElementById('resultEmoji').textContent = emoji;
+  document.getElementById('resultTitle').textContent = title;
+  document.getElementById('resultSub').textContent = sub;
+  document.getElementById('resultTags').innerHTML = `
+    <span class="result-tag">Pontuação: ${state.score}/${SCENARIOS.length*20}</span>
+    <span class="result-tag">${Math.round(pct)}% de aproveitamento</span>`;
+  box.classList.add('visible');
+}
+
+// ============================================================
+// RADAR SVG
+// ============================================================
+function renderRadar() {
+  const svg = document.getElementById('radarSvg');
+  const cx=170, cy=150, r=110;
+  const n = COMPETENCIAS.length;
+  const angles = COMPETENCIAS.map((_,i)=> (Math.PI*2*i/n) - Math.PI/2);
+
+  function pt(i, pct) {
+    const a = angles[i];
+    const dist = r * (pct/100);
+    return [cx + Math.cos(a)*dist, cy + Math.sin(a)*dist];
+  }
+  function ptEdge(i) { return pt(i, 100); }
+
+  // Anéis de referência
+  let webs = '';
+  [20,40,60,80,100].forEach(p=>{
+    const pts = COMPETENCIAS.map((_,i)=>ptEdge(i).map(v=> cx + (v-cx)*(p/100)+' '+(cy+(v-cy)*(p/100))).join(',')).join(' ');
+    // simplified
+    const points = angles.map((a,i)=>{
+      const d = r*(p/100);
+      return (cx+Math.cos(a)*d)+','+(cy+Math.sin(a)*d);
+    }).join(' ');
+    webs += `<polygon points="${points}" fill="none" stroke="#2d3340" stroke-width="${p===100?1.5:.8}"/>`;
+  });
+
+  // Spokes
+  let spokes = angles.map(a=>`<line x1="${cx}" y1="${cy}" x2="${cx+Math.cos(a)*r}" y2="${cy+Math.sin(a)*r}" stroke="#2d3340" stroke-width=".8"/>`).join('');
+
+  // Labels
+  let labels = COMPETENCIAS.map((c,i)=>{
+    const a = angles[i];
+    const lx = cx+Math.cos(a)*(r+20);
+    const ly = cy+Math.sin(a)*(r+20);
+    const anchor = lx < cx-5?'end':lx>cx+5?'start':'middle';
+    return `<text x="${lx}" y="${ly+4}" fill="${c.color}" font-size="9" text-anchor="${anchor}" font-weight="700">${c.icon} ${c.name.split(' ')[0]}</text>`;
+  }).join('');
+
+  // Data polygon
+  const dataPoints = COMPETENCIAS.map((_,i)=>{
+    const v = state.compValues[COMPETENCIAS[i].id];
+    const a = angles[i];
+    const d = r*(v/100);
+    return (cx+Math.cos(a)*d)+','+(cy+Math.sin(a)*d);
+  }).join(' ');
+
+  let dots = COMPETENCIAS.map((c,i)=>{
+    const v = state.compValues[c.id];
+    const a = angles[i];
+    const d = r*(v/100);
+    const x=cx+Math.cos(a)*d, y=cy+Math.sin(a)*d;
+    if(v===0) return '';
+    return `<circle cx="${x}" cy="${y}" r="4" fill="${c.color}" stroke="#20252f" stroke-width="1.5"/>`;
+  }).join('');
+
+  svg.innerHTML = webs + spokes + labels +
+    `<polygon points="${dataPoints}" fill="rgba(59,130,246,0.12)" stroke="#3b82f6" stroke-width="2"/>` +
+    dots;
+
+  // Profile grid
+  const pg = document.getElementById('profileGrid');
+  pg.innerHTML = COMPETENCIAS.map(c=>{
+    const v = state.compValues[c.id];
+    const level = c.levels.find(l=>v<=l.max)||c.levels[c.levels.length-1];
+    const badgeName = v===0?'—':level.badge;
+    return `<div class="profile-item">
+      <div class="profile-dot" style="background:${c.color}"></div>
+      <span class="profile-item-text">${c.icon} ${c.name}</span>
+      <span class="profile-item-val" style="color:${c.color}">${badgeName}</span>
+    </div>`;
+  }).join('');
+}
+
+// ============================================================
+// INIT
+// ============================================================
+renderCompGrid();
+renderScenario();
+updateStatusBar();
+</script>
+</body>
+</html>
