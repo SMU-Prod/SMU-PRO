@@ -5,6 +5,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { faixa, conferirFaixa } from "../_REGISTRO-IDS.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "../..");
@@ -21,6 +22,11 @@ const ID = {
   quiz:    "5504c000-5011-4a00-9000-0000000000c1",
 };
 const Q = (n) => `5504c000-5011-4a00-9000-0000000000${(0xd0 + n).toString(16)}`; // question ids
+
+// TRAVA DE FAIXA: 5504c000 é COMPARTILHADA por 4 scripts (som-formacao-completa, mix-show,
+// ah-sq, digico). Aborta se este script gerar um id fora do espaço do pleno-som.
+// O module …a1 é compartilhado com ah-sq/digico de propósito — por isso não é deletado aqui.
+conferirFaixa(faixa("pleno-som"), [...Object.values(ID), ...Array.from({ length: 8 }, (_, i) => Q(i + 1))]);
 
 // ---- conteúdo ----
 const conteudo = fs.readFileSync(path.join(__dirname, "aula-01-yamaha-cl5.fragment.html"), "utf8").trim();
@@ -121,19 +127,32 @@ L.push("-- Aplicar: colar no SQL Editor do Supabase OU supabase db push.");
 L.push("-- ====================================================================");
 L.push("begin;");
 L.push("");
-L.push("-- Limpeza para reaplicar sem duplicar");
+// Limpeza para reaplicar sem duplicar — SÓ o que é deste script (a aula da CL5).
+// NÃO se apaga o módulo nem o curso: a faixa 5504c000 é COMPARTILHADA por 4 scripts.
+//   · `delete modules where id=…a1` levaria em cascata as aulas do ah-sq (ordem 2) e do
+//     digico (ordem 3), que vivem NESTE mesmo módulo de propósito.
+//   · `delete courses where id=…001` era pior ainda: cascata no curso inteiro, levando
+//     mix-show + ah-sq + digico junto — o SQL diria "sucesso" e o Pleno—Som ficaria só
+//     com a aula da CL5.
+// Curso e módulo agora são UPSERT: cria na primeira vez, atualiza depois, nunca apaga.
+L.push("-- Limpeza para reaplicar sem duplicar — só o conteúdo deste script");
 L.push(`delete from public.ai_animations where lesson_id = ${q(ID.lesson)};`);
 L.push(`delete from public.quizzes where id = ${q(ID.quiz)};`);
 L.push(`delete from public.lessons where id = ${q(ID.lesson)};`);
-L.push(`delete from public.modules where id = ${q(ID.module)};`);
-L.push(`delete from public.courses where id = ${q(ID.course)};`);
 L.push("");
 L.push("-- CURSO (ativo=false)");
 L.push(`insert into public.courses (id,titulo,slug,descricao_curta,nivel,categoria,categorias,tipo,carga_horaria,total_aulas,ativo,destaque,ordem) values`);
-L.push(`  (${q(ID.course)},${q("Som — Formação Completa")},${q("som-formacao-completa")},${q("Formação profissional em som ao vivo: teoria de fontes técnicas + simuladores-réplica por marca (Yamaha, Allen & Heath, Soundcraft, DiGiCo…).")},'pleno','som','{som}','pago',40,1,false,false,20);`);
+L.push(`  (${q(ID.course)},${q("Som — Formação Completa")},${q("som-formacao-completa")},${q("Formação profissional em som ao vivo: teoria de fontes técnicas + simuladores-réplica por marca (Yamaha, Allen & Heath, Soundcraft, DiGiCo…).")},'pleno','som','{som}','pago',40,1,false,false,20)`);
+// Upsert: NÃO sobrescreve `ativo`/`total_aulas` — quem manda nisso é o admin/os outros
+// scripts, não este. Reaplicar não pode despublicar o curso nem zerar a contagem.
+L.push(`  on conflict (id) do update set titulo = excluded.titulo, slug = excluded.slug,`);
+L.push(`    descricao_curta = excluded.descricao_curta, nivel = excluded.nivel, categoria = excluded.categoria,`);
+L.push(`    categorias = excluded.categorias, tipo = excluded.tipo, carga_horaria = excluded.carga_horaria;`);
 L.push("");
 L.push("-- MÓDULO");
-L.push(`insert into public.modules (id,course_id,titulo,ordem) values (${q(ID.module)},${q(ID.course)},${q("Mesas de Som Digitais — por Fabricante")},1);`);
+// Upsert: o módulo …a1 é compartilhado com ah-sq e digico — cria ou atualiza, nunca apaga.
+L.push(`insert into public.modules (id,course_id,titulo,ordem) values (${q(ID.module)},${q(ID.course)},${q("Mesas de Som Digitais — por Fabricante")},1)`);
+L.push(`  on conflict (id) do update set course_id = excluded.course_id, titulo = excluded.titulo, ordem = excluded.ordem;`);
 L.push("");
 L.push("-- AULA (teoria)");
 L.push(`insert into public.lessons (id,module_id,titulo,tipo,conteudo_rico,duracao_min,ordem,tem_quiz,preview_gratis) values`);
@@ -150,8 +169,10 @@ quiz.questoes.forEach((qq, i) => {
 });
 L.push("");
 L.push("-- SIMULADOR (ai_animations: o AnimationPlayer renderiza urls[].html em iframe)");
-L.push(`insert into public.ai_animations (lesson_id,tipo,status,model,roteiro,urls) values`);
-L.push(`  (${q(ID.lesson)},'interactive','ready','handcrafted-interactive',${jsonb(roteiro)},${jsonb(urls)});`);
+// custo_usd: 0 é OBRIGATÓRIO. O player faz `custo_usd.toFixed()` — com null ele estoura
+// e o simulador SOME da tela, sem erro visível no insert (o insert diz "sucesso").
+L.push(`insert into public.ai_animations (lesson_id,tipo,status,model,custo_usd,roteiro,urls) values`);
+L.push(`  (${q(ID.lesson)},'interactive','ready','handcrafted-interactive',0,${jsonb(roteiro)},${jsonb(urls)});`);
 L.push("");
 L.push("commit;");
 L.push("");

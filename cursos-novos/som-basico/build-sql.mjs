@@ -349,7 +349,7 @@ LESSONS.forEach((les, i) => {
     const roteiro = { titulo: les.sim.titulo, cenas: [{ numero: 1, titulo: les.sim.titulo, modo: "widget",
       narracao: les.sim.narracao || "", explicacao_texto: les.sim.narracao || "", destaques: les.sim.destaques || [] }] };
     const urls = [{ html: readSim(les.sim.file) }];
-    L.push(`insert into public.ai_animations (lesson_id,tipo,status,model,roteiro,urls) values (${q(lid)},'interactive','ready','handcrafted-interactive',${jsonb(roteiro)},${jsonb(urls)});`);
+    L.push(`insert into public.ai_animations (lesson_id,tipo,status,model,custo_usd,roteiro,urls) values (${q(lid)},'interactive','ready','handcrafted-interactive',0,${jsonb(roteiro)},${jsonb(urls)});`);
   }
   L.push("");
 });

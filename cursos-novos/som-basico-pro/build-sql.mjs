@@ -467,24 +467,39 @@ const MODULES = [
   { n: 1, titulo: "Fundamentos do Áudio ao Vivo" },
   { n: 2, titulo: "Equipamentos e Operação (menor porte)" },
 ];
+// `n` = NÚMERO PERMANENTE da aula, e é ele que vira o id — NÃO a posição na lista
+// (Regra 5 do CLAUDE.md: id é endereço fixo, não número de fila).
+//   - Apagar aula: remova a linha e NÃO renumere as outras (buraco no `n` é ok).
+//   - Aula nova: próximo `n` livre; nunca reaproveite `n` usado (id antigo pode ter progresso).
+//   - Reordenar: mova a linha; o `n` acompanha a aula e o id não muda.
 const LAYOUT = [
   // Módulo 1 — conceitos
-  { mod: 1, frag: "aula-01-cadeia-do-som.fragment.html" },
-  { mod: 1, frag: "aula-cabos-conectores.fragment.html" },
-  { mod: 1, frag: "aula-05-analogico-digital.fragment.html" },
-  { mod: 1, frag: "aula-dinamica.fragment.html" },
-  { mod: 1, frag: "aula-efeitos.fragment.html" },
-  { mod: 1, frag: "aula-microfonia.fragment.html" },
-  { mod: 1, frag: "aula-acustica.fragment.html" },
+  { n: 1,  mod: 1, frag: "aula-01-cadeia-do-som.fragment.html" },
+  { n: 2,  mod: 1, frag: "aula-cabos-conectores.fragment.html" },
+  { n: 3,  mod: 1, frag: "aula-05-analogico-digital.fragment.html" },
+  { n: 4,  mod: 1, frag: "aula-dinamica.fragment.html" },
+  { n: 5,  mod: 1, frag: "aula-efeitos.fragment.html" },
+  { n: 6,  mod: 1, frag: "aula-microfonia.fragment.html" },
+  { n: 7,  mod: 1, frag: "aula-acustica.fragment.html" },
   // Módulo 2 — equipamentos e prática
-  { mod: 2, frag: "aula-02-microfones.fragment.html" },
-  { mod: 2, frag: "aula-04-microfone-sem-fio.fragment.html" },
-  { mod: 2, frag: "aula-03-mesa-analogica.fragment.html" },
-  { mod: 2, frag: "aula-amplificador.fragment.html" },
-  { mod: 2, frag: "aula-06-pa-sistema.fragment.html" },
-  { mod: 2, frag: "aula-07-ordem-ligar.fragment.html" },
-  { mod: 2, frag: "aula-08-passagem-de-som.fragment.html" },
+  { n: 8,  mod: 2, frag: "aula-02-microfones.fragment.html" },
+  { n: 9,  mod: 2, frag: "aula-04-microfone-sem-fio.fragment.html" },
+  { n: 10, mod: 2, frag: "aula-03-mesa-analogica.fragment.html" },
+  { n: 11, mod: 2, frag: "aula-amplificador.fragment.html" },
+  { n: 12, mod: 2, frag: "aula-06-pa-sistema.fragment.html" },
+  { n: 13, mod: 2, frag: "aula-07-ordem-ligar.fragment.html" },
+  { n: 14, mod: 2, frag: "aula-08-passagem-de-som.fragment.html" },
 ];
+
+// Trava barata: `n` ausente/duplicado = duas aulas no mesmo id (uma come a outra).
+(() => {
+  const vistos = new Set();
+  for (const it of LAYOUT) {
+    if (!Number.isInteger(it.n) || it.n < 1) throw new Error(`LAYOUT: aula sem \`n\` válido: ${it.frag}`);
+    if (vistos.has(it.n)) throw new Error(`LAYOUT: \`n\` duplicado (${it.n}) em ${it.frag} — dois ids iguais.`);
+    vistos.add(it.n);
+  }
+})();
 
 // ── monta SQL ─────────────────────────────────────────────────────────
 const byFrag = Object.fromEntries(LESSONS.map((l) => [l.fragment, l]));
@@ -497,8 +512,11 @@ L.push("-- Mantém o MESMO curso (id/slug/matrículas/certificados). Idempotente
 L.push("-- ====================================================================");
 L.push("begin;");
 L.push("");
-L.push("-- 1) Limpa TODO o conteúdo antigo do curso (cascata: lessons/quizzes/anim/progress/notas).");
-L.push(`delete from public.modules where course_id = ${q(COURSE)};`);
+// 1) Limpa só os módulos DESTE script (faixa e6b5), nunca `course_id = <curso>`:
+// com o filtro por curso, um módulo que outra sessão acrescentasse ao som-basico seria
+// levado na cascata sem ninguém pedir.
+L.push("-- 1) Limpa os módulos DESTE curso pela faixa e6b5 (cascata: lessons/quizzes/anim/progress).");
+MODULES.forEach((m) => L.push(`delete from public.modules where id = ${q(MOD(m.n))};`));
 L.push("");
 L.push("-- 2) Atualiza metadados do curso (mantém id/slug/matrículas/certificados).");
 L.push("update public.courses set");
@@ -514,8 +532,8 @@ MODULES.forEach((m) => {
 L.push("");
 
 const ordByMod = {};
-LAYOUT.forEach((item, idx) => {
-  const n = idx + 1;                        // índice global p/ IDs determinísticos
+LAYOUT.forEach((item) => {
+  const n = item.n;                         // número permanente da aula — NUNCA a posição (Regra 5)
   const les = byFrag[item.frag];
   if (!les) throw new Error("LAYOUT aponta p/ fragment sem lesson: " + item.frag);
   ordByMod[item.mod] = (ordByMod[item.mod] || 0) + 1;
@@ -541,7 +559,7 @@ LAYOUT.forEach((item, idx) => {
       cenas: [{ numero: 1, titulo: les.sim.titulo, modo: "widget",
       narracao: les.sim.narracao || "", explicacao_texto: les.sim.narracao || "", destaques: les.sim.destaques || [] }] };
     const urls = [{ html: readSim(les.sim.file) }];
-    L.push(`insert into public.ai_animations (lesson_id,tipo,status,model,roteiro,urls) values (${q(lid)},'interactive','ready','handcrafted-interactive',${jsonb(roteiro)},${jsonb(urls)});`);
+    L.push(`insert into public.ai_animations (lesson_id,tipo,status,model,custo_usd,roteiro,urls) values (${q(lid)},'interactive','ready','handcrafted-interactive',0,${jsonb(roteiro)},${jsonb(urls)});`);
   }
   L.push("");
 });

@@ -433,7 +433,7 @@ LESSONS.forEach((les, i) => {
   if (les.sim) {
     const s = SIMS[les.sim];
     const urls = [{ html: readSim(s.file) }];
-    L.push(`insert into public.ai_animations (lesson_id,tipo,status,model,roteiro,urls) values (${q(lid)},'interactive','ready','handcrafted-interactive',${jsonb(s.roteiro)},${jsonb(urls)});`);
+    L.push(`insert into public.ai_animations (lesson_id,tipo,status,model,custo_usd,roteiro,urls) values (${q(lid)},'interactive','ready','handcrafted-interactive',0,${jsonb(s.roteiro)},${jsonb(urls)});`);
   }
   L.push("");
 });

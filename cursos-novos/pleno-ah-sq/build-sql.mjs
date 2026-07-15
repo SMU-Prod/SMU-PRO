@@ -2,6 +2,7 @@
 // do curso Pleno "Som — Formação Completa". Aditivo/idempotente. NÃO recria o módulo (preserva a CL5).
 // node cursos-novos/pleno-ah-sq/build-sql.mjs -> supabase/migrations/20260713_pleno_ah_sq.sql
 import fs from "node:fs";import path from "node:path";import {fileURLToPath} from "node:url";
+import { faixa, conferirFaixa } from "../_REGISTRO-IDS.mjs";
 const __dirname=path.dirname(fileURLToPath(import.meta.url));const ROOT=path.resolve(__dirname,"../..");
 const q=s=>"'"+String(s).replace(/'/g,"''")+"'";const jsonb=o=>q(JSON.stringify(o))+"::jsonb";
 const COURSE="5504c000-5011-4a00-9000-000000000001";
@@ -9,6 +10,11 @@ const MODULE="5504c000-5011-4a00-9000-0000000000a1"; // Mesas por Fabricante (j�
 const LESSON="5504c000-5011-4a00-9000-0000000000b3";
 const QUIZ  ="5504c000-5011-4a00-9000-0000000000c3";
 const QQ=n=>"5504c000-5011-4a00-9000-0000000000f"+n.toString(16);
+
+// TRAVA DE FAIXA: 5504c000 é COMPARTILHADA por 4 scripts (ah-sq, digico, mix-show,
+// som-formacao-completa). Aborta se este script gerar id fora do espaço do pleno-som.
+// O MODULE …a1 é compartilhado DE PROPÓSITO com o digico — por isso nunca é deletado aqui.
+conferirFaixa(faixa("pleno-som"), [COURSE, MODULE, LESSON, QUIZ, ...Array.from({length:8},(_,i)=>QQ(i+1))]);
 const conteudo=fs.readFileSync(path.join(__dirname,"aula-ah-sq.fragment.html"),"utf8").trim();
 const sim=fs.readFileSync(path.join(ROOT,"simuladores/som/allen-heath-sq.html"),"utf8");
 const questoes=[
@@ -45,7 +51,7 @@ L.push(`insert into public.quizzes (id,lesson_id,titulo) values (${q(QUIZ)},${q(
 questoes.forEach((qq,i)=>{const id=QQ(i+1);
   L.push(`insert into public.quiz_questions (id,quiz_id,texto,explicacao,ordem,pontos) values (${q(id)},${q(QUIZ)},${q(qq.t)},${q(qq.e)},${i+1},1);`);
   qq.o.forEach(([t,c],j)=>L.push(`insert into public.quiz_options (question_id,texto,correta,ordem) values (${q(id)},${q(t)},${c},${j+1});`));});
-L.push(`insert into public.ai_animations (lesson_id,tipo,status,model,roteiro,urls) values (${q(LESSON)},'interactive','ready','handcrafted-interactive',${jsonb(roteiro)},${jsonb([{html:sim}])});`);
+L.push(`insert into public.ai_animations (lesson_id,tipo,status,model,custo_usd,roteiro,urls) values (${q(LESSON)},'interactive','ready','handcrafted-interactive',0,${jsonb(roteiro)},${jsonb([{html:sim}])});`);
 L.push(`update public.courses set total_aulas = 3 where id = ${q(COURSE)};`);
 L.push("commit;");L.push("");
 const out=path.join(ROOT,"supabase/migrations/20260713_pleno_ah_sq.sql");

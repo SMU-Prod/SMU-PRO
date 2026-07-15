@@ -4,6 +4,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { faixa, conferirFaixa } from "../_REGISTRO-IDS.mjs";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "../..");
 const q = (s) => "'" + String(s).replace(/'/g, "''") + "'";
@@ -14,6 +15,10 @@ const MODULE = "5504c000-5011-4a00-9000-0000000000a2";
 const LESSON = "5504c000-5011-4a00-9000-0000000000b2";
 const QUIZ   = "5504c000-5011-4a00-9000-0000000000c2";
 const QQ = (n) => "5504c000-5011-4a00-9000-0000000000e" + n.toString(16); // e1..e8
+
+// TRAVA DE FAIXA: 5504c000 é COMPARTILHADA por 4 scripts (mix-show, ah-sq, digico,
+// som-formacao-completa). Aborta se este script gerar um id fora do espaço do pleno-som.
+conferirFaixa(faixa("pleno-som"), [COURSE, MODULE, LESSON, QUIZ, ...Array.from({ length: 8 }, (_, i) => QQ(i + 1))]);
 
 const conteudo = fs.readFileSync(path.join(__dirname, "aula-mix-show.fragment.html"), "utf8").trim();
 const simulador = fs.readFileSync(path.join(ROOT, "simuladores/som/mix-show.html"), "utf8");
@@ -57,11 +62,17 @@ L.push("-- SMU PRO — Pleno 'Som — Formação Completa': aula MIXAGEM DE SHOW
 L.push("-- Aditivo/idempotente. Adiciona módulo+aula+quiz+simulador ao curso existente.");
 L.push("-- ====================================================================");
 L.push("begin;");
+// Estes 3 deletes são pelo id do PRÓPRIO conteúdo deste script — pode.
 L.push(`delete from public.ai_animations where lesson_id = ${q(LESSON)};`);
 L.push(`delete from public.quizzes where id = ${q(QUIZ)};`);
 L.push(`delete from public.lessons where id = ${q(LESSON)};`);
-L.push(`delete from public.modules where id = ${q(MODULE)};`);
-L.push(`insert into public.modules (id,course_id,titulo,ordem) values (${q(MODULE)},${q(COURSE)},${q("Mixagem ao Vivo")},2);`);
+// O MÓDULO, não. `delete from modules where id=…a2` cascateia: leva junto QUALQUER aula
+// que outro script tenha posto neste módulo — sem aviso, e o insert diz "sucesso".
+// É o mesmo acidente que transferiu o Módulo 8 do Pleno—Vídeo (ver _REGISTRO-IDS.mjs).
+// Hoje o a2 é exclusivo deste script; a faixa 5504c000 é COMPARTILHADA por 4 scripts,
+// então "hoje é exclusivo" não é garantia nenhuma. Upsert: cria ou atualiza, nunca apaga.
+L.push(`insert into public.modules (id,course_id,titulo,ordem) values (${q(MODULE)},${q(COURSE)},${q("Mixagem ao Vivo")},2)`);
+L.push(`  on conflict (id) do update set course_id = excluded.course_id, titulo = excluded.titulo, ordem = excluded.ordem;`);
 L.push(`insert into public.lessons (id,module_id,titulo,tipo,conteudo_rico,duracao_min,ordem,tem_quiz,preview_gratis) values`);
 L.push(`  (${q(LESSON)},${q(MODULE)},${q("Mixagem de show ao vivo: método, EQ por instrumento, grupos e monitores")},'texto',${q(conteudo)},30,1,true,true);`);
 L.push(`insert into public.quizzes (id,lesson_id,titulo) values (${q(QUIZ)},${q(LESSON)},${q("Quiz — Mixagem de show ao vivo")});`);
@@ -69,7 +80,7 @@ questoes.forEach((qq,i)=>{ const id=QQ(i+1);
   L.push(`insert into public.quiz_questions (id,quiz_id,texto,explicacao,ordem,pontos) values (${q(id)},${q(QUIZ)},${q(qq.t)},${q(qq.e)},${i+1},1);`);
   qq.o.forEach(([t,c],j)=>L.push(`insert into public.quiz_options (question_id,texto,correta,ordem) values (${q(id)},${q(t)},${c},${j+1});`));
 });
-L.push(`insert into public.ai_animations (lesson_id,tipo,status,model,roteiro,urls) values (${q(LESSON)},'interactive','ready','handcrafted-interactive',${jsonb(roteiro)},${jsonb(urls)});`);
+L.push(`insert into public.ai_animations (lesson_id,tipo,status,model,custo_usd,roteiro,urls) values (${q(LESSON)},'interactive','ready','handcrafted-interactive',0,${jsonb(roteiro)},${jsonb(urls)});`);
 L.push(`update public.courses set total_aulas = 2 where id = ${q(COURSE)};`);
 L.push("commit;");
 L.push("");

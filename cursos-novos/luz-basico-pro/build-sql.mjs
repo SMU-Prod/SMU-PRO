@@ -18,7 +18,16 @@ const readSim = (f) => fs.readFileSync(path.join(ROOT, "simuladores/luz-basico",
 
 const COURSE = "5407f707-4dac-4a8e-913c-197aa8ad3877";
 // IDs determinísticos NOVOS (prefixo 10c0 = luz; não colide com nada existente)
-const MOD = (n) => "10c00000-b551-4c00-9000-0000000000a" + n;
+// O bloco final do uuid tem 12 hex EXATOS. Aqui o "a" marca módulo e sobra 1 dígito só, então
+// o módulo vai em HEX: 1..9 saem idênticos aos ids que já estão no banco, 10..15 viram a..f.
+// Do 16 em diante o id ficaria com 13 chars — uuid inválido, o insert seria recusado. Explode
+// aqui, na hora de escrever o módulo, e não no meio de um apply.
+const MOD = (n) => {
+  if (!Number.isInteger(n) || n < 1 || n > 15)
+    throw new Error(`módulo ${n} fora de 1..15: o bloco "a{hex}" só cabe 1 dígito. ` +
+      `Para passar de 15, registre um bloco novo no _REGISTRO-IDS.mjs — não alargue este.`);
+  return "10c00000-b551-4c00-9000-0000000000a" + n.toString(16);
+};
 const lidHex = (n) => "10c00000-b551-4c00-9000-0000000b" + String(n).padStart(4, "0");
 const qidHex = (n) => "10c00000-b551-4c00-9000-0000000c" + String(n).padStart(4, "0");
 const qqHex  = (l, n) => "10c00000-b551-4c00-9000-00000000" + l.toString(16).padStart(2, "0") + n.toString(16).padStart(2, "0");
@@ -312,19 +321,37 @@ const MODULES = [
   { n: 2, titulo: "Módulo 2 — DMX, Ligações e Potência" },
   { n: 3, titulo: "Módulo 3 — A Mesa e a Prática" },
 ];
+// `n` = NÚMERO PERMANENTE da aula. É ele que vira o id (lidHex(n)), NÃO a posição
+// na lista. Regra 5 do CLAUDE.md: id é endereço fixo, não número de fila.
+//   - Apagar uma aula: REMOVA a linha e NÃO renumere as outras. O buraco no `n` é
+//     esperado e inofensivo (a ordem exibida vem de `ordem`, calculada por módulo).
+//   - Aula nova: use o PRÓXIMO `n` livre (nunca reaproveite um `n` já usado — o id
+//     antigo pode ter progresso de aluno preso nele).
+//   - Reordenar: mexa na posição da linha; o `n` fica com a aula, o id não muda.
 const LAYOUT = [
-  { mod: 1, frag: "aula-o-que-faz-tecnico-luz.fragment.html" },
-  { mod: 1, frag: "aula-fisica-luz.fragment.html" },
-  { mod: 1, frag: "aula-tipos-refletores.fragment.html" },
-  { mod: 1, frag: "aula-iluminacao-3-pontos.fragment.html" },
-  { mod: 2, frag: "aula-dmx512.fragment.html" },
-  { mod: 2, frag: "aula-enderecamento-patch.fragment.html" },
-  { mod: 2, frag: "aula-cabos-conectores-luz.fragment.html" },
-  { mod: 2, frag: "aula-potencia-dimmer.fragment.html" },
-  { mod: 3, frag: "aula-mesa-luz-basica.fragment.html" },
-  { mod: 3, frag: "aula-seguranca.fragment.html" },
-  { mod: 3, frag: "aula-montagem-checklist.fragment.html" },
+  { n: 1,  mod: 1, frag: "aula-o-que-faz-tecnico-luz.fragment.html" },
+  { n: 2,  mod: 1, frag: "aula-fisica-luz.fragment.html" },
+  { n: 3,  mod: 1, frag: "aula-tipos-refletores.fragment.html" },
+  { n: 4,  mod: 1, frag: "aula-iluminacao-3-pontos.fragment.html" },
+  { n: 5,  mod: 2, frag: "aula-dmx512.fragment.html" },
+  { n: 6,  mod: 2, frag: "aula-enderecamento-patch.fragment.html" },
+  { n: 7,  mod: 2, frag: "aula-cabos-conectores-luz.fragment.html" },
+  { n: 8,  mod: 2, frag: "aula-potencia-dimmer.fragment.html" },
+  { n: 9,  mod: 3, frag: "aula-mesa-luz-basica.fragment.html" },
+  { n: 10, mod: 3, frag: "aula-seguranca.fragment.html" },
+  { n: 11, mod: 3, frag: "aula-montagem-checklist.fragment.html" },
 ];
+
+// Trava barata: `n` duplicado ou ausente = duas aulas no mesmo id (uma come a outra).
+// Melhor explodir aqui do que descobrir no banco depois.
+(() => {
+  const vistos = new Set();
+  for (const it of LAYOUT) {
+    if (!Number.isInteger(it.n) || it.n < 1) throw new Error(`LAYOUT: aula sem \`n\` válido: ${it.frag}`);
+    if (vistos.has(it.n)) throw new Error(`LAYOUT: \`n\` duplicado (${it.n}) em ${it.frag} — dois ids iguais.`);
+    vistos.add(it.n);
+  }
+})();
 
 // ── Monta SQL ─────────────────────────────────────────────────────────
 const byFrag = Object.fromEntries(LESSONS.map((l) => [l.fragment, l]));
@@ -337,7 +364,10 @@ L.push("-- ===================================================================="
 L.push("begin;");
 L.push("");
 L.push("-- 1) Limpa conteúdo antigo do curso (cascata: lessons/quizzes/anim/progress/notas).");
-L.push(`delete from public.modules where course_id = ${q(COURSE)};`);
+// Só os módulos DESTE script (faixa 10c0), nunca `course_id = <curso>`: com o filtro por
+// curso, um módulo que outra sessão acrescentasse ao luz-basico seria levado na cascata sem
+// ninguém pedir. Mesmo escopo que o apply-rest.mjs já usa.
+MODULES.forEach((m) => L.push(`delete from public.modules where id = ${q(MOD(m.n))};`));
 L.push("");
 L.push("-- 2) Atualiza metadados do curso.");
 L.push("update public.courses set");
@@ -353,8 +383,8 @@ MODULES.forEach((m) => {
 L.push("");
 
 const ordByMod = {};
-LAYOUT.forEach((item, idx) => {
-  const n = idx + 1;
+LAYOUT.forEach((item) => {
+  const n = item.n; // número permanente da aula — NUNCA a posição no array (Regra 5)
   const les = byFrag[item.frag];
   if (!les) throw new Error("LAYOUT aponta p/ fragment sem lesson: " + item.frag);
   ordByMod[item.mod] = (ordByMod[item.mod] || 0) + 1;
@@ -379,16 +409,29 @@ LAYOUT.forEach((item, idx) => {
       metadata: { titulo_aula: les.sim.titulo, total_cenas: 1, duracao_total: 0, abordagem_didatica: "Simulador interativo — pratique movendo os controles" },
       cenas: [{ numero: 1, titulo: les.sim.titulo, modo: "widget", narracao: les.sim.narracao || "", explicacao_texto: les.sim.narracao || "", destaques: les.sim.destaques || [] }] };
     const urls = [{ html: readSim(les.sim.file) }];
-    L.push(`insert into public.ai_animations (lesson_id,tipo,status,model,roteiro,urls) values (${q(lid)},'interactive','ready','handcrafted-interactive',${jsonb(roteiro)},${jsonb(urls)});`);
+    // custo_usd:0 é OBRIGATÓRIO — o player faz `custo_usd.toFixed()` e com null estoura,
+    // fazendo o simulador SUMIR da tela. O insert não reclama; o erro só aparece na aula.
+    L.push(`insert into public.ai_animations (lesson_id,tipo,status,model,custo_usd,roteiro,urls) values (${q(lid)},'interactive','ready','handcrafted-interactive',0,${jsonb(roteiro)},${jsonb(urls)});`);
   }
   L.push("");
 });
 
 L.push("commit;");
 L.push("");
-const out = path.join(ROOT, "supabase/migrations/20260717_luz_basico_pro.sql");
-fs.writeFileSync(out, L.join("\n"), "utf8");
-console.log("OK ->", path.relative(ROOT, out), "|", (fs.statSync(out).size / 1024).toFixed(1), "KB |", LAYOUT.length, "aulas, 3 módulos");
+// Só escreve o arquivo quando rodado DIRETO (`node build-sql.mjs`).
+// Este módulo também é importado pelo apply-rest.mjs (que reusa COURSE/MODULES/LAYOUT/
+// helpers). Sem esta guarda, o simples `import` regravava a migration de 190 KB e sujava
+// o working tree sem ninguém pedir — já travou um rebase com "unstaged changes", e várias
+// sessões dividem esta mesma árvore. Gerar é efeito de RODAR, não de importar.
+// Mesmo padrão já usado em efeito-games/build-variants.mjs.
+const rodadoDireto =
+  import.meta.url === `file://${(process.argv[1] || "").replace(/\\/g, "/")}` ||
+  (process.argv[1] || "").endsWith("build-sql.mjs");
+if (rodadoDireto) {
+  const out = path.join(ROOT, "supabase/migrations/20260717_luz_basico_pro.sql");
+  fs.writeFileSync(out, L.join("\n"), "utf8");
+  console.log("OK ->", path.relative(ROOT, out), "|", (fs.statSync(out).size / 1024).toFixed(1), "KB |", LAYOUT.length, "aulas, 3 módulos");
+}
 
 // Exporta o modelo p/ o aplicador REST (apply-rest.mjs) reutilizar os MESMOS dados.
 export { COURSE, MODULES, LAYOUT, LESSONS, MOD, lidHex, qidHex, qqHex, readFrag, readSim, byFrag };

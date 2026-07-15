@@ -36,6 +36,20 @@ const QQID= (n,j)=>`71300000-0000-4000-9000-${String(n).padStart(4,"0")}${String
   if (DRY) { console.log("DRY: parando antes de escrever."); return; }
 
   // 2) DELETE
+  // TRAVA DE PROGRESSO: a cascata deste DELETE leva lessons, quizzes, ai_animations
+  // (os SIMULADORES) e o `progress` dos alunos — sem desfazer. Curso vazio: seguro.
+  // Curso com aluno: aborta. Para reformular mesmo assim: FORCAR=1 node apply-rest.mjs
+  const modsAtuais = await req("GET", `/modules?course_id=eq.${COURSE}&select=id,lessons(id)`);
+  const lessonIds = (modsAtuais ?? []).flatMap(m => (m.lessons ?? []).map(l => l.id));
+  if (lessonIds.length) {
+    const prog = await req("GET", `/progress?lesson_id=in.(${lessonIds.join(",")})&select=id&limit=1`);
+    if (prog?.length && process.env.FORCAR !== "1") {
+      throw new Error(
+        "ABORTADO: há progresso de aluno nas aulas deste curso.\n" +
+        "O DELETE apagaria esse histórico em cascata, sem volta.\n" +
+        "Se a reformulação for mesmo para valer, rode com FORCAR=1.");
+    }
+  }
   await req("DELETE", `/modules?course_id=eq.${COURSE}`, null, {Prefer:"return=minimal"});
   console.log("2) Módulos antigos removidos (cascata).");
 
@@ -55,7 +69,7 @@ const QQID= (n,j)=>`71300000-0000-4000-9000-${String(n).padStart(4,"0")}${String
   // 5) lessons/quizzes/anim
   const ordByMod={}; let nL=0,nQ=0,nQu=0,nO=0,nS=0;
   for (let i=0;i<LAYOUT.length;i++){
-    const it=LAYOUT[i]; const n=i+1;
+    const it=LAYOUT[i]; const n=it.n; // número permanente da aula — NUNCA a posição (Regra 5)
     ordByMod[it.mod]=(ordByMod[it.mod]||0)+1; const ordem=ordByMod[it.mod];
     const lid=LID(n);
     const preview = it.mod===1 && ordem===1;
