@@ -397,7 +397,9 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
               </div>
             )}
 
-            {/* Scene label overlay */}
+            {/* Scene label overlay — oculto nos simuladores interativos: a faixa
+                cobria o cabeçalho/logo do próprio console (o simulador ocupa o quadro todo). */}
+            {currentMode !== "widget" && (
             <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-3 py-2 bg-gradient-to-b from-black/50 to-transparent pointer-events-none">
               <div className="flex items-center gap-2">
                 <span className={`text-[10px] px-1.5 py-0.5 rounded text-white font-medium uppercase tracking-wider ${
@@ -410,6 +412,7 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
                 </span>
               </div>
             </div>
+            )}
 
             {/* Fullscreen button */}
             <button
