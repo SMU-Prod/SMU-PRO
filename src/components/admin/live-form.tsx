@@ -18,7 +18,16 @@ function paraInputLocal(iso: string): string {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 }
 
-export function LiveForm({ live, courses }: { live?: LiveEvent; courses: { id: string; titulo: string }[] }) {
+export function LiveForm({
+  live,
+  courses,
+  onSuccess,
+}: {
+  live?: LiveEvent;
+  courses: { id: string; titulo: string }[];
+  /** Quando fornecido (uso em modal), chama isso em vez de navegar para /admin/lives. */
+  onSuccess?: () => void;
+}) {
   const router = useRouter();
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
@@ -59,7 +68,11 @@ export function LiveForm({ live, courses }: { live?: LiveEvent; courses: { id: s
       };
       if (live) await updateLive(live.id, payload);
       else await createLive(payload);
-      router.push("/admin/lives");
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        router.push("/admin/lives");
+      }
       router.refresh();
     } catch (err: any) {
       setErro(err?.message ?? "Erro ao salvar.");

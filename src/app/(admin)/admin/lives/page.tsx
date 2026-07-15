@@ -1,18 +1,19 @@
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
-import { listLivesForAdmin } from "@/lib/actions/lives";
+import { listLivesForAdmin, listCoursesForPortalSelect } from "@/lib/actions/lives";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LiveStatusButton } from "@/components/admin/live-status-button";
+import { NewLiveModal } from "@/components/admin/new-live-modal";
 
 export default async function AdminLivesPage() {
-  const lives = await listLivesForAdmin();
+  const [lives, courses] = await Promise.all([listLivesForAdmin(), listCoursesForPortalSelect()]);
 
   return (
     <div className="p-4 sm:p-6">
       <div className="flex items-center justify-between gap-3 mb-6">
         <h1 className="text-xl font-bold text-foreground">Lives</h1>
-        <Link href="/admin/lives/nova"><Button size="sm">Nova live</Button></Link>
+        <NewLiveModal courses={courses} />
       </div>
 
       {lives.length === 0 ? (
