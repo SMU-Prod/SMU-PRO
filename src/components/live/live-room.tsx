@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { LivePlayer } from "./live-player";
+import { AttendanceHeartbeat } from "./attendance-heartbeat";
 import { useT } from "@/lib/i18n/ui";
 import type { LiveEvent } from "@/types/database";
 
@@ -21,6 +22,7 @@ export function LiveRoom({ event, chatSlot }: { event: LiveEvent; chatSlot: Reac
 
   return (
     <div className="flex flex-col lg:flex-row h-[100dvh] bg-background">
+      {aoVivo && <AttendanceHeartbeat liveEventId={event.id} />}
       <div className="flex flex-col lg:w-[65%] shrink-0">
         <div className="shrink-0">
           {aoVivo ? (
