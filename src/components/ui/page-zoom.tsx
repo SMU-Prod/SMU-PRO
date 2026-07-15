@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
 
 const KEY = "smu-page-zoom";
@@ -17,6 +18,12 @@ const TARGET_ID = "smu-zoom-root";
  */
 export function PageZoom() {
   const [z, setZ] = useState(1);
+  const pathname = usePathname();
+
+  // Fora da sala ao vivo: lá a lupa fica exatamente em cima do input do chat, e
+  // a sala é 100dvh sem rolagem — aplicar `zoom` nela quebraria o layout em vez
+  // de ajudar a ler. A agenda (/ao-vivo) é página normal e mantém a lupa.
+  const naSalaAoVivo = /^\/ao-vivo\/.+/.test(pathname ?? "");
 
   const set = useCallback((value: number) => {
     const v = Math.min(MAX, Math.max(MIN, Math.round(value * 100) / 100));
@@ -29,16 +36,26 @@ export function PageZoom() {
   }, []);
 
   useEffect(() => {
+    // Na sala ao vivo, força 1 no DOM sem gravar no localStorage: quem estava em
+    // 150% não pode entrar numa sala 100dvh ampliada. Ao sair, o zoom salvo volta.
+    if (naSalaAoVivo) {
+      const el = document.getElementById(TARGET_ID);
+      if (el) (el.style as unknown as { zoom: string }).zoom = "1";
+      return;
+    }
+
     let saved = 1;
     try {
       saved = parseFloat(localStorage.getItem(KEY) || "1");
     } catch {}
     if (!saved || isNaN(saved)) saved = 1;
     set(saved);
-  }, [set]);
+  }, [set, naSalaAoVivo]);
 
   const btn =
     "flex h-8 w-8 items-center justify-center rounded-full text-foreground hover:bg-hover disabled:opacity-30 disabled:hover:bg-transparent transition-colors";
+
+  if (naSalaAoVivo) return null;
 
   return (
     <div
