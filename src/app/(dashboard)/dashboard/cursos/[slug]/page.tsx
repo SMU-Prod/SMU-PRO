@@ -67,9 +67,13 @@ export default async function CourseRedirectPage({ params }: Props) {
 
   // course_id existia na live e nada lia — este é o vínculo virando tela.
   const lives = await listLivesForCourse(course.id);
+  const aoVivoAgora = lives.filter((l) => l.status === "ao_vivo");
 
-  // Sem lives (a maioria dos cursos): comportamento inalterado, direto para a aula.
-  if (lives.length === 0) {
+  // Esta rota é um atalho: "voltar a estudar" cai direto na aula. Interromper
+  // isso por uma live AGENDADA cobraria um clique a mais toda vez que o aluno
+  // volta, semanas antes do evento. Só a live NO AR agora paga a interrupção —
+  // por isso o filtro é por status, não por existência.
+  if (aoVivoAgora.length === 0) {
     redirect(`/dashboard/cursos/${slug}/aulas/${targetLessonId}`);
   }
 
@@ -84,7 +88,7 @@ export default async function CourseRedirectPage({ params }: Props) {
         </h2>
         <Card>
           <CardContent className="p-0 divide-y divide-border">
-            {lives.map((live) => (
+            {aoVivoAgora.map((live) => (
               <Link
                 key={live.id}
                 href={`/ao-vivo/${live.slug}`}
