@@ -95,3 +95,42 @@ CREATE TABLE IF NOT EXISTS live_messages (
 
 CREATE INDEX IF NOT EXISTS idx_live_messages_evento
   ON live_messages (live_event_id, created_at);
+
+-- ============================================================
+-- RLS
+-- ============================================================
+-- O app acessa estas tabelas via service_role, que bypassa RLS. As policies
+-- abaixo existem por dois motivos: profundidade de defesa se a anon key
+-- encostar nelas, e o Realtime do chat — que roda no NAVEGADOR com a anon key
+-- e RESPEITA RLS. Sem policy de SELECT, o chat nao recebe evento nenhum e
+-- quebra em silencio.
+--
+-- Nao existe ponte Clerk->Supabase neste app (src/lib/supabase/client.ts usa a
+-- anon key crua, sem accessToken), entao auth.uid() e SEMPRE NULL aqui. Por
+-- isso as policies nao tentam identificar o usuario: elas so distinguem o que
+-- e publico do que nao e.
+
+ALTER TABLE live_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE live_attendance ENABLE ROW LEVEL SECURITY;
+ALTER TABLE live_messages ENABLE ROW LEVEL SECURITY;
+
+-- Live aberta vai para o YouTube listado — a agenda dela e publica por definicao.
+CREATE POLICY "anon_le_live_aberta" ON live_events
+  FOR SELECT USING (acesso = 'aberto');
+
+-- Chat de live aberta: leitura publica. Necessario para o Realtime funcionar.
+-- Falha FECHADO de proposito: quando a live restrita (Cloudflare) chegar, o
+-- chat dela NAO sera legivel pela anon key e o Realtime vai parar de entregar
+-- — o que nos obriga a resolver a identidade direito, em vez de vazar calado.
+CREATE POLICY "anon_le_chat_de_live_aberta" ON live_messages
+  FOR SELECT USING (
+    oculto = false
+    AND EXISTS (
+      SELECT 1 FROM live_events e
+      WHERE e.id = live_messages.live_event_id AND e.acesso = 'aberto'
+    )
+  );
+
+-- live_attendance NAO recebe policy: guarda ip e user_agent por aluno (PII, e
+-- e o log de auditoria NR-01 Anexo II 4.7.1). Ninguem alem do service_role
+-- encosta nela.
