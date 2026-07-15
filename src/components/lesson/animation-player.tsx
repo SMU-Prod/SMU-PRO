@@ -76,10 +76,37 @@ interface AnimationPlayerProps {
 
 // ── Component ──────────────────────────────────────────────
 
-// Remove o controle de zoom injetado dentro dos widgets/games (script marcado com
-// SMU-ZOOM), que sobrepunha os botões do simulador. O zoom agora é o GLOBAL (PageZoom).
-function stripWidgetZoom(html: string): string {
-  return html.replace(/<script[^>]*>\s*\/\*SMU-ZOOM\*\/[\s\S]*?<\/script>/gi, "");
+// CONTRATO DE TELA CHEIA (player ⇄ simulador)
+// ─────────────────────────────────────────────
+// O player avisa; o simulador decide. Aqui mora o SINAL, um lugar só, valendo para todos os
+// cursos e para todo simulador futuro. A RESPOSTA é de cada simulador: só ele conhece o próprio
+// layout — mesa de zoom-fit não pode virar 2 colunas, cenário fluido pode.
+//
+// Como o simulador responde: escreva CSS contra `html.smu-fs`. Nada de JS. Ex.:
+//   @media (min-width:1250px){
+//     html.smu-fs .app{max-width:1900px;display:block;columns:2}   /* `columns` exige block */
+//   }
+// Quem não tiver esse CSS simplesmente não reage — é assim que som/DJ/vídeo ficam a salvo.
+//
+// O `resize` é disparado junto porque a classe muda o layout sem gerar evento nenhum, e os
+// simuladores redimensionam o canvas no `resize` — sem ele o arraste sai desalinhado.
+const PONTE_TELA_CHEIA =
+  `<script>/*SMU-FS*/addEventListener('message',function(e){var d=e&&e.data;` +
+  `if(d&&d.smu==='fullscreen'){document.documentElement.classList.toggle('smu-fs',!!d.on);` +
+  `dispatchEvent(new Event('resize'));}});<\/script>`;
+
+// Prepara o HTML do widget antes de virar srcDoc. PRECISA ser puro e não depender do estado de
+// tela cheia: qualquer mudança no srcDoc remonta o iframe e o aluno perde o que já fez.
+// Remove também o controle de zoom antigo (script marcado com SMU-ZOOM), que sobrepunha os
+// botões do simulador — o zoom agora é o GLOBAL (PageZoom).
+function preparaWidget(html: string): string {
+  const limpo = html.replace(/<script[^>]*>\s*\/\*SMU-ZOOM\*\/[\s\S]*?<\/script>/gi, "");
+  // Simulador antigo pode trazer a ponte embutida (era assim antes de o player assumir): não
+  // duplica. Se não houver </body>, anexa no fim — o navegador resolve.
+  if (limpo.includes("/*SMU-FS*/")) return limpo;
+  return limpo.includes("</body>")
+    ? limpo.replace("</body>", `${PONTE_TELA_CHEIA}\n</body>`)
+    : limpo + PONTE_TELA_CHEIA;
 }
 
 export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin = false }: AnimationPlayerProps) {
@@ -100,6 +127,7 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const playingRef = useRef(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const frameRef = useRef<HTMLIFrameElement | null>(null);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const hasContent = conteudo && conteudo.length > 100;
@@ -246,18 +274,31 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
     if (currentScene > 0) goToScene(currentScene - 1, playing);
   }
 
+  // O simulador roda num iframe sandbox (origem opaca): não dá para alcançar o DOM dele nem
+  // injetar CSS — e mexer no srcDoc remontaria o iframe, jogando fora o que o aluno já fez.
+  // Então avisamos por mensagem, e o sim decide o que fazer. Sim antigo sem ouvinte ignora;
+  // player antigo nunca avisa e o sim fica em coluna única. Os dois lados degradam sozinhos.
+  const sinalizaTelaCheia = useCallback(() => {
+    frameRef.current?.contentWindow?.postMessage({ smu: "fullscreen", on: fullscreen }, "*");
+  }, [fullscreen]);
+
+  useEffect(sinalizaTelaCheia, [sinalizaTelaCheia]);
+
   function toggleFullscreen() {
     if (!containerRef.current) return;
+    // requestFullscreen é assíncrono e pode ser recusado (iOS, gesto inválido, iframe sem allow),
+    // então o estado só muda pelo evento `fullscreenchange` — nunca aqui.
     if (!fullscreen) {
-      containerRef.current.requestFullscreen?.();
+      containerRef.current.requestFullscreen?.().catch(() => {});
     } else {
-      document.exitFullscreen?.();
+      document.exitFullscreen?.().catch(() => {});
     }
-    setFullscreen(!fullscreen);
   }
 
   useEffect(() => {
-    const handleFS = () => setFullscreen(!!document.fullscreenElement);
+    // Compara com o próprio container: qualquer outro elemento da página em tela cheia
+    // também dispara este evento.
+    const handleFS = () => setFullscreen(document.fullscreenElement === containerRef.current);
     document.addEventListener("fullscreenchange", handleFS);
     return () => {
       document.removeEventListener("fullscreenchange", handleFS);
@@ -315,11 +356,16 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
 
   // ── Player ──
   return (
-    <div ref={containerRef} className="rounded-xl bg-purple-500/5 border border-purple-500/20 overflow-hidden">
+    <div
+      ref={containerRef}
+      className={`rounded-xl bg-purple-500/5 border border-purple-500/20 overflow-hidden ${
+        fullscreen ? "flex h-full flex-col bg-[#0b0e14]" : ""
+      }`}
+    >
       <audio ref={audioRef} preload="auto" />
 
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3">
+      <div className="flex shrink-0 items-center justify-between px-4 py-3">
         <button
           onClick={() => setExpanded(!expanded)}
           className="flex items-center gap-2 hover:opacity-80 transition-opacity"
@@ -361,14 +407,22 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
       </div>
 
       {expanded && (
-        <div className="px-4 pb-4 space-y-3">
-          {/* Widget canvas — responsivo: altura mínima confortável em celular/tablet, 16:9 quando sobra espaço */}
-          <div className="relative w-full aspect-video min-h-[470px] rounded-lg overflow-hidden bg-[#0f172a]">
+        <div className={`px-4 pb-4 space-y-3 ${fullscreen ? "flex min-h-0 flex-1 flex-col" : ""}`}>
+          {/* Widget canvas — responsivo: altura mínima confortável em celular/tablet, 16:9 quando sobra espaço.
+              Em tela cheia o 16:9 sai de cena: `aspect-video` deriva a altura da largura, que ali é a da tela
+              inteira, então o palco ficaria mais alto que a janela e o `overflow-hidden` cortaria a base. */}
+          <div
+            className={`relative w-full rounded-lg overflow-hidden bg-[#0f172a] ${
+              fullscreen ? "min-h-0 flex-1" : "aspect-video min-h-[470px]"
+            }`}
+          >
             {/* Interactive widget (iframe with srcdoc) */}
             {currentUrl?.html ? (
               <iframe
                 key={`widget-${currentScene}`}
-                srcDoc={stripWidgetZoom(currentUrl.html)}
+                ref={frameRef}
+                onLoad={sinalizaTelaCheia}
+                srcDoc={preparaWidget(currentUrl.html)}
                 className="absolute inset-0 w-full h-full border-0"
                 sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
                 allow="autoplay"
@@ -422,7 +476,7 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
           </div>
 
           {/* Controls */}
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <button
               onClick={prevSceneFn}
               disabled={currentScene === 0}
@@ -490,8 +544,9 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
             </span>
           </div>
 
-          {/* Didactic panel — card-based visual layout */}
-          {showText && currentSceneData && (
+          {/* Didactic panel — card-based visual layout.
+              Oculto em tela cheia: a altura que ele ocuparia sairia do palco do simulador. */}
+          {showText && currentSceneData && !fullscreen && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-2">
               {/* Card: Conceito + Explicação */}
               {currentSceneData.explicacao_texto && (
