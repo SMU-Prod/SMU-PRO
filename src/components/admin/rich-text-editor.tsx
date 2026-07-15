@@ -27,13 +27,14 @@ import {
   SuperscriptIcon, SubscriptIcon, Table as TableIcon, Code2,
   RemoveFormatting, IndentIncrease, IndentDecrease,
   Loader2, ImageIcon, AlignHorizontalJustifyCenter,
-  Trash2, ChevronDown, Type, SquareStack, Eye, Sigma,
+  Trash2, ChevronDown, Type, SquareStack, Eye, Sigma, Lightbulb,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { adminUploadFile } from "@/lib/actions/courses";
 import { useT } from "@/lib/i18n/ui";
-import { FontSize, TabIndent, ResizableImage, SectionBlock } from "./editor-extensions";
+import { FontSize, TabIndent, ResizableImage, SectionBlock, Callout, CALLOUT_VARIANTS } from "./editor-extensions";
 import { EditorPreview } from "./editor-preview";
+import { countWords, readingMinutes } from "@/lib/reading-time";
 
 // ── Constants ──
 
@@ -127,6 +128,8 @@ export function RichTextEditor({
   const [uploadingImage, setUploadingImage] = useState(false);
   const [selectedImage, setSelectedImage] = useState<{ pos: number } | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [showCalloutPicker, setShowCalloutPicker] = useState(false);
+  const calloutRef = useRef<HTMLDivElement>(null);
 
   const colorRef = useRef<HTMLDivElement>(null);
   const highlightRef = useRef<HTMLDivElement>(null);
@@ -199,6 +202,7 @@ export function RichTextEditor({
       Typography,
       TabIndent,
       SectionBlock,
+      Callout,
       Mathematics,
     ],
     immediatelyRender: false,
@@ -292,6 +296,7 @@ export function RichTextEditor({
       if (highlightRef.current && !highlightRef.current.contains(e.target as Node)) setShowHighlightPicker(false);
       if (fontSizeRef.current && !fontSizeRef.current.contains(e.target as Node)) setShowFontSizePicker(false);
       if (fontFamilyRef.current && !fontFamilyRef.current.contains(e.target as Node)) setShowFontFamilyPicker(false);
+      if (calloutRef.current && !calloutRef.current.contains(e.target as Node)) setShowCalloutPicker(false);
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
@@ -302,6 +307,7 @@ export function RichTextEditor({
     setShowHighlightPicker(false);
     setShowFontSizePicker(false);
     setShowFontFamilyPicker(false);
+    setShowCalloutPicker(false);
   }, []);
 
   const setLink = useCallback(() => {
@@ -613,6 +619,23 @@ export function RichTextEditor({
             <ToolBtn active={editor.isActive("codeBlock")} onClick={() => editor.chain().focus().toggleCodeBlock().run()} title={t("Bloco de código")}><Code2 size={13} /></ToolBtn>
             <ToolBtn active={false} onClick={() => editor.chain().focus().setHorizontalRule().run()} title={t("Linha divisória")}><Minus size={13} /></ToolBtn>
             <ToolBtn active={editor.isActive("sectionBlock")} onClick={() => (editor.commands as any).insertSection()} title={t("Inserir seção (card com ícone)")}><SquareStack size={13} /></ToolBtn>
+            <div className="relative" ref={calloutRef}>
+              <ToolBtn active={editor.isActive("callout")} onClick={() => { closeAllPickers(); setShowCalloutPicker(!showCalloutPicker); }} title={t("Bloco de destaque (dica, atenção...)")}><Lightbulb size={13} /></ToolBtn>
+              {showCalloutPicker && (
+                <div className="absolute top-full left-0 mt-1 z-50 w-36 rounded-lg bg-surface border border-border shadow-xl py-1">
+                  {CALLOUT_VARIANTS.map((c) => (
+                    <button
+                      key={c.key}
+                      type="button"
+                      onClick={() => { (editor.commands as any).insertCallout(c.key); setShowCalloutPicker(false); }}
+                      className="w-full text-left px-3 py-1.5 text-xs text-muted-light hover:bg-surface-3 hover:text-foreground transition-colors"
+                    >
+                      {t(c.label)}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </ToolGroup>
 
           <Sep />
@@ -710,6 +733,18 @@ export function RichTextEditor({
       {/* ── Editor area ── */}
       <div ref={editorContainerRef} className="overflow-y-auto flex-1" style={{ minHeight, maxHeight }}>
         <EditorContent editor={editor} />
+      </div>
+
+      {/* ── Rodapé: contagem de palavras e tempo de leitura ── */}
+      <div className="flex items-center justify-end gap-3 border-t border-border/50 bg-surface-2 px-3 py-1 text-[11px] text-muted-light">
+        {(() => {
+          const words = countWords(editor.getText());
+          return (
+            <span>
+              {words} {t(words === 1 ? "palavra" : "palavras")} · ~{readingMinutes(words)} {t("min de leitura")}
+            </span>
+          );
+        })()}
       </div>
 
       {/* ── Upload indicator ── */}

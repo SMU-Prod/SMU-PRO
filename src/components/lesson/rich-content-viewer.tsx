@@ -237,8 +237,8 @@ export function RichContentViewer({ html, lessonId, titulo, categoria, isAdmin =
   // not here — otherwise editor-chosen colors would be stripped.
   const sanitized = useMemo(() => {
     return DOMPurify.sanitize(activeHtml, {
-      ADD_ATTR: ["style", "class", "target", "rel", "data-width", "data-alignment", "alt", "data-section", "data-title", "data-icon", "data-section-title", "data-section-body", "data-latex", "data-type"],
-      ADD_TAGS: ["mark", "sup", "sub", "img", "table", "thead", "tbody", "tr", "td", "th", "colgroup", "col", "figure", "figcaption", "section"],
+      ADD_ATTR: ["style", "class", "target", "rel", "data-width", "data-alignment", "alt", "data-section", "data-title", "data-icon", "data-section-title", "data-section-body", "data-latex", "data-type", "data-callout"],
+      ADD_TAGS: ["mark", "sup", "sub", "img", "table", "thead", "tbody", "tr", "td", "th", "colgroup", "col", "figure", "figcaption", "section", "aside"],
     });
   }, [activeHtml]);
 

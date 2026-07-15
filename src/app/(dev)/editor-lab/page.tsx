@@ -15,7 +15,7 @@ export default function EditorLabPage() {
 
 function EditorLab() {
   const [html, setHtml] = useState<string>(
-    '<h2>Título de teste</h2><p>Selecione este texto e teste os botões da toolbar.</p><p>Fórmula inline: <span data-latex="pH = -\\log[H^+]" data-type="inline-math"></span> no meio do texto.</p><p>Segunda linha para testar alinhamento, listas e recuo.</p>',
+    '<h2>Título de teste</h2><p>Selecione este texto e teste os botões da toolbar.</p><p>Fórmula inline: <span data-latex="pH = -\\log[H^+]" data-type="inline-math"></span> no meio do texto.</p><aside data-callout="dica"><p>Isto é uma dica de exemplo dentro de um callout.</p></aside><aside data-callout="atencao"><p>Atenção: cuidado com a diluição.</p></aside><p>Segunda linha para testar alinhamento, listas e recuo.</p>',
   );
 
   return (
