@@ -1,7 +1,13 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect, notFound } from "next/navigation";
+import Link from "next/link";
+import { Radio, Play } from "lucide-react";
 import { createAdminClient } from "@/lib/supabase/server";
 import { getPortal, courseBelongsToPortal } from "@/lib/portal";
+import { listLivesForCourse } from "@/lib/actions/lives";
+import { getServerT } from "@/lib/i18n/server";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -59,5 +65,57 @@ export default async function CourseRedirectPage({ params }: Props) {
     targetLessonId = allLessons[0].id;
   }
 
-  redirect(`/dashboard/cursos/${slug}/aulas/${targetLessonId}`);
+  // course_id existia na live e nada lia — este é o vínculo virando tela.
+  const lives = await listLivesForCourse(course.id);
+
+  // Sem lives (a maioria dos cursos): comportamento inalterado, direto para a aula.
+  if (lives.length === 0) {
+    redirect(`/dashboard/cursos/${slug}/aulas/${targetLessonId}`);
+  }
+
+  const t = await getServerT();
+
+  return (
+    <div className="animate-fade-in p-4 sm:p-6 space-y-6">
+      <section>
+        <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+          <Radio size={16} className="text-amber-400" />
+          {t("Ao vivo")}
+        </h2>
+        <Card>
+          <CardContent className="p-0 divide-y divide-border">
+            {lives.map((live) => (
+              <Link
+                key={live.id}
+                href={`/ao-vivo/${live.slug}`}
+                className="flex items-center gap-3 px-4 py-3 hover:bg-surface-2 transition-colors"
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{live.titulo}</p>
+                  <p className="text-xs text-muted-light mt-0.5">
+                    {new Date(live.inicio_previsto).toLocaleString("pt-BR")}
+                  </p>
+                </div>
+                {live.status === "ao_vivo" && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/15 px-2 py-0.5 text-xs font-semibold text-red-500 shrink-0">
+                    <span className="size-1.5 rounded-full bg-red-500 animate-pulse" />
+                    {t("AO VIVO")}
+                  </span>
+                )}
+              </Link>
+            ))}
+          </CardContent>
+        </Card>
+      </section>
+
+      <div className="flex justify-end">
+        <Link href={`/dashboard/cursos/${slug}/aulas/${targetLessonId}`}>
+          <Button size="lg" className="gap-2">
+            <Play size={18} />
+            {t("Continuar curso")}
+          </Button>
+        </Link>
+      </div>
+    </div>
+  );
 }

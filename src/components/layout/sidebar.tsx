@@ -74,6 +74,7 @@ const contentManagerNav: NavItem[] = [
 const instructorNav: NavItem[] = [
   { label: "Meu Painel", href: "/admin", icon: BarChart3 },
   { label: "Meus Cursos", href: "/admin/cursos", icon: GraduationCap },
+  { label: "Lives", href: "/admin/lives", icon: Radio },
   { label: "Meus Alunos", href: "/admin/meus-alunos", icon: Users },
   { label: "Comissões", href: "/admin/minhas-comissoes", icon: Wallet },
 ];

@@ -7,8 +7,12 @@ import { getPortal, liveBelongsToPortal, filterCoursesByPortal } from "@/lib/por
 import { deriveProvider, validateLiveEvent } from "@/lib/live/rules";
 import type { LiveEvent, LiveEventInsert, LiveEventUpdate, LiveStatus } from "@/types/database";
 
-/** Mesma regra de assertAdmin do courses.ts: admin, content_manager ou instrutor. */
-async function assertAdmin(): Promise<string> {
+/**
+ * Mesma regra de assertAdmin do courses.ts: admin, content_manager ou instrutor.
+ * Retorna também o role — espelhando assertInstructorOrAdmin do courses.ts —
+ * para que os callers possam aplicar ownership filtering (instrutor vê/mexe só no que criou).
+ */
+async function assertAdmin(): Promise<{ userUuid: string; role: string }> {
   const { userId } = await auth();
   if (!userId) throw new Error("Não autenticado");
 
@@ -21,7 +25,17 @@ async function assertAdmin(): Promise<string> {
   if (role !== "admin" && role !== "content_manager" && role !== "instrutor") {
     throw new Error("Acesso negado: apenas administradores, content managers ou instrutores");
   }
-  return rows![0].id as string;
+  return { userUuid: rows![0].id as string, role: role as string };
+}
+
+/**
+ * Bloqueia instrutor de gerenciar live de outro instrutor. Espelha o bloco de
+ * ownership de instructorUpdateCourse do courses.ts. Admin/content_manager passam direto.
+ */
+function assertLiveOwnership(live: Pick<LiveEvent, "criado_por">, userUuid: string, role: string) {
+  if (role === "instrutor" && live.criado_por !== userUuid) {
+    throw new Error("Acesso negado: você só pode gerenciar as lives que criou");
+  }
 }
 
 // Strict: admin-only operations (delete). Espelha assertAdminOnly do courses.ts.
@@ -75,14 +89,73 @@ export async function getLiveBySlug(slug: string): Promise<LiveEvent | null> {
   return liveBelongsToPortal(live.portal, portal) ? live : null;
 }
 
-/** Todas as lives da escola do portal — para o painel admin. */
+/**
+ * Lives de um curso específico — para a página do curso do aluno.
+ * course_id existia na tabela e nada lia; é isso que torna o vínculo visível.
+ * Mesmo filtro liveBelongsToPortal das outras leituras deste arquivo.
+ */
+export async function listLivesForCourse(courseId: string): Promise<LiveEvent[]> {
+  const portal = await getPortal();
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("live_events")
+    .select(PUBLIC_LIVE_COLUMNS)
+    .eq("course_id", courseId)
+    .in("status", ["agendado", "ao_vivo"])
+    .order("inicio_previsto", { ascending: true });
+  return ((data ?? []) as LiveEvent[]).filter((l) => liveBelongsToPortal(l.portal, portal));
+}
+
+/**
+ * Lives que o aluno logado deveria ver no dashboard: das próximas 3, as que são
+ * de um curso em que ele está matriculado (ativo) OU que não têm curso nenhum
+ * (palestra/podcast avulso — é pra todo mundo). Vazio se deslogado.
+ */
+export async function listUpcomingLivesForUser(): Promise<LiveEvent[]> {
+  const { userId } = await auth();
+  if (!userId) return [];
+
+  const portal = await getPortal();
+  const supabase = createAdminClient();
+
+  const { data: userRow } = await supabase.from("users").select("id").eq("clerk_id", userId).single();
+  const userUuid = userRow?.id;
+  if (!userUuid) return [];
+
+  const { data: enrollments } = await supabase
+    .from("enrollments")
+    .select("course_id")
+    .eq("user_id", userUuid)
+    .eq("status", "ativo");
+  const enrolledCourseIds = new Set((enrollments ?? []).map((e: any) => e.course_id));
+
+  const { data } = await supabase
+    .from("live_events")
+    .select(PUBLIC_LIVE_COLUMNS)
+    .in("status", ["agendado", "ao_vivo"])
+    .order("inicio_previsto", { ascending: true });
+
+  const lives = ((data ?? []) as LiveEvent[]).filter((l) => liveBelongsToPortal(l.portal, portal));
+  const relevant = lives.filter((l) => !l.course_id || enrolledCourseIds.has(l.course_id));
+  return relevant.slice(0, 3);
+}
+
+/**
+ * Todas as lives da escola do portal — para o painel admin.
+ * Admin/CM veem tudo (da escola atual); instrutor vê só as que criou —
+ * mesma regra de instructorGetMyCourses do courses.ts, agora usando criado_por.
+ */
 export async function listLivesForAdmin(): Promise<LiveEvent[]> {
-  await assertAdmin();
+  const { userUuid, role } = await assertAdmin();
   const portal = await getPortal();
   const supabase = createAdminClient();
   const { data } = await supabase
     .from("live_events").select("*").order("inicio_previsto", { ascending: false });
-  return ((data ?? []) as LiveEvent[]).filter((l) => liveBelongsToPortal(l.portal, portal));
+  let lives = ((data ?? []) as LiveEvent[]).filter((l) => liveBelongsToPortal(l.portal, portal));
+  if (role === "instrutor") {
+    lives = lives.filter((l) => l.criado_por === userUuid);
+  }
+  return lives;
 }
 
 /**
@@ -104,7 +177,7 @@ export async function listCoursesForPortalSelect(): Promise<{ id: string; titulo
 }
 
 export async function createLive(input: LiveEventInsert) {
-  const userUuid = await assertAdmin();
+  const { userUuid } = await assertAdmin();
 
   // Regra do dono: cada domínio é uma escola independente. Sem isto, um admin
   // logado no aula.smuproducoes.com podia gravar direto no catálogo do Backstage.
@@ -148,12 +221,13 @@ export async function createLive(input: LiveEventInsert) {
 }
 
 export async function updateLive(id: string, input: LiveEventUpdate) {
-  await assertAdmin();
+  const { userUuid, role } = await assertAdmin();
   await assertLiveInPortal(id);
 
   const supabase = createAdminClient();
   const { data: atual } = await supabase.from("live_events").select("*").eq("id", id).single();
   if (!atual) throw new Error("Live não encontrada");
+  assertLiveOwnership(atual as LiveEvent, userUuid, role);
   const merged = { ...(atual as LiveEvent), ...input };
 
   const check = validateLiveEvent({
@@ -189,8 +263,13 @@ export async function updateLive(id: string, input: LiveEventUpdate) {
 }
 
 export async function setLiveStatus(id: string, status: LiveStatus) {
-  await assertAdmin();
+  const { userUuid, role } = await assertAdmin();
   await assertLiveInPortal(id);
+
+  const supabaseCheck = createAdminClient();
+  const { data: atual } = await supabaseCheck.from("live_events").select("criado_por").eq("id", id).single();
+  if (!atual) throw new Error("Live não encontrada");
+  assertLiveOwnership(atual as Pick<LiveEvent, "criado_por">, userUuid, role);
 
   const agora = new Date().toISOString();
   const extra =
