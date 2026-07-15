@@ -250,6 +250,50 @@ export type AdminDashboardMetrics = {
   receita_total: number; new_users_30d: number; new_enrollments_30d: number;
 };
 
+// ── Lives (aulas, palestras e podcasts ao vivo) ────────────
+
+export type LiveType = "aula" | "palestra" | "podcast";
+export type LivePortalDb = "aula" | "main" | "ambos";
+export type LiveAccess = "aberto" | "restrito";
+export type LiveProvider = "youtube" | "cloudflare";
+export type LiveStatus = "agendado" | "ao_vivo" | "encerrado" | "cancelado";
+
+export type LiveEvent = {
+  id: string; titulo: string; slug: string; descricao: string | null;
+  tipo: LiveType; portal: LivePortalDb; acesso: LiveAccess; provider: LiveProvider;
+  course_id: string | null; youtube_id: string | null;
+  cf_live_input_id: string | null; cf_video_uid: string | null;
+  status: LiveStatus; inicio_previsto: string;
+  inicio_real: string | null; fim_real: string | null;
+  recording_lesson_id: string | null; criado_por: string | null;
+  created_at: string; updated_at: string;
+};
+
+export type LiveEventInsert = {
+  titulo: string; slug: string; descricao?: string | null;
+  tipo?: LiveType; portal: LivePortalDb; acesso?: LiveAccess; provider?: LiveProvider;
+  course_id?: string | null; youtube_id?: string | null;
+  status?: LiveStatus; inicio_previsto: string; criado_por?: string | null;
+};
+
+export type LiveEventUpdate = Partial<LiveEventInsert> & {
+  inicio_real?: string | null; fim_real?: string | null;
+  cf_video_uid?: string | null; recording_lesson_id?: string | null;
+};
+
+export type LiveAttendance = {
+  id: string; live_event_id: string; user_id: string;
+  joined_at: string; last_seen_at: string; duracao_segundos: number;
+  ip: string | null; user_agent: string | null;
+};
+
+export type LiveMessage = {
+  id: string; live_event_id: string; user_id: string;
+  texto: string; oculto: boolean; created_at: string;
+};
+
+export type LiveMessageInsert = { live_event_id: string; user_id: string; texto: string };
+
 // ── Database type (formato supabase-js v2) ─────────────────
 
 export type Database = {
@@ -273,6 +317,9 @@ export type Database = {
       activity_log: { Row: ActivityLog; Insert: ActivityLogInsert; Update: never; Relationships: [] };
       settings: { Row: Setting; Insert: SettingInsert; Update: SettingUpdate; Relationships: [] };
       ai_animations: { Row: AiAnimation; Insert: AiAnimationInsert; Update: AiAnimationUpdate; Relationships: [] };
+      live_events: { Row: LiveEvent; Insert: LiveEventInsert; Update: LiveEventUpdate; Relationships: [] };
+      live_attendance: { Row: LiveAttendance; Insert: never; Update: never; Relationships: [] };
+      live_messages: { Row: LiveMessage; Insert: LiveMessageInsert; Update: never; Relationships: [] };
     };
     Views: {
       admin_course_stats: { Row: AdminCourseStat; Relationships: [] };
