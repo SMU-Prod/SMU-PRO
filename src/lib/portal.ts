@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import type { LivePortalDb } from "@/types/database";
 
 /**
  * Portal "aula.smuproducoes.com" — catálogo dos cursos NOVOS (SMU Técnico + Renda em Casa).
@@ -60,4 +61,15 @@ export function stampPortalCategorias(categorias: string[] | null | undefined, p
     return cats.some((c) => AULA_CATEGORIAS.includes(c)) ? cats : [...cats, "tecnico"];
   }
   return cats.filter((c) => !AULA_CATEGORIAS.includes(c));
+}
+
+/**
+ * Uma live pertence ao portal se for dela ou de "ambos".
+ *
+ * Curso deriva o portal implicitamente de `categorias`; live NÃO pode fazer
+ * isso — palestra e podcast não têm `course_id`, logo não têm `categorias` de
+ * onde derivar. Por isso live carrega coluna `portal` explícita.
+ */
+export function liveBelongsToPortal(livePortal: LivePortalDb, portal: Portal): boolean {
+  return livePortal === "ambos" || livePortal === portal;
 }
