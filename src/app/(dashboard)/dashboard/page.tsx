@@ -14,6 +14,7 @@ import { formatMinutes, getLevelLabel } from "@/lib/utils";
 import { CategoryIcon } from "@/components/ui/category-icon";
 import { getServerT, getServerLocale } from "@/lib/i18n/server";
 import { courseMeta } from "@/lib/i18n/courses-meta";
+import { getPortal, courseBelongsToPortal } from "@/lib/portal";
 import type { Lang } from "@/lib/i18n/dict";
 import {
   BookOpen, Award, Clock, TrendingUp, Play, ChevronRight,
@@ -43,15 +44,17 @@ export default async function DashboardPage() {
           .eq("user_id", userUuid)
           .eq("status", "ativo")
           .order("updated_at", { ascending: false })
-          .limit(6)
+          // Busca mais que o necessário: o corte final (6) é aplicado DEPOIS de filtrar
+          // pela escola do domínio, senão os cursos da outra escola comeriam as vagas.
+          .limit(40)
       : Promise.resolve({ data: [] }),
     userUuid
       ? supabase
           .from("certificates")
-          .select(`*, courses(titulo, slug, nivel, categoria)`)
+          .select(`*, courses(titulo, slug, nivel, categoria, categorias)`)
           .eq("user_id", userUuid)
           .order("emitido_em", { ascending: false })
-          .limit(4)
+          .limit(30)
       : Promise.resolve({ data: [] }),
     userUuid
       ? supabase
@@ -65,16 +68,21 @@ export default async function DashboardPage() {
     userUuid
       ? supabase
           .from("enrollments")
-          .select("progresso, course_id, courses(carga_horaria)")
+          .select("progresso, course_id, courses(carga_horaria, categorias)")
           .eq("user_id", userUuid)
           .eq("status", "ativo")
       : Promise.resolve({ data: [] }),
   ]);
 
-  const enrollments = enrollmentsResult.data ?? [];
-  const certificates = certificatesResult.data ?? [];
+  // Escolas independentes: este domínio só mostra (e só conta nas estatísticas) os
+  // cursos da sua escola, mesmo que o aluno tenha matrícula nas duas.
+  const portal = await getPortal();
+  const daEscola = (c: any) => c && courseBelongsToPortal(c.categorias, portal);
+
+  const enrollments = (enrollmentsResult.data ?? []).filter((e: any) => daEscola(e.courses)).slice(0, 6);
+  const certificates = (certificatesResult.data ?? []).filter((c: any) => daEscola(c.courses)).slice(0, 4);
   const recentActivity = recentActivityResult.data ?? [];
-  const allEnrollments = allEnrollmentsResult.data ?? [];
+  const allEnrollments = (allEnrollmentsResult.data ?? []).filter((e: any) => daEscola(e.courses));
 
   // Calculate stats
   const totalCursos = allEnrollments.length;

@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect, notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/server";
+import { getPortal, courseBelongsToPortal } from "@/lib/portal";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -22,11 +23,13 @@ export default async function CourseRedirectPage({ params }: Props) {
   // Buscar course + módulos + aulas ordenados
   const { data: course } = await (supabase as any)
     .from("courses")
-    .select("id, modules(id, ordem, lessons(id, ordem))")
+    .select("id, categorias, modules(id, ordem, lessons(id, ordem))")
     .eq("slug", slug)
     .single();
 
   if (!course) notFound();
+  // Escolas independentes: curso da outra escola não abre neste domínio.
+  if (!courseBelongsToPortal(course.categorias, await getPortal())) notFound();
 
   const modules = (course.modules ?? []).sort((a: any, b: any) => a.ordem - b.ordem);
   const allLessons = modules.flatMap((m: any) =>

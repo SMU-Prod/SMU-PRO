@@ -12,6 +12,7 @@ import { CategoryIcon } from "@/components/ui/category-icon";
 import { BookOpen, Play, Trophy, ChevronRight, Plus } from "lucide-react";
 import { getServerT, getServerLocale } from "@/lib/i18n/server";
 import { courseMeta } from "@/lib/i18n/courses-meta";
+import { getPortal, courseBelongsToPortal } from "@/lib/portal";
 import type { Lang } from "@/lib/i18n/dict";
 
 export default async function MeusCursosPage() {
@@ -33,7 +34,13 @@ export default async function MeusCursosPage() {
         .order("updated_at", { ascending: false })
     : { data: [] };
 
-  const list = enrollments ?? [];
+  // Escolas independentes: cada domínio mostra só os cursos da sua escola — mesmo os
+  // que o aluno já cursa. Sem isto, quem tem matrícula nas duas via os cursos do
+  // backstage dentro do aula.smuproducoes.com (e vice-versa).
+  const portal = await getPortal();
+  const list = (enrollments ?? []).filter(
+    (e: any) => e.courses && courseBelongsToPortal(e.courses.categorias, portal),
+  );
 
   const inProgress = list.filter((e: any) => e.progresso > 0 && e.progresso < 100);
   const notStarted = list.filter((e: any) => e.progresso === 0);

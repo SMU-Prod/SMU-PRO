@@ -29,6 +29,7 @@ import {
   Handshake,
   GraduationCap,
   Wallet,
+  Music,
 } from "lucide-react";
 
 interface NavItem {
@@ -50,6 +51,7 @@ const studentNav: NavItem[] = [
 const adminNav: NavItem[] = [
   { label: "Visão Geral", href: "/admin", icon: BarChart3 },
   { label: "Cursos", href: "/admin/cursos", icon: Layers },
+  { label: "Bases dos simuladores", href: "/admin/bases", icon: Music },
   { label: "Trilhas", href: "/admin/trilhas", icon: TrendingUp },
   { label: "Blog", href: "/admin/blog", icon: BookOpen },
   { label: "Usuários", href: "/admin/usuarios", icon: Users },
