@@ -64,6 +64,20 @@ const lessonSchema = z.object({
   preview_gratis: z.boolean().default(false),
 });
 
+/**
+ * Próxima posição livre = maior `ordem` existente + 1.
+ *
+ * NUNCA usar `lista.length`: isso só funciona se não houver buraco. Apague a aula de
+ * ordem 2 de um módulo com 5 (sobram 0,1,3,4) e o `length` devolve 4 — que JÁ existe.
+ * Duas aulas com a mesma `ordem` deixam a ordenação instável e a lista embaralha.
+ * Foi por isso que "apagar uma aula bagunçava as outras".
+ * Com max+1 o buraco é inofensivo: ele simplesmente fica lá.
+ */
+function proximaOrdem(itens?: { ordem?: number | null }[] | null): number {
+  if (!itens?.length) return 0;
+  return Math.max(...itens.map((i) => i?.ordem ?? 0)) + 1;
+}
+
 export function CourseContentManager({ course }: { course: any }) {
   const t = useT();
   // As aulas vêm do PostgREST sem ordem garantida (o select aninhado não ordena),
@@ -120,7 +134,7 @@ export function CourseContentManager({ course }: { course: any }) {
     setLoading(true);
     try {
       const siblings = modules.filter((m) => m.parent_id === parentId);
-      const sub = await adminCreateModule({ ...data, course_id: course.id, parent_id: parentId, ordem: siblings.length });
+      const sub = await adminCreateModule({ ...data, course_id: course.id, parent_id: parentId, ordem: proximaOrdem(siblings) });
       setModules((prev) => [...prev, { ...sub, lessons: [] }]);
       setAddingSubmodule(null);
       moduleForm.reset();
@@ -301,7 +315,7 @@ export function CourseContentManager({ course }: { course: any }) {
           <span>{totalLessons} {t("aulas")}</span>
           <span className="text-[11px] text-muted-light hidden sm:inline">{t("Arraste pelo ⠿ para reordenar")}</span>
         </div>
-        <Button size="sm" onClick={() => { setAddingModule(true); moduleForm.reset({ ordem: rootModules.length }); }}>
+        <Button size="sm" onClick={() => { setAddingModule(true); moduleForm.reset({ ordem: proximaOrdem(rootModules) }); }}>
           <Plus size={15} /> {t("Novo Módulo")}
         </Button>
       </div>
@@ -365,7 +379,7 @@ export function CourseContentManager({ course }: { course: any }) {
               onDuplicateLesson={(lessonId: string, targetModuleId?: string) => handleDuplicateLesson(lessonId, targetModuleId ?? mod.id)}
               onMoveLesson={(lessonId: string, toModuleId: string, fromModuleId?: string) => handleMoveLesson(lessonId, fromModuleId ?? mod.id, toModuleId)}
               allModules={modules}
-              onStartAddLesson={(targetModuleId?: string) => { const id = targetModuleId ?? mod.id; const targetMod = modules.find((m) => m.id === id); lessonForm.reset({ tipo: "video", duracao_min: 0, ordem: targetMod?.lessons?.length ?? 0 }); setAddingLesson(id); setEditingLesson(null); }}
+              onStartAddLesson={(targetModuleId?: string) => { const id = targetModuleId ?? mod.id; const targetMod = modules.find((m) => m.id === id); lessonForm.reset({ tipo: "video", duracao_min: 0, ordem: proximaOrdem(targetMod?.lessons) }); setAddingLesson(id); setEditingLesson(null); }}
               onCancelAddLesson={() => setAddingLesson(null)}
               onStartEditLesson={(lesson: any) => { setEditingLesson(lesson.id); lessonForm.reset(lesson); setAddingLesson(null); setQuizLesson(null); }}
               onCancelEditLesson={() => setEditingLesson(null)}
@@ -1082,7 +1096,7 @@ function QuizBuilder({ lessonId, lessonTitulo, lessonConteudo, onClose, onQuizCr
     if (!texto.trim()) return;
     setLoading(true);
     try {
-      const q = await adminCreateQuestion({ quiz_id: quiz.id, texto, tipo, ordem: quiz.quiz_questions?.length ?? 0, pontos: 1 });
+      const q = await adminCreateQuestion({ quiz_id: quiz.id, texto, tipo, ordem: proximaOrdem(quiz.quiz_questions), pontos: 1 });
       let newQuestion: any = { ...q, quiz_options: [] };
 
       // Para V/F, cria automaticamente as opções "Verdadeiro" e "Falso"
@@ -1115,7 +1129,7 @@ function QuizBuilder({ lessonId, lessonTitulo, lessonConteudo, onClose, onQuizCr
     if (!texto.trim()) return;
     setLoading(true);
     try {
-      const opt = await adminCreateOption({ question_id: questionId, texto, correta, ordem: quiz.quiz_questions.find((q: any) => q.id === questionId)?.quiz_options?.length ?? 0 });
+      const opt = await adminCreateOption({ question_id: questionId, texto, correta, ordem: proximaOrdem(quiz.quiz_questions.find((q: any) => q.id === questionId)?.quiz_options) });
       setQuiz((prev: any) => ({
         ...prev,
         quiz_questions: prev.quiz_questions.map((q: any) =>
