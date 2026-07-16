@@ -63,14 +63,20 @@ export async function submitQuizAttempt(
     quiz.nivel_minimo_aprovacao ?? 0,
   );
 
-  const { error } = await supabase.from("quiz_attempts").insert({
-    user_id: userRow.id,
-    quiz_id: quizId,
-    nota,
-    aprovado,
-    respostas,
+  // Insert atômico: a função serializa por (user, quiz) e reconta o limite dentro
+  // da transação — fecha a race do count-then-insert (o check acima é só feedback).
+  const { error } = await (supabase as any).rpc("insert_quiz_attempt_guarded", {
+    p_user_id: userRow.id,
+    p_quiz_id: quizId,
+    p_nota: nota,
+    p_aprovado: aprovado,
+    p_respostas: respostas,
+    p_max_tentativas: tentativasPermitidas,
   });
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (error.message?.includes("Tentativas esgotadas")) throw new Error("Tentativas esgotadas");
+    throw new Error(error.message);
+  }
 
   // Notificação de resultado
   const quizTitle = (quiz as any).lessons?.titulo ?? "Quiz";

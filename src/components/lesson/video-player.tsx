@@ -12,13 +12,14 @@ interface VideoPlayerProps {
 export function VideoPlayer({ youtubeId, lessonId }: VideoPlayerProps) {
   const t = useT();
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const watchTimeRef = useRef(0);
 
-  // Salva tempo assistido a cada 60 segundos (batch para reduzir writes no banco)
+  // Registra 60s de cada vez, mas SÓ quando a aba está visível — evita acumular
+  // tempo de vídeo que ninguém está assistindo (aba de fundo / esquecida aberta).
+  // O servidor incrementa de forma atômica, então remontar não desfaz o total.
   useEffect(() => {
     intervalRef.current = setInterval(() => {
-      watchTimeRef.current += 60;
-      updateWatchTime(lessonId, watchTimeRef.current).catch((err) => console.error("[VideoPlayer Watch Time Error]", err));
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      updateWatchTime(lessonId, 60).catch((err) => console.error("[VideoPlayer Watch Time Error]", err));
     }, 60_000);
 
     return () => {
