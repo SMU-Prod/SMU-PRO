@@ -1,0 +1,2112 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>dbx DriveRack VENU360 — simulador SMU</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<!--
+  ============================================================================
+  dbx DriveRack VENU360 — réplica do VENU360 Control App v2.0.5
+  ============================================================================
+  FONTE DE VERDADE (nada aqui foi inventado):
+    • _ref-venu360/SPEC-VENU360.md ........ manual oficial 5058681-C (127 pág.)
+    • _ref-venu360/ACHADOS-SOFTWARE-OFICIAL.md ... software oficial rodando
+    • _ref-venu360/venu360-*.png .......... ~20 capturas nativas 2560px
+
+  Cores/medidas: amostradas PIXEL A PIXEL das capturas reais (não estimadas).
+  Nenhum asset, imagem ou código da dbx foi copiado — a pele é CSS/SVG nosso,
+  recriada olhando a captura (mesmo método do CL Editor).
+
+  ⚠️ TUDO que é inferência está marcado "⚠️ ESTIMADO" e parametrizado numa
+     constante única (Regra 3 do CLAUDE.md). Procure por "ESTIMADO".
+
+  FATOS VERIFICADOS EM 2 FONTES (manual + software) — não "corrigir":
+    • NÃO existe Bessel. Só BW 6/12/18/24/30/36/42/48 + LR 12/24/36/48 = 12.
+    • AutoEQ (AEQ) é bloco de SAÍDA.
+    • Módulo Inputs não tem parâmetro. Ganho de entrada = MASTER GAIN do Router.
+    • "Peak Stop Plus" (não "PeakPlus").
+    • Mute de saída age ANTES do limiter.
+    • Release (CMP e LMT) tem escala INVERTIDA: esq=360 dB/s, dir=5 dB/s.
+    • Auto=ON no limiter MASCARA Threshold/OverEasy e desabilita Atk/Hold/Rel.
+    • Tuning de fábrica TRAVA o crossover (cadeado).
+    • 3 entradas x 6 saídas. Clock Internal 96 kHz.
+  ============================================================================
+-->
+<style>
+/* ===================== PELE dbx / HARMAN — cores medidas das capturas ===== */
+:root{
+  --hdr:#201f1f;        /* barra de topo            (medido) */
+  --gold:#eac53a;       /* régua sob o header       (medido) */
+  --cyan:#94fbff;       /* nº e nome do preset      (medido) */
+  --dbxred:#e2383f;     /* logo dbx                 (medido) */
+  --editred:#c50017;    /* badge EDITED             (medido) */
+  --blk:#222222;        /* blocos escuros (In/Out)  (medido) */
+  --mod:#a9a9a9;        /* bloco de módulo (normal) (medido) */
+  --modon:#d3d3d3;      /* bloco de módulo (ON)     (medido) */
+  --icon:#808080;       /* glifo do ícone           (medido) */
+  --green:#70ab1f;      /* CONFIGURE / botão On     (medido) */
+  --plot:#212121;       /* fundo dos gráficos       (medido) */
+  --panel:#2f2f27;      /* painel de parâmetros     (medido) */
+  --row:#26281f;        /* linha de parâmetro       (medido) */
+  --outred:#e12000;     /* seta vermelha da saída   (medido) */
+  --magenta:#b3365e;    /* banda MAINS do crossover (medido) */
+  --gr-green:#109010;   /* transferência: passa     (medido) */
+  --gr-yellow:#909010;  /* transferência: OverEasy  (medido) */
+  --gr-red:#901010;     /* transferência: limitando (medido) */
+  --btn:#a9a9a9;        /* botão de barra inferior */
+  --btnsel:#ffffff;     /* botão selecionado */
+  --hdr-h:56px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  background:#111;color:#e8e8e8;overflow:hidden;
+  font-family:"Segoe UI",system-ui,-apple-system,Roboto,"Helvetica Neue",Arial,sans-serif;
+  font-size:13px;
+}
+#app{display:flex;flex-direction:column;height:100dvh;width:100%}
+
+/* ===================== HEADER ===================== */
+#hdr{
+  flex:0 0 auto;height:var(--hdr-h);background:var(--hdr);
+  border-bottom:3px solid var(--gold);
+  display:flex;align-items:center;gap:0;padding:0 14px;position:relative;z-index:30;
+}
+.dbx{width:86px;flex:0 0 auto;text-align:center;line-height:1}
+.dbx b{color:var(--dbxred);font-size:24px;font-weight:800;letter-spacing:-1px;font-family:Georgia,"Times New Roman",serif}
+.dbx i{display:block;color:var(--dbxred);font-size:6px;font-style:normal;letter-spacing:1.5px;margin-top:1px}
+.presetbox{flex:0 0 auto;text-align:center;width:60px;line-height:1.05}
+.pnum{color:var(--cyan);font-size:17px}
+.edited{display:inline-block;background:var(--editred);color:#fff;font-size:8px;font-weight:700;
+  padding:1px 5px;border-radius:2px;letter-spacing:.4px;margin-top:2px;visibility:hidden}
+.edited.on{visibility:visible}
+.pname{flex:1 1 auto;color:var(--cyan);font-size:19px;padding-left:18px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.icons{flex:0 0 auto;display:flex;align-items:center;gap:20px}
+.ico{width:34px;height:30px;display:grid;place-items:center;cursor:pointer;opacity:.85;background:none;border:0}
+.ico:hover{opacity:1}
+.ico.sel{opacity:1}
+.ico svg{width:26px;height:24px;fill:none;stroke:#d6d6d6;stroke-width:1.6}
+.ico.sel svg{stroke:var(--gold)}
+
+/* ===================== PALCO / PÁGINAS ===================== */
+#main{
+  flex:1 1 auto;position:relative;min-height:0;
+  /* Gradiente AMOSTRADO da captura real (venu360-11b, 2560x1040):
+       topo-centro #86876B · topo-esq #676D54 · topo-dir #7E7C61
+       meio-esq   #4B553C · meio-dir #7B785C
+       base-esq   #3C6D5D · base-dir #437261   <- a base é TEAL, não oliva     */
+  background:
+    radial-gradient(120% 92% at 62% -10%, rgba(170,166,126,.95) 0%,
+                    rgba(122,122,88,.45) 44%, rgba(0,0,0,0) 74%),
+    radial-gradient(85% 62% at 10% 100%, rgba(48,118,98,.9) 0%, rgba(0,0,0,0) 62%),
+    radial-gradient(85% 62% at 94% 100%, rgba(54,122,100,.85) 0%, rgba(0,0,0,0) 62%),
+    linear-gradient(176deg,#6b6f53 0%,#545c40 46%,#46604e 78%,#3e6f5f 100%);
+}
+.page{position:absolute;inset:0;display:none;flex-direction:column;overflow:auto}
+.page.on{display:flex}
+.ptitle{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;
+  padding:12px 22px 8px;font-size:16px;color:#efefef}
+.ptitle .sub{color:#d8d8d8;opacity:.85;margin-left:8px;font-size:15px}
+
+/* pílula On/Off do canto superior direito */
+.pill{border:0;border-radius:11px;padding:4px 20px;font-size:12px;color:#fff;cursor:pointer;
+  background:#8b8b8b;min-width:76px}
+.pill.on{background:var(--green)}
+/* cadeado do crossover */
+.lock{background:none;border:0;cursor:pointer;padding:4px}
+.lock svg{width:22px;height:24px;stroke:#efefef;stroke-width:1.7;fill:none}
+
+/* ===================== SIGNAL FLOW ===================== */
+#pg-flow{padding:0}
+.flowwrap{flex:1 1 auto;display:flex;gap:0;overflow:auto;padding:8px 14px 14px}
+.flowside{display:flex;flex-direction:column;min-width:0}
+.flowhead{height:26px;display:flex;align-items:center;font-size:14px;color:#efefef;padding-left:4px}
+.flowhead.gold{color:var(--gold);justify-content:space-between;padding-right:4px}
+.btn-conf{background:var(--green);border:0;color:#fff;font-size:12px;padding:6px 40px;cursor:pointer}
+.grid-in{display:grid;gap:5px;
+  grid-template-columns:76px 74px 8px 40px 8px repeat(3,72px) 8px 40px;
+  grid-auto-rows:78px;align-content:start}
+.grid-out{display:grid;gap:5px;
+  grid-template-columns:62px repeat(6,66px) 74px;
+  grid-auto-rows:78px;align-content:start}
+/* na captura real o grupo de saída encosta na borda direita: o vão entre os
+   dois grupos é que estica (input ~2-32% da largura, output ~39-97%). */
+.flowgap{flex:1 1 auto;min-width:44px}
+
+/* blocos */
+.blk{border:1px solid rgba(0,0,0,.35);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:2px;cursor:pointer;position:relative;
+  font-size:9px;overflow:hidden}
+.blk .lab{position:absolute;bottom:5px;left:0;right:0;text-align:center;font-size:9px;line-height:1.1}
+/* altura manda, aspecto preservado: glifos largos (PEQ/AEQ/XOVER) têm viewBox
+   largo e por isso ficam largos, como na captura real. */
+.blk svg{height:46%;width:auto;max-width:88%;fill:var(--icon);stroke:none;opacity:.95}
+/* módulo (cinza) */
+.blk.mod{background:var(--mod)} .blk.mod .lab{color:#3a3a3a}
+.blk.mod.on{background:var(--modon)}
+.blk.mod:hover{outline:2px solid var(--gold);outline-offset:-2px}
+/* bloco escuro (In / Out / mixer) */
+.blk.dark{background:var(--blk)} .blk.dark .lab{color:#fff;font-weight:600}
+.blk.dark svg{fill:#b9b9b9}
+.blk.dark:hover{outline:2px solid var(--gold);outline-offset:-2px}
+.blk.out svg{fill:var(--outred)}
+/* quadrado preto (1/2/3 e A/B/C) */
+.sq{background:#000;color:#fff;display:grid;place-items:center;font-size:17px;
+  border:1px solid rgba(255,255,255,.08);align-self:center;height:62px;width:100%}
+/* barra fina do bus */
+.bus{background:#1c1c1c;width:8px;height:62px;align-self:center;border:1px solid rgba(255,255,255,.06)}
+.router{background:var(--mod);display:grid;place-items:center;cursor:pointer;
+  border:1px solid rgba(0,0,0,.35);position:relative}
+.router .lab{position:absolute;bottom:8px;left:0;right:0;text-align:center;color:#3a3a3a;font-size:9px}
+.router svg{width:56px;height:56px;fill:var(--icon)}
+.router:hover{outline:2px solid var(--gold);outline-offset:-2px}
+.xover-lab{position:absolute;bottom:8px;left:0;right:0;text-align:center;color:#3a3a3a;
+  font-size:9px;line-height:1.2}
+
+/* ===================== GRÁFICOS ===================== */
+.plot{background:var(--plot);position:relative;width:100%;display:block}
+.plotbox{padding:0 22px}
+.axisY{position:absolute;left:-4px;top:0;bottom:0;width:26px}
+canvas{display:block;width:100%}
+
+/* ===================== LINHA DE PARÂMETRO ===================== */
+.prows{background:rgba(20,22,14,.55)}
+.prow{display:flex;align-items:center;gap:10px;padding:9px 14px;min-width:0;
+  border-bottom:1px solid rgba(255,255,255,.05);background:var(--row)}
+.prow.dim{opacity:.35;pointer-events:none}
+.prow .nm{width:120px;text-align:right;color:#cfcfcf;font-size:12px;flex:0 0 auto}
+.prow .vl{width:74px;color:#fff;font-size:12px;font-weight:600;flex:0 0 auto}
+.chev{background:none;border:0;color:#d0d0d0;font-size:20px;cursor:pointer;padding:0 6px;line-height:1}
+.chev:hover{color:#fff}
+.mn,.mx{font-size:10px;color:#9a9a9a;flex:0 0 auto;width:56px}
+.mx{text-align:right}
+/* min-width:0 é obrigatório: item de flex tem min-width:auto por padrão e o
+   slider se recusava a encolher — era o que estourava a página no celular. */
+.sld{flex:1 1 auto;min-width:0;-webkit-appearance:none;appearance:none;height:22px;
+  background:none;cursor:pointer}
+.sld::-webkit-slider-runnable-track{height:2px;background:#9a9a9a}
+.sld::-moz-range-track{height:2px;background:#9a9a9a}
+.sld::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;
+  background:#e9e9e9;margin-top:-6.5px;box-shadow:0 1px 3px #0008}
+.sld::-moz-range-thumb{width:15px;height:15px;border-radius:50%;background:#e9e9e9;border:0}
+/* trilho preenchido (a cor é a da banda selecionada) */
+.sld{--fill:0%;--acc:#e33}
+.sld::-webkit-slider-runnable-track{
+  background:linear-gradient(90deg,var(--acc) 0 var(--fill),#9a9a9a var(--fill) 100%)}
+.sld::-moz-range-track{
+  background:linear-gradient(90deg,var(--acc) 0 var(--fill),#9a9a9a var(--fill) 100%)}
+
+/* variante "empilhada" (limiter/compressor): nome em cima, valor centrado */
+.prow.stack{display:block;padding:6px 16px 10px}
+.prow.stack .top{display:flex;align-items:center;margin-bottom:-2px}
+.prow.stack .nm{width:auto;text-align:left;flex:0 0 auto}
+.prow.stack .vl{flex:1 1 auto;text-align:center;width:auto}
+.prow.stack .mid{display:flex;align-items:center;gap:8px}
+.prow.stack .ends{display:flex;justify-content:space-between;padding:0 34px;margin-top:-4px}
+.prow.stack .ends span{font-size:10px;color:#9a9a9a}
+
+/* ===================== BOTÕES / BARRAS ===================== */
+.barbot{flex:0 0 auto;background:#141414;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;border-top:1px solid #000}
+.lb{font-size:12px;color:#cfcfcf}
+.tbtn{background:var(--btn);border:0;color:#1a1a1a;font-size:12px;padding:9px 0;cursor:pointer;
+  flex:1 1 0;min-width:64px}
+.tbtn.sel{background:var(--btnsel);font-weight:600}
+.tbtn:hover{filter:brightness(1.08)}
+.sel-dd{background:#d9d9d9;border:0;color:#1a1a1a;font-size:12px;padding:8px 10px;cursor:pointer;
+  min-width:190px;font-family:inherit}
+.split{width:1px;align-self:stretch;background:#3a3a3a}
+
+/* ===================== CARROSSEL DE BANDAS (PEQ) =====================
+   Na tela real é uma FAIXA ÚNICA que rola, centrada na banda selecionada
+   (a captura mostra "...6 7 [8] 1 2..."), não uma grade quebrada em linhas. */
+.carou{display:flex;align-items:center;gap:12px;padding:6px 4px 2px;
+  flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+.carou::-webkit-scrollbar{display:none}
+.bnd{flex:0 0 auto}
+.bnd{width:42px;height:42px;border-radius:50%;border:2px solid;background:none;cursor:pointer;
+  font-size:16px;color:#e8e8e8;display:grid;place-items:center;transition:transform .1s}
+.bnd.sel{width:56px;height:56px;font-size:22px;color:#fff;font-weight:600}
+.carlab{text-align:center;font-size:10px;color:#d0d0d0;margin-top:2px}
+
+/* ===================== TABELAS (AFS / Presets / Utilities) ===================== */
+.tbl{width:100%;border-collapse:collapse;font-size:11px}
+.tbl th{background:#111;color:#ddd;font-weight:500;text-align:center;padding:6px 4px}
+.tbl td{background:#cfcfcf;color:#333;text-align:center;padding:6px 4px;border-top:1px solid #bbb}
+.tbl td.rowlab,.tbl th.rowlab{background:#111;color:#ddd;text-align:left;padding-left:12px;width:130px}
+
+.ptbl{width:100%;border-collapse:collapse;font-size:12px}
+.ptbl th{background:#3a3a3a;color:#ddd;font-weight:500;text-align:left;padding:8px 14px}
+.ptbl td{padding:9px 14px;border-bottom:1px solid #2b2b2b;color:#9a9a9a;cursor:pointer}
+.ptbl tr.sel td{color:#fff;font-weight:600;background:#2b2b2b}
+.ptbl tr:hover td{background:#242424}
+.psheet{background:#1a1a1a;margin:0 22px;max-height:100%;overflow:auto}
+
+.utl{background:#f4f4f4;color:#222;margin:0 22px 16px}
+.utl h4{background:#1c1c1c;color:#eee;font-weight:500;font-size:12px;padding:8px 14px}
+.utl .sub{background:#3a3a3a;color:#ddd;font-size:11px;padding:6px 14px;display:flex}
+.utl .sub span{flex:1}
+.utl .rw{display:flex;align-items:center;padding:14px;font-size:12px;gap:10px}
+.utl .rw span{flex:1}
+.ubtn{background:#d0d0d0;border:0;padding:10px 26px;font-size:12px;cursor:pointer;color:#222}
+
+/* ===================== DELAY ===================== */
+.dlywrap{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;padding:0 22px 16px}
+.dcol{background:rgba(0,0,0,.22)}
+.dcol.act{background:rgba(0,0,0,.55)}
+.dcol h5{font-size:12px;font-weight:500;color:#e0e0e0;padding:8px 10px}
+.drow{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.05)}
+.drow.dim{opacity:.32;pointer-events:none}
+.drow .l1{display:flex;align-items:center;gap:6px}
+.drow .l2{display:flex;gap:6px;margin-top:6px}
+.dfield{flex:1;background:#2b2b2b;border:1px solid #3d3d3d;text-align:center;font-size:10px;
+  color:#c8c8c8;padding:5px 0}
+.dbtn{width:74px;background:#3a3a3a;border:1px solid #4a4a4a;color:#ddd;font-size:10px;
+  padding:5px 0;cursor:pointer}
+.dbtn.on{background:var(--green);color:#fff;border-color:var(--green)}
+
+/* ===================== GEQ ===================== */
+.geqwrap{position:relative;padding:0 22px}
+#geqCv{cursor:ns-resize;touch-action:none}
+
+/* ===================== MONITOR (não é do aparelho — é o seu PA) ========== */
+#mon{flex:0 0 auto;background:#0d0d0d;border-top:2px solid #2a2a2a;display:flex;
+  align-items:center;gap:10px;padding:7px 14px;font-size:11px;flex-wrap:wrap}
+#mon .tag{background:#3a2a10;color:#e0b050;border:1px solid #6a4f18;padding:2px 7px;
+  border-radius:3px;font-size:9px;letter-spacing:.3px}
+#mon select,#mon button{font-family:inherit;font-size:11px}
+#mon select{background:#262626;color:#ddd;border:1px solid #3a3a3a;padding:5px 7px}
+.mbtn{background:#2a2a2a;border:1px solid #3d3d3d;color:#ddd;padding:6px 12px;cursor:pointer}
+.mbtn.play{background:#1f7a3d;border-color:#1f7a3d;color:#fff}
+.mbtn.stop{background:#a33;border-color:#a33;color:#fff}
+.mbtn:disabled{opacity:.5;cursor:default}
+.meter{width:110px;height:9px;background:#1a1a1a;border:1px solid #333;position:relative;overflow:hidden}
+.meter i{position:absolute;left:0;top:0;bottom:0;width:0%;background:linear-gradient(90deg,#2a2,#dd2,#e33)}
+#monMsg{color:#8a8a8a}
+
+/* ===================== RESPONSIVO ===================== */
+@media (max-width:1200px){
+  .pname{font-size:15px;padding-left:10px}
+  .icons{gap:10px}
+  .grid-in{grid-template-columns:60px 60px 6px 32px 6px repeat(3,58px) 6px 32px;grid-auto-rows:62px}
+  .grid-out{grid-template-columns:50px repeat(6,54px) 62px;grid-auto-rows:62px}
+}
+@media (max-width:860px){
+  :root{--hdr-h:48px}
+  /* No celular a página deixa de "encher a tela" e volta ao FLUXO NORMAL:
+     empilha e rola. Tentar manter o layout de 2560px em 390px era o que
+     estourava tudo para fora da viewport. */
+  .page.on{display:block}
+  .page{overflow-x:hidden;overflow-y:auto}
+  #app,.page,.split2,.prows,.plotbox{max-width:100vw;min-width:0}
+  .split2{display:block !important;height:auto !important}
+  .dbx{width:52px}.dbx b{font-size:18px}
+  .pname{font-size:11px;white-space:normal;line-height:1.1;max-height:34px;padding-left:6px}
+  .presetbox{width:34px}.pnum{font-size:13px}
+  .ico{width:22px}.ico svg{width:19px;height:18px}
+  .icons{gap:3px}
+  .ptitle{padding:8px 10px 6px;font-size:14px}
+  .plotbox,.geqwrap,.psheet,.utl,.dlywrap{padding-left:6px;padding-right:6px;margin-left:0;margin-right:0}
+  /* páginas empilham: gráfico em cima, parâmetros embaixo */
+  .split2{padding-left:6px !important;padding-right:6px !important}
+  .split2>*{width:auto !important;max-width:none !important;flex:none !important;
+    margin-bottom:6px}
+  /* no celular o slider é o que importa: os rótulos de min/max saem */
+  .prow{gap:5px;padding:8px 8px}
+  .prow .nm{width:74px;font-size:11px}
+  .prow .vl{width:52px;font-size:11px}
+  .mn,.mx{display:none}
+  .prow.stack .ends{padding:0 26px;display:flex}
+  .prow.stack .ends span{display:block}
+  .barbot{flex-wrap:wrap;gap:6px;padding:8px}
+  .tbtn{font-size:11px;padding:8px 0;min-width:46px}
+  .barbot .sel-dd{min-width:0;width:100%;flex:1 1 100%}
+  .barbot .lb{width:100%}
+  /* a barra do monitor continua compacta (nao e do aparelho, nao pode roubar
+     meia tela do celular) */
+  #mon{gap:6px;padding:6px 8px}
+  #mon select{max-width:150px}
+  #mon .tag{font-size:8px}
+  /* o rotulo do device nao pode passar por baixo do botao CONFIGURE */
+  .flowhead.gold{gap:8px}
+  .flowhead.gold span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+  .dlywrap{grid-template-columns:1fr;gap:8px}
+  .carou{gap:7px}.bnd{width:34px;height:34px;font-size:13px}.bnd.sel{width:44px;height:44px;font-size:18px}
+  /* o signal flow rola na horizontal em vez de encolher até ficar ilegível */
+  .flowwrap{padding:6px 8px 10px}
+  .grid-in{grid-template-columns:48px 48px 5px 26px 5px repeat(3,46px) 5px 26px;grid-auto-rows:50px;gap:3px}
+  .grid-out{grid-template-columns:40px repeat(6,44px) 52px;grid-auto-rows:50px;gap:3px}
+  .flowgap{width:14px}
+  .blk .lab{font-size:7px;bottom:2px}
+  .sq{height:40px;font-size:13px}
+  .bus{height:40px;width:5px}
+  .btn-conf{padding:5px 14px;font-size:11px}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ===================== HEADER ===================== -->
+  <header id="hdr">
+    <div class="dbx"><b>dbx</b><i>HARMAN</i></div>
+    <div class="presetbox">
+      <div class="pnum" id="pNum">1</div>
+      <div class="edited" id="pEdit">EDITED</div>
+    </div>
+    <div class="pname" id="pName">Stereo EON10G2 Mains + Mono EON518S Sub + Monitor</div>
+    <nav class="icons" id="navIcons"></nav>
+  </header>
+
+  <!-- ===================== PÁGINAS ===================== -->
+  <main id="main">
+
+    <!-- SIGNAL FLOW (home) -->
+    <section class="page on" id="pg-flow">
+      <div class="flowwrap">
+        <div class="flowside">
+          <div class="flowhead" id="clockLab">Internal 96 kHz</div>
+          <div class="grid-in" id="gridIn"></div>
+        </div>
+        <div class="flowgap"></div>
+        <div class="flowside">
+          <div class="flowhead gold">
+            <span id="devLab">Virtual VENU360</span>
+            <button class="btn-conf" id="btnConf">CONFIGURE</button>
+          </div>
+          <div class="grid-out" id="gridOut"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CROSSOVER -->
+    <section class="page" id="pg-xover">
+      <div class="ptitle">
+        <div>Crossover <span class="sub" id="xoTitle">(Output 1,2,3)</span></div>
+        <button class="lock" id="xoLock" title="tuning de fábrica — clique para destravar"></button>
+      </div>
+      <div class="plotbox"><canvas id="xoCv"></canvas></div>
+      <div style="display:flex;gap:2px;padding:10px 22px 0;flex:1 1 auto;min-height:0" class="split2">
+        <div style="width:240px;background:rgba(20,26,18,.6);padding:14px" id="xoBands"></div>
+        <div style="flex:1" class="prows" id="xoRows"></div>
+      </div>
+      <div class="barbot" id="xoBar"></div>
+    </section>
+
+    <!-- LIMITER -->
+    <section class="page" id="pg-lmt">
+      <div class="ptitle">
+        <div>Limiter <span class="sub" id="lmTitle">(Output 1,2)</span></div>
+        <button class="pill on" id="lmOn">On</button>
+      </div>
+      <div style="display:flex;gap:14px;padding:0 22px 14px;flex:1 1 auto;min-height:0" class="split2">
+        <div style="width:44%">
+          <canvas id="lmCv"></canvas>
+          <div style="background:rgba(0,0,0,.4);padding:10px 12px;margin-top:8px">
+            <div style="font-size:11px;color:#ddd;margin-bottom:5px">Gain Reduction</div>
+            <div class="meter" style="width:100%"><i id="lmGR"></i></div>
+            <div style="display:flex;justify-content:space-between;font-size:9px;color:#777;margin-top:3px">
+              <span>50</span><span>30</span><span>12</span><span>5</span><span>0</span></div>
+          </div>
+        </div>
+        <div style="flex:1;background:var(--panel)" id="lmPanel"></div>
+      </div>
+    </section>
+
+    <!-- COMPRESSOR -->
+    <section class="page" id="pg-cmp">
+      <div class="ptitle">
+        <div>Compressor <span class="sub" id="cpTitle">(Output 1,2)</span></div>
+        <button class="pill" id="cpOn">Off</button>
+      </div>
+      <div style="display:flex;gap:14px;padding:0 22px 14px;flex:1 1 auto;min-height:0" class="split2">
+        <div style="width:44%">
+          <canvas id="cpCv"></canvas>
+          <div style="background:rgba(0,0,0,.4);padding:10px 12px;margin-top:8px">
+            <div style="font-size:11px;color:#ddd;margin-bottom:5px">Gain Reduction</div>
+            <div class="meter" style="width:100%"><i id="cpGR"></i></div>
+            <div style="display:flex;justify-content:space-between;font-size:9px;color:#777;margin-top:3px">
+              <span>50</span><span>30</span><span>12</span><span>5</span><span>0</span></div>
+          </div>
+        </div>
+        <div style="flex:1;background:var(--panel)" id="cpPanel"></div>
+      </div>
+    </section>
+
+    <!-- PEQ -->
+    <section class="page" id="pg-peq">
+      <div class="ptitle">
+        <div>Parametric EQ <span class="sub" id="pqTitle">(Output 1,2)</span></div>
+        <button class="pill on" id="pqOn">On</button>
+      </div>
+      <div class="plotbox"><canvas id="pqCv"></canvas></div>
+      <div style="display:flex;gap:2px;padding:8px 22px 0;flex:1 1 auto;min-height:0" class="split2">
+        <div style="width:300px;background:rgba(20,26,18,.6);padding:8px">
+          <div class="carlab">Band Select <b style="color:#fff">1 to 8</b></div>
+          <div class="carou" id="pqCarou"></div>
+          <div style="text-align:center"><button class="tbtn" id="pqHide" style="flex:0;padding:5px 12px">Hide Touchpoints</button></div>
+        </div>
+        <div style="flex:1" class="prows" id="pqRows"></div>
+      </div>
+      <div class="barbot" id="pqBar"></div>
+    </section>
+
+    <!-- GEQ -->
+    <section class="page" id="pg-geq">
+      <div class="ptitle">
+        <div>Graphic EQ <span class="sub" id="gqTitle">(Input A,B)</span></div>
+        <button class="pill" id="gqOn">Off</button>
+      </div>
+      <div class="geqwrap" style="flex:1 1 auto;min-height:0"><canvas id="geqCv"></canvas></div>
+      <div class="barbot" id="gqBar"></div>
+    </section>
+
+    <!-- AFS -->
+    <section class="page" id="pg-afs">
+      <div class="ptitle">
+        <div>AFS <span class="sub" id="afTitle">(Input A,B)</span></div>
+        <button class="pill" id="afOn">Off</button>
+      </div>
+      <div class="plotbox"><canvas id="afCv"></canvas></div>
+      <div style="padding:8px 22px 0;overflow:auto"><table class="tbl" id="afTbl"></table></div>
+      <div style="display:flex;gap:2px;padding:10px 22px 0;flex:1 1 auto;min-height:0" class="split2">
+        <div style="width:240px;padding:0 14px">
+          <div style="font-size:11px;color:#ccc;margin-bottom:5px">Mode</div>
+          <select class="sel-dd" id="afMode" style="width:100%"><option>Fixed</option><option>Live</option></select>
+          <div style="font-size:11px;color:#ccc;margin:12px 0 5px">Type</div>
+          <select class="sel-dd" id="afType" style="width:100%">
+            <option>SPEECH</option><option>SPEECH/MUSIC</option><option selected>MUSIC</option></select>
+        </div>
+        <div style="flex:1" class="prows" id="afRows"></div>
+      </div>
+      <div class="barbot" id="afBar"></div>
+    </section>
+
+    <!-- DELAY -->
+    <section class="page" id="pg-dly">
+      <div class="ptitle"><div>Delay</div></div>
+      <div class="dlywrap" id="dlyWrap"></div>
+    </section>
+
+    <!-- PRESETS -->
+    <section class="page" id="pg-pre">
+      <div class="ptitle"><div>Presets in the device:</div></div>
+      <div class="psheet"><table class="ptbl" id="preTbl"></table></div>
+      <div class="barbot" id="preBar"></div>
+    </section>
+
+    <!-- UTILITIES -->
+    <section class="page" id="pg-utl">
+      <div class="ptitle"><div>Utilities</div></div>
+      <div class="utl">
+        <h4>Application</h4>
+        <div class="sub"><span>Current Version</span></div>
+        <div class="rw"><span>2.0.5</span><button class="ubtn" id="utlUpd">Check for Updates</button></div>
+      </div>
+      <div class="utl">
+        <h4>DriveRack VENU360</h4>
+        <div class="sub"><span>Device Name</span><span>IP Address</span><span>Current Version</span></div>
+        <div class="rw"><span>My DriveRack</span><span>Offline Mode</span><span>2.0.2.0</span></div>
+        <div class="rw" style="border-top:1px solid #ddd">
+          <span style="flex:0 0 110px">Clock Source</span>
+          <select class="sel-dd" id="utlClock">
+            <option>Internal 48 kHz</option><option selected>Internal 96 kHz</option>
+            <option>AES 1&amp;2</option><option>AES 3&amp;4</option>
+          </select>
+          <span></span>
+        </div>
+        <div class="rw" style="border-top:1px solid #ddd">
+          <span style="flex:0 0 110px">Device Type</span>
+          <select class="sel-dd" id="utlVariant">
+            <option selected>Standard</option><option>Dante</option><option>BLU Link</option>
+          </select>
+          <span style="color:#666;font-size:11px">a variante muda o I/O de rede, não o DSP</span>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ===================== MONITOR ===================== -->
+  <!-- NÃO existe no VENU360: representa em que XLR de saída você plugou o fone,
+       e qual mesa está alimentando a entrada. É o seu PA, não o aparelho.       -->
+  <div id="mon">
+    <span class="tag">MONITOR — seu PA, não o aparelho</span>
+    <span class="lb">Fonte:</span>
+    <select id="monSrc">
+      <option value="pink">Signal Gen — Pink (do aparelho)</option>
+      <option value="white">Signal Gen — White (do aparelho)</option>
+      <option value="sine">Signal Gen — Sine (do aparelho)</option>
+      <option value="music">Base musical (mesa → entrada)</option>
+    </select>
+    <span class="lb">Escutando:</span>
+    <select id="monOut"></select>
+    <button class="mbtn play" id="monPlay">► Tocar</button>
+    <div class="meter" title="nível da saída monitorada"><i id="monMeter"></i></div>
+    <span id="monDb" class="lb" style="width:58px">—</span>
+    <span id="monMsg"></span>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ============================================================================
+   1. CONSTANTES — todas com procedência anotada
+   ========================================================================== */
+
+/* Slopes: lista LITERAL do dropdown do software (venu360-12b) + manual p.85.
+   ✅ 2 FONTES. 8 Butterworth + 4 Linkwitz-Riley = 12. SEM BESSEL. Sem LR 6. */
+const SLOPES=[
+  {id:"BW6", label:"Butterworth 6dB/oct",     kind:"BW", order:1},
+  {id:"BW12",label:"Butterworth 12dB/oct",    kind:"BW", order:2},
+  {id:"BW18",label:"Butterworth 18dB/oct",    kind:"BW", order:3},
+  {id:"BW24",label:"Butterworth 24dB/oct",    kind:"BW", order:4},
+  {id:"BW30",label:"Butterworth 30dB/oct",    kind:"BW", order:5},
+  {id:"BW36",label:"Butterworth 36dB/oct",    kind:"BW", order:6},
+  {id:"BW42",label:"Butterworth 42dB/oct",    kind:"BW", order:7},
+  {id:"BW48",label:"Butterworth 48dB/oct",    kind:"BW", order:8},
+  {id:"LR12",label:"Linkwitz Riley 12dB/oct", kind:"LR", order:2},
+  {id:"LR24",label:"Linkwitz Riley 24dB/oct", kind:"LR", order:4},
+  {id:"LR36",label:"Linkwitz Riley 36dB/oct", kind:"LR", order:6},
+  {id:"LR48",label:"Linkwitz Riley 48dB/oct", kind:"LR", order:8}
+];
+
+/* ⚠️⚠️⚠️ ESTIMADO — AS 31 FREQUÊNCIAS DO GEQ ⚠️⚠️⚠️
+   O manual (p.75) só diz "31 bandas de 20 Hz a 20 kHz". O software NÃO rotula
+   as bandas. Esta é a série ISO de 1/3 de oitava: INFERÊNCIA BEM FUNDAMENTADA,
+   NÃO LEITURA DA FONTE.
+   Medição feita nesta build (venu360-13-geq.png, 2560px nativo): as 31 alças
+   estão espaçadas uniformemente em 75,3 px sobre um eixo log de 767,4 px/década
+   => passo de 1,2534x por banda. 1/3 de oitava = 2^(1/3) = 1,2599x (0,5% de
+   diferença). Ou seja: a medição CORROBORA "31 bandas de ~1/3 de oitava", mas
+   NÃO confirma as frequências exatas (os extremos não caem em 20 Hz/20 kHz).
+   >>> Para corrigir, troque SÓ esta constante. Nada mais depende da lista. <<<   */
+const GEQ_FREQS_ESTIMADO=[20,25,31.5,40,50,63,80,100,125,160,200,250,315,400,500,630,
+  800,1000,1250,1600,2000,2500,3150,4000,5000,6300,8000,10000,12500,16000,20000];
+const GEQ_FREQS=GEQ_FREQS_ESTIMADO;
+
+/* ⚠️ ESTIMADO — passos do carrossel de Ratio do compressor.
+   O software mostra só "1:1 .. Inf:1"; a lista de passos não é publicada.
+   Esta é a série clássica dbx. Trocar aqui corrige tudo.                       */
+const RATIOS_ESTIMADO=[1,1.2,1.4,1.6,1.8,2,2.5,3,3.5,4,5,6,8,10,12,16,20,32,64,Infinity];
+const RATIOS=RATIOS_ESTIMADO;
+
+/* ⚠️ ESTIMADO — curvas dos Quick Curve do GEQ. O manual (p.75) só descreve em
+   TEXTO o formato de cada uma; os dB por banda não são publicados. Estas curvas
+   seguem a descrição literal do manual, mas os valores são nossos.             */
+const QUICK_CURVES_ESTIMADO={
+  Flat:  ()=>GEQ_FREQS.map(()=>0),
+  /* "boost de graves + corte de médios-graves; agudos levemente atenuados" */
+  MyBand:()=>GEQ_FREQS.map(f=> f<80?4.5 : f<160?3 : f<400?-2.5 : f<800?-1.5 : f<6300?0 : -1.5),
+  /* "reforço de fala, inteligibilidade" */
+  Speech:()=>GEQ_FREQS.map(f=> f<100?-6 : f<200?-3 : f<400?0 : f<1000?1.5 : f<4000?3 : f<8000?1 : -2),
+  /* "similar ao MyBand mas SEM atenuar os médios-graves e com atenuação extra no topo" */
+  Venue: ()=>GEQ_FREQS.map(f=> f<80?4.5 : f<160?3 : f<800?0 : f<5000?0 : f<10000?-2 : -4),
+  /* "boost de graves e agudos, corte de médios (smiley-face)" */
+  DJ:    ()=>GEQ_FREQS.map(f=> f<63?6 : f<125?4.5 : f<315?1 : f<2000?-3 : f<5000?0 : f<10000?3.5 : 5)
+};
+
+/* AFS — largura por TYPE. Números LITERAIS do manual p.64. NÃO é estimativa. */
+const AFS_TYPES={
+  "SPEECH":      {bwHz:11, q:7,   fCross:76},
+  "SPEECH/MUSIC":{bwHz:9,  q:29,  fCross:260},
+  "MUSIC":       {bwHz:8,  q:116, fCross:927}
+};
+
+/* Presets de fábrica — lista real lida na tela (slots 1..10) + manual p.110-112. */
+const PRESETS=["Stereo Full Range Mains","Stereo Mains + Mono Sub","Stereo Mains + Stereo Subs",
+  "Stereo Mains + Aux Subs x2","Stereo Mains x4 + Mono Sub","Stereo Mains x4 + Stereo Subs",
+  "Stereo 2Way Mains","Stereo 2Way Mains + Mono Sub","Stereo 2Way Mains + Stereo Subs",
+  "Stereo 2Way Mains + Aux Subs x2","Stereo 3Way Mains","Mono Full Range Main",
+  "Mono Mains x2 + Mono Sub","Mono Mains x2 + Mono Subs x2","Mono Mains x2 + Aux Subs x2",
+  "Mono 2Way Mains x2","Mono 2Way Mains x2 + Mono Sub","Mono 2Way Mains x2 + Mono Subs x2",
+  "Mono 2Way Mains x2 + Aux Subs x2","Mono 3Way Mains x2","LCR Full Range Mains",
+  "LCR Mains + LCR Subs","LCR 2Way Mains","Full Range Stage Monitors x6","2Way Stage Monitors x3"];
+
+/* Cores dos touchpoints/bandas — lidas da tela do PEQ e do AFS. */
+const BANDCOL=["#e0479a","#3ad07a","#4a9df0","#e0483f","#31c9d6","#f2569b","#e8e8e8","#7ede3a",
+  "#4aa8f0","#a878e8","#f0a030","#e05aa8"];
+
+const SB="https://pshynylvvkhhohftouoe.supabase.co/storage/v1/object/public/media/";
+/* Base musical: representa a MESA alimentando a entrada do 360. O aparelho não
+   tem player — isto é o sinal que chega no XLR. Somamos os stems em estéreo. */
+const MUSIC={folder:"mix-forro-thullio", stems:[
+  "1-KICK-glued.mp3","15-BAIXO-glued.mp3","2-CX-glued.mp3","5-HH-glued.mp3",
+  "16-GUITA-glued.mp3","17-SANF_L-glued.mp3","18-SANF_R-glued.mp3",
+  "20-THULLIO-190905_1154-glued-01.mp3"]};
+
+/* ============================================================================
+   2. ESTADO — o preset de referência é o da captura venu360-10
+   ========================================================================== */
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const dbToLin=d=>Math.pow(10,d/20);
+const linToDb=l=>20*Math.log10(Math.max(l,1e-9));
+
+function mkPEQ(n){ /* PEQ de saída: 8 bandas. Q até 16 (manual p.79). */
+  const f=[31.5,63,125,250,500,1000,4000,10000]; /* ⚠️ ESTIMADO: freq. default por banda */
+  return Array.from({length:n},(_,i)=>({type:"Bell",f:f[i]||1000,g:0,q:1,slope:6}));
+}
+/* Estado ON/OFF de cada bloco no preset de fábrica: LIDO DA CAPTURA.
+   Os blocos do signal flow têm duas luminâncias, amostradas pixel a pixel em
+   venu360-10-signal-flow-configurado.png:
+       #D3D3D3 = ON   -> XOVER e LMT
+       #A9A9A9 = OFF  -> AEQ, CMP, PEQ, DLY, GEQ, AFS
+   Confere com as pílulas das páginas capturadas (Compressor "Off",
+   Graphic EQ "Off", AFS "Off", Limiter "On"). Por isso o PEQ de saída nasce
+   OFF: é o que o aparelho mostra, não o que eu supunha.                      */
+function mkOut(name,src){
+  return {
+    name, src,
+    aeq:{on:false, bands:Array.from({length:14},()=>({type:"Bell",f:1000,g:0,q:1}))},
+    cmp:{on:false,auto:false,thr:0,gain:0,ratio:5/*idx 2:1*/,oe:0,atk:10,hold:0,rel:320},
+    peq:{on:false, bands:mkPEQ(8)},
+    lmt:{on:true, auto:true, psp:true, thr:-26.9, oe:8, atk:10, hold:0, rel:320, over:2},
+    dly:{on:false, ms:0},
+    mute:false
+  };
+}
+const STATE={
+  clock:"Internal 96 kHz",
+  variant:"Standard",
+  presetNum:1,
+  presetName:"Stereo EON10G2 Mains + Mono EON518S Sub + Monitor",
+  edited:false,
+  router:{gain:0, mute:false},
+  /* 3 cadeias de input. Chain A e B LINKADAS (a captura mostra os inserts
+     ocupando as duas linhas). Chain C separada. */
+  inserts:{
+    AB:["AFS","GEQ","SUB"],
+    C :["AFS","GEQ","PEQ"]
+  },
+  afs:{on:false, mode:"Fixed", type:"MUSIC", liftAfter:5, fixedFilters:6, sens:0, hpf:0,
+       filters:Array.from({length:12},(_,i)=>({mode:i<6?"FIXED":"LIVE", f:null, g:0, q:0}))},
+  geq:{on:false, curve:"Manual", bands:GEQ_FREQS.map(()=>0)},
+  sub:{on:false, amount:0, lv1:0, lv2:0},
+  inPeq:{on:false, bands:mkPEQ(12)},
+  /* 6 saídas. Nomes gerados pelo wizard (venu360-09). */
+  outs:[mkOut("Left Main","A"),mkOut("Right Main","B"),mkOut("Mono Sub","A+B"),
+        mkOut("Monitor 1","C"),mkOut("Output 5","MIX"),mkOut("Output 6","MIX")],
+  /* Crossover: grupos. 2x3 para saídas 1,2,3 (Mains + Sub), 1x1 para 4,5,6.
+     Valores REAIS lidos na tela com o tuning EON10G2 + EON518S. */
+  /* Banda MAINS: valores LIDOS NA TELA (venu360-11b, tuning EON10G2+EON518S):
+       HP 125Hz / LR24 · LP Out / LR48 · Gain 0.0dB · Phase 0 deg · Normal
+     Banda SUB: também LIDA — indiretamente, mas com evidência forte. A captura
+     mostra DOIS badges "S" parados nas bordas do gráfico (16Hz e 20kHz) e uma
+     linha reta em 0 dB. Isso só fecha se o SUB estiver com HP=Out E LP=Out.
+     Não é chute meu: era chute meu o "80 Hz LR24" que eu tinha posto aqui — a
+     captura derrubou. O sub sair full-range de fábrica é justamente a aula:
+     quem põe o corte é o operador.
+     ⚠️ ESTIMADO: só os SLOPE TYPES do SUB (não dá para ler com o filtro em Out). */
+  /* Cores das bandas — AMOSTRADAS da captura, não escolhidas por mim:
+       MAINS #E341B5 (cor do botão selecionado E da letra "1" do touchpoint)
+       SUB   #E83B50 (cor da letra "S"; confere com o fill sozinho #832F3A =
+                      #E83B50 a 50% sobre o fundo #212121 do gráfico)
+     ⚠️ ESTIMADO: a cor das bandas dos grupos 1x1 (Monitor/Out5/Out6) não foi
+     capturada; uso a mesma da banda 1.                                       */
+  xoGroups:[
+    {outs:[0,1,2], label:"2x3", bands:[
+      {name:"MAINS", outs:[0,1], hp:125, hpT:"LR24", lp:null, lpT:"LR48", gain:0, pol:"Normal", phase:0, col:"#e341b5"},
+      {name:"SUB",   outs:[2],   hp:null,hpT:"LR24", lp:null, lpT:"LR24", gain:0, pol:"Normal", phase:0, col:"#e83b50"}
+    ], locked:true},
+    {outs:[3], label:"1x1", bands:[
+      {name:"Monitor 1", outs:[3], hp:null, hpT:"LR24", lp:null, lpT:"LR24", gain:0, pol:"Normal", phase:0, col:"#e341b5"}
+    ], locked:false},
+    {outs:[4], label:"1x1", bands:[
+      {name:"Output 5", outs:[4], hp:null, hpT:"LR24", lp:null, lpT:"LR24", gain:0, pol:"Normal", phase:0, col:"#e341b5"}
+    ], locked:false},
+    {outs:[5], label:"1x1", bands:[
+      {name:"Output 6", outs:[5], hp:null, hpT:"LR24", lp:null, lpT:"LR24", gain:0, pol:"Normal", phase:0, col:"#e341b5"}
+    ], locked:false}
+  ],
+  /* Links de módulo: saídas 1 e 2 andam juntas (Limiter (Output 1,2)). */
+  links:{lmt:[[0,1],[2],[3],[4],[5]], cmp:[[0,1],[2],[3],[4],[5]],
+         peq:[[0,1],[2],[3],[4],[5]], aeq:[[0,1],[2],[3],[4],[5]], dly:[[0,1],[2],[3],[4],[5]]}
+};
+/* seleção corrente de cada página */
+const SEL={xoGroup:0, xoBand:0, out:0, peqBand:0, dly:null};
+
+const markEdited=()=>{ STATE.edited=true; document.getElementById("pEdit").classList.add("on"); };
+
+/* ============================================================================
+   3. MATEMÁTICA DOS FILTROS
+   ========================================================================== */
+/* Q dos polos de um Butterworth de ordem N.
+   qs[] = seções de 2ª ordem; odd = precisa de uma seção de 1ª ordem.
+   Q_k = 1 / (2 * sin((2k+1)*pi/(2N)))
+   ⚠️ ARMADILHA QUE ME PEGOU (achada MEDINDO, não lendo):
+   eu tinha escrito cos() no lugar de sin(). Para ordem PAR os dois dão o mesmo
+   CONJUNTO de Qs (só troca a ordem), então BW12/24/36/48 e LR24/48 passavam —
+   e a ordem ÍMPAR saía errada em silêncio: BW18 media -7,78 dB na fc em vez
+   dos -3,01 dB que todo Butterworth tem por definição. Confirmação: N=3 ->
+   sin(pi/6)=0,5 -> Q=1,0 (certo); cos(pi/6)=0,866 -> Q=0,577 (errado).       */
+function butterQs(N){
+  const qs=[], pairs=Math.floor(N/2);
+  for(let k=0;k<pairs;k++) qs.push(1/(2*Math.sin((2*k+1)*Math.PI/(2*N))));
+  return {qs, odd:(N%2)===1};
+}
+/* Um slope -> lista de seções. LR(2n) = DOIS Butterworth(n) em cascata.       */
+function sections(slopeId){
+  const S=SLOPES.find(s=>s.id===slopeId); if(!S) return {qs:[],first:0};
+  if(S.kind==="BW"){ const b=butterQs(S.order); return {qs:b.qs, first:b.odd?1:0}; }
+  const half=S.order/2, b=butterQs(half);          /* LR = BW(half) ao quadrado */
+  return {qs:b.qs.concat(b.qs), first:b.odd?2:0};
+}
+/* ⚠️ ARMADILHA WEB AUDIO: BiquadFilterNode.Q é em **dB** para lowpass/highpass
+   (linear só para peaking/notch). Q=0.7071 (Butterworth) => Q.value = -3.0103.
+   NUNCA usar 0.707 aqui: daria Q linear 1.4 e a curva sairia errada.          */
+const qToDb=q=>20*Math.log10(q);
+
+/* Seção de 1ª ordem — Web Audio não tem; usamos IIRFilterNode com os
+   coeficientes da transformada bilinear (exato).                              */
+function firstOrder(ac,type,fc){
+  const K=Math.tan(Math.PI*clamp(fc,10,ac.sampleRate/2-100)/ac.sampleRate);
+  const n=1/(K+1);
+  return type==="lowpass" ? ac.createIIRFilter([K*n,K*n],[1,(K-1)*n])
+                          : ac.createIIRFilter([n,-n],[1,(K-1)*n]);
+}
+/* Constrói a cascata de um filtro de crossover. Devolve {inNode,outNode,nodes} */
+function buildFilter(ac,type,fc,slopeId){
+  const s=sections(slopeId), nodes=[];
+  for(let i=0;i<s.first;i++) nodes.push(firstOrder(ac,type,fc));
+  s.qs.forEach(q=>{
+    const f=ac.createBiquadFilter(); f.type=type;
+    f.frequency.value=clamp(fc,10,ac.sampleRate/2-100);
+    f.Q.value=qToDb(q);                    /* <-- em dB. Ver armadilha acima. */
+    nodes.push(f);
+  });
+  if(!nodes.length){ const g=ac.createGain(); nodes.push(g); }
+  for(let i=0;i<nodes.length-1;i++) nodes[i].connect(nodes[i+1]);
+  return {inNode:nodes[0], outNode:nodes[nodes.length-1], nodes};
+}
+
+/* Resposta analítica (plano s) — é o que o gráfico do aparelho mostra.        */
+function magFirst(type,r){ return type==="lowpass" ? 1/Math.sqrt(1+r*r) : r/Math.sqrt(1+r*r); }
+function magBiq(type,r,q){
+  const a=(1-r*r), b=r/q, d=Math.sqrt(a*a+b*b);
+  return type==="lowpass" ? 1/d : (r*r)/d;
+}
+/* magnitude (linear) de um filtro de crossover em f */
+function xoMag(type,fc,slopeId,f){
+  if(fc==null) return 1;                       /* "Out" = filtro desligado    */
+  const s=sections(slopeId), r=f/fc; let m=1;
+  for(let i=0;i<s.first;i++) m*=magFirst(type,r);
+  s.qs.forEach(q=> m*=magBiq(type,r,q));
+  return m;
+}
+/* resposta completa de uma banda de crossover (HP*LP*gain) */
+function bandMagDb(b,f){
+  const m=xoMag("highpass",b.hp,b.hpT,f)*xoMag("lowpass",b.lp,b.lpT,f);
+  return linToDb(m)+b.gain;
+}
+
+/* --- PEQ / AFS: resposta tirada do PRÓPRIO nó do Web Audio ---------------
+   Em vez de reimplementar RBJ (e arriscar o gráfico discordar do áudio),
+   perguntamos a resposta ao mesmo tipo de nó que processa o som:
+   BiquadFilterNode.getFrequencyResponse(). Assim gráfico == áudio por
+   construção. O contexto abaixo é só uma régua — nunca toca som.
+
+   ⚠️ LIMITAÇÃO CONHECIDA (não é estimativa: é o Web Audio):
+   BiquadFilterNode tem S fixo = 1 nos shelf (~12 dB/oct). O aparelho tem
+   SLOPE 3-15 dB/oct (manual p.79). O controle existe na tela porque existe no
+   aparelho, mas NESTA BUILD ele não altera o áudio nem a curva.
+   Correção = trocar o shelf por IIRFilterNode com coeficientes RBJ (S=slope/12).
+   Está reportado ao dono; não é um parâmetro fingido, é um parâmetro pendente. */
+let RCTX=null;
+function rctx(){ if(!RCTX) RCTX=new OfflineAudioContext(1,128,96000); return RCTX; }
+const bqType=t=> t==="Bell"?"peaking":(t==="Low Shelf"?"lowshelf":"highshelf");
+/* soma (em dB) da resposta de um conjunto de bandas nas frequências fs */
+function peqResponseDb(bands,fs,maxQ){
+  const out=new Float64Array(fs.length);
+  const arr=fs instanceof Float32Array?fs:Float32Array.from(fs);
+  const mag=new Float32Array(arr.length), ph=new Float32Array(arr.length);
+  bands.forEach(b=>{
+    if(!b.f) return;
+    if(b.g===0 && b.type==="Bell") return;
+    const f=rctx().createBiquadFilter();
+    f.type=bqType(b.type);
+    f.frequency.value=clamp(b.f,20,22000);
+    f.Q.value=clamp(b.q||1,.1,maxQ||16);
+    f.gain.value=clamp(b.g,-40,40);
+    f.getFrequencyResponse(arr,mag,ph);
+    for(let i=0;i<out.length;i++) out[i]+=20*Math.log10(Math.max(mag[i],1e-7));
+  });
+  return out;
+}
+/* resposta de UMA banda (para desenhar a curva individual e o touchpoint) */
+function peqMagDb(band,f){
+  if(band.g===0 && band.type==="Bell") return 0;
+  return peqResponseDb([band],[f],128)[0];
+}
+
+/* ============================================================================
+   4. MOTOR DE ÁUDIO — os parâmetros ATUAM no som de verdade
+   ==========================================================================
+   Cadeia REAL (manual p.118), montada nó a nó:
+     src -> Router(gain/mute) -> [AFS -> GEQ -> SUB -> PEQ] -> bus A/B/C
+         -> por saída: mixer -> AEQ -> CMP -> XOVER -> PEQ -> MUTE -> LMT -> DLY
+   Só a saída monitorada vai ao destination (= o XLR onde você plugou o fone).
+   ========================================================================== */
+let AC=null, GRAPH=null, playing=false, srcNodes=[], musicBuf=null, loadingMusic=false;
+
+function ctx(){
+  if(!AC){
+    const C=window.AudioContext||window.webkitAudioContext;
+    /* o aparelho roda Internal 96 kHz — pedimos o mesmo (reduz warping do
+       biquad perto de 20 kHz e bate com o clock mostrado na tela). */
+    try{ AC=new C({sampleRate:96000}); }catch(e){ AC=new C(); }
+  }
+  return AC;
+}
+
+/* ============================================================================
+   ⚠️ ARMADILHA DO WEB AUDIO: MAKEUP GAIN ESCONDIDO NO DynamicsCompressorNode
+   ============================================================================
+   O DynamicsCompressorNode do Chrome aplica um MAKEUP GAIN interno
+   (fullRangeMakeupGain = (1/saturate(1))^0.6 no Blink) que NÃO está na spec de
+   forma portável e que NENHUM limiter de verdade tem.
+   Medido nesta build, antes da correção, no CH1 com seno de 1 kHz:
+       limiter OFF -> -15.07 dBFS
+       limiter ON  -> -10.58 dBFS   <- o "limiter" DEIXAVA MAIS ALTO (+4,5 dB)
+   Um limiter nunca levanta nível. Correção: um nó de ganho depois do
+   compressor desfazendo o makeup. O fator é MEDIDO (não é fórmula chutada do
+   Blink, que muda entre navegadores): rendemos um seno BEM abaixo do threshold
+   num OfflineAudioContext — abaixo do threshold o único ganho que sobra é o
+   makeup — e usamos 1/makeup. Cacheado por (thr,ratio,knee).                 */
+const makeupCache={};
+function makeupKey(thr,ratio,knee){ return thr.toFixed(2)+"/"+ratio.toFixed(2)+"/"+knee.toFixed(2); }
+async function measureMakeup(thr,ratio,knee){
+  const k=makeupKey(thr,ratio,knee);
+  if(makeupCache[k]!=null) return makeupCache[k];
+  makeupCache[k]=1;                       /* provisório enquanto mede */
+  const fs=48000, len=Math.round(fs*.25);
+  const oac=new OfflineAudioContext(1,len,fs);
+  const amp=Math.pow(10,-60/20);          /* -60 dBFS: bem abaixo do threshold */
+  const o=oac.createOscillator(); o.frequency.value=1000;
+  const g=oac.createGain(); g.gain.value=amp;
+  const c=oac.createDynamicsCompressor();
+  c.threshold.value=thr; c.ratio.value=ratio; c.knee.value=knee;
+  c.attack.value=.003; c.release.value=.25;
+  o.connect(g); g.connect(c); c.connect(oac.destination); o.start();
+  const buf=await oac.startRendering(), d=buf.getChannelData(0);
+  let s=0,n=0; for(let i=Math.floor(len*.6);i<len;i++){ s+=d[i]*d[i]; n++; }
+  const rms=Math.sqrt(s/n), esperado=amp/Math.SQRT2;
+  const m=(esperado>0 && rms>0)? rms/esperado : 1;
+  makeupCache[k]=(isFinite(m)&&m>0)?m:1;
+  return makeupCache[k];
+}
+/* recalcula as compensações de todas as saídas (assíncrono, sem travar a UI) */
+let makeupTok=0;
+async function refreshMakeup(){
+  const my=++makeupTok, g=GRAPH; if(!g) return;
+  for(let i=0;i<STATE.outs.length;i++){
+    const o=STATE.outs[i], n=g.outs[i];
+    if(o.lmt.on){
+      const knee=o.lmt.oe===0?0:clamp(o.lmt.oe*3,0,30);
+      const m=await measureMakeup(clamp(o.lmt.thr,-100,0),20,knee);
+      if(my!==makeupTok) return;
+      n.lmtComp.gain.setTargetAtTime(1/m,ctx().currentTime,.02);
+    } else n.lmtComp.gain.setTargetAtTime(1,ctx().currentTime,.02);
+    if(o.cmp.on){
+      const r=RATIOS[o.cmp.ratio], rr=clamp(isFinite(r)?r:20,1,20);
+      const knee=o.cmp.oe===0?0:clamp(o.cmp.oe*4,0,40);
+      const m=await measureMakeup(clamp(o.cmp.thr,-100,0),rr,knee);
+      if(my!==makeupTok) return;
+      /* o Compressor TEM controle de Gain na tela (-20..+20 dB): esse é o
+         makeup DO APARELHO, e é o único que deve existir. */
+      n.cmpComp.gain.setTargetAtTime(dbToLin(o.cmp.gain)/m,ctx().currentTime,.02);
+    } else n.cmpComp.gain.setTargetAtTime(1,ctx().currentTime,.02);
+  }
+}
+
+/* --- geradores (o VENU360 TEM signal generator: PINK/WHITE/SINE, p.89-91) - */
+function noiseBuffer(ac,pink){
+  const n=ac.sampleRate*4, b=ac.createBuffer(1,n,ac.sampleRate), d=b.getChannelData(0);
+  let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
+  for(let i=0;i<n;i++){
+    const w=Math.random()*2-1;
+    if(!pink){ d[i]=w*.35; continue; }
+    b0=.99886*b0+w*.0555179; b1=.99332*b1+w*.0750759; b2=.96900*b2+w*.1538520;
+    b3=.86650*b3+w*.3104856; b4=.55000*b4+w*.5329522; b5=-.7616*b5-w*.0168980;
+    d[i]=(b0+b1+b2+b3+b4+b5+b6+w*.5362)*.05; b6=w*.115926;
+  }
+  return b;
+}
+
+function buildGraph(){
+  const ac=ctx();
+  const g={};
+  g.src=ac.createGain(); g.src.gain.value=1;               /* entra a mesa    */
+  /* ---- Input Router: MASTER GAIN + MASTER MUTE (é AQUI o ganho de entrada,
+         o módulo Inputs não tem parâmetro — manual p.58/59) ---------------- */
+  g.router=ac.createGain();
+  g.src.connect(g.router);
+  /* ---- inserts de input (cadeia A/B; a C usa os mesmos nós neste preset:
+         a captura mostra AFS/GEQ/SUB linkados em A,B e AFS/GEQ/PEQ em C) --- */
+  g.afsF=Array.from({length:12},()=>{ const f=ac.createBiquadFilter(); f.type="peaking";
+    f.frequency.value=1000; f.Q.value=10; f.gain.value=0; return f; });
+  g.geqF=GEQ_FREQS.map(fr=>{ const f=ac.createBiquadFilter(); f.type="peaking";
+    f.frequency.value=fr; f.Q.value=4.3; f.gain.value=0; return f; });
+  g.inPeqF=STATE.inPeq.bands.map(()=>{ const f=ac.createBiquadFilter(); f.type="peaking";
+    f.frequency.value=1000; f.Q.value=1; f.gain.value=0; return f; });
+  let p=g.router;
+  g.afsF.forEach(f=>{p.connect(f);p=f;});
+  g.geqF.forEach(f=>{p.connect(f);p=f;});
+  g.inPeqF.forEach(f=>{p.connect(f);p=f;});
+  g.busPost=ac.createGain(); p.connect(g.busPost);
+  /* buses A/B/C (mono no simulador: o sinal de entrada já é a soma da mesa) */
+  g.bus={A:ac.createGain(),B:ac.createGain(),C:ac.createGain()};
+  Object.values(g.bus).forEach(b=>g.busPost.connect(b));
+
+  /* ---- 6 cadeias de saída --------------------------------------------- */
+  g.outs=STATE.outs.map((o,i)=>{
+    const mix=ac.createGain();                              /* Mid Mixer      */
+    const aeq=ac.createGain();                              /* AutoEQ (bypass)*/
+    const cmp=ac.createDynamicsCompressor();                /* CMP            */
+    const xoIn=ac.createGain(), xoOut=ac.createGain();      /* XOVER          */
+    const peq=STATE.outs[i].peq.bands.map(()=>{ const f=ac.createBiquadFilter();
+      f.type="peaking"; f.frequency.value=1000; f.Q.value=1; f.gain.value=0; return f; });
+    const mute=ac.createGain();                             /* MUTE (antes do LMT!) */
+    const lmt=ac.createDynamicsCompressor();                /* LMT            */
+    const dly=ac.createDelay(1.1);                          /* DLY até 1000ms */
+    const pol=ac.createGain();                              /* polaridade     */
+    const trim=ac.createGain();                             /* gain do xover  */
+    /* desfazem o makeup escondido do DynamicsCompressorNode — ver bloco
+       "ARMADILHA DO WEB AUDIO" acima. Sem eles o limiter AUMENTA o nível. */
+    const cmpComp=ac.createGain(), lmtComp=ac.createGain();
+    const an=ac.createAnalyser(); an.fftSize=512; an._b=new Float32Array(512);
+    const tap=ac.createGain();                              /* saída p/ monitor*/
+    mix.connect(aeq); aeq.connect(cmp); cmp.connect(cmpComp); cmpComp.connect(xoIn);
+    /* xoIn -> [filtros] -> xoOut  (montado em rebuildXover) */
+    xoOut.connect(trim); trim.connect(pol);
+    let q=pol; peq.forEach(f=>{q.connect(f);q=f;});
+    q.connect(mute); mute.connect(lmt); lmt.connect(lmtComp);
+    lmtComp.connect(dly); dly.connect(tap);
+    tap.connect(an);
+    return {mix,aeq,cmp,cmpComp,xoIn,xoOut,peq,mute,lmt,lmtComp,dly,pol,trim,an,tap,xoNodes:[]};
+  });
+  g.master=ac.createGain(); g.master.gain.value=.9;
+  g.master.connect(ac.destination);
+  GRAPH=g;
+  rebuildRouting(); rebuildXover(); applyAll();
+  return g;
+}
+
+/* liga cada saída ao seu bus de origem (Route A / Route B / Mix A,B / ...) */
+function rebuildRouting(){
+  const g=GRAPH; if(!g) return;
+  g.outs.forEach((n,i)=>{
+    try{ g.bus.A.disconnect(n.mix); }catch(e){}
+    try{ g.bus.B.disconnect(n.mix); }catch(e){}
+    try{ g.bus.C.disconnect(n.mix); }catch(e){}
+    const s=STATE.outs[i].src;
+    if(s==="A") g.bus.A.connect(n.mix);
+    else if(s==="B") g.bus.B.connect(n.mix);
+    else if(s==="C") g.bus.C.connect(n.mix);
+    else if(s==="A+B"){ g.bus.A.connect(n.mix); g.bus.B.connect(n.mix); }
+    else { g.bus.A.connect(n.mix); g.bus.B.connect(n.mix); g.bus.C.connect(n.mix); }
+  });
+}
+
+/* (re)monta os filtros do crossover — IIR de 1ª ordem não tem parâmetro
+   automatizável, então a cascata é reconstruída quando fc/slope mudam. */
+function rebuildXover(){
+  const g=GRAPH; if(!g) return; const ac=ctx();
+  STATE.xoGroups.forEach(grp=>{
+    grp.bands.forEach(b=>{
+      b.outs.forEach(oi=>{
+        const n=g.outs[oi];
+        n.xoNodes.forEach(x=>{try{x.disconnect();}catch(e){}});
+        try{ n.xoIn.disconnect(); }catch(e){}
+        const chain=[];
+        if(b.hp!=null){ const f=buildFilter(ac,"highpass",b.hp,b.hpT); chain.push(f); }
+        if(b.lp!=null){ const f=buildFilter(ac,"lowpass", b.lp, b.lpT); chain.push(f); }
+        if(!chain.length){ n.xoIn.connect(n.xoOut); n.xoNodes=[]; return; }
+        n.xoIn.connect(chain[0].inNode);
+        for(let i=0;i<chain.length-1;i++) chain[i].outNode.connect(chain[i+1].inNode);
+        chain[chain.length-1].outNode.connect(n.xoOut);
+        n.xoNodes=chain.flatMap(c=>c.nodes);
+      });
+    });
+  });
+}
+
+/* aplica TODOS os parâmetros aos nós */
+function applyAll(){
+  const g=GRAPH; if(!g) return; const ac=ctx(), t=ac.currentTime, TC=.02;
+  /* Router: MASTER GAIN (-120..6 dB) + MASTER MUTE */
+  g.router.gain.setTargetAtTime(STATE.router.mute?0:dbToLin(STATE.router.gain),t,TC);
+  /* GEQ */
+  g.geqF.forEach((f,i)=> f.gain.setTargetAtTime(STATE.geq.on?STATE.geq.bands[i]:0,t,TC));
+  /* PEQ de input (insert da cadeia C) */
+  g.inPeqF.forEach((f,i)=>{ const b=STATE.inPeq.bands[i];
+    f.type=b.type==="Bell"?"peaking":(b.type==="Low Shelf"?"lowshelf":"highshelf");
+    f.frequency.setTargetAtTime(clamp(b.f,20,22000),t,TC);
+    f.Q.value=clamp(b.q,.1,128);
+    f.gain.setTargetAtTime(STATE.inPeq.on?b.g:0,t,TC); });
+  /* AFS: filtros setados viram notches REAIS */
+  const at=AFS_TYPES[STATE.afs.type];
+  g.afsF.forEach((f,i)=>{ const F=STATE.afs.filters[i];
+    if(STATE.afs.on && F.f){
+      f.frequency.setTargetAtTime(F.f,t,TC);
+      /* largura literal do manual p.64: bw fixa abaixo de fCross, Q fixo acima */
+      f.Q.value = F.f>=at.fCross ? at.q : (F.f/at.bwHz);
+      f.gain.setTargetAtTime(F.g,t,TC);
+    } else f.gain.setTargetAtTime(0,t,TC);
+  });
+  /* saídas */
+  STATE.outs.forEach((o,i)=>{
+    const n=g.outs[i];
+    n.aeq.gain.setTargetAtTime(1,t,TC);
+    /* CMP */
+    if(o.cmp.on){
+      n.cmp.threshold.setTargetAtTime(clamp(o.cmp.thr,-100,0),t,TC);
+      const r=RATIOS[o.cmp.ratio]; n.cmp.ratio.setTargetAtTime(clamp(isFinite(r)?r:20,1,20),t,TC);
+      n.cmp.knee.setTargetAtTime(o.cmp.oe===0?0:clamp(o.cmp.oe*4,0,40),t,TC);
+      n.cmp.attack.setTargetAtTime(clamp(o.cmp.atk/1000,0,1),t,TC);
+      /* release em dB/s -> segundos: tempo p/ soltar 10 dB (exemplo do manual p.88) */
+      n.cmp.release.setTargetAtTime(clamp(10/Math.max(o.cmp.rel,1),0,1),t,TC);
+    } else { n.cmp.threshold.setTargetAtTime(0,t,TC); n.cmp.ratio.setTargetAtTime(1,t,TC); }
+    /* PEQ de saída */
+    n.peq.forEach((f,bi)=>{ const b=o.peq.bands[bi];
+      f.type=b.type==="Bell"?"peaking":(b.type==="Low Shelf"?"lowshelf":"highshelf");
+      f.frequency.setTargetAtTime(clamp(b.f,20,22000),t,TC);
+      f.Q.value=clamp(b.q,.1,16);
+      f.gain.setTargetAtTime(o.peq.on?b.g:0,t,TC); });
+    /* MUTE — atua ANTES do limiter (manual p.118) */
+    n.mute.gain.setTargetAtTime(o.mute?0:1,t,TC);
+    /* LMT */
+    if(o.lmt.on){
+      /* Auto=ON ignora SÓ atk/hold/rel (program-dependent, manual p.87-88).
+         O THRESHOLD e o OverEasy continuam valendo — ver a nota longa em
+         buildLmt() sobre a divergência entre o achado e a captura.           */
+      n.lmt.threshold.setTargetAtTime(clamp(o.lmt.thr,-100,0),t,TC);
+      n.lmt.ratio.setTargetAtTime(20,t,TC);
+      n.lmt.knee.setTargetAtTime(o.lmt.oe===0?0:clamp(o.lmt.oe*3,0,30),t,TC);
+      n.lmt.attack.setTargetAtTime(o.lmt.auto?.003:clamp(o.lmt.atk/1000,0,1),t,TC);
+      n.lmt.release.setTargetAtTime(o.lmt.auto?.25:clamp(10/Math.max(o.lmt.rel,1),0,1),t,TC);
+    } else { n.lmt.threshold.setTargetAtTime(0,t,TC); n.lmt.ratio.setTargetAtTime(1,t,TC); }
+    /* DLY */
+    n.dly.delayTime.setTargetAtTime(o.dly.on?clamp(o.dly.ms,0,1000)/1000:0,t,TC);
+  });
+  /* crossover: gain + polaridade (a fc/slope são nós, ver rebuildXover) */
+  STATE.xoGroups.forEach(grp=> grp.bands.forEach(b=> b.outs.forEach(oi=>{
+    const n=g.outs[oi];
+    n.trim.gain.setTargetAtTime(dbToLin(b.gain),t,TC);
+    n.pol.gain.setTargetAtTime(b.pol==="Inverted"?-1:1,t,TC);
+  })));
+  routeMonitor();
+  /* compensa o makeup escondido do Web Audio (assíncrono, não trava a UI) */
+  refreshMakeup();
+}
+
+/* liga ao destination SÓ a saída escolhida no monitor */
+function routeMonitor(){
+  const g=GRAPH; if(!g) return;
+  const sel=+document.getElementById("monOut").value;
+  g.outs.forEach((n,i)=>{ try{ n.tap.disconnect(g.master); }catch(e){} });
+  if(g.outs[sel]) g.outs[sel].tap.connect(g.master);
+}
+
+async function loadMusic(){
+  if(musicBuf||loadingMusic) return musicBuf;
+  loadingMusic=true; const ac=ctx();
+  const msg=document.getElementById("monMsg");
+  try{
+    let done=0;
+    const bufs=await Promise.all(MUSIC.stems.map(async f=>{
+      const r=await fetch(SB+MUSIC.folder+"/"+f);
+      if(!r.ok) throw new Error("HTTP "+r.status+" em "+f);
+      const b=await ac.decodeAudioData(await r.arrayBuffer());
+      msg.textContent="baixando base… "+(++done)+"/"+MUSIC.stems.length; return b;
+    }));
+    /* soma os stems em estéreo = o que a MESA manda pro XLR do 360 */
+    const len=Math.max(...bufs.map(b=>b.length));
+    const out=ac.createBuffer(2,len,ac.sampleRate);
+    for(let ch=0;ch<2;ch++){ const d=out.getChannelData(ch);
+      bufs.forEach(b=>{ const s=b.getChannelData(Math.min(ch,b.numberOfChannels-1));
+        for(let i=0;i<s.length;i++) d[i]+=s[i]*.22; }); }
+    musicBuf=out; msg.textContent="";
+  }catch(e){ msg.textContent="erro na base: "+e.message+" — use o Signal Gen"; }
+  loadingMusic=false; return musicBuf;
+}
+
+async function play(){
+  const ac=ctx(); if(!GRAPH) buildGraph();
+  if(ac.state==="suspended") try{ await ac.resume(); }catch(e){}
+  stop(true);
+  const kind=document.getElementById("monSrc").value;
+  if(kind==="music"){
+    const b=await loadMusic(); if(!b) return;
+    const s=ac.createBufferSource(); s.buffer=b; s.loop=true; s.connect(GRAPH.src); s.start();
+    srcNodes=[s];
+  }else if(kind==="sine"){
+    const o=ac.createOscillator(); o.type="sine"; o.frequency.value=1000;
+    const gn=ac.createGain(); gn.gain.value=.25; o.connect(gn); gn.connect(GRAPH.src); o.start();
+    srcNodes=[o,gn];
+  }else{
+    const s=ac.createBufferSource(); s.buffer=noiseBuffer(ac,kind==="pink");
+    s.loop=true; s.connect(GRAPH.src); s.start(); srcNodes=[s];
+  }
+  playing=true; setPlayBtn();
+}
+function stop(keep){
+  srcNodes.forEach(n=>{ try{ n.stop&&n.stop(); }catch(e){} try{ n.disconnect(); }catch(e){} });
+  srcNodes=[]; if(!keep){ playing=false; setPlayBtn(); }
+}
+function setPlayBtn(){
+  const b=document.getElementById("monPlay");
+  b.textContent=playing?"■ Parar":"► Tocar";
+  b.className="mbtn "+(playing?"stop":"play");
+}
+function outDb(i){
+  const n=GRAPH&&GRAPH.outs[i]; if(!n) return -90;
+  n.an.getFloatTimeDomainData(n._b||(n._b=new Float32Array(512)));
+  let s=0; for(let k=0;k<n._b.length;k++) s+=n._b[k]*n._b[k];
+  const rms=Math.sqrt(s/n._b.length);
+  return rms>1e-6?20*Math.log10(rms):-90;
+}
+
+/* ============================================================================
+   5. COMPONENTES DE UI
+   ========================================================================== */
+const $=s=>document.querySelector(s);
+const el=(t,c,h)=>{ const e=document.createElement(t); if(c)e.className=c; if(h!=null)e.innerHTML=h; return e; };
+
+/* mapeamentos medidos nas capturas:
+   - frequência = LOG  (HP 125 Hz caiu em 29,1% do trilho 16 Hz..20 kHz -> log)
+   - todo o resto = LINEAR (thr -26,9 -> 55%; atk 10 ms -> 5%; OverEasy 8 -> 79%)
+   - Release = LINEAR mas INVERTIDO (360 dB/s na esquerda, 5 dB/s na direita)   */
+function normOf(p,v){
+  if(p.log){ return Math.log(v/p.min)/Math.log(p.max/p.min); }
+  return (v-p.min)/(p.max-p.min);
+}
+function valOf(p,n){
+  if(p.log){ return p.min*Math.pow(p.max/p.min,n); }
+  return p.min+n*(p.max-p.min);
+}
+/* uma linha de parâmetro. p={name,min,max,log,step,fmt,get,set,acc,off,dim,stack} */
+function paramRow(p){
+  const stack=!!p.stack;
+  const row=el("div","prow"+(stack?" stack":"")+(p.dim?" dim":""));
+  const sld=el("input"); sld.type="range"; sld.className="sld";
+  sld.min=0; sld.max=1000; sld.step=1;
+  const nm=el("div","nm",p.name), vl=el("div","vl");
+  const lt=el("button","chev","‹"), rt=el("button","chev","›");
+  const mn=el("div","mn",p.minLab!=null?p.minLab:p.fmt(p.min));
+  const mx=el("div","mx",p.maxLab!=null?p.maxLab:p.fmt(p.max));
+  function paint(){
+    const v=p.get();
+    vl.textContent=p.valLab?p.valLab(v):p.fmt(v);
+    let n=(v===null&&p.offAt==="max")?1:(v===null?0:normOf(p,v));
+    if(p.invert) n=1-n;
+    sld.value=Math.round(clamp(n,0,1)*1000);
+    sld.style.setProperty("--fill",(clamp(n,0,1)*100)+"%");
+    sld.style.setProperty("--acc",typeof p.acc==="function"?p.acc():(p.acc||"#e33"));
+    row.classList.toggle("dim",!!(p.dim&&p.dim()));
+  }
+  sld.oninput=()=>{ let n=+sld.value/1000; if(p.invert) n=1-n;
+    let v=valOf(p,n);
+    if(p.step) v=Math.round(v/p.step)*p.step;
+    /* "Out"/"Off" mora no extremo do trilho (LP Frequency Out, HPF Off, ...) */
+    if(p.offAt==="max" && (+sld.value)>=(p.invert?0:1000)) v=null;
+    if(p.offAt==="min" && (+sld.value)<=(p.invert?1000:0)) v=null;
+    p.set(v); markEdited(); paint(); p.after&&p.after();
+  };
+  const nudge=d=>{ sld.value=clamp(+sld.value+d*(p.nudge||8),0,1000); sld.oninput(); };
+  lt.onclick=()=>nudge(-1); rt.onclick=()=>nudge(1);
+  if(stack){
+    const top=el("div","top"); top.append(nm,vl);
+    const mid=el("div","mid"); mid.append(lt,sld,rt);
+    const ends=el("div","ends"); ends.append(el("span",null,mn.textContent),el("span",null,mx.textContent));
+    row.append(top,mid,ends);
+  }else{
+    row.append(nm,vl,lt,mn,sld,mx,rt);
+  }
+  row._paint=paint; paint();
+  return row;
+}
+function repaint(container){ container.querySelectorAll(".prow").forEach(r=>r._paint&&r._paint()); }
+
+/* formatadores fiéis à tela */
+const fHz=v=> v==null?"Out" : (v>=1000? (v/1000).toFixed(v%1000?1:0)+"kHz" : Math.round(v)+"Hz");
+const fDb=v=> (v>0?"":"")+v.toFixed(1)+"dB";
+const fMs=v=> v.toFixed(1)+" ms";
+const fMs0=v=> Math.round(v)+" ms";
+const fRel=v=> Math.round(v)+"dB/s";
+const fOE=v=> v===0?"Off":String(Math.round(v));
+
+/* canvas com DPR correto */
+function fitCanvas(cv,h){
+  const dpr=window.devicePixelRatio||1, w=cv.clientWidth||600;
+  cv.height=h*dpr; cv.width=w*dpr; cv.style.height=h+"px";
+  const c=cv.getContext("2d"); c.setTransform(dpr,0,0,dpr,0,0);
+  return {c,w,h};
+}
+/* grade log padrão do aparelho */
+const XTICKS=[[16,"16"],[20,"20"],[40,"40"],[80,"80"],[200,"200"],[500,"500"],[1000,"1k"],
+  [2000,"2k"],[5000,"5k"],[10000,"10k"],[20000,"20k"]];
+function drawGrid(c,w,h,f0,f1,dbTop,dbBot,ticks,dbTicks,padL,padB){
+  c.fillStyle="#212121"; c.fillRect(padL,0,w-padL,h-padB);
+  const X=f=>padL+(Math.log(f/f0)/Math.log(f1/f0))*(w-padL);
+  const Y=d=>((dbTop-d)/(dbTop-dbBot))*(h-padB);
+  c.strokeStyle="#4a4a4a"; c.lineWidth=1; c.fillStyle="#9a9a9a"; c.font="9px Segoe UI";
+  ticks.forEach(([f,lab])=>{ if(f<f0||f>f1)return; const x=Math.round(X(f))+.5;
+    c.beginPath(); c.moveTo(x,0); c.lineTo(x,h-padB); c.stroke();
+    c.textAlign="center"; c.fillText(lab,x,h-padB+11); });
+  c.textAlign="right";
+  dbTicks.forEach(d=>{ const y=Math.round(Y(d))+.5;
+    c.beginPath(); c.moveTo(padL,y); c.lineTo(w,y); c.stroke();
+    c.fillText(String(d),padL-5,y+3); });
+  return {X,Y};
+}
+
+/* ============================================================================
+   6. PÁGINAS
+   ========================================================================== */
+const PAGES=["flow","xover","lmt","cmp","peq","geq","afs","dly","pre","utl"];
+function show(p){
+  PAGES.forEach(x=>document.getElementById("pg-"+x).classList.toggle("on",x===p));
+  document.querySelectorAll(".ico").forEach(i=>i.classList.toggle("sel",i.dataset.pg===p));
+  redraw();
+}
+
+/* --- ícones do header (6, iguais à captura) ------------------------------ */
+const ICONS={
+  disc:'<rect x="2" y="7" width="13" height="10"/><path d="M4 10h5M4 13h3"/><circle cx="17" cy="14" r="5"/><path d="M21 18l3 3"/>',
+  wzrd:'<circle cx="13" cy="12" r="10"/><text x="13" y="15" font-size="7" fill="#d6d6d6" stroke="none" text-anchor="middle" font-family="Segoe UI">WZRD</text>',
+  help:'<circle cx="13" cy="12" r="10"/><text x="13" y="17" font-size="14" fill="#d6d6d6" stroke="none" text-anchor="middle" font-family="Segoe UI">?</text>',
+  list:'<circle cx="4" cy="6" r="1.2" fill="#d6d6d6"/><circle cx="4" cy="12" r="1.2" fill="#d6d6d6"/><circle cx="4" cy="18" r="1.2" fill="#d6d6d6"/><path d="M8 6h14M8 12h14M8 18h14"/>',
+  gear:'<circle cx="13" cy="12" r="4"/><path d="M13 2v4M13 18v4M4 12H1M25 12h-3M6 5l3 3M20 19l-3-3M6 19l3-3M20 5l-3 3"/>',
+  home:'<path d="M13 3l9 9h-5v9h-8v-9H4z"/>'
+};
+function buildIcons(){
+  const nav=$("#navIcons");
+  [["disc","flow","Device"],["wzrd","flow","Wizard"],["help","flow","Ajuda"],
+   ["list","pre","Presets"],["gear","utl","Utilities"],["home","flow","Home"]]
+  .forEach(([k,pg,t])=>{
+    const b=el("button","ico"); b.dataset.pg=pg; b.title=t;
+    b.innerHTML='<svg viewBox="0 0 26 24">'+ICONS[k]+"</svg>";
+    b.onclick=()=>show(pg); nav.append(b);
+  });
+}
+
+/* --- glifos dos blocos (SVG NOSSO, redesenhado olhando a captura) --------
+   Nenhum asset da dbx foi copiado: cada glifo foi remontado à mão a partir do
+   zoom das capturas (_ref-venu360), igual ao que fizemos no CL Editor.       */
+/* onda senoidal como polyline — o glifo do PEQ/AEQ são DUAS ondas espelhadas
+   que se cruzam (efeito "trançado"), mais uma linha horizontal no centro.    */
+function weave(x0,x1,cy,amp,periods,phase){
+  let d=""; const N=44;
+  for(let i=0;i<=N;i++){
+    const t=i/N, x=x0+(x1-x0)*t, y=cy+amp*Math.sin(2*Math.PI*periods*t+phase);
+    d+=(i?"L":"M")+x.toFixed(1)+","+y.toFixed(1);
+  }
+  return d;
+}
+const G={
+  fader:'<g>'+[0,1,2,3,4].map(i=>'<rect x="'+(4+i*8)+'" y="4" width="3" height="32" rx="1.5"/><circle cx="'+(5.5+i*8)+'" cy="'+(10+((i*7)%18))+'" r="4"/>').join("")+'</g>',
+  arrow:'<path d="M4 20h26M24 12l8 8-8 8" stroke="currentColor" stroke-width="3" fill="none"/>',
+  afs:'<path d="M8 16a12 12 0 0124 0" fill="none" stroke="#808080" stroke-width="3"/><rect x="4" y="18" width="32" height="3"/><rect x="18" y="24" width="4" height="8" rx="2"/><rect x="16" y="32" width="8" height="2"/>',
+  geq:'<g>'+[0,1,2,3,4,5].map(i=>'<rect x="'+(4+i*6)+'" y="'+(6+i*4)+'" width="4" height="'+(30-i*4)+'"/>').join("")+'</g>',
+  sub:'<path d="M10 6c8 0 10 6 10 12s-6 16-14 16" fill="none" stroke="#808080" stroke-width="4"/><circle cx="28" cy="12" r="2.5"/><circle cx="28" cy="20" r="2.5"/>',
+  /* PEQ: duas ondas espelhadas trançadas + linha horizontal (venu360-10 zoom).
+     viewBox 40x26 -> o glifo sai largo e chato, como o real.                 */
+  peq:'<g fill="none" stroke="#808080" stroke-width="2.4" stroke-linecap="round">'+
+      '<path d="'+weave(3,37,13,8.5,1.5,0)+'"/>'+
+      '<path d="'+weave(3,37,13,8.5,1.5,Math.PI)+'"/>'+
+      '<path d="M1 13h38"/></g>',
+  /* AEQ: o mesmo trançado dentro de um disco cheio */
+  aeq:'<circle cx="20" cy="20" r="17" fill="#8f8f8f"/>'+
+      '<g fill="none" stroke="#dcdcdc" stroke-width="2.3" stroke-linecap="round">'+
+      '<path d="'+weave(6,34,20,8,1.5,0)+'"/>'+
+      '<path d="'+weave(6,34,20,8,1.5,Math.PI)+'"/>'+
+      '<path d="M5 20h30"/></g>',
+  cmp:'<rect x="6" y="6" width="28" height="28" fill="none" stroke="#808080" stroke-width="3"/><path d="M8 32c10 0 16-8 24-22" fill="none" stroke="#e8e8e8" stroke-width="2.5"/>',
+  /* XOVER: entrada -> nó -> três setas (cima / reta / baixo). viewBox 40x30. */
+  xov:'<g stroke="#808080" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round">'+
+      '<path d="M2 15h14"/>'+
+      '<path d="M16 15L34 3"/><path d="M28.4 3.8L34 3L33.2 8.6"/>'+
+      '<path d="M16 15H38"/><path d="M33 10.5L38 15L33 19.5"/>'+
+      '<path d="M16 15L34 27"/><path d="M33.2 21.4L34 27L28.4 26.2"/></g>'+
+      '<circle cx="16" cy="15" r="4" fill="#808080"/>',
+  lmt:'<rect x="6" y="6" width="28" height="28" fill="none" stroke="#808080" stroke-width="3"/><path d="M8 32L24 12h8" fill="none" stroke="#e8e8e8" stroke-width="2.5"/>',
+  dly:'<path d="M6 14h6l8-7v26l-8-7H6z"/><path d="M24 12a10 10 0 010 16M29 8a16 16 0 010 24" fill="none" stroke="#808080" stroke-width="2.5"/>'
+};
+/* viewBox por glifo: na captura o PEQ/AEQ/XOVER são nitidamente mais LARGOS
+   que altos (o do PEQ mede ~97x55 px num bloco de 118). */
+const VB={peq:"0 0 40 26", aeq:"0 0 40 40", xov:"0 0 40 30", afs:"0 0 40 38"};
+function blk(kind,label,cls,on){
+  const b=el("div","blk "+cls+(on?" on":""));
+  b.innerHTML='<svg viewBox="'+(VB[kind]||"0 0 40 40")+'">'+(G[kind]||"")+"</svg>"+
+    '<div class="lab">'+label+"</div>";
+  return b;
+}
+
+/* --- SIGNAL FLOW --------------------------------------------------------- */
+function buildFlow(){
+  const gi=$("#gridIn"); gi.innerHTML="";
+  const at=(e,row,col,span)=>{ e.style.gridRow=row+(span>1?" / span "+span:"");
+    e.style.gridColumn=String(col); gi.append(e); return e; };
+  /* col1: Input Router — atravessa as 3 cadeias */
+  const r=el("div","router");
+  r.innerHTML='<svg viewBox="0 0 40 40"><path d="M4 20h26M24 12l8 8-8 8" stroke="#808080" stroke-width="3" fill="none"/></svg><div class="lab">Input Router</div>';
+  r.onclick=()=>openRouter(); at(r,1,1,3);
+  for(let i=0;i<3;i++){
+    const R=i+1;
+    const b=blk("fader","In"+R,"dark");
+    b.onclick=()=>toast("Inputs: módulo <b>sem parâmetro nenhum</b> (manual p.58) — é só metering e referência de canal. O ganho de entrada é o <b>MASTER GAIN do Input Router</b>.");
+    at(b,R,2);
+    at(el("div","bus"),R,3);
+    at(el("div","sq",String(R)),R,4).title="BUS "+R+" — pré-processamento";
+    at(el("div","bus"),R,5);
+    /* inserts: A e B linkados (bloco alto), C com os seus */
+    if(i===0){
+      STATE.inserts.AB.forEach((m,k)=>{
+        const b2=blk(m.toLowerCase(),m,"mod",insOn(m));
+        b2.onclick=()=>openInsert(m,"A,B"); at(b2,1,6+k,2);
+      });
+    } else if(i===2){
+      STATE.inserts.C.forEach((m,k)=>{
+        const b2=blk(m.toLowerCase(),m,"mod",insOn(m));
+        b2.onclick=()=>openInsert(m,"C"); at(b2,3,6+k);
+      });
+    }
+    at(el("div","bus"),R,9);
+    at(el("div","sq","ABC"[i]),R,10).title="BUS "+"ABC"[i]+" — pós-processamento";
+  }
+  const go=$("#gridOut"); go.innerHTML="";
+  const rows=[
+    {mix:"A", span:{aeq:2,cmp:2,peq:2,lmt:2,dly:2}, xo:{g:0,span:3}, out:0},
+    {mix:"B", out:1},
+    {mix:null, out:2, own:true},
+    {mix:"C", xo:{g:1,span:1}, out:3, own:true},
+    {mix:"MIX", xo:{g:2,span:1}, out:4, own:true},
+    {mix:"MIX", xo:{g:3,span:1}, out:5, own:true}
+  ];
+  rows.forEach((rw,i)=>{
+    const R=i+1;
+    if(rw.mix){ const m=blk("fader",rw.mix,"dark"); m.style.cssText="grid-row:"+R+";grid-column:1";
+      m.onclick=()=>openMixer(rw.mix,rw.out); go.append(m); }
+    const put=(kind,lab,col,span,fn,on)=>{
+      const b=blk(kind,lab,"mod",on);
+      b.style.cssText="grid-row:"+R+(span>1?" / span "+span:"")+";grid-column:"+col;
+      b.onclick=fn; go.append(b);
+    };
+    if(i===0||i>=3){
+      const sp=(i===0)?2:1;
+      put("aeq","AEQ",2,sp,()=>toast("AutoEQ — 14 bandas, bloco de SAÍDA (manual p.80/p.118). Setado pelo AutoEQ/Level Assist Wizard."),STATE.outs[rw.out].aeq.on);
+      put("cmp","CMP",3,sp,()=>openCmp(rw.out),STATE.outs[rw.out].cmp.on);
+    }
+    if(rw.xo){
+      const b=el("div","blk mod on");
+      b.innerHTML='<svg viewBox="0 0 40 40">'+G.xov+'</svg><div class="xover-lab">'+
+        STATE.xoGroups[rw.xo.g].label+"<br>XOVER</div>";
+      b.style.cssText="grid-row:"+R+(rw.xo.span>1?" / span "+rw.xo.span:"")+";grid-column:4";
+      b.onclick=()=>openXover(rw.xo.g); go.append(b);
+    }
+    const sp=(i===0)?2:1;
+    if(i===0||i>=2){
+      put("peq","PEQ",5,sp,()=>openPeq(rw.out),STATE.outs[rw.out].peq.on);
+      put("lmt","LMT",6,sp,()=>openLmt(rw.out),STATE.outs[rw.out].lmt.on);
+      put("dly","DLY",7,sp,()=>{SEL.dly=rw.out;show("dly");},STATE.outs[rw.out].dly.on);
+    }
+    /* bloco de saída */
+    const o=el("div","blk dark out"); o.style.cssText="grid-row:"+R+";grid-column:8";
+    o.innerHTML='<svg viewBox="0 0 40 40"><path d="M8 6v28M8 20h22M24 12l8 8-8 8" stroke="'+
+      (STATE.outs[rw.out].mute?"#555":"#e12000")+'" stroke-width="3" fill="none"/></svg>'+
+      '<div class="lab">'+STATE.outs[rw.out].name+"</div>";
+    o.title="clique = OUTPUT MUTE (atua ANTES do limiter)";
+    o.onclick=()=>{ STATE.outs[rw.out].mute=!STATE.outs[rw.out].mute; markEdited(); applyAll(); buildFlow(); };
+    go.append(o);
+  });
+}
+const insOn=m=> m==="AFS"?STATE.afs.on : m==="GEQ"?STATE.geq.on : m==="SUB"?STATE.sub.on : STATE.inPeq.on;
+function openInsert(m,who){
+  if(m==="AFS"){ show("afs"); }
+  else if(m==="GEQ"){ show("geq"); }
+  else if(m==="PEQ"){ SEL.out=-1; buildPeq(); show("peq"); }
+  else toast("Subharmonic Synth — insert configurável. Bandas 36-56 Hz e 24-36 Hz (manual p.83).");
+}
+function openRouter(){
+  toast("Input Router — MASTER GAIN -120..+6 dB, MASTER MUTE (manual p.59). Ajuste no rodapé.");
+}
+function openMixer(w,o){ toast("Mid Mixer da saída "+(o+1)+" — GAIN/MUTE por fonte + MASTER (manual p.60)."); }
+function openXover(g){ SEL.xoGroup=g; SEL.xoBand=0; buildXover(); show("xover"); }
+function openLmt(o){ SEL.out=o; buildLmt(); show("lmt"); }
+function openCmp(o){ SEL.out=o; buildCmp(); show("cmp"); }
+function openPeq(o){ SEL.out=o; SEL.peqBand=0; buildPeq(); show("peq"); }
+
+/* rótulo do link: "(Output 1,2)" quando 1 e 2 estão linkados */
+function linkLab(kind,o){
+  if(o<0) return "(Input C)";
+  const grp=STATE.links[kind].find(g=>g.includes(o))||[o];
+  return "(Output "+grp.map(x=>x+1).join(",")+")";
+}
+const linkOuts=(kind,o)=> o<0?[]:(STATE.links[kind].find(g=>g.includes(o))||[o]);
+
+/* --- CROSSOVER ----------------------------------------------------------- */
+function buildXover(){
+  const grp=STATE.xoGroups[SEL.xoGroup], b=grp.bands[SEL.xoBand];
+  $("#xoTitle").textContent="(Output "+grp.outs.map(o=>o+1).join(",")+")";
+  $("#xoLock").innerHTML=grp.locked
+    ? '<svg viewBox="0 0 22 24"><rect x="3" y="10" width="16" height="12" rx="2"/><path d="M6 10V6a5 5 0 0110 0v4"/></svg>'
+    : '<svg viewBox="0 0 22 24"><rect x="3" y="10" width="16" height="12" rx="2"/><path d="M6 10V6a5 5 0 0110 0"/></svg>';
+  $("#xoLock").onclick=()=>{ grp.locked=!grp.locked;
+    toast(grp.locked?"Crossover TRAVADO (tuning de fábrica)":"Crossover destravado — você pode quebrar a curva do fabricante.");
+    buildXover(); };
+  /* seletor de banda */
+  const bs=$("#xoBands"); bs.innerHTML="";
+  grp.bands.forEach((bd,i)=>{
+    const t=el("button","tbtn"+(i===SEL.xoBand?" sel":""),bd.name);
+    t.style.cssText="width:100%;margin-bottom:8px;flex:0"+(i===SEL.xoBand?";background:"+bd.col+";color:#fff":"");
+    t.onclick=()=>{SEL.xoBand=i;buildXover();}; bs.append(t);
+  });
+  const dim=()=>grp.locked;
+  const acc=()=>b.col;
+  const rows=$("#xoRows"); rows.innerHTML="";
+  rows.append(paramRow({name:"HP Frequency",min:16,max:20000,log:true,acc,dim,
+    offAt:"min",minLab:"16Hz",maxLab:"20kHz",fmt:fHz,
+    get:()=>b.hp,set:v=>b.hp=v,after:()=>{rebuildXover();applyAll();drawXover();}}));
+  rows.append(paramRow({name:"LP Frequency",min:16,max:20000,log:true,acc,dim,
+    offAt:"max",minLab:"16Hz",maxLab:"20kHz",fmt:fHz,
+    get:()=>b.lp,set:v=>b.lp=v,after:()=>{rebuildXover();applyAll();drawXover();}}));
+  rows.append(paramRow({name:"Gain",min:-60,max:20,step:.1,acc,dim,minLab:"-60dB",maxLab:"20dB",fmt:fDb,
+    get:()=>b.gain,set:v=>b.gain=v,after:()=>{applyAll();drawXover();}}));
+  rows.append(paramRow({name:"Phase",min:-180,max:0,step:1,acc,dim,minLab:"-180 deg",maxLab:"0 deg",
+    fmt:v=>Math.round(v)+" deg",get:()=>b.phase,set:v=>b.phase=v,after:()=>drawXover()}));
+  /* barra inferior: polaridade + slopes */
+  const bar=$("#xoBar"); bar.innerHTML="";
+  bar.append(el("span","lb","Polarity"));
+  ["Normal","Inverted"].forEach(p=>{
+    const t=el("button","tbtn"+(b.pol===p?" sel":""),p); t.style.flex="0 0 110px";
+    t.onclick=()=>{ if(grp.locked)return lockMsg(); b.pol=p; markEdited(); applyAll(); buildXover(); };
+    bar.append(t);
+  });
+  bar.append(el("div","split"));
+  bar.append(el("span","lb","HP Slope Type"));
+  bar.append(slopeDD(()=>b.hpT,v=>b.hpT=v,grp));
+  bar.append(el("span","lb","LP Slope Type"));
+  bar.append(slopeDD(()=>b.lpT,v=>b.lpT=v,grp));
+  drawXover();
+}
+function lockMsg(){ toast("Página travada — o tuning de fábrica protege a curva. Clique no cadeado para destravar."); }
+function slopeDD(get,set,grp){
+  const s=el("select","sel-dd");
+  SLOPES.forEach(o=>{ const op=el("option",null,o.label); op.value=o.id;
+    if(o.id===get())op.selected=true; s.append(op); });
+  s.disabled=grp.locked;
+  s.onchange=()=>{ set(s.value); markEdited(); rebuildXover(); applyAll(); drawXover(); };
+  return s;
+}
+function drawXover(){
+  const cv=$("#xoCv"); if(!cv.clientWidth) return;
+  const H=Math.max(160,Math.min(300,window.innerHeight*.30));
+  const {c,w,h}=fitCanvas(cv,H);
+  const g=drawGrid(c,w,h,16,20000,20,-60,XTICKS,[20,10,0,-10,-20,-30,-40,-50,-60],30,16);
+  const grp=STATE.xoGroups[SEL.xoGroup];
+  const N=260, fs=[]; for(let i=0;i<N;i++) fs.push(16*Math.pow(20000/16,i/(N-1)));
+  /* TODAS as bandas são preenchidas com a cor da banda a 50% — não só a
+     selecionada. É o que a captura prova: onde só o SUB cobre, o pixel é
+     #832F3A (= #E83B50 a 50% sobre #212121); onde MAINS e SUB se sobrepõem,
+     vira #B3365E. Os dois fills translúcidos empilhados dão o tom mais claro. */
+  grp.bands.forEach((b,bi)=>{
+    const sel=bi===SEL.xoBand;
+    c.beginPath();
+    fs.forEach((f,i)=>{ const y=clamp(g.Y(clamp(bandMagDb(b,f),-70,25)),0,h-16);
+      i?c.lineTo(g.X(f),y):c.moveTo(g.X(f),y); });
+    c.save(); c.lineTo(g.X(20000),h-16); c.lineTo(g.X(16),h-16); c.closePath();
+    c.globalAlpha=.5; c.fillStyle=b.col; c.fill(); c.globalAlpha=1; c.restore();
+    c.beginPath();
+    fs.forEach((f,i)=>{ const y=clamp(g.Y(clamp(bandMagDb(b,f),-70,25)),0,h-16);
+      i?c.lineTo(g.X(f),y):c.moveTo(g.X(f),y); });
+    c.strokeStyle=b.col; c.lineWidth=sel?1.8:1.2; c.globalAlpha=sel?1:.75;
+    c.stroke(); c.globalAlpha=1;
+  });
+  /* TOUCHPOINTS — regra deduzida da captura venu360-11b:
+     TODA banda (selecionada ou não) mostra os seus dois handles; quando o
+     filtro está em "Out" o handle ESTACIONA na borda do gráfico. É o que
+     explica os três badges da tela real: "1" em 125 Hz (HP do MAINS) e dois
+     "S" nas bordas (HP e LP do SUB, ambos em Out).
+     ⚠️ ESTIMADO: a convenção do rótulo ("1" numerado x "S" para o SUB) foi
+     deduzida de UMA captura. Se o dono confirmar outra regra, é só mexer aqui. */
+  grp.bands.forEach((b,bi)=>{
+    const badge=b.name==="SUB"?"S":String(bi+1);
+    const put=(f,edge)=>{
+      const x=f!=null?g.X(f):g.X(edge);
+      const y=g.Y(clamp(bandMagDb(b,f!=null?f:edge),-60,20));
+      tp(c,x,y,badge,b.col);
+    };
+    put(b.hp,16);       /* HP: em Out estaciona na borda esquerda  */
+    put(b.lp,20000);    /* LP: em Out estaciona na borda direita   */
+  });
+}
+/* clareia uma cor hex (o traço da curva é um tom claro da cor da banda) */
+function lighten(hex,k){
+  const n=parseInt(hex.slice(1),16);
+  const r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+  const m=v=>Math.round(v+(255-v)*k);
+  return "#"+((1<<24)+(m(r)<<16)+(m(g)<<8)+m(b)).toString(16).slice(1);
+}
+/* touchpoint. TUDO amostrado da captura venu360-11b:
+     círculo escuro + anel cinza; a LETRA é da COR DA BANDA — medido:
+     "1" = #E341B5 (MAINS) e "S" = #E83B50 (SUB). Não é branca.               */
+function tp(c,x,y,t,col){
+  const yy=clamp(y,10,c.canvas.height);
+  c.beginPath(); c.arc(x,yy,11,0,7); c.fillStyle="#1c1c1c"; c.fill();
+  c.strokeStyle="#6a6a6a"; c.lineWidth=2.2; c.stroke();
+  c.fillStyle=col; c.font="bold 12px Segoe UI"; c.textAlign="center";
+  c.fillText(t,x,yy+4);
+}
+
+/* --- LIMITER ------------------------------------------------------------- */
+function buildLmt(){
+  const o=STATE.outs[SEL.out], L=o.lmt;
+  $("#lmTitle").textContent=linkLab("lmt",SEL.out);
+  const pill=$("#lmOn"); pill.textContent=L.on?"On":"Off"; pill.className="pill"+(L.on?" on":"");
+  pill.onclick=()=>{ setLmt(v=>v.on=!L.on); buildLmt(); };
+  const P=$("#lmPanel"); P.innerHTML="";
+  /* topo: Auto | Peak Stop Plus */
+  const top=el("div"); top.style.cssText="display:flex;align-items:center;gap:12px;padding:14px 16px";
+  top.append(el("span","lb","Auto"));
+  const ab=el("button","tbtn"+(L.auto?" sel":""),L.auto?"ON":"OFF");
+  ab.style.cssText="flex:0 0 130px"+(L.auto?";background:var(--green);color:#fff":"");
+  ab.onclick=()=>{ setLmt(v=>v.auto=!L.auto); buildLmt(); };
+  top.append(ab,el("div","split"),el("span","lb","Peak Stop Plus"));
+  const pb=el("button","tbtn"+(L.psp?" sel":""),L.psp?"ON":"OFF");
+  pb.style.cssText="flex:0 0 160px"+(L.psp?";background:var(--green);color:#fff":"");
+  pb.onclick=()=>{ setLmt(v=>v.psp=!L.psp); buildLmt(); };
+  top.append(pb); P.append(top);
+  /* ⚠️ DIVERGÊNCIA DE FONTE — REPORTADO AO DONO, ler antes de "consertar":
+     O brief e o ACHADOS-SOFTWARE-OFICIAL.md (§6-C, item 2) afirmam que
+     "Auto=ON MASCARA Threshold/OverEasy (mostra 0.0dB / Off)".
+     As DUAS capturas provam que NÃO:
+       venu360-14-limiter.png      (Auto ON ) -> Threshold -26.9dB · OverEasy 8
+       venu360-14b-limiter-auto-off.png (OFF) -> Threshold -26.9dB · OverEasy 8
+     A ÚNICA diferença entre as duas telas é Attack/Hold/Release esmaecidos.
+     E o manual (p.87-88) diz exatamente isso e só isso: "com AUTO=ON, ATTACK,
+     HOLD e RELEASE são ignorados". Não fala em mascarar threshold.
+     => Manual e software CONCORDAM; quem estava errado era o texto do achado.
+     Seguindo a captura (Regra 2): Auto só desabilita Attack/Hold/Release.     */
+  const A=()=>L.auto;   /* Auto=ON desabilita SÓ atk/hold/rel */
+  const acc="#e00";
+  const add=p=>P.append(paramRow(Object.assign({stack:true,acc},p)));
+  add({name:"Threshold",min:-60,max:0,step:.1,minLab:"-60dB",maxLab:"0.0dB",fmt:fDb,
+    get:()=>L.thr, set:v=>setLmt(x=>x.thr=v),after:()=>{applyAll();drawLmt();}});
+  add({name:"OverEasy",min:0,max:10,step:1,minLab:"Off",maxLab:"10",fmt:fOE,
+    get:()=>L.oe, set:v=>setLmt(x=>x.oe=v),after:()=>{applyAll();drawLmt();}});
+  add({name:"Attack",min:.1,max:200,step:.1,minLab:"0.1ms",maxLab:"200.0ms",fmt:fMs,dim:A,
+    get:()=>L.atk,set:v=>setLmt(x=>x.atk=v),after:()=>applyAll()});
+  add({name:"Hold",min:0,max:500,step:1,minLab:"0s",maxLab:"500ms",fmt:fMs0,dim:A,
+    get:()=>L.hold,set:v=>setLmt(x=>x.hold=v),after:()=>applyAll()});
+  /* ESCALA INVERTIDA: esquerda = 360 dB/s (rápido), direita = 5 dB/s (lento) */
+  add({name:"Release",min:5,max:360,step:5,invert:true,minLab:"360dB/s",maxLab:"5dB/s",
+    fmt:fRel,dim:A,get:()=>L.rel,set:v=>setLmt(x=>x.rel=v),after:()=>applyAll()});
+  add({name:"Overshoot",min:2,max:6,step:.1,minLab:"2.0dB",maxLab:"6.0dB",fmt:fDb,
+    dim:()=>!L.psp,get:()=>L.over,set:v=>setLmt(x=>x.over=v),after:()=>applyAll()});
+  drawLmt();
+}
+/* aplica a todas as saídas linkadas (Limiter (Output 1,2) muda as duas) */
+function setLmt(fn){ linkOuts("lmt",SEL.out).forEach(i=>fn(STATE.outs[i].lmt)); markEdited(); applyAll(); }
+function setCmp(fn){ linkOuts("cmp",SEL.out).forEach(i=>fn(STATE.outs[i].cmp)); markEdited(); applyAll(); }
+
+function drawXfer(cv,thr,oe,ratio,on){
+  const H=Math.max(200,Math.min(380,window.innerHeight*.42));
+  const {c,w,h}=fitCanvas(cv,H);
+  c.fillStyle="#2b2b23"; c.fillRect(0,0,w,h);
+  /* O gráfico de transferência do aparelho é QUADRADO e centrado no painel
+     (na captura: painel 563 px, plot 317x317). Faz sentido: os dois eixos são
+     a mesma escala (-60..0 dB). */
+  const pb=18, side=Math.max(60,Math.min(w-56,h-pb-8));
+  const x0=Math.round((w-side)/2+14), y0=4;
+  c.fillStyle="#212121"; c.fillRect(x0,y0,side,side);
+  /* eixos -60..0 dB nos dois lados (lido na tela do Limiter/Compressor).
+     BUG QUE EU TINHA: dividia por -60 e o Y saía negativo -> o gráfico
+     inteiro pintava de verde. É /60. */
+  const X=d=>x0+((d+60)/60)*side, Y=d=>y0+((0-d)/60)*side;
+  const pl=x0, bot=y0+side;
+  c.strokeStyle="#3f3f3f"; c.fillStyle="#8a8a8a"; c.font="9px Segoe UI"; c.textAlign="center";
+  for(let d=-60;d<=0;d+=10){ const x=Math.round(X(d))+.5;
+    c.beginPath();c.moveTo(x,y0);c.lineTo(x,bot);c.stroke(); c.fillText(String(d),x,bot+11);
+    const y=Math.round(Y(d))+.5; c.beginPath();c.moveTo(x0,y);c.lineTo(x0+side,y);c.stroke();
+    c.textAlign="right"; c.fillText(String(d),x0-4,y+3); c.textAlign="center"; }
+  /* curva */
+  const out=din=>{ if(din<=thr-oe/2) return din;
+    if(oe>0 && din<thr+oe/2){ const t=(din-(thr-oe/2))/oe; return din-(t*t*(oe/2))*(1-1/ratio); }
+    return thr+(din-thr)/ratio; };
+  const pts=[]; for(let d=-60;d<=0;d+=.5) pts.push([X(d),Y(clamp(out(d),-60,0))]);
+  c.save(); c.beginPath(); c.rect(x0,y0,side,side); c.clip();
+  /* verde = o que passa (abaixo da curva) */
+  c.beginPath(); pts.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));
+  c.lineTo(X(0),bot); c.lineTo(X(-60),bot); c.closePath();
+  c.fillStyle=on?"#109010":"#2a5a2a"; c.fill();
+  /* entre a curva e a diagonal unitária: amarelo na região OverEasy,
+     vermelho acima do threshold (= o que o limiter está segurando) */
+  if(on){
+    c.save(); c.beginPath();
+    for(let d=-60;d<=0;d+=.5) c.lineTo(X(d),Y(clamp(d,-60,0)));
+    for(let d=0;d>=-60;d-=.5) c.lineTo(X(d),Y(clamp(out(d),-60,0)));
+    c.closePath(); c.clip();
+    c.fillStyle="#901010"; c.fillRect(X(thr+oe/2),y0,x0+side-X(thr+oe/2),side);
+    c.fillStyle="#909010"; c.fillRect(X(thr-oe/2),y0,X(thr+oe/2)-X(thr-oe/2),side);
+    c.restore();
+  }
+  c.beginPath(); pts.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));
+  c.strokeStyle="#fff"; c.lineWidth=1.6; c.stroke();
+  /* diagonal unitária tracejada (referência 1:1) */
+  c.setLineDash([4,4]); c.beginPath(); c.moveTo(X(-60),Y(-60)); c.lineTo(X(0),Y(0));
+  c.strokeStyle="#ddd"; c.lineWidth=1; c.stroke();
+  /* cruz do threshold */
+  c.beginPath(); c.moveTo(x0,Y(thr)); c.lineTo(X(thr),Y(thr)); c.stroke(); c.setLineDash([]);
+  c.restore();
+  /* ponto de threshold arrastável (círculo amarelo, como na tela) */
+  c.beginPath(); c.arc(X(thr),Y(thr),9,0,7); c.strokeStyle="#e8e030"; c.lineWidth=2.5; c.stroke();
+  return {X,Y};
+}
+function drawLmt(){
+  /* com Auto=ON o joelho continua no Threshold do usuário — a captura mostra
+     o ponto amarelo em -26.9 dB nas DUAS telas (auto on e auto off). */
+  const L=STATE.outs[SEL.out].lmt;
+  drawXfer($("#lmCv"), L.thr, L.oe*1.2, 20, L.on);
+}
+
+/* --- COMPRESSOR ---------------------------------------------------------- */
+function buildCmp(){
+  const o=STATE.outs[SEL.out], C=o.cmp;
+  $("#cpTitle").textContent=linkLab("cmp",SEL.out);
+  const pill=$("#cpOn"); pill.textContent=C.on?"On":"Off"; pill.className="pill"+(C.on?" on":"");
+  pill.onclick=()=>{ setCmp(v=>v.on=!C.on); buildCmp(); };
+  const P=$("#cpPanel"); P.innerHTML="";
+  const top=el("div"); top.style.cssText="display:flex;align-items:center;gap:12px;padding:14px 16px";
+  top.append(el("span","lb","Auto"));
+  const ab=el("button","tbtn"+(C.auto?" sel":""),C.auto?"ON":"OFF");
+  ab.style.cssText="flex:0 0 170px"+(C.auto?";background:var(--green);color:#fff":"");
+  ab.onclick=()=>{ setCmp(v=>v.auto=!C.auto); buildCmp(); };
+  top.append(ab); P.append(top);
+  const A=()=>C.auto, acc="#e00";
+  const add=p=>P.append(paramRow(Object.assign({stack:true,acc},p)));
+  add({name:"Threshold",min:-60,max:0,step:.1,minLab:"-60dB",maxLab:"0.0dB",fmt:fDb,
+    get:()=>C.thr,set:v=>setCmp(x=>x.thr=v),after:()=>{applyAll();drawCmp();}});
+  add({name:"Gain",min:-20,max:20,step:.1,minLab:"-20dB",maxLab:"20dB",fmt:fDb,
+    get:()=>C.gain,set:v=>setCmp(x=>x.gain=v),after:()=>applyAll()});
+  add({name:"Ratio",min:0,max:RATIOS.length-1,step:1,minLab:"1:1",maxLab:"Inf:1",
+    fmt:i=>{const r=RATIOS[Math.round(i)];return (isFinite(r)?(r%1?r.toFixed(1):r):"Inf")+":1";},
+    get:()=>C.ratio,set:v=>setCmp(x=>x.ratio=Math.round(v)),after:()=>{applyAll();drawCmp();}});
+  add({name:"OverEasy",min:0,max:10,step:1,minLab:"Off",maxLab:"10",fmt:fOE,
+    get:()=>C.oe,set:v=>setCmp(x=>x.oe=v),after:()=>{applyAll();drawCmp();}});
+  add({name:"Attack",min:.1,max:200,step:.1,minLab:"0.1ms",maxLab:"200ms",fmt:fMs,dim:A,
+    get:()=>C.atk,set:v=>setCmp(x=>x.atk=v),after:()=>applyAll()});
+  add({name:"Hold",min:0,max:500,step:1,minLab:"0s",maxLab:"500ms",fmt:fMs0,dim:A,
+    get:()=>C.hold,set:v=>setCmp(x=>x.hold=v),after:()=>applyAll()});
+  add({name:"Release",min:5,max:360,step:5,invert:true,minLab:"360dB/s",maxLab:"5dB/s",
+    fmt:fRel,dim:A,get:()=>C.rel,set:v=>setCmp(x=>x.rel=v),after:()=>applyAll()});
+  drawCmp();
+}
+function drawCmp(){
+  const C=STATE.outs[SEL.out].cmp, r=RATIOS[C.ratio];
+  drawXfer($("#cpCv"), C.thr, C.oe*1.2, isFinite(r)?Math.max(r,1):40, C.on);
+}
+
+/* --- PEQ ----------------------------------------------------------------- */
+let pqHide=false;
+function peqTarget(){ return SEL.out<0?STATE.inPeq:STATE.outs[SEL.out].peq; }
+function buildPeq(){
+  const T=peqTarget(), n=T.bands.length;
+  $("#pqTitle").textContent=SEL.out<0?"(Input C)":linkLab("peq",SEL.out);
+  $(".carlab").innerHTML='Band Select <b style="color:#fff">1 to '+n+"</b>";
+  const pill=$("#pqOn"); pill.textContent=T.on?"On":"Off"; pill.className="pill"+(T.on?" on":"");
+  pill.onclick=()=>{ T.on=!T.on; markEdited(); applyAll(); buildPeq(); };
+  /* carrossel */
+  const car=$("#pqCarou"); car.innerHTML="";
+  let selBtn=null;
+  for(let i=0;i<n;i++){
+    const b=el("button","bnd"+(i===SEL.peqBand?" sel":""),String(i+1));
+    b.style.borderColor=BANDCOL[i%BANDCOL.length];
+    b.style.color=BANDCOL[i%BANDCOL.length];
+    if(i===SEL.peqBand){ b.style.background=BANDCOL[i%BANDCOL.length]; b.style.color="#fff"; selBtn=b; }
+    b.onclick=()=>{SEL.peqBand=i;buildPeq();}; car.append(b);
+  }
+  /* mantém a banda selecionada no centro da faixa, como o carrossel real */
+  if(selBtn) requestAnimationFrame(()=>{
+    car.scrollLeft=selBtn.offsetLeft-(car.clientWidth-selBtn.offsetWidth)/2; });
+  $("#pqHide").textContent=pqHide?"Show Touchpoints":"Hide Touchpoints";
+  $("#pqHide").onclick=()=>{pqHide=!pqHide;buildPeq();};
+  const bd=T.bands[SEL.peqBand], acc=()=>BANDCOL[SEL.peqBand%BANDCOL.length];
+  const rows=$("#pqRows"); rows.innerHTML="";
+  rows.append(paramRow({name:"Frequency",min:20,max:22000,log:true,acc,minLab:"20Hz",maxLab:"22kHz",
+    fmt:fHz,get:()=>bd.f,set:v=>bd.f=v,after:()=>{applyAll();drawPeq();}}));
+  rows.append(paramRow({name:"Gain",min:-20,max:20,step:.1,acc,minLab:"-20dB",maxLab:"20dB",fmt:fDb,
+    get:()=>bd.g,set:v=>bd.g=v,after:()=>{applyAll();drawPeq();}}));
+  /* Q só existe em BELL; SLOPE só em shelf (manual p.79).
+     Q do PEQ de saída vai até 16; o de input acrescenta 32/64/128. */
+  if(bd.type==="Bell"){
+    rows.append(paramRow({name:"Q",min:.1,max:SEL.out<0?128:16,step:.1,acc,
+      minLab:"0.1",maxLab:SEL.out<0?"128":"16",fmt:v=>(v<10?v.toFixed(1):String(Math.round(v))),
+      get:()=>bd.q,set:v=>bd.q=v,after:()=>{applyAll();drawPeq();}}));
+  }else{
+    rows.append(paramRow({name:"Slope",min:3,max:15,step:1,acc,minLab:"3",maxLab:"15",
+      fmt:v=>Math.round(v)+" dB/oct",get:()=>bd.slope||6,set:v=>bd.slope=v,
+      after:()=>{applyAll();drawPeq();}}));
+  }
+  /* barra: Flatten + Type */
+  const bar=$("#pqBar"); bar.innerHTML="";
+  bar.append(el("span","lb","Flatten:"));
+  ["Flat","Restore"].forEach(k=>{ const t=el("button","tbtn",k); t.style.flex="0 0 130px";
+    t.onclick=()=>{
+      if(k==="Flat"){ T._bak=JSON.parse(JSON.stringify(T.bands)); T.bands.forEach(b=>b.g=0); }
+      else if(T._bak){ T.bands=JSON.parse(JSON.stringify(T._bak)); }
+      markEdited(); applyAll(); buildPeq(); }; bar.append(t); });
+  bar.append(el("div","split"));
+  bar.append(el("span","lb","Type:"));
+  ["Bell","Low Shelf","High Shelf"].forEach(k=>{
+    const t=el("button","tbtn"+(bd.type===k?" sel":""),k); t.style.flex="0 0 130px";
+    t.onclick=()=>{ bd.type=k; markEdited(); applyAll(); buildPeq(); }; bar.append(t); });
+  drawPeq();
+}
+function drawPeq(){
+  const cv=$("#pqCv"); if(!cv.clientWidth) return;
+  const H=Math.max(150,Math.min(280,window.innerHeight*.28));
+  const {c,w,h}=fitCanvas(cv,H);
+  /* eixo Y do PEQ é 20/12/6/0/-6/-12/-20 (lido na tela) */
+  const g=drawGrid(c,w,h,20,20000,20,-20,XTICKS.slice(1),[20,12,6,0,-6,-12,-20],30,16);
+  const T=peqTarget(), maxQ=SEL.out<0?128:16;
+  const N=300,fs=new Float32Array(N);
+  for(let i=0;i<N;i++) fs[i]=20*Math.pow(1000,i/(N-1));
+  /* curva soma — UMA chamada, não uma por ponto */
+  const sum=T.on?peqResponseDb(T.bands,fs,maxQ):new Float64Array(N);
+  c.beginPath();
+  for(let i=0;i<N;i++){ const y=g.Y(clamp(sum[i],-20,20));
+    i?c.lineTo(g.X(fs[i]),y):c.moveTo(g.X(fs[i]),y); }
+  c.strokeStyle="#fff"; c.lineWidth=1.8; c.stroke();
+  /* curva de cada banda + touchpoint colorido */
+  T.bands.forEach((b,i)=>{
+    const col=BANDCOL[i%BANDCOL.length];
+    if(b.g!==0 && T.on){
+      const r=peqResponseDb([b],fs,maxQ);
+      c.beginPath();
+      for(let k=0;k<N;k++){ const y=g.Y(clamp(r[k],-20,20));
+        k?c.lineTo(g.X(fs[k]),y):c.moveTo(g.X(fs[k]),y); }
+      c.strokeStyle=col; c.lineWidth=1; c.globalAlpha=.65; c.stroke(); c.globalAlpha=1;
+    }
+    if(!pqHide) tp(c,g.X(clamp(b.f,20,20000)),g.Y(clamp(b.g,-20,20)),String(i+1),
+      i===SEL.peqBand?"#fff":col);
+  });
+}
+
+/* --- GEQ ----------------------------------------------------------------- */
+function buildGeq(){
+  const pill=$("#gqOn"); pill.textContent=STATE.geq.on?"On":"Off";
+  pill.className="pill"+(STATE.geq.on?" on":"");
+  pill.onclick=()=>{ STATE.geq.on=!STATE.geq.on; markEdited(); applyAll(); buildGeq(); buildFlow(); };
+  const bar=$("#gqBar"); bar.innerHTML="";
+  const dr=el("button","tbtn"+(geqDraw?" sel":""),"Draw"); dr.style.flex="0 0 190px";
+  dr.onclick=()=>{geqDraw=!geqDraw;buildGeq();}; bar.append(dr);
+  bar.append(el("div","split"));
+  bar.append(el("span","lb","Quick Curve:"));
+  ["Flat","MyBand","Speech","Venue","DJ","Manual"].forEach(k=>{
+    const t=el("button","tbtn"+(STATE.geq.curve===k?" sel":""),k);
+    t.onclick=()=>{
+      if(k==="Manual"){ if(STATE.geq._bak) STATE.geq.bands=STATE.geq._bak.slice(); }
+      else { STATE.geq._bak=STATE.geq.bands.slice(); STATE.geq.bands=QUICK_CURVES_ESTIMADO[k](); }
+      STATE.geq.curve=k; markEdited(); applyAll(); buildGeq(); };
+    bar.append(t); });
+  drawGeq();
+}
+let geqDraw=false;
+function drawGeq(){
+  const cv=$("#geqCv"); if(!cv.clientWidth) return;
+  const H=Math.max(210,Math.min(420,window.innerHeight*.48));
+  const {c,w,h}=fitCanvas(cv,H);
+  const g=drawGrid(c,w,h,20,20000,12,-12,XTICKS.slice(1),[12,8,4,0,-4,-8,-12],30,16);
+  /* alças: uma por banda, na frequência da banda */
+  GEQ_FREQS.forEach((f,i)=>{
+    const x=g.X(f), y=g.Y(clamp(STATE.geq.bands[i],-12,12));
+    c.strokeStyle="#5a5a3a"; c.lineWidth=1;
+    c.beginPath(); c.moveTo(x,g.Y(0)); c.lineTo(x,y); c.stroke();
+    c.fillStyle=(i===geqSel)?"#f08a20":"#f0f0f0";
+    c.fillRect(x-9,y-4,18,8);
+  });
+  /* linha 0 dB tracejada, como na tela */
+  c.setLineDash([3,3]); c.strokeStyle="#cfcfcf"; c.lineWidth=1;
+  c.beginPath(); c.moveTo(30,g.Y(0)); c.lineTo(w,g.Y(0)); c.stroke(); c.setLineDash([]);
+  cv._g=g;
+}
+let geqSel=-1;
+function geqPick(e){
+  const cv=$("#geqCv"), g=cv._g; if(!g) return -1;
+  const r=cv.getBoundingClientRect(), x=(e.touches?e.touches[0].clientX:e.clientX)-r.left;
+  let best=-1,bd=1e9;
+  GEQ_FREQS.forEach((f,i)=>{ const d=Math.abs(g.X(f)-x); if(d<bd){bd=d;best=i;} });
+  return bd<18?best:-1;
+}
+function geqDrag(e){
+  if(geqSel<0) return; e.preventDefault();
+  const cv=$("#geqCv"), g=cv._g, r=cv.getBoundingClientRect();
+  const y=(e.touches?e.touches[0].clientY:e.clientY)-r.top;
+  const H=cv.clientHeight, pb=16;
+  let db=12-(y/(H-pb))*24;
+  STATE.geq.bands[geqSel]=clamp(Math.round(db*10)/10,-12,12);
+  STATE.geq.curve="Manual"; markEdited(); applyAll(); drawGeq();
+}
+
+/* --- AFS ----------------------------------------------------------------- */
+function buildAfs(){
+  const A=STATE.afs;
+  const pill=$("#afOn"); pill.textContent=A.on?"On":"Off"; pill.className="pill"+(A.on?" on":"");
+  pill.onclick=()=>{ A.on=!A.on; markEdited(); applyAll(); buildAfs(); buildFlow(); };
+  /* tabela de 12 filtros */
+  const t=$("#afTbl"); t.innerHTML="";
+  const hr=el("tr"); hr.append(el("th","rowlab","Filters"));
+  A.filters.forEach((f,i)=>{ const th=el("th",null,String(i+1));
+    th.style.color=BANDCOL[i%BANDCOL.length]; hr.append(th); });
+  t.append(hr);
+  [["Mode",f=>f.mode],["Fc",f=>f.f?fHz(f.f):"-"],["Gain",f=>f.f?f.g.toFixed(1):"-"],
+   ["Q",f=>f.f?String(Math.round(f.q)):"-"]].forEach(([lab,fn])=>{
+    const tr=el("tr"); tr.append(el("td","rowlab",lab));
+    A.filters.forEach(f=>tr.append(el("td",null,fn(f)))); t.append(tr);
+  });
+  $("#afMode").value=A.mode; $("#afType").value=A.type;
+  $("#afMode").onchange=e=>{A.mode=e.target.value;markEdited();};
+  $("#afType").onchange=e=>{A.type=e.target.value;markEdited();applyAll();drawAfs();};
+  const acc="#e00", rows=$("#afRows"); rows.innerHTML="";
+  rows.append(paramRow({name:"Lift After",min:5,max:3600,log:true,acc,minLab:"5s",maxLab:"60m",
+    fmt:v=>v<60?Math.round(v)+"s":Math.round(v/60)+"m",get:()=>A.liftAfter,set:v=>A.liftAfter=v}));
+  rows.append(paramRow({name:"Fixed Filters",min:0,max:12,step:1,acc,minLab:"0",maxLab:"12",
+    fmt:v=>String(Math.round(v)),get:()=>A.fixedFilters,
+    set:v=>{ A.fixedFilters=Math.round(v);
+      /* Filtros Live = 12 - FIXED FILTERS (manual p.65) */
+      A.filters.forEach((f,i)=>f.mode=i<A.fixedFilters?"FIXED":"LIVE"); },
+    after:()=>{buildAfs();}}));
+  rows.append(paramRow({name:"Sensitivity",min:-6,max:6,step:.1,acc,minLab:"-6.0 dB",maxLab:"6.0 dB",
+    fmt:fDb,get:()=>A.sens,set:v=>A.sens=v}));
+  rows.append(paramRow({name:"High Pass",min:20,max:500,log:true,acc,offAt:"min",minLab:"Off",
+    maxLab:"500 Hz",fmt:v=>v==null?"Off":Math.round(v)+" Hz",get:()=>A.hpf||null,
+    set:v=>A.hpf=v||0,after:()=>applyAll()}));
+  const bar=$("#afBar"); bar.innerHTML="";
+  [["Clear Live",()=>{A.filters.forEach(f=>{if(f.mode==="LIVE"){f.f=null;f.g=0;}});}],
+   ["Clear All", ()=>{A.filters.forEach(f=>{f.f=null;f.g=0;});}],
+   ["Live Lift", ()=>{ /* libera os Live em incrementos de 3 dB (manual p.65) */
+      A.filters.forEach(f=>{ if(f.mode==="LIVE"&&f.f){ f.g=Math.min(0,f.g+3); if(f.g>=0)f.f=null; } });
+      toast("Live Lift: filtros Live liberados em incrementos de 3 dB (manual p.65).");}]
+  ].forEach(([lab,fn])=>{ const b=el("button","tbtn",lab);
+    b.onclick=()=>{fn();markEdited();applyAll();buildAfs();}; bar.append(b); });
+  /* botão de demonstração: "ringa" o sistema e seta um filtro — é o AFS Wizard */
+  const w=el("button","tbtn","▶ Simular microfonia");
+  w.style.background="#c58a20"; w.onclick=()=>afsRing(); bar.append(w);
+  drawAfs();
+}
+/* AFS Wizard simplificado: acha a próxima frequência "de microfonia" e seta o
+   próximo filtro livre, com a largura literal do TYPE (manual p.64).
+   ⚠️ A detecção real ouve o mic; aqui a frequência é sorteada numa lista de
+   frequências típicas de realimentação — é DEMONSTRAÇÃO, não medição.        */
+const RING_F=[160,250,400,630,1000,1600,2500,4000];
+function afsRing(){
+  const A=STATE.afs; if(!A.on){ A.on=true; }
+  const free=A.filters.find(f=>!f.f);
+  if(!free){ toast("Todos os 12 filtros estão setados. Round robin: o primeiro Live seria liberado (manual p.64)."); return; }
+  const used=A.filters.filter(f=>f.f).map(f=>f.f);
+  const f=RING_F.find(x=>!used.includes(x))||RING_F[0];
+  const at=AFS_TYPES[A.type];
+  free.f=f; free.g=-6+A.sens; free.q=f>=at.fCross?at.q:(f/at.bwHz);
+  markEdited(); applyAll(); buildAfs(); buildFlow();
+  toast("AFS setou o filtro em "+fHz(f)+" — Q="+Math.round(free.q)+" ("+A.type+", manual p.64).");
+}
+function drawAfs(){
+  const cv=$("#afCv"); if(!cv.clientWidth) return;
+  const H=Math.max(140,Math.min(250,window.innerHeight*.25));
+  const {c,w,h}=fitCanvas(cv,H);
+  const g=drawGrid(c,w,h,20,20000,0,-20,XTICKS.slice(1),[0,-5,-10,-15,-20],30,16);
+  const N=400,fs=new Float32Array(N);
+  for(let i=0;i<N;i++) fs[i]=20*Math.pow(1000,i/(N-1));
+  const set=STATE.afs.on?STATE.afs.filters.filter(F=>F.f)
+    .map(F=>({type:"Bell",f:F.f,g:F.g,q:F.q})):[];
+  const r=set.length?peqResponseDb(set,fs,128):new Float64Array(N);
+  c.beginPath();
+  for(let i=0;i<N;i++){ const y=g.Y(clamp(r[i],-20,0));
+    i?c.lineTo(g.X(fs[i]),y):c.moveTo(g.X(fs[i]),y); }
+  c.strokeStyle="#fff"; c.lineWidth=1.6; c.stroke();
+  STATE.afs.filters.forEach((F,i)=>{ if(!F.f) return;
+    c.fillStyle=BANDCOL[i%BANDCOL.length];
+    c.fillRect(g.X(F.f)-1.5,0,3,h-16); });
+}
+
+/* --- DELAY --------------------------------------------------------------- */
+/* Três tipos distintos (manual p.69): Backline (input, 3), Fill (mid, 6),
+   Alignment (output, 6, FIXO no fim da cadeia). Cada linha mostra ms, ft E m
+   ao mesmo tempo (manual p.70) — não é seletor de unidade.                   */
+const MS2FT=v=>v*1.127, MS2M=v=>v*0.343;
+function buildDly(){
+  const W=$("#dlyWrap"); W.innerHTML="";
+  [["Backline Delay",3,"backline"],["Fill Delay",6,"fill"],["Alignment Delay",6,"align"]]
+  .forEach(([title,n,kind])=>{
+    const col=el("div","dcol"+(kind==="align"?" act":""));
+    col.append(el("h5",null,title));
+    for(let i=0;i<n;i++){
+      /* linhas de canais não usados aparecem esmaecidas (como na captura) */
+      const usable=(kind==="align");
+      const linked=(kind==="align"&&i===1); /* out 2 segue out 1 (linkados) */
+      const o=usable?STATE.outs[i]:null;
+      const row=el("div","drow"+((!usable||linked)?" dim":""));
+      const l1=el("div","l1");
+      const sld=el("input"); sld.type="range"; sld.className="sld"; sld.min=0; sld.max=1000;
+      sld.value=o?Math.round(o.dly.ms):0;
+      sld.style.setProperty("--acc","#70ab1f");
+      const lt=el("button","chev","‹"), rt=el("button","chev","›");
+      l1.append(lt,sld,rt);
+      const l2=el("div","l2");
+      const btn=el("button","dbtn"+(o&&o.dly.on?" on":""),o&&o.dly.on?"On":"Off");
+      const f1=el("div","dfield"),f2=el("div","dfield"),f3=el("div","dfield");
+      const paint=()=>{ const ms=o?o.dly.ms:0;
+        f1.textContent=ms.toFixed(ms<10?1:0)+"ms"; f2.textContent=MS2FT(ms).toFixed(1)+"ft";
+        f3.textContent=MS2M(ms).toFixed(2)+"m";
+        sld.style.setProperty("--fill",(ms/1000*100)+"%");
+        btn.textContent=o&&o.dly.on?"On":"Off"; btn.className="dbtn"+(o&&o.dly.on?" on":""); };
+      sld.oninput=()=>{ if(!o)return; o.dly.ms=+sld.value;
+        if(linkOuts("dly",i).length>1) linkOuts("dly",i).forEach(k=>STATE.outs[k].dly.ms=+sld.value);
+        markEdited(); applyAll(); paint(); };
+      lt.onclick=()=>{sld.value=Math.max(0,+sld.value-1);sld.oninput();};
+      rt.onclick=()=>{sld.value=Math.min(1000,+sld.value+1);sld.oninput();};
+      btn.onclick=()=>{ if(!o)return; o.dly.on=!o.dly.on;
+        linkOuts("dly",i).forEach(k=>STATE.outs[k].dly.on=o.dly.on);
+        markEdited(); applyAll(); paint(); buildFlow(); };
+      l2.append(btn,f1,f2,f3);
+      row.append(l1,l2); paint(); col.append(row);
+    }
+    W.append(col);
+  });
+}
+
+/* --- PRESETS ------------------------------------------------------------- */
+function buildPre(){
+  const t=$("#preTbl"); t.innerHTML="";
+  const hr=el("tr"); hr.append(el("th",null,"Slot"),el("th",null,"Name")); t.append(hr);
+  for(let i=1;i<=30;i++){
+    const nm=i<=25?PRESETS[i-1]:"Empty";   /* slots 26+ = Empty (lido na tela) */
+    const tr=el("tr"+(i===STATE.presetNum?"":""));
+    if(i===STATE.presetNum) tr.className="sel";
+    tr.append(el("td",null,String(i)),el("td",null,nm));
+    tr.onclick=()=>{ if(nm==="Empty"){ toast("Preset vazio — nenhum sinal passa (manual p.48)."); return; }
+      recall(i,nm); }; t.append(tr);
+  }
+  const bar=$("#preBar"); bar.innerHTML="";
+  [["Store",()=>toast("STORE — grava nos user presets 1-75. Os 76-100 são de fábrica (manual p.45).")],
+   ["Recall",()=>toast("Selecione um slot na lista para dar Recall.")],
+   ["Rename",()=>toast("Rename do preset do device.")],
+   ["Delete",()=>toast("Delete do preset do device (manual p.48).")]
+  ].forEach(([l,f])=>{ const b=el("button","tbtn",l); b.onclick=f; bar.append(b); });
+}
+function recall(i,nm){
+  STATE.presetNum=i; STATE.presetName=nm; STATE.edited=false;
+  $("#pNum").textContent=i; $("#pName").textContent=nm; $("#pEdit").classList.remove("on");
+  /* SEGURANÇA (manual p.10): todos os OUTPUT MUTE são ativados ao dar recall.
+     E o Signal Gen volta a OFF (p.91). */
+  STATE.outs.forEach(o=>o.mute=true);
+  stop(); applyAll(); buildFlow(); buildPre();
+  toast("Preset "+i+" recuperado. Todas as saídas foram MUTADAS automaticamente — é o recurso de segurança do aparelho (manual p.10).");
+}
+
+/* --- UTILITIES ----------------------------------------------------------- */
+function buildUtl(){
+  $("#utlClock").onchange=e=>{ STATE.clock=e.target.value; $("#clockLab").textContent=STATE.clock; };
+  $("#utlVariant").onchange=e=>{ STATE.variant=e.target.value;
+    $("#devLab").textContent="Virtual VENU360"+(STATE.variant==="Standard"?"":"-"+(STATE.variant==="Dante"?"D":"B"));
+    toast("Variante "+STATE.variant+" — muda o I/O de rede (8 in x 6 out), não o DSP."); };
+  $("#utlUpd").onclick=()=>toast("Dispositivo virtual — sem rede.");
+}
+
+/* --- toast --------------------------------------------------------------- */
+let toastT=null;
+function toast(msg){
+  let t=$("#toast");
+  if(!t){ t=el("div"); t.id="toast";
+    t.style.cssText="position:fixed;left:50%;bottom:64px;transform:translateX(-50%);z-index:99;"+
+      "background:#141410;border:1px solid var(--gold);color:#eee;padding:10px 16px;font-size:12px;"+
+      "max-width:min(680px,92vw);box-shadow:0 6px 24px #000a;line-height:1.4";
+    document.body.append(t); }
+  t.innerHTML=msg; t.style.display="block";
+  clearTimeout(toastT); toastT=setTimeout(()=>t.style.display="none",5200);
+}
+
+/* ============================================================================
+   7. BOOT
+   ========================================================================== */
+function redraw(){
+  const on=p=>document.getElementById("pg-"+p).classList.contains("on");
+  if(on("xover")) drawXover();
+  if(on("lmt")) drawLmt();
+  if(on("cmp")) drawCmp();
+  if(on("peq")) drawPeq();
+  if(on("geq")) drawGeq();
+  if(on("afs")) drawAfs();
+}
+function boot(){
+  buildIcons(); buildFlow(); buildXover(); buildLmt(); buildCmp(); buildPeq();
+  buildGeq(); buildAfs(); buildDly(); buildPre(); buildUtl();
+  /* monitor */
+  const mo=$("#monOut");
+  STATE.outs.forEach((o,i)=>{ const op=el("option",null,"CH"+(i+1)+" — "+o.name); op.value=i; mo.append(op); });
+  mo.onchange=()=>{ if(GRAPH) routeMonitor(); };
+  $("#monPlay").onclick=()=>playing?stop():play();
+  $("#monSrc").onchange=()=>{ if(playing){ stop(true); play(); } };
+  $("#btnConf").onclick=()=>toast("Configuration Mode — mudanças só valem ao pressionar CONFIG duas vezes (manual p.31/32). Ao aplicar, todas as saídas são mutadas.");
+  /* GEQ: arraste as alças */
+  const gq=$("#geqCv");
+  const down=e=>{ geqSel=geqPick(e); if(geqSel>=0){ geqDrag(e); } };
+  gq.addEventListener("pointerdown",e=>{ down(e); gq.setPointerCapture(e.pointerId); });
+  gq.addEventListener("pointermove",e=>{ if(geqSel>=0) geqDrag(e); });
+  gq.addEventListener("pointerup",()=>{ geqSel=-1; drawGeq(); });
+  window.addEventListener("resize",()=>{ redraw(); });
+  /* loop de medidores */
+  (function loop(){
+    if(GRAPH){
+      const i=+$("#monOut").value, d=outDb(i);
+      $("#monMeter").style.width=clamp((d+60)/60*100,0,100)+"%";
+      $("#monDb").textContent=d>-89?d.toFixed(1)+" dB":"—";
+      /* Gain Reduction do limiter/compressor da saída selecionada */
+      const n=GRAPH.outs[SEL.out];
+      if(n){ const gr=Math.abs(n.lmt.reduction||0);
+        const e1=$("#lmGR"); if(e1) e1.style.width=clamp(gr/50*100,0,100)+"%";
+        const e2=$("#cpGR"); if(e2) e2.style.width=clamp(Math.abs(n.cmp.reduction||0)/50*100,0,100)+"%"; }
+    }
+    requestAnimationFrame(loop);
+  })();
+  setTimeout(redraw,60);
+  /* deep-link por hash (#xover, #lmt, ...) — usado também na verificação */
+  const h=location.hash.slice(1);
+  if(PAGES.includes(h)) show(h);
+  window.addEventListener("hashchange",()=>{ const k=location.hash.slice(1);
+    if(PAGES.includes(k)) show(k); });
+  /* o preset de fábrica abre com o crossover TRAVADO */
+  toast("Preset de fábrica carregado. O crossover abre <b>travado</b> 🔒 — clique no cadeado para editar. Fonte: software oficial v2.0.5.");
+}
+document.addEventListener("DOMContentLoaded",boot);
+
+/* ============================================================================
+   8. HOOK DE VERIFICAÇÃO (headless) — para medir dBFS de verdade
+   ========================================================================== */
+window.__diag={
+  STATE, SEL, SLOPES, GEQ_FREQS, RATIOS, sections, butterQs, qToDb, xoMag, bandMagDb,
+  ctx:()=>AC, graph:()=>GRAPH, build:buildGraph, apply:applyAll, rebuildXover,
+  play, stop, outDb, show, buildFlow, buildXover, drawXover,
+  measureMakeup, refreshMakeup, makeupCache,
+  /* mede a resposta REAL do áudio renderizando a cadeia num OfflineAudioContext */
+  async measure(freq, bandSetup){
+    const fs=96000, len=fs*1;
+    const oac=new OfflineAudioContext(1,len,fs);
+    const osc=oac.createOscillator(); osc.type="sine"; osc.frequency.value=freq;
+    let node=osc;
+    (bandSetup||[]).forEach(s=>{
+      const f=buildFilter(oac,s.type,s.fc,s.slope);
+      node.connect(f.inNode); node=f.outNode;
+    });
+    node.connect(oac.destination); osc.start();
+    const buf=await oac.startRendering();
+    const d=buf.getChannelData(0);
+    /* mede só a 2ª metade (regime permanente) */
+    let s=0,n=0; for(let i=len/2;i<len;i++){ s+=d[i]*d[i]; n++; }
+    return 20*Math.log10(Math.sqrt(s/n)/Math.SQRT1_2); /* dB rel. ao seno unitário */
+  }
+};
+</script>
+</body>
+</html>

@@ -413,11 +413,48 @@
   function fInv(t){ const mn=Math.log10(20),mx=Math.log10(20000); return Math.pow(10,mn+clamp(t,0,1)*(mx-mn)); }
   function perf(){ return performance.now(); }
 
-  /* ================= CL EDITOR THEME (gray — mirrors Yamaha CL Editor 5.8.1) ================= */
-  const ED={ desk:"#303030", bg:"#3d3d3d", panel:"#2e2e2e", sunk:"#1e1e1e",
-    hl:"#6e6e6e", sh:"#161616", lab:"#c4c4c4", dim:"#8a8a8a",
-    btnLit:"#efe3ae", yel:"#e8d048", org:"#f09020", red:"#e05050", grn:"#33cc44",
-    kMag:"#c8398a", kBlue:"#2f5fc8", kCyan:"#33aec4", kPur:"#7f6fc8", kGrn:"#63c8a8", kRed:"#d03848", kGray:"#b8b8b8" };
+  /* ================= M7CL V3 EDITOR THEME =====================================
+     Sampled 1:1 from the OFFICIAL Yamaha M7CL V3 Editor screenshots embedded in
+     SM_M7CL_V3.pdf — the manual that ships with the editor itself
+     (C:\Program Files (x86)\Yamaha\Studio Manager\M7CL V3\SM_M7CL_V3.pdf).
+     The figures are lossless PNGs at native resolution: Master window 159x482
+     (p.13), INPUT CH "CH 1-16" window 879x683 (p.16), Selected Channel 1042x802
+     (p.29), navigation keys 130x93 (p.15).
+
+     ⚠️  DO NOT re-sample this palette from the CL Editor. The M7CL Editor and the
+     CL Editor are DIFFERENT SKINS of the Studio Manager family, and copying CL's
+     is exactly how this file ended up looking like a CL5 (its previous theme
+     header literally read "mirrors Yamaha CL Editor 5.8.1", and its ED palette
+     was byte-identical to yamaha-cl5-real.html — the two sims measured 3.7%
+     pixel difference, i.e. the same image).
+
+     The three signatures of the M7CL Editor, measured from those figures:
+       · Selected Channel window is BLUE  (#144070 = 62.4% of its pixels).
+         The CL Editor's is dark charcoal.
+       · Master window is a NARROW gray panel (#76787a) whose bottom is the
+         8-key NAVIGATION cluster. The CL's Main is a tall stack of big buttons.
+       · "On" buttons are WHITE with a COLOURED legend (orange ON/INS, blue
+         D.OUT), and the channel-name footer is GRAY. The CL's are cream, and
+         its name footer is blue.
+     ============================================================================ */
+  const ED={ desk:"#666666", bg:"#333333", panel:"#76787a", sunk:"#000000",
+    hl:"#8d8f91", sh:"#1a1a1a", lab:"#ffffff", dim:"#b0b0b0",
+    grid:"#666666",                       // the 1px rule between Overview strips
+    btnLit:"#ffffff",                     // an "on" button is WHITE (manual p.18: "White: INPUT CH is on")
+    onTx:"#f08000",                       // ...with an ORANGE legend (ON / INS)
+    doTx:"#2038d0",                       // D.OUT lights white with a BLUE legend
+    cream:"#fae7a7",                      // HPF lit
+    yel:"#fdcb25", org:"#f08000", bar:"#d06620", red:"#cc6666", grn:"#00cc33",
+    navy:"#011d50", lcd:"#144070", tbar:"#b9d1ea",
+    navBg:"#231f20", navMid:"#808a92", navKey:"#caced5",
+    kMag:"#c8398a", kBlue:"#2f5fc8", kCyan:"#33aec4", kPur:"#7f6fc8", kGrn:"#63c8a8", kRed:"#cc6666", kGray:"#c8c8c8" };
+  /* The M7CL Editor draws its buttons as ROUNDED rects (see SEL/CUE/ON in the
+     p.16 figure) — the CL Editor's are square. This is the shape of every
+     button on the M7CL front, so it lives here rather than in each caller. */
+  function rrect(x,y,w,h,r){ r=Math.min(r,w/2,h/2); ctx.beginPath();
+    if(ctx.roundRect){ ctx.roundRect(x,y,w,h,r); return; }
+    ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
   function shade(hex,amt){ const h=hex.replace('#',''); let r=parseInt(h.substr(0,2),16),g=parseInt(h.substr(2,2),16),b=parseInt(h.substr(4,2),16);
     r=clamp(r+amt,0,255);g=clamp(g+amt,0,255);b=clamp(b+amt,0,255); return "#"+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join(''); }
   let VT={k:1,ox:0,oy:0};
@@ -433,19 +470,29 @@
     if(x2&&x2>x+tw+8){ ctx.strokeStyle="#232323"; ctx.beginPath(); ctx.moveTo(x+tw+7,y); ctx.lineTo(x2,y); ctx.stroke();
       ctx.strokeStyle="#6a6a6a"; ctx.beginPath(); ctx.moveTo(x+tw+7,y+1.5); ctx.lineTo(x2,y+1.5); ctx.stroke(); }
     ctx.textBaseline="alphabetic"; }
-  function eBtn(x,y,w,h,label,lit,cb,litCol,txSize){
-    ctx.fillStyle=lit?(litCol||ED.btnLit):"#454545"; ctx.fillRect(x,y,w,h); bevel(x,y,w,h,!!lit);
-    ctx.fillStyle=lit?"#101010":"#d4d4d4"; ctx.font="700 "+(txSize||9)+"px Arial,Inter"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  /* M7CL button: rounded rect, BLACK when off with a gray legend; when lit it takes
+     the given colour (default WHITE) and the legend takes txCol (default orange).
+     That "white body + coloured legend" is the M7CL's tell — the CL Editor instead
+     fills the whole button cream. See the ON/INS/D.OUT columns of the p.16 figure. */
+  function eBtn(x,y,w,h,label,lit,cb,litCol,txSize,txCol){
+    const body=lit?(litCol||ED.btnLit):"#0a0a0a";
+    ctx.fillStyle=body; rrect(x,y,w,h,Math.min(3,h/3)); ctx.fill();
+    ctx.strokeStyle=lit?"#ffffff55":"#4a4a4a"; ctx.lineWidth=1; rrect(x+.5,y+.5,w-1,h-1,Math.min(3,h/3)); ctx.stroke();
+    ctx.fillStyle=lit?(txCol||(body==="#ffffff"?ED.onTx:"#101010")):"#909090";
+    ctx.font="700 "+(txSize||9)+"px Arial,Inter"; ctx.textAlign="center"; ctx.textBaseline="middle";
     ctx.fillText(label,x+w/2,y+h/2+.5); ctx.textBaseline="alphabetic";
     if(cb)vreg({x,y,w,h,onDown:cb}); }
+  /* M7CL numeric readout: black LCD, WHITE pixel-ish text (the CL's is dimmer gray) */
   function eVal(x,y,w,h,txt,col,cb){
-    ctx.fillStyle="#000"; ctx.fillRect(x,y,w,h); bevel(x,y,w,h,true);
-    ctx.fillStyle=col||"#f0f0f0"; ctx.font="700 "+Math.max(8,h-4)+"px 'Courier New',monospace"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillStyle="#000"; ctx.fillRect(x,y,w,h);
+    ctx.fillStyle=col||"#ffffff"; ctx.font="700 "+Math.max(8,h-3)+"px 'Courier New',monospace"; ctx.textAlign="center"; ctx.textBaseline="middle";
     ctx.fillText(txt,x+w/2,y+h/2+.5); ctx.textBaseline="alphabetic";
     if(cb)vreg({x,y,w,h,onDown:cb}); }
+  /* M7CL patch header / channel-name footer: GRAY plate, white text.
+     (The CL Editor paints the name footer BLUE — do not copy that here.) */
   function eNameBox(x,y,w,h,txt){
-    ctx.fillStyle="#181818"; ctx.fillRect(x,y,w,h); ctx.strokeStyle="#2e2e2e"; ctx.strokeRect(x+.5,y+.5,w-1,h-1);
-    ctx.fillStyle="#9a9a9a"; ctx.font="700 "+Math.max(7,h-4)+"px 'Courier New',monospace"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillStyle="#666666"; ctx.fillRect(x,y,w,h);
+    ctx.fillStyle="#ffffff"; ctx.font="700 "+Math.max(7,h-4)+"px 'Courier New',monospace"; ctx.textAlign="center"; ctx.textBaseline="middle";
     ctx.fillText(txt,x+w/2,y+h/2+.5); ctx.textBaseline="alphabetic"; }
   function eKnob(cx,cy,r,t,col){
     const g=ctx.createRadialGradient(cx-r*0.35,cy-r*0.45,r*0.15,cx,cy,r);
@@ -580,7 +627,12 @@
   const WINDEF={
     overview:{title:()=>(BANKS[state.bank]||BANKS.in1).title, x:6,   y:4,  w:660, h:760, draw:drawOverview, def:1, dock:'rest', vh:1010},
     selected:{title:()=>"Selected Channel",                 x:674, y:4,  w:880, h:654, draw:drawSelCh},
-    main:    {title:()=>"Main",                             x:1562,y:4,  w:352, h:780, draw:drawMain,    def:1, dock:'main', vw:352, vh:751},
+    /* The real editor calls this window "Master" (manual p.13), not "Main" — and it
+       is a NARROW panel: the figure is 159x482, aspect 0.33. vbegin() letterboxes it
+       into the dock, and the spare margin is the window body's own dark #333333, so
+       what is drawn is the Master window at true proportion. The dock WIDTH (352) is
+       deliberately left alone — MAINW/responsive is another agent's ground. */
+    main:    {title:()=>"Master",                           x:1562,y:4,  w:352, h:780, draw:drawMain,    def:1, dock:'main', vw:159, vh:482},
     sends:   {title:()=>"Sends On Fader"+(state.sof>=0?" — "+(state.sofType==='mtx'?"MATRIX "+(state.sofBus+1):"MIX "+(state.sofBus+1)):""),
                                                             x:250, y:150,w:880, h:654, draw:drawSends},
     dca:     {title:()=>"Group/Link",                       x:150, y:90, w:940, h:690, draw:drawDCA},
@@ -805,11 +857,39 @@
   renderScreen=function(){ for(const k in WINS) renderWin(WINS[k]); };
 
 
-  /* ================= MAIN — the CL Editor "Main" panel = the NAVIGATOR =================
-     CL5 logo · SELECT LCD (−/+) · SENDS ON FADER · SYNC · SCENE MEMORY ·
-     INPUT / OUTPUT / CUSTOM FADER bank buttons. The bank buttons drive which bank
-     the Overview (the console base) shows. */
+  /* ================= MASTER — the M7CL V3 Editor "Master" window ===============
+     Rebuilt against the official figure on p.13 of SM_M7CL_V3.pdf (a 159x482
+     lossless PNG lifted straight out of the manual), with the navigation-key
+     cluster detailed on p.15 (130x93) and the SCENE MEMORY controls specified on
+     p.14 (scene no. · protect "R" · edit "E" · STORE · ▲/▼ · RECALL).
+
+     This window is NOT the CL's "Main". It is narrow, its sections are raised
+     GRAY plates (#76787a) on a dark body, and it ends in the 8-key NAVIGATION
+     cluster — 1-16 / 17-32 / 33-48 / ST IN / DCA / MIX / MTRX / STEREO — each an
+     LED-topped key. Those 8 keys ARE the bank navigator; the CL's big INPUT /
+     OUTPUT / CUSTOM FADER button stacks do not exist on the M7CL.
+
+     Manual p.15: "Opens the corresponding window in the Overview window." So the
+     keys drive setBank() exactly as the old bank buttons did — same engine, real
+     shape. Everything the CL panel used to expose as an extra button (RACK,
+     METER, PATCH, GROUP/LINK, OVERVIEW, scene list) is reached from the Windows
+     menu, which is where the real editor keeps it (manual p.11).
+     ============================================================================ */
   function selObj(){ return state.selStin>=0 ? STIN[state.selStin] : CH[state.sel]; }
+  /* One navigation key: LED slot on top of a light key, legend underneath.
+     Input-side keys carry a green LED, output-side keys an amber one; the ACTIVE
+     key's body turns amber (#fdcb25) — exactly as [DCA] is shown lit in both the
+     p.13 and p.15 figures. */
+  function navKey(x,y,label,active,led,cb){
+    const w=16,h=15;
+    ctx.fillStyle=active?ED.yel:ED.navKey; rrect(x,y,w,h,3); ctx.fill();
+    ctx.strokeStyle="#00000060"; ctx.lineWidth=1; rrect(x+.5,y+.5,w-1,h-1,3); ctx.stroke();
+    ctx.fillStyle=led; ctx.fillRect(x+2.5,y+2,w-5,3);          // the LED slot
+    ctx.fillStyle="#ffffff"; ctx.font="700 7px 'Courier New',monospace";
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(label,x+w/2,y+h+6); ctx.textBaseline="alphabetic";
+    if(cb)vreg({x:x-3,y,w:w+6,h:h+10,onDown:cb});
+  }
   function drawMain(){
     ctx.fillStyle=ED.bg; ctx.fillRect(0,0,W,H);   // panel surface fills the docked window
     vbegin(352,751);
