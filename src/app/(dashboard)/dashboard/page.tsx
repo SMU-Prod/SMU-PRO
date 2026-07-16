@@ -28,17 +28,16 @@ export default async function DashboardPage() {
   const { userId } = await auth();
   if (!userId) redirect("/login");
 
-  const user = await getCurrentUser();
-  const t = await getServerT();
-  const lang = await getServerLocale();
+  // Primeira rodada paralela: user, traduções e idioma (antes eram 3 awaits em série).
+  const [user, t, lang] = await Promise.all([getCurrentUser(), getServerT(), getServerLocale()]);
   const supabase = createAdminClient();
-  const { data: userRow } = await supabase.from("users").select("id").eq("clerk_id", userId).single();
-  const userUuid = userRow?.id;
+  // getCurrentUser já traz o id — dispensa a query redundante que havia aqui.
+  const userUuid = user?.id;
 
-  const streakDays = await getStudyStreak();
-  const upcomingLives = await listUpcomingLivesForUser();
-
-  const [enrollmentsResult, certificatesResult, recentActivityResult, allEnrollmentsResult] = await Promise.all([
+  // streak e lives eram awaited em série antes do bloco; são independentes → entram no Promise.all.
+  const [streakDays, upcomingLives, enrollmentsResult, certificatesResult, recentActivityResult, allEnrollmentsResult] = await Promise.all([
+    getStudyStreak(),
+    listUpcomingLivesForUser(),
     userUuid
       ? supabase
           .from("enrollments")
