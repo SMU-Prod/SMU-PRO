@@ -1,4 +1,5 @@
 import { getPostBySlug, getRelatedPosts } from "@/lib/actions/blog";
+import { sanitizeBlogHtml } from "@/lib/sanitize";
 import { getServerT } from "@/lib/i18n/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -168,7 +169,7 @@ export default async function BlogPostPage({ params }: Props) {
             [&_code]:bg-surface-3 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_code]:text-amber-400
             [&_img]:rounded-xl [&_img]:border [&_img]:border-border
             [&_table]:border [&_table]:border-border [&_th]:bg-surface-3 [&_th]:p-2 [&_td]:p-2 [&_td]:border [&_td]:border-border"
-          dangerouslySetInnerHTML={{ __html: post.conteudo }}
+          dangerouslySetInnerHTML={{ __html: sanitizeBlogHtml(post.conteudo) }}
         />
 
         {/* Tags */}

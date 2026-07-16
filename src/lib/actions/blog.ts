@@ -1,7 +1,8 @@
 "use server";
 
 import { createAdminClient as _createAdminClient } from "@/lib/supabase/server";
-import { auth } from "@clerk/nextjs/server";
+import { assertAdmin } from "@/lib/auth/admin";
+import { parseBlogPostUpdate } from "@/lib/validations";
 
 // Cast para any porque blog_posts ainda não existe no tipo Database gerado
 const createAdminClient = () => _createAdminClient() as any;
@@ -87,6 +88,7 @@ export async function adminGetAllPosts({
   page = 1,
   limit = 20,
 }: { page?: number; limit?: number } = {}) {
+  await assertAdmin();
   const supabase = createAdminClient();
   const { data, count } = await supabase
     .from("blog_posts")
@@ -111,17 +113,12 @@ export async function adminCreatePost(post: {
   meta_title?: string;
   meta_description?: string;
 }) {
-  const { userId } = await auth();
-  if (!userId) throw new Error("Não autenticado");
+  const { userUuid } = await assertAdmin();
 
   const supabase = createAdminClient();
-
-  // Resolve user UUID
-  const { data: user } = await supabase.from("users").select("id").eq("clerk_id", userId).single();
-
   const { data, error } = await supabase
     .from("blog_posts")
-    .insert({ ...post, autor_id: user?.id })
+    .insert({ ...post, autor_id: userUuid })
     .select()
     .single();
 
@@ -130,10 +127,14 @@ export async function adminCreatePost(post: {
 }
 
 export async function adminUpdatePost(id: string, updates: Record<string, any>) {
+  await assertAdmin();
+  // Allowlist: bloqueia sobrescrever id/autor_id/views via update.
+  const dados = parseBlogPostUpdate(updates);
+
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("blog_posts")
-    .update(updates)
+    .update(dados)
     .eq("id", id)
     .select()
     .single();
@@ -143,12 +144,14 @@ export async function adminUpdatePost(id: string, updates: Record<string, any>) 
 }
 
 export async function adminDeletePost(id: string) {
+  await assertAdmin();
   const supabase = createAdminClient();
   const { error } = await supabase.from("blog_posts").delete().eq("id", id);
   if (error) throw new Error(error.message);
 }
 
 export async function adminTogglePostPublish(id: string, publicado: boolean) {
+  await assertAdmin();
   const supabase = createAdminClient();
   const { error } = await supabase.from("blog_posts").update({ publicado }).eq("id", id);
   if (error) throw new Error(error.message);
