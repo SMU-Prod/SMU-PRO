@@ -342,7 +342,7 @@ export function LessonPlayer({
   return (
     <div className="flex h-screen overflow-hidden bg-surface-2">
       {/* ── Main Content ── */}
-      <div className={cn("flex flex-col overflow-hidden w-full", contentOpen ? "lg:w-[65%]" : "lg:w-full")}>
+      <div className={cn("flex flex-col overflow-hidden w-full", contentOpen ? "md:w-[65%]" : "md:w-full")}>
         {/* Top Bar */}
         <div className="flex items-center justify-between px-3 sm:px-5 py-2.5 border-b border-border bg-surface shrink-0 gap-2">
           <div className="flex items-center gap-1.5 text-sm text-muted-light min-w-0">
@@ -372,7 +372,7 @@ export function LessonPlayer({
             <button
               onClick={toggleContent}
               className={cn(
-                "hidden lg:inline-flex items-center gap-1.5 rounded-lg transition-colors shrink-0",
+                "hidden md:inline-flex items-center gap-1.5 rounded-lg transition-colors shrink-0",
                 contentOpen
                   ? "p-2 text-muted hover:text-foreground hover:bg-hover"
                   : "px-2.5 py-2 text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 font-medium"
@@ -527,7 +527,7 @@ export function LessonPlayer({
                 <button
                   onClick={() => setActiveTab("content")}
                   className={cn(
-                    "lg:hidden flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-all border-b-2 -mb-px whitespace-nowrap",
+                    "md:hidden flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-all border-b-2 -mb-px whitespace-nowrap",
                     activeTab === "content"
                       ? "text-amber-400 border-amber-500"
                       : "text-muted-light border-transparent hover:text-muted hover:border-border-strong"
@@ -614,7 +614,7 @@ export function LessonPlayer({
       <aside
         className={cn(
           "border-l border-border bg-surface flex-col overflow-hidden shrink-0 w-[35%]",
-          contentOpen ? "hidden lg:flex" : "hidden"
+          contentOpen ? "hidden md:flex" : "hidden"
         )}
         aria-label="Lista de aulas"
       >
@@ -647,7 +647,7 @@ export function LessonPlayer({
       {!contentOpen && (
         <button
           onClick={toggleContent}
-          className="hidden lg:flex fixed right-0 top-1/2 -translate-y-1/2 z-40 flex-col items-center gap-2 rounded-l-xl bg-amber-500 text-black shadow-lg hover:bg-amber-400 hover:pr-3 px-2 py-3 transition-all"
+          className="hidden md:flex fixed right-0 top-1/2 -translate-y-1/2 z-40 flex-col items-center gap-2 rounded-l-xl bg-amber-500 text-black shadow-lg hover:bg-amber-400 hover:pr-3 px-2 py-3 transition-all"
           aria-label={t("Mostrar conteúdo do curso")}
           title={t("Mostrar conteúdo do curso")}
         >
