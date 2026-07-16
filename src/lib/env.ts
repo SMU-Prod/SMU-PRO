@@ -20,12 +20,16 @@ const required = [
 
 export function validateEnv() {
   const missing = required.filter((key) => !process.env[key]);
+  if (missing.length === 0) return;
 
-  if (missing.length > 0) {
-    console.error(
-      `[ENV] Variáveis de ambiente obrigatórias ausentes:\n${missing.map((k) => `  - ${k}`).join("\n")}`
-    );
-    // Não lança erro para não quebrar builds (onde nem todas as envs estão disponíveis)
-    // Em runtime, cada serviço deve validar suas próprias envs
+  const msg = `[ENV] Variáveis de ambiente obrigatórias ausentes:\n${missing.map((k) => `  - ${k}`).join("\n")}`;
+  console.error(msg);
+
+  // Em RUNTIME de produção, falha rápido: sem isto, faltar CLERK_WEBHOOK_SECRET ou
+  // RESEND_API_KEY sobe "saudável" e só quebra no primeiro request do fluxo afetado.
+  // Não lança durante o build (onde nem toda env está disponível).
+  const isBuild = process.env.NEXT_PHASE === "phase-production-build";
+  if (process.env.NODE_ENV === "production" && !isBuild) {
+    throw new Error(msg);
   }
 }
