@@ -2,7 +2,7 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { createAdminClient } from "@/lib/supabase/server";
-import DOMPurify from "isomorphic-dompurify";
+import { stripHtml } from "@/lib/utils";
 import type { LiveMessage } from "@/types/database";
 
 const MAX_LEN = 500;
@@ -24,7 +24,7 @@ export async function sendLiveMessage(liveEventId: string, texto: string): Promi
   const { userId } = await auth();
   if (!userId) throw new Error("Entre na sua conta para participar do chat.");
 
-  const limpo = DOMPurify.sanitize(texto.trim(), { ALLOWED_TAGS: [], ALLOWED_ATTR: [] });
+  const limpo = stripHtml(texto);
   if (!limpo) throw new Error("Mensagem vazia.");
   if (limpo.length > MAX_LEN) throw new Error(`Máximo de ${MAX_LEN} caracteres.`);
 

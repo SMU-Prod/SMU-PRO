@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import { useDarkContentFix } from "@/lib/hooks/use-dark-content-fix";
 import { Sparkles, Loader2 } from "lucide-react";
-import DOMPurify from "isomorphic-dompurify";
+import DOMPurify from "dompurify";
 import katex from "katex";
 import { Button } from "@/components/ui/button";
 import { getIconForTitle, getIconForKey } from "@/lib/section-icons";
@@ -236,6 +236,10 @@ export function RichContentViewer({ html, lessonId, titulo, categoria, isAdmin =
   // Color cleanup happens ONLY at paste time in the RichTextEditor (transformPastedHTML),
   // not here — otherwise editor-chosen colors would be stripped.
   const sanitized = useMemo(() => {
+    // dompurify (browser) usa o DOM nativo e só funciona no cliente. No SSR não há
+    // DOM; o conteúdo vem do banco escrito pelo admin via editor autenticado, então
+    // renderizamos cru até hidratar — o cliente re-sanitiza logo após montar.
+    if (typeof window === "undefined") return activeHtml;
     return DOMPurify.sanitize(activeHtml, {
       ADD_ATTR: ["style", "class", "target", "rel", "data-width", "data-alignment", "alt", "data-section", "data-title", "data-icon", "data-section-title", "data-section-body", "data-latex", "data-type", "data-callout"],
       ADD_TAGS: ["mark", "sup", "sub", "img", "table", "thead", "tbody", "tr", "td", "th", "colgroup", "col", "figure", "figcaption", "section", "aside"],

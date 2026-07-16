@@ -24,6 +24,21 @@ export function formatCurrency(value: number): string {
   }).format(value);
 }
 
+/**
+ * Remove TODO HTML de uma string — equivale a DOMPurify com ALLOWED_TAGS:[].
+ * Puro, sem DOM: seguro em Server Action (o jsdom do isomorphic-dompurify
+ * quebra o runtime da Vercel com ERR_REQUIRE_ESM). Uso: chat de texto puro,
+ * onde nenhuma tag é permitida e o React já escapa na renderização.
+ */
+export function stripHtml(input: string): string {
+  return input
+    // Blocos perigosos saem COM o conteúdo (senão sobra "alert(1)" solto).
+    .replace(/<(script|style|iframe|object|embed)\b[^>]*>[\s\S]*?<\/\1>/gi, "")
+    // Qualquer tag restante: fora, preserva o texto entre elas.
+    .replace(/<\/?[a-z][^>]*>/gi, "")
+    .trim();
+}
+
 export function slugify(text: string): string {
   return text
     .toString()

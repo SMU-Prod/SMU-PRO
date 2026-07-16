@@ -1,5 +1,30 @@
 import { describe, it, expect } from "vitest";
-import { formatMinutes, formatCurrency, slugify, getLevelLabel, getCategoryLabel } from "./utils";
+import { formatMinutes, formatCurrency, slugify, getLevelLabel, getCategoryLabel, stripHtml } from "./utils";
+
+describe("stripHtml", () => {
+  it("remove tags mas mantém o texto", () => {
+    expect(stripHtml("<b>oi</b> mundo")).toBe("oi mundo");
+    expect(stripHtml("texto puro")).toBe("texto puro");
+  });
+
+  it("remove script/style com o conteúdo (não deixa payload solto)", () => {
+    expect(stripHtml('<script>alert(1)</script>ola')).toBe("ola");
+    expect(stripHtml('<style>.x{}</style>oi')).toBe("oi");
+  });
+
+  it("neutraliza vetor de XSS comum", () => {
+    expect(stripHtml('<img src=x onerror=alert(1)>')).toBe("");
+    expect(stripHtml('<a href="javascript:alert(1)">clica</a>')).toBe("clica");
+  });
+
+  it("não engole '<' de texto normal (não é tag)", () => {
+    expect(stripHtml("2 < 3 e 3 > 2")).toBe("2 < 3 e 3 > 2");
+  });
+
+  it("faz trim", () => {
+    expect(stripHtml("  <p>x</p>  ")).toBe("x");
+  });
+});
 
 describe("formatMinutes", () => {
   it("formats minutes under 60", () => {
