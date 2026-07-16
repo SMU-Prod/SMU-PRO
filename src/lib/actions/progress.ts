@@ -152,7 +152,10 @@ export async function markLessonComplete(lessonId: string, courseSlug: string) {
   revalidatePath(`/cursos/${courseSlug}`);
 }
 
-export async function updateWatchTime(lessonId: string, seconds: number) {
+// deltaSeconds é o INCREMENTO desde a última chamada, não o total. Incremento
+// atômico no banco (increment_watch_time) para o tempo não andar para trás quando
+// o componente remonta (o ref do cliente reinicia em 0).
+export async function updateWatchTime(lessonId: string, deltaSeconds: number) {
   const { userId } = await auth();
   if (!userId) return;
 
@@ -160,10 +163,11 @@ export async function updateWatchTime(lessonId: string, seconds: number) {
   const userUuid = await resolveUserUUID(userId);
   if (!userUuid) return;
 
-  await admin.from("progress").upsert(
-    { user_id: userUuid, lesson_id: lessonId, tempo_assistido: seconds },
-    { onConflict: "user_id,lesson_id" }
-  );
+  await (admin as any).rpc("increment_watch_time", {
+    p_user_id: userUuid,
+    p_lesson_id: lessonId,
+    p_delta: Math.max(0, Math.round(deltaSeconds)),
+  });
 }
 
 /**
