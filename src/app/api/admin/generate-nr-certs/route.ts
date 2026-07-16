@@ -2,6 +2,10 @@ import { auth } from "@clerk/nextjs/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
+// Job retroativo pesado (varre todos os alunos dos cursos NR). Sem isto, estoura
+// o timeout default da Vercel antes de terminar.
+export const maxDuration = 300;
+
 /**
  * POST /api/admin/generate-nr-certs
  *
@@ -43,6 +47,9 @@ export async function POST() {
 
     const allLessons = (modules ?? []).flatMap((m: any) => m.lessons ?? []);
 
+    const lessonIds = allLessons.map((l: any) => l.id);
+    if (lessonIds.length === 0) continue;
+
     // Get all enrolled users with any progress
     const { data: enrollments } = await supabase
       .from("enrollments")
@@ -50,38 +57,47 @@ export async function POST() {
       .eq("course_id", course.id)
       .eq("status", "ativo");
 
+    const userIds = (enrollments ?? []).map((e: any) => e.user_id);
+    if (userIds.length === 0) continue;
+
+    const quizIds = allLessons
+      .filter((l: any) => l.tem_quiz && l.quizzes?.length > 0)
+      .flatMap((l: any) => l.quizzes.map((q: any) => q.id));
+
+    // Em LOTE por curso (antes: 2-3 queries POR ALUNO → O(alunos) round-trips).
+    const [progressRes, attemptsRes, certsRes] = await Promise.all([
+      supabase.from("progress").select("user_id, lesson_id")
+        .in("user_id", userIds).in("lesson_id", lessonIds).eq("concluido", true),
+      quizIds.length > 0
+        ? supabase.from("quiz_attempts").select("user_id, quiz_id")
+            .in("user_id", userIds).eq("aprovado", true).in("quiz_id", quizIds)
+        : Promise.resolve({ data: [] as any[] }),
+      supabase.from("certificates").select("user_id, metadata")
+        .in("user_id", userIds).eq("course_id", course.id),
+    ]);
+
+    // Agrupa por usuário em memória.
+    const completedByUser = new Map<string, Set<string>>();
+    for (const p of (progressRes.data ?? []) as any[]) {
+      (completedByUser.get(p.user_id) ?? completedByUser.set(p.user_id, new Set()).get(p.user_id)!).add(p.lesson_id);
+    }
+    const passedQuizByUser = new Map<string, Set<string>>();
+    for (const a of (attemptsRes.data ?? []) as any[]) {
+      (passedQuizByUser.get(a.user_id) ?? passedQuizByUser.set(a.user_id, new Set()).get(a.user_id)!).add(a.quiz_id);
+    }
+    const existingLessonByUser = new Map<string, Set<string>>();
+    for (const c of (certsRes.data ?? []) as any[]) {
+      if (!c.metadata?.lesson_id) continue;
+      (existingLessonByUser.get(c.user_id) ?? existingLessonByUser.set(c.user_id, new Set()).get(c.user_id)!).add(c.metadata.lesson_id);
+    }
+
     for (const enrollment of enrollments ?? []) {
       const userUuid = enrollment.user_id;
       const userInfo = enrollment.users as any;
 
-      // Get this user's completed lessons for this course
-      const lessonIds = allLessons.map((l: any) => l.id);
-      if (lessonIds.length === 0) continue;
-
-      const { data: progress } = await supabase
-        .from("progress")
-        .select("lesson_id")
-        .eq("user_id", userUuid)
-        .eq("concluido", true)
-        .in("lesson_id", lessonIds);
-
-      const completedIds = new Set((progress ?? []).map((p: any) => p.lesson_id));
-
-      // Get this user's passed quiz attempts to verify quiz completion
-      const quizIds = allLessons
-        .filter((l: any) => l.tem_quiz && l.quizzes?.length > 0)
-        .flatMap((l: any) => l.quizzes.map((q: any) => q.id));
-
-      let passedQuizIds = new Set<string>();
-      if (quizIds.length > 0) {
-        const { data: passedAttempts } = await supabase
-          .from("quiz_attempts")
-          .select("quiz_id")
-          .eq("user_id", userUuid)
-          .eq("aprovado", true)
-          .in("quiz_id", quizIds);
-        passedQuizIds = new Set((passedAttempts ?? []).map((a: any) => a.quiz_id));
-      }
+      const completedIds = completedByUser.get(userUuid) ?? new Set<string>();
+      const passedQuizIds = passedQuizByUser.get(userUuid) ?? new Set<string>();
+      const existingLessonIds = existingLessonByUser.get(userUuid) ?? new Set<string>();
 
       // Build map of lesson_id → quiz passed
       const lessonQuizPassed = new Map<string, boolean>();
@@ -93,19 +109,6 @@ export async function POST() {
           lessonQuizPassed.set(lesson.id, quizPassed);
         }
       }
-
-      // Get existing certificates for this user+course
-      const { data: existingCerts } = await supabase
-        .from("certificates")
-        .select("id, metadata")
-        .eq("user_id", userUuid)
-        .eq("course_id", course.id);
-
-      const existingLessonIds = new Set(
-        (existingCerts ?? [])
-          .filter((c: any) => c.metadata?.lesson_id)
-          .map((c: any) => c.metadata.lesson_id)
-      );
 
       // Generate certificate for each completed lesson that doesn't have one
       // AND where the quiz (if any) has been passed

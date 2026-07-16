@@ -363,16 +363,13 @@ export async function getLiveEngagementCounts(
   if (liveEventIds.length === 0) return counts;
 
   const supabase = createAdminClient();
-  const [{ data: attendance }, { data: messages }] = await Promise.all([
-    supabase.from("live_attendance").select("live_event_id").in("live_event_id", liveEventIds),
-    supabase.from("live_messages").select("live_event_id").in("live_event_id", liveEventIds),
-  ]);
-
-  for (const row of (attendance ?? []) as { live_event_id: string }[]) {
-    counts[row.live_event_id].participantes++;
-  }
-  for (const row of (messages ?? []) as { live_event_id: string }[]) {
-    counts[row.live_event_id].mensagens++;
+  // Conta no banco (GROUP BY na RPC) em vez de baixar todas as linhas do chat.
+  const { data } = await (supabase as any).rpc("live_engagement_counts", { p_ids: liveEventIds });
+  for (const row of (data ?? []) as { live_event_id: string; participantes: number; mensagens: number }[]) {
+    counts[row.live_event_id] = {
+      participantes: Number(row.participantes) || 0,
+      mensagens: Number(row.mensagens) || 0,
+    };
   }
   return counts;
 }
