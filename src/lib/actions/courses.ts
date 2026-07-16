@@ -250,6 +250,22 @@ export async function getUserEnrolledCourses() {
 // CURSOS — Admin
 // ============================================================
 
+// Lista enxuta para o Command Palette do admin (roda em TODA navegação do painel).
+// Só as 4 colunas usadas — evita o payload pesado da view admin_course_stats (counts).
+export async function adminGetCoursesForPalette() {
+  await assertAdmin();
+  const supabase = createAdminClient();
+  const portal = await getPortal();
+  const allowedIds = await portalCourseIds(supabase, portal);
+  if (allowedIds.length === 0) return [];
+  const { data } = await supabase
+    .from("courses")
+    .select("id, titulo, nivel, ativo")
+    .in("id", allowedIds)
+    .order("titulo");
+  return (data ?? []) as { id: string; titulo: string; nivel: string; ativo: boolean }[];
+}
+
 export async function adminGetAllCourses(opts?: { page?: number; limit?: number; search?: string; nivel?: string; tipo?: string }) {
   await assertAdmin();
   const supabase = createAdminClient();

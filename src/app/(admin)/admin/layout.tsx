@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/actions/users";
-import { adminGetAllCourses, instructorGetMyCourses } from "@/lib/actions/courses";
+import { adminGetCoursesForPalette, instructorGetMyCourses } from "@/lib/actions/courses";
 import { Sidebar } from "@/components/layout/sidebar";
 import { SidebarProvider } from "@/components/layout/sidebar-context";
 import { CommandPalette } from "@/components/admin/command-palette";
@@ -34,8 +34,7 @@ export default async function AdminLayout({
   if (isInstructor) {
     rawCourses = await instructorGetMyCourses();
   } else {
-    const result = await adminGetAllCourses({ limit: 200 });
-    rawCourses = result.courses ?? [];
+    rawCourses = await adminGetCoursesForPalette();
   }
   const courseList = rawCourses.map((c: { id?: string; course_id?: string; titulo: string; nivel: string; ativo: boolean }) => ({
     id: (c.id ?? c.course_id) as string,
