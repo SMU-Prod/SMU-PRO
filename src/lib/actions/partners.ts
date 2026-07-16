@@ -157,22 +157,42 @@ export async function registerCommission(input: {
   const valorComissao = Math.round(input.valorLiquido * (input.comissaoPercentual / 100) * 100) / 100;
   const valorPlataforma = Math.round((input.valorLiquido - valorComissao) * 100) / 100;
 
+  // upsert por enrollment_id: um retry de webhook não gera comissão em dobro.
+  // (Depende do UNIQUE(enrollment_id) — migration 20260716_partner_commissions_unique.)
   const { error } = await (supabase as any)
     .from("partner_commissions")
-    .insert({
-      partner_id: input.partnerId,
-      enrollment_id: input.enrollmentId,
-      course_id: input.courseId,
-      valor_venda: input.valorVenda,
-      valor_liquido: input.valorLiquido,
-      comissao_percentual: input.comissaoPercentual,
-      valor_comissao: valorComissao,
-      valor_plataforma: valorPlataforma,
-      asaas_split_id: input.asaasSplitId || null,
-      tipo_indicacao: input.tipoIndicacao || "organico",
-      status: "pendente",
-    });
+    .upsert(
+      {
+        partner_id: input.partnerId,
+        enrollment_id: input.enrollmentId,
+        course_id: input.courseId,
+        valor_venda: input.valorVenda,
+        valor_liquido: input.valorLiquido,
+        comissao_percentual: input.comissaoPercentual,
+        valor_comissao: valorComissao,
+        valor_plataforma: valorPlataforma,
+        asaas_split_id: input.asaasSplitId || null,
+        tipo_indicacao: input.tipoIndicacao || "organico",
+        status: "pendente",
+      },
+      { onConflict: "enrollment_id", ignoreDuplicates: true },
+    );
   if (error) console.error("[Commission] Erro ao registrar:", error.message);
+}
+
+/**
+ * Cancela a comissão de uma matrícula estornada. Sem isto, o parceiro continua
+ * elegível a receber por uma venda 100% reembolsada. Chamado nos dois caminhos
+ * de estorno (webhook PAYMENT_REFUNDED e refund do admin).
+ */
+export async function cancelCommissionByEnrollment(enrollmentId: string) {
+  const supabase = createAdminClient();
+  const { error } = await (supabase as any)
+    .from("partner_commissions")
+    .update({ status: "cancelado" })
+    .eq("enrollment_id", enrollmentId)
+    .neq("status", "pago");
+  if (error) console.error("[Commission] Erro ao cancelar:", error.message);
 }
 
 // ── Relatório de comissões ──
