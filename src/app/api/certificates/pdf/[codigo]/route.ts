@@ -397,12 +397,15 @@ export async function GET(
   const verifyUrl = `${process.env.NEXT_PUBLIC_APP_URL}/certificado/${codigo}`;
   const qrDataUrl = await QRCode.toDataURL(verifyUrl, { width: 120, margin: 1 });
 
+  // Fuso BR explícito: sem isto, o PDF roda com TZ=UTC na Vercel e emissões entre
+  // 21h–00h BRT saíam com o dia seguinte — data legal do certificado NR errada.
   const emitidoEm = new Date(cert.emitido_em).toLocaleDateString("pt-BR", {
     day: "2-digit",
     month: "long",
     year: "numeric",
+    timeZone: "America/Sao_Paulo",
   });
-  const emitidoShort = new Date(cert.emitido_em).toLocaleDateString("pt-BR");
+  const emitidoShort = new Date(cert.emitido_em).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
 
   const cargaHoraria = formatMinutes(cert.carga_horaria ?? course?.carga_horaria ?? 0);
   const nivel = getLevelLabel(course?.nivel ?? "");
@@ -638,7 +641,7 @@ function generateNRCertificate({ cert, user, course, nrData, qrDataUrl, codigo, 
   const emitidoDate = new Date(cert.emitido_em);
   const validadeDate = new Date(emitidoDate);
   validadeDate.setFullYear(validadeDate.getFullYear() + 2);
-  const validadeStr = validadeDate.toLocaleDateString("pt-BR");
+  const validadeStr = validadeDate.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">

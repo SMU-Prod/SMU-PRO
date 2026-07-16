@@ -2,6 +2,7 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { createAdminClient } from "@/lib/supabase/server";
+import { computeStreak, toBrtDateString } from "@/lib/streak";
 
 export async function getStudyStreak(): Promise<number> {
   const { userId } = await auth();
@@ -28,41 +29,8 @@ export async function getStudyStreak(): Promise<number> {
 
   if (!activities || activities.length === 0) return 0;
 
-  // Group by date and find consecutive days
-  const dates = new Set<string>();
-
-  for (const activity of activities) {
-    const date = new Date(activity.created_at).toISOString().split("T")[0];
-    dates.add(date);
-  }
-
-  // Sort dates in descending order
-  const sortedDates = Array.from(dates).sort().reverse();
-
-  // Count consecutive days from today backwards
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  let streak = 0;
-  let currentDate = new Date(today);
-
-  for (const dateStr of sortedDates) {
-    const checkDate = new Date(dateStr);
-    checkDate.setHours(0, 0, 0, 0);
-
-    const timeDiff = currentDate.getTime() - checkDate.getTime();
-    const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
-
-    // If the date is today or yesterday (allowing for timezone), count it
-    if (daysDiff === 0 || daysDiff === 1) {
-      streak++;
-      currentDate = new Date(checkDate);
-      currentDate.setDate(currentDate.getDate() - 1);
-    } else if (daysDiff > 1) {
-      // Gap found, break the streak
-      break;
-    }
-  }
-
-  return streak;
+  // Dias de atividade e "hoje" no fuso BR; a lógica de consecutividade é pura/testada.
+  const activityDates = activities.map((a) => toBrtDateString(a.created_at));
+  const today = toBrtDateString(new Date().toISOString());
+  return computeStreak(activityDates, today);
 }
