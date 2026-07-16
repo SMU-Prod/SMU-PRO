@@ -393,7 +393,7 @@ export async function adminToggleCourse(id: string, ativo: boolean) {
 
   // When publishing, notify enrolled students
   if (ativo) {
-    const { notifyCourseStudents } = await import("@/lib/actions/notifications");
+    const { notifyCourseStudents } = await import("@/lib/notifications/dispatch");
     const supabase = createAdminClient();
     const { data: course } = await supabase.from("courses").select("titulo, slug").eq("id", id).single();
     if (course) {

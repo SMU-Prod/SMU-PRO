@@ -9,7 +9,7 @@ import {
   type AsaasBillingType,
   type AsaasSplitItem,
 } from "@/lib/asaas";
-import { getCourseSplitConfig } from "@/lib/actions/partners";
+import { getCourseSplitConfig } from "@/lib/commissions";
 
 /**
  * POST /api/payments/checkout

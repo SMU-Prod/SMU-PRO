@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { WebhookEvent } from "@clerk/nextjs/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { sendWelcomeEmail } from "@/lib/email";
-import { createNotification, notifyAdmins } from "@/lib/actions/notifications";
+import { createNotification, notifyAdmins } from "@/lib/notifications/dispatch";
 import type { UserInsert } from "@/types/database";
 
 export async function POST(req: Request) {

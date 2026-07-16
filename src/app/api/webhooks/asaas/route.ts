@@ -2,8 +2,8 @@ import { timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { sendPaymentConfirmedEmail } from "@/lib/email";
-import { createNotification, notifyAdmins } from "@/lib/actions/notifications";
-import { getCourseSplitConfig, registerCommission, cancelCommissionByEnrollment } from "@/lib/actions/partners";
+import { createNotification, notifyAdmins } from "@/lib/notifications/dispatch";
+import { getCourseSplitConfig, registerCommission, cancelCommissionByEnrollment } from "@/lib/commissions";
 import type { AsaasWebhookPayload } from "@/lib/asaas";
 
 /**
