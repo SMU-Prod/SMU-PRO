@@ -32,6 +32,33 @@ async function assertCourseInPortal(supabase: any, courseId: string) {
   }
 }
 
+// Portal + ownership num só lugar: qualquer editor respeita a escola do domínio,
+// e o instrutor só mexe no PRÓPRIO curso. As actions de aula/módulo operam por
+// id de aula/módulo — sem isto, um instrutor edita/apaga conteúdo de curso alheio.
+async function assertCanEditCourse(supabase: any, courseId: string, clerkId: string) {
+  if (!courseId) throw new Error("Curso não encontrado");
+  await assertCourseInPortal(supabase, courseId);
+  const { data: userRow } = await supabase
+    .from("users").select("id, role").eq("clerk_id", clerkId).limit(1).single();
+  if (userRow?.role === "instrutor") {
+    const { data: course } = await supabase.from("courses").select("criado_por").eq("id", courseId).single();
+    if (course?.criado_por !== userRow.id) {
+      throw new Error("Acesso negado: você só pode editar seus próprios cursos");
+    }
+  }
+}
+
+async function courseIdOfLesson(supabase: any, lessonId: string): Promise<string | null> {
+  const { data } = await supabase
+    .from("lessons").select("modules(course_id)").eq("id", lessonId).single();
+  return data?.modules?.course_id ?? null;
+}
+
+async function courseIdOfModule(supabase: any, moduleId: string): Promise<string | null> {
+  const { data } = await supabase.from("modules").select("course_id").eq("id", moduleId).single();
+  return data?.course_id ?? null;
+}
+
 // ============================================================
 // Helper: resolve Clerk user ID → Supabase user UUID
 // (enrollments/progress usam uuid FK para users.id)
@@ -360,8 +387,9 @@ export async function adminToggleCourse(id: string, ativo: boolean) {
 // ============================================================
 
 export async function adminCreateModule(input: ModuleInsert) {
-  await assertAdmin();
+  const clerkId = await assertAdmin();
   const supabase = createAdminClient();
+  await assertCanEditCourse(supabase, input.course_id, clerkId);
   const { data, error } = await supabase.from("modules").insert(input).select().single();
   if (error) throw error;
   revalidatePath(`/admin/cursos/${input.course_id}`);
@@ -369,16 +397,18 @@ export async function adminCreateModule(input: ModuleInsert) {
 }
 
 export async function adminUpdateModule(id: string, input: Partial<ModuleInsert>) {
-  await assertAdmin();
+  const clerkId = await assertAdmin();
   const supabase = createAdminClient();
+  await assertCanEditCourse(supabase, (await courseIdOfModule(supabase, id)) ?? "", clerkId);
   const { data, error } = await supabase.from("modules").update(input).eq("id", id).select().single();
   if (error) throw error;
   return data;
 }
 
 export async function adminDeleteModule(id: string) {
-  await assertAdmin();
+  const clerkId = await assertAdmin();
   const supabase = createAdminClient();
+  await assertCanEditCourse(supabase, (await courseIdOfModule(supabase, id)) ?? "", clerkId);
   await supabase.from("modules").delete().eq("id", id);
 }
 
@@ -388,8 +418,9 @@ export async function adminDeleteModule(id: string) {
  * parent_id = UUID → sub-módulo do parent
  */
 export async function adminMoveModule(id: string, parentId: string | null, courseId?: string) {
-  await assertAdmin();
+  const clerkId = await assertAdmin();
   const supabase = createAdminClient();
+  await assertCanEditCourse(supabase, courseId ?? (await courseIdOfModule(supabase, id)) ?? "", clerkId);
   const { error } = await supabase
     .from("modules")
     .update({ parent_id: parentId })
@@ -404,24 +435,27 @@ export async function adminMoveModule(id: string, parentId: string | null, cours
 // ============================================================
 
 export async function adminCreateLesson(input: LessonInsert) {
-  await assertAdmin();
+  const clerkId = await assertAdmin();
   const supabase = createAdminClient();
+  await assertCanEditCourse(supabase, (await courseIdOfModule(supabase, input.module_id)) ?? "", clerkId);
   const { data, error } = await supabase.from("lessons").insert(input).select().single();
   if (error) throw error;
   return data;
 }
 
 export async function adminUpdateLesson(id: string, input: Partial<LessonInsert>) {
-  await assertAdmin();
+  const clerkId = await assertAdmin();
   const supabase = createAdminClient();
+  await assertCanEditCourse(supabase, (await courseIdOfLesson(supabase, id)) ?? "", clerkId);
   const { data, error } = await supabase.from("lessons").update(input).eq("id", id).select().single();
   if (error) throw error;
   return data;
 }
 
 export async function adminDeleteLesson(id: string) {
-  await assertAdmin();
+  const clerkId = await assertAdmin();
   const supabase = createAdminClient();
+  await assertCanEditCourse(supabase, (await courseIdOfLesson(supabase, id)) ?? "", clerkId);
   await supabase.from("lessons").delete().eq("id", id);
 }
 

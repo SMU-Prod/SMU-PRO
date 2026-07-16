@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { sendCourseCompletionEmail, sendCertificateEmail } from "@/lib/email";
 import { createNotification } from "@/lib/actions/notifications";
 import { hasCourseAccessByLesson } from "@/lib/actions/access";
+import { computeCertificateEligibility } from "@/lib/certificates";
 import { revalidatePath } from "next/cache";
 
 async function resolveUserUUID(clerkId: string): Promise<string | null> {
@@ -167,7 +168,7 @@ export async function updateWatchTime(lessonId: string, seconds: number) {
 
 /**
  * Auto-generate certificate when a course is 100% complete.
- * Replicates the logic from /api/certificates/generate but runs server-side.
+ * Só emite se o aluno passou em todos os quizzes do curso (computeCertificateEligibility).
  */
 async function autoGenerateCertificate(
   admin: ReturnType<typeof createAdminClient>,
@@ -212,28 +213,34 @@ async function autoGenerateCertificate(
     .in("id", allLessonIds);
 
   const quizLessonIds = (lessons ?? []).filter((l) => l.tem_quiz).map((l) => l.id);
-  let notaMedia = 100;
 
+  // Reúne os quizzes exigidos e as tentativas aprovadas do aluno, e deixa a regra
+  // (elegibilidade + nota) para computeCertificateEligibility — que exige aprovação
+  // em TODOS os quizzes. Certificado NR não pode sair sem o aluno passar.
+  let requiredQuizIds: string[] = [];
+  let approvedAttempts: { quiz_id: string; nota: number }[] = [];
   if (quizLessonIds.length > 0) {
     const { data: quizzes } = await admin
       .from("quizzes")
       .select("id")
       .in("lesson_id", quizLessonIds);
+    requiredQuizIds = (quizzes ?? []).map((q) => q.id);
 
-    if (quizzes?.length) {
+    if (requiredQuizIds.length > 0) {
       const { data: attempts } = await admin
         .from("quiz_attempts")
-        .select("nota")
+        .select("quiz_id, nota")
         .eq("user_id", userUuid)
         .eq("aprovado", true)
-        .in("quiz_id", quizzes.map((q) => q.id));
-
-      if (attempts?.length) {
-        notaMedia = Math.round(
-          attempts.reduce((acc, b) => acc + b.nota, 0) / attempts.length
-        );
-      }
+        .in("quiz_id", requiredQuizIds);
+      approvedAttempts = (attempts ?? []) as { quiz_id: string; nota: number }[];
     }
+  }
+
+  const { eligible, notaMedia } = computeCertificateEligibility(requiredQuizIds, approvedAttempts);
+  if (!eligible) {
+    console.warn("[autoGenerateCertificate] Quiz pendente — certificado NÃO emitido", { userUuid, courseId });
+    return;
   }
 
   // Create certificate
