@@ -151,7 +151,7 @@ export default async function HomePage() {
             </p>
             <div className="mt-8 flex flex-wrap gap-3.5">
               <Link href="/cadastro"><Button size="xl">{t("Criar conta grátis")} →</Button></Link>
-              <Link href="#simulador"><Button size="xl" variant="outline">{t("Testar o simulador")}</Button></Link>
+              <Link href="/cursos"><Button size="xl" variant="outline">{t("Ver os cursos")}</Button></Link>
             </div>
             <div className="mt-9 flex flex-wrap items-center gap-6">
               {STATS.map((s, i) => (
