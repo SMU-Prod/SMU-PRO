@@ -184,8 +184,11 @@ export async function getCourseWithProgress(slug: string) {
     userUuid
       ? supabase
           .from("progress")
-          .select("*")
+          // Filtra pelo curso via relação (progress→lesson→module→course), senão
+          // trazia TODO o progresso do aluno em toda a plataforma a cada abertura.
+          .select("*, lessons!inner(modules!inner(course_id))")
           .eq("user_id", userUuid)
+          .eq("lessons.modules.course_id", courseId)
       : Promise.resolve({ data: [], error: null }),
   ]);
 
@@ -212,7 +215,11 @@ export async function getCourseWithProgress(slug: string) {
     course: sorted,
     enrollment,
     progressMap: Object.fromEntries(
-      (progressResult.data ?? []).map((p: Progress) => [p.lesson_id, p])
+      (progressResult.data ?? []).map((p: any) => {
+        // Remove o join auxiliar (lessons) usado só para filtrar — o mapa guarda Progress puro.
+        const { lessons: _j, ...prog } = p;
+        return [prog.lesson_id, prog];
+      })
     ) as Record<string, Progress>,
   };
 }

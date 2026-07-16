@@ -4,7 +4,6 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import { useDarkContentFix } from "@/lib/hooks/use-dark-content-fix";
 import { Sparkles, Loader2 } from "lucide-react";
 import DOMPurify from "dompurify";
-import katex from "katex";
 import { Button } from "@/components/ui/button";
 import { getIconForTitle, getIconForKey } from "@/lib/section-icons";
 
@@ -268,13 +267,21 @@ export function RichContentViewer({ html, lessonId, titulo, categoria, isAdmin =
     if (!mounted) return;
     const root = contentRootRef.current;
     if (!root) return;
-    root.querySelectorAll<HTMLElement>('[data-latex]').forEach((el) => {
-      const latex = el.getAttribute("data-latex") || "";
-      const displayMode = el.getAttribute("data-type") === "block-math";
-      try {
-        katex.render(latex, el, { throwOnError: false, displayMode });
-      } catch { /* fórmula inválida → ignora */ }
+    const nodes = root.querySelectorAll<HTMLElement>('[data-latex]');
+    // Aula sem fórmula (a maioria) não baixa os ~285KB do KaTeX: import dinâmico.
+    if (nodes.length === 0) return;
+    let cancelled = false;
+    import("katex").then(({ default: katex }) => {
+      if (cancelled) return;
+      nodes.forEach((el) => {
+        const latex = el.getAttribute("data-latex") || "";
+        const displayMode = el.getAttribute("data-type") === "block-math";
+        try {
+          katex.render(latex, el, { throwOnError: false, displayMode });
+        } catch { /* fórmula inválida → ignora */ }
+      });
     });
+    return () => { cancelled = true; };
   }, [sanitized, mounted, sections]);
 
   // Botão admin de refinar (reutilizável) — DESATIVADO a pedido (flag abaixo)

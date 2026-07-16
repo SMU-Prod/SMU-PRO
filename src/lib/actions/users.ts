@@ -194,19 +194,16 @@ export async function adminToggleMIT(userId: string, projeto_cultural: boolean) 
         .select("id, titulo, slug")
         .eq("ativo", true);
 
-      const enrollErrors: string[] = [];
-      for (const course of allCourses ?? []) {
-        const { error } = await supabase.from("enrollments").upsert(
-          {
-            user_id: userRow.id,
-            course_id: course.id,
-            tipo_acesso: "projeto_cultural",
-            status: "ativo",
-          },
-          { onConflict: "user_id,course_id" }
-        );
-        if (error) enrollErrors.push(`${course.titulo}: ${error.message}`);
-      }
+      // Upsert em lote: 1 round-trip em vez de um por curso (antes: 40 idas ao banco).
+      const { error: enrollError } = await supabase.from("enrollments").upsert(
+        (allCourses ?? []).map((course) => ({
+          user_id: userRow.id,
+          course_id: course.id,
+          tipo_acesso: "projeto_cultural" as const,
+          status: "ativo" as const,
+        })),
+        { onConflict: "user_id,course_id" },
+      );
 
       // Notificar o aluno
       createNotification({
@@ -217,8 +214,8 @@ export async function adminToggleMIT(userId: string, projeto_cultural: boolean) 
         link: "/dashboard",
       }).catch(() => {});
 
-      if (enrollErrors.length > 0) {
-        console.error("[MIT] Erros ao matricular:", enrollErrors);
+      if (enrollError) {
+        console.error("[MIT] Erro ao matricular em lote:", enrollError.message);
       }
     }
   }
