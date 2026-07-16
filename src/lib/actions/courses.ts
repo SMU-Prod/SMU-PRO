@@ -220,7 +220,8 @@ export async function getCourseWithProgress(slug: string) {
     progressMap: Object.fromEntries(
       (progressResult.data ?? []).map((p: any) => {
         // Remove o join auxiliar (lessons) usado só para filtrar — o mapa guarda Progress puro.
-        const { lessons: _j, ...prog } = p;
+        const prog = { ...p };
+        delete prog.lessons;
         return [prog.lesson_id, prog];
       })
     ) as Record<string, Progress>,

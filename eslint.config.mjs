@@ -24,6 +24,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Conteúdo standalone (simuladores HTML/JS, fragmentos de aula) — não é código
+    // do app Next e não deve ser lintado com as regras do app.
+    "simuladores/**",
+    "cursos-novos/**",
   ]),
 ]);
 
