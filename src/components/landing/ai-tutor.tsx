@@ -31,31 +31,9 @@ export function AiTutor() {
   const [typing, setTyping] = useState(false);
   const areaRef = useRef<HTMLDivElement>(null);
 
-  // audio
-  const [playing, setPlaying] = useState(false);
-  const [barsOn, setBarsOn] = useState(0);
-  const [curT, setCurT] = useState("00:00");
-  const playRef = useRef(playing);
-  useEffect(() => { playRef.current = playing; }, [playing]);
-  const posRef = useRef(0);
-
-
   useEffect(() => {
     if (areaRef.current) areaRef.current.scrollTop = areaRef.current.scrollHeight;
   }, [rows]);
-
-  useEffect(() => {
-    const total = 200;
-    const id = setInterval(() => {
-      if (!playRef.current) return;
-      posRef.current = (posRef.current + 1) % (total + 1);
-      const p = posRef.current / total;
-      setBarsOn(Math.round(p * BARS.length));
-      const s = Math.round(p * 200);
-      setCurT(`${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`);
-    }, 50);
-    return () => clearInterval(id);
-  }, []);
 
   const ask = (q: string) => {
     if (typing) return;
@@ -100,25 +78,19 @@ export function AiTutor() {
           </button>
         ))}
       </div>
-      <div className={styles.audioBar}>
-        <button className={styles.pp} aria-label="Play" onClick={() => setPlaying((v) => !v)}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="#0A0A0B">
-            {playing ? (
-              <>
-                <rect x="6" y="5" width="4" height="14" />
-                <rect x="14" y="5" width="4" height="14" />
-              </>
-            ) : (
-              <path d="M8 5v14l11-7z" />
-            )}
+      {/* Ilustração do recurso "narração em áudio" — não é um player real. */}
+      <div className={styles.audioBar} aria-hidden="true">
+        <span className={styles.pp}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="#0A0A0B">
+            <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zm7 9a7 7 0 0 1-6 6.92V21a1 1 0 1 1-2 0v-.08A7 7 0 0 1 5 12a1 1 0 1 1 2 0 5 5 0 0 0 10 0 1 1 0 1 1 2 0z" />
           </svg>
-        </button>
+        </span>
         <div className={styles.wave}>
           {BARS.map((h, i) => (
-            <i key={i} style={{ height: h, opacity: i <= barsOn ? 0.95 : 0.3 }} />
+            <i key={i} style={{ height: h, animationDelay: `${(i % 12) * 0.09}s` }} />
           ))}
         </div>
-        <span className={styles.tm}>{curT} / 03:20</span>
+        <span className={styles.tm}>{"Narração da aula · 03:20"}</span>
       </div>
     </div>
   );
