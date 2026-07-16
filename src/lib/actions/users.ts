@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createNotification } from "@/lib/actions/notifications";
 import { assertOwner } from "@/lib/auth/owner";
+import { parseProfileUpdate } from "@/lib/validations";
 import type { UserRole } from "@/types/database";
 
 async function assertAdmin() {
@@ -101,8 +102,12 @@ export async function updateUserProfile(input: {
   const { userId } = await auth();
   if (!userId) throw new Error("Não autenticado");
 
+  // NUNCA repassar o input do cliente direto ao .update() com service_role:
+  // um POST com {role:"admin"} escalaria privilégio. Allowlist no servidor.
+  const dados = parseProfileUpdate(input);
+
   const supabase = createAdminClient();
-  const { error } = await supabase.from("users").update(input).eq("clerk_id", userId);
+  const { error } = await supabase.from("users").update(dados).eq("clerk_id", userId);
   if (error) throw error;
 
   revalidatePath("/dashboard/perfil");
