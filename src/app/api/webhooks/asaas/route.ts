@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { sendPaymentConfirmedEmail } from "@/lib/email";
 import { createNotification, notifyAdmins } from "@/lib/actions/notifications";
+import { getCourseSplitConfig, registerCommission, cancelCommissionByEnrollment } from "@/lib/actions/partners";
 import type { AsaasWebhookPayload } from "@/lib/asaas";
 
 /**
@@ -58,16 +59,18 @@ export async function POST(req: Request) {
 
   const supabase = createAdminClient();
 
-  // Deduplication: verificar se esse webhook já foi processado
-  if (payment?.id) {
-    const dedupeKey = `${event}_${payment.id}`;
-    const { error: dedupeErr } = await (supabase as any).from("webhook_log").insert({
-      provider: "asaas",
-      event_type: event,
-      external_id: dedupeKey,
-    });
-    if (dedupeErr?.code === "23505") {
-      // Unique constraint violation = já processado
+  // Dedup ANTES bloqueava para sempre: se o processamento falhasse (500), o Asaas
+  // reenviava, batia no dedupe já gravado e "ignorava" — o aluno pagava e nunca
+  // liberava. O registro de dedupe foi movido para DEPOIS do sucesso (fim da função).
+  // A idempotência real vem do check `status === "ativo"` em cada handler.
+  const dedupeKey = payment?.id ? `${event}_${payment.id}` : null;
+  if (dedupeKey) {
+    const { data: jaProcessado } = await (supabase as any)
+      .from("webhook_log")
+      .select("id")
+      .eq("external_id", dedupeKey)
+      .maybeSingle();
+    if (jaProcessado) {
       console.log("[Asaas Webhook] Já processado, ignorando duplicata.");
       return NextResponse.json({ received: true, deduplicated: true });
     }
@@ -113,6 +116,23 @@ export async function POST(req: Request) {
             payment_id: payment.id,
           })
           .eq("id", enrollmentId);
+
+        // Comissão do parceiro: registrada AQUI (pagamento confirmado), não no
+        // checkout. Idempotente por enrollment_id (upsert), então retry não duplica.
+        const splitConfig = await getCourseSplitConfig(enrollment.course_id);
+        if (splitConfig) {
+          const valor = payment.value ?? 0;
+          const valorLiquido = valor - valor * 0.035; // ~3.5% taxa Asaas
+          await registerCommission({
+            partnerId: splitConfig.partnerId,
+            enrollmentId,
+            courseId: enrollment.course_id,
+            valorVenda: valor,
+            valorLiquido,
+            comissaoPercentual: splitConfig.comissaoPercentual,
+            tipoIndicacao: "organico",
+          }).catch((err) => console.error("[Commission] Erro:", err));
+        }
 
         // Log de atividade
         await supabase.from("activity_log").insert({
@@ -188,6 +208,10 @@ export async function POST(req: Request) {
           .select("user_id")
           .maybeSingle();
 
+        // Estorno cancela a comissão do parceiro — senão ele segue elegível a
+        // receber por uma venda 100% reembolsada.
+        await cancelCommissionByEnrollment(payment.externalReference);
+
         await supabase.from("activity_log").insert({
           user_id: refundEnrollment?.user_id ?? null,
           tipo: "payment",
@@ -248,8 +272,18 @@ export async function POST(req: Request) {
     }
   } catch (error) {
     console.error("[Asaas Webhook] Erro ao processar:", error);
-    // Retorna 500 para o Asaas tentar novamente
+    // Retorna 500 para o Asaas tentar novamente. Como o dedupe NÃO foi gravado
+    // ainda, a retentativa reprocessa normalmente (não fica preso na duplicata).
     return NextResponse.json({ error: "Processing error" }, { status: 500 });
+  }
+
+  // Sucesso: agora sim registra o dedupe, para não reprocessar retentativas.
+  if (dedupeKey) {
+    await (supabase as any).from("webhook_log").insert({
+      provider: "asaas",
+      event_type: event,
+      external_id: dedupeKey,
+    }).then(() => {}, () => {}); // se correr com outra entrega, o unique ignora
   }
 
   return NextResponse.json({ received: true });

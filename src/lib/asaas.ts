@@ -7,10 +7,20 @@
  * Sandbox: https://api-sandbox.asaas.com/v3
  */
 
-const BASE_URL =
-  process.env.ASAAS_ENVIRONMENT === "production"
-    ? "https://api.asaas.com/v3"
-    : "https://api-sandbox.asaas.com/v3";
+/**
+ * Fail-closed: exige ASAAS_ENVIRONMENT explícito. O default silencioso para
+ * sandbox fazia produção sem a env cobrar contra o sandbox — cliente recebia QR
+ * que não podia pagar e a venda se perdia sem erro. Resolvido em runtime (não no
+ * import) para não quebrar o build quando a env não está no ambiente de build.
+ */
+function resolveBaseUrl(): string {
+  const env = process.env.ASAAS_ENVIRONMENT;
+  if (env === "production") return "https://api.asaas.com/v3";
+  if (env === "sandbox") return "https://api-sandbox.asaas.com/v3";
+  throw new Error(
+    `ASAAS_ENVIRONMENT inválido ou ausente ("${env ?? "undefined"}"). Defina "production" ou "sandbox".`,
+  );
+}
 
 const API_KEY = process.env.ASAAS_API_KEY!;
 
@@ -29,7 +39,7 @@ async function asaasRequest<T>(
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 15_000);
 
-      const res = await fetch(`${BASE_URL}${path}`, {
+      const res = await fetch(`${resolveBaseUrl()}${path}`, {
         ...options,
         signal: controller.signal,
         headers: {
@@ -155,7 +165,7 @@ export async function createOrGetCustomer(
     );
     if (search.data?.length > 0) {
       const existing = search.data[0];
-      console.log("[Asaas] Cliente encontrado:", existing.id, "cpfCnpj:", existing.cpfCnpj ?? "VAZIO");
+      console.log("[Asaas] Cliente encontrado:", existing.id, "temCpf:", !!existing.cpfCnpj);
 
       // Atualizar CPF via PUT somente se o cliente não tem e nós temos
       if (input.cpfCnpj && !existing.cpfCnpj) {
@@ -174,7 +184,7 @@ export async function createOrGetCustomer(
     }
   }
 
-  console.log("[Asaas] Criando novo cliente com CPF:", input.cpfCnpj);
+  console.log("[Asaas] Criando novo cliente, temCpf:", !!input.cpfCnpj);
   return asaasRequest<AsaasCustomer>("/customers", {
     method: "POST",
     body: JSON.stringify({

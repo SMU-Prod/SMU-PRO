@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { auth } from "@clerk/nextjs/server";
 import { refundPayment } from "@/lib/asaas";
 import { createNotification } from "@/lib/actions/notifications";
+import { cancelCommissionByEnrollment } from "@/lib/actions/partners";
 
 export async function POST(
   req: Request,
@@ -40,6 +41,9 @@ export async function POST(
       .from("enrollments")
       .update({ status: "cancelado" })
       .eq("id", enrollmentId);
+
+    // Cancela a comissão do parceiro vinculada a esta matrícula.
+    await cancelCommissionByEnrollment(enrollmentId);
 
     // Log
     await supabase.from("activity_log").insert({

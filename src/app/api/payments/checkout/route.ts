@@ -9,7 +9,7 @@ import {
   type AsaasBillingType,
   type AsaasSplitItem,
 } from "@/lib/asaas";
-import { getCourseSplitConfig, registerCommission } from "@/lib/actions/partners";
+import { getCourseSplitConfig } from "@/lib/actions/partners";
 
 /**
  * POST /api/payments/checkout
@@ -158,20 +158,9 @@ export async function POST(req: Request) {
       split: splitItems,
     });
 
-    // 8. Registrar comissão se houver split
-    if (splitConfig) {
-      const taxaEstimada = course.preco * 0.035; // ~3.5% Asaas
-      const valorLiquido = course.preco - taxaEstimada;
-      registerCommission({
-        partnerId: splitConfig.partnerId,
-        enrollmentId,
-        courseId,
-        valorVenda: course.preco,
-        valorLiquido,
-        comissaoPercentual: splitConfig.comissaoPercentual,
-        tipoIndicacao: "organico",
-      }).catch((err) => console.error("[Commission] Erro:", err));
-    }
+    // A comissão NÃO é registrada aqui: só quando o pagamento é confirmado, no
+    // webhook (PAYMENT_RECEIVED/CONFIRMED). Registrar no checkout gerava comissão
+    // fantasma para PIX/boleto abandonado.
 
     // 9. Salvar payment_id no enrollment
     await supabase
