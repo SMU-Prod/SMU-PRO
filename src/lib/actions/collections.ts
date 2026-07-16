@@ -9,7 +9,8 @@ async function assertAdmin() {
   if (!userId) throw new Error("Não autenticado");
   const supabase = createAdminClient();
   const { data: rows } = await supabase
-    .from("users").select("role").eq("clerk_id", userId).limit(1);
+    .from("users").select("role, ativo").eq("clerk_id", userId).limit(1);
+  if (rows?.[0]?.ativo === false) throw new Error("Conta desativada");
   if (rows?.[0]?.role !== "admin") throw new Error("Acesso negado");
   return userId;
 }

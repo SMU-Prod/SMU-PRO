@@ -18,10 +18,11 @@ async function assertAdmin(): Promise<{ userUuid: string; role: string }> {
 
   const supabase = createAdminClient();
   const { data: rows } = await supabase
-    .from("users").select("id, role").eq("clerk_id", userId)
+    .from("users").select("id, role, ativo").eq("clerk_id", userId)
     .order("created_at", { ascending: false }).limit(1);
   const role = rows?.[0]?.role ?? null;
 
+  if (rows?.[0]?.ativo === false) throw new Error("Conta desativada");
   if (role !== "admin" && role !== "content_manager" && role !== "instrutor") {
     throw new Error("Acesso negado: apenas administradores, content managers ou instrutores");
   }
@@ -45,7 +46,8 @@ async function assertAdminOnly() {
 
   const supabase = createAdminClient();
   const { data: rows } = await supabase
-    .from("users").select("role").eq("clerk_id", userId).limit(1);
+    .from("users").select("role, ativo").eq("clerk_id", userId).limit(1);
+  if (rows?.[0]?.ativo === false) throw new Error("Conta desativada");
   if (rows?.[0]?.role !== "admin") throw new Error("Acesso negado: apenas administradores");
   return userId;
 }

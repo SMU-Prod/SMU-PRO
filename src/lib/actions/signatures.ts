@@ -11,10 +11,11 @@ async function requireAdmin() {
   const supabase = createAdminClient();
   const { data: user } = await supabase
     .from("users")
-    .select("id, role")
+    .select("id, role, ativo")
     .eq("clerk_id", userId)
     .single();
   if (!user || user.role !== "admin") throw new Error("Acesso negado");
+  if ((user as any).ativo === false) throw new Error("Conta desativada");
   return { supabase, userId, userUuid: user.id };
 }
 

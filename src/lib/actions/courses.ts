@@ -81,14 +81,16 @@ async function assertAdmin() {
   const supabase = createAdminClient();
   const { data: rows } = await supabase
     .from("users")
-    .select("id, role")
+    .select("id, role, ativo")
     .eq("clerk_id", userId)
     .order("created_at", { ascending: false })
     .limit(1);
-  const role = rows?.[0]?.role ?? null;
+  const user = rows?.[0] ?? null;
 
+  // Conta desativada não assina POSTs (o gate de layout só cobre navegação).
+  if (user?.ativo === false) throw new Error("Conta desativada");
   // Admin, content_manager AND instrutor can manage course content
-  if (role !== "admin" && role !== "content_manager" && role !== "instrutor") {
+  if (user?.role !== "admin" && user?.role !== "content_manager" && user?.role !== "instrutor") {
     throw new Error("Acesso negado: apenas administradores, content managers ou instrutores");
   }
   return userId;
@@ -101,7 +103,8 @@ async function assertAdminOnly() {
 
   const supabase = createAdminClient();
   const { data: rows } = await supabase
-    .from("users").select("role").eq("clerk_id", userId).limit(1);
+    .from("users").select("role, ativo").eq("clerk_id", userId).limit(1);
+  if (rows?.[0]?.ativo === false) throw new Error("Conta desativada");
   if (rows?.[0]?.role !== "admin") throw new Error("Acesso negado: apenas administradores");
   return userId;
 }
