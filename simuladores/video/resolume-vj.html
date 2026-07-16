@@ -155,8 +155,50 @@ var $=function(s,r){return (r||document).querySelector(s);};
 var $$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s));};
 
 var NCOL=6, NLAY=4;
-// clip content library
+// clip content library (fallback desenhado, usado se o clipe real não carregar)
 var PATTERNS=['bars','tunnel','plasma','particles','grid','wave','text','strobe'];
+
+// ---------- CLIPS REAIS (Storage) ----------
+// Igual aos stems do mix-show: o conteúdo é REAL, não desenho. Um <video> oculto por
+// clipe; o composite usa drawImage. crossOrigin ANTES do src (Storage manda CORS) para
+// o canvas não ficar tainted. Se o vídeo falhar, cai no drawPattern() de sempre.
+var VBASE='https://pshynylvvkhhohftouoe.supabase.co/storage/v1/object/public/media/video-sim/';
+// Só entram clipes que EXISTEM no Storage — assim toda célula da grade é vídeo real.
+// Para somar um loop novo: suba em media/video-sim/ e acrescente uma entrada aqui.
+var VJ=[
+  {f:'vj-tunnel.mp4',    n:'TÚNEL NEON'},
+  {f:'vj-particles.mp4', n:'PARTÍCULAS'},
+  {f:'vj-kaleido.mp4',   n:'CALEIDOSCÓPIO'},
+  {f:'vj-waves.mp4',     n:'ONDAS'}
+];
+var vjVid={};
+(function(){
+  var host=document.createElement('div');
+  host.style.cssText='position:fixed;left:-9999px;top:0;width:2px;height:2px;overflow:hidden';
+  document.body.appendChild(host);
+  VJ.forEach(function(v){
+    var el=document.createElement('video');
+    el.crossOrigin='anonymous';
+    el.src=VBASE+v.f; el.loop=true; el.muted=true; el.autoplay=true; el.playsInline=true;
+    el.setAttribute('playsinline',''); el.setAttribute('muted',''); el.preload='auto';
+    host.appendChild(el); vjVid[v.f]=el;
+    var p=el.play(); if(p&&p.catch)p.catch(function(){});
+  });
+  document.addEventListener('pointerdown',function(){
+    VJ.forEach(function(v){ var p=vjVid[v.f].play(); if(p&&p.catch)p.catch(function(){}); });
+  },{once:true});
+})();
+// desenha o clipe: vídeo real (cover) ou, se não houver, o padrão desenhado
+function drawClip(ctx,W,H,clip,t,beatPhase){
+  var v=clip.video && vjVid[clip.video];
+  if(v && v.readyState>=2 && v.videoWidth){
+    var vr=v.videoWidth/v.videoHeight, cr=W/H, sw,sh,sx,sy;
+    if(vr>cr){ sh=v.videoHeight; sw=sh*cr; sx=(v.videoWidth-sw)/2; sy=0; }
+    else { sw=v.videoWidth; sh=sw/cr; sx=0; sy=(v.videoHeight-sh)/2; }
+    try{ ctx.clearRect(0,0,W,H); ctx.drawImage(v,sx,sy,sw,sh,0,0,W,H); return; }catch(e){}
+  }
+  drawPattern(ctx,W,H,clip.pattern,clip.hue,t,beatPhase);
+}
 // build composition: layers[0]=bottom ... layers[NLAY-1]=top
 // each layer: {name, opacity, blend, fx, fxAmt, active:colIndex|null, clips:[{pattern,hue,name}]}
 var LAY_NAMES=['1 · Fundo','2 · Textura','3 · Elementos','4 · Topo/FX'];
@@ -164,8 +206,11 @@ var layers=[];
 for(var l=0;l<NLAY;l++){
   var clips=[];
   for(var c=0;c<NCOL;c++){
-    var pat=PATTERNS[(l*3+c)%PATTERNS.length];
-    clips.push({pattern:pat, hue:(c*55+l*30)%360, name:pat.toUpperCase()+' '+(c+1)});
+    // cada célula recebe um dos clipes REAIS; a combinação (camada+coluna) muda,
+    // então cada coluna vira um "look" diferente quando composta com blend modes.
+    var vj=VJ[(l+c)%VJ.length];
+    var pat=PATTERNS[(l*3+c)%PATTERNS.length]; // fallback se o vídeo não vier
+    clips.push({video:vj.f, name:vj.n, pattern:pat, hue:(c*55+l*30)%360});
   }
   layers.push({name:LAY_NAMES[l], opacity:1, blend:'normal', fx:'none', fxAmt:0.5, active:null, clips:clips});
 }
@@ -288,7 +333,7 @@ function renderFrame(now){
     var clip=L.clips[L.active];
     // draw pattern to offscreen
     offctx.setTransform(1,0,0,1,0,0); offctx.clearRect(0,0,off.width,off.height);
-    drawPattern(offctx,off.width,off.height,clip.pattern,clip.hue,t,beatPhase);
+    drawClip(offctx,off.width,off.height,clip,t,beatPhase);
     // FX on offscreen (re-draw with filter/mirror)
     var srcCanvas=off;
     if(L.fx!=='none'){ srcCanvas=applyFX(off,L,t,beatPhase); }
@@ -318,7 +363,7 @@ function applyFX(src,L,t,beatPhase){
 function updateThumbs(t,beatPhase){
   for(var li=0;li<NLAY;li++)for(var c=0;c<NCOL;c++){
     var cx=clipCanvases[li+'-'+c]; if(!cx)continue; var clip=layers[li].clips[c];
-    drawPattern(cx,96,60,clip.pattern,clip.hue,t*0.6,beatPhase);
+    drawClip(cx,96,60,clip,t*0.6,beatPhase);
   }
 }
 function stepOnce(){ renderFrame._noloop=true; renderFrame(performance.now()); renderFrame._noloop=false; }

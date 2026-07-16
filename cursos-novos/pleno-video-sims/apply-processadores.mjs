@@ -6,6 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { figure } from "./images.mjs";
+import { conferir, conferirQuiz, travaProgresso } from "./_guard.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SIM_DIR = path.resolve(HERE, "../../simuladores");
@@ -44,6 +45,16 @@ const NOVA_SIM = "video/processadores/novastar-novalct.html";
     for(const it of M9){ const f=readFrag(it.frag); const q=readQuiz(it.frag); const s=readSim(it.sim); const dl=(s.match(/href="(https?:\/\/[^"]+)"[^>]*rel="noopener"/)||s.match(/dlbar[^]*?href="(https?:\/\/[^"]+)"/)||[])[1]; console.log(`  ${it.frag}: frag=${f.length}B quiz=${q.questoes.length} sim=${(s.length/1024|0)}KB dl=${dl||'?'}`); }
     console.log("DONE (dry)."); return;
   }
+  // TRAVA 1 — faixa (m9 tem prefixo próprio: 73d00000/73100000).
+  // NOVA_UPGRADE só faz PATCH de sim em aulas já existentes -> nativos.
+  conferir("pleno-video-m9", [MOD9, ...M9.map(m=>m.id)], NOVA_UPGRADE.map(([lid])=>lid));
+  // quiz/questão: espaço que o cartório não modela — conferido à parte.
+  conferirQuiz("pleno-video-m9",
+    M9.map((_,i)=>QID(i+1)),
+    M9.flatMap((_,i)=>readQuiz(M9[i].frag).questoes.map((_,j)=>QQID(i+1,j+1))));
+  // TRAVA 2 — progresso: o DELETE abaixo cascateia.
+  await travaProgresso(req, M9.map(m=>m.id));
+
   // Módulo 9
   await req("DELETE", `/modules?id=eq.${MOD9}`, null, {Prefer:"return=minimal"});
   await post("modules",[{ id:MOD9, course_id:COURSE, titulo:"Módulo 9 — Processadores de LED por Marca (software real)", ordem:9 }]);

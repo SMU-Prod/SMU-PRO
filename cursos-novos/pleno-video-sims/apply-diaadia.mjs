@@ -5,6 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { figure } from "./images.mjs";
+import { conferir, conferirQuiz, travaProgresso } from "./_guard.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SIM_DIR = path.resolve(HERE, "../../simuladores");
@@ -32,6 +33,14 @@ const QQID= (n,j)=>`74300000-0000-4000-9000-00000000${String(n).padStart(2,"0")}
 (async()=>{
   console.log(`== Pleno Vídeo — Dia a Dia (Ligação + Mapeamento) ${DRY?"(DRY)":""} ==`);
   if(DRY){ for(const it of M10){ const f=readFrag(it.frag); const q=readQuiz(it.frag); const s=readSim(it.sim); console.log(`  ${it.frag}: frag=${f.length}B fig=${(f.match(/<figure/g)||[]).length} quiz=${q.questoes.length} sim=${(s.length/1024|0)}KB`); } console.log("DONE (dry)."); return; }
+  // TRAVA 1 — faixa (m10: 74d00000/74100000). TRAVA 2 — progresso (DELETE cascateia).
+  conferir("pleno-video-m10", [MOD10, ...M10.map(m=>m.id)]);
+  // quiz/questão: espaço que o cartório não modela — conferido à parte.
+  conferirQuiz("pleno-video-m10",
+    M10.map((_,i)=>QID(i+1)),
+    M10.flatMap((_,i)=>readQuiz(M10[i].frag).questoes.map((_,j)=>QQID(i+1,j+1))));
+  await travaProgresso(req, M10.map(m=>m.id));
+
   await req("DELETE", `/modules?id=eq.${MOD10}`, null, {Prefer:"return=minimal"});
   await post("modules",[{ id:MOD10, course_id:COURSE, titulo:"Módulo 10 — Ligação e Mapeamento (Trabalhos do Dia a Dia)", ordem:10 }]);
   let n=0;

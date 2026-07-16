@@ -153,10 +153,14 @@
         <div class="selrow"><label>Tipo</label>
           <div class="mini" id="uskType">
             <button data-k="PIP" class="on">PIP / DVE</button>
+            <button data-k="CHROMA">Chroma</button>
             <button data-k="LUMA">Luma</button>
           </div>
         </div>
         <div class="selrow"><label>Fonte (fill)</label><select id="uskSrc"></select></div>
+        <div class="selrow" id="rowSim"><label>Tolerância</label>
+          <input type="range" id="uskSim" min="0" max="100" value="35" style="flex:1;accent-color:var(--key)">
+          <span id="uskSimV" style="font-size:10px;color:var(--key);width:30px;text-align:right">35</span></div>
         <div class="nextt"><button class="keybtn" id="uskOnAir">USK1 ON AIR</button></div>
       </div>
 
@@ -200,13 +204,14 @@ var SRC={
   CAM2:{label:'CAM 2', sub:'VOCAL (close)',   video:'cam2-vocal.mp4'},
   CAM3:{label:'CAM 3', sub:'PLATEIA',         video:'cam3-plateia.mp4'},
   CAM4:{label:'CAM 4', sub:'GUITARRA (det.)', video:'cam4-guitarra.mp4'},
+  PRES:{label:'CAM 5', sub:'REPÓRTER (fundo verde)', video:'cam5-chroma.mp4'},
   MP1:{label:'MP 1', sub:'LOGO', graphic:'logo'},
   MP2:{label:'MP 2', sub:'GC / NOME', graphic:'lower3'},
   BARS:{label:'BARRAS', sub:'GERADOR', graphic:'bars'},
   BLACK:{label:'BLACK', sub:'PRETO', graphic:'black'}
 };
-var BUS=['CAM1','CAM2','CAM3','CAM4','MP1','MP2','BARS','BLACK'];
-var THUMBS=['CAM1','CAM2','CAM3','CAM4','MP1','MP2'];
+var BUS=['CAM1','CAM2','CAM3','CAM4','PRES','MP1','MP2','BARS','BLACK'];
+var THUMBS=['CAM1','CAM2','CAM3','CAM4','PRES','MP1'];
 
 // ---------- vídeos ocultos ----------
 var vids={}, ready=0, needed=0;
@@ -230,9 +235,9 @@ document.addEventListener('pointerdown', kick, {once:true});
 
 // ---------- STATE ----------
 var S={ pgm:'CAM1', pvw:'CAM2', aux:'CAM1', trans:'MIX', rate:15, incBG:true, incKey:false,
-  usk:{type:'PIP', src:'CAM2', onair:false}, dsk1:{src:'MP1',onair:false}, dsk2:{src:'MP2',onair:false},
+  usk:{type:'PIP', src:'CAM2', onair:false, sim:0.35}, dsk1:{src:'MP1',onair:false}, dsk2:{src:'MP2',onair:false},
   ftb:false, tbar:0, busy:false, transP:0,
-  done:{cutOrAuto:false, wipe:false, dve:false, pip:false, luma:false, dsk:false, aux:false, ftb:false, macro:false} };
+  done:{cutOrAuto:false, wipe:false, dve:false, pip:false, chroma:false, luma:false, dsk:false, aux:false, ftb:false, macro:false} };
 
 // ---------- DESENHO DE FONTE ----------
 function drawSrc(ctx,W,H,id){
@@ -264,6 +269,28 @@ function drawLower3(ctx,W,H){
   ctx.fillStyle='#cbd5e1'; ctx.font=Math.round(bh*0.28)+'px Segoe UI';
   ctx.fillText('DIRETOR DE PALCO', bx+10, by+bh*0.82);
 }
+// ---------- CHROMA KEY (de verdade: pixel a pixel) ----------
+// Só é possível porque o <video> usa crossOrigin='anonymous' e o Storage manda
+// Access-Control-Allow-Origin:* — canvas limpo permite getImageData. Sem isso,
+// SecurityError. `willReadFrequently` avisa o browser p/ manter o buffer em RAM.
+var ck=document.createElement('canvas'), ckx=ck.getContext('2d',{willReadFrequently:true});
+function drawChroma(ctx,W,H,srcId,sim){
+  var v=vids[srcId]; if(!v || v.readyState<2) return false;
+  // keia em resolução reduzida (custo por pixel) e escala no destino
+  var kw=Math.min(400,W), kh=Math.round(kw*H/W);
+  if(ck.width!==kw){ ck.width=kw; ck.height=kh; }
+  try{ ckx.drawImage(v,0,0,kw,kh); }catch(e){ return false; }
+  var img; try{ img=ckx.getImageData(0,0,kw,kh); }catch(e){ return false; } // canvas tainted
+  var d=img.data, lim=1+sim*1.2; // sim 0..1 -> tolerância
+  for(var i=0;i<d.length;i+=4){
+    var r=d[i], g=d[i+1], b=d[i+2], m=r>b?r:b;
+    if(g>m*lim && g>55){ d[i+3]=0; }        // verde dominante -> transparente
+    else if(g>m){ d[i+1]=m; }               // spill: mata o verde residual da borda
+  }
+  ckx.putImageData(img,0,0);
+  ctx.drawImage(ck,0,0,kw,kh,0,0,W,H);
+  return true;
+}
 function drawLogoBug(ctx,W,H){
   var w=W*0.16,h=H*0.11,x=W-w-W*0.04,y=H*0.06;
   ctx.fillStyle='#0009'; ctx.fillRect(x,y,w,h);
@@ -292,6 +319,12 @@ function drawPGM(ctx,W,H){
       ctx.save(); ctx.beginPath(); ctx.rect(px,py,pw,ph); ctx.clip(); ctx.translate(px,py);
       drawSrc(ctx,pw,ph,S.usk.src); ctx.restore();
       ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.strokeRect(px,py,pw,ph);
+    } else if(S.usk.type==='CHROMA'){
+      // recorta o verde da fonte e compõe sobre o PGM que já está no canvas
+      if(!drawChroma(ctx,W,H,S.usk.src,S.usk.sim)){
+        ctx.fillStyle='#fca5a5'; ctx.font=Math.round(H*0.05)+'px Segoe UI'; ctx.textAlign='center';
+        ctx.fillText('CHROMA: carregando a CAM 5 (fundo verde)…',W/2,H*0.5); ctx.textAlign='left';
+      }
     } else { // LUMA
       ctx.fillStyle='#fff'; ctx.font='900 '+Math.round(H*0.14)+'px Segoe UI'; ctx.textAlign='center';
       ctx.shadowColor='#000'; ctx.shadowBlur=12; ctx.fillText('◆ AO VIVO',W/2,H*0.5); ctx.shadowBlur=0; ctx.textAlign='left';
@@ -355,7 +388,8 @@ $('#ntKey').onclick=function(){ S.incKey=!S.incKey; log('KEY1 na próxima transi
 $('#btnCut').onclick=function(){ doCut(); };
 $('#btnAuto').onclick=function(){ doAuto(); };
 function swap(){ var o=S.pgm; S.pgm=S.pvw; S.pvw=o; }
-function applyKey(){ if(S.incKey){ S.usk.onair=!S.usk.onair; if(S.usk.onair){ if(S.usk.type==='PIP')S.done.pip=true; if(S.usk.type==='LUMA')S.done.luma=true; } } }
+function marcaUsk(){ if(S.usk.type==='PIP')S.done.pip=true; if(S.usk.type==='CHROMA')S.done.chroma=true; if(S.usk.type==='LUMA')S.done.luma=true; }
+function applyKey(){ if(S.incKey){ S.usk.onair=!S.usk.onair; if(S.usk.onair) marcaUsk(); } }
 function doCut(){ if(S.busy)return; if(S.incBG)swap(); applyKey(); S.done.cutOrAuto=true; S.tbar=0; setTbar(0);
   log('✂ CUT → PGM '+SRC[S.pgm].label,'ok'); rec(['cut']); render(); }
 function doAuto(){
@@ -381,10 +415,14 @@ track.addEventListener('pointerup',function(){ if(!dragging)return; dragging=fal
   if(S.tbar>=0.999){ if(S.incBG)swap(); applyKey(); S.done.cutOrAuto=true; log('T-BAR 100% → PGM '+SRC[S.pgm].label,'ok'); setTbar(0); render(); } });
 function upd(e){ var r=track.getBoundingClientRect(); setTbar(1-(e.clientY-r.top)/r.height); }
 // KEYERS
-$$('#uskType button').forEach(function(b){ b.onclick=function(){ S.usk.type=b.dataset.k; log('USK1 tipo: '+S.usk.type,'info'); render(); }; });
+$$('#uskType button').forEach(function(b){ b.onclick=function(){ S.usk.type=b.dataset.k;
+  // no Chroma a fonte tem que ser a do fundo verde — o ATEM real também exige isso
+  if(S.usk.type==='CHROMA'){ S.usk.src='PRES'; $('#uskSrc').value='PRES'; }
+  log('USK1 tipo: '+S.usk.type,'info'); render(); }; });
 $('#uskSrc').onchange=function(){ S.usk.src=this.value; };
+$('#uskSim').oninput=function(){ S.usk.sim=(+this.value)/100; $('#uskSimV').textContent=this.value; };
 $('#uskOnAir').onclick=function(){ S.usk.onair=!S.usk.onair;
-  if(S.usk.onair){ if(S.usk.type==='PIP')S.done.pip=true; if(S.usk.type==='LUMA')S.done.luma=true; }
+  if(S.usk.onair) marcaUsk();
   log('USK1 '+(S.usk.onair?'NO AR':'off'),S.usk.onair?'ok':'info'); rec(['usk',S.usk.onair]); render(); };
 $('#dsk1Src').onchange=function(){ S.dsk1.src=this.value; };
 $('#dsk2Src').onchange=function(){ S.dsk2.src=this.value; };
@@ -424,6 +462,7 @@ function render(){
   $$('#auxBus .sbtn').forEach(function(b){ b.classList.toggle('aux',b.dataset.src===S.aux); });
   $('#ntBG').classList.toggle('armed',S.incBG); $('#ntKey').classList.toggle('armed',S.incKey);
   $$('#uskType button').forEach(function(b){ b.classList.toggle('on',b.dataset.k===S.usk.type); });
+  $('#rowSim').style.display = (S.usk.type==='CHROMA') ? 'flex' : 'none'; // tolerância só serve p/ chroma
   $('#uskOnAir').classList.toggle('onair',S.usk.onair);
   $('#dsk1On').classList.toggle('onair',S.dsk1.onair); $('#dsk2On').classList.toggle('onair',S.dsk2.onair);
   $('#btnFTB').classList.toggle('on',S.ftb);
@@ -437,6 +476,7 @@ var MISS=[
   {id:'wipe',t:'Experimentar uma transição WIPE'},
   {id:'dve',t:'Experimentar uma transição DVE (push)'},
   {id:'pip',t:'Colocar um PIP no ar (USK) — câmera dentro da câmera'},
+  {id:'chroma',t:'Chroma Key: pôr o repórter (CAM 5) sobre o palco'},
   {id:'luma',t:'Usar o Luma Key (letreiro sobre a imagem)'},
   {id:'dsk',t:'Subir um gráfico (DSK: logo ou GC)'},
   {id:'aux',t:'Roteirizar uma fonte para a saída AUX'},

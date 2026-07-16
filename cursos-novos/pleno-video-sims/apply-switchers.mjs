@@ -6,6 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { figure } from "./images.mjs";
+import { conferir, conferirQuiz, travaProgresso } from "./_guard.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SIM_DIR = path.resolve(HERE, "../../simuladores");
@@ -40,6 +41,15 @@ const ATEM_REPUB = [
 (async()=>{
   console.log(`== Pleno Vídeo — Switchers por Marca ${DRY?"(DRY)":""} ==`);
   if(DRY){ for(const it of M11){ const f=readFrag(it.frag); const q=readQuiz(it.frag); const s=readSim(it.sim); const dl=(s.match(/href="(https?:\/\/[^"]+)"[^>]*rel="noopener"/)||[])[1]; console.log(`  ${it.frag}: frag=${f.length}B quiz=${q.questoes.length} sim=${(s.length/1024|0)}KB dl=${dl||'?'}`); } console.log("DONE (dry)."); return; }
+  // TRAVA 1 — faixa (m11: 75d00000/75100000). ATEM_REPUB só faz PATCH de sim -> nativos.
+  conferir("pleno-video-m11", [MOD11, ...M11.map(m=>m.id)], ATEM_REPUB.map(([lid])=>lid));
+  // quiz/questão: espaço que o cartório não modela — conferido à parte.
+  conferirQuiz("pleno-video-m11",
+    M11.map((_,i)=>QID(i+1)),
+    M11.flatMap((_,i)=>readQuiz(M11[i].frag).questoes.map((_,j)=>QQID(i+1,j+1))));
+  // TRAVA 2 — progresso: o DELETE abaixo cascateia.
+  await travaProgresso(req, M11.map(m=>m.id));
+
   // Módulo 11
   await req("DELETE", `/modules?id=eq.${MOD11}`, null, {Prefer:"return=minimal"});
   await post("modules",[{ id:MOD11, course_id:COURSE, titulo:"Módulo 11 — Switchers / Mesas de Corte por Marca (software real)", ordem:11 }]);

@@ -7,6 +7,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { figure, imgUrl } from "./images.mjs";
+import { conferir, conferirQuiz, travaProgresso } from "./_guard.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SIM_DIR = path.resolve(HERE, "../../simuladores");
@@ -61,11 +62,23 @@ function insertFigure(html, slug){
 (async()=>{
   console.log(`== Pleno Vídeo — integração ${DRY?"(DRY)":""} ==`);
 
+  // TRAVA 1 — faixa: nenhum id fora do espaço do pleno-video (ver _guard.mjs).
+  // Os ids que só levam PATCH (imagens/sims em aulas nativas) entram como `nativos`.
+  const nativos = [...IMG_MAP.map(([lid])=>lid), ...SIM_UPGRADE.map(([lid])=>lid)];
+  conferir("pleno-video", [MOD8, ...M8.map(m=>m.id)], nativos);
+  // quiz/questão vivem num espaço que o cartório não modela — conferidos à parte.
+  conferirQuiz("pleno-video",
+    M8.map((_,i)=>QID(i+1)),
+    M8.flatMap((_,i)=>readQuiz(M8[i].frag).questoes.map((_,j)=>QQID(i+1,j+1))));
+
   if(DRY){
     for(const it of M8){ const f=readFrag(it.frag); const q=readQuiz(it.frag); const s=readSim(it.sim); console.log(`  ${it.frag}: frag=${f.length}B fig=${(f.match(/<figure/g)||[]).length} quiz=${q.questoes.length} sim=${(s.length/1024|0)}KB`); }
     console.log("  IMG_MAP:", IMG_MAP.length, "SIM_UPGRADE:", SIM_UPGRADE.length);
     console.log("DONE (dry)."); return;
   }
+
+  // TRAVA 2 — progresso: o DELETE abaixo cascateia e levaria o histórico do aluno.
+  await travaProgresso(req, M8.map(m=>m.id));
 
   // 1) Módulo 8
   await req("DELETE", `/modules?id=eq.${MOD8}`, null, {Prefer:"return=minimal"});
