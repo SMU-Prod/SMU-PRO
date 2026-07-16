@@ -39,12 +39,16 @@ export async function hasCourseAccessByLesson(
 
   if ((course as any)?.tipo === "free") return true;
 
+  // Também respeita expires_at: matrícula vencida não libera progresso/quiz/IA.
+  // Nenhum job flipa status para "expirado", então o gate autoritativo precisa
+  // checar a data — alinhando com user_has_course_access (SQL) e a UI.
   const { data: enrollment } = await supabase
     .from("enrollments")
     .select("id")
     .eq("user_id", userUuid)
     .eq("course_id", courseId)
     .eq("status", "ativo")
+    .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
     .maybeSingle();
 
   return !!enrollment;
