@@ -4,7 +4,7 @@ import { auth, currentUser, clerkClient } from "@clerk/nextjs/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createNotification } from "@/lib/actions/notifications";
+import { createNotification } from "@/lib/notifications/dispatch";
 import { assertOwner } from "@/lib/auth/owner";
 import { parseProfileUpdate } from "@/lib/validations";
 import type { UserRole } from "@/types/database";

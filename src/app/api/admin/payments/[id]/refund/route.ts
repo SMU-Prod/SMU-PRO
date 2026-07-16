@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { auth } from "@clerk/nextjs/server";
 import { refundPayment } from "@/lib/asaas";
-import { createNotification } from "@/lib/actions/notifications";
-import { cancelCommissionByEnrollment } from "@/lib/actions/partners";
+import { createNotification } from "@/lib/notifications/dispatch";
+import { cancelCommissionByEnrollment } from "@/lib/commissions";
 
 export async function POST(
   req: Request,

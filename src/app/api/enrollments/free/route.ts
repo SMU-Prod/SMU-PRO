@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { sendEnrollmentEmail } from "@/lib/email";
-import { createNotification } from "@/lib/actions/notifications";
+import { createNotification } from "@/lib/notifications/dispatch";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {

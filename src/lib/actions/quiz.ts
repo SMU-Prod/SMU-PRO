@@ -2,7 +2,7 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { createAdminClient } from "@/lib/supabase/server";
-import { createNotification } from "@/lib/actions/notifications";
+import { createNotification } from "@/lib/notifications/dispatch";
 import { generateNRCertForLesson } from "@/lib/actions/progress";
 import { hasCourseAccessByLesson } from "@/lib/actions/access";
 import { computeQuizScore, type ScoringQuestion, type QuizScore } from "@/lib/quiz-scoring";

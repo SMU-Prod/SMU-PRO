@@ -3,7 +3,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { sendCourseCompletionEmail, sendCertificateEmail } from "@/lib/email";
-import { createNotification } from "@/lib/actions/notifications";
+import { createNotification } from "@/lib/notifications/dispatch";
 import { hasCourseAccessByLesson } from "@/lib/actions/access";
 import { computeCertificateEligibility } from "@/lib/certificates";
 import { revalidatePath } from "next/cache";
