@@ -210,7 +210,7 @@ export default async function HomePage() {
               {t("Simuladores e")} <em style={serif} className="not-italic text-amber-400" >{t("animações")}</em> {t("que ensinam fazendo")}
             </SectionHeading>
             <p className="mb-5 text-base text-muted">
-              {t("Aqui do lado é de verdade: mexa numa mesa de som digital (estilo CL5 / DiGiCo) ou numa mesa de luz — arraste os faders, dê mute/solo, toque o mix ou acenda o palco. É assim que a plataforma ensina: mexendo antes de encostar no equipamento real.")}
+              {t("Ao lado, é de verdade: opere uma mesa de som digital (estilo CL5 / DiGiCo) ou uma mesa de luz — arraste os faders, use mute e solo, toque o mix ou acenda o palco. É assim que a plataforma ensina: praticando antes de encostar no equipamento real.")}
             </p>
             <Bullets items={[
               [t("Mesa de som digital"), t("canais, faders, meters, mute e solo como numa CL5 / DiGiCo.")],
@@ -229,7 +229,7 @@ export default async function HomePage() {
               {t("Aulas e palestras")} <em style={serif} className="not-italic text-amber-400">{t("ao vivo")}</em>
             </SectionHeading>
             <p className="mb-5 text-base text-muted">
-              {t("Aulas, workshops e podcasts transmitidos ao vivo, com chat em tempo real direto com quem trabalha no mercado. Perdeu? Fica gravado na sua trilha.")}
+              {t("Aulas, workshops e podcasts transmitidos ao vivo, com chat em tempo real direto com quem trabalha no mercado. Não pôde assistir? Fica gravado na sua trilha.")}
             </p>
             <Bullets items={[
               [t("Chat ao vivo"), t("tire dúvidas durante a transmissão.")],
@@ -286,11 +286,11 @@ export default async function HomePage() {
               {t("Um")} <em style={serif} className="not-italic text-amber-400">{t("tutor com IA")}</em> {t("e narração em áudio")}
             </SectionHeading>
             <p className="mb-5 text-base text-muted">
-              {t("Travou numa aula? O tutor explica no contexto do vídeo — clique numa pergunta e veja. E toda aula pode ser ouvida narrada: dá play no player.")}
+              {t("Ficou com dúvida numa aula? O tutor explica no contexto do vídeo — clique numa pergunta e veja. E toda aula pode ser ouvida narrada: é só dar play.")}
             </p>
             <Bullets items={[
               [t("Explicador com IA"), t("respostas ligadas ao timestamp.")],
-              [t("Narração em áudio"), t("cada aula vira podcast pra ouvir.")],
+              [t("Narração em áudio"), t("cada aula vira podcast para ouvir.")],
               [t("Anotações no player"), t("no momento exato do vídeo.")],
             ]} />
           </div>
@@ -310,7 +310,7 @@ export default async function HomePage() {
           <div className="relative grid gap-9 md:grid-cols-3">
             <div className="absolute left-[16%] right-[16%] top-[34px] z-0 hidden h-0.5 bg-gradient-to-r from-amber-700 via-amber-500 to-amber-300 opacity-50 md:block" />
             {[
-              ["1", t("Trainee"), t("Fundamentos e segurança. Pra quem começa do zero."), t("Introdução · NR's · Panorama")],
+              ["1", t("Trainee"), t("Fundamentos e segurança. Para quem começa do zero."), t("Introdução · NR's · Panorama")],
               ["2", t("Junior"), t("Técnica por área: som, luz, DJ, vídeo e efeitos."), t("DJ · Luz · Som · Vídeo · Eletrônica")],
               ["3", t("Pleno"), t("Domínio avançado e atuação profissional."), t("Pleno Som · Luz · Vídeo · Efeito · Rigging")],
             ].map(([num, title, desc, cnt]) => (
@@ -353,12 +353,12 @@ export default async function HomePage() {
               {t("Certificado com")} <em style={serif} className="not-italic text-amber-400">{t("QR verificável")}</em>
             </SectionHeading>
             <p className="mb-5 text-base text-muted">
-              {t("Cada certificado tem um QR único. Qualquer contratante confere a autenticidade em segundos. Clique em verificar pra ver como funciona.")}
+              {t("Cada certificado tem um QR único. Qualquer contratante confere a autenticidade em segundos. Clique em verificar para ver como funciona.")}
             </p>
             <Bullets items={[
               [t("QR único por certificado"), t("impossível de falsificar.")],
               [t("Nota do quiz no documento"), t("mostra domínio real.")],
-              [t("Programa MIT"), t("acesso gratuito pra alunos do Projeto Cultural.")],
+              [t("Programa MIT"), t("acesso gratuito para alunos do Projeto Cultural.")],
             ]} />
           </div>
           <div className="lg:order-1"><CertCard logoSrc={LOGO} /></div>
