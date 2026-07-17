@@ -15,6 +15,10 @@ describe("cleanTitle", () => {
     expect(cleanTitle("Simulador — grandMA3 (réplica funcional)")).toBe("grandMA3");
     expect(cleanTitle("SMU PRO · Briefing — as perguntas e os buracos")).toBe("Briefing — as perguntas e os buracos");
   });
+  it("remove sufixo '— Simulador fiel' e decodifica entidades", () => {
+    expect(cleanTitle("Behringer X32 / Midas M32 — Simulador fiel")).toBe("Behringer X32 / Midas M32");
+    expect(cleanTitle("Allen &amp; Heath SQ — Simulador fiel")).toBe("Allen & Heath SQ");
+  });
   it("cai no fallback quando vazio", () => {
     expect(cleanTitle("")).toBe("Simulador");
   });

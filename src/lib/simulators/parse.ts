@@ -13,10 +13,15 @@ export function slugify(s: string): string {
 // prefixos "SMU PRO ·", e "Simulador —"/"— Simulador".
 export function cleanTitle(raw: string): string {
   let t = (raw ?? "").trim();
+  // Decodifica entidades HTML comuns (o <title> vem com &amp; etc.).
+  t = t
+    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, " ");
   t = t.replace(/^SMU\s*PRO\s*·\s*/i, "");
   t = t.replace(/\((?:[^)]*\bSMU\b[^)]*|réplica[^)]*)\)\s*$/i, "").trim();
   t = t.replace(/^simulador\s*[—-]\s*/i, "").trim();
-  t = t.replace(/\s*[—-]\s*simulador$/i, "").trim();
+  // Remove sufixos "— Simulador", "— Simulador fiel/SMU/real" no fim.
+  t = t.replace(/\s*[—-]\s*simulador(?:\s+(?:fiel|smu|real))?$/i, "").trim();
   return t || "Simulador";
 }
 
