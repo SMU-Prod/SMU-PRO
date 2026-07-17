@@ -15,18 +15,18 @@ const BARS = Array.from({ length: 48 }, (_, i) =>
 
 const ANSWERS: Record<string, string> = {
   "Qual a diferença entre PA e monitor?":
-    "A PA é o som que vai pro público; o monitor (ou retorno) é o som que o artista ouve no palco. São mixes diferentes — o público quer a mistura final, o músico quer se ouvir. Veja em 04:12 na aula.",
+    "A PA é o som que vai para o público; o monitor (ou retorno) é o som que o artista ouve no palco. São mixes diferentes — o público quer a mistura final, o músico quer se ouvir. Veja em 04:12 na aula.",
   "O que é gate no som ao vivo?":
-    "Gate é um \"portão\" que só deixa passar o som acima de um limiar. Serve pra cortar vazamento e ruído entre as batidas — clássico na bateria. Ajuste o threshold com cuidado pra não comer o ataque.",
+    "Gate é um \"portão\" que só deixa passar o som acima de um limiar. Serve para cortar vazamento e ruído entre as batidas — clássico na bateria. Ajuste o threshold com cuidado para não comer o ataque.",
   "Como escolher um moving head?":
-    "Olhe 3 coisas: tipo (beam, spot ou wash), potência/alcance pro tamanho do palco, e recursos (gobo, zoom, CMY). Pra igreja/bar um wash LED resolve; pra show grande, beam de alta potência.",
+    "Olhe 3 coisas: tipo (beam, spot ou wash), potência/alcance para o tamanho do palco, e recursos (gobo, zoom, CMY). Para igreja ou bar, um wash LED resolve; para show grande, beam de alta potência.",
 };
 
 type Row = { who: "ia" | "us"; text: string; typing?: boolean };
 
 export function AiTutor() {
   const [rows, setRows] = useState<Row[]>([
-    { who: "ia", text: "Oi! Sou o tutor da SMU. Toca numa dúvida abaixo que eu explico. 👇" },
+    { who: "ia", text: "Olá! Sou o tutor da SMU. Toque numa dúvida abaixo que eu explico. 👇" },
   ]);
   const [typing, setTyping] = useState(false);
   const areaRef = useRef<HTMLDivElement>(null);
