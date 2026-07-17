@@ -108,10 +108,7 @@ export default async function HomePage() {
         <div className="mx-auto flex h-[70px] max-w-6xl items-center justify-between px-6">
           <div className="flex items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={LOGO} alt="SMU Produções" className="h-11 w-auto" />
-            <span className="hidden items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold tracking-wider text-amber-400 sm:flex">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-400" /> MIT
-            </span>
+            <img src={LOGO} alt="SMU Produções" className="nav-logo h-11 w-auto" />
           </div>
           <div className="hidden items-center gap-8 text-sm text-muted md:flex">
             <Link href="#ao-vivo" className="transition-colors hover:text-amber-400">{t("Ao vivo")}</Link>
