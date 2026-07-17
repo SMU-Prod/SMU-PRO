@@ -12,10 +12,13 @@ function slugify(s) {
 }
 function cleanTitle(raw) {
   let t = (raw ?? "").trim();
+  t = t
+    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, " ");
   t = t.replace(/^SMU\s*PRO\s*·\s*/i, "");
   t = t.replace(/\((?:[^)]*\bSMU\b[^)]*|réplica[^)]*)\)\s*$/i, "").trim();
   t = t.replace(/^simulador\s*[—-]\s*/i, "").trim();
-  t = t.replace(/\s*[—-]\s*simulador$/i, "").trim();
+  t = t.replace(/\s*[—-]\s*simulador(?:\s+(?:fiel|smu|real))?$/i, "").trim();
   return t || "Simulador";
 }
 function deriveSegment(top) {

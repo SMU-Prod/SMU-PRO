@@ -31,6 +31,7 @@ import {
   Wallet,
   Music,
   Radio,
+  Gamepad2,
 } from "lucide-react";
 
 interface NavItem {
@@ -44,6 +45,7 @@ const studentNav: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Meus Cursos", href: "/dashboard/cursos", icon: BookOpen },
   { label: "Ao Vivo", href: "/ao-vivo", icon: Radio },
+  { label: "Simuladores", href: "/simuladores", icon: Gamepad2 },
   { label: "Trilha de Aprendizado", href: "/dashboard/trilha", icon: TrendingUp },
   { label: "Certificados", href: "/dashboard/certificados", icon: Award },
   { label: "Pagamentos", href: "/dashboard/pagamentos", icon: CreditCard },

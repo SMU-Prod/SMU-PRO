@@ -4,7 +4,7 @@ import type { Simulator } from "./types";
 export const SIMULATORS: Simulator[] = [
   {
     "id": "dj-akai-mpc-real",
-    "titulo": "Akai MPC — programe, toque e monte a cena — Simulador fiel",
+    "titulo": "Akai MPC — programe, toque e monte a cena",
     "segmento": "dj",
     "nivel": "avancado",
     "tipo": "real",
@@ -12,7 +12,7 @@ export const SIMULATORS: Simulator[] = [
   },
   {
     "id": "dj-pioneer-djm-v10-real",
-    "titulo": "Cabine 6 canais — 2× CDJ-3000 + DJM-V10 — Simulador fiel",
+    "titulo": "Cabine 6 canais — 2× CDJ-3000 + DJM-V10",
     "segmento": "dj",
     "nivel": "avancado",
     "tipo": "real",
@@ -20,7 +20,7 @@ export const SIMULATORS: Simulator[] = [
   },
   {
     "id": "dj-pioneer-cdj2000-djm900-real",
-    "titulo": "Cabine clássica — 2× CDJ-2000NXS2 + DJM-900NXS2 — Simulador fiel",
+    "titulo": "Cabine clássica — 2× CDJ-2000NXS2 + DJM-900NXS2",
     "segmento": "dj",
     "nivel": "avancado",
     "tipo": "real",
@@ -28,7 +28,7 @@ export const SIMULATORS: Simulator[] = [
   },
   {
     "id": "dj-pioneer-cdj-djm-real",
-    "titulo": "Cabine de DJ — 2× CDJ-3000 + DJM-A9 — Simulador fiel",
+    "titulo": "Cabine de DJ — 2× CDJ-3000 + DJM-A9",
     "segmento": "dj",
     "nivel": "avancado",
     "tipo": "real",
@@ -52,7 +52,7 @@ export const SIMULATORS: Simulator[] = [
   },
   {
     "id": "dj-denon-prime4-real",
-    "titulo": "Denon Prime 4+ — All-in-One 4 decks — Simulador fiel",
+    "titulo": "Denon Prime 4+ — All-in-One 4 decks",
     "segmento": "dj",
     "nivel": "avancado",
     "tipo": "real",
@@ -116,7 +116,7 @@ export const SIMULATORS: Simulator[] = [
   },
   {
     "id": "dj-pioneer-xdj-rx2-real",
-    "titulo": "Pioneer XDJ-RX2 — All-in-One — Simulador fiel",
+    "titulo": "Pioneer XDJ-RX2 — All-in-One",
     "segmento": "dj",
     "nivel": "avancado",
     "tipo": "real",
@@ -140,7 +140,7 @@ export const SIMULATORS: Simulator[] = [
   },
   {
     "id": "dj-roland-sp404-real",
-    "titulo": "Roland SP-404MKII — sampler de performance — Simulador fiel",
+    "titulo": "Roland SP-404MKII — sampler de performance",
     "segmento": "dj",
     "nivel": "avancado",
     "tipo": "real",
@@ -148,7 +148,7 @@ export const SIMULATORS: Simulator[] = [
   },
   {
     "id": "dj-smu-dj-studio-real",
-    "titulo": "SMU DJ Studio — Pen Drive + Cabine (músicas reais) — Simulador fiel",
+    "titulo": "SMU DJ Studio — Pen Drive + Cabine (músicas reais)",
     "segmento": "dj",
     "nivel": "avancado",
     "tipo": "real",
@@ -164,7 +164,7 @@ export const SIMULATORS: Simulator[] = [
   },
   {
     "id": "dj-turntable-scratch-real",
-    "titulo": "Toca-discos + Scratch — 2× Technics SL-1200MK7 — Simulador fiel",
+    "titulo": "Toca-discos + Scratch — 2× Technics SL-1200MK7",
     "segmento": "dj",
     "nivel": "avancado",
     "tipo": "real",
@@ -844,7 +844,7 @@ export const SIMULATORS: Simulator[] = [
   },
   {
     "id": "producao-m10-desmontagem-e-fechamento-financeiro-pos-ev",
-    "titulo": "Desmontagem &amp; Fechamento Financeiro",
+    "titulo": "Desmontagem & Fechamento Financeiro",
     "segmento": "producao",
     "nivel": "legado",
     "tipo": "sim",
@@ -1076,7 +1076,7 @@ export const SIMULATORS: Simulator[] = [
   },
   {
     "id": "som-allen-heath-sq-real",
-    "titulo": "Allen &amp; Heath SQ — Simulador fiel",
+    "titulo": "Allen & Heath SQ",
     "segmento": "som",
     "nivel": "avancado",
     "tipo": "real",
@@ -1092,7 +1092,7 @@ export const SIMULATORS: Simulator[] = [
   },
   {
     "id": "som-behringer-x32-real",
-    "titulo": "Behringer X32 / Midas M32 — Simulador fiel",
+    "titulo": "Behringer X32 / Midas M32",
     "segmento": "som",
     "nivel": "avancado",
     "tipo": "real",
@@ -1108,7 +1108,7 @@ export const SIMULATORS: Simulator[] = [
   },
   {
     "id": "som-dbx-venu360-real",
-    "titulo": "dbx DriveRack VENU360 — simulador SMU",
+    "titulo": "dbx DriveRack VENU360",
     "segmento": "som",
     "nivel": "avancado",
     "tipo": "real",
@@ -1116,7 +1116,7 @@ export const SIMULATORS: Simulator[] = [
   },
   {
     "id": "som-digico-sd-real",
-    "titulo": "DiGiCo Quantum 338 — Simulador fiel",
+    "titulo": "DiGiCo Quantum 338",
     "segmento": "som",
     "nivel": "avancado",
     "tipo": "real",
@@ -1228,7 +1228,7 @@ export const SIMULATORS: Simulator[] = [
   },
   {
     "id": "som-soundcraft-signature-real",
-    "titulo": "Soundcraft Signature 22 MTK — Simulador fiel",
+    "titulo": "Soundcraft Signature 22 MTK",
     "segmento": "som",
     "nivel": "avancado",
     "tipo": "real",
@@ -1236,7 +1236,7 @@ export const SIMULATORS: Simulator[] = [
   },
   {
     "id": "som-soundcraft-ui24r-real",
-    "titulo": "Soundcraft Ui24R — Simulador fiel",
+    "titulo": "Soundcraft Ui24R",
     "segmento": "som",
     "nivel": "avancado",
     "tipo": "real",
@@ -1252,7 +1252,7 @@ export const SIMULATORS: Simulator[] = [
   },
   {
     "id": "som-yamaha-dm7-real",
-    "titulo": "Yamaha DM7 — Simulador fiel",
+    "titulo": "Yamaha DM7",
     "segmento": "som",
     "nivel": "avancado",
     "tipo": "real",
@@ -1260,7 +1260,7 @@ export const SIMULATORS: Simulator[] = [
   },
   {
     "id": "som-yamaha-tf5-real",
-    "titulo": "Yamaha TF5 — Simulador fiel",
+    "titulo": "Yamaha TF5",
     "segmento": "som",
     "nivel": "avancado",
     "tipo": "real",
