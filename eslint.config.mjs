@@ -28,6 +28,7 @@ const eslintConfig = defineConfig([
     // do app Next e não deve ser lintado com as regras do app.
     "simuladores/**",
     "cursos-novos/**",
+    "public/simuladores/**",
   ]),
 ]);
 
