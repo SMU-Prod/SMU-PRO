@@ -104,10 +104,8 @@ function SidebarContent({ role, isAdmin, isContentManager, isInstructor, navItem
       {/* Logo */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-border">
         <div className="flex items-center gap-2.5">
-          <div className="shrink-0 text-center">
-            <p className="text-2xl leading-none gradient-text" style={{ fontFamily: "var(--font-instrument-serif), serif" }}>SMU</p>
-            <p className="text-[5.5px] font-medium tracking-[0.15em] text-muted-light leading-none mt-0.5" style={{ fontFamily: "var(--font-orbitron), sans-serif" }}>PRODUÇÕES</p>
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-smu.png" alt="SMU Produções" className="nav-logo h-9 w-auto shrink-0" />
           <div className="h-8 w-px bg-border" />
           <p className="text-[10px] text-muted-light leading-tight">
             {t(isAdmin ? "Painel Admin" : isContentManager ? "Gestão de Conteúdo" : isInstructor ? "Painel Instrutor" : "Plataforma de Cursos")}
