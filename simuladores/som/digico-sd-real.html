@@ -188,7 +188,7 @@
   .console:not(.stacked){touch-action:none}
   body:not(.stacked){touch-action:none}
   /* stacked (phone) */
-  .console.stacked{width:auto;max-width:700px;height:auto;transform:none!important;touch-action:auto}
+  .console.stacked{width:100%;max-width:100vw;height:auto;transform:none!important;touch-action:auto;overflow-x:hidden}
   .console.stacked .back{grid-template-columns:1fr}
   .console.stacked .strip{width:38px}
   body.stacked{overflow:auto}
@@ -271,6 +271,12 @@
   .console.stacked .scrpanel,.console.stacked .fbank,.console.stacked .mfooter{margin-bottom:8px}
   .console.stacked .mfooter{flex-wrap:wrap}
   .console.stacked .fbank .strip{width:34px}
+  /* phone: a 12-fader bank is wider than the screen — swipe it at full size instead of
+     squeezing labels. Each row scrolls inside itself; the PAGE never scrolls sideways. */
+  .console.stacked .fbank .strips{overflow-x:auto;overflow-y:hidden;justify-content:flex-start;flex:0 0 auto}
+  .console.stacked .fbank .strips::-webkit-scrollbar{height:3px}
+  .console.stacked .mstrips{overflow-x:auto;overflow-y:hidden}
+  .console.stacked .mfooter .rk.macros{min-width:0}
 </style>
 </head>
 <body>
@@ -1363,7 +1369,7 @@
   /* ================= AUDIO ENGINE (preserved from working sim) ================= */
   const SB="https://pshynylvvkhhohftouoe.supabase.co/storage/v1/object/public/media/";
   const sg=(n,c,f,p,h)=>({n,c,f,p,h});
-  const SONGS=[
+  let SONGS=[
     {label:"Pagodão — Tá Sozinha", folder:"mix-pagodao-tasozinha", stems:[
       sg("Bumbo","#e0483f","BB.mp3",0,false),sg("Caixa","#f97316","CX.mp3",0,true),sg("Surdo 1","#22a8c0","SD_1.mp3",-8,false),sg("Surdo 2","#eab308","SD_2.mp3",8,false),
       sg("Chimbal","#84cc16","HH.mp3",-15,true),sg("Repique","#3ad07a","REP.mp3",12,true),sg("Rototom","#14b8a6","ROTANTAN.mp3",-10,true),sg("Timbau","#39c0e6","TIMBAL.mp3",10,true),
@@ -1522,7 +1528,7 @@
     const song=SONGS[curSong],base=SB+song.folder+"/",tok=++loadTok; setStatus("carregando "+song.label+"…","#22a8c0");
     let bufs; try{ bufs=await Promise.all(song.stems.map(st=>loadBuf(base+st.f))); }catch(e){ setStatus("erro: "+e.message,"#e0483f"); return; }
     if(tok!==loadTok)return; stopSong(true); const t0=ac.currentTime+0.12;
-    song.stems.forEach((st,i)=>{ if(i>=N_CH||!aNodes[i])return; const src=ac.createBufferSource(); src.buffer=bufs[i]; src.loop=true; src.connect(aNodes[i].trim); src.start(t0); realSources.push(src); });
+    song.stems.forEach((st,i)=>{ if(i>=N_CH||!aNodes[i])return; const src=ac.createBufferSource(); src.buffer=bufs[i]; src.loop=true; if(bufs.__le===undefined){var _m=1e9;for(var _k=0;_k<bufs.length;_k++){if(bufs[_k]&&bufs[_k].duration<_m)_m=bufs[_k].duration;}bufs.__le=_m;} if(bufs.__le>0.5&&bufs.__le<1e8){src.loopStart=0;src.loopEnd=bufs.__le;} src.connect(aNodes[i].trim); src.start(t0); realSources.push(src); });
     for(let i=0;i<N_CH;i++)applyChanAudio(i); playing=true; setPlayBtn(true); setStatus("tocando ♪ "+song.label,"#3ad07a"); }
   function stopSong(keep){ realSources.forEach(s=>{try{s.stop();}catch(e){}}); realSources=[]; playing=false; setPlayBtn(false); if(!keep)setStatus("parado"); }
 
@@ -1547,6 +1553,36 @@
     const pb=$("#playBtn"); if(pb){ pb.onclick=()=>{ if(playing)stopSong(); else playSong(); }; } })();
   buildBay(); loadSong(0); try{ buildAudioGraph(); }catch(e){}
   updateSofUi(); paintMission(); paintRightRack();
+
+  /* ===== BASES EM RUNTIME (SMU) — catálogo público media/bases.json (sem chave).
+     Substitui SONGS se vier; senão mantém o fallback embutido. A mesa usa os
+     primeiros N_CH canais da base (como um console real sem patch). ===== */
+  (function loadBasesRuntime(){
+    fetch(SB+"bases.json?t="+Date.now(),{cache:"no-store"})
+      .then(function(r){ return r.ok? r.json() : Promise.reject(r.status); })
+      .then(function(rows){
+        if(!Array.isArray(rows)||!rows.length) return;
+        var mapped=rows.map(function(r){
+          var stems=(r.stems||[]).filter(function(s){return s&&s.a!==false;})
+            .map(function(s){return {n:s.n,c:s.c,f:s.f,p:s.p,h:s.h};});
+          return {label:r.label, folder:r.folder, stems:stems};
+        }).filter(function(s){return s.stems.length;});
+        if(!mapped.length) return;
+        SONGS=mapped;
+        try{ var sel=document.getElementById("songSel");
+          if(sel){ sel.innerHTML=""; SONGS.forEach(function(s,i){
+            var o=document.createElement("option"); o.value=i;
+            var extra=(s.stems.length>N_CH)?(" — "+s.stems.length+" faixas (esta mesa usa "+N_CH+")"):"";
+            o.textContent=s.label+extra; sel.appendChild(o); }); sel.value=0; }
+        }catch(e){}
+        try{ var w=(typeof playing!=="undefined"&&playing);
+          if(typeof stopSong==="function") stopSong(true);
+          if(typeof loadSong==="function") loadSong(0);
+          if(w&&typeof playSong==="function") playSong();
+        }catch(e){}
+      })
+      .catch(function(){ /* mantém o fallback embutido */ });
+  })();
 
   /* ===== read-only verification hook (headless QA only; no effect on audio) ===== */
   window.__dg={

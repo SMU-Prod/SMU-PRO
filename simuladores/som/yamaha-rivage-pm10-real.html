@@ -185,10 +185,22 @@
   .console.stacked{width:100%;max-width:100%;height:auto;transform:none!important;touch-action:auto}
   .console.stacked .util,.console.stacked .bridge,.console.stacked .back,.console.stacked .front{width:100%;max-width:100%}
   .console.stacked .back{grid-template-columns:1fr}
-  .console.stacked .strip{width:38px}
+  .console.stacked .strip{width:66px;padding:6px 4px}
   .console.stacked .front{overflow-x:auto;-webkit-overflow-scrolling:touch}
   .console.stacked .bay{justify-content:flex-start;min-width:max-content}
   body.stacked{overflow:auto;overflow-x:hidden}
+  /* ===== CELULAR: alvos tocáveis (>=24px) e rótulos legíveis (>=12px) ===== */
+  .console.stacked .lcd{height:28px}
+  .console.stacked .lcd .cn{font-size:12px}
+  .console.stacked .sbtn{font-size:12px;padding:8px 0;min-height:28px}
+  .console.stacked .row2{gap:5px}
+  .console.stacked .fzone{min-height:180px}
+  .console.stacked .fader{width:30px}
+  .console.stacked .cap{height:26px}
+  .console.stacked .db{font-size:12px}
+  .console.stacked .tabs{gap:6px}
+  .console.stacked .tab{font-size:12px;padding:9px 12px;min-height:32px}
+  .console.stacked .screen-bezel{min-height:320px}
 </style>
 </head>
 <body>
@@ -636,17 +648,18 @@
 
   /* ================= SCREENS (dual 12" + 7" utility) ================= */
   // current-bound target aliases
-  let cv=null,ctx=null,W=0,H=0,hitRegions=[];
-  function bindScreen(s){ cv=s.cv; ctx=s.ctx; W=s.W; H=s.H; hitRegions=s.hitRegions; }
+  let cv=null,ctx=null,W=0,H=0,hitRegions=[],SFIT={s:1,ox:0,oy:0};
+  function bindScreen(s){ cv=s.cv; ctx=s.ctx; W=s.W; H=s.H; hitRegions=s.hitRegions; SFIT=s.sfit||{s:1,ox:0,oy:0}; }
   function reg(o){ hitRegions.push(o); return o; }
   // CH VIEW "toque no campo p/ abrir a página" (igual à RIVAGE PM Editor real).
   // Registrado ANTES dos controles do painel: o hit-test corre do último p/ o primeiro,
   // então botões/thumbs desenhados depois mantêm prioridade. Só o fundo do campo navega.
   function navField(x,y,w,h,mode){ reg({x,y,w,h,nav:mode,onDown:()=>setMode(mode)}); }
   function inRegion(r,p){ if(r.hit==='circle')return Math.hypot(p.x-r.cx,p.y-r.cy)<=(r.rr||12); return p.x>=r.x&&p.x<=r.x+r.w&&p.y>=r.y&&p.y<=r.y+r.h; }
-  function evtPos(e){ const r=cv.getBoundingClientRect(); return {x:e.clientX-r.left,y:e.clientY-r.top}; }
+  function evtPos(e){ const r=cv.getBoundingClientRect();
+    return {x:((e.clientX-r.left)-SFIT.ox)/SFIT.s, y:((e.clientY-r.top)-SFIT.oy)/SFIT.s}; }
   function makeScreen(id,getMode){ const c=document.getElementById(id), cx=c.getContext("2d");
-    const s={cv:c,ctx:cx,W:0,H:0,DPR:1,hitRegions:[],active:null,getMode};
+    const s={cv:c,ctx:cx,W:0,H:0,DPR:1,hitRegions:[],active:null,getMode,sfit:{s:1,ox:0,oy:0}};
     c.addEventListener("pointerdown",e=>{ bindScreen(s); const p=evtPos(e);
       for(let i=s.hitRegions.length-1;i>=0;i--){ const r=s.hitRegions[i]; if(inRegion(r,p)){ if(r.onDown)r.onDown(p);
         if(r.onDrag){ s.active=r; c.setPointerCapture(e.pointerId); r.onDrag(p); } drawScreen(); e.preventDefault(); return; } } });
@@ -674,7 +687,7 @@
     const g=ctx.createLinearGradient(0,y,0,y+h); if(active){ g.addColorStop(0,col); g.addColorStop(1,shade(col,-30)); } else { g.addColorStop(0,"#2a4a68"); g.addColorStop(1,"#1a3350"); }
     ctx.fillStyle=g; roundRect(x,y,w,h,5); ctx.fill(); ctx.strokeStyle=active?shade(col,-40):"#3a6188"; ctx.lineWidth=1; roundRect(x+.5,y+.5,w-1,h-1,5); ctx.stroke();
     ctx.fillStyle=active?"#0b1420":"#cfe0f0"; ctx.font="700 "+(small?9:10)+"px Inter,system-ui"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(label,x+w/2,y+h/2+.5); ctx.textBaseline="alphabetic";
-    if(onClick) reg({x,y,w,h,onDown:()=>onClick()}); }
+    if(onClick) reg({x,y,w,h,label:String(label),onDown:()=>onClick()}); }
   function shade(hex,amt){ const h=hex.replace('#',''); let r=parseInt(h.substr(0,2),16),g=parseInt(h.substr(2,2),16),b=parseInt(h.substr(4,2),16);
     r=clamp(r+amt,0,255);g=clamp(g+amt,0,255);b=clamp(b+amt,0,255); return "#"+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join(''); }
   function scrParam(x,y,w,label,val,min,max,fmt,onSet,opts){ opts=opts||{};
@@ -696,16 +709,26 @@
   qsa('.tabB[data-mode]').forEach(t=>t.onclick=()=>setModeB(t.dataset.mode));
   $("#sofBtn").onclick=()=>{ if(state.sof>=0){ state.sof=-1; updateSofUi(); paintBay(); drawScreen(); } else { engageSof('mix',0); } };
 
-  function renderScreen(s){ if(!s.W)return; bindScreen(s); s.hitRegions.length=0; ctx.clearRect(0,0,W,H); scrBg();
+  // Fit-transform por tela: páginas de edição que desenhavam mais alto que a altura útil do
+  // canvas ficavam com os controles de baixo recortados/inclicáveis. Desenhamos na altura
+  // NATURAL e escalamos p/ caber (aspecto preservado, centralizado). Páginas que já cabem: s=1.
+  const NAT_H={};
+  function renderScreen(s){ if(!s.W)return; bindScreen(s); s.hitRegions.length=0;
+    ctx.setTransform(s.DPR,0,0,s.DPR,0,0); ctx.clearRect(0,0,W,H); scrBg();
     const mode=s.getMode();
-    if(mode==='util'){ drawUtil(); return; }
-    switch(mode){
+    const nat=NAT_H[mode]||0; const dH=Math.max(H,nat);
+    const sc=nat>0?Math.min(1,(H-3)/dH):1;
+    s.sfit={s:sc,ox:(W-W*sc)/2,oy:0}; SFIT=s.sfit;
+    ctx.setTransform(s.DPR*sc,0,0,s.DPR*sc, s.DPR*s.sfit.ox, s.DPR*s.sfit.oy);
+    const _H=H; H=dH;
+    if(mode==='util'){ drawUtil(); }
+    else { switch(mode){
       case "selected": drawSelCh(); break; case "overview": drawOverview(); break;
       case "eq": drawEQ(); break; case "gate": drawGate(); break; case "comp": drawComp(); break;
       case "sends": drawSends(); break; case "dca": drawDCA(); break; case "fx": drawFX(); break;
       case "scenes": drawScenes(); break; case "meter": drawMeter(); break; default: drawSelCh();
-    }
-    drawFnAccess();
+    } drawFnAccess(); }
+    H=_H; ctx.setTransform(s.DPR,0,0,s.DPR,0,0);
   }
   paintScreens=function(){ renderScreen(screenA); renderScreen(screenB); renderScreen(screenU); };
 
@@ -1217,9 +1240,9 @@
   (function loadBasesRuntime(){
     var SB_ANON="__SMU_SUPABASE_ANON_KEY__"; /* chave anon pública — troque pela do app (1x) */
     try{ if(typeof window!=="undefined" && window.__SMU_SB_ANON) SB_ANON=window.__SMU_SB_ANON; }catch(e){}
-    if(!SB_ANON || SB_ANON.indexOf("__SMU")===0) return; /* sem chave -> fica no fallback */
+    /* keyless: le o catalogo publico media/bases.json */ /* sem chave -> fica no fallback */
     var ROOT=(SB||"").replace("/storage/v1/object/public/media/","");
-    var REST=ROOT+"/rest/v1/sim_bases?select=label,folder,stems&ativo=eq.true&order=ordem";
+    var REST=SB+"bases.json?t="+Date.now();
     fetch(REST,{headers:{apikey:SB_ANON}})
       .then(function(r){ return r.ok? r.json() : Promise.reject(r.status); })
       .then(function(rows){
@@ -1369,7 +1392,7 @@
     const song=SONGS[curSong],base=SB+song.folder+"/",tok=++loadTok; setStatus("carregando "+song.label+"…","#f4a02a");
     let bufs; try{ bufs=await Promise.all(song.stems.slice(0,MAXCH).map(st=>loadBuf(base+st.f))); }catch(e){ setStatus("erro: "+e.message,"#e0483f"); return; }
     if(tok!==loadTok)return; stopSong(true); const t0=ac.currentTime+0.12;
-    song.stems.forEach((st,i)=>{ if(i>=MAXCH||!aNodes[i]||!bufs[i])return; const src=ac.createBufferSource(); src.buffer=bufs[i]; src.loop=true; src.connect(aNodes[i].trim); src.start(t0); realSources.push(src); });
+    song.stems.forEach((st,i)=>{ if(i>=MAXCH||!aNodes[i]||!bufs[i])return; const src=ac.createBufferSource(); src.buffer=bufs[i]; src.loop=true; if(bufs.__le===undefined){var _m=1e9;for(var _k=0;_k<bufs.length;_k++){if(bufs[_k]&&bufs[_k].duration<_m)_m=bufs[_k].duration;}bufs.__le=_m;} if(bufs.__le>0.5&&bufs.__le<1e8){src.loopStart=0;src.loopEnd=bufs.__le;} src.connect(aNodes[i].trim); src.start(t0); realSources.push(src); });
     for(let i=0;i<MAXCH;i++)applyChanAudio(i); playing=true; setPlayBtn(true); setStatus("tocando ♪ "+song.label,"#3ad07a"); }
   function stopSong(keep){ realSources.forEach(s=>{try{s.stop();}catch(e){}}); realSources=[]; playing=false; setPlayBtn(false); if(!keep)setStatus("parado"); }
 
@@ -1394,6 +1417,8 @@
     screens:function(){return {A:screenA,B:screenB,U:screenU}},
     fx:function(){return fxRack},
     hits:function(){return screenA.hitRegions},
+    sfit:function(which){ const m={A:screenA,B:screenB,U:screenU}; return (m[which||'A']||screenA).sfit||{s:1,ox:0,oy:0}; },
+    render:function(){ _flushDraw(); },
     nBanks:function(){return leftBank.banks.length},
     setBank:function(i){ leftBank.cur=i; buildBay(); paintBay(); },
     bankInfo:function(){ const b=leftBank.banks[leftBank.cur]; return {cur:leftBank.cur,label:b.label,kind:b.t,from:b.from}; },

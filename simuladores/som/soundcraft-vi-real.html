@@ -204,10 +204,21 @@
   .console:not(.stacked){touch-action:none}
   body:not(.stacked){touch-action:none}
   /* stacked (phone) */
-  .console.stacked{width:auto;max-width:700px;height:auto;transform:none!important;touch-action:auto}
+  .console.stacked{width:100%;max-width:100vw;height:auto;transform:none!important;touch-action:auto;overflow-x:hidden}
   .console.stacked .back{grid-template-columns:1fr}
-  .console.stacked .strip{width:38px}
+  .console.stacked .strip{width:46px}
+  /* phone: SEL/CUE share one row on desktop (~18px each). Stack them so each is the full
+     strip width (>=24px) and comfortably tappable; ON already spans the strip. */
+  .console.stacked .strip .row2{flex-direction:column;gap:3px}
+  .console.stacked .strip .sbtn{min-height:24px;font-size:9px}
   body.stacked{overflow:auto}
+  /* phone: the 24-fader deck is wider than the screen — swipe it at full size instead of
+     zooming the whole console to thumbnail scale. The bay scrolls inside itself; the PAGE
+     never scrolls sideways, and touch targets stay full-size (>=24px). */
+  .console.stacked .bay{overflow-x:auto;overflow-y:hidden;justify-content:flex-start}
+  .console.stacked .bay::-webkit-scrollbar{height:3px}
+  .console.stacked .bay > .block{flex:0 0 auto}
+  .console.stacked .lower .mbay{flex:0 0 auto;width:100%;max-width:320px}
 
   /* ===== SOUNDCRAFT brand / surface ===== */
   .util .brand b{font-weight:800}
@@ -1500,9 +1511,9 @@
   (function loadBasesRuntime(){
     var SB_ANON="__SMU_SUPABASE_ANON_KEY__";
     try{ if(typeof window!=="undefined" && window.__SMU_SB_ANON) SB_ANON=window.__SMU_SB_ANON; }catch(e){}
-    if(!SB_ANON || SB_ANON.indexOf("__SMU")===0) return;
+    /* keyless: le o catalogo publico media/bases.json */
     var ROOT=(SB||"").replace("/storage/v1/object/public/media/","");
-    var REST=ROOT+"/rest/v1/sim_bases?select=label,folder,stems&ativo=eq.true&order=ordem";
+    var REST=SB+"bases.json?t="+Date.now();
     fetch(REST,{headers:{apikey:SB_ANON}}).then(function(r){ return r.ok?r.json():Promise.reject(r.status); })
       .then(function(rows){ if(!Array.isArray(rows)||!rows.length) return;
         var mapped=rows.map(function(r){ var stems=(r.stems||[]).filter(function(x){return x&&x.a!==false;}).map(function(x){return {n:x.n,c:x.c,f:x.f,p:x.p,h:x.h};}); return {label:r.label,folder:r.folder,stems:stems}; }).filter(function(x){return x.stems.length;});
@@ -1603,7 +1614,7 @@
     catch(e){ loadingSong=false; setPlayBtn(false); setStatus("erro ao baixar stem — "+e.message+" (tente de novo)","#e0483f"); return; }
     loadingSong=false; if(tok!==loadTok){ setPlayBtn(playing); return; }
     stopSong(true); const t0=ac.currentTime+0.12;
-    song.stems.forEach((st,i)=>{ if(i>=MAXCH||!aNodes[i])return; const src=ac.createBufferSource(); src.buffer=bufs[i]; src.loop=true; src.connect(aNodes[i].trim); src.start(t0); realSources.push(src); });
+    song.stems.forEach((st,i)=>{ if(i>=MAXCH||!aNodes[i])return; const src=ac.createBufferSource(); src.buffer=bufs[i]; src.loop=true; if(bufs.__le===undefined){var _m=1e9;for(var _k=0;_k<bufs.length;_k++){if(bufs[_k]&&bufs[_k].duration<_m)_m=bufs[_k].duration;}bufs.__le=_m;} if(bufs.__le>0.5&&bufs.__le<1e8){src.loopStart=0;src.loopEnd=bufs.__le;} src.connect(aNodes[i].trim); src.start(t0); realSources.push(src); });
     for(let i=0;i<MAXCH;i++)applyChanAudio(i); playing=true; setPlayBtn(true); setStatus("tocando ♪ "+song.label,"#3ad07a"); }
   function stopSong(keep){ realSources.forEach(s=>{try{s.stop();}catch(e){}}); realSources=[]; playing=false; setPlayBtn(false); if(!keep)setStatus("parado"); }
 
@@ -1652,9 +1663,10 @@
   function fitConsole(){ const con=document.querySelector('.console'); if(!con)return;
     const vw=window.innerWidth,vh=window.innerHeight;
     if(vw<560){ document.body.classList.add('stacked'); con.classList.add('stacked'); con.style.zoom=''; document.body.style.alignItems='flex-start';
-      // stacked content can still be wider than a narrow phone (16-encoder Vistonics + fader bays):
-      // scale the whole stacked console to fit the viewport width so the PAGE never scrolls sideways.
-      const cw=con.offsetWidth||vw; if(cw>vw-6){ con.style.zoom=(vw-6)/cw; } }
+      // NÃO dar zoom-para-caber: o antigo (vw-6)/cw encolhia o console inteiro a ~0,38 e deixava
+      // fader/botão a ~12px (impossível tocar). Agora o console é capado à largura da tela por CSS
+      // e a bay de faders rola horizontalmente em TAMANHO CHEIO (.console.stacked .bay overflow-x). }
+    }
     else{ document.body.classList.remove('stacked'); con.classList.remove('stacked'); con.style.zoom=''; const _DW=con.offsetWidth, _DH=con.offsetHeight;
       con.style.zoom=''; const DW=con.offsetWidth||1520, DH=con.offsetHeight||940;   // mede o tamanho REAL
       const scrH=(window.screen&&screen.height)||vh; const iframeTaller=vh>scrH+8; const visH=Math.min(vh,scrH);

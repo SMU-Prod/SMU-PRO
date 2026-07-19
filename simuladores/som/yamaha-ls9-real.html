@@ -138,35 +138,34 @@
   body.touch .smu .gh{padding:7px 11px}
   body.touch .smu select{padding:5px 4px}
 
-  /* --- phone --- */
+  /* --- phone / portrait: STACKED sections (owner's ask, same mechanism as the CL5) -------
+     No MDI floating window, no drawer, no tiny cover-zoom. The desk becomes a VERTICAL
+     SCROLL of full-width sections, one BELOW the other, in this order:
+     CANAIS (overview) · MENU (main) · EDIÇÃO (selected) — plus any editor page called
+     afterwards. Each section = its own title bar (its visible label) + a canvas fitted to
+     the FULL width, so there is never any horizontal scroll; the whole column scrolls
+     vertically inside the desk. Nothing overlaps. LS9 keeps its own skin (LCD estreito,
+     mute groups + Channel Link, no DCA) — only the LAYOUT is shared with the CL5. */
+  .wbtns b.lane{display:none}
   body.phone .menu{padding:0 5px;font-size:11px}
   body.phone .lf{display:none}
   body.phone .ls{display:inline}
   body.phone .mham{display:flex;align-items:center;padding:0 11px;font-size:16px}
-  body.phone .mbtn{display:flex;align-items:center;margin-left:auto;padding:0 12px;
-    font-size:11px;font-weight:700;color:#1c1c1c;cursor:pointer;white-space:nowrap;
-    border-left:1px solid #dcc3bd}
-  body.phone .mbtn:active,body.phone .mbtn.on{background:#cddef4}
-  /* a called page covers the desk, with its name and a back/close in the title bar */
-  body.phone .win{left:0!important;top:0!important;width:100%!important;height:100%!important;border:0}
-  body.phone .wtb{cursor:default;padding-left:10px}
-  body.phone .wbtns b[data-b="min"],body.phone .wbtns b[data-b="max"]{display:none}
-  body.phone .wbtns b[data-b="close"]{width:64px;height:34px;font-size:11.5px}
-  /* Pages render at up to 1:1 and the body scrolls through them. The canvas keeps
-     touch-action:none so every knob/fader/send drag belongs to the control (sends and
-     value fields drag HORIZONTALLY — a pan gesture would steal them), so the lane is
-     moved with the explicit ◀ ▶ buttons below. */
-  body.phone .wbody{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
-  /* the Overview is the base: it is always there, underneath, and has no close */
-  body.phone .win[data-win="overview"]{z-index:1!important}
-  body.phone .win[data-win="overview"] .wbtns b[data-b="close"]{display:none}
-  .wbtns b.lane{display:none}
-  body.phone .wbtns b.lane{display:flex;width:46px;height:34px;font-size:13px}
-  /* Main = drawer from the right; ☰ / MAIN always brings it back */
-  body.phone .win[data-win="main"]{left:auto!important;right:0;width:min(340px,90vw)!important;
-    z-index:2000!important;transform:translateX(102%);transition:transform .22s ease;
-    box-shadow:-7px 0 20px #0006}
-  body.phone .win[data-win="main"].open{transform:none}
+  body.phone .mbtn{display:none}                       /* MENU is now a section — no drawer handle */
+  body.phone .mdi{overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;display:block}
+  /* every window is a full-width block in normal flow — nothing floats, nothing overlaps */
+  body.phone .win{position:relative!important;left:auto!important;top:auto!important;right:auto!important;
+    width:100%!important;height:auto!important;transform:none!important;margin:0;border:0;
+    border-bottom:2px solid #55585f;box-shadow:none;background:#303030}
+  body.phone .win.min .wbody{display:block}            /* minimise is inert in stacked mode */
+  body.phone .wtb{cursor:default;padding-left:12px}    /* the title bar IS the section label */
+  body.phone .wbody{flex:0 0 auto;overflow:hidden}     /* fit-to-width canvas — no scroll inside a section */
+  body.phone .wbtns b[data-b="min"],body.phone .wbtns b[data-b="max"],body.phone .wbtns b.lane{display:none}
+  body.phone .wbtns b[data-b="close"]{width:56px;height:32px;font-size:11.5px}
+  /* the three core sections are permanent — no close button on them */
+  body.phone .win[data-win="overview"] .wbtns b[data-b="close"],
+  body.phone .win[data-win="main"] .wbtns b[data-b="close"],
+  body.phone .win[data-win="selected"] .wbtns b[data-b="close"]{display:none}
 </style>
 </head>
 <body>
@@ -619,7 +618,9 @@
   // "de clicar em 17x24 abre a outra tela destes canais" — the bank buttons swap the
   // Overview's 16 strips; on a phone the drawer steps aside so the strips are visible.
   function setBank(id){ state.bank=id; openWin('overview'); focusWin('overview');
-    if(LAYOUT==='phone') setDrawer(false); drawScreen(); }
+    if(LAYOUT==='phone'){ setDrawer(false);      // stacked: bring CANAIS (overview) into view
+      const w=WINS.overview; if(w&&w.el&&w.el.scrollIntoView){ try{ w.el.scrollIntoView({behavior:'smooth',block:'start'}); }catch(e){ w.el.scrollIntoView(); } } }
+    drawScreen(); }
 
   /* ===== MODEL SWITCH (M7CL-48 / M7CL-32) ===================================
      Changes MAXCH (48/32) → which INPUT bank buttons show + how many channels
@@ -717,16 +718,38 @@
      app menu bar is part of the frame and is never hidden, in any mode. */
   let LAYOUT='desktop';
   const MAINW={desktop:352,tablet:300,phone:0};
-  function calcLayout(){ const vw=window.innerWidth; return vw<760?'phone':(vw<1200?'tablet':'desktop'); }
+  // vw<560 = phone (STACKED sections). 560..1199 = tablet (docked Main). >=1200 = desktop.
+  // The 560 cut keeps the portrait tablet (768) on the untouched tablet layout.
+  function calcLayout(){ const vw=window.innerWidth; return vw<560?'phone':(vw<1200?'tablet':'desktop'); }
   // the desk left over beside the docked Main — where a called page is centred on a tablet
   function freeW(){ const w=WINS.main, mw=(w&&!w.max)?w.el.offsetWidth:(MAINW[LAYOUT]||0);
     return Math.max(240,MDI.offsetWidth-mw); }
+  // Phone stacking order: CANAIS (overview) · MENU (main) · EDIÇÃO (selected), then any
+  // extra editor page called afterwards. Reordering the DOM reorders the vertical flow.
+  const STACK=['overview','main','selected'];
+  let _ensuring=false;
+  function ensurePhoneSections(){ if(_ensuring)return; _ensuring=true;
+    try{ for(const id of STACK) if(!WINS[id]) openWin(id); }finally{ _ensuring=false; } }
+  function stackOrder(){
+    const ordered=[...STACK.filter(id=>WINS[id]),
+                   ...Object.keys(WINS).filter(id=>!STACK.includes(id))];
+    ordered.forEach(id=>{ const w=WINS[id]; if(w&&w.el) MDI.appendChild(w.el); });
+  }
   function applyLayout(){
     const m=calcLayout(), changed=(m!==LAYOUT); LAYOUT=m;
     document.body.classList.toggle('phone',m==='phone');
     document.body.classList.toggle('tablet',m==='tablet');
     document.body.classList.toggle('touch',m!=='desktop');
-    if(m==='phone'){ if(changed) setDrawer(false); }        // phone geometry lives in CSS
+    if(m==='phone'){
+      // STACKED: the three core sections always exist (canais/menu/edição) and are laid
+      // top-to-bottom; sizeCanvas() fits each canvas to the full width. Clear any desktop
+      // inline geometry so the CSS flow rules take over.
+      for(const k in WINS){ const w=WINS[k]; if(!w||!w.el)continue;
+        w.max=false; w.min=false; w.el.classList.remove('min','open'); w.el.style.cssText=''; }
+      ensurePhoneSections();
+      stackOrder();
+      document.body.classList.remove('drawer');
+    }
     else{
       const MW=MDI.offsetWidth, MH=MDI.offsetHeight;
       // A docked pane is sized to its CONTENT's aspect at the height available, so it
@@ -783,20 +806,25 @@
   // setMode is THE way a page is called: from a strip control, the Main panel, or the
   // Windows menu. Nothing opens unless it is called this way.
   function setMode(m){ openWin(m); focusWin(m);
-    if(LAYOUT==='phone') setDrawer(m==='main');   // calling a page steps the drawer aside
+    if(LAYOUT==='phone'){                          // stacked: bring the called section into view
+      setDrawer(m==='main');                       // keep the drawer flag in sync (inert in stacked mode)
+      stackOrder(); sizeCanvas();
+      const w=WINS[m]; if(w&&w.el&&w.el.scrollIntoView){ try{ w.el.scrollIntoView({behavior:'smooth',block:'start'}); }catch(e){ w.el.scrollIntoView(); } }
+    }
   }
 
   function sizeCanvas(){ DPR=Math.min(2,window.devicePixelRatio||1);
-    for(const k in WINS){ const w=WINS[k]; if(w.min)continue;
-      // PHONE = LANE. A page keeps its design aspect at the full height of the screen and
-      // renders at up to 1:1 — never shrunk to fit a portrait phone (the 910x646 pages
-      // would land at ~44% and be unreadable). When that is wider than the screen the
-      // body scrolls horizontally through it. Same content, same labels, thumb-sized.
-      if(LAYOUT==='phone'&&w.body){ const bw=w.body.clientWidth, bh=w.body.clientHeight;
-        if(bw&&bh){ const vw=w.def.vw||910, vh=w.def.vh||646;
-          w.cv.style.width=Math.max(bw,Math.min(Math.round(bh*vw/vh),vw))+"px";
-          w.cv.style.height=bh+"px"; } }
-      else if(w.cv.style.width){ w.cv.style.width=""; w.cv.style.height=""; }
+    for(const k in WINS){ const w=WINS[k]; if(w.min&&LAYOUT!=='phone')continue;
+      // PHONE = FIT WIDTH (stacked). Each section's canvas is scaled so its DESIGN WIDTH
+      // maps to the FULL desk width — so there is never any horizontal scroll. Its height
+      // follows the design aspect and becomes the section's height; the whole column scrolls
+      // vertically. Same drawing, same skin, just laid out one section below the other.
+      if(LAYOUT==='phone'&&w.body){ const bw=MDI.clientWidth||w.body.clientWidth;
+        if(bw){ const vw=w.def.vw||910, vh=w.def.vh||646;
+          const chh=Math.round(bw*vh/vw);
+          w.cv.style.width=bw+"px"; w.cv.style.height=chh+"px";
+          w.body.style.height=chh+"px"; } }
+      else if(w.cv.style.width||w.body.style.height){ w.cv.style.width=""; w.cv.style.height=""; w.body.style.height=""; }
       const r=w.cv.getBoundingClientRect(); if(!r.width||!r.height)continue;
       w.cw=r.width; w.chh=r.height;
       w.cv.width=Math.round(r.width*DPR); w.cv.height=Math.round(r.height*DPR); }
@@ -2063,9 +2091,9 @@
   (function loadBasesRuntime(){
     var SB_ANON="__SMU_SUPABASE_ANON_KEY__"; /* chave anon pública — trocada na publicação */
     try{ if(typeof window!=="undefined" && window.__SMU_SB_ANON) SB_ANON=window.__SMU_SB_ANON; }catch(e){}
-    if(!SB_ANON || SB_ANON.indexOf("__SMU")===0) return; /* sem chave -> fica no fallback */
+    /* keyless: le o catalogo publico media/bases.json */ /* sem chave -> fica no fallback */
     var ROOT=(SB||"").replace("/storage/v1/object/public/media/","");
-    var REST=ROOT+"/rest/v1/sim_bases?select=label,folder,stems&ativo=eq.true&order=ordem";
+    var REST=SB+"bases.json?t="+Date.now();
     fetch(REST,{headers:{apikey:SB_ANON,Authorization:"Bearer "+SB_ANON}})
       .then(function(r){ return r.ok? r.json() : Promise.reject(r.status); })
       .then(function(rows){
@@ -2357,7 +2385,7 @@
     loadingSong=false;
     if(tok!==loadTok){ setPlayBtn(playing); return; }
     stopSong(true); const t0=ac.currentTime+0.12;
-    useStems.forEach((st,i)=>{ if(i>=MAXCH||!aNodes[i])return; const src=ac.createBufferSource(); src.buffer=bufs[i]; src.loop=true; src.connect(aNodes[i].trim); src.start(t0); realSources.push(src); });
+    useStems.forEach((st,i)=>{ if(i>=MAXCH||!aNodes[i])return; const src=ac.createBufferSource(); src.buffer=bufs[i]; src.loop=true; if(bufs.__le===undefined){var _m=1e9;for(var _k=0;_k<bufs.length;_k++){if(bufs[_k]&&bufs[_k].duration<_m)_m=bufs[_k].duration;}bufs.__le=_m;} if(bufs.__le>0.5&&bufs.__le<1e8){src.loopStart=0;src.loopEnd=bufs.__le;} src.connect(aNodes[i].trim); src.start(t0); realSources.push(src); });
     for(let i=0;i<MAXCAP;i++)applyChanAudio(i); playing=true; setPlayBtn(true); setStatus("tocando ♪ "+song.label,"#3ad07a"); }
   function stopSong(keep){ realSources.forEach(s=>{try{s.stop();}catch(e){}}); realSources=[]; playing=false; setPlayBtn(false); if(!keep)setStatus("parado"); }
 

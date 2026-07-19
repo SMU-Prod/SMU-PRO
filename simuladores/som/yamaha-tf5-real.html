@@ -1145,9 +1145,9 @@
   (function loadBasesRuntime(){
     var SB_ANON="__SMU_SUPABASE_ANON_KEY__"; /* chave anon pública — troque pela do app (1x) */
     try{ if(typeof window!=="undefined" && window.__SMU_SB_ANON) SB_ANON=window.__SMU_SB_ANON; }catch(e){}
-    if(!SB_ANON || SB_ANON.indexOf("__SMU")===0) return; /* sem chave -> fica no fallback */
+    /* keyless: le o catalogo publico media/bases.json */ /* sem chave -> fica no fallback */
     var ROOT=(SB||"").replace("/storage/v1/object/public/media/","");
-    var REST=ROOT+"/rest/v1/sim_bases?select=label,folder,stems&ativo=eq.true&order=ordem";
+    var REST=SB+"bases.json?t="+Date.now();
     fetch(REST,{headers:{apikey:SB_ANON}})
       .then(function(r){ return r.ok? r.json() : Promise.reject(r.status); })
       .then(function(rows){
@@ -1285,7 +1285,7 @@
     const song=SONGS[curSong],base=SB+song.folder+"/",tok=++loadTok; setStatus("carregando "+song.label+"…","#f5a623");
     let bufs; try{ bufs=await Promise.all(song.stems.map(st=>loadBuf(base+st.f))); }catch(e){ setStatus("erro: "+e.message,"#e94b3f"); return; }
     if(tok!==loadTok)return; stopSong(true); const t0=ac.currentTime+0.12;
-    song.stems.forEach((st,i)=>{ if(i>=NCH||!aNodes[i])return; const src=ac.createBufferSource(); src.buffer=bufs[i]; src.loop=true; src.connect(aNodes[i].trim); src.start(t0); realSources.push(src); });
+    song.stems.forEach((st,i)=>{ if(i>=NCH||!aNodes[i])return; const src=ac.createBufferSource(); src.buffer=bufs[i]; src.loop=true; if(bufs.__le===undefined){var _m=1e9;for(var _k=0;_k<bufs.length;_k++){if(bufs[_k]&&bufs[_k].duration<_m)_m=bufs[_k].duration;}bufs.__le=_m;} if(bufs.__le>0.5&&bufs.__le<1e8){src.loopStart=0;src.loopEnd=bufs.__le;} src.connect(aNodes[i].trim); src.start(t0); realSources.push(src); });
     for(let i=0;i<NCH;i++)applyChanAudio(i); playing=true; setPlayBtn(true); setStatus("tocando ♪ "+song.label,"#42d17a"); }
   function stopSong(keep){ realSources.forEach(s=>{try{s.stop();}catch(e){}}); realSources=[]; playing=false; setPlayBtn(false); if(!keep)setStatus("parado"); }
 

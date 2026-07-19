@@ -16,10 +16,14 @@
   body{background:#5b5f66;color:#1a1a1a;
     font-family:"Segoe UI",Tahoma,Geneva,Verdana,sans-serif;
     -webkit-font-smoothing:antialiased;user-select:none;overflow:hidden;
-    display:flex;align-items:flex-start;justify-content:center}
+    display:flex;align-items:stretch;justify-content:stretch}
 
-  /* ===== application window (fixed design, zoom-to-fit) ===== */
-  .app{position:relative;width:1920px;height:1000px;flex:0 0 auto;transform-origin:top center;
+  /* ===== application window — ALWAYS fluid: it IS the viewport =====
+     The editor used to be a fixed 1920x1000 desk zoomed-to-fit. On anything
+     smaller than 1920 that zoom shrank every control (the owner's "muito
+     pequeno / mal vejo os botões"). It is gone: the app now fills the screen at
+     1:1 in every mode, and the one active page fills the desk. No zoom, ever. */
+  .app{position:relative;width:100%;height:100vh;height:100dvh;flex:1 1 auto;
     display:flex;flex-direction:column;background:#d4d0c8;border:1px solid #6f6f6f;overflow:hidden}
 
   /* --- application title bar --- */
@@ -120,8 +124,12 @@
   .mham,.mbtn{display:none}
   .ls{display:none}
 
+  /* only ONE content page is visible at a time — the focused one fills the desk;
+     the rest are stashed (reachable from Windows / Main). This is what kills the
+     "tela dentro da outra": there is never a second window floating on top. */
+  .win.stash{display:none!important}
+
   body.touch{align-items:stretch;justify-content:stretch}
-  body.touch .app{width:100%;height:100vh;height:100dvh;zoom:1!important;transform:none}
   body.touch .menubar{height:34px}
   body.touch .menu{padding:0 8px}
   body.touch .mitem{padding:9px 10px 9px 26px;font-size:13px}
@@ -133,35 +141,34 @@
   body.touch .smu .gh{padding:7px 11px}
   body.touch .smu select{padding:5px 4px}
 
-  /* --- phone --- */
+  /* --- phone / any portrait: STACKED sections (owner's ask) --------------------
+     No MDI floating window, no drawer, no tiny cover-zoom. The desk becomes a
+     VERTICAL SCROLL of full-width sections, one BELOW the other, in this order:
+     CANAIS (overview) · MENU (main) · EDIÇÃO (selected) — plus any editor page
+     called afterwards. Each section = its own title bar (the visible label) + a
+     canvas fitted to the FULL width, so there is never any horizontal scroll; the
+     whole column scrolls vertically inside the desk. Nothing overlaps. */
+  .wbtns b.lane{display:none}
   body.phone .menu{padding:0 5px;font-size:11px}
   body.phone .lf{display:none}
   body.phone .ls{display:inline}
   body.phone .mham{display:flex;align-items:center;padding:0 11px;font-size:16px}
-  body.phone .mbtn{display:flex;align-items:center;margin-left:auto;padding:0 12px;
-    font-size:11px;font-weight:700;color:#1c1c1c;cursor:pointer;white-space:nowrap;
-    border-left:1px solid #dcc3bd}
-  body.phone .mbtn:active,body.phone .mbtn.on{background:#cddef4}
-  /* a called page covers the desk, with its name and a back/close in the title bar */
-  body.phone .win{left:0!important;top:0!important;width:100%!important;height:100%!important;border:0}
-  body.phone .wtb{cursor:default;padding-left:10px}
-  body.phone .wbtns b[data-b="min"],body.phone .wbtns b[data-b="max"]{display:none}
-  body.phone .wbtns b[data-b="close"]{width:64px;height:34px;font-size:11.5px}
-  /* Pages render at up to 1:1 and the body scrolls through them. The canvas keeps
-     touch-action:none so every knob/fader/send drag belongs to the control (sends and
-     value fields drag HORIZONTALLY — a pan gesture would steal them), so the lane is
-     moved with the explicit ◀ ▶ buttons below. */
-  body.phone .wbody{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
-  /* the Overview is the base: it is always there, underneath, and has no close */
-  body.phone .win[data-win="overview"]{z-index:1!important}
-  body.phone .win[data-win="overview"] .wbtns b[data-b="close"]{display:none}
-  .wbtns b.lane{display:none}
-  body.phone .wbtns b.lane{display:flex;width:46px;height:34px;font-size:13px}
-  /* Main = drawer from the right; ☰ / MAIN always brings it back */
-  body.phone .win[data-win="main"]{left:auto!important;right:0;width:min(340px,90vw)!important;
-    z-index:2000!important;transform:translateX(102%);transition:transform .22s ease;
-    box-shadow:-7px 0 20px #0006}
-  body.phone .win[data-win="main"].open{transform:none}
+  body.phone .mbtn{display:none}                       /* MENU is now a section — no drawer handle */
+  body.phone .mdi{overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;display:block}
+  /* every window is a full-width block in normal flow — nothing floats, nothing overlaps */
+  body.phone .win{position:relative!important;left:auto!important;top:auto!important;right:auto!important;
+    width:100%!important;height:auto!important;transform:none!important;margin:0;border:0;
+    border-bottom:2px solid #55585f;box-shadow:none;background:#303030}
+  body.phone .win.stash{display:flex!important}        /* on a phone NOTHING is stashed: all sections show */
+  body.phone .win.min .wbody{display:block}            /* minimise is inert in stacked mode */
+  body.phone .wtb{cursor:default;padding-left:12px}    /* the title bar IS the section label */
+  body.phone .wbody{flex:0 0 auto;overflow:hidden}     /* fit-to-width canvas — no scroll inside a section */
+  body.phone .wbtns b[data-b="min"],body.phone .wbtns b[data-b="max"],body.phone .wbtns b.lane{display:none}
+  body.phone .wbtns b[data-b="close"]{width:56px;height:32px;font-size:11.5px}
+  /* the three core sections are permanent — no close button on them */
+  body.phone .win[data-win="overview"] .wbtns b[data-b="close"],
+  body.phone .win[data-win="main"] .wbtns b[data-b="close"],
+  body.phone .win[data-win="selected"] .wbtns b[data-b="close"]{display:none}
 </style>
 </head>
 <body>
@@ -612,7 +619,7 @@
   // "de clicar em 17x24 abre a outra tela destes canais" — the bank buttons swap the
   // Overview's 16 strips; on a phone the drawer steps aside so the strips are visible.
   function setBank(id){ state.bank=id; openWin('overview'); focusWin('overview');
-    if(LAYOUT==='phone') setDrawer(false); drawScreen(); }
+    if(LAYOUT==='compact') setDrawer(false); drawScreen(); }
 
   /* ===== MODEL SWITCH (CL5 / CL3 / CL1) =====================================
      Changes MAXCH (72/64/48) → which INPUT bank buttons show + how many channels
@@ -652,12 +659,6 @@
               regions:[], vt:{k:1,ox:0,oy:0}, min:false, max:false };
     w.ctx=w.cv.getContext("2d");
     WINS[id]=w;
-    // a page called on a small desk is centred in the free area instead of using its
-    // 1920x1000 design coords (which would put it off-screen); phone geometry is CSS.
-    if(LAYOUT==='tablet'&&!d.dock){ const fw=freeW(), fh=MDI.offsetHeight;
-      const ww=Math.min(d.w,fw-8), hh=Math.min(d.h,fh-8);
-      el.style.cssText=`left:${Math.max(0,Math.round((fw-ww)/2))}px;top:${Math.max(0,Math.round((fh-hh)/2))}px;`
-        +`width:${ww}px;height:${hh}px`; }
     el.querySelector('.wt').textContent=winTitle(id);
     el.querySelectorAll('.wbtns b').forEach(b=>b.addEventListener("pointerdown",e=>{
       e.stopPropagation();
@@ -675,22 +676,29 @@
         sizeCanvas(); }
       focusWin(id);
     }));
-    dragWin(w); wireCanvas(w); focusWin(id);
-    // Main/Overview are docked panes: (re)opening one snaps it back to its edge, so
-    // Windows › Main always returns the panel to the right of the desk, state intact.
-    if(d.dock) applyLayout(); else sizeCanvas();
+    dragWin(w); wireCanvas(w);
+    // every window (docked Main or a content page) settles through applyLayout: Main snaps
+    // to its edge / drawer, the new content page fills the desk and stashes the rest.
+    focusId=id; applyLayout(); focusWin(id);
     return w;
   }
   function closeWin(id){ const w=WINS[id]; if(!w)return; w.el.remove(); delete WINS[id];
-    if(focusId===id){ focusId=null; const k=Object.keys(WINS); if(k.length) focusWin(k[k.length-1]); } }
+    // closing the shown page reveals the Overview (the console base) again — never a blank desk.
+    if(focusId===id){ focusId=null;
+      const back = WINS.overview ? 'overview' : (contentIds().slice(-1)[0]||(WINS.main?'main':null));
+      if(back){ applyLayout(); focusWin(back); } } }
   function focusWin(id){ const w=WINS[id]; if(!w)return;
+    const changed=(focusId!==id);
     focusId=id; state.mode=id; w.el.style.zIndex=++zTop;
     for(const k in WINS) WINS[k].el.classList.toggle("act",k===id);
+    // focusing a content window makes it THE shown page (un-stash + fill the desk).
+    if(changed && id!=='main'){ try{ layoutContent(); sizeCanvas(); }catch(e){} }
     drawScreen(); }
   function dragWin(w){
     const tb=w.el.querySelector('.wtb'); let dx=0,dy=0,dr=false;
     tb.addEventListener("pointerdown",e=>{ if(e.target.dataset.b)return; if(w.max)return;
-      if(LAYOUT==='phone'||w.def.dock)return;   // docked panes / full-screen pages don't drag
+      if(LAYOUT==='compact'||w.def.dock)return;   // docked panes / full-screen pages don't drag
+      if(w.id!=='main')return;                    // content pages are desk-filled, not floated
       dr=true; const r=w.el.getBoundingClientRect(), m=MDI.getBoundingClientRect();
       const z=appZoom(); dx=(e.clientX-r.left)/z; dy=(e.clientY-r.top)/z;
       tb.setPointerCapture(e.pointerId); focusWin(w.id); e.preventDefault(); });
@@ -709,40 +717,85 @@
      same two things reflow — Main into a drawer, pages to full screen — but the
      app menu bar is part of the frame and is never hidden, in any mode. */
   let LAYOUT='desktop';
-  const MAINW={desktop:352,tablet:300,phone:0};
-  function calcLayout(){ const vw=window.innerWidth; return vw<760?'phone':(vw<1200?'tablet':'desktop'); }
-  // the desk left over beside the docked Main — where a called page is centred on a tablet
-  function freeW(){ const w=WINS.main, mw=(w&&!w.max)?w.el.offsetWidth:(MAINW[LAYOUT]||0);
-    return Math.max(240,MDI.offsetWidth-mw); }
+  let DESKW=0, DESKH=0;                 // the area a content page fills (desk minus docked Main)
+  // LAYOUT DECISION — orientation-aware, not width-only:
+  //   compact : phone (either orientation) OR any PORTRAIT screen. Main becomes a DRAWER so
+  //             the mesa/canais gets the FULL width (owner: "no retrato a mesa deve ficar
+  //             MAIOR que o menu"); every page is full-screen with a visible back/close.
+  //   touch   : roomy LANDSCAPE, < 1200 (tablet landscape). Main docked right, page fills rest.
+  //   desktop : roomy LANDSCAPE, >= 1200 (PC). Same as touch but with the finer desktop chrome.
+  function calcLayout(){ const vw=window.innerWidth, vh=window.innerHeight, portrait=vh>=vw;
+    if(vw<760 || vh<480 || portrait) return 'compact';
+    return vw<1200?'touch':'desktop'; }
+  // the desk left of the docked Main — where a content page fills
+  function freeW(){ return Math.max(240, DESKW||MDI.offsetWidth); }
+  // Phone stacking order: CANAIS (overview) · MENU (main) · EDIÇÃO (selected), then any
+  // extra editor page the user called after. Reordering the DOM reorders the flow.
+  const STACK=['overview','main','selected'];
+  let _ensuring=false;
+  function ensurePhoneSections(){ if(_ensuring)return; _ensuring=true;
+    try{ for(const id of STACK) if(!WINS[id]) openWin(id); }finally{ _ensuring=false; } }
+  function stackOrder(){
+    const ordered=[...STACK.filter(id=>WINS[id]),
+                   ...contentIds().filter(id=>!STACK.includes(id)),
+                   ...(WINS.main&&!STACK.includes('main')?['main']:[])];
+    ordered.forEach(id=>{ const w=WINS[id]; if(w&&w.el) MDI.appendChild(w.el); });
+  }
   function applyLayout(){
     const m=calcLayout(), changed=(m!==LAYOUT); LAYOUT=m;
-    document.body.classList.toggle('phone',m==='phone');
-    document.body.classList.toggle('tablet',m==='tablet');
+    const compact=(m==='compact');
+    document.body.classList.toggle('phone',compact);
     document.body.classList.toggle('touch',m!=='desktop');
-    if(m==='phone'){ if(changed) setDrawer(false); }        // phone geometry lives in CSS
-    else{
-      const MW=MDI.offsetWidth, MH=MDI.offsetHeight;
-      // A docked pane is sized to its CONTENT's aspect at the height available, so it
-      // never letterboxes onto dead bands: Main keeps the 352x751 panel (never blown up
-      // past 1:1), the Overview takes the full desk height and the width its 16 strips
-      // need. The desk left between them is real MDI space — it is where a called page
-      // opens, exactly as in the editor.
-      const o=WINS.overview, w=WINS.main;
-      let mainW=MAINW[m];
+    document.body.classList.remove('tablet');
+    const MW=MDI.offsetWidth, MH=MDI.offsetHeight;
+    if(compact){
+      DESKW=MW; DESKH=MH;
+      // STACKED phone/portrait: the three core sections always exist (canais/menu/edição)
+      // and are laid top-to-bottom; sizeCanvas() fits each to the full width.
+      ensurePhoneSections();
+      stackOrder();
+      document.body.classList.remove('drawer');
+    } else {
+      // WIDE (landscape): Main docked right at its 352:751 aspect (never upscaled past 1:1),
+      // the active page fills ALL the rest of the desk. No floating window, no dead band.
+      const w=WINS.main; let mainW=0;
       if(w&&!w.max){ w.min=false; w.el.classList.remove("min","open");
         const c=paneChrome(w,MH);
-        const bh=Math.min(MH-c.h,751);                      // cap at 100% — never upscale
+        const bh=Math.min(MH-c.h,751);
         mainW=Math.round(bh*352/751)+c.w;
         w.el.style.cssText=`left:${MW-mainW}px;top:0;width:${mainW}px;height:${bh+c.h}px;`
           +`z-index:${w.el.style.zIndex||10}`; }
-      if(o&&!o.max){ o.min=false; o.el.classList.remove("min");
-        const c=paneChrome(o,MH);
-        const bh=MH-c.h;                                    // the strips take the full height
-        const ow=Math.min(MW-mainW,Math.round(bh*910/1010)+c.w);
-        o.el.style.cssText=`left:0;top:0;width:${ow}px;height:${MH}px;z-index:${o.el.style.zIndex||10}`; }
+      DESKW=Math.max(240,MW-mainW); DESKH=MH;
       document.body.classList.remove('drawer');
     }
+    layoutContent();
     sizeCanvas();
+  }
+  // Content windows = everything except Main. Exactly ONE is shown (the focused one), filling
+  // the desk; the others are stashed. Reachable again from the Windows menu or the Main panel.
+  function contentIds(){ return Object.keys(WINS).filter(k=>k!=='main'); }
+  function shownContent(){
+    if(focusId && focusId!=='main' && WINS[focusId]) return focusId;
+    if(WINS.overview) return 'overview';
+    const c=contentIds(); return c.length?c[c.length-1]:null;
+  }
+  function layoutContent(){
+    const compact=(LAYOUT==='compact'), show=shownContent();
+    if(compact){
+      // STACKED: every open window is a visible section (nothing stashed); clear any
+      // desktop inline geometry so the CSS flow rules take over. sizeCanvas() sets heights.
+      for(const id in WINS){ const w=WINS[id]; if(!w||!w.el)continue;
+        w.max=false; w.min=false; w.el.classList.remove('stash','min','open');
+        w.el.style.cssText=''; }
+      stackOrder();
+      return;
+    }
+    for(const id of contentIds()){ const w=WINS[id]; if(!w||!w.el)continue;
+      if(id===show){ w.el.classList.remove('stash');
+        { w.max=false; w.min=false; w.el.classList.remove('min');
+          w.el.style.cssText=`left:0;top:0;width:${DESKW}px;height:${DESKH}px;z-index:${w.el.style.zIndex||10}`; }
+      } else { w.el.classList.add('stash'); }
+    }
   }
   // measure a window's chrome (title bar + borders) instead of hard-coding it, so the
   // touch mode's taller title bar is accounted for automatically.
@@ -776,20 +829,24 @@
   // setMode is THE way a page is called: from a strip control, the Main panel, or the
   // Windows menu. Nothing opens unless it is called this way.
   function setMode(m){ openWin(m); focusWin(m);
-    if(LAYOUT==='phone') setDrawer(m==='main');   // calling a page steps the drawer aside
+    if(LAYOUT==='compact'){                          // stacked: bring the called section into view
+      stackOrder(); sizeCanvas();
+      const w=WINS[m]; if(w&&w.el&&w.el.scrollIntoView){ try{ w.el.scrollIntoView({behavior:'smooth',block:'start'}); }catch(e){ w.el.scrollIntoView(); } }
+    }
   }
 
   function sizeCanvas(){ DPR=Math.min(2,window.devicePixelRatio||1);
-    for(const k in WINS){ const w=WINS[k]; if(w.min)continue;
-      // PHONE = LANE. A page keeps its design aspect at the full height of the screen and
-      // renders at up to 1:1 — never shrunk to fit a portrait phone (the 910x646 pages
-      // would land at ~44% and be unreadable). When that is wider than the screen the
-      // body scrolls horizontally through it. Same content, same labels, thumb-sized.
-      if(LAYOUT==='phone'&&w.body){ const bw=w.body.clientWidth, bh=w.body.clientHeight;
-        if(bw&&bh){ const vw=w.def.vw||910, vh=w.def.vh||646;
-          w.cv.style.width=Math.max(bw,Math.min(Math.round(bh*vw/vh),vw))+"px";
-          w.cv.style.height=bh+"px"; } }
-      else if(w.cv.style.width){ w.cv.style.width=""; w.cv.style.height=""; }
+    for(const k in WINS){ const w=WINS[k]; if(w.min&&LAYOUT!=='compact')continue;
+      // COMPACT = FIT WIDTH (stacked). Each section's canvas is scaled so its DESIGN WIDTH
+      // maps to the FULL desk width — so there is never any horizontal scroll. Its height
+      // follows the design aspect and becomes the section's height; the whole column scrolls
+      // vertically. Same drawing, same skin, just laid out one section below the other.
+      if(LAYOUT==='compact'&&w.body){ const bw=MDI.clientWidth||w.body.clientWidth;
+        if(bw){ const vw=w.def.vw||910, vh=w.def.vh||646;
+          const chh=Math.round(bw*vh/vw);
+          w.cv.style.width=bw+"px"; w.cv.style.height=chh+"px";
+          w.body.style.height=chh+"px"; } }
+      else if(w.cv.style.width||w.body.style.height){ w.cv.style.width=""; w.cv.style.height=""; w.body.style.height=""; }
       const r=w.cv.getBoundingClientRect(); if(!r.width||!r.height)continue;
       w.cw=r.width; w.chh=r.height;
       w.cv.width=Math.round(r.width*DPR); w.cv.height=Math.round(r.height*DPR); }
@@ -1212,6 +1269,10 @@
       eBtn(cxk,cyk,34,15,""+(k+1),litc,()=>{ if(isDca){ch.dca[k]=!ch.dca[k];} else {ch.mute[k]=!ch.mute[k];} applyChanAudio(ch.i); paintBay(); },ED.yel,7);
     }
     const fx0=rx0+230;
+    // CUE = SOLO-in-place. It was the only channel function with no reachable button anywhere
+    // (only CLEAR CUE existed), so solo could never be engaged. Faithful to the CL Editor,
+    // where each Selected-Channel strip carries a CUE key above ON.
+    eBtn(fx0,by+56,52,13,"CUE",ch.cue,()=>{ch.cue=!ch.cue;applyCue();paintBay();},ED.grn,7);
     eBtn(fx0,by+72,52,14,"ON",ch.on,()=>{ch.on=!ch.on;applyChanAudio(ch.i);paintBay();checkMissions();},ED.btnLit);
     const fy1=by+96, fy2=622, ftx=fx0+20;
     ctx.fillStyle="#141414"; ctx.fillRect(ftx-2,fy1,10,fy2-fy1); bevel(ftx-2,fy1,10,fy2-fy1,true);
@@ -1329,8 +1390,8 @@
     ctx.fillStyle="#242424"; ctx.fillRect(x+2,245,50,3);
     const cn=c.isStin?stinN[c.i]:aNodes[c.i];
     if(c.compOn&&ac&&cn){ const gr=-cn.comp.reduction; ctx.fillStyle="#e03030"; ctx.fillRect(x+2,245,clamp(gr/20,0,1)*50,3); }
-    // DELAY toggles the delay for real AND opens the page it lives on (Selected Channel)
-    eBtn(x,250,54,10,"DELAY",c.delayOn,()=>{c.delayOn=!c.delayOn;apply();openSel();setMode('selected');},ED.yel,6);
+    // DELAY toggles the delay in place (a toggle must NOT yank you to another page)
+    eBtn(x,250,54,10,"DELAY",c.delayOn,()=>{c.delayOn=!c.delayOn;apply();openSel();},ED.yel,6);
     eDragVal(x,261,54,10,c.delayMs.toFixed(2)+"ms",()=>c.delayMs,v=>{c.delayMs=v;apply();},0,1000,false);
   }
 
@@ -1338,14 +1399,16 @@
   function stripCh(x,ci){
     const ch=CH[ci], apply=()=>{applyChanAudio(ci); if(ci===state.sel)paintSelected();};
     stripShell(x,ci===state.sel&&state.selStin<0,false);
-    // Clicking the strip body selects the channel AND opens Selected Channel. Registered
-    // first, so every specific control below (registered later) wins the hit test.
-    vreg({x,y:STOP,w:SW,h:SBOT-STOP,onDown:()=>{selectChannel(ci);setMode('selected');}});
+    // Clicking the strip body only SELECTS the channel (highlights it). It must NOT jump to
+    // the edit page — that was the owner's "qualquer lugar que clica entra na pasta de editar".
+    // Registered first, so every specific control below (registered later) wins the hit test.
+    vreg({x,y:STOP,w:SW,h:SBOT-STOP,onDown:()=>{selectChannel(ci);}});
     // DANTE patch label -> Patch Editor
     eNameBox(x,24,54,12,"DANTE"+(ci+1));
     vreg({x,y:24,w:54,h:12,onDown:()=>{selectChannel(ci);setMode('patch');}});
-    // HA: analog gain + 48V + Ø — each toggles/adjusts for real AND opens the HA section
-    const ha=()=>{ selectChannel(ci); setMode('selected'); };
+    // HA: analog gain + 48V + Ø — each toggles/adjusts for real and just SELECTS the channel
+    // (a toggle/readout must not navigate away — the SEL button / name are the way into the page)
+    const ha=()=>{ selectChannel(ci); };
     eKnob(x+13,52,10,knobT(ch.gain,-6,45),"#484848");
     eKnobReg(x+13,52,10,()=>ch.gain,v=>{ch.gain=v;apply();checkMissions();},-6,45,false);
     eBtn(x+27,40,26,10,"48V",ch.phantom,()=>{ch.phantom=!ch.phantom;ha();},ED.red,6);
@@ -1359,11 +1422,11 @@
     // on (same pattern as 48V / ø / DELAY). The freq readout stays a pure drag control over
     // its whole width — it used to lose its right 10px to a navigation sliver that swallowed
     // the pointerdown, so the value could not be dragged from there.
-    eBtn(x,118,54,11,"HPF",ch.hpfOn,()=>{ch.hpfOn=!ch.hpfOn;apply();checkMissions();selectChannel(ci);setMode('eq');},ED.yel,7);
+    eBtn(x,118,54,11,"HPF",ch.hpfOn,()=>{ch.hpfOn=!ch.hpfOn;apply();checkMissions();selectChannel(ci);},ED.yel,7);
     eDragVal(x,130,54,11,fFmt(ch.hpf),()=>ch.hpf,v=>{ch.hpf=Math.round(v);apply();},20,600,true);
-    // INSERT / D.OUT -> Selected Channel (where both live)
-    eBtn(x,144,54,10,"INSERT",ch.insertOn,()=>{ch.insertOn=!ch.insertOn;selectChannel(ci);setMode('selected');},ED.yel,6);
-    eBtn(x,155,54,10,"D.OUT",ch.directOn,()=>{ch.directOn=!ch.directOn;selectChannel(ci);setMode('selected');},ED.yel,6);
+    // INSERT / D.OUT — toggle in place and select the channel (no page jump)
+    eBtn(x,144,54,10,"INSERT",ch.insertOn,()=>{ch.insertOn=!ch.insertOn;selectChannel(ci);},ED.yel,6);
+    eBtn(x,155,54,10,"D.OUT",ch.directOn,()=>{ch.directOn=!ch.directOn;selectChannel(ci);},ED.yel,6);
     stripProc(x,ch,apply,()=>selectChannel(ci));
     stripMix(x,ch,apply);
     stripTail(x,ch,{ sel:ci===state.sel&&state.selStin<0, on:ch.on, name:ch.name, apply,
@@ -1377,7 +1440,7 @@
   function stripStin(x,si){
     const c=STIN[si], apply=()=>applyStinAudio(si);
     stripShell(x,state.selStin===si,false);
-    vreg({x,y:STOP,w:SW,h:SBOT-STOP,onDown:()=>{selectStin(si);setMode('selected');}});
+    vreg({x,y:STOP,w:SW,h:SBOT-STOP,onDown:()=>{selectStin(si);}});
     eNameBox(x,24,54,12,c.patch);
     vreg({x,y:24,w:54,h:12,onDown:()=>{selectStin(si);setMode('patch');}});
     eBtn(x,40,54,10,"ø",c.phase,()=>{c.phase=!c.phase;apply();},ED.org,6);
@@ -1385,7 +1448,7 @@
     eKnobReg(x+13,66,9,()=>c.dgain,v=>{c.dgain=v;apply();},-24,24,false);
     eVal(x,78,54,11,(c.dgain>0?"+":"")+c.dgain.toFixed(1)+"dB");
     // HPF -> HPF/EQ page (the ST IN strip had no route to it at all)
-    eBtn(x,118,54,11,"HPF",c.hpfOn,()=>{c.hpfOn=!c.hpfOn;apply();selectStin(si);setMode('eq');},ED.yel,7);
+    eBtn(x,118,54,11,"HPF",c.hpfOn,()=>{c.hpfOn=!c.hpfOn;apply();selectStin(si);},ED.yel,7);
     eDragVal(x,130,54,11,fFmt(c.hpf),()=>c.hpf,v=>{c.hpf=Math.round(v);apply();},20,600,true);
     // LR-MONO SELECT / STEREO (the ST IN pair mode)
     eNameBox(x,144,54,10,"LR-MONO");
@@ -2090,9 +2153,9 @@
   (function loadBasesRuntime(){
     var SB_ANON="__SMU_SUPABASE_ANON_KEY__"; /* chave anon pública — trocada na publicação */
     try{ if(typeof window!=="undefined" && window.__SMU_SB_ANON) SB_ANON=window.__SMU_SB_ANON; }catch(e){}
-    if(!SB_ANON || SB_ANON.indexOf("__SMU")===0) return; /* sem chave -> fica no fallback */
+    /* keyless: le o catalogo publico media/bases.json */ /* sem chave -> fica no fallback */
     var ROOT=(SB||"").replace("/storage/v1/object/public/media/","");
-    var REST=ROOT+"/rest/v1/sim_bases?select=label,folder,stems&ativo=eq.true&order=ordem";
+    var REST=SB+"bases.json?t="+Date.now();
     fetch(REST,{headers:{apikey:SB_ANON,Authorization:"Bearer "+SB_ANON}})
       .then(function(r){ return r.ok? r.json() : Promise.reject(r.status); })
       .then(function(rows){
@@ -2388,7 +2451,7 @@
     loadingSong=false;
     if(tok!==loadTok){ setPlayBtn(playing); return; }
     stopSong(true); const t0=ac.currentTime+0.12;
-    useStems.forEach((st,i)=>{ if(i>=MAXCH||!aNodes[i])return; const src=ac.createBufferSource(); src.buffer=bufs[i]; src.loop=true; src.connect(aNodes[i].trim); src.start(t0); realSources.push(src); });
+    useStems.forEach((st,i)=>{ if(i>=MAXCH||!aNodes[i])return; const src=ac.createBufferSource(); src.buffer=bufs[i]; src.loop=true; if(bufs.__le===undefined){var _m=1e9;for(var _k=0;_k<bufs.length;_k++){if(bufs[_k]&&bufs[_k].duration<_m)_m=bufs[_k].duration;}bufs.__le=_m;} if(bufs.__le>0.5&&bufs.__le<1e8){src.loopStart=0;src.loopEnd=bufs.__le;} src.connect(aNodes[i].trim); src.start(t0); realSources.push(src); });
     for(let i=0;i<MAXCAP;i++)applyChanAudio(i); playing=true; setPlayBtn(true); setStatus("tocando ♪ "+song.label,"#3ad07a"); }
   function stopSong(keep){ realSources.forEach(s=>{try{s.stop();}catch(e){}}); realSources=[]; playing=false; setPlayBtn(false); if(!keep)setStatus("parado"); }
 
@@ -2484,21 +2547,13 @@
   updateSofUi(); paintMission();
   window.addEventListener("resize",sizeCanvas); setTimeout(sizeCanvas,30); requestAnimationFrame(loop);
 
-  /* ================= FIT (preserved: zoom-to-fit the editor app) ================= */
-  let ZOOM=0;   // 0 = fit to window; otherwise an explicit Zoom-menu factor
+  /* ================= FIT — the app is now ALWAYS fluid (it IS the viewport) =================
+     The old zoom-to-fit of a fixed 1920px desk is what shrank every control below the
+     finger/eye. There is no zoom anymore in any mode; fit simply re-runs the responsive
+     layout (dock vs drawer, which page fills the desk) for the current viewport. */
+  let ZOOM=0;   // kept for the Zoom menu references; no longer applies a CSS zoom
   function fitApp(){ const con=$("#app"); if(!con)return;
-    // Touch modes run the app fluid at 1:1 — zooming a 1920px desk down to a tablet is
-    // what makes the chrome untappable, so instead the app simply *is* the viewport.
-    if(calcLayout()!=='desktop'){ con.style.zoom=''; document.body.style.alignItems='';
-      try{ applyLayout(); }catch(e){} return; }
-    const vw=window.innerWidth,vh=window.innerHeight;
-    con.style.zoom=''; const DW=con.offsetWidth||1920, DH=con.offsetHeight||1000;   // mede o tamanho REAL
-    // In the course's 16:9 sandboxed srcdoc iframe the frame is TALLER than the real
-    // display, so trust screen.height over innerHeight (same guard as the other sims).
-    const scrH=(window.screen&&screen.height)||vh; const iframeTaller=vh>scrH+8; const visH=Math.min(vh,scrH);
-    const headerAllow=iframeTaller?84:(vh>700?40:6); const effVh=Math.max(240,visH-headerAllow);
-    document.body.style.alignItems=(iframeTaller||vh>700)?'flex-start':'center';
-    let s=ZOOM||Math.min((vw-16)/DW,effVh/DH); s=Math.max(0.3,Math.min(s,2.4)); con.style.zoom=s;
+    con.style.zoom=''; document.body.style.alignItems='';
     try{ applyLayout(); }catch(e){}
   }
   window.addEventListener('resize',fitApp); setTimeout(fitApp,45);

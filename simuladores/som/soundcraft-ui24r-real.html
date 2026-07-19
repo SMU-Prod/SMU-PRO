@@ -412,7 +412,7 @@
   /* ================= AUDIO ENGINE (preserved from working sim) ================= */
   const SB="https://pshynylvvkhhohftouoe.supabase.co/storage/v1/object/public/media/";
   const sg=(n,c,f,p,h)=>({n,c,f,p,h});
-  const SONGS=[
+  let SONGS=[
     {label:"Pagodão — Tá Sozinha", folder:"mix-pagodao-tasozinha", stems:[
       sg("Bumbo","#e0483f","BB.mp3",0,false),sg("Caixa","#f97316","CX.mp3",0,true),sg("Surdo 1","#f4a02a","SD_1.mp3",-8,false),sg("Surdo 2","#eab308","SD_2.mp3",8,false),
       sg("Chimbal","#84cc16","HH.mp3",-15,true),sg("Repique","#3ad07a","REP.mp3",12,true),sg("Rototom","#14b8a6","ROTANTAN.mp3",-10,true),sg("Timbau","#39c0e6","TIMBAL.mp3",10,true),
@@ -547,7 +547,7 @@
     catch(e){ loadingSong=false; setPlayBtn(false); setStatus("ERRO ao baixar "+(e.stem||"stem")+" — "+e.message+" (toque PLAY p/ tentar de novo)","#e2464f"); return; }
     loadingSong=false; if(tok!==loadTok){ setPlayBtn(playing); return; }
     stopSong(true); const t0=ac.currentTime+0.12;
-    song.stems.forEach((st,i)=>{ if(i>=N_CH||!aNodes[i])return; const src=ac.createBufferSource(); src.buffer=bufs[i]; src.loop=true; src.connect(aNodes[i].trim); src.start(t0); realSources.push(src); });
+    song.stems.forEach((st,i)=>{ if(i>=N_CH||!aNodes[i])return; const src=ac.createBufferSource(); src.buffer=bufs[i]; src.loop=true; if(bufs.__le===undefined){var _m=1e9;for(var _k=0;_k<bufs.length;_k++){if(bufs[_k]&&bufs[_k].duration<_m)_m=bufs[_k].duration;}bufs.__le=_m;} if(bufs.__le>0.5&&bufs.__le<1e8){src.loopStart=0;src.loopEnd=bufs.__le;} src.connect(aNodes[i].trim); src.start(t0); realSources.push(src); });
     for(let i=0;i<N_CH;i++)applyChanAudio(i); playing=true; setPlayBtn(true); setStatus("tocando ♪ "+song.label,"#00eb58"); }
   function stopSong(keep){ realSources.forEach(s=>{try{s.stop();}catch(e){}}); realSources=[]; playing=false; setPlayBtn(false); if(!keep)setStatus("parado"); }
 
@@ -1043,6 +1043,37 @@
   $("#mediaPlay").onclick=()=>{ if(loadingSong)return; if(playing)stopSong(); else playSong(); };
   $("#rec2").onclick=e=>{ e.target.classList.toggle('on'); toast('2-Track rec (didático)'); };
   $("#recMulti").onclick=e=>{ e.target.classList.toggle('on'); toast('Multitrack 22ch (didático)'); };
+
+  /* ===== BASES EM RUNTIME (SMU) — catálogo público media/bases.json (sem chave).
+     Substitui SONGS se vier; senão mantém o fallback embutido. A mesa usa os
+     primeiros N_CH canais da base (como um console real sem patch). ===== */
+  (function loadBasesRuntime(){
+    fetch(SB+"bases.json?t="+Date.now(),{cache:"no-store"})
+      .then(function(r){ return r.ok? r.json() : Promise.reject(r.status); })
+      .then(function(rows){
+        if(!Array.isArray(rows)||!rows.length) return;
+        var mapped=rows.map(function(r){
+          var stems=(r.stems||[]).filter(function(s){return s&&s.a!==false;})
+            .map(function(s){return {n:s.n,c:s.c,f:s.f,p:s.p,h:s.h};});
+          return {label:r.label, folder:r.folder, stems:stems};
+        }).filter(function(s){return s.stems.length;});
+        if(!mapped.length) return;
+        SONGS=mapped;
+        try{ var sel2=document.getElementById("songSel");
+          if(sel2){ sel2.innerHTML=""; SONGS.forEach(function(s,i){
+            var o=document.createElement("option"); o.value=i;
+            var extra=(s.stems.length>N_CH)?(" — "+s.stems.length+" faixas (esta mesa usa "+N_CH+")"):"";
+            o.textContent=s.label+extra; sel2.appendChild(o); }); sel2.value=0; }
+        }catch(e){}
+        try{ var w=(typeof playing!=="undefined"&&playing);
+          if(typeof stopSong==="function") stopSong(true);
+          if(typeof loadSong==="function") loadSong(0);
+          if(typeof preloadSong==="function") preloadSong();
+          if(w&&typeof playSong==="function") playSong();
+        }catch(e){}
+      })
+      .catch(function(){ /* mantém o fallback embutido */ });
+  })();
 
   /* ================= LOOP ================= */
   function loop(){ processGates();

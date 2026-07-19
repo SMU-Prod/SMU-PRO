@@ -304,6 +304,11 @@
     ctx.fillStyle=g; roundRect(x,y,w,h,5); ctx.fill(); ctx.strokeStyle=active?shade(col,-40):"#434b55"; ctx.lineWidth=1; roundRect(x+.5,y+.5,w-1,h-1,5); ctx.stroke();
     ctx.fillStyle=active?pickInk(col):"#cfe0f0"; ctx.font="700 "+(small?9:10)+"px Inter,system-ui"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(label,x+w/2,y+h/2+.5); ctx.textBaseline="alphabetic";
     if(onClick) reg({x,y,w,h,onDown:()=>onClick()}); }
+  // pílula de STATUS (não-interativa) — usada no celular onde o botão seria pequeno demais p/ tocar
+  function scrStatus(x,y,w,h,label,active,col){ col=col||SC.amber;
+    ctx.fillStyle=active?shade(col,-8):"#20262e"; roundRect(x,y,w,h,4); ctx.fill();
+    ctx.strokeStyle=active?shade(col,-40):"#3a424b"; ctx.lineWidth=1; roundRect(x+.5,y+.5,w-1,h-1,4); ctx.stroke();
+    ctx.fillStyle=active?pickInk(col):"#8a97a8"; ctx.font="700 8px Inter"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(label,x+w/2,y+h/2+.5); ctx.textBaseline="alphabetic"; }
   function scrParam(x,y,w,label,val,min,max,fmt,onSet,opts){ opts=opts||{};
     if(label){ ctx.fillStyle=SC.mut; ctx.font="700 9px Inter,system-ui"; ctx.textAlign="left"; ctx.fillText(label,x,y-4); }
     ctx.textAlign="right"; ctx.fillStyle=SC.ink; ctx.font="800 11px Inter,system-ui"; ctx.fillText(fmt(val),x+w,y-4);
@@ -434,10 +439,19 @@
     ctx.fillStyle=pickInk(ch.color); ctx.font="800 12px Inter"; ctx.textAlign="center"; ctx.textBaseline="alphabetic"; ctx.fillText(String(ch.i+1),m+18,y+21);
     ctx.textAlign="left"; ctx.fillStyle=SC.ink; ctx.font="800 14px Inter"; ctx.fillText(ch.name,m+38,y+16);
     ctx.fillStyle=SC.mut; ctx.font="700 8px Inter"; ctx.fillText("FAT CHANNEL  ·  CH "+(ch.i+1),m+38,y+27);
-    ctx.textAlign="right"; ctx.fillStyle=ch.on?SC.green:SC.dim; ctx.font="800 12px Inter"; ctx.fillText(faderTxt(ch.fader)+" dB",W-m-118,y+15); ctx.textAlign="left";
-    scrBtn(W-m-112,y+6,34,18,"SEL",true,()=>{},SC.amber,true);
-    scrBtn(W-m-74,y+6,32,18,ch.cue?"SOLO":"SOLO",ch.cue,()=>{ch.cue=!ch.cue;applyCue();},SC.amber,true);
-    scrBtn(W-m-38,y+6,32,18,ch.on?"ON":"MUTE",ch.on,()=>{ch.on=!ch.on;applyChanAudio(ch.i);checkMissions();},ch.on?SC.green:SC.red,true);
+    const NARROW = W<520;
+    if(NARROW){
+      // celular: SOLO/MUTE são o caminho de mute/solo do canal (o mixer manda pra cá).
+      // Alvos grandes e tocáveis (≥24px). SEL é só rótulo no desktop, some no celular.
+      ctx.textAlign="left"; ctx.fillStyle=ch.on?SC.green:SC.dim; ctx.font="800 11px Inter"; ctx.fillText(faderTxt(ch.fader)+" dB",m+38,y+40);
+      scrBtn(W-m-100,y+8,46,30,"SOLO",ch.cue,()=>{ch.cue=!ch.cue;applyCue();},SC.amber);
+      scrBtn(W-m-50,y+8,46,30,ch.on?"ON":"MUTE",ch.on,()=>{ch.on=!ch.on;applyChanAudio(ch.i);checkMissions();},ch.on?SC.green:SC.red);
+    } else {
+      ctx.textAlign="right"; ctx.fillStyle=ch.on?SC.green:SC.dim; ctx.font="800 12px Inter"; ctx.fillText(faderTxt(ch.fader)+" dB",W-m-118,y+15); ctx.textAlign="left";
+      scrBtn(W-m-112,y+6,34,18,"SEL",true,()=>{},SC.amber,true);
+      scrBtn(W-m-74,y+6,32,18,ch.cue?"SOLO":"SOLO",ch.cue,()=>{ch.cue=!ch.cue;applyCue();},SC.amber,true);
+      scrBtn(W-m-38,y+6,32,18,ch.on?"ON":"MUTE",ch.on,()=>{ch.on=!ch.on;applyChanAudio(ch.i);checkMissions();},ch.on?SC.green:SC.red,true);
+    }
     // input strip: GAIN + polarity + 48V
     const gRowY=y+30;
     ctx.fillStyle=SC.amber; ctx.font="800 9px Inter"; ctx.textAlign="left"; ctx.fillText("INPUT GAIN",m+6,gRowY+9);
@@ -525,13 +539,22 @@
       ctx.fillStyle=SC.ink; ctx.font="800 7.5px Inter"; ctx.textAlign="left"; ctx.fillText(faderTxt(fdb),ix,fzBot+9);
       // Mute / Solo buttons (UC Surface bottom of strip)
       const bY=y+gh-18, halfW=(iw-3)/2;
-      scrBtn(ix,bY,halfW,15,"M",!ch.on,()=>{ch.on=!ch.on;applyChanAudio(ch.i);checkMissions();},SC.red,true);
-      scrBtn(ix+halfW+3,bY,halfW,15,"S",ch.cue,()=>{ch.cue=!ch.cue;applyCue();},SC.amber,true);
+      if(W<520){
+        // celular: 16 strips em ~366px ⇒ M/S teriam ~4px (intocáveis). Viram STATUS;
+        // o mute/solo real do canal fica no Fat Channel (toque no strip abre com alvos grandes).
+        scrStatus(ix,bY,halfW,15,"M",!ch.on,SC.red);
+        scrStatus(ix+halfW+3,bY,halfW,15,"S",ch.cue,SC.amber);
+      } else {
+        scrBtn(ix,bY,halfW,15,"M",!ch.on,()=>{ch.on=!ch.on;applyChanAudio(ch.i);checkMissions();},SC.red,true);
+        scrBtn(ix+halfW+3,bY,halfW,15,"S",ch.cue,()=>{ch.cue=!ch.cue;applyCue();},SC.amber,true);
+      }
       if(!ch.on){ ctx.fillStyle="rgba(30,6,10,.35)"; roundRect(x,y+13,cw,gh-31,5); ctx.fill(); }
       // fader drag
       reg({x:capX-6,y:fzTop-4,w:capW+16,h:fzBot-fzTop+12,onDrag:p=>{ const v=pos2db(1-(p.y-fzTop)/(fzBot-fzTop)); if(sof){ ch.sends[state.sofBus]=v; if(v>FMIN)ch.sendOn[state.sofBus]=true; } else { ch.fader=v; } applyChanAudio(ch.i); checkMissions(); }});
       // card tap → select + open Fat Channel
       reg({x,y:y,w:cw,h:eqH+17,onDown:()=>{ selectChannel(ci); setMode('selected'); }});
+      // celular: rodapé do strip (onde ficava M/S) também seleciona → abre Fat Channel
+      if(W<520) reg({x,y:bY-2,w:cw,h:19,onDown:()=>{ selectChannel(ci); setMode('selected'); }});
     });
     // bottom bank buttons
     const by=H-botH-1, bgap=4, bbw=(W-12-(N_OVBANK-1)*bgap)/N_OVBANK;
@@ -707,8 +730,18 @@
       scrBtn(x,yy+fh+11,fw,15,state.dcaOn[g]?"ON":"MUT",state.dcaOn[g],()=>{state.dcaOn[g]=!state.dcaOn[g];for(let i=0;i<NCH;i++)if(CH[i].dca[g])applyChanAudio(i);},state.dcaOn[g]?SC.green:SC.red,true);
     }
     let yy=top+gh+8; ctx.fillStyle=ch.color; ctx.font="800 11px Inter"; ctx.textAlign="left"; ctx.fillText(ch.name+" → DCA assign (1–24)",10,yy);
-    yy+=6; const bw=(W-20-23*2)/24; for(let g=0;g<24;g++) scrBtn(10+g*(bw+2),yy,bw,20,""+(g+1),ch.dca[g],()=>{ch.dca[g]=!ch.dca[g];applyChanAudio(ch.i);},SC.amber,true);
-    yy+=30; ctx.fillStyle=SC.mut; ctx.font="700 10px Inter"; ctx.textAlign="left"; ctx.fillText("MUTE GROUPS 1–8 — mute-master (vermelho) · abaixo: pertinência do canal",10,yy); yy+=6;
+    yy+=6;
+    if(W<520){
+      // celular: "montar DCA" precisa de alvos tocáveis — grid 8×3 (≥24px) em vez de 24 botões de ~11px
+      const cols=8, ax=10, aw=W-20, bg=4, bw2=(aw-(cols-1)*bg)/cols, bh=24, bgy=4;
+      for(let g=0;g<24;g++){ const r=Math.floor(g/cols), c=g%cols; const bx=ax+c*(bw2+bg), by=yy+r*(bh+bgy);
+        scrBtn(bx,by,bw2,bh,""+(g+1),ch.dca[g],()=>{ch.dca[g]=!ch.dca[g];applyChanAudio(ch.i);},SC.amber,true); }
+      yy+=3*(bh+bgy)+6;
+    } else {
+      const bw=(W-20-23*2)/24; for(let g=0;g<24;g++) scrBtn(10+g*(bw+2),yy,bw,20,""+(g+1),ch.dca[g],()=>{ch.dca[g]=!ch.dca[g];applyChanAudio(ch.i);},SC.amber,true);
+      yy+=30;
+    }
+    ctx.fillStyle=SC.mut; ctx.font="700 10px Inter"; ctx.textAlign="left"; ctx.fillText("MUTE GROUPS 1–8 — mute-master (vermelho) · abaixo: pertinência do canal",10,yy); yy+=6;
     const mw=(W-20-7*6-70)/8; for(let g=0;g<8;g++){ const x=10+g*(mw+6);
       scrBtn(x,yy,mw,20,"MG "+(g+1),state.muteActive[g],()=>{state.muteActive[g]=!state.muteActive[g];for(let i=0;i<NCH;i++)if(CH[i].mute[g])applyChanAudio(i);},SC.red,true);
       scrBtn(x,yy+24,mw,16,ch.mute[g]?"IN":"—",ch.mute[g],()=>{ch.mute[g]=!ch.mute[g];applyChanAudio(ch.i);},"#4a6285",true); }
@@ -876,9 +909,9 @@
   (function loadBasesRuntime(){
     var SB_ANON="__SMU_SUPABASE_ANON_KEY__";
     try{ if(typeof window!=="undefined" && window.__SMU_SB_ANON) SB_ANON=window.__SMU_SB_ANON; }catch(e){}
-    if(!SB_ANON || SB_ANON.indexOf("__SMU")===0) return;
+    /* keyless: le o catalogo publico media/bases.json */
     var ROOT=(SB||"").replace("/storage/v1/object/public/media/","");
-    var REST=ROOT+"/rest/v1/sim_bases?select=label,folder,stems&ativo=eq.true&order=ordem";
+    var REST=SB+"bases.json?t="+Date.now();
     fetch(REST,{headers:{apikey:SB_ANON}})
       .then(function(r){ return r.ok? r.json() : Promise.reject(r.status); })
       .then(function(rows){ if(!Array.isArray(rows)||!rows.length) return;
@@ -1039,7 +1072,7 @@
     const song=SONGS[curSong],base=SB+song.folder+"/",tok=++loadTok; loading=true; setPlayBtn(); setStatus("carregando "+song.label+"…","#12a5e5");
     let bufs; try{ bufs=await Promise.all(song.stems.map(st=>loadBuf(base+st.f))); }catch(e){ loading=false; setPlayBtn(); setStatus("erro: "+e.message,"#e0483f"); return; }
     if(tok!==loadTok){ loading=false; setPlayBtn(); return; } stopSong(true); const t0=ac.currentTime+0.12;
-    song.stems.forEach((st,i)=>{ if(i>=MAXCH||!aNodes[i])return; const src=ac.createBufferSource(); src.buffer=bufs[i]; src.loop=true; src.connect(aNodes[i].trim); src.start(t0); realSources.push(src); });
+    song.stems.forEach((st,i)=>{ if(i>=MAXCH||!aNodes[i])return; const src=ac.createBufferSource(); src.buffer=bufs[i]; src.loop=true; if(bufs.__le===undefined){var _m=1e9;for(var _k=0;_k<bufs.length;_k++){if(bufs[_k]&&bufs[_k].duration<_m)_m=bufs[_k].duration;}bufs.__le=_m;} if(bufs.__le>0.5&&bufs.__le<1e8){src.loopStart=0;src.loopEnd=bufs.__le;} src.connect(aNodes[i].trim); src.start(t0); realSources.push(src); });
     for(let i=0;i<NCH;i++)applyChanAudio(i); playing=true; loading=false; setPlayBtn(); setStatus("tocando ♪ "+song.label,"#3ad07a"); }
   function stopSong(keep){ realSources.forEach(s=>{try{s.stop();}catch(e){}}); realSources=[]; playing=false; if(!loading)setPlayBtn(); if(!keep)setStatus("parado"); }
 

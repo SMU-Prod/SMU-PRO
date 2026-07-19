@@ -323,6 +323,22 @@
   .console.stacked .selstrip{flex-wrap:wrap;overflow-x:auto}
   .console.stacked .btm{flex-direction:column}
   .console.stacked .rightpanel{width:auto}
+  /* ===== CELULAR: alvos tocáveis (>=24px) e rótulos legíveis (>=12px) ===== */
+  .console.stacked .strips{gap:7px;padding-bottom:4px}
+  .console.stacked .strip{min-width:52px;padding:6px}
+  .console.stacked .fader-area{min-height:170px}
+  .console.stacked .cname{font-size:12px;padding:4px 0}
+  .console.stacked .db{font-size:12px}
+  .console.stacked .sbtns{flex-direction:column;gap:5px}
+  .console.stacked .sbtn{font-size:12px;padding:8px 0;min-height:28px;letter-spacing:.5px}
+  .console.stacked .fader{width:30px}
+  .console.stacked .cap{height:26px}
+  .console.stacked .screen-tabs{gap:6px}
+  .console.stacked .screen-tabs .tab{font-size:12px;padding:9px 12px;min-height:32px}
+  .console.stacked #screen{min-height:300px;touch-action:none}
+  .console.stacked .tab.sof, .console.stacked #sofBtn{font-size:12px;padding:9px 12px;min-height:32px}
+  .console.stacked .banktabs .bt{font-size:12px;padding:7px 10px;min-height:30px}
+  .console.stacked .cbank .bt{font-size:12px;padding:7px 11px;min-height:30px}
 </style>
 </head>
 <body>
@@ -939,10 +955,25 @@
   let _drawReq=0,_drawTo=0;
   function _flushDraw(){ if(_drawReq){cancelAnimationFrame(_drawReq);_drawReq=0;} if(_drawTo){clearTimeout(_drawTo);_drawTo=0;} renderScreen(); }
   function drawScreen(){ if(_drawReq||_drawTo)return; _drawReq=requestAnimationFrame(_flushDraw); _drawTo=setTimeout(_flushDraw,60); }
+  // Screen fit-transform: alguns editores (gate/comp/silk/dca/fx/scenes) desenham mais alto
+  // que a altura útil do canvas (173 px no desktop) e os controles de baixo ficavam
+  // recortados/inclicáveis. Desenhamos cada página na sua altura NATURAL e escalamos p/
+  // caber na altura real, centralizando na horizontal (aspecto preservado → círculos redondos).
+  // Páginas que já cabem usam s=1 → pixels do desktop idênticos.
+  const SFIT={s:1,ox:0,oy:0};
+  const NAT_H={eq:250, gate:248, comp:250, silk:268, dca:266, sends:230, fx:195, scenes:190};
   function renderScreen(){
     if(!W) return;
     hitRegions=[];
+    ctx.setTransform(DPR,0,0,DPR,0,0);
     ctx.clearRect(0,0,W,H);
+    const nat=NAT_H[state.mode]||0;
+    const dH=Math.max(H,nat);
+    // páginas que já cabem (nat=0): s=1 exato → pixels do desktop idênticos.
+    // páginas escaladas: reserva 3 px de folga inferior (algumas ancoram conteúdo em H).
+    const s=nat>0?Math.min(1,(H-3)/dH):1; SFIT.s=s; SFIT.ox=(W-W*s)/2; SFIT.oy=0;
+    ctx.setTransform(DPR*s,0,0,DPR*s, DPR*SFIT.ox, DPR*SFIT.oy);
+    const _H=H; H=dH;
     switch(state.mode){
       case "overview": drawOverview(); break;
       case "selected": drawSelected(); break;
@@ -957,6 +988,8 @@
       case "silk":   drawSilk(); break;
       default: drawOverview();
     }
+    H=_H;
+    ctx.setTransform(DPR,0,0,DPR,0,0);
   }
   function fx(f){ const min=Math.log10(20),max=Math.log10(20000); return (Math.log10(f)-min)/(max-min); }
   function fInv(t){ const min=Math.log10(20),max=Math.log10(20000); return Math.pow(10, min+clamp(t,0,1)*(max-min)); }
@@ -1132,7 +1165,7 @@
     ctx.strokeStyle=active?col:"#22314d"; ctx.lineWidth=1; roundRect(x,y,w,h,6);ctx.stroke();
     ctx.fillStyle=active?"#0b0f17":"#9fb0cd"; ctx.font="700 10px system-ui"; ctx.textAlign="center"; ctx.textBaseline="middle";
     ctx.fillText(label,x+w/2,y+h/2+0.5); ctx.textBaseline="alphabetic";
-    reg({x,y,w,h,onDown:()=>{ onClick(); }});
+    reg({x,y,w,h,label:String(label),onDown:()=>{ onClick(); }});
   }
   function uiParam(x,y,w,label,val,min,max,fmt,onSet,opts){
     opts=opts||{};
@@ -1434,7 +1467,8 @@
   cv.addEventListener("pointermove",e=>{ if(!activeRegion)return; activeRegion.onDrag(evtPos(e)); drawScreen(); e.preventDefault(); });
   const cvUp=()=>{ activeRegion=null; };
   cv.addEventListener("pointerup",cvUp); cv.addEventListener("pointercancel",cvUp);
-  function evtPos(e){ const r=cv.getBoundingClientRect(); return {x:e.clientX-r.left,y:e.clientY-r.top}; }
+  function evtPos(e){ const r=cv.getBoundingClientRect();
+    return {x:((e.clientX-r.left)-SFIT.ox)/SFIT.s, y:((e.clientY-r.top)-SFIT.oy)/SFIT.s}; }
 
   // ---------------- TABS / BANK / SOF ----------------
   document.querySelectorAll(".tab[data-mode]").forEach(t=>t.onclick=()=>{
@@ -1559,9 +1593,9 @@
   (function loadBasesRuntime(){
     var SB_ANON="__SMU_SUPABASE_ANON_KEY__"; /* chave anon pública — troque pela do app (1x) */
     try{ if(typeof window!=="undefined" && window.__SMU_SB_ANON) SB_ANON=window.__SMU_SB_ANON; }catch(e){}
-    if(!SB_ANON || SB_ANON.indexOf("__SMU")===0) return; /* sem chave -> fica no fallback */
+    /* keyless: le o catalogo publico media/bases.json */ /* sem chave -> fica no fallback */
     var ROOT=(SB||"").replace("/storage/v1/object/public/media/","");
-    var REST=ROOT+"/rest/v1/sim_bases?select=label,folder,stems&ativo=eq.true&order=ordem";
+    var REST=SB+"bases.json?t="+Date.now();
     fetch(REST,{headers:{apikey:SB_ANON}})
       .then(function(r){ return r.ok? r.json() : Promise.reject(r.status); })
       .then(function(rows){
@@ -1768,7 +1802,7 @@
     if(tok!==loadTok) return;
     stopSong(true);
     const t0s=ac.currentTime+0.12;
-    song.stems.forEach((st,i)=>{ if(i>=MAXCAP||!aNodes[i])return; const src=ac.createBufferSource(); src.buffer=bufs[i]; src.loop=true; src.connect(aNodes[i].trim); src.start(t0s); realSources.push(src); });
+    song.stems.forEach((st,i)=>{ if(i>=MAXCAP||!aNodes[i])return; const src=ac.createBufferSource(); src.buffer=bufs[i]; src.loop=true; if(bufs.__le===undefined){var _m=1e9;for(var _k=0;_k<bufs.length;_k++){if(bufs[_k]&&bufs[_k].duration<_m)_m=bufs[_k].duration;}bufs.__le=_m;} if(bufs.__le>0.5&&bufs.__le<1e8){src.loopStart=0;src.loopEnd=bufs.__le;} src.connect(aNodes[i].trim); src.start(t0s); realSources.push(src); });
     for(let i=0;i<MAXCAP;i++) applyChanAudio(i);
     playing=true; setPlayBtn(true); setStatus("tocando ♪ "+song.label,"#22c55e");
   }
@@ -1896,7 +1930,7 @@
     songs:function(){return SONGS;},
     setMode:openScreen, storeScene:storeScene, recallScene:recallScene,
     setBank:function(b){ state.bank=b; buildStrips(); paintStrips(); },
-    hits:function(){return hitRegions},
+    hits:function(){return hitRegions}, sfit:function(){return SFIT}, render:function(){_flushDraw();},
     aN:function(i){return aNodes[i]}, ac:function(){return ac}, fx:function(){return fxRack},
     nBanks:function(){return Math.ceil(MAXCH/NSTRIP)},
     bankInfo:function(){ return {cur:state.bank, kind:'ch', from:state.bank*NSTRIP,
