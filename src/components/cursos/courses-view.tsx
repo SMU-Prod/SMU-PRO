@@ -13,6 +13,22 @@ import { courseMeta } from "@/lib/i18n/courses-meta";
 
 type Course = any;
 
+/**
+ * Thumbnail na LISTA: mostra só a logo SMU, sem o nome do curso.
+ *
+ * O nome vem CRAVADO na imagem (template 1280×720: letras SMU em y 132–440, as duas
+ * barras amarelas até y=494, e o nome do curso em y 549–660). Num thumb de 112px esse
+ * texto fica com ~2px de altura — distorcido e ilegível, que é o que aparecia na lista.
+ * O nome do curso já está escrito ao lado, em texto de verdade, então na imagem ele é
+ * repetição ilegível.
+ *
+ * Recorte por CSS (a imagem não é alterada — o card grande continua usando ela inteira):
+ * `scale-[1.46]` amplia a região da logo e `origin-top` ancora no topo, empurrando a
+ * faixa do nome para fora do `overflow-hidden`. 720/494 ≈ 1.46 = exatamente o ponto
+ * onde a logo termina e o nome começa.
+ */
+const SO_LOGO = "object-cover scale-[1.46] origin-top";
+
 // ordem dos grupos: iniciais (trainee) -> básicos (junior) -> plenos (pleno)
 const GROUPS: { nivel: string; label: string }[] = [
   { nivel: "trainee", label: "Cursos iniciais" },
@@ -79,7 +95,7 @@ function LinhaLista({ course, t, locale, isAula }: { course: Course; t: TFn; loc
       <div className="flex items-center gap-4 rounded-xl bg-surface border border-border p-3 hover:border-amber-500/30 hover:shadow-sm transition-all">
         <div className="relative h-16 w-28 shrink-0 rounded-lg overflow-hidden bg-surface-2 flex items-center justify-center">
           {course.thumbnail_url ? (
-            <Image src={course.thumbnail_url} alt={course.titulo} fill sizes="112px" className="object-cover" />
+            <Image src={course.thumbnail_url} alt={course.titulo} fill sizes="112px" className={SO_LOGO} />
           ) : (
             <CategoryIcon category={course.categoria} size={24} />
           )}
