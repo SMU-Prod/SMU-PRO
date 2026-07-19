@@ -93,10 +93,16 @@ export const REGISTRO = {
   "pleno-som":        { curso: "pleno-som",      mod: "5504c000", aula: "5504c000",
                         dono: "COMPARTILHADO: som-formacao-completa, pleno-mix-show, pleno-ah-sq, pleno-digico",
                         obs: "módulos de console compartilhados por design — antes de escrever, confira que o id da SUA aula não é de outro script" },
+  // Módulo de DSP DENTRO do pleno-som, mas em FAIXA DEDICADA (7c1) — NÃO na faixa
+  // compartilhada 5504c000, para não colidir com os 4 scripts de console. O módulo aponta
+  // course_id = pleno-som; o id dele e das aulas usam idModulo()/idAula() com prefixo próprio.
+  "pleno-som-dsp":    { curso: "pleno-som",      mod: "7c100000", aula: "7c100000",
+                        dono: "cursos-novos/pleno-som-dsp (Processadores de Sistema / DSP)",
+                        obs: "módulo …-000000000001, aulas …-00000001{nn}; VENU360 é a aula flagship" },
 };
 
 /** Prefixos LIVRES para o próximo curso. Risque daqui e registre acima ao usar. */
-export const LIVRES = ["7c1", "7d1", "7e1", "7f1", "8a1", "8b1", "8c1"];
+export const LIVRES = ["7d1", "7e1", "7f1", "8a1", "8b1", "8c1"];
 
 // ⚠️ ARMADILHA HISTÓRICA — `72100000` é COMPARTILHADO no banco:
 //    pleno-video  usa 72100000-…-000000000b01 / b02 / b03   (sufixo com 'b')
