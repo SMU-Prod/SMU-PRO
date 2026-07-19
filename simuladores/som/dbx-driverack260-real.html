@@ -1,0 +1,1166 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>dbx DriveRack 260 — simulador SMU</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<!--
+  ============================================================================
+  dbx DriveRack 260 — réplica do painel frontal + DriveWare (Loudspeaker Mgmt)
+  ============================================================================
+  FONTE DE VERDADE (nada aqui foi inventado; o 260 só roda com hardware — a
+  referência é o MANUAL OFICIAL):
+    • _ref-260/DriveRack260_Manual.pdf ...... 260 Owner's Manual 5059585-A (66p)
+    • _ref-260/260-clean.txt ................. texto extraído (ferramentas/pdftext.mjs)
+    • _ref-260/imgs/obj177..197 ............. telas do painel/LCD do manual (Wizard)
+    • _ref-260/imgs/obj325..343 ............. dialogs do DriveWare (Device Utilities)
+
+  Pele/cores: recriadas em CSS/SVG NOSSO olhando as telas do manual (mesmo
+  método do PA2/VENU360). Nenhum asset, imagem ou CURVA DE TUNING da dbx foi
+  copiado ou hospedado (as curvas de tuning JBL/Crown são proprietárias — o
+  simulador NÃO as reproduz; nasce num programa genérico editável).
+
+  MOTOR reaproveitado da família DriveRack (VENU360 -> PA2): a matemática de
+  filtro (crossover BW/LR/BESSEL), o PEQ, o limiter com compensação de makeup
+  e o delay ATUAM no som de verdade. A CARA e os NÚMEROS, porém, são do 260:
+
+  FATOS CONFIRMADOS NO MANUAL (não "corrigir"):
+    • I/O: 2 line in (XLR fêmea) + 1 RTA Mic in / 6 line out (XLR macho). (A.3)
+    • Sample Rate 48 kHz; conversão dbx Type IV; resposta 20 Hz–20 kHz ±0.5 dB. (A.3)
+    • Pre-Crossover EQ = 28-Band GEQ (31.5 Hz–16 kHz, ±12 dB) OU 9-Band PEQ. (4.1)
+    • ⭐ CROSSOVER — O 260 É O DRIVERACK QUE TEM BESSEL (4.7):
+        BS (Bessel) ......... 6, 12, 18, 24 dB/oct
+        BW (Butterworth) .... 6, 12, 18, 24 dB/oct
+        LR (Linkwitz-Riley) . 12, 24, 36, 48 dB/oct
+      (VENU360 e PA2 NÃO têm Bessel — este é o diferencial do 260.)
+    • Post-Crossover PEQ: 4 bandas, tipos Bell/HShelf/LShelf/LHShelf, ±12 dB,
+      Q 0.20–16, S (shelf) 3/4.5/6/9/12 dB/oct. (4.8)
+    • Compressor: OverEasy Off–10, Thr −40..+20 dBu, Ratio 1:1..Inf:1,
+      Gain −20..+20 dB, Atk 0.1–200 ms, Hold 0–500 ms, Rel 360–5 dB/s. (4.9)
+    • Limiter: OverEasy Off–10, Thr −40..+20 dBu, PeakStop+ On/Off 1–6,
+      Overshoot 1–6. (4.9)
+    • Alignment Delay: On/Off, 0.00–1.3 s (Feet 0–1465.1 / Meters 0–445.9). (4.10)
+    • Subharmonic Synth: 0–100%, bandas 24–36 Hz e 36–56 Hz. (4.3)
+    • Notch: 6 filtros, 20 Hz–20 kHz, −36..+6 dB, Q 16–128. (4.6)
+    • Output: Polarity +/−  E  Phase 0..−175° (o 260 tem os dois). (4.12)
+    • AFS: Speech/Low/Med/High Music, 1–12 filtros, Fixed 0–12, Live Lift. (4.2)
+
+  ⚠️ Marcado "⚠️ ESTIMADO" em constante única tudo que o manual não publica.
+  ============================================================================
+-->
+<style>
+:root{
+  /* pele do rack dbx 260 (metal escuro) — recriada do manual (grayscale) */
+  --rack:#161616; --face:#1d1d1f; --face2:#141416;
+  --dbxred:#e0242c;
+  --lcd:#0a2a26;          /* ⚠️ ESTIMADO: cor exata do backlight do LCD do 260
+                             não é publicada (manual é P&B). Verde-água clássico.*/
+  --lcdink:#8ff5d8; --lcddim:#3f8f7d;
+  --plot:#141414; --grid:#2f2f2f; --panel:#212123; --row:#1c1c1e;
+  --green:#3ea63c; --txt:#e6e6e6; --dim:#8f8f8f; --edit:#c8102e;
+  --hdr-h:52px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{background:#000;color:var(--txt);overflow:hidden;
+  font-family:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;font-size:13px}
+#app{display:flex;flex-direction:column;height:100dvh;width:100%}
+
+/* ============ HEADER app-bar ============ */
+#hdr{flex:0 0 auto;height:var(--hdr-h);background:#232325;display:flex;align-items:center;
+  gap:0;padding:0 12px;position:relative;z-index:30;border-bottom:1px solid #000}
+.dbx{flex:0 0 auto;line-height:1;padding-right:12px}
+.dbx b{color:var(--dbxred);font-size:22px;font-weight:800;letter-spacing:-1px;font-family:Georgia,serif}
+.dbx i{display:block;color:#9a9a9a;font-size:8px;font-style:normal;letter-spacing:1px}
+.htitle{flex:1 1 auto;color:#dcdcdc;font-size:16px;font-weight:300;padding-left:4px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.htitle b{color:#fff;font-weight:600}
+.hprog{flex:0 0 auto;color:#8fbf6f;font-size:11px;text-align:right;line-height:1.15;padding-right:8px}
+.hprog b{color:#b7d99a;font-size:13px}
+.hprog .ed{display:none;color:#fff;background:var(--edit);font-size:8px;padding:1px 4px;border-radius:2px}
+.hprog.edited .ed{display:inline-block}
+
+/* ============ FRONT PANEL (1U rack) ============ */
+#panel{flex:0 0 auto;background:linear-gradient(#1f1f21,#161618);border-bottom:2px solid #000;
+  display:flex;align-items:stretch;gap:12px;padding:10px 14px;position:relative;z-index:20}
+#panel::before,#panel::after{content:"";position:absolute;top:8px;bottom:8px;width:14px;
+  background:radial-gradient(circle at 50% 22%,#3a3a3c,#0c0c0d 60%);border-radius:3px;border:1px solid #000}
+#panel::before{left:4px} #panel::after{right:4px}
+.pnLabels{flex:0 0 auto;display:flex;flex-direction:column;justify-content:space-between;
+  padding:2px 6px 2px 20px;width:118px}
+.pnLabels div{font-size:7px;letter-spacing:.4px;color:#9a9a9a;line-height:1.35;text-transform:uppercase}
+.pnLabels .brand b{color:var(--dbxred);font-size:16px;letter-spacing:-1px;font-family:Georgia,serif}
+.pnLabels .brand i{color:#c8c8c8;font-size:8px;font-style:normal}
+.pnLabels .model{color:#e6e6e6;font-size:9px;font-weight:700;letter-spacing:1px}
+
+/* LCD */
+.lcdBox{flex:1 1 320px;min-width:0;max-width:430px;display:flex;flex-direction:column}
+.lcdScale{display:flex;justify-content:space-between;font-size:6px;color:#8a8a8a;padding:0 3px 2px}
+#lcd{flex:1 1 auto;width:100%;background:var(--lcd);border:2px solid #000;border-radius:3px;
+  box-shadow:inset 0 0 22px #000a, 0 0 0 1px #333;display:block;min-height:120px}
+.lcdBot{font-size:6px;letter-spacing:.3px;color:#7a7a7a;text-align:center;padding-top:2px;text-transform:uppercase}
+
+/* DATA wheel */
+.wheelBox{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0 4px}
+.wtag{font-size:7px;color:#9a9a9a;letter-spacing:1px}.wtag b{color:#ccc}
+#wheel{width:74px;height:74px;border-radius:50%;cursor:grab;
+  background:radial-gradient(circle at 38% 32%,#4a4a4d,#161617 66%,#0a0a0b);
+  border:2px solid #000;box-shadow:0 3px 8px #000b, inset 0 2px 4px #ffffff10;position:relative}
+#wheel::after{content:"";position:absolute;left:50%;top:8%;width:5px;height:22px;margin-left:-2.5px;
+  background:linear-gradient(#e8e8e8,#8a8a8a);border-radius:3px;box-shadow:0 0 3px #000}
+#wheel.push{transform:scale(.96)}
+.wpush{font-size:6px;color:#8a8a8a;letter-spacing:1px}
+
+/* button grid */
+.btnGrid{flex:0 0 auto;display:grid;grid-template-columns:repeat(4,minmax(48px,1fr));gap:5px;
+  align-content:center;padding:0 8px 0 2px;min-width:210px}
+.pbtn{background:linear-gradient(#3a3a3c,#242426);border:1px solid #000;border-radius:3px;color:#d6d6d6;
+  font-size:8.5px;font-weight:600;letter-spacing:.3px;padding:7px 2px;cursor:pointer;text-align:center;
+  box-shadow:0 1px 0 #ffffff12 inset,0 2px 3px #0008;line-height:1.05;position:relative;min-height:30px}
+.pbtn:hover{filter:brightness(1.18)}
+.pbtn.sel{background:linear-gradient(#c8102e,#8f0b20);color:#fff;border-color:#5a0813}
+.pbtn small{display:block;font-size:6px;color:#e0a0a8;font-weight:500}
+.pbtn.sel small{color:#ffd0d6}
+.pbtn .led{position:absolute;top:3px;right:4px;width:5px;height:5px;border-radius:50%;background:#3a1010}
+.pbtn.on .led{background:#ff3b3b;box-shadow:0 0 5px #ff3b3b}
+
+/* ============ EDITOR (DriveWare mirror) ============ */
+#main{flex:1 1 auto;position:relative;min-height:0;background:#111}
+.page{position:absolute;inset:0;display:none;flex-direction:column;overflow:auto}
+.page.on{display:flex}
+.ptitle{flex:0 0 auto;display:flex;align-items:center;gap:12px;padding:9px 18px 5px;font-size:15px;color:#ececec}
+.ptitle .sub{color:#b0b0b0;font-size:12px;flex:1 1 auto}
+.pill{border:0;border-radius:12px;padding:4px 18px;font-size:12px;color:#fff;cursor:pointer;background:#6f6f6f;min-width:66px}
+.pill.on{background:var(--green)}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;padding:2px 18px 4px}
+.tab{background:#2a2a2c;border:1px solid #3a3a3c;color:#cfcfcf;font-size:11px;padding:6px 12px;border-radius:3px;cursor:pointer}
+.tab.sel{background:#e6e6e6;color:#1a1a1a;font-weight:600;border-color:#e6e6e6}
+.plotbox{padding:0 18px}
+canvas{display:block;width:100%}
+.split2{display:flex;gap:14px;padding:0 18px 10px;align-items:flex-start}
+.split2>*{flex:1 1 0;min-width:0}
+.note{color:#9a9a9a;font-size:11px;line-height:1.5;padding:6px 18px 12px}
+.estim{color:#e0b050}
+
+/* param row (slider) — reaproveitado do PA2 */
+.prows{background:var(--panel);border-radius:4px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:10px;padding:8px 12px;min-width:0;border-bottom:1px solid #ffffff0d;background:var(--row)}
+.prow.dim{opacity:.34;pointer-events:none}
+.prow .nm{width:88px;text-align:left;color:#cbcbcb;font-size:12px;flex:0 0 auto}
+.prow .vl{width:74px;color:#fff;font-size:12px;font-weight:600;flex:0 0 auto;text-align:right}
+.chev{background:none;border:0;color:#c8c8c8;font-size:19px;cursor:pointer;padding:0 5px;line-height:1}
+.chev:hover{color:#fff}
+.mn,.mx{font-size:10px;color:#8a8a8a;flex:0 0 auto;width:48px}.mx{text-align:right}
+.sld{flex:1 1 auto;min-width:0;-webkit-appearance:none;appearance:none;height:22px;background:none;cursor:pointer;--fill:0%;--acc:var(--green)}
+.sld::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:linear-gradient(90deg,var(--acc) 0 var(--fill),#4a4a4a var(--fill) 100%)}
+.sld::-moz-range-track{height:4px;border-radius:2px;background:linear-gradient(90deg,var(--acc) 0 var(--fill),#4a4a4a var(--fill) 100%)}
+.sld::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:#f0f0f0;margin-top:-6px;box-shadow:0 1px 3px #000a}
+.sld::-moz-range-thumb{width:15px;height:15px;border-radius:50%;background:#f0f0f0;border:0}
+
+/* select / buttons */
+.selrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 12px;background:var(--row);border-bottom:1px solid #ffffff0d}
+.selrow label{font-size:12px;color:#cbcbcb;min-width:88px}
+.sel-dd{background:#e2e2e2;border:0;color:#1a1a1a;font-size:12px;padding:7px 9px;cursor:pointer;font-family:inherit;border-radius:3px;flex:1 1 auto;min-width:120px}
+.bnd-row{display:flex;flex-wrap:wrap;gap:8px;padding:8px 12px;justify-content:center;background:var(--row)}
+.bnd{width:36px;height:36px;border-radius:50%;border:2px solid;background:none;cursor:pointer;font-size:14px;color:#e8e8e8;display:grid;place-items:center;transition:transform .1s}
+.bnd.sel{transform:scale(1.14);color:#fff;font-weight:700}
+.tgl{background:#3a3a3c;border:1px solid #4a4a4a;color:#ddd;font-size:11px;padding:7px 12px;border-radius:3px;cursor:pointer}
+.tgl.on{background:var(--green);color:#fff;border-color:var(--green)}
+
+/* RTA */
+#rtaCv{background:var(--plot)}
+
+/* monitor bar */
+#mon{flex:0 0 auto;background:#0c0c0c;border-top:2px solid #262626;display:flex;align-items:center;gap:9px;padding:7px 12px;font-size:11px;flex-wrap:wrap}
+#mon .tag{background:#2a1c0a;color:#e0b050;border:1px solid #5a4212;padding:2px 7px;border-radius:3px;font-size:9px}
+#mon select{background:#242424;color:#ddd;border:1px solid #383838;padding:5px 7px;font-family:inherit;font-size:11px}
+.mbtn{background:#2a2a2a;border:1px solid #3a3a3a;color:#ddd;padding:6px 12px;cursor:pointer;font-size:11px}
+.mbtn.play{background:#1f7a3d;border-color:#1f7a3d;color:#fff}
+.mbtn.stop{background:#a33;border-color:#a33;color:#fff}
+.meter{width:120px;height:9px;background:#191919;border:1px solid #333;position:relative;overflow:hidden}
+.meter i{position:absolute;left:0;top:0;bottom:0;width:0%;background:linear-gradient(90deg,#2a2 0 60%,#dd2 60% 82%,#e33 82% 100%)}
+#monMsg{color:#8a8a8a}
+#toast{position:fixed;left:50%;bottom:74px;transform:translateX(-50%);max-width:560px;width:calc(100% - 32px);
+  background:#101010;border:1px solid #333;border-left:4px solid var(--dbxred);color:#e0e0e0;
+  padding:11px 14px;font-size:12px;line-height:1.45;border-radius:4px;z-index:60;display:none;box-shadow:0 6px 24px #000a}
+#toast.on{display:block}#toast b{color:#fff}
+
+/* ============ responsivo ============ */
+@media (max-width:920px){
+  :root{--hdr-h:46px}
+  #panel{flex-wrap:wrap;gap:8px;padding:8px}
+  .pnLabels{width:auto;flex:1 1 100%;flex-direction:row;justify-content:space-between;padding:0 4px}
+  .pnLabels div:not(.brand):not(.model){display:none}
+  .lcdBox{flex:1 1 100%;max-width:none;order:3}
+  .wheelBox{order:4} .btnGrid{order:5;flex:1 1 100%;width:100%;min-width:0;grid-template-columns:repeat(4,minmax(0,1fr))}
+  #panel{overflow-x:hidden} #panel::before,#panel::after{display:none}
+  .split2{flex-direction:column}
+  .page.on{display:block}.page{overflow-x:hidden}
+  .plotbox,.split2,.tabs,.ptitle,.note{padding-left:8px;padding-right:8px}
+  .prow .nm{width:70px;font-size:11px}.prow .vl{width:58px;font-size:11px}.mn,.mx{display:none}
+  #mon{gap:6px;padding:6px 8px}#mon select{max-width:150px}
+}
+@media (max-width:560px){
+  .btnGrid{grid-template-columns:repeat(4,minmax(0,1fr));min-width:0;gap:4px}
+  .pbtn{font-size:8px;padding:6px 1px;min-height:28px}
+  .pbtn small{font-size:5.5px}
+  .wheelBox{flex:1 1 100%;flex-direction:row;order:4}
+  #wheel{width:56px;height:56px}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ===== app bar ===== -->
+  <div id="hdr">
+    <div class="dbx"><b>dbx</b><i>&reg;</i></div>
+    <div class="htitle"><b>DriveRack 260</b> &middot; Complete Equalization &amp; Loudspeaker Management</div>
+    <div class="hprog" id="hprog">Program <b id="hprogName">U1 2x6 3-Way</b> <span class="ed">EDITADO</span></div>
+  </div>
+
+  <!-- ===== FRONT PANEL ===== -->
+  <div id="panel">
+    <div class="pnLabels">
+      <div class="brand"><b>dbx</b> <i>DriveRack&reg;</i></div>
+      <div>Crossover / Graphic EQ / Parametric EQ / Auto-EQ / Limiter</div>
+      <div class="model">260</div>
+    </div>
+
+    <div class="lcdBox">
+      <div class="lcdScale" id="lcdScale"></div>
+      <canvas id="lcd"></canvas>
+      <div class="lcdBot">Alignment Delay &middot; Feedback Elimination &middot; Compressor &middot; RTA &middot; AGC</div>
+    </div>
+
+    <div class="wheelBox">
+      <div class="wtag"><b>DATA</b></div>
+      <div id="wheel" title="Gire (arraste) para ajustar; clique = SELECT"></div>
+      <div class="wpush">SELECT (PUSH)</div>
+    </div>
+
+    <div class="btnGrid" id="btnGrid"></div>
+  </div>
+
+  <!-- ===== EDITOR (espelho do DriveWare) ===== -->
+  <main id="main"></main>
+
+  <!-- ===== MONITOR ===== -->
+  <div id="mon">
+    <span class="tag">SEU P.A.</span>
+    <span>Fonte:</span>
+    <select id="monSrc">
+      <option value="music">Base musical (entrada)</option>
+      <option value="pink">Ruído rosa (Pink Gen)</option>
+      <option value="white">Ruído branco</option>
+      <option value="sine">Seno 1 kHz</option>
+    </select>
+    <button class="mbtn play" id="monPlay">&#9658; Tocar</button>
+    <span>Ouvir saída:</span>
+    <select id="monOut"></select>
+    <div class="meter"><i id="monMeter"></i></div>
+    <span id="monDb">&mdash;</span>
+    <span id="monMsg"></span>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+"use strict";
+/* ============================================================================
+   1. CONSTANTES — procedência anotada (DriveRack 260 Owner's Manual 5059585-A)
+   ========================================================================== */
+
+/* ⭐ CROSSOVER — LISTA LITERAL do manual 4.7. O 260 TEM BESSEL. */
+const SLOPES=[
+  {id:"BS6", label:"Bessel 6dB/oct",           kind:"BS", order:1},
+  {id:"BS12",label:"Bessel 12dB/oct",          kind:"BS", order:2},
+  {id:"BS18",label:"Bessel 18dB/oct",          kind:"BS", order:3},
+  {id:"BS24",label:"Bessel 24dB/oct",          kind:"BS", order:4},
+  {id:"BW6", label:"Butterworth 6dB/oct",      kind:"BW", order:1},
+  {id:"BW12",label:"Butterworth 12dB/oct",     kind:"BW", order:2},
+  {id:"BW18",label:"Butterworth 18dB/oct",     kind:"BW", order:3},
+  {id:"BW24",label:"Butterworth 24dB/oct",     kind:"BW", order:4},
+  {id:"LR12",label:"Linkwitz-Riley 12dB/oct",  kind:"LR", order:2},
+  {id:"LR24",label:"Linkwitz-Riley 24dB/oct",  kind:"LR", order:4},
+  {id:"LR36",label:"Linkwitz-Riley 36dB/oct",  kind:"LR", order:6},
+  {id:"LR48",label:"Linkwitz-Riley 48dB/oct",  kind:"LR", order:8}
+];
+
+/* GEQ do 260 = 28 bandas, 31.5 Hz–16 kHz (manual 4.1). A série ISO de 1/3 de
+   oitava de 31.5 a 16k dá EXATAMENTE 28 pontos — logo são FATO (não estimativa):*/
+const GEQ_FREQS=[31.5,40,50,63,80,100,125,160,200,250,315,400,500,630,800,1000,
+  1250,1600,2000,2500,3150,4000,5000,6300,8000,10000,12500,16000];
+const GEQ_RANGE=12;                 /* ±12 dB — FATO (manual 4.1) */
+
+/* Ratio do compressor — 1:1..Inf:1 (4.9). ⚠️ ESTIMADO: passos não publicados. */
+const RATIOS_ESTIMADO=[1,1.2,1.4,1.6,1.8,2,2.5,3,3.5,4,5,6,8,10,12,16,20,32,64,Infinity];
+const RATIOS=RATIOS_ESTIMADO;
+
+/* AFS Type — nomes LITERAIS (4.2): Speech / Low Music / Med Music / High Music.
+   Bandwidth: Speech=1/5 oct, Music High=1/20 oct (Q=29 citado). */
+const AFS_TYPES=["Speech","Low Music","Medium Music","High Music"];
+
+/* Program List — nomes LITERAIS do DriveWare (imgs/obj327, tela Program List). */
+const PROGRAMS=[
+  "2x3w/3Zones","LCRw/Cluster","1x4w/2Zones","2x5w/1Zone","2x4Tri-Amped",
+  "2x4w/2Zones","LCRw/Monitor","STw/2Delays","Multi-Zone","2x3w/Bal&Dly"];
+
+/* Crossover routing configs — LITERAIS do manual A.5 (Crossover Diagrams). */
+const XO_CONFIGS=["1X1","1X2","1X3","1X4","1X5","1X6","2X2","2X3","2X4","2X5","2X6"];
+
+const BANDCOL=["#e53935","#00bcd4","#2196f3"];   /* High / Mid / Low */
+
+const SB="https://pshynylvvkhhohftouoe.supabase.co/storage/v1/object/public/media/";
+/* Base musical = a mesa alimentando o XLR de entrada do 260 (o aparelho não tem
+   player; é o sinal que chega na entrada). Somamos os stems. Mesma base do PA2. */
+const MUSIC={folder:"mix-forro-thullio", stems:[
+  "1-KICK-glued.mp3","15-BAIXO-glued.mp3","2-CX-glued.mp3","5-HH-glued.mp3",
+  "16-GUITA-glued.mp3","17-SANF_L-glued.mp3","18-SANF_R-glued.mp3",
+  "20-THULLIO-190905_1154-glued-01.mp3"]};
+
+/* ============================================================================
+   2. HELPERS
+   ========================================================================== */
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const dbToLin=d=>Math.pow(10,d/20);
+const linToDb=l=>20*Math.log10(Math.max(l,1e-9));
+const $=s=>document.querySelector(s);
+const el=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e;};
+
+/* ============================================================================
+   3. ESTADO  (default = programa genérico 2X6 estéreo 3 vias — editável)
+   ========================================================================== */
+/* Pré-crossover PEQ = 9 bandas (4.1): B1 low-shelf, B2..B8 bell, B9 high-shelf */
+function mkPrePEQ(){
+  const f=[40,80,160,315,630,1250,2500,6300,12500];
+  return f.map((fr,i)=>({type:i===0?"Low Shelf":i===8?"High Shelf":"Bell",f:fr,g:0,q:1,slope:6}));
+}
+/* Post-crossover PEQ = 4 bandas (4.8) */
+function mkPostPEQ(){
+  const f=[80,400,1600,6300];
+  return f.map(fr=>({type:"Bell",f:fr,g:0,q:1,slope:6}));
+}
+/* uma saída = crossover + PEQ(4) + limiter + align delay + polaridade/fase */
+function mkBand(key,name){
+  return {key,name,active:true,
+    xover:{hp:null,hpT:"LR24",lp:null,lpT:"LR24",gain:0},
+    peq:{on:false,bands:mkPostPEQ()},
+    lmt:{on:true,thr:2,oe:0,atk:5,hold:10,rel:250,over:3,psp:true},
+    dly:{on:false,ms:0},
+    pol:"+", phase:0, mute:false };
+}
+const STATE={
+  progNum:1, progName:"2x6 3-Way", edited:false,
+  xoConfig:"2X6",
+  input:{in1:0,in2:0,master:0, mute:false, pinkOn:false, pinkLevel:0},
+  preMode:"PEQ",                                   /* GEQ | PEQ */
+  geq:{on:false, bands:GEQ_FREQS.map(()=>0)},
+  peq:{on:false, bands:mkPrePEQ()},
+  sub:{on:false, amount:0, l2436:50, l3656:50},
+  comp:{on:false, thr:4, ratio:5/*idx*/, gain:0, oe:4, atk:10, hold:10, rel:250, auto:false},
+  gate:{on:false, thr:-40, ratio:0, atk:1, hold:10, rel:250, maxatt:0},
+  agc:{on:false, target:0, gain:6, window:5, low:-40, atk:1, rel:5},
+  afs:{on:false, type:"High Music", total:12, fixed:6, liveLift:false, liftAfter:5},
+  notch:{on:false, bands:Array.from({length:6},(_,i)=>({f:[80,160,400,1000,3150,8000][i],g:0,q:32}))},
+  bands:[ mkBand("HIGH","High"), mkBand("MID","Mid"), mkBand("LOW","Low") ]
+};
+(function initDefault(){
+  const H=STATE.bands[0],M=STATE.bands[1],L=STATE.bands[2];
+  /* 3 vias: Low LP 120, Mid 120–2k, High HP 2k — típico (editável). */
+  H.xover.hp=2000; H.xover.hpT="LR24"; H.xover.lp=null;
+  M.xover.hp=120;  M.xover.hpT="LR24"; M.xover.lp=2000; M.xover.lpT="LR24";
+  L.xover.hp=null; L.xover.lp=120;     L.xover.lpT="LR24";
+})();
+const SEL={mod:"XOVER", band:0, prePeqBand:0, postBand:0, postPeqBand:0, notchBand:0};
+const markEdited=()=>{STATE.edited=true; $("#hprog").classList.add("edited");};
+
+/* ============================================================================
+   4. MATEMÁTICA DOS FILTROS — crossover BW / LR / BESSEL (o motor da família)
+   ========================================================================== */
+function butterQs(N){
+  const qs=[], pairs=Math.floor(N/2);
+  for(let k=0;k<pairs;k++) qs.push(1/(2*Math.sin((2*k+1)*Math.PI/(2*N))));
+  return {qs, odd:(N%2)===1};
+}
+/* ⭐ BESSEL — poles normalizados a −3 dB (tabelas clássicas de filtro Bessel,
+   ex. Zumbahlen "Linear Circuit Design Handbook"). fm = multiplicador de freq.
+   da seção; q = fator Q da seção. Ordem 1 = 1ª ordem simples (= BW/LR de 6 dB).
+   ⚠️ APROXIMAÇÃO: como TODO crossover aqui, o protótipo analógico é emulado por
+   biquads Web Audio (RBJ) — o TIPO e os SLOPES são FATO (manual 4.7); só o
+   casamento fino da curva é aproximado (idêntico critério do BW/LR do PA2). */
+const BESSEL={
+  1:{first:[{fm:1}],       biq:[]},
+  2:{first:[],             biq:[{q:0.5773,fm:1.2736}]},
+  3:{first:[{fm:1.3270}],  biq:[{q:0.6910,fm:1.4524}]},
+  4:{first:[],             biq:[{q:0.5219,fm:1.4192},{q:0.8055,fm:1.5912}]}
+};
+function sections(slopeId){
+  const S=SLOPES.find(s=>s.id===slopeId); if(!S) return {first:[],biq:[]};
+  if(S.kind==="BS"){ const b=BESSEL[S.order]; return {first:b.first.slice(),biq:b.biq.slice()}; }
+  if(S.kind==="BW"){ const b=butterQs(S.order);
+    return {first:b.odd?[{fm:1}]:[], biq:b.qs.map(q=>({q,fm:1}))}; }
+  /* LR = duas Butterworth de ordem N/2 em cascata */
+  const half=S.order/2, b=butterQs(half);
+  const first=b.odd?[{fm:1},{fm:1}]:[];
+  const biq=b.qs.concat(b.qs).map(q=>({q,fm:1}));
+  return {first,biq};
+}
+const qToDb=q=>20*Math.log10(q);
+function firstOrder(ac,type,fc){
+  const K=Math.tan(Math.PI*clamp(fc,10,ac.sampleRate/2-100)/ac.sampleRate);
+  const n=1/(K+1);
+  return type==="lowpass" ? ac.createIIRFilter([K*n,K*n],[1,(K-1)*n])
+                          : ac.createIIRFilter([n,-n],[1,(K-1)*n]);
+}
+function buildFilter(ac,type,fc,slopeId){
+  const s=sections(slopeId), nodes=[];
+  s.first.forEach(fo=> nodes.push(firstOrder(ac,type,fc*(fo.fm||1))) );
+  s.biq.forEach(bq=>{
+    const f=ac.createBiquadFilter(); f.type=type;
+    f.frequency.value=clamp(fc*(bq.fm||1),10,ac.sampleRate/2-100);
+    f.Q.value=qToDb(bq.q);
+    nodes.push(f);
+  });
+  if(!nodes.length){ nodes.push(ac.createGain()); }
+  for(let i=0;i<nodes.length-1;i++) nodes[i].connect(nodes[i+1]);
+  return {inNode:nodes[0], outNode:nodes[nodes.length-1], nodes};
+}
+function magFirst(type,r){ return type==="lowpass" ? 1/Math.sqrt(1+r*r) : r/Math.sqrt(1+r*r); }
+function magBiq(type,r,q){ const a=(1-r*r), b=r/q, d=Math.sqrt(a*a+b*b);
+  return type==="lowpass" ? 1/d : (r*r)/d; }
+function xoMag(type,fc,slopeId,f){
+  if(fc==null) return 1;
+  const s=sections(slopeId); let m=1;
+  s.first.forEach(fo=> m*=magFirst(type, f/(fc*(fo.fm||1))) );
+  s.biq.forEach(bq=> m*=magBiq(type, f/(fc*(bq.fm||1)), bq.q) );
+  return m;
+}
+function bandMagDb(b,f){
+  const m=xoMag("highpass",b.xover.hp,b.xover.hpT,f)*xoMag("lowpass",b.xover.lp,b.xover.lpT,f);
+  return linToDb(m)+b.xover.gain;
+}
+/* PEQ: resposta tirada do próprio nó Web Audio (gráfico == áudio). */
+let RCTX=null; const rctx=()=> RCTX||(RCTX=new OfflineAudioContext(1,128,48000));
+const bqType=t=> t==="Bell"?"peaking":(t==="Low Shelf"?"lowshelf":"highshelf");
+function peqResponseDb(bands,fs,maxQ){
+  const out=new Float64Array(fs.length);
+  const arr=fs instanceof Float32Array?fs:Float32Array.from(fs);
+  const mag=new Float32Array(arr.length), ph=new Float32Array(arr.length);
+  bands.forEach(b=>{
+    if(!b.f) return; if(b.g===0 && b.type==="Bell") return;
+    const f=rctx().createBiquadFilter();
+    f.type=bqType(b.type); f.frequency.value=clamp(b.f,20,22000);
+    f.Q.value=clamp(b.q||1,.1,maxQ||16); f.gain.value=clamp(b.g,-24,24);
+    f.getFrequencyResponse(arr,mag,ph);
+    for(let i=0;i<out.length;i++) out[i]+=20*Math.log10(Math.max(mag[i],1e-7));
+  });
+  return out;
+}
+
+/* ============================================================================
+   5. MOTOR DE ÁUDIO — cadeia do manual (Block Diagram A.7):
+     In(2) -> Master -> GEQ(28)/PEQ(9) -> Sub -> Comp -> inBus
+     por saída: inBus -> xover(HP/LP BS/BW/LR) -> gain -> pol -> PEQ(4)
+                -> Limiter(makeup comp) -> Align Delay -> Mute -> tap -> analyser
+   ========================================================================== */
+let AC=null, GRAPH=null, playing=false, srcNodes=[], musicBuf=null, loadingMusic=false;
+function ctx(){ if(!AC){ const C=window.AudioContext||window.webkitAudioContext;
+  try{AC=new C({sampleRate:48000});}catch(e){AC=new C();} } return AC; }
+
+/* compensação do makeup escondido do DynamicsCompressorNode (herdado do VENU360)*/
+const makeupCache={};
+const makeupKey=(t,r,k)=>t.toFixed(2)+"/"+r.toFixed(2)+"/"+k.toFixed(2);
+async function measureMakeup(thr,ratio,knee){
+  const k=makeupKey(thr,ratio,knee); if(makeupCache[k]!=null) return makeupCache[k];
+  makeupCache[k]=1;
+  const fs=48000, len=Math.round(fs*.25), oac=new OfflineAudioContext(1,len,fs);
+  const amp=Math.pow(10,-60/20);
+  const o=oac.createOscillator(); o.frequency.value=1000;
+  const g=oac.createGain(); g.gain.value=amp;
+  const c=oac.createDynamicsCompressor();
+  c.threshold.value=thr; c.ratio.value=ratio; c.knee.value=knee; c.attack.value=.003; c.release.value=.25;
+  o.connect(g); g.connect(c); c.connect(oac.destination); o.start();
+  const buf=await oac.startRendering(), d=buf.getChannelData(0);
+  let s=0,n=0; for(let i=Math.floor(len*.6);i<len;i++){s+=d[i]*d[i];n++;}
+  const rms=Math.sqrt(s/n), esperado=amp/Math.SQRT2, m=(esperado>0&&rms>0)?rms/esperado:1;
+  makeupCache[k]=(isFinite(m)&&m>0)?m:1; return makeupCache[k];
+}
+let makeupTok=0;
+async function refreshMakeup(){
+  const my=++makeupTok, g=GRAPH; if(!g) return;
+  if(STATE.comp.on){
+    const r=RATIOS[STATE.comp.ratio], rr=clamp(isFinite(r)?r:20,1,20);
+    const knee=STATE.comp.oe===0?0:clamp(STATE.comp.oe*4,0,40);
+    const m=await measureMakeup(clamp(STATE.comp.thr,-100,20),rr,knee);
+    if(my!==makeupTok) return;
+    g.compMk.gain.setTargetAtTime(dbToLin(STATE.comp.gain)/m,ctx().currentTime,.02);
+  } else g.compMk.gain.setTargetAtTime(1,ctx().currentTime,.02);
+  for(let i=0;i<STATE.bands.length;i++){
+    const b=STATE.bands[i], n=g.bands[i];
+    if(b.lmt.on){
+      const knee=b.lmt.oe===0?0:clamp(b.lmt.oe*3,0,30);
+      const m=await measureMakeup(clamp(b.lmt.thr,-100,20),20,knee);
+      if(my!==makeupTok) return;
+      n.lmtMk.gain.setTargetAtTime(1/m,ctx().currentTime,.02);
+    } else n.lmtMk.gain.setTargetAtTime(1,ctx().currentTime,.02);
+  }
+}
+function noiseBuffer(ac,pink){
+  const n=ac.sampleRate*4, b=ac.createBuffer(1,n,ac.sampleRate), d=b.getChannelData(0);
+  let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
+  for(let i=0;i<n;i++){ const w=Math.random()*2-1;
+    if(!pink){ d[i]=w*.35; continue; }
+    b0=.99886*b0+w*.0555179;b1=.99332*b1+w*.0750759;b2=.96900*b2+w*.1538520;
+    b3=.86650*b3+w*.3104856;b4=.55000*b4+w*.5329522;b5=-.7616*b5-w*.0168980;
+    d[i]=(b0+b1+b2+b3+b4+b5+b6+w*.5362)*.05;b6=w*.115926; }
+  return b;
+}
+function buildGraph(){
+  const ac=ctx(), g={};
+  g.src=ac.createGain(); g.master=ac.createGain(); g.src.connect(g.master);
+  /* GEQ 28 */
+  g.geqF=GEQ_FREQS.map(fr=>{const f=ac.createBiquadFilter();f.type="peaking";
+    f.frequency.value=fr;f.Q.value=4.3;f.gain.value=0;return f;});
+  /* Pre PEQ 9 */
+  g.peqF=STATE.peq.bands.map(b=>{const f=ac.createBiquadFilter();f.type=bqType(b.type);
+    f.frequency.value=b.f;f.Q.value=1;f.gain.value=0;return f;});
+  let p=g.master;
+  g.geqF.forEach(f=>{p.connect(f);p=f;});
+  g.peqF.forEach(f=>{p.connect(f);p=f;});
+  /* Subharmonic synth (⚠️ aproximação: algoritmo dbx é proprietário; aqui é
+     reforço de 24–56 Hz controlado pelos %, ATUA no som mas não é a síntese). */
+  g.subDry=ac.createGain(); g.subWet=ac.createGain(); g.subWet.gain.value=0;
+  g.subLP=ac.createBiquadFilter(); g.subLP.type="lowpass"; g.subLP.frequency.value=56; g.subLP.Q.value=.7;
+  g.subPk=ac.createBiquadFilter(); g.subPk.type="peaking"; g.subPk.frequency.value=38; g.subPk.Q.value=1.4; g.subPk.gain.value=6;
+  g.subSum=ac.createGain();
+  p.connect(g.subDry); g.subDry.connect(g.subSum);
+  p.connect(g.subLP); g.subLP.connect(g.subPk); g.subPk.connect(g.subWet); g.subWet.connect(g.subSum);
+  /* Compressor de entrada */
+  g.comp=ac.createDynamicsCompressor(); g.compMk=ac.createGain();
+  g.subSum.connect(g.comp); g.comp.connect(g.compMk);
+  g.inBus=ac.createGain(); g.compMk.connect(g.inBus);
+  /* saídas (3 vias estéreo = 2X6) */
+  g.bands=STATE.bands.map(b=>{
+    const xoIn=ac.createGain(), xoOut=ac.createGain(), gain=ac.createGain(), pol=ac.createGain();
+    const peq=b.peq.bands.map(()=>{const f=ac.createBiquadFilter();f.type="peaking";
+      f.frequency.value=1000;f.Q.value=1;f.gain.value=0;return f;});
+    const lmt=ac.createDynamicsCompressor(), lmtMk=ac.createGain();
+    const dly=ac.createDelay(1.3);                     /* align delay até 1.3 s (4.10) */
+    const mute=ac.createGain(), an=ac.createAnalyser(); an.fftSize=1024; an._b=new Float32Array(1024);
+    const tap=ac.createGain();
+    g.inBus.connect(xoIn);
+    xoOut.connect(gain); gain.connect(pol);
+    let q=pol; peq.forEach(f=>{q.connect(f);q=f;});
+    q.connect(lmt); lmt.connect(lmtMk); lmtMk.connect(dly); dly.connect(mute);
+    mute.connect(tap); tap.connect(an);
+    return {xoIn,xoOut,gain,pol,peq,lmt,lmtMk,dly,mute,an,tap,xoNodes:[]};
+  });
+  g.out=ac.createGain(); g.out.gain.value=.9; g.out.connect(ac.destination);
+  GRAPH=g; rebuildXover(); applyAll(); return g;
+}
+function rebuildXover(){
+  const g=GRAPH; if(!g) return; const ac=ctx();
+  STATE.bands.forEach((b,i)=>{
+    const n=g.bands[i];
+    n.xoNodes.forEach(x=>{try{x.disconnect();}catch(e){}});
+    try{n.xoIn.disconnect();}catch(e){}
+    if(!b.active){ n.xoNodes=[]; return; }
+    const chain=[];
+    if(b.xover.hp!=null) chain.push(buildFilter(ac,"highpass",b.xover.hp,b.xover.hpT));
+    if(b.xover.lp!=null) chain.push(buildFilter(ac,"lowpass", b.xover.lp,b.xover.lpT));
+    if(!chain.length){ n.xoIn.connect(n.xoOut); n.xoNodes=[]; return; }
+    n.xoIn.connect(chain[0].inNode);
+    for(let k=0;k<chain.length-1;k++) chain[k].outNode.connect(chain[k+1].inNode);
+    chain[chain.length-1].outNode.connect(n.xoOut);
+    n.xoNodes=chain.flatMap(c=>c.nodes);
+  });
+}
+function applyAll(){
+  const g=GRAPH; if(!g) return; const ac=ctx(), t=ac.currentTime, TC=.02;
+  const inDb=STATE.input.master; g.master.gain.setTargetAtTime(STATE.input.mute?0:dbToLin(inDb),t,TC);
+  g.geqF.forEach((f,i)=> f.gain.setTargetAtTime(STATE.geq.on&&STATE.preMode==="GEQ"?clamp(STATE.geq.bands[i],-GEQ_RANGE,GEQ_RANGE):0,t,TC));
+  g.peqF.forEach((f,i)=>{ const b=STATE.peq.bands[i];
+    f.type=bqType(b.type); f.frequency.setTargetAtTime(clamp(b.f,20,22000),t,TC);
+    f.Q.setTargetAtTime(clamp(b.q,.1,16),t,TC);
+    f.gain.setTargetAtTime(STATE.peq.on&&STATE.preMode==="PEQ"?clamp(b.g,-12,12):0,t,TC); });
+  /* sub */
+  const amt=STATE.sub.on?clamp(STATE.sub.amount/100,0,1):0;
+  g.subWet.gain.setTargetAtTime(amt*1.4,t,TC); g.subDry.gain.setTargetAtTime(1,t,TC);
+  g.subLP.frequency.setTargetAtTime(24+ (STATE.sub.l3656/100)*32,t,TC);
+  /* comp */
+  const c=STATE.comp; g.comp.threshold.setTargetAtTime(c.on?clamp(c.thr,-100,20):20,t,TC);
+  const r=RATIOS[c.ratio]; g.comp.ratio.setTargetAtTime(c.on?clamp(isFinite(r)?r:20,1,20):1,t,TC);
+  g.comp.knee.setTargetAtTime(c.on&&c.oe>0?clamp(c.oe*4,0,40):0,t,TC);
+  g.comp.attack.setTargetAtTime(clamp(c.atk/1000,.001,.2),t,TC);
+  g.comp.release.setTargetAtTime(clamp(c.rel/1000,.05,1),t,TC);
+  /* saídas */
+  STATE.bands.forEach((b,i)=>{
+    const n=g.bands[i];
+    n.gain.gain.setTargetAtTime(dbToLin(b.xover.gain),t,TC);
+    n.pol.gain.setTargetAtTime(b.pol==="-"?-1:1,t,TC);
+    n.peq.forEach((f,j)=>{ const pb=b.peq.bands[j];
+      f.type=bqType(pb.type); f.frequency.setTargetAtTime(clamp(pb.f,20,22000),t,TC);
+      f.Q.setTargetAtTime(clamp(pb.q,.1,16),t,TC);
+      f.gain.setTargetAtTime(b.peq.on?clamp(pb.g,-12,12):0,t,TC); });
+    n.lmt.threshold.setTargetAtTime(b.lmt.on?clamp(b.lmt.thr,-100,20):20,t,TC);
+    n.lmt.ratio.setTargetAtTime(b.lmt.on?20:1,t,TC);
+    n.lmt.knee.setTargetAtTime(b.lmt.on&&b.lmt.oe>0?clamp(b.lmt.oe*3,0,30):0,t,TC);
+    n.lmt.attack.setTargetAtTime(clamp(b.lmt.atk/1000,.001,.2),t,TC);
+    n.lmt.release.setTargetAtTime(clamp(b.lmt.rel/1000,.05,1),t,TC);
+    n.dly.delayTime.setTargetAtTime(b.dly.on?clamp(b.dly.ms/1000,0,1.3):0,t,TC);
+    n.mute.gain.setTargetAtTime(b.mute?0:1,t,TC);
+  });
+  routeMonitor(); refreshMakeup();
+}
+function routeMonitor(){
+  const g=GRAPH; if(!g) return; const sel=+$("#monOut").value;
+  g.bands.forEach(n=>{try{n.tap.disconnect(g.out);}catch(e){}});
+  if(sel<0){ g.bands.forEach(n=>{try{n.tap.connect(g.out);}catch(e){}}); }   /* All */
+  else if(g.bands[sel]) g.bands[sel].tap.connect(g.out);
+}
+async function loadMusic(){
+  if(musicBuf||loadingMusic) return musicBuf; loadingMusic=true;
+  const ac=ctx(), msg=$("#monMsg");
+  try{ let done=0;
+    const bufs=await Promise.all(MUSIC.stems.map(async f=>{
+      const r=await fetch(SB+MUSIC.folder+"/"+f); if(!r.ok) throw new Error("HTTP "+r.status);
+      const b=await ac.decodeAudioData(await r.arrayBuffer());
+      msg.textContent="baixando base… "+(++done)+"/"+MUSIC.stems.length; return b; }));
+    const len=Math.max(...bufs.map(b=>b.length)), out=ac.createBuffer(2,len,ac.sampleRate);
+    for(let ch=0;ch<2;ch++){ const d=out.getChannelData(ch);
+      bufs.forEach(b=>{ const s=b.getChannelData(Math.min(ch,b.numberOfChannels-1));
+        for(let i=0;i<s.length;i++) d[i]+=s[i]*.22; }); }
+    musicBuf=out; msg.textContent="";
+  }catch(e){ msg.textContent="erro na base: "+e.message+" — use o gerador"; }
+  loadingMusic=false; return musicBuf;
+}
+async function play(){
+  const ac=ctx(); if(!GRAPH) buildGraph();
+  if(ac.state==="suspended") try{await ac.resume();}catch(e){}
+  stop(true);
+  const kind=$("#monSrc").value;
+  if(kind==="music"){ const b=await loadMusic(); if(!b){playing=false;setPlayBtn();return;}
+    const s=ac.createBufferSource(); s.buffer=b; s.loop=true; s.connect(GRAPH.src); s.start(); srcNodes=[s];
+  }else if(kind==="sine"){ const o=ac.createOscillator(); o.type="sine"; o.frequency.value=1000;
+    const gn=ac.createGain(); gn.gain.value=.25; o.connect(gn); gn.connect(GRAPH.src); o.start(); srcNodes=[o,gn];
+  }else{ const s=ac.createBufferSource(); s.buffer=noiseBuffer(ac,kind==="pink"); s.loop=true;
+    s.connect(GRAPH.src); s.start(); srcNodes=[s]; }
+  playing=true; setPlayBtn();
+}
+function stop(keep){ srcNodes.forEach(n=>{try{n.stop&&n.stop();}catch(e){}try{n.disconnect();}catch(e){}});
+  srcNodes=[]; if(!keep){playing=false;setPlayBtn();} }
+function setPlayBtn(){ const b=$("#monPlay"); b.textContent=playing?"■ Parar":"► Tocar";
+  b.className="mbtn "+(playing?"stop":"play"); }
+function outDb(i){ const n=GRAPH&&GRAPH.bands[i]; if(!n) return -90;
+  n.an.getFloatTimeDomainData(n._b||(n._b=new Float32Array(1024)));
+  let s=0; for(let k=0;k<n._b.length;k++) s+=n._b[k]*n._b[k];
+  const rms=Math.sqrt(s/n._b.length); return rms>1e-6?20*Math.log10(rms):-90; }
+
+/* ============================================================================
+   6. UI — param rows / plots
+   ========================================================================== */
+const normOf=(p,v)=> p.log?Math.log(v/p.min)/Math.log(p.max/p.min):(v-p.min)/(p.max-p.min);
+const valOf=(p,n)=> p.log?p.min*Math.pow(p.max/p.min,n):p.min+n*(p.max-p.min);
+function paramRow(p){
+  const row=el("div","prow"+(p.dim?" dim":""));
+  const sld=el("input"); sld.type="range"; sld.className="sld"; sld.min=0; sld.max=1000; sld.step=1;
+  const nm=el("div","nm",p.name), vl=el("div","vl");
+  const lt=el("button","chev","‹"), rt=el("button","chev","›");
+  const mn=el("div","mn",p.minLab!=null?p.minLab:p.fmt(p.min)), mx=el("div","mx",p.maxLab!=null?p.maxLab:p.fmt(p.max));
+  function paint(){ const v=p.get(); vl.textContent=p.valLab?p.valLab(v):p.fmt(v);
+    let n=(v===null&&p.offAt==="max")?1:(v===null?0:normOf(p,v)); if(p.invert)n=1-n;
+    sld.value=Math.round(clamp(n,0,1)*1000); sld.style.setProperty("--fill",(clamp(n,0,1)*100)+"%");
+    sld.style.setProperty("--acc",typeof p.acc==="function"?p.acc():(p.acc||"var(--green)"));
+    row.classList.toggle("dim",!!(p.dim&&p.dim())); }
+  sld.oninput=()=>{ let n=+sld.value/1000; if(p.invert)n=1-n; let v=valOf(p,n);
+    if(p.step) v=Math.round(v/p.step)*p.step;
+    if(p.offAt==="max"&&(+sld.value)>=(p.invert?0:1000)) v=null;
+    if(p.offAt==="min"&&(+sld.value)<=(p.invert?1000:0)) v=null;
+    p.set(v); markEdited(); paint(); p.after&&p.after(); };
+  const nudge=d=>{ sld.value=clamp(+sld.value+d*(p.nudge||8),0,1000); sld.oninput(); };
+  lt.onclick=()=>nudge(-1); rt.onclick=()=>nudge(1);
+  row.append(nm,vl,lt,mn,sld,mx,rt); row._paint=paint; paint(); return row;
+}
+const fHz=v=> v==null?"Out":(v>=1000?(v/1000).toFixed(v%1000?1:0)+" kHz":Math.round(v)+" Hz");
+const fDb=v=> (v>0?"+":"")+v.toFixed(1)+" dB";
+const fMs=v=> v.toFixed(1)+" ms";
+function fitCanvas(cv,h){ const dpr=window.devicePixelRatio||1, w=cv.clientWidth||600;
+  cv.height=h*dpr; cv.width=w*dpr; cv.style.height=h+"px";
+  const c=cv.getContext("2d"); c.setTransform(dpr,0,0,dpr,0,0); return {c,w,h}; }
+const FMIN=20,FMAX=20000, xOfF=(f,w)=> (Math.log(f/FMIN)/Math.log(FMAX/FMIN))*w;
+function gridFreq(c,w,h,dbTop,dbBot){
+  c.fillStyle="var(--plot)"; c.fillStyle="#141414"; c.fillRect(0,0,w,h);
+  c.strokeStyle="#2b2b2b"; c.fillStyle="#6a6a6a"; c.font="9px system-ui"; c.lineWidth=1;
+  [20,50,100,200,500,1000,2000,5000,10000,20000].forEach(f=>{ const x=xOfF(f,w);
+    c.beginPath();c.moveTo(x,0);c.lineTo(x,h);c.stroke();
+    c.fillText(f>=1000?(f/1000)+"k":f, x+2, h-3); });
+  const span=dbTop-dbBot;
+  for(let db=dbBot;db<=dbTop;db+=(span>30?12:6)){ const y=h-((db-dbBot)/span)*h;
+    c.strokeStyle= db===0?"#4a4a4a":"#232323"; c.beginPath();c.moveTo(0,y);c.lineTo(w,y);c.stroke();
+    c.fillStyle="#6a6a6a"; c.fillText((db>0?"+":"")+db, 2, y-2); }
+}
+function drawXoverPlot(){
+  const cv=$("#xoCv"); if(!cv) return; const {c,w,h}=fitCanvas(cv,180);
+  gridFreq(c,w,h,12,-30);
+  STATE.bands.forEach((b,i)=>{ if(!b.active) return;
+    c.strokeStyle=BANDCOL[i]; c.lineWidth=(i===SEL.band)?2.4:1.4; c.globalAlpha=(i===SEL.band)?1:.65;
+    c.beginPath(); let first=true;
+    for(let px=0;px<=w;px++){ const f=FMIN*Math.pow(FMAX/FMIN,px/w);
+      let db=bandMagDb(b,f); db=clamp(db,-30,12); const y=h-((db+30)/42)*h;
+      if(first){c.moveTo(px,y);first=false;}else c.lineTo(px,y); }
+    c.stroke(); c.globalAlpha=1; });
+}
+function drawPeqPlot(cvId,bands,on){
+  const cv=$("#"+cvId); if(!cv) return; const {c,w,h}=fitCanvas(cv,160);
+  gridFreq(c,w,h,15,-15);
+  const fs=new Float32Array(w+1); for(let px=0;px<=w;px++) fs[px]=FMIN*Math.pow(FMAX/FMIN,px/w);
+  const resp=peqResponseDb(bands,fs,16);
+  c.strokeStyle=on?"#5ad469":"#666"; c.lineWidth=2; c.beginPath();
+  for(let px=0;px<=w;px++){ const db=clamp(resp[px],-15,15), y=h-((db+15)/30)*h;
+    if(px===0)c.moveTo(px,y);else c.lineTo(px,y); } c.stroke();
+  bands.forEach((b,i)=>{ if(!b.f) return; const x=xOfF(b.f,w), db=clamp(b.g,-15,15), y=h-((db+15)/30)*h;
+    c.fillStyle="#fff"; c.beginPath(); c.arc(x,y,3.5,0,7); c.fill();
+    c.fillStyle="#bbb"; c.font="9px system-ui"; c.fillText(i+1,x-2,y-6); });
+}
+function drawGeqPlot(){
+  const cv=$("#geqCv"); if(!cv) return; const {c,w,h}=fitCanvas(cv,160);
+  c.fillStyle="#141414"; c.fillRect(0,0,w,h);
+  const n=GEQ_FREQS.length, bw=w/n;
+  for(let db=-12;db<=12;db+=6){ const y=h-((db+12)/24)*h; c.strokeStyle=db===0?"#4a4a4a":"#232323";
+    c.beginPath();c.moveTo(0,y);c.lineTo(w,y);c.stroke(); }
+  GEQ_FREQS.forEach((f,i)=>{ const x=i*bw+bw/2, g=clamp(STATE.geq.bands[i],-12,12);
+    const y0=h/2, y=h-((g+12)/24)*h;
+    c.strokeStyle="#3a3a3a"; c.beginPath();c.moveTo(x,4);c.lineTo(x,h-12);c.stroke();
+    c.fillStyle=STATE.geq.on?"#5ad469":"#666"; c.fillRect(x-3,Math.min(y0,y),6,Math.abs(y-y0)||1);
+    c.beginPath();c.arc(x,y,3.5,0,7);c.fill();
+    if(i%3===0){c.fillStyle="#7a7a7a";c.font="7px system-ui";c.fillText(f>=1000?(f/1000)+"k":f,x-6,h-2);} });
+}
+let rtaHist=null;
+function drawRta(){
+  const cv=$("#rtaCv"); if(!cv) return; const {c,w,h}=fitCanvas(cv,190);
+  gridFreq(c,w,h,6,-42);
+  const g=GRAPH; if(!g||!playing){ c.fillStyle="#5a5a5a";c.font="12px system-ui";
+    c.fillText("RTA — toque uma fonte para ver o espectro da saída monitorada",14,h/2); return; }
+  const sel=Math.max(0,+$("#monOut").value), n=g.bands[sel]; if(!n) return;
+  const an=n.an, bins=an.frequencyBinCount, data=new Uint8Array(bins);
+  an.getByteFrequencyData(data);
+  if(!rtaHist||rtaHist.length!==bins) rtaHist=new Float32Array(bins);
+  const nyq=ctx().sampleRate/2; c.strokeStyle="#4fd0e0"; c.lineWidth=1.6; c.beginPath(); let started=false;
+  for(let px=0;px<=w;px++){ const f=FMIN*Math.pow(FMAX/FMIN,px/w); const bin=Math.round(f/nyq*bins);
+    if(bin<1||bin>=bins) continue; const v=data[bin]/255; rtaHist[bin]=rtaHist[bin]*.6+v*.4;
+    const db=clamp(-42+rtaHist[bin]*48,-42,6), y=h-((db+42)/48)*h;
+    if(!started){c.moveTo(px,y);started=true;}else c.lineTo(px,y); }
+  c.stroke();
+}
+
+/* ============================================================================
+   7. LCD do painel (monocromático estilo 260) + escala de topo
+   ========================================================================== */
+const LCD_SCALE=[40,63,100,160,250,400,630,"1k","1.6k","2.5k","4k","6.3k","10k"];
+function initLcdScale(){ const s=$("#lcdScale"); s.innerHTML="";
+  LCD_SCALE.forEach(x=>s.appendChild(el("span",null,x))); }
+function drawLcd(){
+  const cv=$("#lcd"); if(!cv) return; const {c,w,h}=fitCanvas(cv,Math.max(120,cv.clientHeight||130));
+  c.fillStyle=getCss("--lcd"); c.fillRect(0,0,w,h);
+  const ink=getCss("--lcdink"), dim=getCss("--lcddim");
+  /* barra de escala fininha (RTA/EQ) */
+  c.strokeStyle=dim; c.lineWidth=1; c.strokeRect(4,4,w-8,10);
+  /* título invertido */
+  const title=MODS[SEL.mod].lcd; c.fillStyle=ink; c.fillRect(4,18,Math.min(w-8,title.length*7+10),13);
+  c.fillStyle=getCss("--lcd"); c.font="bold 11px 'Consolas',monospace"; c.fillText(title,9,28);
+  c.fillStyle=ink; c.font="10px 'Consolas',monospace";
+  const lines=MODS[SEL.mod].lcdLines?MODS[SEL.mod].lcdLines():[];
+  lines.forEach((ln,i)=> c.fillText(ln,9,46+i*13));
+  /* mini gráfico p/ módulos de curva */
+  if(SEL.mod==="XOVER"||SEL.mod==="PREEQ"||SEL.mod==="POSTPEQ"){
+    const gx=6,gy=h-42,gw=w-12,gh=36; c.strokeStyle=dim; c.strokeRect(gx,gy,gw,gh);
+    c.strokeStyle=ink; c.lineWidth=1.4; c.beginPath();
+    for(let px=0;px<=gw;px++){ const f=FMIN*Math.pow(FMAX/FMIN,px/gw); let db=0;
+      if(SEL.mod==="XOVER"){ const b=STATE.bands[SEL.band]; db=clamp(bandMagDb(b,f),-24,6); const y=gy+gh-((db+24)/30)*gh;
+        px===0?c.moveTo(gx,y):c.lineTo(gx+px,y); }
+      else { const bands=SEL.mod==="PREEQ"?STATE.peq.bands:STATE.bands[SEL.postBand].peq.bands;
+        const r=peqResponseDb(bands,[f],16)[0]; db=clamp(r,-12,12); const y=gy+gh-((db+12)/24)*gh;
+        px===0?c.moveTo(gx,y):c.lineTo(gx+px,y); } }
+    c.stroke();
+  }
+}
+function getCss(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+
+/* ============================================================================
+   8. MÓDULOS (páginas do editor) — botões do painel selecionam o módulo
+   ========================================================================== */
+const MODS={};
+function moduleOn(m){ const M=MODS[m]; return M&&M.isOn?M.isOn():false; }
+
+/* ---- XOVER (flagship: Bessel!) ---- */
+MODS.XOVER={ label:"Crossover", lcd:"XOVER", isOn:()=>true,
+  lcdLines:()=>{ const b=STATE.bands[SEL.band];
+    return [b.name+"  ("+STATE.xoConfig+")", "HP "+fHz(b.xover.hp)+" "+b.xover.hpT.replace(/(BS|BW|LR)/,"$1 "),
+            "LP "+fHz(b.xover.lp)+" "+b.xover.lpT.replace(/(BS|BW|LR)/,"$1 ")]; },
+  render(m){
+    m.append(ptitle("Crossover","BS Bessel / BW Butterworth / LR Linkwitz-Riley  —  saída "+STATE.xoConfig));
+    const cfg=selRow("Config (rota)", XO_CONFIGS, STATE.xoConfig, v=>{STATE.xoConfig=v;markEdited();paintLcd();});
+    m.append(cfg);
+    const bl=el("div","bnd-row");
+    STATE.bands.forEach((b,i)=>{ const bt=el("button","bnd"+(i===SEL.band?" sel":""),b.name[0]);
+      bt.style.borderColor=BANDCOL[i]; bt.onclick=()=>{SEL.band=i;renderModule();};
+      bl.appendChild(bt); });
+    m.append(bl);
+    m.append(plot("xoCv"));
+    const b=STATE.bands[SEL.band], slopeIds=SLOPES.map(s=>s.id);
+    const rows=el("div","prows");
+    rows.append(selInline("HP Type", SLOPES.map(s=>({v:s.id,t:s.label}))
+        .filter(o=>o.v.startsWith("BS")||o.v.startsWith("BW")||o.v.startsWith("LR")),
+        b.xover.hpT, v=>{b.xover.hpT=v;afterXo();}));
+    rows.append(paramRow({name:"HP Freq",min:20,max:20000,log:true,offAt:"min",
+      get:()=>b.xover.hp,set:v=>b.xover.hp=v,fmt:fHz,minLab:"Out",after:afterXo,acc:"#e0a0a8"}));
+    rows.append(selInline("LP Type", SLOPES.map(s=>({v:s.id,t:s.label})),
+        b.xover.lpT, v=>{b.xover.lpT=v;afterXo();}));
+    rows.append(paramRow({name:"LP Freq",min:20,max:20000,log:true,offAt:"max",
+      get:()=>b.xover.lp,set:v=>b.xover.lp=v,fmt:fHz,maxLab:"Out",after:afterXo,acc:"#e0a0a8"}));
+    rows.append(paramRow({name:"Gain",min:-20,max:20,step:.5,
+      get:()=>b.xover.gain,set:v=>b.xover.gain=v,fmt:fDb,after:apply}));
+    rows.append(selInline("Polarity",[{v:"+",t:"+ (Normal)"},{v:"-",t:"− (Invert)"}],b.pol,v=>{b.pol=v;apply();}));
+    rows.append(paramRow({name:"Phase",min:0,max:175,step:5,
+      get:()=>b.phase,set:v=>b.phase=v,fmt:v=>"−"+Math.round(v)+"°",after:apply}));
+    m.append(rows);
+    m.append(note("<b>Fonte:</b> manual 4.7. <b>BS Bessel</b> 6/12/18/24, <b>BW</b> 6/12/18/24, "+
+      "<b>LR</b> 12/24/36/48 dB/oct. Compare BS12 x BW12 x LR24 num mesmo corte: o Bessel tem o "+
+      "joelho mais suave (melhor fase/transiente). <span class='estim'>Aprox.:</span> protótipo "+
+      "analógico emulado por biquads (mesmo critério do BW/LR)."));
+  }};
+function afterXo(){ rebuildXover(); drawXoverPlot(); paintLcd(); markEdited(); }
+
+/* ---- PRE-EQ (GEQ 28 / PEQ 9) ---- */
+MODS.PREEQ={ label:"Pre EQ", lcd:"PRE-EQ", isOn:()=>STATE.preMode==="GEQ"?STATE.geq.on:STATE.peq.on,
+  lcdLines:()=>{ if(STATE.preMode==="GEQ") return ["GEQ 28-Band", STATE.geq.on?"On":"Off", "31.5Hz-16kHz ±12dB"];
+    const b=STATE.peq.bands[SEL.prePeqBand]; return ["PEQ 9-Band  B"+(SEL.prePeqBand+1),
+      b.type+" "+fHz(b.f), (STATE.peq.on?"On ":"Off ")+fDb(b.g)]; },
+  render(m){
+    m.append(ptitle("Pre-Crossover EQ","28-Band Graphic  ou  9-Band Parametric (manual 4.1)"));
+    const md=el("div","tabs");
+    ["GEQ","PEQ"].forEach(x=>{ const t=el("div","tab"+(STATE.preMode===x?" sel":""),x==="GEQ"?"GEQ (28)":"PEQ (9)");
+      t.onclick=()=>{STATE.preMode=x;renderModule();apply();}; md.appendChild(t); });
+    m.append(md);
+    const on=STATE.preMode==="GEQ"?STATE.geq.on:STATE.peq.on;
+    m.append(onRow(on, v=>{ if(STATE.preMode==="GEQ")STATE.geq.on=v; else STATE.peq.on=v; apply();paintLcd(); }));
+    if(STATE.preMode==="GEQ"){
+      m.append(plot("geqCv"));
+      const grid=el("div","prows");
+      /* editar por seleção de banda (28 é muito p/ um slider cada em mobile) */
+      const bandSel=el("select","sel-dd"); GEQ_FREQS.forEach((f,i)=>{ const o=el("option",null,(f>=1000?(f/1000)+"k":f)+" Hz");
+        o.value=i; bandSel.appendChild(o); });
+      let gi=0;
+      const gr=paramRow({name:"Gain",min:-12,max:12,step:.5,get:()=>STATE.geq.bands[gi],
+        set:v=>STATE.geq.bands[gi]=v,fmt:fDb,after:()=>{apply();drawGeqPlot();paintLcd();}});
+      bandSel.onchange=()=>{gi=+bandSel.value; gr._paint();};
+      const sr=el("div","selrow"); sr.append(el("label",null,"Banda"),bandSel);
+      const wrap=el("div","prows"); wrap.append(sr,gr); m.append(wrap);
+      m.append(note("<b>Fato:</b> 28 bandas 31.5 Hz–16 kHz, ±12 dB (manual 4.1). "+
+        "A série ISO 1/3-oitava de 31.5 a 16k dá exatamente 28 pontos."));
+    } else {
+      m.append(plot("pqPreCv"));
+      const bl=el("div","bnd-row");
+      STATE.peq.bands.forEach((b,i)=>{ const bt=el("button","bnd"+(i===SEL.prePeqBand?" sel":""),String(i+1));
+        bt.style.borderColor="#5ad469"; bt.onclick=()=>{SEL.prePeqBand=i;renderModule();};
+        bl.appendChild(bt); });
+      m.append(bl);
+      const b=STATE.peq.bands[SEL.prePeqBand], rows=el("div","prows"), shelf=(SEL.prePeqBand===0||SEL.prePeqBand===8);
+      rows.append(paramRow({name:"Freq",min:20,max:20000,log:true,get:()=>b.f,set:v=>b.f=v,fmt:fHz,after:afterPre}));
+      rows.append(paramRow({name:"Level",min:-12,max:12,step:.5,get:()=>b.g,set:v=>b.g=v,fmt:fDb,after:afterPre}));
+      if(shelf) rows.append(paramRow({name:"Slope",min:3,max:12,step:.5,get:()=>b.slope,set:v=>b.slope=v,fmt:v=>v+" dB/oct",after:afterPre}));
+      else rows.append(paramRow({name:"Q",min:.2,max:16,log:true,get:()=>b.q,set:v=>b.q=v,fmt:v=>v.toFixed(2),after:afterPre}));
+      m.append(rows);
+      m.append(note("<b>Fato:</b> 9 bandas — B1 Low-Shelf, B2–B8 Bell, B9 High-Shelf; "+
+        "±12 dB, Q 0.20–16, slope shelf 3–12 dB/oct (manual 4.1)."));
+    }
+  }};
+function afterPre(){ apply(); drawPeqPlot("pqPreCv",STATE.peq.bands,STATE.peq.on); paintLcd(); markEdited(); }
+
+/* ---- POST-EQ (PEQ 4 por saída) ---- */
+MODS.POSTPEQ={ label:"Post EQ", lcd:"POST EQ", isOn:()=>STATE.bands[SEL.postBand].peq.on,
+  lcdLines:()=>{ const b=STATE.bands[SEL.postBand], pb=b.peq.bands[SEL.postPeqBand];
+    return [b.name+" Post-PEQ", "B"+(SEL.postPeqBand+1)+" "+pb.type+" "+fHz(pb.f), (b.peq.on?"On ":"Off ")+fDb(pb.g)]; },
+  render(m){
+    m.append(ptitle("Post-Crossover PEQ","4 bandas por saída — Bell/HShelf/LShelf/LHShelf (4.8)"));
+    const bl=el("div","bnd-row");
+    STATE.bands.forEach((b,i)=>{ const bt=el("button","bnd"+(i===SEL.postBand?" sel":""),b.name[0]);
+      bt.style.borderColor=BANDCOL[i]; bt.onclick=()=>{SEL.postBand=i;SEL.postPeqBand=0;renderModule();};
+      bl.appendChild(bt); });
+    m.append(bl);
+    const b=STATE.bands[SEL.postBand];
+    m.append(onRow(b.peq.on,v=>{b.peq.on=v;apply();paintLcd();}));
+    m.append(plot("pqPostCv"));
+    const pbl=el("div","bnd-row");
+    b.peq.bands.forEach((pb,i)=>{ const bt=el("button","bnd"+(i===SEL.postPeqBand?" sel":""),String(i+1));
+      bt.style.borderColor="#5ad469"; bt.onclick=()=>{SEL.postPeqBand=i;renderModule();}; pbl.appendChild(bt); });
+    m.append(pbl);
+    const pb=b.peq.bands[SEL.postPeqBand], rows=el("div","prows");
+    rows.append(selInline("Type",[{v:"Bell",t:"Bell"},{v:"Low Shelf",t:"Low Shelf"},{v:"High Shelf",t:"High Shelf"}],pb.type,v=>{pb.type=v;afterPost();}));
+    rows.append(paramRow({name:"Freq",min:20,max:20000,log:true,get:()=>pb.f,set:v=>pb.f=v,fmt:fHz,after:afterPost}));
+    rows.append(paramRow({name:"Level",min:-12,max:12,step:.5,get:()=>pb.g,set:v=>pb.g=v,fmt:fDb,after:afterPost}));
+    rows.append(paramRow({name:"Q",min:.2,max:16,log:true,get:()=>pb.q,set:v=>pb.q=v,fmt:v=>v.toFixed(2),after:afterPost}));
+    m.append(rows);
+  }};
+function afterPost(){ apply(); const b=STATE.bands[SEL.postBand]; drawPeqPlot("pqPostCv",b.peq.bands,b.peq.on); paintLcd(); markEdited(); }
+
+/* ---- DYNAMICS (Comp / Limiter / Gate / AGC) ---- */
+MODS.DYN={ label:"Dynamics", lcd:"DYNAMICS", isOn:()=>STATE.comp.on||STATE.bands.some(b=>b.lmt.on),
+  sub:"comp",
+  lcdLines:()=>{ const s=MODS.DYN.sub;
+    if(s==="comp") return ["Compressor", STATE.comp.on?"On":"Off", "Thr "+STATE.comp.thr.toFixed(0)+"dBu R "+(isFinite(RATIOS[STATE.comp.ratio])?RATIOS[STATE.comp.ratio]:"Inf")+":1"];
+    if(s==="lmt"){ const b=STATE.bands[SEL.band]; return ["Limiter "+b.name, b.lmt.on?"On":"Off", "Thr "+b.lmt.thr.toFixed(0)+"dBu"]; }
+    if(s==="gate") return ["Gate", STATE.gate.on?"On":"Off", "Thr "+STATE.gate.thr+"dBu"];
+    return ["AGC", STATE.agc.on?"On":"Off", "Targ "+STATE.agc.target+"dB"]; },
+  render(m){
+    m.append(ptitle("Dynamics","Compressor · Limiter (PeakStop+) · Gate · AGC (manual 4.4–4.9)"));
+    const md=el("div","tabs");
+    [["comp","Compressor"],["lmt","Limiter"],["gate","Gate"],["agc","AGC"]].forEach(([k,l])=>{
+      const t=el("div","tab"+(MODS.DYN.sub===k?" sel":""),l); t.onclick=()=>{MODS.DYN.sub=k;renderModule();}; md.appendChild(t); });
+    m.append(md);
+    const s=MODS.DYN.sub, rows=el("div","prows");
+    if(s==="comp"){ const c=STATE.comp;
+      m.append(onRow(c.on,v=>{c.on=v;apply();paintLcd();}));
+      rows.append(paramRow({name:"Threshold",min:-40,max:20,step:1,get:()=>c.thr,set:v=>c.thr=v,fmt:v=>v.toFixed(0)+" dBu",after:apply}));
+      rows.append(paramRow({name:"Ratio",min:0,max:RATIOS.length-1,step:1,get:()=>c.ratio,set:v=>c.ratio=v,
+        fmt:v=>{const r=RATIOS[clamp(Math.round(v),0,RATIOS.length-1)];return (isFinite(r)?r:"Inf")+":1";},after:apply}));
+      rows.append(paramRow({name:"OverEasy",min:0,max:10,step:1,get:()=>c.oe,set:v=>c.oe=v,fmt:v=>v===0?"Off":String(v),after:apply}));
+      rows.append(paramRow({name:"Gain",min:-20,max:20,step:.5,get:()=>c.gain,set:v=>c.gain=v,fmt:fDb,after:apply}));
+      rows.append(paramRow({name:"Attack",min:.1,max:200,log:true,get:()=>c.atk,set:v=>c.atk=v,fmt:fMs,after:apply}));
+      rows.append(paramRow({name:"Hold",min:0,max:500,step:5,get:()=>c.hold,set:v=>c.hold=v,fmt:v=>v.toFixed(0)+" ms",after:apply}));
+      rows.append(paramRow({name:"Release",min:5,max:360,log:true,get:()=>c.rel,set:v=>c.rel=v,fmt:v=>v.toFixed(0)+" dB/s",after:apply}));
+      m.append(rows); m.append(note("<b>Fato (4.9):</b> Thr −40..+20 dBu, Ratio 1:1..Inf:1, Gain ±20 dB, "+
+        "OverEasy Off–10, Atk 0.1–200 ms, Hold 0–500 ms, Rel 360–5 dB/s. Broadband, na entrada. "+
+        "<span class='estim'>⚠ ESTIMADO:</span> os passos do Ratio."));
+    } else if(s==="lmt"){
+      const bl=el("div","bnd-row");
+      STATE.bands.forEach((b,i)=>{ const bt=el("button","bnd"+(i===SEL.band?" sel":""),b.name[0]);
+        bt.style.borderColor=BANDCOL[i]; bt.onclick=()=>{SEL.band=i;renderModule();}; bl.appendChild(bt); });
+      m.append(bl); const b=STATE.bands[SEL.band];
+      m.append(onRow(b.lmt.on,v=>{b.lmt.on=v;apply();paintLcd();}));
+      rows.append(paramRow({name:"Threshold",min:-40,max:20,step:1,get:()=>b.lmt.thr,set:v=>b.lmt.thr=v,fmt:v=>v.toFixed(0)+" dBu",after:apply}));
+      rows.append(paramRow({name:"OverEasy",min:0,max:10,step:1,get:()=>b.lmt.oe,set:v=>b.lmt.oe=v,fmt:v=>v===0?"Off":String(v),after:apply}));
+      rows.append(paramRow({name:"Attack",min:.01,max:200,log:true,get:()=>b.lmt.atk,set:v=>b.lmt.atk=v,fmt:fMs,after:apply}));
+      rows.append(paramRow({name:"Hold",min:0,max:500,step:5,get:()=>b.lmt.hold,set:v=>b.lmt.hold=v,fmt:v=>v.toFixed(0)+" ms",after:apply}));
+      rows.append(paramRow({name:"Release",min:5,max:360,log:true,get:()=>b.lmt.rel,set:v=>b.lmt.rel=v,fmt:v=>v.toFixed(0)+" dB/s",after:apply}));
+      rows.append(paramRow({name:"Overshoot",min:1,max:6,step:1,get:()=>b.lmt.over,set:v=>b.lmt.over=v,fmt:v=>String(v),after:apply}));
+      m.append(rows); m.append(togRow("PeakStop+",()=>b.lmt.psp,v=>{b.lmt.psp=v;markEdited();}));
+      m.append(note("<b>Fato (4.9):</b> Thr −40..+20 dBu, OverEasy Off–10, PeakStop+ On/Off & 1–6, "+
+        "Overshoot 1–6. Ratio fixo ∞:1. Pós-crossover, por saída."));
+    } else if(s==="gate"){ const gt=STATE.gate;
+      m.append(onRow(gt.on,v=>{gt.on=v;paintLcd();markEdited();}));
+      rows.append(paramRow({name:"Threshold",min:-50,max:20,step:1,get:()=>gt.thr,set:v=>gt.thr=v,fmt:v=>v.toFixed(0)+" dBu",after:markEdited}));
+      rows.append(paramRow({name:"Ratio",min:1,max:15,step:.5,get:()=>1+gt.ratio*14/1,set:v=>gt.ratio=(v-1)/14,fmt:v=>"1:"+v.toFixed(1),after:markEdited}));
+      rows.append(paramRow({name:"Attack",min:.1,max:200,log:true,get:()=>gt.atk,set:v=>gt.atk=v,fmt:fMs,after:markEdited}));
+      rows.append(paramRow({name:"Hold",min:0,max:500,step:5,get:()=>gt.hold,set:v=>gt.hold=v,fmt:v=>v.toFixed(0)+" ms",after:markEdited}));
+      rows.append(paramRow({name:"Release",min:5,max:360,log:true,get:()=>gt.rel,set:v=>gt.rel=v,fmt:v=>v.toFixed(0)+" dB/s",after:markEdited}));
+      m.append(rows); m.append(note("<b>Fato (4.4):</b> Thr −50..+20 dBu, Ratio 1:1..1:15, Atk 0.1–200 ms, "+
+        "Hold 0–500 ms, Rel 360–5 dB/s, Max Att 0..Inf. <span class='estim'>⚠</span> UI fiel; "+
+        "gate NÃO é aplicado ao áudio (o DynamicsCompressorNode não expande) — valores guardados."));
+    } else { const ag=STATE.agc;
+      m.append(onRow(ag.on,v=>{ag.on=v;paintLcd();markEdited();}));
+      rows.append(paramRow({name:"Target",min:-20,max:20,step:1,get:()=>ag.target,set:v=>ag.target=v,fmt:v=>v+" dB",after:markEdited}));
+      rows.append(paramRow({name:"Gain",min:1,max:20,step:1,get:()=>ag.gain,set:v=>ag.gain=v,fmt:v=>v+" dB",after:markEdited}));
+      rows.append(paramRow({name:"Window",min:1,max:10,step:1,get:()=>ag.window,set:v=>ag.window=v,fmt:v=>v+" dB",after:markEdited}));
+      rows.append(paramRow({name:"Low Thresh",min:-60,max:-30,step:1,get:()=>ag.low,set:v=>ag.low=v,fmt:v=>v+" dB",after:markEdited}));
+      rows.append(paramRow({name:"Attack",min:.2,max:5,step:.1,get:()=>ag.atk,set:v=>ag.atk=v,fmt:v=>v.toFixed(1)+" s",after:markEdited}));
+      rows.append(paramRow({name:"Release",min:1,max:30,step:.5,get:()=>ag.rel,set:v=>ag.rel=v,fmt:v=>v.toFixed(1)+" dB/s",after:markEdited}));
+      m.append(rows); m.append(note("<b>Fato (4.5):</b> Target −20..+20 dB, Gain 1–20 dB, Window 1–10 dB, "+
+        "Low Thresh −60..−30 dB, Atk 0.2–5 s, Rel 30–1 dB/s. <span class='estim'>⚠</span> UI fiel; não aplicado ao áudio."));
+    }
+  }};
+
+/* ---- SUB (Subharmonic Synthesizer) ---- */
+MODS.SUB={ label:"Subharmonic", lcd:"SUBHARM", isOn:()=>STATE.sub.on,
+  lcdLines:()=>["Subharmonic Synth", STATE.sub.on?"On":"Off", "Synth "+STATE.sub.amount+"%"],
+  render(m){ const s=STATE.sub;
+    m.append(ptitle("Subharmonic Synthesizer","Reforço 24–56 Hz (manual 4.3)"));
+    m.append(onRow(s.on,v=>{s.on=v;apply();paintLcd();}));
+    const rows=el("div","prows");
+    rows.append(paramRow({name:"Synth",min:0,max:100,step:1,get:()=>s.amount,set:v=>s.amount=v,fmt:v=>v+" %",after:apply}));
+    rows.append(paramRow({name:"24-36 Hz",min:0,max:100,step:1,get:()=>s.l2436,set:v=>s.l2436=v,fmt:v=>v+" %",after:apply}));
+    rows.append(paramRow({name:"36-56 Hz",min:0,max:100,step:1,get:()=>s.l3656,set:v=>s.l3656=v,fmt:v=>v+" %",after:apply}));
+    m.append(rows);
+    m.append(note("<b>Fato (4.3):</b> Synth 0–100%, bandas 24–36 Hz e 36–56 Hz. "+
+      "<span class='estim'>⚠ Aprox.:</span> a síntese dbx é proprietária — aqui é reforço de graves "+
+      "controlado pelos %, que ATUA no som mas não é o algoritmo original."));
+  }};
+
+/* ---- DELAY (Alignment) ---- */
+MODS.DELAY={ label:"Alignment Delay", lcd:"DELAY", isOn:()=>STATE.bands.some(b=>b.dly.on),
+  lcdLines:()=>{ const b=STATE.bands[SEL.band]; return [b.name+" Align Delay", b.dly.on?"On":"Off",
+    b.dly.ms.toFixed(2)+" ms  ("+(b.dly.ms/1000*343*100/100*3.2808).toFixed(1)+" ft)"]; },
+  render(m){
+    m.append(ptitle("Alignment Delay","Por saída — 0.00–1.3 s (manual 4.10)"));
+    const bl=el("div","bnd-row");
+    STATE.bands.forEach((b,i)=>{ const bt=el("button","bnd"+(i===SEL.band?" sel":""),b.name[0]);
+      bt.style.borderColor=BANDCOL[i]; bt.onclick=()=>{SEL.band=i;renderModule();}; bl.appendChild(bt); });
+    m.append(bl); const b=STATE.bands[SEL.band];
+    m.append(onRow(b.dly.on,v=>{b.dly.on=v;apply();paintLcd();}));
+    const rows=el("div","prows");
+    rows.append(paramRow({name:"Delay",min:0,max:1300,step:.01,get:()=>b.dly.ms,set:v=>b.dly.ms=v,
+      fmt:v=>v>=1?v.toFixed(1)+" ms":v.toFixed(2)+" ms",after:()=>{apply();paintLcd();}}));
+    m.append(rows);
+    m.append(note("<b>Fato (4.10):</b> 0.00–1.3 s (≡ 0–1465.1 ft / 0–445.9 m). "+
+      "Delay real via Web Audio DelayNode."));
+  }};
+
+/* ---- AFS (Feedback) ---- */
+MODS.AFS={ label:"Feedback (AFS)", lcd:"AFS", isOn:()=>STATE.afs.on,
+  lcdLines:()=>["Adv. Feedback Supp.", STATE.afs.on?"On":"Off", STATE.afs.type+"  "+STATE.afs.fixed+"F/"+(STATE.afs.total-STATE.afs.fixed)+"L"],
+  render(m){ const a=STATE.afs;
+    m.append(ptitle("Advanced Feedback Suppression","12 filtros Fixed/Live (manual 4.2)"));
+    m.append(onRow(a.on,v=>{a.on=v;paintLcd();markEdited();}));
+    m.append(selRow("Type", AFS_TYPES, a.type, v=>{a.type=v;markEdited();paintLcd();}));
+    const rows=el("div","prows");
+    rows.append(paramRow({name:"Total Filters",min:1,max:12,step:1,get:()=>a.total,set:v=>a.total=v,fmt:v=>String(v),after:()=>{paintLcd();markEdited();}}));
+    rows.append(paramRow({name:"Fixed",min:0,max:12,step:1,get:()=>a.fixed,set:v=>a.fixed=Math.min(v,a.total),fmt:v=>String(v),after:()=>{paintLcd();markEdited();}}));
+    m.append(rows);
+    m.append(togRow("Live Filter Lift",()=>a.liveLift,v=>{a.liveLift=v;markEdited();}));
+    /* mostrador de filtros F/L */
+    const strip=el("div","bnd-row");
+    for(let i=0;i<a.total;i++){ const isF=i<a.fixed; const chip=el("div","bnd",isF?"F":"L");
+      chip.style.borderColor=isF?"#e0a0a8":"#5ad469"; chip.style.width="28px"; chip.style.height="28px"; chip.style.fontSize="12px";
+      strip.appendChild(chip); }
+    m.append(strip);
+    m.append(note("<b>Fato (4.2):</b> Type Speech/Low/Med/High Music; 1–12 filtros; Fixed 0–12; "+
+      "Live Lift 5 s–60 min. <span class='estim'>⚠</span> UI fiel; supressão real de feedback exige "+
+      "detecção ao vivo — não aplicada ao áudio da base."));
+  }};
+
+/* ---- I/O ---- */
+MODS.IO={ label:"Input / Output", lcd:"I/O", isOn:()=>true,
+  lcdLines:()=>["Input Routing", "In1 "+fInDb(STATE.input.in1)+" In2 "+fInDb(STATE.input.in2), "Master "+fInDb(STATE.input.master)],
+  render(m){ const io=STATE.input;
+    m.append(ptitle("Input / Output","2 line in (XLR-F) + RTA Mic / 6 line out (XLR-M) — 48 kHz (A.3)"));
+    const rows=el("div","prows");
+    rows.append(paramRow({name:"Input 1",min:-60,max:20,step:.5,offAt:"min",get:()=>io.in1,set:v=>io.in1=v,fmt:fInDb,minLab:"-Inf",after:apply}));
+    rows.append(paramRow({name:"Input 2",min:-60,max:20,step:.5,offAt:"min",get:()=>io.in2,set:v=>io.in2=v,fmt:fInDb,minLab:"-Inf",after:apply}));
+    rows.append(paramRow({name:"Master",min:-60,max:20,step:.5,offAt:"min",get:()=>io.master,set:v=>io.master=v,fmt:fInDb,minLab:"-Inf",after:()=>{apply();paintLcd();}}));
+    m.append(rows);
+    m.append(togRow("Input Mute",()=>io.mute,v=>{io.mute=v;apply();}));
+    m.append(note("<b>Fato (A.3):</b> 2 entradas de linha XLR fêmea + 1 XLR RTA Mic (phantom +15 V); "+
+      "6 saídas de linha XLR macho; conversão dbx Type IV; Sample Rate 48 kHz; resposta 20 Hz–20 kHz ±0.5 dB. "+
+      "Config de saída atual: "+STATE.xoConfig+" (ver Crossover)."));
+  }};
+
+/* ---- RTA ---- */
+MODS.RTA={ label:"RTA", lcd:"RTA", isOn:()=>false,
+  lcdLines:()=>["Real-Time Analyzer","Saída monitorada","Pink Gen p/ Auto-EQ"],
+  render(m){
+    m.append(ptitle("RTA / Auto-EQ","Analisador de 1/3-oitava da saída monitorada"));
+    m.append(plot("rtaCv"));
+    m.append(togRow("Pink Noise Gen (−20..+20)",()=>STATE.input.pinkOn,v=>{STATE.input.pinkOn=v;markEdited();}));
+    m.append(note("O 260 tem RTA full-time e Auto-EQ com gerador de pink noise (A.4). "+
+      "Aqui o RTA mostra o espectro real da saída que você está ouvindo (menu “Ouvir saída”)."));
+  }};
+
+/* ---- utilitário: rows ---- */
+function ptitle(t,sub){ const d=el("div","ptitle"); d.append(el("span",null,t)); if(sub)d.append(el("span","sub",sub)); return d; }
+function plot(id){ const d=el("div","plotbox"); d.appendChild(Object.assign(document.createElement("canvas"),{id})); return d; }
+function note(h){ return el("div","note",h); }
+function onRow(on,fn){ const r=el("div","selrow"); r.append(el("label",null,"Módulo"));
+  const b=el("button","tgl"+(on?" on":""),on?"On":"Off"); b.onclick=()=>{fn(!on); b.classList.toggle("on"); b.textContent=b.classList.contains("on")?"On":"Off"; markEdited();}; r.appendChild(b); return r; }
+function togRow(label,get,set){ const r=el("div","selrow"); r.append(el("label",null,label));
+  const b=el("button","tgl"+(get()?" on":""),get()?"On":"Off"); b.onclick=()=>{const v=!get();set(v);b.classList.toggle("on",v);b.textContent=v?"On":"Off";}; r.appendChild(b); return r; }
+function selRow(label,opts,val,fn){ const r=el("div","selrow"); r.append(el("label",null,label));
+  const s=el("select","sel-dd"); opts.forEach(o=>{const op=el("option",null,typeof o==="string"?o:o.t);op.value=typeof o==="string"?o:o.v; if(op.value===val)op.selected=true; s.appendChild(op);});
+  s.onchange=()=>fn(s.value); r.appendChild(s); return r; }
+function selInline(label,opts,val,fn){ const r=el("div","prow"); r.append(el("div","nm",label));
+  const s=el("select","sel-dd"); s.style.flex="1 1 auto";
+  opts.forEach(o=>{const op=el("option",null,typeof o==="string"?o:o.t);op.value=typeof o==="string"?o:o.v; if(op.value===val)op.selected=true; s.appendChild(op);});
+  s.onchange=()=>fn(s.value); r.appendChild(s); return r; }
+const fInDb=v=> v<=-60?"-Inf":(v>0?"+":"")+v.toFixed(1)+" dB";
+
+/* ============================================================================
+   9. NAVEGAÇÃO — botões do painel
+   ========================================================================== */
+const PANEL_BTNS=[
+  {k:"EQ",     lbl:"EQ",       sub:"Pre",      mod:"PREEQ"},
+  {k:"INSERT", lbl:"INSERT",   sub:"AFS/Sub",  mod:"AFS"},
+  {k:"XOVER",  lbl:"XOVER",    sub:"Bessel",   mod:"XOVER"},
+  {k:"DYN",    lbl:"DYNAMICS", sub:"Cmp/Lim",  mod:"DYN"},
+  {k:"DELAY",  lbl:"DELAY",    sub:"Align",    mod:"DELAY"},
+  {k:"IO",     lbl:"I/O",      sub:"2in 6out", mod:"IO"},
+  {k:"POST",   lbl:"POST EQ",  sub:"4-band",   mod:"POSTPEQ"},
+  {k:"SUB",    lbl:"OTHER",    sub:"Subharm",  mod:"SUB"},
+  {k:"UTIL",   lbl:"UTILITY",  sub:"Meters",   mod:"RTA"},
+  {k:"RTA",    lbl:"RTA",      sub:"Wizard",   mod:"RTA"}
+];
+function buildPanelButtons(){
+  const g=$("#btnGrid"); g.innerHTML="";
+  PANEL_BTNS.forEach(b=>{ const bt=el("button","pbtn","<span class='led'></span>"+b.lbl+"<small>"+b.sub+"</small>");
+    bt.dataset.mod=b.mod; bt.onclick=()=>{SEL.mod=b.mod; renderModule();};
+    g.appendChild(bt); });
+}
+function syncPanel(){
+  document.querySelectorAll(".pbtn").forEach(bt=>{
+    bt.classList.toggle("sel", bt.dataset.mod===SEL.mod);
+    bt.classList.toggle("on", moduleOn(bt.dataset.mod));
+  });
+}
+function renderModule(){
+  const m=$("#main"); m.innerHTML=""; const pg=el("div","page on"); m.appendChild(pg);
+  MODS[SEL.mod].render(pg);
+  syncPanel(); paintLcd();
+  /* desenha os plots do módulo — chamada SÍNCRONA (ler clientWidth força layout,
+     então funciona mesmo com a aba em background, onde rAF fica congelado). */
+  drawCurrentPlots();
+  /* 2ª passada no próximo frame p/ pegar o layout final (fontes/scroll). */
+  requestAnimationFrame(drawCurrentPlots);
+}
+function drawCurrentPlots(){
+  if(SEL.mod==="XOVER") drawXoverPlot();
+  else if(SEL.mod==="PREEQ"){ if(STATE.preMode==="GEQ")drawGeqPlot(); else drawPeqPlot("pqPreCv",STATE.peq.bands,STATE.peq.on); }
+  else if(SEL.mod==="POSTPEQ"){ const b=STATE.bands[SEL.postBand]; drawPeqPlot("pqPostCv",b.peq.bands,b.peq.on); }
+  else if(SEL.mod==="RTA") drawRta();
+}
+function paintLcd(){ drawLcd(); syncPanel(); $("#hprogName").textContent="U"+STATE.progNum+" "+STATE.progName; }
+const apply=()=>{ applyAll(); };
+
+/* ============================================================================
+   10. DATA wheel (arrastar gira) — ajusta o slider em foco do módulo atual
+   ========================================================================== */
+function initWheel(){
+  const w=$("#wheel"); let drag=false, lastA=0;
+  const ang=e=>{ const r=w.getBoundingClientRect(); const cx=r.left+r.width/2, cy=r.top+r.height/2;
+    const p=e.touches?e.touches[0]:e; return Math.atan2(p.clientY-cy,p.clientX-cx); };
+  const start=e=>{ drag=true; lastA=ang(e); w.classList.add("push"); e.preventDefault(); };
+  const move=e=>{ if(!drag) return; const a=ang(e); let d=a-lastA;
+    if(d>Math.PI)d-=2*Math.PI; if(d<-Math.PI)d+=2*Math.PI; lastA=a;
+    const sld=$(".page.on .sld"); if(sld){ sld.value=clamp(+sld.value + d/(2*Math.PI)*1000*1.2,0,1000); sld.oninput(); } };
+  const end=()=>{ drag=false; w.classList.remove("push"); };
+  w.addEventListener("mousedown",start); window.addEventListener("mousemove",move); window.addEventListener("mouseup",end);
+  w.addEventListener("touchstart",start,{passive:false}); window.addEventListener("touchmove",move,{passive:false}); window.addEventListener("touchend",end);
+}
+
+/* ============================================================================
+   11. INIT
+   ========================================================================== */
+function initMonitor(){
+  const out=$("#monOut"); out.innerHTML="";
+  const all=el("option",null,"Todas (mix 6 out)"); all.value=-1; out.appendChild(all);
+  STATE.bands.forEach((b,i)=>{ const o=el("option",null,b.name+" (out "+(i*2+1)+"&"+(i*2+2)+")"); o.value=i; out.appendChild(o); });
+  out.value=0;
+  out.onchange=()=>{ routeMonitor(); };
+  $("#monPlay").onclick=()=>{ playing?stop():play(); };
+  $("#monSrc").onchange=()=>{ if(playing) play(); };
+}
+function meterLoop(){
+  if(playing){ const sel=Math.max(0,+$("#monOut").value); const db=outDb(sel);
+    const pct=clamp((db+60)/60*100,0,100);
+    $("#monMeter").style.width=pct+"%"; $("#monDb").textContent=db<=-90?"—":db.toFixed(1)+" dB";
+    if(SEL.mod==="RTA") drawRta();
+  } else { $("#monMeter").style.width="0%"; }
+  requestAnimationFrame(meterLoop);
+}
+window.addEventListener("resize",()=>{ paintLcd(); drawCurrentPlots(); });
+
+(function init(){
+  initLcdScale(); buildPanelButtons(); initWheel(); initMonitor();
+  SEL.mod="XOVER"; renderModule(); paintLcd(); meterLoop();
+})();
+</script>
+</body>
+</html>
