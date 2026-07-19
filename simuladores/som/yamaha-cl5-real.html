@@ -408,7 +408,7 @@
     mixMaster:new Array(N_MIX).fill(0), mixOn:new Array(N_MIX).fill(true),
     mtxMaster:new Array(N_MTX).fill(0), mtxOn:new Array(N_MTX).fill(true),
     muteActive:new Array(N_MUTE).fill(false),
-    rackSel:0, grpTab:0, scTab:'dca', bank:'in1', selStin:-1, custom:'A1', online:false, bpm:120, rackKind:'fx', geqSel:0,
+    rackSel:0, grpTab:0, grpBank:0, scTab:'dca', bank:'in1', selStin:-1, custom:'A1', online:false, bpm:120, rackKind:'fx', geqSel:0,
     rack:RACKDEF.map(d=>({name:d.name,kind:d.kind,on:true,bal:1.0,p:Object.assign({},d.p)})),
     geq:Array.from({length:16},()=>({on:true,bands:new Array(31).fill(0)})) };
   /* 31 bandas ISO do GEQ (20 Hz – 20 kHz) */
@@ -1716,10 +1716,17 @@
     });
     ctx.fillStyle="#2e2e2e"; ctx.fillRect(8,28,894,610); bevel(8,28,894,610,false);
     const hx0=126, cw2=26;
+    // channel bank paging (banks of 24) — the assign matrix reaches every channel up to MAXCH,
+    // like the console's own bank keys. CL5=72→3 banks, LS9=64→3, M7CL=48→2.
+    const nBanks=Math.ceil(MAXCH/24);
+    if(state.grpBank>=nBanks) state.grpBank=0;
+    const bankBase=state.grpBank*24, bankEnd=Math.min(bankBase+24,MAXCH);
     // column headers: channel number + vertical name (like editor)
     ctx.fillStyle="#bdbdbd"; ctx.font="700 10px Arial"; ctx.textAlign="left";
-    ctx.fillText(state.grpTab===0?"INPUT DCA — CH 1-24":"INPUT MUTE — CH 1-24",16,44);
-    for(let c=0;c<24;c++){ const x=hx0+c*cw2;
+    ctx.fillText((state.grpTab===0?"INPUT DCA — CH ":"INPUT MUTE — CH ")+(bankBase+1)+"-"+bankEnd,16,44);
+    if(nBanks>1){ for(let b=0;b<nBanks;b++){ const lo=b*24+1, hi=Math.min(b*24+24,MAXCH);
+      eBtn(220+b*54,32,50,15,lo+"-"+hi,state.grpBank===b,()=>{ state.grpBank=b; },ED.yel,7); } }
+    for(let c=bankBase;c<bankEnd;c++){ const x=hx0+(c-bankBase)*cw2;
       ctx.save(); ctx.translate(x+cw2/2+3,96); ctx.rotate(-Math.PI/2);
       ctx.fillStyle=c===state.sel?"#efe3ae":"#9a9a9a"; ctx.font="700 7.5px Arial"; ctx.textAlign="left";
       ctx.fillText(CH[c].name.slice(0,9),0,0); ctx.restore();
@@ -1732,12 +1739,12 @@
       for(let g=0;g<16;g++){ const y=118+g*31;
         eNameBox(14,y+6,50,16,"DCA"+(g+1));
         eBtn(68,y+6,52,16,"PRE&POST",state.dcaPP[g],()=>{state.dcaPP[g]=!state.dcaPP[g];},null,6);
-        for(let c=0;c<24;c++){ const x=hx0+c*cw2, onC=CH[c].dca[g];
+        for(let c=bankBase;c<bankEnd;c++){ const x=hx0+(c-bankBase)*cw2, onC=CH[c].dca[g];
           ctx.fillStyle="#1e1e1e"; ctx.fillRect(x+1,y+2,cw2-2,26); bevel(x+1,y+2,cw2-2,26,true);
           if(onC){ ctx.fillStyle=ED.btnLit; ctx.fillRect(x+4,y+6,cw2-8,18); ctx.strokeStyle="#6a5a10"; ctx.strokeRect(x+4.5,y+6.5,cw2-9,17); }
           vreg({x,y:y+1,w:cw2,h:29,onDown:()=>{ CH[c].dca[g]=!CH[c].dca[g]; applyChanAudio(c); paintBay(); }});
         }
-        eBtn(hx0+24*cw2+8,y+6,52,16,"CLEAR",false,()=>{ for(let c=0;c<24;c++){CH[c].dca[g]=false;applyChanAudio(c);} paintBay(); toast("DCA "+(g+1)+" limpo"); },null,7);
+        eBtn(hx0+24*cw2+8,y+6,52,16,"CLEAR",false,()=>{ for(let c=0;c<MAXCH;c++){CH[c].dca[g]=false;applyChanAudio(c);} paintBay(); toast("DCA "+(g+1)+" limpo"); },null,7);
         eVal(hx0+24*cw2+66,y+6,58,16,faderTxt(state.dcaGain[g])+"dB");
       }
       ctx.fillStyle="#8a8a8a"; ctx.font="700 8px Arial"; ctx.textAlign="left";
@@ -1747,17 +1754,17 @@
       for(let g=0;g<8;g++){ const y=122+g*46;
         eNameBox(14,y+8,50,16,"MUTE"+(g+1));
         eBtn(68,y+8,52,16,"MASTER",state.muteActive[g],()=>{ state.muteActive[g]=!state.muteActive[g]; for(let i=0;i<MAXCH;i++)if(CH[i].mute[g])applyChanAudio(i); paintBay(); },ED.red,6);
-        for(let c=0;c<24;c++){ const x=hx0+c*cw2, onC=CH[c].mute[g];
+        for(let c=bankBase;c<bankEnd;c++){ const x=hx0+(c-bankBase)*cw2, onC=CH[c].mute[g];
           ctx.fillStyle="#1e1e1e"; ctx.fillRect(x+1,y+2,cw2-2,40); bevel(x+1,y+2,cw2-2,40,true);
           if(onC){ ctx.fillStyle=state.muteActive[g]?"#e05050":ED.btnLit; ctx.fillRect(x+4,y+8,cw2-8,28); ctx.strokeStyle="#6a2020"; ctx.strokeRect(x+4.5,y+8.5,cw2-9,27); }
           vreg({x,y:y+1,w:cw2,h:43,onDown:()=>{ CH[c].mute[g]=!CH[c].mute[g]; applyChanAudio(c); paintBay(); }});
         }
-        eBtn(hx0+24*cw2+8,y+8,52,16,"CLEAR",false,()=>{ for(let c=0;c<24;c++){CH[c].mute[g]=false;applyChanAudio(c);} paintBay(); },null,7);
+        eBtn(hx0+24*cw2+8,y+8,52,16,"CLEAR",false,()=>{ for(let c=0;c<MAXCH;c++){CH[c].mute[g]=false;applyChanAudio(c);} paintBay(); },null,7);
       }
       // MUTE SAFE row (green, per channel)
       const sy=122+8*46+8;
       eNameBox(14,sy+2,106,16,"MUTE SAFE");
-      for(let c=0;c<24;c++){ const x=hx0+c*cw2, onC=CH[c].muteSafe;
+      for(let c=bankBase;c<bankEnd;c++){ const x=hx0+(c-bankBase)*cw2, onC=CH[c].muteSafe;
         ctx.fillStyle="#1e1e1e"; ctx.fillRect(x+1,sy,cw2-2,22); bevel(x+1,sy,cw2-2,22,true);
         if(onC){ ctx.fillStyle="#33cc44"; ctx.fillRect(x+4,sy+3,cw2-8,16); }
         vreg({x,y:sy,w:cw2,h:22,onDown:()=>{ CH[c].muteSafe=!CH[c].muteSafe; applyChanAudio(c); paintBay(); }});
@@ -2451,7 +2458,7 @@
     loadingSong=false;
     if(tok!==loadTok){ setPlayBtn(playing); return; }
     stopSong(true); const t0=ac.currentTime+0.12;
-    useStems.forEach((st,i)=>{ if(i>=MAXCH||!aNodes[i])return; const src=ac.createBufferSource(); src.buffer=bufs[i]; src.loop=true; if(bufs.__le===undefined){var _m=1e9;for(var _k=0;_k<bufs.length;_k++){if(bufs[_k]&&bufs[_k].duration<_m)_m=bufs[_k].duration;}bufs.__le=_m;} if(bufs.__le>0.5&&bufs.__le<1e8){src.loopStart=0;src.loopEnd=bufs.__le;} src.connect(aNodes[i].trim); src.start(t0); realSources.push(src); });
+    useStems.forEach((st,i)=>{ if(i>=MAXCH||!aNodes[i])return; const src=ac.createBufferSource(); src.buffer=bufs[i]; src.loop=true; if(bufs.__lm===undefined){var _m=0;for(var _k=0;_k<bufs.length;_k++){if(bufs[_k]&&bufs[_k].duration>_m)_m=bufs[_k].duration;}bufs.__lm=_m;} if(bufs.__lm>0.5&&bufs[i]&&bufs[i].duration<bufs.__lm-0.02){try{var _sr=bufs[i].sampleRate,_pl=Math.round(bufs.__lm*_sr),_nc=bufs[i].numberOfChannels,_pb=ac.createBuffer(_nc,_pl,_sr);for(var _c=0;_c<_nc;_c++){_pb.getChannelData(_c).set(bufs[i].getChannelData(_c));}src.buffer=_pb;}catch(e){}} if(bufs.__lm>0.5){src.loopStart=0;src.loopEnd=bufs.__lm;} src.connect(aNodes[i].trim); src.start(t0); realSources.push(src); });
     for(let i=0;i<MAXCAP;i++)applyChanAudio(i); playing=true; setPlayBtn(true); setStatus("tocando ♪ "+song.label,"#3ad07a"); }
   function stopSong(keep){ realSources.forEach(s=>{try{s.stop();}catch(e){}}); realSources=[]; playing=false; setPlayBtn(false); if(!keep)setStatus("parado"); }
 
