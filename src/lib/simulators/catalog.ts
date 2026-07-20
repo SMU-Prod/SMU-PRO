@@ -172,23 +172,39 @@ export const SIMULATORS: Simulator[] = [
   },
   {
     "id": "efeito-anatomia-artefato",
-    "titulo": "Anatomia do Artefato Pirotécnico · SMU PRO",
+    "titulo": "Anatomia do Artefato Pirotécnico",
     "segmento": "efeito",
     "nivel": "avancado",
     "tipo": "sim",
     "arquivo": "/simuladores/efeito/anatomia-artefato.html"
   },
   {
+    "id": "efeito-atmosfera",
+    "titulo": "Atmosfera — Fumaça, Hazer e Low Fog",
+    "segmento": "efeito",
+    "nivel": "avancado",
+    "tipo": "sim",
+    "arquivo": "/simuladores/efeito/atmosfera.html"
+  },
+  {
     "id": "efeito-cadeia-de-disparo",
-    "titulo": "Cadeia de Disparo · SMU",
+    "titulo": "Cadeia de Disparo",
     "segmento": "efeito",
     "nivel": "basico",
     "tipo": "sim",
     "arquivo": "/simuladores/efeito-basico/cadeia-de-disparo.html"
   },
   {
+    "id": "efeito-chama-flame-jet",
+    "titulo": "Chama (Flame Jet)",
+    "segmento": "efeito",
+    "nivel": "basico",
+    "tipo": "sim",
+    "arquivo": "/simuladores/efeito-basico/chama-flame-jet.html"
+  },
+  {
     "id": "efeito-clima-decisao",
-    "titulo": "Cenários · SMU PRO",
+    "titulo": "Clima — Go / No-Go",
     "segmento": "efeito",
     "nivel": "avancado",
     "tipo": "sim",
@@ -196,39 +212,15 @@ export const SIMULATORS: Simulator[] = [
   },
   {
     "id": "efeito-comunicacao-decisao",
-    "titulo": "Cenários · SMU PRO",
+    "titulo": "Comunicação — Rádio & Jargões",
     "segmento": "efeito",
     "nivel": "avancado",
     "tipo": "sim",
     "arquivo": "/simuladores/efeito/comunicacao-decisao.html"
   },
   {
-    "id": "efeito-documentacao-decisao",
-    "titulo": "Cenários · SMU PRO",
-    "segmento": "efeito",
-    "nivel": "avancado",
-    "tipo": "sim",
-    "arquivo": "/simuladores/efeito/documentacao-decisao.html"
-  },
-  {
-    "id": "efeito-legislacao-decisao",
-    "titulo": "Cenários · SMU PRO",
-    "segmento": "efeito",
-    "nivel": "avancado",
-    "tipo": "sim",
-    "arquivo": "/simuladores/efeito/legislacao-decisao.html"
-  },
-  {
-    "id": "efeito-chama-flame-jet",
-    "titulo": "Chama (Flame Jet) · SMU",
-    "segmento": "efeito",
-    "nivel": "basico",
-    "tipo": "sim",
-    "arquivo": "/simuladores/efeito-basico/chama-flame-jet.html"
-  },
-  {
     "id": "efeito-delay-antecipacao",
-    "titulo": "Delay & Antecipação · SMU PRO",
+    "titulo": "Delay & Antecipação",
     "segmento": "efeito",
     "nivel": "avancado",
     "tipo": "sim",
@@ -236,7 +228,7 @@ export const SIMULATORS: Simulator[] = [
   },
   {
     "id": "efeito-distancias-seguranca",
-    "titulo": "Distâncias de Segurança · SMU",
+    "titulo": "Distâncias de Segurança",
     "segmento": "efeito",
     "nivel": "basico",
     "tipo": "sim",
@@ -244,23 +236,39 @@ export const SIMULATORS: Simulator[] = [
   },
   {
     "id": "efeito-dmx-controle",
-    "titulo": "DMX & Controle Operacional · SMU PRO",
+    "titulo": "DMX & Controle Operacional",
     "segmento": "efeito",
     "nivel": "avancado",
     "tipo": "sim",
     "arquivo": "/simuladores/efeito/dmx-controle.html"
   },
   {
+    "id": "efeito-documentacao-decisao",
+    "titulo": "Documentação & Rider Técnico",
+    "segmento": "efeito",
+    "nivel": "avancado",
+    "tipo": "sim",
+    "arquivo": "/simuladores/efeito/documentacao-decisao.html"
+  },
+  {
     "id": "efeito-efeitos-de-celebracao",
-    "titulo": "Efeitos de Celebração · SMU",
+    "titulo": "Efeitos de Celebração",
     "segmento": "efeito",
     "nivel": "basico",
     "tipo": "sim",
     "arquivo": "/simuladores/efeito-basico/efeitos-de-celebracao.html"
   },
   {
+    "id": "efeito-frios-celebracao",
+    "titulo": "Efeitos Frios e de Celebração",
+    "segmento": "efeito",
+    "nivel": "avancado",
+    "tipo": "sim",
+    "arquivo": "/simuladores/efeito/frios-celebracao.html"
+  },
+  {
     "id": "efeito-epi-operador",
-    "titulo": "EPI do Operador de Efeitos · SMU PRO",
+    "titulo": "EPI do Operador de Efeitos",
     "segmento": "efeito",
     "nivel": "avancado",
     "tipo": "sim",
@@ -268,7 +276,7 @@ export const SIMULATORS: Simulator[] = [
   },
   {
     "id": "efeito-faisca-fria",
-    "titulo": "Faísca Fria (Cold Spark) · SMU",
+    "titulo": "Faísca Fria (Cold Spark)",
     "segmento": "efeito",
     "nivel": "basico",
     "tipo": "sim",
@@ -276,7 +284,7 @@ export const SIMULATORS: Simulator[] = [
   },
   {
     "id": "efeito-familias-de-efeitos",
-    "titulo": "Famílias de Efeitos · SMU",
+    "titulo": "Famílias de Efeitos",
     "segmento": "efeito",
     "nivel": "basico",
     "tipo": "sim",
@@ -284,7 +292,7 @@ export const SIMULATORS: Simulator[] = [
   },
   {
     "id": "efeito-low-fog",
-    "titulo": "Fumaça Baixa (Low Fog) · SMU",
+    "titulo": "Fumaça Baixa (Low Fog)",
     "segmento": "efeito",
     "nivel": "basico",
     "tipo": "sim",
@@ -292,7 +300,7 @@ export const SIMULATORS: Simulator[] = [
   },
   {
     "id": "efeito-hazer-e-feixes",
-    "titulo": "Hazer · SMU",
+    "titulo": "Hazer",
     "segmento": "efeito",
     "nivel": "basico",
     "tipo": "sim",
@@ -300,15 +308,23 @@ export const SIMULATORS: Simulator[] = [
   },
   {
     "id": "efeito-co2-jet",
-    "titulo": "Jato de CO₂ · SMU",
+    "titulo": "Jato de CO₂",
     "segmento": "efeito",
     "nivel": "basico",
     "tipo": "sim",
     "arquivo": "/simuladores/efeito-basico/co2-jet.html"
   },
   {
+    "id": "efeito-legislacao-decisao",
+    "titulo": "Legislação — Pirotecnia no Brasil",
+    "segmento": "efeito",
+    "nivel": "avancado",
+    "tipo": "sim",
+    "arquivo": "/simuladores/efeito/legislacao-decisao.html"
+  },
+  {
     "id": "efeito-maleta-disparo",
-    "titulo": "Maleta de Disparo — Ligação e Patch · SMU PRO",
+    "titulo": "Maleta de Disparo — Ligação e Patch",
     "segmento": "efeito",
     "nivel": "avancado",
     "tipo": "sim",
@@ -316,7 +332,7 @@ export const SIMULATORS: Simulator[] = [
   },
   {
     "id": "efeito-maquina-de-fumaca",
-    "titulo": "Máquina de Fumaça · SMU",
+    "titulo": "Máquina de Fumaça",
     "segmento": "efeito",
     "nivel": "basico",
     "tipo": "sim",
@@ -324,7 +340,7 @@ export const SIMULATORS: Simulator[] = [
   },
   {
     "id": "efeito-paineis-led",
-    "titulo": "Painéis LED & Efeitos Visuais · SMU PRO",
+    "titulo": "Painéis LED & Efeitos Visuais",
     "segmento": "efeito",
     "nivel": "avancado",
     "tipo": "sim",
@@ -332,7 +348,7 @@ export const SIMULATORS: Simulator[] = [
   },
   {
     "id": "efeito-palco-de-efeitos",
-    "titulo": "Palco de Efeitos · SMU",
+    "titulo": "Palco de Efeitos",
     "segmento": "efeito",
     "nivel": "basico",
     "tipo": "sim",
@@ -340,15 +356,23 @@ export const SIMULATORS: Simulator[] = [
   },
   {
     "id": "efeito-pirotecnia-gerb-airburst",
-    "titulo": "Pirotecnia de Palco · SMU",
+    "titulo": "Pirotecnia de Palco",
     "segmento": "efeito",
     "nivel": "basico",
     "tipo": "sim",
     "arquivo": "/simuladores/efeito-basico/pirotecnia-gerb-airburst.html"
   },
   {
+    "id": "efeito-pirotecnia",
+    "titulo": "Pirotecnia e Disparo",
+    "segmento": "efeito",
+    "nivel": "avancado",
+    "tipo": "sim",
+    "arquivo": "/simuladores/efeito/pirotecnia.html"
+  },
+  {
     "id": "efeito-operador-go-nogo",
-    "titulo": "Plantão do Operador · SMU",
+    "titulo": "Plantão do Operador",
     "segmento": "efeito",
     "nivel": "basico",
     "tipo": "sim",
@@ -356,7 +380,7 @@ export const SIMULATORS: Simulator[] = [
   },
   {
     "id": "efeito-show-pirotecnico",
-    "titulo": "Simulador de Show Pirotécnico · SMU PRO",
+    "titulo": "Simulador de Show Pirotécnico",
     "segmento": "efeito",
     "nivel": "avancado",
     "tipo": "sim",
@@ -364,43 +388,11 @@ export const SIMULATORS: Simulator[] = [
   },
   {
     "id": "efeito-timecode-sync",
-    "titulo": "Time Code (SMPTE) — Sincronia · SMU PRO",
+    "titulo": "Time Code (SMPTE) — Sincronia",
     "segmento": "efeito",
     "nivel": "avancado",
     "tipo": "sim",
     "arquivo": "/simuladores/efeito/timecode-sync.html"
-  },
-  {
-    "id": "efeito-atmosfera",
-    "titulo": "Tipos de Efeito Pirotécnico · SMU PRO",
-    "segmento": "efeito",
-    "nivel": "avancado",
-    "tipo": "sim",
-    "arquivo": "/simuladores/efeito/atmosfera.html"
-  },
-  {
-    "id": "efeito-frios-celebracao",
-    "titulo": "Tipos de Efeito Pirotécnico · SMU PRO",
-    "segmento": "efeito",
-    "nivel": "avancado",
-    "tipo": "sim",
-    "arquivo": "/simuladores/efeito/frios-celebracao.html"
-  },
-  {
-    "id": "efeito-pirotecnia",
-    "titulo": "Tipos de Efeito Pirotécnico · SMU PRO",
-    "segmento": "efeito",
-    "nivel": "avancado",
-    "tipo": "sim",
-    "arquivo": "/simuladores/efeito/pirotecnia.html"
-  },
-  {
-    "id": "efeito-tipos-de-efeito",
-    "titulo": "Tipos de Efeito Pirotécnico · SMU PRO",
-    "segmento": "efeito",
-    "nivel": "avancado",
-    "tipo": "sim",
-    "arquivo": "/simuladores/efeito/tipos-de-efeito.html"
   },
   {
     "id": "luz-funcoes-da-luz",
@@ -1105,6 +1097,22 @@ export const SIMULATORS: Simulator[] = [
     "nivel": "avancado",
     "tipo": "real",
     "arquivo": "/simuladores/som/yamaha-cl5-real.html"
+  },
+  {
+    "id": "som-dbx-driverack260-real",
+    "titulo": "dbx DriveRack 260",
+    "segmento": "som",
+    "nivel": "avancado",
+    "tipo": "real",
+    "arquivo": "/simuladores/som/dbx-driverack260-real.html"
+  },
+  {
+    "id": "som-dbx-pa2-real",
+    "titulo": "dbx DriveRack PA2",
+    "segmento": "som",
+    "nivel": "avancado",
+    "tipo": "real",
+    "arquivo": "/simuladores/som/dbx-pa2-real.html"
   },
   {
     "id": "som-dbx-venu360-real",

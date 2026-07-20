@@ -16,6 +16,7 @@ function cleanTitle(raw) {
     .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, " ");
   t = t.replace(/^SMU\s*PRO\s*·\s*/i, "");
+  t = t.replace(/\s*·\s*SMU(\s*PRO)?\s*$/i, "");   // mesmo selo, mas no fim do título
   t = t.replace(/\((?:[^)]*\bSMU\b[^)]*|réplica[^)]*)\)\s*$/i, "").trim();
   t = t.replace(/^simulador\s*[—-]\s*/i, "").trim();
   t = t.replace(/\s*[—-]\s*simulador(?:\s+(?:fiel|smu|real))?$/i, "").trim();
@@ -44,6 +45,9 @@ function walk(dir) {
   const out = [];
   for (const name of readdirSync(dir)) {
     const full = join(dir, name);
+    // "_" = interno (backup, referência, work-in-progress). Vale para pasta e arquivo:
+    // sem isso, _backup_prefaithful/ e _ref-*/ vazavam para o portal público.
+    if (name.startsWith("_")) continue;
     if (statSync(full).isDirectory()) out.push(...walk(full));
     else if (name.endsWith(".html") && !name.startsWith("_")) out.push(full);
   }
@@ -84,6 +88,12 @@ writeFileSync(OUT_TS, header);
 // 2) Copia os HTMLs para public/ (servidos estáticos)
 rmSync(PUBLIC_DIR, { recursive: true, force: true });
 mkdirSync(PUBLIC_DIR, { recursive: true });
-cpSync(SRC_DIR, PUBLIC_DIR, { recursive: true });
+// Não publica o que é interno ("_"): backups e as pastas de referência de captura
+// (_ref-venu360, _ref-cl-editor, …) somavam ~194 MB indo para o deploy à toa.
+// Nenhum simulador carrega esses caminhos em runtime — os engines são inlinados.
+cpSync(SRC_DIR, PUBLIC_DIR, {
+  recursive: true,
+  filter: (src) => !basename(src).startsWith("_"),
+});
 
 console.log(`[catalog] ${deduped.length} simuladores (de ${entries.length} arquivos) -> catalog.ts + public/simuladores/`);

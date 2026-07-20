@@ -10,9 +10,11 @@ const ENGINE = fs.readFileSync(path.join(ROOT, "simuladores", "efeito-basico", "
 const TPL = fs.readFileSync(path.join(__dir, "pleno-tipos.template.html"), "utf8");
 const OUT = path.join(ROOT, "simuladores", "efeito");
 
+// As 3 variantes repartem os 11 efeitos do CAT_ALL sem sobreposição — cada assunto
+// aparece em UM simulador só. Não recriar a variante "todos os efeitos": ela era a
+// união exata destas três e duplicava os 11 temas na listagem do portal.
 export const VARIANTS = [
-  { file: "tipos-de-efeito", show: null, title: "Tipos de Efeito Pirotécnico", sub: "Catálogo interativo — escolha, configure e dispare" },
-  { file: "atmosfera", show: ["fumaca", "hazer", "lowfog", "co2"], title: "Atmosfera — Fumaça, Hazer e Low Fog", sub: "Máquinas atmosféricas: dê corpo ao ar e revele a luz" },
+  { file: "atmosfera", show: ["fumaca", "hazer", "lowfog"], title: "Atmosfera — Fumaça, Hazer e Low Fog", sub: "Máquinas atmosféricas: dê corpo ao ar e revele a luz" },
   { file: "frios-celebracao", show: ["faisca", "co2", "confete", "serpentina"], title: "Efeitos Frios e de Celebração", sub: "Faísca fria, CO₂, confete e serpentina — seguros perto do público" },
   { file: "pirotecnia", show: ["gerb", "shell", "foguete", "chama"], title: "Pirotecnia e Disparo", sub: "Gerb, shell, foguete e lança-chamas — categorias F2 a F4" },
 ];
@@ -22,6 +24,7 @@ export function buildVariant(v) {
   const html = TPL
     .replace("__ENGINE__", () => ENGINE)
     .replace("__SHOW__", () => showLit)
+    .replaceAll("__TITLE_TXT__", () => v.title)   // tag <title> do <head>: texto cru
     .replaceAll("__TITLE__", () => JSON.stringify(v.title))
     .replaceAll("__SUBTITLE__", () => JSON.stringify(v.sub));
   fs.writeFileSync(path.join(OUT, v.file + ".html"), html);
