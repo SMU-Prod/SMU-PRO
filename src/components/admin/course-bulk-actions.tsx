@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { adminToggleCourse, adminDuplicateCourse, adminDeleteCourse } from "@/lib/actions/courses";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { getCategoryLabel, getLevelLabel, formatCurrency } from "@/lib/utils";
 import { CategoryIcon } from "@/components/ui/category-icon";
-import { Edit, Layers, EyeOff, CheckSquare, Square, X, Zap, Copy, Trash2 } from "lucide-react";
+import { Edit, Layers, EyeOff, CheckSquare, Square, X, Zap, Copy, Trash2, LayoutGrid, List as ListIcon } from "lucide-react";
 import Link from "next/link";
 import { CourseToggle } from "@/components/admin/course-toggle";
 import { StudentPreviewButton } from "@/components/admin/student-card-preview";
@@ -38,6 +38,20 @@ export function CourseBulkActions({ courses }: { courses: Course[] }) {
   const t = useT();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
+
+  // Cards × Lista. Começa em "cards" no servidor (evita mismatch de hidratação) e
+  // aplica a preferência salva depois de montar — mesmo padrão do catálogo do aluno.
+  const [view, setView] = useState<"cards" | "list">("cards");
+  useEffect(() => {
+    try {
+      const salvo = window.localStorage.getItem("smu_admin_courses_view");
+      if (salvo === "cards" || salvo === "list") setView(salvo);
+    } catch { /* localStorage indisponível */ }
+  }, []);
+  const changeView = (v: "cards" | "list") => {
+    setView(v);
+    try { window.localStorage.setItem("smu_admin_courses_view", v); } catch { /* noop */ }
+  };
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
@@ -120,19 +134,101 @@ export function CourseBulkActions({ courses }: { courses: Course[] }) {
         {selected.size === 0 && (
           <span className="text-xs text-muted-light">{courses.length} {courses.length !== 1 ? t("cursos") : t("curso")}</span>
         )}
+
+        {/* Cards × Lista — mesmo padrão do catálogo do aluno, com a preferência salva */}
+        <div className="ml-auto flex items-center gap-0.5 rounded-lg border border-border bg-surface-2 p-0.5">
+          <button
+            type="button"
+            onClick={() => changeView("cards")}
+            aria-label={t("Ver em cards")}
+            title={t("Ver em cards")}
+            className={`rounded-md p-1.5 transition-colors ${view === "cards" ? "bg-amber-500 text-white" : "text-muted hover:text-foreground"}`}
+          >
+            <LayoutGrid size={15} />
+          </button>
+          <button
+            type="button"
+            onClick={() => changeView("list")}
+            aria-label={t("Ver em lista")}
+            title={t("Ver em lista")}
+            className={`rounded-md p-1.5 transition-colors ${view === "list" ? "bg-amber-500 text-white" : "text-muted hover:text-foreground"}`}
+          >
+            <ListIcon size={15} />
+          </button>
+        </div>
       </div>
 
-      {/* Course grid */}
-      <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
-        {courses.map((c) => (
-          <CourseAdminCard
-            key={c.id}
-            course={c}
-            selected={selected.has(c.id)}
-            onSelect={() => toggleSelect(c.id)}
-          />
-        ))}
-      </div>
+      {view === "cards" ? (
+        <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          {courses.map((c) => (
+            <CourseAdminCard
+              key={c.id}
+              course={c}
+              selected={selected.has(c.id)}
+              onSelect={() => toggleSelect(c.id)}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-xl border border-border overflow-hidden divide-y divide-border">
+          {courses.map((c) => (
+            <CourseAdminRow
+              key={c.id}
+              course={c}
+              selected={selected.has(c.id)}
+              onSelect={() => toggleSelect(c.id)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Linha da visão em LISTA: densa, para varrer 45 cursos de uma vez. */
+function CourseAdminRow({
+  course: c,
+  selected,
+  onSelect,
+}: {
+  course: Course;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const t = useT();
+  const locale = useLocale();
+  const dispTitulo = courseMeta(c.slug, locale)?.titulo ?? c.titulo;
+
+  return (
+    <div className={`flex items-center gap-3 px-3 py-2 transition-colors ${selected ? "bg-amber-500/10" : "hover:bg-hover"}`}>
+      <input
+        type="checkbox"
+        checked={selected}
+        onChange={onSelect}
+        className="h-4 w-4 shrink-0 rounded border-border accent-amber-500"
+        aria-label={t("Selecionar")}
+      />
+      <Link href={`/admin/cursos/${c.id}`} className="min-w-0 flex-1 group">
+        <p className="truncate text-sm font-medium text-foreground group-hover:text-amber-400 transition-colors">
+          {dispTitulo}
+        </p>
+        <p className="truncate text-[11px] text-muted-light">{c.slug}</p>
+      </Link>
+      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${c.ativo ? "bg-emerald-500/15 text-emerald-500" : "bg-surface-3 text-muted-light"}`}>
+        {c.ativo ? t("Ativo") : t("Rascunho")}
+      </span>
+      <span className="hidden sm:block shrink-0 w-16 text-right text-[11px] text-muted-light">
+        {c.total_alunos ?? 0} {t("alunos")}
+      </span>
+      <span className="hidden md:block shrink-0 w-14 text-right text-[11px] text-muted-light">
+        {c.total_aulas ?? 0} {t("aulas")}
+      </span>
+      <Link
+        href={`/admin/cursos/${c.id}`}
+        className="shrink-0 rounded-lg border border-border px-2.5 py-1 text-xs text-muted hover:text-foreground hover:border-amber-500/30 transition-colors"
+      >
+        {t("Abrir")}
+      </Link>
     </div>
   );
 }

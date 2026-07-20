@@ -6,7 +6,17 @@ import Link from "next/link";
 import { CourseBulkActions } from "@/components/admin/course-bulk-actions";
 import { getServerT } from "@/lib/i18n/server";
 
-const PAGE_SIZE = 24;
+/**
+ * Sem paginação: o catálogo inteiro numa página só.
+ *
+ * Antes era PAGE_SIZE=24 — e o portal `aula` tem EXATAMENTE 24 cursos. Como
+ * `totalPages = ceil(24/24) = 1` e os controles só aparecem com `totalPages > 1`,
+ * o 25º curso ia para uma página 2 INALCANÇÁVEL. Pior: os cards de estatística
+ * liam `limit: 500`, então o topo dizia "45 cursos" enquanto a grade mostrava 24 —
+ * o curso existia para o aluno e sumia do admin, sem nenhum aviso.
+ * Com 45 cursos no total, paginar não resolve problema nenhum; só cria este.
+ */
+const PAGE_SIZE = 500;
 
 interface Props {
   searchParams: Promise<{ q?: string; nivel?: string; tipo?: string; page?: string }>;
