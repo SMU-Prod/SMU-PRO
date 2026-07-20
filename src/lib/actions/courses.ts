@@ -283,7 +283,9 @@ export async function adminGetAllCourses(opts?: { page?: number; limit?: number;
     .from("admin_course_stats")
     .select("*", { count: "exact" })
     .in("id", allowedIds)
-    .order("created_at", { ascending: false })
+    // Ordem ALFABÉTICA por título: com 40+ cursos, achar um pela data de criação é
+    // impossível — você não lembra QUANDO criou, lembra o NOME.
+    .order("titulo", { ascending: true })
     .range((page - 1) * limit, page * limit - 1);
 
   if (opts?.search) query = query.ilike("titulo", `%${opts.search}%`);
@@ -808,7 +810,7 @@ export async function instructorGetMyCourses() {
     .from("instructor_course_stats")
     .select("*")
     .in("id", allowedIds)
-    .order("created_at", { ascending: false });
+    .order("titulo", { ascending: true }); // alfabética, igual à visão de admin
 
   if (role === "instrutor") {
     query = query.eq("criado_por", userUuid);
