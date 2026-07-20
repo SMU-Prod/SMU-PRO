@@ -4,7 +4,10 @@ import fs from "node:fs";import path from "node:path";import {fileURLToPath} fro
 import { faixa, conferirFaixa } from "../_REGISTRO-IDS.mjs";
 const __dirname=path.dirname(fileURLToPath(import.meta.url));const ROOT=path.resolve(__dirname,"../..");
 const q=s=>"'"+String(s).replace(/'/g,"''")+"'";const jsonb=o=>q(JSON.stringify(o))+"::jsonb";
-const COURSE="5504c000-5011-4a00-9000-000000000001";
+// Curso PLENO — SOM. Antes apontava para som-formacao-completa
+// (5504c000-...-0001), removido em 15/07/2026 — estava vazio e os modulos de
+// console (5504c000-...-a1/a2) sempre viveram no pleno-som.
+const COURSE="8f29f6dd-3dc6-47fe-b4d3-1cd15514a21d";
 const MODULE="5504c000-5011-4a00-9000-0000000000a1";
 const LESSON="5504c000-5011-4a00-9000-0000000000b4";
 const QUIZ  ="5504c000-5011-4a00-9000-0000000000c4";
@@ -12,7 +15,10 @@ const QQ=n=>"5504c000-5011-4a00-9000-00000000d1"+n.toString(16).padStart(2,"0");
 
 // TRAVA DE FAIXA: 5504c000 é COMPARTILHADA por 4 scripts. Aborta se gerar id fora do pleno-som.
 // O MODULE …a1 é compartilhado DE PROPÓSITO com o ah-sq — por isso nunca é deletado aqui.
-conferirFaixa(faixa("pleno-som"), [COURSE, MODULE, LESSON, QUIZ, ...Array.from({length:8},(_,i)=>QQ(i+1))]);
+// COURSE entra como NATIVO: e um curso que ja existe (uuid aleatorio do pleno-som),
+// nao um id cunhado por este script. Sem isso a trava aborta — o id do curso nao
+// pertence (nem deve pertencer) a faixa 5504c000.
+conferirFaixa(faixa("pleno-som"), [MODULE, LESSON, QUIZ, ...Array.from({length:8},(_,i)=>QQ(i+1))], [COURSE]);
 const conteudo=fs.readFileSync(path.join(__dirname,"aula-digico.fragment.html"),"utf8").trim();
 const sim=fs.readFileSync(path.join(ROOT,"simuladores/som/digico-sd.html"),"utf8");
 const questoes=[

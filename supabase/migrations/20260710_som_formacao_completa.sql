@@ -13,13 +13,13 @@ delete from public.lessons where id = '5504c000-5011-4a00-9000-0000000000b1';
 
 -- CURSO (ativo=false)
 insert into public.courses (id,titulo,slug,descricao_curta,nivel,categoria,categorias,tipo,carga_horaria,total_aulas,ativo,destaque,ordem) values
-  ('5504c000-5011-4a00-9000-000000000001','Som — Formação Completa','som-formacao-completa','Formação profissional em som ao vivo: teoria de fontes técnicas + simuladores-réplica por marca (Yamaha, Allen & Heath, Soundcraft, DiGiCo…).','pleno','som','{som}','pago',40,1,false,false,20)
+  ('8f29f6dd-3dc6-47fe-b4d3-1cd15514a21d','Som — Formação Completa','som-formacao-completa','Formação profissional em som ao vivo: teoria de fontes técnicas + simuladores-réplica por marca (Yamaha, Allen & Heath, Soundcraft, DiGiCo…).','pleno','som','{som}','pago',40,1,false,false,20)
   on conflict (id) do update set titulo = excluded.titulo, slug = excluded.slug,
     descricao_curta = excluded.descricao_curta, nivel = excluded.nivel, categoria = excluded.categoria,
     categorias = excluded.categorias, tipo = excluded.tipo, carga_horaria = excluded.carga_horaria;
 
 -- MÓDULO
-insert into public.modules (id,course_id,titulo,ordem) values ('5504c000-5011-4a00-9000-0000000000a1','5504c000-5011-4a00-9000-000000000001','Mesas de Som Digitais — por Fabricante',1)
+insert into public.modules (id,course_id,titulo,ordem) values ('5504c000-5011-4a00-9000-0000000000a1','8f29f6dd-3dc6-47fe-b4d3-1cd15514a21d','Mesas de Som Digitais — por Fabricante',1)
   on conflict (id) do update set course_id = excluded.course_id, titulo = excluded.titulo, ordem = excluded.ordem;
 
 -- AULA (teoria)

@@ -16,7 +16,7 @@ const jsonb = (obj) => q(JSON.stringify(obj)) + "::jsonb";          // SQL jsonb
 
 // ---- IDs fixos (idempotência: reaplicar não duplica) ----
 const ID = {
-  course:  "5504c000-5011-4a00-9000-000000000001",
+  course:  "8f29f6dd-3dc6-47fe-b4d3-1cd15514a21d",
   module:  "5504c000-5011-4a00-9000-0000000000a1",
   lesson:  "5504c000-5011-4a00-9000-0000000000b1",
   quiz:    "5504c000-5011-4a00-9000-0000000000c1",
@@ -26,7 +26,10 @@ const Q = (n) => `5504c000-5011-4a00-9000-0000000000${(0xd0 + n).toString(16)}`;
 // TRAVA DE FAIXA: 5504c000 é COMPARTILHADA por 4 scripts (som-formacao-completa, mix-show,
 // ah-sq, digico). Aborta se este script gerar um id fora do espaço do pleno-som.
 // O module …a1 é compartilhado com ah-sq/digico de propósito — por isso não é deletado aqui.
-conferirFaixa(faixa("pleno-som"), [...Object.values(ID), ...Array.from({ length: 8 }, (_, i) => Q(i + 1))]);
+// COURSE entra como NATIVO: e um curso que ja existe (uuid aleatorio do pleno-som),
+// nao um id cunhado por este script. Sem isso a trava aborta — o id do curso nao
+// pertence (nem deve pertencer) a faixa 5504c000.
+conferirFaixa(faixa("pleno-som"), [ID.module, ID.lesson, ID.quiz, ...Array.from({ length: 8 }, (_, i) => Q(i + 1))], [ID.course]);
 
 // ---- conteúdo ----
 const conteudo = fs.readFileSync(path.join(__dirname, "aula-01-yamaha-cl5.fragment.html"), "utf8").trim();

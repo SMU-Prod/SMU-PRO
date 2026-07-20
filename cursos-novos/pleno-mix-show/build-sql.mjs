@@ -10,7 +10,10 @@ const ROOT = path.resolve(__dirname, "../..");
 const q = (s) => "'" + String(s).replace(/'/g, "''") + "'";
 const jsonb = (o) => q(JSON.stringify(o)) + "::jsonb";
 
-const COURSE = "5504c000-5011-4a00-9000-000000000001"; // Som — Formação Completa (já existe)
+// Curso PLENO — SOM. Antes apontava para som-formacao-completa
+// (5504c000-...-0001), removido em 15/07/2026 — estava vazio e os modulos de
+// console (5504c000-...-a1/a2) sempre viveram no pleno-som.
+const COURSE = "8f29f6dd-3dc6-47fe-b4d3-1cd15514a21d"; // Pleno — Som (ja existe)
 const MODULE = "5504c000-5011-4a00-9000-0000000000a2";
 const LESSON = "5504c000-5011-4a00-9000-0000000000b2";
 const QUIZ   = "5504c000-5011-4a00-9000-0000000000c2";
@@ -18,7 +21,10 @@ const QQ = (n) => "5504c000-5011-4a00-9000-0000000000e" + n.toString(16); // e1.
 
 // TRAVA DE FAIXA: 5504c000 é COMPARTILHADA por 4 scripts (mix-show, ah-sq, digico,
 // som-formacao-completa). Aborta se este script gerar um id fora do espaço do pleno-som.
-conferirFaixa(faixa("pleno-som"), [COURSE, MODULE, LESSON, QUIZ, ...Array.from({ length: 8 }, (_, i) => QQ(i + 1))]);
+// COURSE entra como NATIVO: e um curso que ja existe (uuid aleatorio do pleno-som),
+// nao um id cunhado por este script. Sem isso a trava aborta — o id do curso nao
+// pertence (nem deve pertencer) a faixa 5504c000.
+conferirFaixa(faixa("pleno-som"), [MODULE, LESSON, QUIZ, ...Array.from({ length: 8 }, (_, i) => QQ(i + 1))], [COURSE]);
 
 const conteudo = fs.readFileSync(path.join(__dirname, "aula-mix-show.fragment.html"), "utf8").trim();
 const simulador = fs.readFileSync(path.join(ROOT, "simuladores/som/mix-show.html"), "utf8");
