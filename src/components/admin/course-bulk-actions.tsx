@@ -27,6 +27,7 @@ interface Course {
   ativo: boolean;
   preco?: number | null;
   total_aulas: number;
+  total_modulos?: number;
   total_alunos: number;
   total_certificados: number;
   progresso_medio?: number | null;
@@ -214,14 +215,19 @@ function CourseAdminRow({
         </p>
         <p className="truncate text-[11px] text-muted-light">{c.slug}</p>
       </Link>
+      {(c.total_modulos ?? 0) === 0 && (
+        <span className="shrink-0 rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-medium text-red-500" title={t("Curso sem nenhum módulo")}>
+          {t("vazio")}
+        </span>
+      )}
       <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${c.ativo ? "bg-emerald-500/15 text-emerald-500" : "bg-surface-3 text-muted-light"}`}>
         {c.ativo ? t("Ativo") : t("Rascunho")}
       </span>
       <span className="hidden sm:block shrink-0 w-16 text-right text-[11px] text-muted-light">
         {c.total_alunos ?? 0} {t("alunos")}
       </span>
-      <span className="hidden md:block shrink-0 w-14 text-right text-[11px] text-muted-light">
-        {c.total_aulas ?? 0} {t("aulas")}
+      <span className="hidden md:block shrink-0 w-24 text-right text-[11px] text-muted-light">
+        {c.total_modulos ?? 0} {t("mod")} · {c.total_aulas ?? 0} {t("aulas")}
       </span>
       <Link
         href={`/admin/cursos/${c.id}`}

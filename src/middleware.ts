@@ -12,6 +12,11 @@ const isPublicRoute = createRouteMatcher([
   "/certificado(.*)",
   "/pagamento/sucesso",
   "/api/webhooks/(.*)",
+  // SEO: sem estes dois, o middleware manda 307 para /login e o Google recebe a
+  // página de login em vez do sitemap — sem erro visível em lugar nenhum. O
+  // matcher abaixo não isenta .xml/.txt, então a exceção precisa ser aqui.
+  "/sitemap.xml",
+  "/robots.txt",
 ]);
 
 // Rotas exclusivas de admin
