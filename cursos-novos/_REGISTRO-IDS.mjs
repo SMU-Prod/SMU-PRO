@@ -117,10 +117,17 @@ export const REGISTRO = {
   "nrs-exp":          { curso: "normas-regulamentar-nrs", mod: "8f100000", aula: "8f100000", dono: "cursos-novos/expansao-2607 (M6 Gestão e Funções: NR-33, NR-07/09, segurança por função)" },
   "panorama-exp":     { curso: "panorama-das-profissoes-em-eventos", mod: "9a100000", aula: "9a100000", dono: "cursos-novos/expansao-2607 (M8 Palco e Carreira: som-profissão, roadie, rigger, stage manager, organograma)" },
   "intro-exp":        { curso: "introducao-para-eventos", mod: "9b100000", aula: "9b100000", dono: "cursos-novos/expansao-2607 (aula glossário backstage no módulo nativo 1)" },
+
+  // ── PROVA FINAL 21/07/2026 — os 3 básicos que só tinham faixa em formato custom
+  // (som-basico e6b5*/5b0*, luz-basico 10c0*) ganham faixa PADRÃO para o módulo de
+  // Avaliação Final; os demais cursos usam a própria faixa *-exp acima.
+  "som-basico-exp":   { curso: "som-basico",    mod: "9c100000", aula: "9c100000", dono: "cursos-novos/expansao-2607 (Avaliação Final)" },
+  "luz-basico-exp":   { curso: "luz-basico",    mod: "9d100000", aula: "9d100000", dono: "cursos-novos/expansao-2607 (Avaliação Final)" },
+  "efeito-basico-exp":{ curso: "efeito-basico", mod: "9e100000", aula: "9e100000", dono: "cursos-novos/expansao-2607 (Avaliação Final)" },
 };
 
 /** Prefixos LIVRES para o próximo curso. Risque daqui e registre acima ao usar. */
-export const LIVRES = ["9c1", "9d1", "9e1", "9f1", "6a1", "6b1"];
+export const LIVRES = ["9f1", "6a1", "6b1", "6c1", "6d1", "6e1"];
 
 // ⚠️ ARMADILHA HISTÓRICA — `72100000` é COMPARTILHADO no banco:
 //    pleno-video  usa 72100000-…-000000000b01 / b02 / b03   (sufixo com 'b')

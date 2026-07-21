@@ -29,6 +29,24 @@ export async function markLessonComplete(lessonId: string, courseSlug: string) {
   const canAccess = await hasCourseAccessByLesson(admin, userUuid, (userRow as { role?: string | null })?.role, lessonId);
   if (!canAccess) throw new Error("Acesso negado: você não está matriculado neste curso");
 
+  // Gate de quiz TAMBÉM no servidor: o botão da UI já bloqueia, mas sem esta checagem
+  // uma chamada direta à action concluía aula com quiz reprovado (e, com a prova final,
+  // concluiria o curso sem passar na prova). Mesma regra do client: tem_quiz exige
+  // uma tentativa aprovada.
+  const { data: lessonRow } = await admin.from("lessons").select("tem_quiz").eq("id", lessonId).single();
+  if (lessonRow?.tem_quiz) {
+    const { data: quizRow } = await admin.from("quizzes").select("id").eq("lesson_id", lessonId).limit(1).single();
+    if (quizRow) {
+      const { count } = await admin
+        .from("quiz_attempts")
+        .select("id", { count: "exact", head: true })
+        .eq("quiz_id", quizRow.id)
+        .eq("user_id", userUuid)
+        .eq("aprovado", true);
+      if (!count) throw new Error("Conclua o quiz desta aula (nota mínima) antes de marcá-la como concluída");
+    }
+  }
+
   const { error } = await admin.from("progress").upsert(
     {
       user_id: userUuid,
