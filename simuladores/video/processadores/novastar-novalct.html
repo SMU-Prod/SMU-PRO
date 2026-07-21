@@ -86,6 +86,21 @@
   .toast{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);background:#22303f;color:#fff;border-radius:8px;padding:9px 15px;font-size:12.5px;opacity:0;pointer-events:none;transition:.2s;z-index:60;max-width:92vw;text-align:center;}
   .toast.show{opacity:1;}
   .note-replica{font-size:10.5px;color:#8a97a6;text-align:center;padding:4px;}
+
+  /* -- CONTRATO DE TELA CHEIA (player <-> simulador) --------------------------
+     O player embute o sim num iframe ~16:9 (ex.: 820x461). O conteudo aqui e bem
+     mais alto que isso, entao o aluno via so a fatia de cima e os controles de baixo
+     ("Adicionar camada", TAKE, presets) ficavam FORA DA TELA -- parecia que o
+     simulador "nao fazia nada".
+     Correcao em duas frentes:
+      1) SEMPRE: o corpo rola dentro do iframe (o aluno alcanca tudo, mesmo embutido).
+      2) EM TELA CHEIA (html.smu-fs): aproveita a largura e espalha em 2 colunas,
+         encurtando a altura. So CSS, como manda o contrato -- nada de JS. */
+  html,body{height:auto;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  @media (min-width:1250px){
+    html.smu-fs .win{max-width:1900px;}
+    html.smu-fs .content{grid-template-columns:1fr 1fr;align-items:start;}
+  }
 </style>
 </head>
 <body>
@@ -97,11 +112,11 @@
   <div class="toolbar">
     <div class="tool" id="tScreen"><div class="ti">▦</div>Screen<br>Configuration</div>
     <div class="tool brt" id="tBright"><div class="ti">☀</div>Brightness</div>
-    <div class="tool cal"><div class="ti">◑</div>Calibration</div>
-    <div class="tool"><div class="ti">⤢</div>Screen<br>Control</div>
-    <div class="tool mon"><div class="ti">♥</div>Monitoring</div>
-    <div class="tool"><div class="ti">▤</div>Multi-function<br>Card</div>
-    <div class="tool"><div class="ti">⚙</div>Test<br>Tool</div>
+    <div class="tool cal" id="tCal"><div class="ti">◑</div>Calibration</div>
+    <div class="tool" id="tCtrl"><div class="ti">⤢</div>Screen<br>Control</div>
+    <div class="tool mon" id="tMon"><div class="ti">♥</div>Monitoring</div>
+    <div class="tool" id="tMfc"><div class="ti">▤</div>Multi-function<br>Card</div>
+    <div class="tool" id="tTest"><div class="ti">⚙</div>Test<br>Tool</div>
   </div>
 
   <div class="dlbar">
@@ -227,6 +242,85 @@
     </div>
   </div>
 </div>
+<!-- CALIBRATION — no NovaLCT real, liga/desliga a calibração gravada nas receptoras -->
+<div class="overlay" id="ovCal">
+  <div class="dialog" style="max-width:430px">
+    <div class="dhead">Calibration <span class="sp"></span><span class="x" data-close="ovCal">✕</span></div>
+    <div class="dbody">
+      <div class="frow"><label>Coeficiente</label>
+        <select id="calTipo">
+          <option value="brilho">Brightness (uniformidade de brilho)</option>
+          <option value="cor">Chroma (uniformidade de cor)</option>
+          <option value="ambos">Brightness + Chroma</option>
+        </select></div>
+      <div class="hint">Cada gabinete sai de fábrica com um tom levemente diferente. A <b>calibração</b> guarda um coeficiente por pixel nas <b>receiving cards</b> para igualar tudo. Sem ela a parede fica <b>manchada</b> — dá para ver desligando abaixo.</div>
+      <div class="btnrow">
+        <button class="btn primary" id="btnCalOn">Ativar calibração</button>
+        <button class="btn" id="btnCalOff">Desativar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TEST TOOL — padrões de teste do NovaLCT -->
+<div class="overlay" id="ovTest">
+  <div class="dialog" style="max-width:430px">
+    <div class="dhead">Test Tool <span class="sp"></span><span class="x" data-close="ovTest">✕</span></div>
+    <div class="dbody">
+      <div class="hint">Padrões para achar <b>módulo queimado</b>, canal de cor com defeito, cabinet torto ou falha de uniformidade — antes de abrir a casa.</div>
+      <div class="btnrow" id="testGrid" style="margin-top:8px">
+        <button class="btn" data-t="red">Vermelho</button>
+        <button class="btn" data-t="green">Verde</button>
+        <button class="btn" data-t="blue">Azul</button>
+      </div>
+      <div class="btnrow" id="testGrid2">
+        <button class="btn" data-t="white">Branco</button>
+        <button class="btn" data-t="gray">Escala de cinza</button>
+        <button class="btn" data-t="grid">Grade</button>
+        <button class="btn" data-t="input">Vídeo de entrada</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MONITORING — estado das receiving cards -->
+<div class="overlay" id="ovMon">
+  <div class="dialog" style="max-width:520px">
+    <div class="dhead">Monitoring <span class="sp"></span><span class="x" data-close="ovMon">✕</span></div>
+    <div class="dbody">
+      <div class="hint">No NovaLCT real mostra <b>temperatura, tensão e status</b> de cada receptora. Cabinet <b>vermelho</b> = não responde (cabo solto na cadeia).</div>
+      <div id="monGrid" style="display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin-top:10px"></div>
+      <div id="monMsg" style="font-size:11.5px;color:var(--dim);margin-top:9px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN CONTROL — blackout / freeze -->
+<div class="overlay" id="ovCtrl">
+  <div class="dialog" style="max-width:400px">
+    <div class="dhead">Screen Control <span class="sp"></span><span class="x" data-close="ovCtrl">✕</span></div>
+    <div class="dbody">
+      <div class="hint"><b>Blackout</b> apaga a parede sem desligar nada (troca de cena, imprevisto). <b>Freeze</b> congela o último quadro — usado para segurar a imagem enquanto se mexe na fonte.</div>
+      <div class="btnrow" style="margin-top:8px">
+        <button class="btn primary" id="btnNormal">Normal</button>
+        <button class="btn" id="btnBlack">Blackout</button>
+        <button class="btn" id="btnFreeze">Freeze</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MULTI-FUNCTION CARD -->
+<div class="overlay" id="ovMfc">
+  <div class="dialog" style="max-width:430px">
+    <div class="dhead">Multi-function Card <span class="sp"></span><span class="x" data-close="ovMfc">✕</span></div>
+    <div class="dbody">
+      <div class="hint">Placa acessória do sistema NovaStar: controla <b>energia por circuito</b> (ligar/desligar fileiras do telão à distância), lê <b>sensor de temperatura/umidade</b> e sensor de <b>luz ambiente</b> para brilho automático. Não é obrigatória — só existe se foi instalada no rack.</div>
+      <div style="font-size:12px;color:var(--dim);margin-top:10px">Estado: <b style="color:var(--warn)">nenhuma placa detectada neste sistema</b><br><span style="font-size:11px">(No simulador o telão não tem MFC instalada — é o caso mais comum em locação.)</span></div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -236,9 +330,11 @@ var $=function(s){return document.querySelector(s);};
 var $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s));};
 
 var S={ advLogin:false, inSent:false, rvSent:false, cols:6, rows:3, mapping:false, detected:false, sentHW:false, savedHW:false,
-  pitch:2.9, cab:'500x500', bright:80, gamma:2.4, inRes:'1920×1080 60Hz', src:'HDMI' };
+  pitch:2.9, cab:'500x500', bright:80, gamma:2.4, inRes:'1920×1080 60Hz', src:'HDMI',
+  // ferramentas da toolbar: Calibration / Test Tool / Screen Control
+  calib:false, calibTipo:'brilho', testPat:'input', blackout:false, freeze:false };
 var PORT_CAP=650000, NPORTS=6;
-var done={login:false, send:false, recv:false, screen:false, detect:false, sendhw:false, savehw:false};
+var done={login:false, send:false, recv:false, screen:false, detect:false, sendhw:false, savehw:false, calib:false, test:false};
 
 function cabPx(){ var per=Math.round(500/S.pitch); return {w:per, h:(S.cab==='500x1000'?per*2:per)}; }
 function totalRes(){ var d=cabPx(); return {w:d.w*S.cols, h:d.h*S.rows}; }
@@ -252,6 +348,53 @@ function close(id){ $('#'+id).classList.remove('on'); }
 $$('[data-close]').forEach(function(b){ b.onclick=function(){ close(b.dataset.close); }; });
 $('#tScreen').onclick=$('#btnOpenCfg').onclick=function(){ open('ovCfg'); };
 $('#tBright').onclick=function(){ $('#bright').focus(); toast('Ajuste o brilho no painel Brightness / Display Adjustment.'); };
+
+// ── As 5 ferramentas que faltavam (eram só ícone) ────────────────────────────
+// No NovaLCT real cada uma abre a sua janela. Aqui cada uma abre o seu painel e
+// FAZ o que faz de verdade — calibração muda a uniformidade da parede, o teste
+// muda o padrão exibido, o monitoramento mostra o estado das receptoras.
+$('#tCal').onclick=function(){ if(needLogin())return; open('ovCal'); };
+$('#tTest').onclick=function(){ open('ovTest'); };
+$('#tMon').onclick=function(){ open('ovMon'); montaMon(); };
+$('#tCtrl').onclick=function(){ open('ovCtrl'); };
+$('#tMfc').onclick=function(){ open('ovMfc'); };
+
+// CALIBRATION — no NovaLCT: liga/desliga a calibração gravada nas receptoras e
+// escolhe o coeficiente (brilho x cor). Sem calibração, a parede fica "manchada"
+// (cada cabinet com um tom), que é o problema real que a calibração resolve.
+$('#btnCalOn').onclick=function(){ S.calib=true; S.calibTipo=$('#calTipo').value; done.calib=true;
+  toast('Calibração ATIVADA ('+$('#calTipo').options[$('#calTipo').selectedIndex].text+') — uniformidade corrigida.'); close('ovCal'); refresh(); };
+$('#btnCalOff').onclick=function(){ S.calib=false; toast('Calibração desativada — repare a diferença de tom entre os cabinets.'); close('ovCal'); refresh(); };
+
+// TEST TOOL — padrões de teste que existem no NovaLCT (o mesmo seletor da aba Imagem)
+$$('#testGrid button').forEach(function(b){ b.onclick=function(){
+  S.testPat=b.dataset.t; done.test=true;
+  toast('Padrão de teste: '+b.textContent); close('ovTest'); refresh(); }; });
+
+// SCREEN CONTROL — no real: liga/apaga a tela (Blackout) ou congela a imagem
+$('#btnBlack').onclick=function(){ S.blackout=!S.blackout; S.freeze=false; toast('Screen Control: '+(S.blackout?'BLACKOUT (tela preta)':'Normal')); close('ovCtrl'); refresh(); };
+$('#btnFreeze').onclick=function(){ S.freeze=!S.freeze; S.blackout=false; toast('Screen Control: '+(S.freeze?'FREEZE (imagem congelada)':'Normal')); close('ovCtrl'); refresh(); };
+$('#btnNormal').onclick=function(){ S.blackout=false; S.freeze=false; toast('Screen Control: Normal.'); close('ovCtrl'); refresh(); };
+
+// MONITORING — desenha o estado de cada receptora. Cabinet não mapeado = sem resposta
+// (é o mesmo diagnóstico do Detect Communication Status: vermelho = cabo/porta).
+function montaMon(){
+  var g=$('#monGrid'); g.innerHTML=''; var ruins=0;
+  // Neste simulador não há mapa de cabeamento (isso é o novastar-led.html): o que
+  // define se a receptora responde é ter sido detectada + configuração enviada.
+  var respondendo = S.rvSent && S.detected;
+  for(var r=0;r<S.rows;r++)for(var c=0;c<S.cols;c++){
+    var ok=respondendo; if(!ok)ruins++;
+    var d=document.createElement('div');
+    d.style.cssText='border:1px solid '+(ok?'#2f9e5f':'#cc3b3b')+';background:'+(ok?'#e9f7ef':'#fbeaea')+
+      ';border-radius:4px;padding:5px 3px;text-align:center;font-size:9.5px;color:'+(ok?'#1f7a46':'#a12626');
+    d.innerHTML='<b>'+(r*S.cols+c+1)+'</b><br>'+(ok?(38+((r*S.cols+c)%7))+'°C':'sem resp.');
+    g.appendChild(d);
+  }
+  $('#monMsg').innerHTML = ruins
+    ? '<b style="color:#cc3b3b">'+ruins+' receptora(s) sem resposta.</b> Rode o <b>Detect Communication Status</b> na aba Screen Connection e confira o cabo de rede do trecho.'
+    : '<b style="color:#2f9e5f">Todas as '+(S.cols*S.rows)+' receptoras respondendo.</b> Temperatura normal (&lt;45°C).';
+}
 $('#btnAdvLogin').onclick=$('#mUser').onclick=function(){ if(S.advLogin){toast('Já está em Advanced Login.');return;} open('ovLogin'); };
 
 $('#btnDoLogin').onclick=function(){
@@ -324,15 +467,48 @@ function drawWall(){
       ctx.fillStyle='#9dc3ee'; ctx.font='bold '+Math.max(9,Math.min(14,cw/3))+'px Segoe UI'; ctx.textAlign='center'; ctx.fillText((r*S.cols+c+1),x+cw/2,y+ch/2+4); ctx.textAlign='left';
       continue;
     }
-    var u=(c+0.5)/S.cols, v=(r+0.5)/S.rows;
-    var R=Math.pow(0.5+0.5*Math.sin(u*6.28*1.5+0.3),1/(2.2/S.gamma))*bright;
-    var G=Math.pow(0.5+0.5*Math.sin(v*6.28+2),1/(2.2/S.gamma))*bright;
-    var B=Math.pow(0.5+0.5*Math.sin((u+v)*6.28+4),1/(2.2/S.gamma))*bright;
+    var u=(c+0.5)/S.cols, v=(r+0.5)/S.rows, R,G,B;
+    // TEST TOOL: o padrão escolhido manda no que a parede exibe (antes era ignorado)
+    var P=S.testPat;
+    if(P==='red'){ R=1;G=0;B=0; } else if(P==='green'){ R=0;G=1;B=0; } else if(P==='blue'){ R=0;G=0;B=1; }
+    else if(P==='white'){ R=G=B=1; } else if(P==='gray'){ R=G=B=u; }
+    else if(P==='grid'){ R=G=B=((r+c)%2)?0.85:0.06; }
+    else { // vídeo de entrada
+      R=Math.pow(0.5+0.5*Math.sin(u*6.28*1.5+0.3),1/(2.2/S.gamma));
+      G=Math.pow(0.5+0.5*Math.sin(v*6.28+2),1/(2.2/S.gamma));
+      B=Math.pow(0.5+0.5*Math.sin((u+v)*6.28+4),1/(2.2/S.gamma));
+    }
+    R*=bright; G*=bright; B*=bright;
+    // CALIBRATION: sem calibrar, cada gabinete tem um desvio próprio de fábrica e a
+    // parede fica MANCHADA. Calibrando, o coeficiente iguala tudo. Desvio determinístico
+    // por cabinet (não aleatório) para o aluno ver a mesma mancha a cada frame.
+    if(!S.calib){
+      var seed=(r*7+c*13)%11, d1=(seed-5)/5;          // -1..+1
+      var dB=1+d1*0.16;                                 // desvio de brilho ±16%
+      var dR=1+d1*0.10, dG=1-d1*0.07, dBl=1+d1*0.05;    // desvio de cor
+      R*=dB*dR; G*=dB*dG; B*=dB*dBl;
+    } else if(S.calibTipo==='brilho'){
+      var s2=(r*7+c*13)%11, e=(s2-5)/5;                 // calibrou brilho: sobra a cor
+      R*=1+e*0.06; G*=1-e*0.04; B*=1+e*0.03;
+    }
+    // SCREEN CONTROL
+    if(S.blackout){ R=G=B=0; }
+    else if(S.freeze){ var f=0.5+0.5*Math.sin((u+v)*6.28); R=R*0.55+f*0.2; G=G*0.55+f*0.2; B=B*0.6+f*0.25; }
+    R=Math.max(0,Math.min(1,R)); G=Math.max(0,Math.min(1,G)); B=Math.max(0,Math.min(1,B));
     ctx.fillStyle='rgb('+(R*255|0)+','+(G*255|0)+','+(B*255|0)+')'; ctx.fillRect(x,y,cw,ch);
     ctx.strokeStyle='rgba(0,0,0,.35)'; ctx.lineWidth=1; ctx.strokeRect(x+.5,y+.5,cw-1,ch-1);
     if(S.mapping){ ctx.fillStyle='#ffffffcc'; ctx.font='bold 10px Segoe UI'; ctx.textAlign='center'; ctx.fillText((r*S.cols+c+1),x+cw/2,y+ch/2+3); ctx.textAlign='left'; }
   }
   ctx.strokeStyle='#1c2430'; ctx.lineWidth=2; ctx.strokeRect(ox-1,oy-1,dw+2,dh+2);
+  // avisos de estado (o operador precisa saber por que a parede está assim)
+  var av=S.blackout?'BLACKOUT':(S.freeze?'FREEZE':(!S.calib&&lit?'SEM CALIBRAÇÃO — parede manchada':''));
+  if(av){
+    ctx.font='bold 12px Segoe UI'; ctx.textAlign='center';
+    var tw=ctx.measureText(av).width+16;
+    ctx.fillStyle='rgba(0,0,0,.72)'; ctx.fillRect(W/2-tw/2, oy+6, tw, 22);
+    ctx.fillStyle=S.blackout?'#fca5a5':(S.freeze?'#93c5fd':'#fcd34d');
+    ctx.fillText(av, W/2, oy+21); ctx.textAlign='left';
+  }
 }
 
 // ---- missions ----
@@ -350,7 +526,9 @@ function updateMissions(){ var ul=$('#missions'); ul.innerHTML=''; MISS.forEach(
 var _tt; function toast(m){ var t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(_tt); _tt=setTimeout(function(){t.classList.remove('show');},2800); }
 
 window.addEventListener('resize',function(){clearTimeout(window._z);window._z=setTimeout(fit,120);});
-window.__nova={S:S, done:done, refresh:refresh};
+// `refresh()` é coalescido por rAF — que NÃO roda em aba/iframe oculto. `step()` força
+// um redesenho síncrono (usado em teste/preview); a aula visível usa o refresh normal.
+window.__nova={S:S, done:done, refresh:refresh, step:refreshNow, montaMon:montaMon};
 fit(); refreshNow();
 })();
 </script>

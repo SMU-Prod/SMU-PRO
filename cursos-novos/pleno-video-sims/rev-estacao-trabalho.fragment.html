@@ -1,0 +1,100 @@
+<p><strong>O PC de vídeo é o único equipamento do palco que ninguém especifica direito — e é o que mais trava show.</strong> Um switcher é hardware dedicado: liga e funciona. Um media server improvisado num notebook gamer, com Windows atualizando, disco SATA cheio, codec errado e antivírus varrendo a pasta de conteúdo, é uma bomba-relógio. Nesta aula você aprende a <strong>dimensionar</strong> a máquina pela carga real, escolher <strong>codec e disco</strong> pela conta de bytes por segundo, montar as saídas com placas profissionais e travar o sistema operacional para que ele não decida nada sozinho durante o show.</p>
+
+{{IMG:estacao-pc-video}}
+
+<h3>Primeiro: quantos pixels você vai empurrar por segundo</h3>
+<p>Toda especificação começa por essa conta, não por marca de placa. Some a área de <strong>todas as saídas</strong> e multiplique pelo frame rate:</p>
+<ul>
+  <li>1 saída 1080p60 = 1920×1080×60 ≈ <strong>124&nbsp;Mpx/s</strong></li>
+  <li>4 saídas 1080p60 (uma 4K dividida) ≈ <strong>498&nbsp;Mpx/s</strong></li>
+  <li>1 saída 4K60 = 3840×2160×60 ≈ <strong>498&nbsp;Mpx/s</strong></li>
+  <li>Parede 3456×1024@60 ≈ <strong>212&nbsp;Mpx/s</strong> — mas exige transporte 4K</li>
+</ul>
+<p>Depois multiplique pelas <strong>camadas</strong>: um VJ com 6 camadas de vídeo, 2 máscaras e efeitos está pedindo várias vezes essa taxa da GPU. Camada custa banda de memória; efeito custa processamento de shader. São gargalos diferentes.</p>
+
+<h3>GPU e VRAM por carga real</h3>
+<table>
+  <tr><th>Carga</th><th>GPU típica</th><th>VRAM mínima</th><th>Observação</th></tr>
+  <tr><td>1 saída 1080p60, playback simples</td><td>RTX 4060 / A2000</td><td>8&nbsp;GB</td><td>Sobra folga</td></tr>
+  <tr><td>2–4 saídas 1080p60, VJ com camadas</td><td>RTX 4070 / RTX A4000</td><td>12–16&nbsp;GB</td><td>Atenção ao nº de conectores</td></tr>
+  <tr><td>4K60 com camadas e efeitos</td><td>RTX 4080 / 4090 / A5000</td><td>16–24&nbsp;GB</td><td>Fonte e refrigeração viram problema</td></tr>
+  <tr><td>Múltiplas paredes, mapping pesado</td><td>RTX 4090 / RTX 6000 Ada</td><td>24–48&nbsp;GB</td><td>Considere 2 máquinas em vez de 1</td></tr>
+</table>
+<p>Três detalhes que separam o profissional do improviso:</p>
+<ul>
+  <li><strong>Número de saídas por GPU</strong>: placas GeForce entregam tipicamente <strong>4 displays simultâneos</strong>. Precisou de mais, é placa profissional (Quadro/RTX Ada), segunda GPU, ou uma <strong>Datapath FX4</strong> transformando uma saída 4K em 4 saídas independentes.</li>
+  <li><strong>VRAM é o teto real do VJ</strong>: cada clipe HAP descomprimido ocupa memória de textura. 20 clipes 4K carregados enchem 16&nbsp;GB rapidamente — e quando a VRAM estufa, o driver começa a paginar e o show engasga sem nenhum aviso na CPU.</li>
+  <li><strong>Estabilidade > pico</strong>: placa profissional tem driver certificado e clock conservador. Placa gamer entrega mais FPS e mais surpresa. Para tour, muita gente escolhe a gamer pelo preço — mas então <strong>trava a versão do driver</strong> e não atualiza no meio do tour.</li>
+</ul>
+
+<h3>Codecs: quais são amigos da GPU e quais matam a máquina</h3>
+<p>Este é o ponto onde 90% dos travamentos nascem. Um codec de <em>entrega</em> (H.264/H.265) foi feito para arquivo pequeno e decodificação lenta, com dependência entre quadros. Um codec de <strong>playback</strong> foi feito para ser lido rápido e cair direto na GPU.</p>
+<table>
+  <tr><th>Codec</th><th>Tipo</th><th>Uso ideal</th><th>Comportamento</th></tr>
+  <tr><td><strong>HAP / HAP Q / HAP Alpha</strong></td><td>Intraframe, textura DXT descomprimida na GPU</td><td>Resolume, VJ, telão</td><td>Muito leve na CPU, pesado no <strong>disco</strong>. HAP Q tem mais qualidade e mais taxa</td></tr>
+  <tr><td><strong>DXV3</strong></td><td>Intraframe GPU (Resolume nativo)</td><td>Resolume Arena/Avenue</td><td>Equivalente ao HAP no ecossistema Resolume</td></tr>
+  <tr><td><strong>NotchLC</strong></td><td>Intraframe GPU, 10–12&nbsp;bits</td><td>Conteúdo de alta qualidade, disguise/Notch</td><td>Excelente qualidade, taxa alta</td></tr>
+  <tr><td><strong>ProRes 422 / 4444</strong></td><td>Intraframe, CPU</td><td>Edição, masterização, entrega</td><td>Ótimo, mas decodifica em CPU — pesa com várias camadas</td></tr>
+  <tr><td><strong>H.264 / H.265</strong></td><td>Interframe (GOP longo)</td><td>Distribuição, web, preview</td><td><strong>Evite em playback ao vivo</strong>: seek lento, engasga ao dar cue, e não gosta de scrub</td></tr>
+</table>
+<p>Regra de ouro do playback: <strong>todo conteúdo que vai ao ar deve ser convertido para o codec nativo do seu software antes do evento</strong>. Receber MP4 do cliente é normal; <em>tocar</em> MP4 no show não é. A conversão é parte do preflight, não uma gentileza.</p>
+
+<h3>Disco: a conta que decide entre NVMe e SATA</h3>
+<p>Codecs intraframe são leves na CPU justamente porque comprimem pouco — e isso empurra o gargalo para o armazenamento. Taxas de referência aproximadas:</p>
+<table>
+  <tr><th>Conteúdo</th><th>Taxa de leitura aproximada</th></tr>
+  <tr><td>HAP 1080p60</td><td>~250–400&nbsp;MB/s</td></tr>
+  <tr><td>HAP Q 1080p60</td><td>~500–700&nbsp;MB/s</td></tr>
+  <tr><td>HAP 4K60</td><td>~1,0–1,6&nbsp;GB/s</td></tr>
+  <tr><td>HAP Q 4K60</td><td>~2,0–2,8&nbsp;GB/s</td></tr>
+  <tr><td>ProRes 422 HQ 1080p30</td><td>~27&nbsp;MB/s</td></tr>
+  <tr><td>ProRes 422 HQ 4K60</td><td>~200&nbsp;MB/s</td></tr>
+</table>
+<p>Compare com o meio: <strong>SATA III satura em ~550&nbsp;MB/s</strong> — ou seja, um único clipe HAP Q 4K já <strong>não cabe</strong> em SSD SATA. NVMe PCIe 3.0 entrega ~3,5&nbsp;GB/s e PCIe 4.0 ~7&nbsp;GB/s. Para VJ com várias camadas, multiplique a taxa por camada simultânea. Conclusão prática: <strong>conteúdo sempre em NVMe</strong>; SATA e HD mecânico ficam para backup e arquivo. E mantenha pelo menos <strong>20% do SSD livre</strong> — SSD cheio derruba a taxa de escrita e sofre com garbage collection no pior momento.</p>
+
+<h3>Saídas profissionais: tirando o vídeo da máquina</h3>
+<ul>
+  <li><strong>Datapath FX4 / FX4-SDI</strong> — recebe uma entrada DisplayPort/HDMI em 4K e divide em <strong>4 saídas independentes</strong> (HDMI ou SDI no modelo SDI), com recorte e rotação por região. É o jeito padrão de alimentar 4 processadores de LED a partir de uma placa só. O sistema enxerga apenas <em>um</em> monitor 4K — o que simplifica muito o Windows.</li>
+  <li><strong>Blackmagic DeckLink</strong> (8K Pro, Duo 2, Quad HDMI Recorder) — placas PCIe que entregam <strong>saída SDI genlockável</strong> e entrada de captura. Diferente da saída de GPU, a DeckLink emite vídeo com timing de broadcast e aceita referência externa (tri-level), o que a torna a escolha certa quando o playback precisa estar em sincronismo com o switcher.</li>
+  <li><strong>Captura</strong> — DeckLink, Blackmagic UltraStudio (Thunderbolt) ou AJA Kona/U-TAP para trazer câmera, PowerPoint ou o PGM do switcher para dentro do PC. Fique atento a três números: <strong>formato aceito</strong>, <strong>latência</strong> (uma captura USB barata adiciona 3–5 quadros e mata qualquer uso ao vivo) e <strong>driver</strong> — instale e <strong>congele a versão</strong>.</li>
+  <li><strong>NDI</strong> — saída/entrada por rede, sem placa. Excelente para multiview, monitores auxiliares e conteúdo leve; exige Gigabit dedicado e adiciona latência de alguns quadros.</li>
+</ul>
+
+<h3>EDID: a causa nº 1 de "sumiu a tela"</h3>
+<p>Quando você pluga um display, ele envia ao PC um bloco de dados chamado <strong>EDID</strong>, dizendo quais resoluções aceita. O Windows monta a área de trabalho com base nisso. Consequência brutal em palco: se o processador de LED for desligado, se um cabo cair, se o switcher trocar de fonte, o EDID some — e o <strong>Windows reorganiza os monitores</strong>, jogando as janelas do player para outra tela. O show acaba ali.</p>
+<p>Solução profissional: usar um <strong>EDID manager / emulador</strong> que mantém o EDID fixo mesmo com a tela desligada. Muitos equipamentos já trazem: a Datapath FX4 gerencia EDID, processadores NovaStar permitem definir EDID customizado (útil justamente para declarar resoluções não-padrão como 1032×516), e existem dongles emuladores de HDMI/DP. <strong>Configure o EDID uma vez, salve o preset e não mexa.</strong></p>
+
+<h3>Travando o Windows para o show</h3>
+<ul>
+  <li>Plano de energia <strong>Alto desempenho</strong>; desligar suspensão do monitor, do disco e o USB selective suspend.</li>
+  <li>Windows Update em <strong>pausa</strong> e horário ativo travado. Nada de reinício automático.</li>
+  <li>Sem antivírus varrendo a pasta de conteúdo (exclua a pasta, no mínimo). Sem OneDrive/Dropbox sincronizando o media.</li>
+  <li>Desativar notificações, assistente de foco ligado, protetor de tela e bloqueio automático.</li>
+  <li>Player em <strong>tela cheia exclusiva</strong> com V-Sync — janela em modo composição gera tearing e microengasgos.</li>
+  <li>Rede: IP <strong>fixo</strong> na interface de controle/Art-Net; desabilite adaptadores que não usa (Wi-Fi inclusive) para o sistema não escolher rota errada.</li>
+  <li><strong>Congele os drivers</strong> de GPU e placas de captura na versão testada, e anote a versão no rider.</li>
+  <li>Depois de configurar, faça uma <strong>imagem do disco</strong>. Se der ruim no dia, restaurar é mais rápido do que caçar o que mudou.</li>
+</ul>
+
+<h3>Redundância: main e backup de verdade</h3>
+<p>Show grande roda com <strong>duas máquinas idênticas</strong>, mesmo conteúdo, mesmos presets, saindo para um switcher ou seletor de backup. Os níveis mais comuns:</p>
+<ul>
+  <li><strong>Cold spare</strong> — máquina pronta na bancada, troca manual de cabo. Barato, minutos no ar até voltar.</li>
+  <li><strong>Hot backup em paralelo</strong> — as duas rodando em sincronismo (via timecode ou link do software), chaveando na entrada do switcher. Retorno em segundos.</li>
+  <li><strong>Backup no processador</strong> — muitos processadores de LED e switchers têm <em>backup de entrada</em> automático: perdeu sinal no A, entra o B sozinho.</li>
+</ul>
+<p>Complete com <strong>duas fontes de energia em circuitos diferentes</strong> (ou fonte redundante), <strong>nobreak</strong> e o conteúdo em <strong>dois discos</strong>. Redundância que compartilha o mesmo cabo de força não é redundância.</p>
+
+<h3>No palco / erros que acontecem</h3>
+<ul>
+  <li><strong>"O vídeo engasga só nos clipes 4K."</strong> Gargalo de disco. Confira a taxa do codec contra a taxa do SSD; HAP Q 4K em SATA nunca vai funcionar.</li>
+  <li><strong>"As janelas do Resolume pularam para o monitor errado."</strong> EDID perdido — alguém desligou o processador ou o cabo caiu. Instale emulador de EDID e refaça o preset de layout.</li>
+  <li><strong>"Travou no meio do show e voltou sozinho."</strong> Suspeite de Windows Update, antivírus varrendo a pasta ou plano de energia. Verifique o Visualizador de Eventos: a hora do incidente entrega o culpado.</li>
+  <li><strong>"O MP4 do cliente dá pulo quando eu dou cue."</strong> H.264 com GOP longo. Converta para HAP/DXV3/NotchLC — nunca toque o arquivo original.</li>
+  <li><strong>"A imagem tem uma linha de rasgo."</strong> Player em janela. Force tela cheia exclusiva e V-Sync.</li>
+  <li><strong>"A captura da câmera está 4 quadros atrasada do áudio."</strong> Latência de captura. Use DeckLink/UltraStudio, não conversor USB genérico, e compense o áudio se necessário.</li>
+  <li><strong>"Funcionou no ensaio, falhou no show."</strong> Quase sempre algo mudou sozinho: driver, update, ou o SSD encheu com gravações do ensaio. Por isso a imagem de disco e a checagem de espaço livre entram no preflight.</li>
+</ul>
+
+<h3>Resumo prático</h3>
+<p>Dimensione a máquina pela conta de <strong>pixels por segundo × camadas</strong>, não pelo nome da placa. GPU com VRAM sobrando (16&nbsp;GB para trabalho de 4K com camadas) e número de saídas compatível — e, se faltar conector, uma <strong>Datapath FX4</strong> resolve de forma elegante. Todo conteúdo convertido para <strong>HAP/HAP&nbsp;Q, DXV3 ou NotchLC</strong> antes do evento e armazenado em <strong>NVMe</strong>, porque HAP Q 4K60 passa dos 2&nbsp;GB/s e SATA morre em 550&nbsp;MB/s. Use <strong>DeckLink</strong> quando precisar de saída genlockada e captura séria. <strong>Fixe o EDID</strong> — é o defeito mais comum e o mais evitável. E trave o Windows: energia, updates, antivírus, driver congelado, tela cheia exclusiva, imagem do disco pronta. Termine sempre com uma <strong>segunda máquina idêntica</strong> em circuito de energia separado; o backup que existe só no discurso é o que falta na hora.</p>

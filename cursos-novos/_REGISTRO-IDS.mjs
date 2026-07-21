@@ -99,10 +99,28 @@ export const REGISTRO = {
   "pleno-som-dsp":    { curso: "pleno-som",      mod: "7c100000", aula: "7c100000",
                         dono: "cursos-novos/pleno-som-dsp (Processadores de Sistema / DSP)",
                         obs: "módulo …-000000000001, aulas …-00000001{nn}; VENU360 é a aula flagship" },
+
+  // ── EXPANSÃO 21/07/2026 (auditoria + completar cursos a nível profissionalizante) ──
+  // Todos no formato padrão (idModulo/idAula), prefixo único para mod e aula, como o DSP.
+  // Módulos novos ganham ordem após o último existente; aulas novas em módulo NATIVO
+  // (uuid aleatório) usam idAula(F, ordemDoMóduloNativo, n) — o id é da faixa, o
+  // module_id aponta para o nativo.
+  "pleno-som-exp":    { curso: "pleno-som",      mod: "7d100000", aula: "7d100000", dono: "cursos-novos/expansao-2607 (M15 Monitor, M16 Sistemas/Alinhamento, M17 Energia/Ouvido/Transmissão)" },
+  "pleno-luz-exp":    { curso: "pleno-luz",      mod: "7e100000", aula: "7e100000", dono: "cursos-novos/expansao-2607 (M12 Design de Luz, M13 Timecode/Followspot/Manutenção)" },
+  "pleno-video-exp":  { curso: "pleno-video",    mod: "7f100000", aula: "7f100000", dono: "cursos-novos/expansao-2607 (M12 Transmissão ao Vivo, M13 Câmera e IMAG)" },
+  "pleno-produtor-exp": { curso: "pleno-produtor", mod: "7a800000", aula: "7a810000", dono: "cursos-novos/expansao-2607 (M11 Vender o Evento, M12 Legal II) — usa a faixa padrão já existente do produtor" },
+  "pleno-dj-exp":     { curso: "dj",             mod: "8a100000", aula: "8a100000", dono: "cursos-novos/expansao-2607 (M8 Profissional na Cabine)" },
+  "pleno-efeito-exp": { curso: "pleno-efeito",   mod: "8b100000", aula: "8b100000", dono: "cursos-novos/expansao-2607 (M9 Segurança Avançada e Novos Efeitos)" },
+  "estruturas-exp":   { curso: "estruturas-rigging-energia-e-padroes", mod: "8c100000", aula: "8c100000", dono: "cursos-novos/expansao-2607 (M2 Matemática do Rigger, M3 Inspeção, M4 Altura/Resgate, M5 Motores/Palcos/Docs)" },
+  "eletronica-exp":   { curso: "eletronica-para-eventos-e-sistemas", mod: "8d100000", aula: "8d100000", dono: "cursos-novos/expansao-2607 (M11 Esquemas/Amplificação/Diagnóstico)" },
+  "junior-exp":       { curso: "junior-profissoes-de-evento", mod: "8e100000", aula: "8e100000", dono: "cursos-novos/expansao-2607 (M9 Operação e Sobrevivência no Evento)" },
+  "nrs-exp":          { curso: "normas-regulamentar-nrs", mod: "8f100000", aula: "8f100000", dono: "cursos-novos/expansao-2607 (M6 Gestão e Funções: NR-33, NR-07/09, segurança por função)" },
+  "panorama-exp":     { curso: "panorama-das-profissoes-em-eventos", mod: "9a100000", aula: "9a100000", dono: "cursos-novos/expansao-2607 (M8 Palco e Carreira: som-profissão, roadie, rigger, stage manager, organograma)" },
+  "intro-exp":        { curso: "introducao-para-eventos", mod: "9b100000", aula: "9b100000", dono: "cursos-novos/expansao-2607 (aula glossário backstage no módulo nativo 1)" },
 };
 
 /** Prefixos LIVRES para o próximo curso. Risque daqui e registre acima ao usar. */
-export const LIVRES = ["7d1", "7e1", "7f1", "8a1", "8b1", "8c1"];
+export const LIVRES = ["9c1", "9d1", "9e1", "9f1", "6a1", "6b1"];
 
 // ⚠️ ARMADILHA HISTÓRICA — `72100000` é COMPARTILHADO no banco:
 //    pleno-video  usa 72100000-…-000000000b01 / b02 / b03   (sufixo com 'b')

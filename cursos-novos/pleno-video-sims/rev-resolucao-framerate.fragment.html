@@ -1,0 +1,75 @@
+<p><strong>Resolução e frame rate deixam de ser "configuração" e viram engenharia no momento em que você tem um telão de LED com resolução esquisita, três câmeras, um media server e um switcher no mesmo palco.</strong> A tela não tem 1920×1080 — tem 1032×516 ou 3456×1024. A câmera do cinegrafista está em 23,98p, a do telão em 59,94i e o notebook do palestrante em 60&nbsp;Hz exatos. Se você não entender o que cada número significa, aparece <em>tearing</em>, imagem tremendo, borda cortada e áudio fora de sincronismo — e ninguém vai saber dizer de onde veio. Esta aula é a base matemática do seu dia de trabalho.</p>
+
+<h3>Resolução de trabalho não é resolução nativa</h3>
+<p>Em LED, quase nunca a parede tem uma resolução "de catálogo". Um cabinet de 500×500&nbsp;mm em P2,9 tem cerca de <strong>172×172&nbsp;px</strong>; uma parede 6×3 dá <strong>1032×516&nbsp;px</strong>. Ninguém entrega conteúdo nessa medida. O fluxo profissional é: trabalhar num <strong>canvas de projeto</strong> (a resolução real da tela, 1032×516) e transportar esse canvas dentro de um <strong>sinal padrão</strong> (1920×1080@60), posicionando-o com o processador ou com o media server.</p>
+<ul>
+  <li><strong>Resolução nativa</strong> — o número físico de pixels da tela. É o único número que não mente.</li>
+  <li><strong>Resolução de trabalho</strong> — em que você renderiza e edita o conteúdo. Idealmente igual à nativa.</li>
+  <li><strong>Resolução de transporte</strong> — o formato do sinal que sai pelo cabo (1080p60, 2160p60). Precisa ser <strong>igual ou maior</strong> que a área usada da tela.</li>
+</ul>
+<p>Quando a tela é maior que 1920×1080 (parede de 3456×1024, por exemplo), a saída passa a exigir <strong>4K</strong> ou o uso de placas de múltiplas cabeças (Datapath FX4 dividindo uma saída 4K em quatro regiões) — cada região vira uma entrada de processador. Se você mandar 1080p para uma parede de 3456&nbsp;px de largura, o processador vai <strong>esticar</strong> e você perde definição de forma irrecuperável.</p>
+
+<h3>Pixel quadrado, pixel não-quadrado e o aspecto que não fecha</h3>
+<p><strong>Relação de aspecto</strong> é a proporção da imagem: 4:3 (1,33), 16:9 (1,78), 16:10 (1,60), 2,39:1 (cinema), e no LED qualquer coisa — uma tela 3456×1024 tem aspecto <strong>3,375:1</strong>. Já a <strong>relação de aspecto do pixel (PAR)</strong> diz se o pixel é quadrado ou não. Em HD e além, o pixel é quadrado (PAR&nbsp;=&nbsp;1,0). No legado SD ele não é: <strong>720×480 NTSC</strong> e <strong>720×576 PAL</strong> usam PAR diferente de 1 para exibir 4:3 ou 16:9 anamórfico. E o <strong>HDCAM / HDV 1440×1080</strong> usa PAR 1,333 para virar 16:9 na tela.</p>
+<p>Consequência prática: se um VT chega em 1440×1080 e você o coloca num timeline 1920×1080 sem corrigir o PAR, as pessoas ficam <strong>gordas ou magras</strong>. É um erro que passa despercebido na prévia do notebook e é gritante num telão de 10&nbsp;m.</p>
+
+{{IMG:proporcao-telas}}
+
+<h3>Entrelaçado × progressivo: o "i" e o "p" que ainda importam</h3>
+<p><strong>1080i</strong> não tem metade da resolução de 1080p — tem metade da resolução <em>por campo</em>. Em 1080i59.94, a câmera captura <strong>59,94 campos por segundo</strong>, cada campo com 540 linhas alternadas, que se entrelaçam em 29,97 quadros completos. Isso dá fluidez de movimento de ~60&nbsp;Hz com metade da banda — foi a solução genial do broadcast analógico e ainda é o padrão de muita transmissão.</p>
+<p>O problema aparece em <strong>tela de pixel fixo</strong> (LED, LCD, projetor): esses displays são progressivos por natureza, então algum estágio precisa <strong>desentrelaçar</strong>. Desentrelaçamento barato produz <em>combing</em> (dentes de serra em movimento horizontal) ou perde metade da resolução vertical. Regra do pleno: <strong>converta para progressivo o mais cedo possível na cadeia</strong>, num equipamento bom, e mantenha progressivo até a tela.</p>
+
+<h3>A lista de frame rates e por que cada um existe</h3>
+<table>
+  <tr><th>Frame rate</th><th>Origem</th><th>Onde aparece</th></tr>
+  <tr><td>23,976 (23.98)</td><td>24 ÷ 1,001 — cinema dentro do mundo NTSC</td><td>Filme, comercial, VT cinematográfico</td></tr>
+  <tr><td>24</td><td>Cinema clássico</td><td>DCP, projeção de cinema</td></tr>
+  <tr><td>25</td><td>PAL — metade dos 50&nbsp;Hz da rede europeia</td><td>Broadcast Europa, parte da América Latina</td></tr>
+  <tr><td>29,97</td><td>30 ÷ 1,001 — herança da TV NTSC em cores</td><td>Broadcast Brasil/EUA</td></tr>
+  <tr><td>30</td><td>NTSC "inteiro"</td><td>Web, telão, conteúdo digital</td></tr>
+  <tr><td>50</td><td>PAL progressivo</td><td>Esporte europeu, 1080p50</td></tr>
+  <tr><td>59,94</td><td>60 ÷ 1,001</td><td>Broadcast HD Brasil/EUA</td></tr>
+  <tr><td>60</td><td>Padrão de computador e telão</td><td>PC, media server, LED</td></tr>
+</table>
+<p><strong>Por que existe 29,97?</strong> Quando a TV americana ganhou cor, foi preciso encaixar a subportadora de crominância no espectro sem bater na portadora de áudio. A saída foi reduzir a taxa de quadros em <strong>0,1%</strong> — 30 ÷ 1,001 = 29,97. Meio século depois, o mundo inteiro ainda paga esse imposto histórico.</p>
+<p>Daí nasce o <strong>drop-frame timecode</strong>. Rodando a 29,97&nbsp;fps, um timecode que conta 30 quadros por segundo <strong>adianta cerca de 3,6 segundos por hora</strong> em relação ao relógio de parede. O drop-frame corrige <em>pulando números</em> de quadro (os dois primeiros de cada minuto, exceto nos minutos múltiplos de 10) — <strong>nenhum quadro de imagem é descartado</strong>, só a numeração é ajustada. Ele se escreve com ponto e vírgula (01;00;00;00); o non-drop, com dois-pontos (01:00:00:00). Em show com timecode disparando luz, vídeo e pirotecnia, misturar DF e NDF é <strong>o</strong> erro que deixa o efeito quatro segundos fora do refrão.</p>
+
+<h3>3:2 pulldown — o filme dentro do vídeo</h3>
+<p>Para caber material de 24&nbsp;fps num sinal de 29,97, distribui-se cada 4 quadros de filme em 5 quadros de vídeo, alternando 2 e 3 campos — daí o nome <strong>3:2 (ou 2:3) pulldown</strong>. O efeito colateral é o <em>judder</em>: movimento de panorâmica com um solavanco rítmico. Além disso, dois dos cinco quadros resultantes são <strong>mistos</strong> (campos de filmes diferentes), o que estraga qualquer congelamento ou slow motion. Se você recebeu um VT com pulldown e vai exibir em telão progressivo, o certo é <strong>reverter o pulldown</strong> (inverse telecine) e trabalhar em 23,98 nativo.</p>
+
+<h3>Genlock e tri-level sync — o metrônomo do palco</h3>
+<p>Duas fontes de vídeo nunca rodam exatamente na mesma velocidade — cada uma tem seu oscilador, com desvio de partes por milhão. Num switcher, cortar entre fontes desalinhadas produz <strong>rolo, glitch ou congelamento de um quadro</strong>. A solução clássica é o <strong>genlock</strong>: um gerador de sincronismo (por exemplo, um <strong>Blackmagic Sync Generator</strong> ou o gerador interno de um switcher) distribui uma referência para todos os equipamentos.</p>
+<ul>
+  <li><strong>Black burst</strong> — referência analógica de definição padrão, ainda usadíssima. Nível de sync negativo apenas (bi-level).</li>
+  <li><strong>Tri-level sync</strong> — referência de HD, com pulso positivo e negativo. É o que se usa em cadeia HD/3G.</li>
+  <li><strong>PTP (IEEE 1588)</strong> — o "genlock por rede" do mundo IP / ST 2110.</li>
+</ul>
+<p>Quem não tem genlock em todas as pontas recorre a <strong>frame sync</strong> dentro do switcher ou num conversor: o equipamento armazena o quadro que chega e o reemite alinhado ao seu próprio relógio, ao custo de <strong>1 a 2 quadros de latência</strong>. Um ATEM, por exemplo, tem frame sync em cada entrada — é por isso que ele aceita fontes bagunçadas sem reclamar.</p>
+
+<h3>Tearing: o que é e onde nasce</h3>
+<p><strong>Tearing</strong> é aquela linha horizontal onde a metade de cima da imagem está um quadro à frente da metade de baixo. Acontece quando a atualização do buffer não está sincronizada com o refresh do display — típico de saída de PC sem <strong>V-Sync</strong>, de player rodando em janela em vez de tela cheia exclusiva, ou de fonte a 60&nbsp;Hz entrando numa cadeia a 59,94. É diferente de <em>stutter</em> (engasgo, que é quadro perdido por falta de desempenho) e de <em>judder</em> (cadência 3:2). Diagnóstico rápido: se a linha de rasgo <strong>anda verticalmente</strong> devagar pela tela, você tem dois relógios levemente diferentes — é problema de sincronismo, não de placa de vídeo fraca.</p>
+
+<h3>A conta de banda: por que 4K exige tanto</h3>
+<p>Vídeo não comprimido consome <strong>largura × altura × bits por pixel × fps</strong>. Com 4:2:2 a 10&nbsp;bits, cada pixel custa 20&nbsp;bits.</p>
+<table>
+  <tr><th>Formato</th><th>Conta</th><th>Banda aproximada</th><th>Cabe em</th></tr>
+  <tr><td>1080i59.94 (4:2:2 10b)</td><td>1920×1080×20×29,97</td><td>~1,24&nbsp;Gb/s</td><td>HD-SDI (1,485G)</td></tr>
+  <tr><td>1080p59.94 (4:2:2 10b)</td><td>1920×1080×20×59,94</td><td>~2,49&nbsp;Gb/s</td><td>3G-SDI (2,97G)</td></tr>
+  <tr><td>2160p29.97 (4:2:2 10b)</td><td>3840×2160×20×29,97</td><td>~4,98&nbsp;Gb/s</td><td>6G-SDI</td></tr>
+  <tr><td>2160p59.94 (4:2:2 10b)</td><td>3840×2160×20×59,94</td><td>~9,95&nbsp;Gb/s</td><td>12G-SDI (11,88G)</td></tr>
+</table>
+<p>Note que os padrões SDI têm folga sobre a conta pura — a diferença é overhead de codificação, TRS, áudio embarcado e ANC. E note a proporção: <strong>4K60 custa 8× o 1080i</strong>. Essa é a razão de existirem 4 cabos SDI (quad-link 3G) antes do 12G-SDI popularizar.</p>
+
+<h3>No palco / erros que acontecem</h3>
+<ul>
+  <li><strong>"O VT roda liso na prévia e engasga no telão."</strong> Confira se a cadeia inteira está no mesmo domínio: 59,94 em toda parte ou 60 em toda parte. Misturar 60&nbsp;Hz do PC com 59,94 do switcher gera um quadro repetido/perdido a cada ~16&nbsp;s — o famoso "solucinho".</li>
+  <li><strong>"Falta um pedaço da imagem no telão."</strong> Overscan/aspecto. Verifique o mapeamento no processador e se algum estágio está aplicando 5% de overscan legado de TV.</li>
+  <li><strong>"Efeito pirotécnico entrou 4 segundos atrasado."</strong> Timecode drop-frame contra non-drop. Padronize o show inteiro num só e escreva no run of show qual é.</li>
+  <li><strong>"Linha de rasgo andando pela tela."</strong> Tearing: ative tela cheia exclusiva e V-Sync no player, e verifique se a saída está travada no mesmo refresh da cadeia.</li>
+  <li><strong>"Pessoas esticadas no telão."</strong> PAR não corrigido (material 1440×1080 ou SD anamórfico) ou processador escalando sem preservar aspecto.</li>
+  <li><strong>"Corte entre câmeras dá um pulo."</strong> Fontes sem genlock. Distribua tri-level sync ou confie no frame sync do switcher — e aceite o quadro extra de latência.</li>
+  <li><strong>"Movimento de câmera com solavanco."</strong> Conteúdo 24p com pulldown numa cadeia 59,94. Reverta o telecine antes de exibir.</li>
+</ul>
+
+<h3>Resumo prático</h3>
+<p>Comece sempre pela <strong>resolução nativa da tela</strong> e trabalhe nela; escolha um sinal de transporte igual ou maior, nunca menor. Saiba se seu pixel é quadrado — material 1440×1080 e SD anamórfico deforma gente se você ignorar o PAR. Converta entrelaçado para progressivo cedo e num equipamento bom. <strong>Feche o show inteiro num único frame rate</strong>, e se for 29,97/59,94, decida e anote se o timecode é drop-frame. Distribua genlock (tri-level em HD) ou aceite conscientemente a latência do frame sync. E antes de prometer 4K60 para o cliente, faça a conta de banda: <strong>~10&nbsp;Gb/s</strong> não passam por cabo, placa e disco escolhidos "no olho".</p>

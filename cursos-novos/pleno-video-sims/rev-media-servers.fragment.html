@@ -1,0 +1,85 @@
+<p><strong>O media server é o equipamento que separa o "vídeo do evento" do "vídeo do notebook".</strong> Quando o cliente pede que a abertura entre exatamente no tempo da música, que os quatro telões mostrem partes diferentes da mesma arte sem um frame de diferença, e que se a máquina morrer o show não pare — nada disso um PC com player de vídeo resolve. Esta aula é sobre a máquina que resolve, e sobre o relógio que manda em todo mundo: o <strong>timecode</strong>.</p>
+
+{{IMG:media-server-rack}}
+
+<h3>O que diferencia um media server de um PC com player</h3>
+<ul>
+<li><strong>Saídas sincronizadas em nível de frame</strong> — as várias saídas de vídeo saem do mesmo clock. Num PC comum, cada saída tem seu próprio ritmo; em uma tela grande dividida entre duas saídas você vê a emenda "rasgando" (tearing) num movimento horizontal.</li>
+<li><strong>Genlock / framelock</strong> — entrada de referência (blackburst, tri-level sync ou HDMI/SDI de referência) que trava o servidor no mesmo relógio do switcher e das câmeras. Sem isso, cada troca de fonte no switcher pode dar um glitch de meio frame.</li>
+<li><strong>Playback determinístico</strong> — mídia em codec intra-frame em SSD/NVMe, com pré-carga; o servidor garante que o frame N sai no instante N. Player comum decodifica sob demanda e engasga.</li>
+<li><strong>Controle externo real</strong> — o servidor obedece timecode (LTC/MTC), Art-Net/sACN vindo da mesa de luz, OSC, DMX e protocolos próprios. Ele é um <em>escravo confiável</em> da linha de tempo do show.</li>
+<li><strong>Redundância</strong> — arquitetura main/backup com espelhamento de estado e chaveamento automático da saída.</li>
+<li><strong>Warping, blending e mapeamento</strong> na própria máquina, com calibração salva no show file.</li>
+</ul>
+
+<h3>Os servidores que você vai encontrar</h3>
+<table>
+<tr><th>Sistema</th><th>Arquitetura</th><th>Ponto forte</th><th>Onde aparece</th></tr>
+<tr><td><strong>Dataton Watchout</strong></td><td>Cluster: 1 máquina <em>production</em> (o operador) + N máquinas <em>display</em> em rede</td><td>Escala horizontal barata: precisa de mais saídas, adiciona display. Blend e warp maduros.</td><td>Corporativo, lançamento, cenografia multiprojeção, museu</td></tr>
+<tr><td><strong>disguise (d3)</strong></td><td>Máquina única (gx/vx) com timeline e pré-visualização 3D do palco</td><td>Timeline + palco virtual + integração <strong>Notch</strong> (efeitos generativos em tempo real)</td><td>Turnê de grande porte, TV, xR/LED volume</td></tr>
+<tr><td><strong>Modulo Pi (Modulo Kinetic)</strong></td><td>Servidor + editor com engine 3D e mapeamento</td><td>Mapping arquitetônico e cenografia complexa; calibração assistida por câmera</td><td>Mapping de fachada, espetáculo, parque temático</td></tr>
+<tr><td><strong>Green Hippo (Hippotizer)</strong></td><td>Servidor controlado por mesa de luz</td><td>Pensado para operar por <strong>DMX/Art-Net</strong>, como se fosse uma fixture de luz</td><td>Turnê musical, onde o LD dirige o vídeo</td></tr>
+<tr><td><strong>Resolume Arena / Avenue</strong></td><td>Software em PC/Mac, baseado em clipes e decks</td><td>VJ ao vivo, improviso, custo baixo. <strong>Arena</strong> tem mapping (Advanced Output) e SMPTE; <strong>Avenue</strong> não tem mapping.</td><td>Balada, festival, palco eletrônico, telão de LED</td></tr>
+</table>
+<p>A escolha não é "qual é melhor": é <strong>qual modelo de operação o show pede</strong>. Show com roteiro fechado e locução → timeline (Watchout, disguise, Modulo). Show que muda a cada música e improvisa → clipes (Resolume, Hippotizer). Show dirigido pela mesa de luz → Hippotizer ou servidor em modo DMX.</p>
+
+<h3>Timecode: o relógio do evento</h3>
+<p><strong>Timecode</strong> é um endereço de tempo absoluto no formato <strong>HH:MM:SS:FF</strong> (horas:minutos:segundos:frames). Ele não é "um sinal de start" — é uma posição contínua. Quem recebe timecode não "toca": ele <strong>persegue</strong> (chase) a posição informada. Se você pular o timecode para 00:12:30:00, o vídeo salta para 12 min e 30 s instantaneamente.</p>
+<h4>LTC x MTC</h4>
+<ul>
+<li><strong>SMPTE LTC (Linear Timecode)</strong> — o timecode gravado como <strong>áudio</strong>, em codificação bifásica (aquele chiado característico). Trafega por qualquer caminho de áudio: XLR, canal de uma multipista, Dante, até por uma via de wireless. É o padrão de fato no evento ao vivo porque é robusto, roteável pela mesa de som e pode ser distribuído por splitter. Nível típico de trabalho: <strong>−10 a 0 dBu</strong>. Baixo demais o receptor perde o lock; alto demais distorce e também perde.</li>
+<li><strong>MTC (MIDI Timecode)</strong> — o mesmo endereço transportado por MIDI (DIN, USB ou rede). Depende de cabeamento MIDI/USB, tem limite de distância e é mais sensível a jitter do sistema operacional. Útil dentro do rack (de um DAW para o servidor na mesma máquina ou sala), não para atravessar o evento.</li>
+<li>Existe ainda o <strong>VITC</strong>, embutido no sinal de vídeo, e <strong>ST 2110-30/PTP</strong> em ambientes IP — mas no evento ao vivo, LTC ainda manda.</li>
+</ul>
+
+<h4>Frame rates e drop-frame</h4>
+<table>
+<tr><th>Taxa</th><th>Onde se usa</th><th>Observação</th></tr>
+<tr><td><strong>24 fps</strong></td><td>Cinema, conteúdo cinematográfico</td><td>Raro como master de evento</td></tr>
+<tr><td><strong>25 fps</strong></td><td>Padrão PAL / Europa / boa parte do Brasil em corporativo</td><td>Conta redonda, sem drop-frame</td></tr>
+<tr><td><strong>29.97 fps</strong></td><td>NTSC / broadcast Brasil e EUA</td><td>Na verdade 30 × 1000/1001. Gera <strong>drop-frame</strong></td></tr>
+<tr><td><strong>30 fps</strong></td><td>Sistemas de áudio e shows fechados</td><td>Non-drop; deriva se casado com 29.97</td></tr>
+</table>
+<p><strong>Drop-frame</strong> é fonte eterna de confusão: em 29.97, o relógio de timecode contando 30 frames por segundo <strong>adianta 3,6 segundos por hora</strong> em relação ao tempo real. O drop-frame corrige isso <strong>pulando a numeração</strong> de 2 frames a cada minuto (exceto nos minutos múltiplos de 10) — nenhum frame de vídeo é descartado, só o número é pulado. Notação: drop-frame usa ponto e vírgula (<code>01:00:00;00</code>), non-drop usa dois pontos (<code>01:00:00:00</code>). <strong>Se o gerador está em drop e o servidor em non-drop, tudo trava normalmente e o erro só aparece depois de vários minutos</strong> — como um desvio crescente. Padronize a taxa e o modo em <strong>todos</strong> os equipamentos e escreva isso no rider.</p>
+
+<h4>Quem é o master do timecode</h4>
+<p>No evento ao vivo, o master quase sempre é o <strong>áudio</strong>: a mesa de som ou o DAW (Ableton Live, Pro Tools, QLab) roda a base musical e gera LTC, porque a música é o elemento que <strong>não pode ser esticado</strong>. O vídeo, a luz e os efeitos fazem <strong>chase</strong>. Consequências práticas:</p>
+<ul>
+<li>O gerador de LTC deve estar em <strong>uma máquina só</strong>, distribuído por splitter/DA. Dois geradores no mesmo show é receita de desastre.</li>
+<li>Cada destino (media server, mesa de luz, disparo de pirotecnia) recebe uma via <strong>isolada</strong>, com nível ajustado individualmente.</li>
+<li>Ensaie o <strong>pré-roll</strong>: o gerador deve começar alguns segundos antes do ponto zero para todo mundo travar antes do conteúdo entrar. 5 s de pré-roll é o mínimo civilizado.</li>
+<li>Coloque o timecode em <strong>display grande</strong> na cabine. Todo mundo vendo o mesmo número resolve 80% das discussões.</li>
+</ul>
+
+<h4>Quando o timecode "escorrega"</h4>
+<p>Sintomas e causas reais:</p>
+<ul>
+<li><strong>Perde lock intermitente</strong> → nível de LTC errado, cabo longo demais, ou o sinal passou por um processador de dinâmica/EQ na mesa (nunca comprima ou equalize LTC; mande direto, sem processamento, e sem sample rate conversion agressiva).</li>
+<li><strong>Vídeo entra certo e vai atrasando</strong> → mismatch de frame rate (29.97 x 30) ou drop x non-drop. Confira nos dois lados.</li>
+<li><strong>Vídeo pula para trás e volta</strong> → jitter; o servidor está com <em>freewheel</em> curto demais. Aumente o freewheel (o tempo que ele continua sozinho sem receber timecode) para 1–2 s, o suficiente para atravessar um soluço.</li>
+<li><strong>Áudio e vídeo com offset fixo</strong> → não é timecode, é latência de processamento (LED processor, switcher, scaler). Meça e compense com <strong>offset fixo</strong> no servidor, não mexendo no gerador.</li>
+<li><strong>Tudo travado, mas conteúdo entra 2 frames cedo</strong> → é isso mesmo: use offset. Um media server sério tem offset em frames por camada.</li>
+</ul>
+
+<h3>Redundância: main e backup</h3>
+<p>Show grande roda com <strong>duas máquinas idênticas</strong>, mesma mídia, mesmo show file, ambas recebendo o mesmo timecode e rodando em paralelo — as duas estão <em>sempre</em> tocando, o backup só não está no ar. O chaveamento acontece em um <strong>seamless switcher</strong> ou em um <strong>backup switch/failover</strong> que monitora a saída do main (presença de sinal, e em equipamentos melhores, presença de <em>conteúdo</em>) e vira para o backup em milissegundos. Pontos que separam a redundância real da de papel:</p>
+<ul>
+<li>As duas máquinas precisam receber <strong>o mesmo timecode</strong>, não uma clonar a outra — senão o backup entra em outro ponto do conteúdo.</li>
+<li>A mídia precisa estar <strong>fisicamente nas duas</strong>. Storage compartilhado em rede vira ponto único de falha.</li>
+<li>Teste o failover na passagem, com o cliente vendo: puxe o cabo do main. Redundância não testada não é redundância.</li>
+<li>Documente o caminho de volta: quem decide voltar para o main e quando (normalmente só no intervalo).</li>
+<li>Watchout e disguise fazem isso de forma nativa; em Resolume, a redundância é feita fora, com duas máquinas em SMPTE e um switcher.</li>
+</ul>
+
+<h3>No palco / erros que acontecem</h3>
+<ul>
+<li><strong>"O vídeo não pega o timecode."</strong> Antes de culpar o servidor: veja se o LTC está chegando (medidor de nível), se o frame rate bate e se o canal não está mutado num VCA. 9 em 10 vezes é nível ou roteamento de áudio.</li>
+<li><strong>Emenda entre duas saídas "rasgando".</strong> Falta genlock, ou as saídas estão em taxas diferentes. Padronize tudo em 1080p60 (ou 50) e trave na referência.</li>
+<li><strong>Servidor engasga no clipe pesado.</strong> Mídia em H.264 4K long-GOP. Reencode para HAP/NotchLC — assunto da próxima aula.</li>
+<li><strong>Backup entrou e estava em outro ponto do show.</strong> Ele não estava recebendo timecode, só espelhando comandos. Corrija a distribuição de LTC.</li>
+<li><strong>Alguém pausou o gerador para "ajustar".</strong> Todo o show para junto. O gerador de timecode tem um dono e ninguém mais encosta.</li>
+<li><strong>Timecode do ensaio diferente do do show.</strong> Padronize a hora de início (ex.: bloco começa em 01:00:00:00) e mantenha em todos os ensaios.</li>
+</ul>
+
+<h3>Resumo prático</h3>
+<p>Media server não é um PC com player: ele entrega saídas sincronizadas por genlock, playback determinístico, controle externo (timecode, Art-Net, OSC, DMX) e redundância main/backup. Escolha pelo modelo de operação — timeline (Watchout, disguise, Modulo Pi) para show roteirizado, clipes (Resolume, Hippotizer) para show ao vivo. O relógio do evento é o <strong>SMPTE LTC</strong> gerado por uma única fonte, quase sempre do lado do áudio, distribuído sem processamento e com nível controlado; o vídeo faz chase. Padronize <strong>frame rate e drop/non-drop</strong> em todo o sistema — 29.97 drop misturado com 30 non-drop é o erro que só aparece depois de 10 minutos de show. Use freewheel para atravessar soluços, offset em frames para casar com a latência da cadeia, e teste o failover puxando o cabo antes da casa abrir.</p>

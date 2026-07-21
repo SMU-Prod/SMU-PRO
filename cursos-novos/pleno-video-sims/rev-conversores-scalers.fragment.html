@@ -1,0 +1,85 @@
+<p><strong>Entre a fonte e a tela quase nunca há um cabo só — há uma cadeia.</strong> Notebook, conversor, distribuidor, scaler, switcher, processador, tela. Cada caixinha dessa cadeia faz uma coisa muito específica, e o operador que confunde <em>conversor</em> com <em>scaler</em>, ou que acha que <em>frame sync</em> é a mesma coisa que <em>conversão de formato</em>, acaba comprando o equipamento errado e diagnosticando o defeito errado. Além disso, <strong>cada estágio custa latência</strong> — e latência somada é o que faz a boca do palestrante sair do sincronismo com o telão. Esta aula separa as funções com precisão.</p>
+
+{{IMG:conversor-scaler}}
+
+<h3>As três funções que todo mundo confunde</h3>
+<table>
+  <tr><th>Equipamento</th><th>O que faz</th><th>O que NÃO faz</th><th>Latência típica</th></tr>
+  <tr><td><strong>Conversor de formato</strong></td><td>Troca o <em>meio físico</em>/interface: SDI ⟷ HDMI, SDI ⟷ fibra, HDMI ⟷ DisplayPort</td><td>Não muda resolução nem frame rate</td><td>&lt; 1 quadro (frequentemente sub-quadro)</td></tr>
+  <tr><td><strong>Scaler</strong></td><td>Muda a <em>resolução</em>: 1024×768 → 1920×1080, recorta, encaixa aspecto</td><td>Não sincroniza fontes entre si por si só</td><td>1–2 quadros</td></tr>
+  <tr><td><strong>Frame sync / TBC</strong></td><td>Realinha o <em>tempo</em> do quadro ao relógio de referência do sistema</td><td>Não converte interface nem resolução</td><td>1–2 quadros (é o preço do buffer)</td></tr>
+</table>
+<p>A diferença fica clara com um exemplo. Um <strong>Blackmagic Mini Converter SDI to HDMI</strong> é conversor: entra 1080p59.94 SDI, sai 1080p59.94 HDMI, mesma resolução, mesma cadência, quase sem atraso. Um <strong>Mini Converter UpDownCross HD</strong> é conversor <em>com</em> scaler e frame sync: ele aceita 720p e entrega 1080i, alinhado à referência. Já um <strong>scaler de apresentação</strong> (Analog Way, Barco, Roland V-series com scaler por entrada) faz tudo isso mais recorte, posicionamento, PIP e transição.</p>
+
+<h3>Up, down e cross conversion — os nomes certos</h3>
+<ul>
+  <li><strong>Up conversion</strong> — de menor para maior resolução: SD → HD, 1080 → 2160. Nunca cria detalhe; bons scalers apenas evitam serrilhado e ringing.</li>
+  <li><strong>Down conversion</strong> — de maior para menor: 4K → 1080 (para gravação, streaming ou multiview).</li>
+  <li><strong>Cross conversion</strong> — mesma "família" de resolução, formato diferente: <strong>1080i59.94 ⟷ 720p59.94</strong>. É o caso clássico de arena em que a transmissão é 1080i e o telão pede progressivo.</li>
+  <li><strong>Conversão de frame rate (standards conversion)</strong> — a mais cara e a mais delicada: 25 ⟷ 29,97, 50 ⟷ 59,94. Exige interpolar ou repetir quadros; equipamento barato produz <em>judder</em> visível. Se o show tem material internacional, esse conversor entra no orçamento com nome e sobrenome.</li>
+</ul>
+<p>Regra prática: <strong>converta o mínimo possível e o mais cedo possível.</strong> Cada conversão custa qualidade e atraso; fazer a mesma conversão duas vezes na cadeia (down e depois up) é jogar definição fora.</p>
+
+<h3>Distribuidores (DA) e splitters — parecem iguais e não são</h3>
+<p>Um <strong>DA (distribution amplifier)</strong> de SDI pega uma entrada e regenera N saídas idênticas, reequalizando e reclockando o sinal — ele <strong>renova</strong> o link, o que permite ganhar distância. Um <strong>Blackmagic Mini Converter SDI Distribution</strong> entrega 8 saídas; muitos equipamentos SDI ainda trazem uma saída <em>loop-through</em> reclockada embutida.</p>
+<p>No mundo HDMI o cenário é outro. Um <strong>splitter HDMI</strong> precisa lidar com dois vilões:</p>
+<ul>
+  <li><strong>EDID</strong> — o splitter tem várias telas com capacidades diferentes penduradas. Ele precisa decidir <em>qual</em> EDID mostra para a fonte. Splitters bons deixam você escolher: copiar do porto 1, usar EDID fixo interno, ou <strong>modo "menor denominador comum"</strong> (a fonte enxerga o que todas as telas suportam). Splitter barato faz isso sozinho, muda de ideia quando uma tela é desligada, e a fonte reconfigura no meio do show.</li>
+  <li><strong>HDCP</strong> — se a fonte impõe HDCP (Apple TV, Blu-ray, alguns notebooks, plataformas de streaming), toda tela do caminho precisa ser <em>compliant</em>. Uma única saída não conforme derruba <strong>todas</strong> — a imagem some ou vira roxo/piscante. Nada de "removedor de HDCP": no ambiente profissional, resolva pedindo saída sem proteção, ou tirando a fonte protegida da cadeia de telão.</li>
+</ul>
+<p>É por isso que a resposta madura para distribuir um notebook para 6 destinos é: <strong>converter para SDI logo na saída</strong> e distribuir com DA. SDI não tem EDID nem HDCP — ele simplesmente vai.</p>
+
+<h3>Frame sync: por que existe e quando você precisa</h3>
+<p>Duas fontes independentes nunca rodam no mesmo relógio. Ao cortar entre elas num switcher sem alinhamento, você vê <strong>glitch, rolo ou um quadro congelado</strong>. Há dois caminhos:</p>
+<ul>
+  <li><strong>Genlock</strong> — todos os equipamentos recebem uma referência comum (black burst em SD, <strong>tri-level sync</strong> em HD, PTP em IP). É o método do broadcast: <strong>latência zero</strong> adicional, exige que cada fonte aceite referência externa.</li>
+  <li><strong>Frame sync</strong> — a entrada armazena o quadro que chega e o reemite no tempo do sistema. Não exige nada da fonte, aceita qualquer bagunça, e custa <strong>1 a 2 quadros de latência</strong>. É o que faz um <strong>ATEM</strong> aceitar câmera, notebook e player sem nenhum cabo de referência.</li>
+</ul>
+<p>Em evento corporativo, frame sync resolve tudo. Em transmissão e em show com câmera no telão (IMAG), some as latências: se o público vê a imagem 5 quadros depois do som direto do palco, a percepção de atraso já aparece.</p>
+
+<h3>O orçamento de latência da cadeia</h3>
+<table>
+  <tr><th>Estágio</th><th>Latência aproximada</th></tr>
+  <tr><td>Câmera (processamento interno)</td><td>1–3 quadros</td></tr>
+  <tr><td>Conversor simples (SDI↔HDMI)</td><td>&lt; 1 quadro</td></tr>
+  <tr><td>Conversor com scaler/frame sync</td><td>1–2 quadros</td></tr>
+  <tr><td>Switcher de produção (ATEM, Roland)</td><td>1–2 quadros</td></tr>
+  <tr><td>Scaler de apresentação</td><td>1–2 quadros</td></tr>
+  <tr><td>Processador de LED</td><td>1–2 quadros</td></tr>
+  <tr><td>Captura USB genérica</td><td>3–6 quadros</td></tr>
+</table>
+<p>A 60&nbsp;fps, cada quadro vale <strong>16,7&nbsp;ms</strong>; a 30&nbsp;fps, <strong>33,3&nbsp;ms</strong>. Uma cadeia câmera → conversor → switcher → scaler → processador soma facilmente <strong>6 a 8 quadros ≈ 100–130&nbsp;ms</strong>. Isso é perceptível em IMAG e é <em>fatal</em> em teleprompter e em interação ao vivo. O caminho é sempre o mesmo: <strong>elimine estágios redundantes</strong> e meça, não estime — coloque um cronômetro de milissegundos na fonte, filme fonte e tela juntas e conte a diferença.</p>
+
+<h3>Placas e equipamentos de captura</h3>
+<p>Capturar é trazer o sinal para dentro do computador — para gravar, para streaming ou para reprocessar. Os critérios de escolha:</p>
+<ul>
+  <li><strong>Formato aceito</strong> — leia a lista de formatos suportados, não só a resolução máxima. Muitas placas não aceitam frame rates fracionários exóticos ou entradas com EDID incomum.</li>
+  <li><strong>Latência</strong> — placas PCIe como <strong>Blackmagic DeckLink</strong> e <strong>AJA Kona</strong> ficam em torno de 1–2 quadros; dispositivos Thunderbolt (<strong>UltraStudio</strong>) são próximos disso; dongles USB genéricos podem passar de 5 quadros e nem sempre têm taxa estável.</li>
+  <li><strong>Driver</strong> — é o componente que mais causa dor. Instale a versão testada, <strong>congele</strong>, anote no rider e não atualize no meio do tour.</li>
+  <li><strong>Vazão para o disco</strong> — capturar ProRes 422 HQ 4K60 exige ~200&nbsp;MB/s sustentados; capturar não comprimido, muito mais. Grave em NVMe.</li>
+  <li><strong>Referência</strong> — placas profissionais aceitam genlock. Se você grava e reproduz na mesma cadeia, isso deixa de ser luxo.</li>
+</ul>
+
+<h3>Montando a cadeia com cabeça</h3>
+<ol>
+  <li>Defina o <strong>formato-mestre</strong> do show (ex.: 1080p59.94) e force toda a cadeia nele.</li>
+  <li>Converta cada fonte para o formato-mestre <strong>na origem</strong>, com um conversor por fonte, e não no meio.</li>
+  <li>Prefira <strong>SDI como espinha dorsal</strong>: sem EDID, sem HDCP, trava, aguenta metros.</li>
+  <li>Distribua com <strong>DA</strong>, não com "T" nem com splitter improvisado.</li>
+  <li>Deixe o <strong>scaling final</strong> para o processador de LED ou para o scaler de saída — uma vez só.</li>
+  <li>Documente a cadeia num <strong>diagrama de sinal</strong> com formato e conector de cada trecho. É esse papel que resolve o problema às 2h da manhã, não a memória.</li>
+</ol>
+
+<h3>No palco / erros que acontecem</h3>
+<ul>
+  <li><strong>"A tela pisca preto de tempos em tempos."</strong> Renegociação de HDCP/EDID em algum splitter HDMI. Fixe o EDID, ou converta para SDI e tire o HDMI do meio do caminho.</li>
+  <li><strong>"Uma das telas do splitter fica preta e as outras funcionam."</strong> Aquela saída não é HDCP-compliant, ou o EDID escolhido pelo splitter não é aceito por ela. Teste trocando o cabo de porta: se o defeito acompanha a tela, é a tela.</li>
+  <li><strong>"Corte entre câmera e VT dá um glitch."</strong> Fontes sem alinhamento temporal. Ative frame sync nas entradas ou distribua tri-level sync.</li>
+  <li><strong>"O telão está atrasado em relação ao palestrante."</strong> Some as latências da cadeia e corte estágios. Muito comum: conteúdo passando por dois scalers em série sem necessidade.</li>
+  <li><strong>"Imagem com movimento solavancado depois do conversor."</strong> Conversão de frame rate (50 ⟷ 59,94) em equipamento simples. Precisa de standards converter de verdade, ou entregue o conteúdo já na cadência certa.</li>
+  <li><strong>"Depois de trocar de fonte, a imagem volta cortada."</strong> Scaler em modo "fill" sem preservar aspecto, ou overscan legado ligado. Ajuste para "fit/aspect" e desligue overscan.</li>
+  <li><strong>"O SDI cai depois do DA."</strong> Confira se o DA está reclockando na taxa certa — alguns não suportam 12G, e passam 3G tranquilamente, mascarando o problema até a fonte virar 4K.</li>
+</ul>
+
+<h3>Resumo prático</h3>
+<p><strong>Conversor</strong> troca interface, <strong>scaler</strong> troca resolução e <strong>frame sync</strong> troca o tempo — três funções distintas que só coincidem em equipamentos que fazem as três (como o Mini Converter UpDownCross HD). Use SDI como espinha dorsal porque ele não carrega EDID nem HDCP e distribui bem por <strong>DA</strong>; deixe HDMI para o último metro e, se precisar dividi-lo, exija controle explícito de EDID. Resolva sincronismo por <strong>genlock</strong> quando puder (custo zero de latência) e por <strong>frame sync</strong> quando não puder (1–2 quadros). Faça o <strong>orçamento de latência</strong> da cadeia inteira — 8 quadros a 60&nbsp;fps já são 133&nbsp;ms e o público percebe. Converta uma vez só, cedo, e desenhe o diagrama de sinal antes de puxar o primeiro cabo.</p>

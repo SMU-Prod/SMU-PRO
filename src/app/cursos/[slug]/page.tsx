@@ -1,4 +1,5 @@
 import { getCourseBySlug } from "@/lib/actions/courses";
+import { courseBelongsToPortal, getPortal } from "@/lib/portal";
 import { auth } from "@clerk/nextjs/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
@@ -53,6 +54,10 @@ export default async function CourseDetailPage({ params }: Props) {
   }
 
   if (!course) notFound();
+
+  // Cada domínio é uma escola: por URL direta um curso do aula abria no www (e vice-versa).
+  // Todas as listagens já filtram; esta era a única porta de entrada sem filtro.
+  if (!courseBelongsToPortal(course.categorias, await getPortal())) notFound();
 
   const { userId } = await auth();
   let enrollment: any = null;

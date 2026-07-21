@@ -4,45 +4,42 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <link rel="icon" href="data:,">
-<title>M7CL Editor — Yamaha M7CL V3 (Simulador SMU)</title>
+<title>CL Editor — Yamaha CL5 (Simulador SMU)</title>
 <style>
   /* ============================================================
-     Yamaha M7CL V3 Editor (Studio Manager) — the simulator IS the
-     editor app. Chrome colours aligned to the REAL M7CL Editor host frame
-     (SM_M7CL_V3.pdf, the manual that ships with the editor): Windows-blue
-     title bars, silver menu, flat medium-gray MDI desktop — NOT the pink
-     tint a previous pass left in, and NOT the CL Editor's dark chrome.
-     M7CL: 48 mono + 4 stereo in · 16 MIX + LCR · 8 MATRIX · 8 DCA · 8 mute.
-     EtherSound (no Dante), no gain-compensation, no per-channel digital gain.
+     Yamaha CL Editor 5.8.1 — the simulator IS the editor app.
+     Chrome colours sampled 1:1 from the reference screenshots
+     (_ref-cl-editor/cl-editor-state*.png).
      ============================================================ */
   *{box-sizing:border-box}
   html,body{margin:0;height:100%}
   body{background:#5b5f66;color:#1a1a1a;
     font-family:"Segoe UI",Tahoma,Geneva,Verdana,sans-serif;
     -webkit-font-smoothing:antialiased;user-select:none;overflow:hidden;
-    display:flex;align-items:flex-start;justify-content:center}
+    display:flex;align-items:stretch;justify-content:stretch}
 
-  /* ===== application window (fixed design, zoom-to-fit) ===== */
-  .app{position:relative;width:1920px;height:1000px;flex:0 0 auto;transform-origin:top center;
+  /* ===== application window — ALWAYS fluid: it IS the viewport =====
+     The editor used to be a fixed 1920x1000 desk zoomed-to-fit. On anything
+     smaller than 1920 that zoom shrank every control (the owner's "muito
+     pequeno / mal vejo os botões"). It is gone: the app now fills the screen at
+     1:1 in every mode, and the one active page fills the desk. No zoom, ever. */
+  .app{position:relative;width:100%;height:100vh;height:100dvh;flex:1 1 auto;
     display:flex;flex-direction:column;background:#d4d0c8;border:1px solid #6f6f6f;overflow:hidden}
 
-  /* --- application title bar ---
-     The real M7CL Editor is a Studio Manager Windows app: its title bar is the
-     standard Windows active-window BLUE (see SM_M7CL_V3.pdf p.16/29 host frame),
-     NOT a pink/salmon tint. De-pinked to match the reference. */
+  /* --- application title bar --- */
   .apptb{height:24px;flex:0 0 auto;display:flex;align-items:center;gap:6px;padding-left:6px;
-    background:linear-gradient(180deg,#3b8beb,#0a54c4);border-bottom:1px solid #0a3f96}
+    background:linear-gradient(180deg,#e9c6bb,#ecd8d0);border-bottom:1px solid #dcc3bd}
   .apptb .ico{width:14px;height:14px;border-radius:2px;flex:0 0 auto;
-    background:linear-gradient(180deg,#cfe2fb,#2f6fd0);border:1px solid #17385f;box-shadow:inset 0 1px 0 #ffffff88}
-  .apptb .t{font-size:11.5px;font-weight:600;color:#ffffff;text-shadow:0 1px 0 #00000055}
+    background:linear-gradient(180deg,#7fb2e8,#1f4f8f);border:1px solid #17385f;box-shadow:inset 0 1px 0 #ffffff66}
+  .apptb .t{font-size:11.5px;font-weight:600;color:#4a3630}
   .apptb .sys{margin-left:auto;display:flex;align-items:center;gap:1px;padding-right:2px}
   .apptb .sys i{width:29px;height:19px;display:flex;align-items:center;justify-content:center;font-style:normal;
-    font-size:9px;color:#ffffff;border:1px solid #2a5aa8;border-radius:2px;
-    background:linear-gradient(180deg,#5a9cf0,#1c66d6)}
+    font-size:9px;color:#4a3630;border:1px solid #d8bdb6;border-radius:2px;
+    background:linear-gradient(180deg,#fbeeea,#f0dcd5)}
 
-  /* --- menu bar (classic Windows silver/beige, not pink) --- */
+  /* --- menu bar --- */
   .menubar{height:22px;flex:0 0 auto;display:flex;align-items:stretch;position:relative;z-index:60;
-    background:linear-gradient(180deg,#f1efe6,#e2dfce);border-bottom:1px solid #b6b2a0}
+    background:linear-gradient(180deg,#f8e6df,#fbf1ed);border-bottom:1px solid #c1c6ce}
   .menu{position:relative;display:flex;align-items:center;padding:0 9px;font-size:12px;color:#1c1c1c;
     cursor:default;white-space:nowrap}
   .menu:hover{background:#e8f0fb}
@@ -64,20 +61,19 @@
   .mitem>.mdrop{top:-3px;left:100%}
   .mitem.sub:hover>.mdrop{display:block}
 
-  /* --- MDI client area (real Studio Manager desktop is a flat medium gray) --- */
+  /* --- MDI client area --- */
   .mdi{position:relative;flex:1;min-height:0;overflow:hidden;
-    background:linear-gradient(180deg,#888888,#7a7a7a)}
+    background:linear-gradient(180deg,#d7d9e0,#c5c8cf)}
 
   /* --- MDI child windows --- */
   .win{position:absolute;display:flex;flex-direction:column;overflow:hidden;
     background:#c9ccd2;border:1px solid #8794a3;box-shadow:1px 1px 3px #00000033}
   .win.act{border-color:#5f6f81;box-shadow:2px 3px 9px #00000055}
   .wtb{height:29px;flex:0 0 auto;display:flex;align-items:center;padding:0 3px 0 14px;cursor:move;
-    background:linear-gradient(180deg,#9fb3cc,#8399b6);border-bottom:1px solid #7286a3}
-  .win.act .wtb{background:linear-gradient(180deg,#3b8beb,#0a54c4);border-bottom-color:#0a3f96}
-  .wtb .wt{font-size:12.5px;color:#eef4fc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 0 #00000044}
-  .win.act .wtb .wt{color:#ffffff}
-  .win:not(.act) .wtb .wt{color:#e6edf6}
+    background:linear-gradient(180deg,#cdd4dc,#e4e8ee);border-bottom:1px solid #b3bdc9}
+  .win.act .wtb{background:linear-gradient(180deg,#bfcedc,#d7e4f2);border-bottom-color:#a8b7c8}
+  .wtb .wt{font-size:12.5px;color:#2b3138;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .win:not(.act) .wtb .wt{color:#5b636c}
   .wbtns{margin-left:auto;display:flex;gap:3px;flex:0 0 auto;padding-left:12px}
   .wbtns b{width:31px;height:21px;display:flex;align-items:center;justify-content:center;
     font-weight:400;font-size:9px;color:#2b3138;cursor:pointer;border-radius:2px;
@@ -128,8 +124,12 @@
   .mham,.mbtn{display:none}
   .ls{display:none}
 
+  /* only ONE content page is visible at a time — the focused one fills the desk;
+     the rest are stashed (reachable from Windows / Main). This is what kills the
+     "tela dentro da outra": there is never a second window floating on top. */
+  .win.stash{display:none!important}
+
   body.touch{align-items:stretch;justify-content:stretch}
-  body.touch .app{width:100%;height:100vh;height:100dvh;zoom:1!important;transform:none}
   body.touch .menubar{height:34px}
   body.touch .menu{padding:0 8px}
   body.touch .mitem{padding:9px 10px 9px 26px;font-size:13px}
@@ -141,35 +141,34 @@
   body.touch .smu .gh{padding:7px 11px}
   body.touch .smu select{padding:5px 4px}
 
-  /* --- phone --- */
+  /* --- phone / any portrait: STACKED sections (owner's ask) --------------------
+     No MDI floating window, no drawer, no tiny cover-zoom. The desk becomes a
+     VERTICAL SCROLL of full-width sections, one BELOW the other, in this order:
+     CANAIS (overview) · MENU (main) · EDIÇÃO (selected) — plus any editor page
+     called afterwards. Each section = its own title bar (the visible label) + a
+     canvas fitted to the FULL width, so there is never any horizontal scroll; the
+     whole column scrolls vertically inside the desk. Nothing overlaps. */
+  .wbtns b.lane{display:none}
   body.phone .menu{padding:0 5px;font-size:11px}
   body.phone .lf{display:none}
   body.phone .ls{display:inline}
   body.phone .mham{display:flex;align-items:center;padding:0 11px;font-size:16px}
-  body.phone .mbtn{display:flex;align-items:center;margin-left:auto;padding:0 12px;
-    font-size:11px;font-weight:700;color:#1c1c1c;cursor:pointer;white-space:nowrap;
-    border-left:1px solid #b6b2a0}
-  body.phone .mbtn:active,body.phone .mbtn.on{background:#cddef4}
-  /* a called page covers the desk, with its name and a back/close in the title bar */
-  body.phone .win{left:0!important;top:0!important;width:100%!important;height:100%!important;border:0}
-  body.phone .wtb{cursor:default;padding-left:10px}
-  body.phone .wbtns b[data-b="min"],body.phone .wbtns b[data-b="max"]{display:none}
-  body.phone .wbtns b[data-b="close"]{width:64px;height:34px;font-size:11.5px}
-  /* Pages render at up to 1:1 and the body scrolls through them. The canvas keeps
-     touch-action:none so every knob/fader/send drag belongs to the control (sends and
-     value fields drag HORIZONTALLY — a pan gesture would steal them), so the lane is
-     moved with the explicit ◀ ▶ buttons below. */
-  body.phone .wbody{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
-  /* the Overview is the base: it is always there, underneath, and has no close */
-  body.phone .win[data-win="overview"]{z-index:1!important}
-  body.phone .win[data-win="overview"] .wbtns b[data-b="close"]{display:none}
-  .wbtns b.lane{display:none}
-  body.phone .wbtns b.lane{display:flex;width:46px;height:34px;font-size:13px}
-  /* Main = drawer from the right; ☰ / MAIN always brings it back */
-  body.phone .win[data-win="main"]{left:auto!important;right:0;width:min(340px,90vw)!important;
-    z-index:2000!important;transform:translateX(102%);transition:transform .22s ease;
-    box-shadow:-7px 0 20px #0006}
-  body.phone .win[data-win="main"].open{transform:none}
+  body.phone .mbtn{display:none}                       /* MENU is now a section — no drawer handle */
+  body.phone .mdi{overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;display:block}
+  /* every window is a full-width block in normal flow — nothing floats, nothing overlaps */
+  body.phone .win{position:relative!important;left:auto!important;top:auto!important;right:auto!important;
+    width:100%!important;height:auto!important;transform:none!important;margin:0;border:0;
+    border-bottom:2px solid #55585f;box-shadow:none;background:#303030}
+  body.phone .win.stash{display:flex!important}        /* on a phone NOTHING is stashed: all sections show */
+  body.phone .win.min .wbody{display:block}            /* minimise is inert in stacked mode */
+  body.phone .wtb{cursor:default;padding-left:12px}    /* the title bar IS the section label */
+  body.phone .wbody{flex:0 0 auto;overflow:hidden}     /* fit-to-width canvas — no scroll inside a section */
+  body.phone .wbtns b[data-b="min"],body.phone .wbtns b[data-b="max"],body.phone .wbtns b.lane{display:none}
+  body.phone .wbtns b[data-b="close"]{width:56px;height:32px;font-size:11.5px}
+  /* the three core sections are permanent — no close button on them */
+  body.phone .win[data-win="overview"] .wbtns b[data-b="close"],
+  body.phone .win[data-win="main"] .wbtns b[data-b="close"],
+  body.phone .win[data-win="selected"] .wbtns b[data-b="close"]{display:none}
 </style>
 </head>
 <body>
@@ -177,7 +176,7 @@
 
   <!-- ===== application title bar ===== -->
   <div class="apptb">
-    <span class="ico"></span><span class="t">M7CL Editor</span>
+    <span class="ico"></span><span class="t">CL Editor</span>
     <span class="sys"><i>—</i><i>❐</i><i>✕</i></span>
   </div>
 
@@ -195,8 +194,9 @@
         <div class="msep"></div>
         <div class="mitem sub">Model<span class="arw">▶</span>
           <div class="mdrop">
-            <div class="mitem" data-model="M7CL-48">M7CL-48 &nbsp;— 48 mono in</div>
-            <div class="mitem" data-model="M7CL-32">M7CL-32 &nbsp;— 32 mono in</div>
+            <div class="mitem" data-model="CL5">CL5 &nbsp;— 72 mono in</div>
+            <div class="mitem" data-model="CL3">CL3 &nbsp;— 64 mono in</div>
+            <div class="mitem" data-model="CL1">CL1 &nbsp;— 48 mono in</div>
           </div>
         </div>
         <div class="msep"></div>
@@ -218,16 +218,19 @@
         <div class="mitem" data-win="main">Main<span class="k">Ctrl+1</span></div>
         <div class="mitem" data-win="sends">Sends On Fader<span class="k">Ctrl+2</span></div>
         <div class="mitem" data-win="overview">Overview</div>
-        <div class="mitem" data-win="custom">CENTRALOGIC</div>
+        <div class="mitem" data-win="custom">Custom Fader Bank</div>
         <div class="mitem" data-win="selected">Selected Channel</div>
-        <div class="mitem" data-win="scenes" data-sc="0">Scene Library</div>
+        <div class="mitem" data-win="scenes" data-sc="0">Library</div>
+        <div class="mitem" data-win="fx" data-rack="premium">Premium Rack Library</div>
         <div class="mitem" data-win="patch">Patch Editor</div>
         <div class="msep"></div>
         <div class="mitem sub">Rack<span class="arw">▶</span>
           <div class="mdrop">
             <div class="mitem" data-win="fx" data-rack="virtual">Virtual Rack<span class="k">Ctrl+6</span></div>
             <div class="mitem" data-win="fx" data-rack="geq1">GEQ 1-8</div>
-            <div class="mitem" data-win="fx" data-rack="effect">EFFECT 1-4</div>
+            <div class="mitem" data-win="fx" data-rack="geq9">GEQ 9-16</div>
+            <div class="mitem" data-win="fx" data-rack="effect">EFFECT</div>
+            <div class="mitem" data-win="fx" data-rack="premium">PREMIUM</div>
           </div>
         </div>
         <div class="mitem sub">Meter<span class="arw">▶</span>
@@ -283,7 +286,7 @@
     </div>
     <div class="menu" data-m="help">Help
       <div class="mdrop">
-        <div class="mitem" data-act="about">About M7CL Editor</div>
+        <div class="mitem" data-act="about">About CL Editor</div>
       </div>
     </div>
     <!-- phone: the Main panel is a drawer — this button is its permanent handle -->
@@ -313,36 +316,39 @@
 (function(){
   /* ================= MODEL ================= */
   const MIX_NAMES=["MIX 1 Mon","MIX 2 Mon","MIX 3 IEM","MIX 4 IEM","MIX 5","MIX 6","MIX 7 Sub","MIX 8 FB",
-    "MIX 9","MIX 10","MIX 11","MIX 12","MIX 13 Fx1","MIX 14 Fx2","MIX 15 Fx3","MIX 16 Fx4"];
-  const MIX_SHORT=["MX 1","MX 2","MX 3","MX 4","MX 5","MX 6","MX 7","MX 8","MX 9","MX10","MX11","MX12","MX13","MX14","MX15","MX16"];
-  const N_MIX=16,N_MTX=8,N_DCA=8,N_MUTE=8,N_SCENE=300;   // M7CL scene memory 001..300
-  const N_FX=4;                 // M7CL internal effect processors (up to 4) — fed from MIX 13-16
-  /* ===== M7CL MODELS =========================================================
-     The M7CL V3 Editor targets the M7CL family. Per the Yamaha M7CL spec
-     (europe.yamaha.com M7CL specs · usa.yamaha.com M7CL features · M7CL V3
-     Owner's Manual), every model shares the SAME processing engine — 16 MIX
-     buses, LCR, 8 MATRIX, 8 DCA faders and 8 Mute Groups. The per-model
-     difference is the mono input count (and surface fader count):
-        M7CL-48 = 48 mono + 4 stereo (ST IN 1-4)  → INPUT banks 1-16/17-32/33-48
-        M7CL-32 = 32 mono + 4 stereo (ST IN 1-4)  → INPUT banks 1-16/17-32
-     So the model selector changes MAXCH (48/32) and which INPUT bank buttons
-     appear; MIX/MATRIX/DCA/mute/ST IN stay constant. The audio engine is built
-     to the absolute capacity MAXCAP=48; empty channels are silent nodes,
-     exactly like an un-patched desk. */
+    "MIX 9","MIX 10","MIX 11","MIX 12","MIX 13","MIX 14","MIX 15","MIX 16","Fx 1","Fx 2","Fx 3","Fx 4","Fx 5","Fx 6","Fx 7","Fx 8"];
+  const MIX_SHORT=["MX 1","MX 2","MX 3","MX 4","MX 5","MX 6","MX 7","MX 8","MX 9","MX10","MX11","MX12","MX13","MX14","MX15","MX16","Fx 1","Fx 2","Fx 3","Fx 4","Fx 5","Fx 6","Fx 7","Fx 8"];
+  const N_MIX=24,N_MTX=8,N_DCA=16,N_MUTE=8,N_SCENE=10;
+  /* ===== CL SERIES MODELS =====================================================
+     The CL Editor targets the whole CL series. Per the Yamaha CL5/CL3/CL1 spec
+     (usa.yamaha.com CL Series specs + CL5/CL3/CL1 Reference Manual), the three
+     consoles share the SAME processing engine — 24 MIX buses, 8 MATRIX, LCR,
+     16 DCA faders and 8 Mute Groups on every model. The ONLY per-model difference
+     is the mono input count (and, on the hardware, the surface fader count):
+        CL5 = 72 mono + 8 stereo   → INPUT banks 1-16/17-32/33-48/49-64/65-72
+        CL3 = 64 mono + 8 stereo   → INPUT banks 1-16/17-32/33-48/49-64
+        CL1 = 48 mono + 8 stereo   → INPUT banks 1-16/17-32/33-48
+     So the model selector changes MAXCH (72/64/48) and which INPUT bank buttons
+     appear; MIX/MATRIX/DCA/mute stay constant. (24 stereo-in ST IN + DCA banks
+     are shared too.)  The audio engine is always built to the absolute capacity
+     MAXCAP=72; empty channels are silent nodes, exactly like an un-patched desk. */
   const MODELS={
-    "M7CL-48":{ch:48, inBanks:['in1','in2','in3']},
-    "M7CL-32":{ch:32, inBanks:['in1','in2']}
+    CL5:{ch:72, inBanks:['in1','in2','in3','in4','in5']},
+    CL3:{ch:64, inBanks:['in1','in2','in3','in4']},
+    CL1:{ch:48, inBanks:['in1','in2','in3']}
   };
-  const MAXCAP=48;                 // absolute engine capacity (M7CL-48) — nodes built once
-  let   MAXCH=MODELS["M7CL-48"].ch;// active mono channels for the current model (48/32)
-  /* Rack module list — mirrors M7CL Virtual Rack EFFECT 1-4 (SPX + REV-X). Up to
-     4 simultaneous multi-effect processors are fed from MIX 13-16 and return on
-     ST IN 1-4, exactly as on the console. */
+  const MAXCAP=72;              // absolute engine capacity (CL5) — nodes built once
+  let   MAXCH=MODELS.CL5.ch;    // active mono channels for the current model (72/64/48)
+  /* Rack module list — mirrors CL Editor Virtual Rack (EFFECT 1-8) */
   const RACKDEF=[
     {name:"REV-X HALL",  kind:"rev", p:{time:2.70,ini:20.0,decay:50,size:28,diff:10,hpf:0,lpf:5600, hir:0.6,lor:1.2,lof:800}},
     {name:"REV-X ROOM",  kind:"rev", p:{time:1.20,ini:9.0, decay:45,size:16,diff:10,hpf:0,lpf:8000, hir:0.7,lor:1.1,lof:600}},
-    {name:"SPX ECHO",    kind:"echo",p:{dlyL:250,dlyR:375,fbL:25,fbR:25,lpf:10000}},
-    {name:"SPX MONO DLY",kind:"dly", p:{time:250,fb:30,hpf:0,lpf:10000}}
+    {name:"REV-X PLATE", kind:"rev", p:{time:1.60,ini:12.0,decay:55,size:20,diff:9, hpf:0,lpf:10000,hir:0.8,lor:1.0,lof:500}},
+    {name:"REVERB HALL", kind:"rev", p:{time:2.40,ini:25.0,decay:48,size:26,diff:8, hpf:0,lpf:6300, hir:0.7,lor:1.2,lof:700}},
+    {name:"REVERB ROOM", kind:"rev", p:{time:0.90,ini:6.0, decay:40,size:12,diff:8, hpf:0,lpf:9000, hir:0.8,lor:1.0,lof:500}},
+    {name:"REVERB PLATE",kind:"rev", p:{time:1.40,ini:10.0,decay:52,size:18,diff:9, hpf:0,lpf:11200,hir:0.9,lor:1.0,lof:450}},
+    {name:"ECHO",        kind:"echo",p:{dlyL:250,dlyR:375,fbL:25,fbR:25,lpf:10000}},
+    {name:"MONO DELAY",  kind:"dly", p:{time:250,fb:30,hpf:0,lpf:10000}}
   ];
   const COLORS=["#e0483f","#f97316","#f4a02a","#eab308","#3ad07a","#14b8a6","#39c0e6","#3b82f6","#6366f1","#a855f7","#ec4899","#f43f5e"];
   const NAMES=["Kick In","Snare","Hat","Tom 1","Tom 2","OH L","OH R","Bass DI","Gtr L","Gtr R","Keys L","Keys R","Lead Voc","Voc 2","Voc 3","Coro","Sax","Trumpet","Perc","Play L","Play R","Amb L","Amb R","Talk"];
@@ -352,7 +358,7 @@
       gain:20+((i*7)%10)-4, dgain:0, att:0, phase:false, phantom:false, hpfOn:false, hpf:80, lpfOn:false, lpf:18000,
       eqOn:true,
       eq:[{type:'lowshelf',f:125,g:0,q:4.0,byp:false},{type:'peaking',f:1000,g:0,q:0.70,byp:false},{type:'peaking',f:4000,g:0,q:0.70,byp:false},{type:'highshelf',f:10000,g:0,q:4.0,byp:false}],
-      eqType:'TYPE I',
+      eqType:'PRECISE',
       gateOn:false,gateThr:-26,gateRange:-56,gateAtk:0,gateHold:2.33,gateDecay:304,
       compOn:false,compThr:-8,compRatio:2.5,compAtk:30,compRel:229,compKnee:2,compGain:0,
       key1Src:"SELF POST EQ",key1F:80,key1Hpf:false,key2Src:"SELF POST EQ",
@@ -367,16 +373,16 @@
   }
   const CH=Array.from({length:MAXCAP},(_,i)=>mkChannel(i));
 
-  /* ST IN = the 4 stereo input channels (ST IN 1-4). On the M7CL these double as
-     the internal-effect returns (EFFECT 1-4 → ST IN 1-4). Same strip anatomy as
-     an input channel, so they reuse mkChannel's shape. */
-  const STIN=Array.from({length:N_FX},(_,i)=>{
+  /* ST IN = the 16 FX-return strips (FX1L(A) … FX8R(B)), two per rack.
+     Same strip anatomy as an input channel, so they reuse mkChannel's shape. */
+  const STIN=Array.from({length:16},(_,i)=>{
+    const r=Math.floor(i/2), lr=(i%2)?"R":"L", ab=(i%2)?"B":"A";
     return Object.assign(mkChannel(0),{
-      i, isStin:true, rack:i, lr:"",
-      name:"ST IN "+(i+1), patch:"FX "+(i+1),
+      i, isStin:true, rack:r, lr,
+      name:"FX"+(r+1)+lr+"("+ab+")", patch:"FX"+(r+1)+lr,
       lrMono:"STEREO",
       gain:0, dgain:0, hpf:80, hpfOn:false, eqOn:true,
-      fader:0, on:true, stAssign:true, pan:0,
+      fader:0, on:true, stAssign:true, pan:(i%2)?32:-32,
       src:-30, hasAudio:true });
   });
 
@@ -387,21 +393,24 @@
     in1: {label:"1-16",    title:"CH1-16",  grp:'INPUT',  get:()=>rng(0,16).map(i=>i<MAXCH?{kind:'ch',ci:i}:{kind:'empty'})},
     in2: {label:"17-32",   title:"CH17-32", grp:'INPUT',  get:()=>rng(16,16).map(i=>i<MAXCH?{kind:'ch',ci:i}:{kind:'empty'})},
     in3: {label:"33-48",   title:"CH33-48", grp:'INPUT',  get:()=>rng(32,16).map(i=>i<MAXCH?{kind:'ch',ci:i}:{kind:'empty'})},
-    stin:{label:"ST IN",   title:"ST IN",   grp:'INPUT',  get:()=>rng(0,16).map(i=>i<N_FX?{kind:'stin',si:i}:{kind:'empty'})},
-    dca: {label:"DCA",     title:"DCA",     grp:'INPUT',  get:()=>rng(0,16).map(i=>i<N_DCA?{kind:'dca',g:i}:{kind:'empty'})},
+    in4: {label:"49-64",   title:"CH49-64", grp:'INPUT',  get:()=>rng(48,16).map(i=>i<MAXCH?{kind:'ch',ci:i}:{kind:'empty'})},
+    in5: {label:"65-72",   title:"CH65-72", grp:'INPUT',  get:()=>rng(64,16).map(i=>i<MAXCH?{kind:'ch',ci:i}:{kind:'empty'})},
+    stin:{label:"ST IN",   title:"ST IN",   grp:'INPUT',  get:()=>rng(0,16).map(i=>({kind:'stin',si:i}))},
+    dca: {label:"DCA",     title:"DCA",     grp:'INPUT',  get:()=>rng(0,16).map(i=>({kind:'dca',g:i}))},
     mix1:{label:"MIX 1-16",title:"MIX1-16", grp:'OUTPUT', get:()=>rng(0,16).map(i=>({kind:'mix',b:i}))},
+    mix2:{label:"17-24",   title:"MIX17-24",grp:'OUTPUT', get:()=>rng(0,16).map(i=>i<8?{kind:'mix',b:16+i}:{kind:'empty'})},
     mtx: {label:"MTRX",    title:"MATRIX",  grp:'OUTPUT', get:()=>rng(0,16).map(i=>i<8?{kind:'mtx',b:i}:{kind:'empty'})},
     st:  {label:"ST",      title:"ST/MONO", grp:'OUTPUT', get:()=>rng(0,16).map(i=>i===0?{kind:'st'}:i===1?{kind:'mono'}:{kind:'empty'})}
   };
-  const state={ model:'M7CL-48', sel:12, mode:"selected", sof:-1, sofBus:0, sofType:'mix', master:-3, mono:-3, eqBand:3,
+  const state={ model:'CL5', sel:12, mode:"selected", sof:-1, sofBus:0, sofType:'mix', master:-3, mono:-3, eqBand:3,
     knobMode:'gain', scene:0, monitor:-20, dim:false, talkback:false,
     dcaGain:new Array(N_DCA).fill(0), dcaOn:new Array(N_DCA).fill(true), dcaPP:new Array(N_DCA).fill(true),
     mixMaster:new Array(N_MIX).fill(0), mixOn:new Array(N_MIX).fill(true),
     mtxMaster:new Array(N_MTX).fill(0), mtxOn:new Array(N_MTX).fill(true),
     muteActive:new Array(N_MUTE).fill(false),
-    rackSel:0, grpTab:0, grpBank:0, scTab:'dca', bank:'in1', selStin:-1, custom:'DCA', online:false, bpm:120, rackKind:'fx', geqSel:0,
+    rackSel:0, grpTab:0, grpBank:0, scTab:'dca', bank:'in1', selStin:-1, custom:'A1', online:false, bpm:120, rackKind:'fx', geqSel:0,
     rack:RACKDEF.map(d=>({name:d.name,kind:d.kind,on:true,bal:1.0,p:Object.assign({},d.p)})),
-    geq:Array.from({length:8},()=>({on:true,bands:new Array(31).fill(0)})) };
+    geq:Array.from({length:16},()=>({on:true,bands:new Array(31).fill(0)})) };
   /* 31 bandas ISO do GEQ (20 Hz – 20 kHz) */
   const GEQF=[20,25,31.5,40,50,63,80,100,125,160,200,250,315,400,500,630,800,1000,1250,1600,2000,2500,3150,4000,5000,6300,8000,10000,12500,16000,20000];
   let _taps=[]; // tap-tempo timestamps (ms)
@@ -419,48 +428,11 @@
   function fInv(t){ const mn=Math.log10(20),mx=Math.log10(20000); return Math.pow(10,mn+clamp(t,0,1)*(mx-mn)); }
   function perf(){ return performance.now(); }
 
-  /* ================= M7CL V3 EDITOR THEME =====================================
-     Sampled 1:1 from the OFFICIAL Yamaha M7CL V3 Editor screenshots embedded in
-     SM_M7CL_V3.pdf — the manual that ships with the editor itself
-     (C:\Program Files (x86)\Yamaha\Studio Manager\M7CL V3\SM_M7CL_V3.pdf).
-     The figures are lossless PNGs at native resolution: Master window 159x482
-     (p.13), INPUT CH "CH 1-16" window 879x683 (p.16), Selected Channel 1042x802
-     (p.29), navigation keys 130x93 (p.15).
-
-     ⚠️  DO NOT re-sample this palette from the CL Editor. The M7CL Editor and the
-     CL Editor are DIFFERENT SKINS of the Studio Manager family, and copying CL's
-     is exactly how this file ended up looking like a CL5 (its previous theme
-     header literally read "mirrors Yamaha CL Editor 5.8.1", and its ED palette
-     was byte-identical to yamaha-cl5-real.html — the two sims measured 3.7%
-     pixel difference, i.e. the same image).
-
-     The three signatures of the M7CL Editor, measured from those figures:
-       · Selected Channel window is BLUE  (#144070 = 62.4% of its pixels).
-         The CL Editor's is dark charcoal.
-       · Master window is a NARROW gray panel (#76787a) whose bottom is the
-         8-key NAVIGATION cluster. The CL's Main is a tall stack of big buttons.
-       · "On" buttons are WHITE with a COLOURED legend (orange ON/INS, blue
-         D.OUT), and the channel-name footer is GRAY. The CL's are cream, and
-         its name footer is blue.
-     ============================================================================ */
-  const ED={ desk:"#666666", bg:"#333333", panel:"#76787a", sunk:"#000000",
-    hl:"#8d8f91", sh:"#1a1a1a", lab:"#ffffff", dim:"#b0b0b0",
-    grid:"#666666",                       // the 1px rule between Overview strips
-    btnLit:"#ffffff",                     // an "on" button is WHITE (manual p.18: "White: INPUT CH is on")
-    onTx:"#f08000",                       // ...with an ORANGE legend (ON / INS)
-    doTx:"#2038d0",                       // D.OUT lights white with a BLUE legend
-    cream:"#fae7a7",                      // HPF lit
-    yel:"#fdcb25", org:"#f08000", bar:"#d06620", red:"#cc6666", grn:"#00cc33",
-    navy:"#011d50", lcd:"#144070", tbar:"#b9d1ea",
-    navBg:"#231f20", navMid:"#808a92", navKey:"#caced5",
-    kMag:"#c8398a", kBlue:"#2f5fc8", kCyan:"#33aec4", kPur:"#7f6fc8", kGrn:"#63c8a8", kRed:"#cc6666", kGray:"#c8c8c8" };
-  /* The M7CL Editor draws its buttons as ROUNDED rects (see SEL/CUE/ON in the
-     p.16 figure) — the CL Editor's are square. This is the shape of every
-     button on the M7CL front, so it lives here rather than in each caller. */
-  function rrect(x,y,w,h,r){ r=Math.min(r,w/2,h/2); ctx.beginPath();
-    if(ctx.roundRect){ ctx.roundRect(x,y,w,h,r); return; }
-    ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
-    ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+  /* ================= CL EDITOR THEME (gray — mirrors Yamaha CL Editor 5.8.1) ================= */
+  const ED={ desk:"#303030", bg:"#3d3d3d", panel:"#2e2e2e", sunk:"#1e1e1e",
+    hl:"#6e6e6e", sh:"#161616", lab:"#c4c4c4", dim:"#8a8a8a",
+    btnLit:"#efe3ae", yel:"#e8d048", org:"#f09020", red:"#e05050", grn:"#33cc44",
+    kMag:"#c8398a", kBlue:"#2f5fc8", kCyan:"#33aec4", kPur:"#7f6fc8", kGrn:"#63c8a8", kRed:"#d03848", kGray:"#b8b8b8" };
   function shade(hex,amt){ const h=hex.replace('#',''); let r=parseInt(h.substr(0,2),16),g=parseInt(h.substr(2,2),16),b=parseInt(h.substr(4,2),16);
     r=clamp(r+amt,0,255);g=clamp(g+amt,0,255);b=clamp(b+amt,0,255); return "#"+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join(''); }
   let VT={k:1,ox:0,oy:0};
@@ -476,29 +448,19 @@
     if(x2&&x2>x+tw+8){ ctx.strokeStyle="#232323"; ctx.beginPath(); ctx.moveTo(x+tw+7,y); ctx.lineTo(x2,y); ctx.stroke();
       ctx.strokeStyle="#6a6a6a"; ctx.beginPath(); ctx.moveTo(x+tw+7,y+1.5); ctx.lineTo(x2,y+1.5); ctx.stroke(); }
     ctx.textBaseline="alphabetic"; }
-  /* M7CL button: rounded rect, BLACK when off with a gray legend; when lit it takes
-     the given colour (default WHITE) and the legend takes txCol (default orange).
-     That "white body + coloured legend" is the M7CL's tell — the CL Editor instead
-     fills the whole button cream. See the ON/INS/D.OUT columns of the p.16 figure. */
-  function eBtn(x,y,w,h,label,lit,cb,litCol,txSize,txCol){
-    const body=lit?(litCol||ED.btnLit):"#0a0a0a";
-    ctx.fillStyle=body; rrect(x,y,w,h,Math.min(3,h/3)); ctx.fill();
-    ctx.strokeStyle=lit?"#ffffff55":"#4a4a4a"; ctx.lineWidth=1; rrect(x+.5,y+.5,w-1,h-1,Math.min(3,h/3)); ctx.stroke();
-    ctx.fillStyle=lit?(txCol||(body==="#ffffff"?ED.onTx:"#101010")):"#909090";
-    ctx.font="700 "+(txSize||9)+"px Arial,Inter"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  function eBtn(x,y,w,h,label,lit,cb,litCol,txSize){
+    ctx.fillStyle=lit?(litCol||ED.btnLit):"#454545"; ctx.fillRect(x,y,w,h); bevel(x,y,w,h,!!lit);
+    ctx.fillStyle=lit?"#101010":"#d4d4d4"; ctx.font="700 "+(txSize||9)+"px Arial,Inter"; ctx.textAlign="center"; ctx.textBaseline="middle";
     ctx.fillText(label,x+w/2,y+h/2+.5); ctx.textBaseline="alphabetic";
     if(cb)vreg({x,y,w,h,onDown:cb}); }
-  /* M7CL numeric readout: black LCD, WHITE pixel-ish text (the CL's is dimmer gray) */
   function eVal(x,y,w,h,txt,col,cb){
-    ctx.fillStyle="#000"; ctx.fillRect(x,y,w,h);
-    ctx.fillStyle=col||"#ffffff"; ctx.font="700 "+Math.max(8,h-3)+"px 'Courier New',monospace"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillStyle="#000"; ctx.fillRect(x,y,w,h); bevel(x,y,w,h,true);
+    ctx.fillStyle=col||"#f0f0f0"; ctx.font="700 "+Math.max(8,h-4)+"px 'Courier New',monospace"; ctx.textAlign="center"; ctx.textBaseline="middle";
     ctx.fillText(txt,x+w/2,y+h/2+.5); ctx.textBaseline="alphabetic";
     if(cb)vreg({x,y,w,h,onDown:cb}); }
-  /* M7CL patch header / channel-name footer: GRAY plate, white text.
-     (The CL Editor paints the name footer BLUE — do not copy that here.) */
   function eNameBox(x,y,w,h,txt){
-    ctx.fillStyle="#666666"; ctx.fillRect(x,y,w,h);
-    ctx.fillStyle="#ffffff"; ctx.font="700 "+Math.max(7,h-4)+"px 'Courier New',monospace"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillStyle="#181818"; ctx.fillRect(x,y,w,h); ctx.strokeStyle="#2e2e2e"; ctx.strokeRect(x+.5,y+.5,w-1,h-1);
+    ctx.fillStyle="#9a9a9a"; ctx.font="700 "+Math.max(7,h-4)+"px 'Courier New',monospace"; ctx.textAlign="center"; ctx.textBaseline="middle";
     ctx.fillText(txt,x+w/2,y+h/2+.5); ctx.textBaseline="alphabetic"; }
   function eKnob(cx,cy,r,t,col){
     const g=ctx.createRadialGradient(cx-r*0.35,cy-r*0.45,r*0.15,cx,cy,r);
@@ -550,10 +512,8 @@
     const den=Math.pow(a0+a1+a2,2)-4*(a0*a1+4*a0*a2+a1*a2)*phi+16*a0*a2*phi*phi;
     return 10*Math.log10(Math.max(1e-9,num)/Math.max(1e-9,den));
   }
-  /* M7CL EQ character: TYPE I (classic digital) vs TYPE II (designed to minimise
-     inter-band interference — a slightly gentler effective Q). */
-  function eqTypeFactor(t){ return t==='TYPE II'?0.88:1; }
-  function eqMag(ch,f){ let g=0; const kf=eqTypeFactor(ch.eqType||'TYPE I');
+  function eqTypeFactor(t){ return t==='AGGRESSIVE'?1.55:t==='SMOOTH'?0.6:t==='LEGACY'?0.82:1; }
+  function eqMag(ch,f){ let g=0; const kf=eqTypeFactor(ch.eqType||'PRECISE');
     for(const b of ch.eq){ if(b.g!==0) g+=biquadDb(b.type,b.f,b.g,b.q*kf,f); }
     if(ch.hpfOn) g+=biquadDb('highpass',ch.hpf,0,0.707,f);
     if(ch.lpfOn) g+=biquadDb('lowpass',ch.lpf,0,0.707,f);
@@ -633,12 +593,7 @@
   const WINDEF={
     overview:{title:()=>(BANKS[state.bank]||BANKS.in1).title, x:6,   y:4,  w:660, h:760, draw:drawOverview, def:1, dock:'rest', vh:1010},
     selected:{title:()=>"Selected Channel",                 x:674, y:4,  w:880, h:654, draw:drawSelCh},
-    /* The real editor calls this window "Master" (manual p.13), not "Main" — and it
-       is a NARROW panel: the figure is 159x482, aspect 0.33. vbegin() letterboxes it
-       into the dock, and the spare margin is the window body's own dark #333333, so
-       what is drawn is the Master window at true proportion. The dock WIDTH (352) is
-       deliberately left alone — MAINW/responsive is another agent's ground. */
-    main:    {title:()=>"Master",                           x:1562,y:4,  w:352, h:780, draw:drawMain,    def:1, dock:'main', vw:159, vh:482},
+    main:    {title:()=>"Main",                             x:1562,y:4,  w:352, h:780, draw:drawMain,    def:1, dock:'main', vw:352, vh:751},
     sends:   {title:()=>"Sends On Fader"+(state.sof>=0?" — "+(state.sofType==='mtx'?"MATRIX "+(state.sofBus+1):"MIX "+(state.sofBus+1)):""),
                                                             x:250, y:150,w:880, h:654, draw:drawSends},
     dca:     {title:()=>"Group/Link",                       x:150, y:90, w:940, h:690, draw:drawDCA},
@@ -650,12 +605,10 @@
     gate:    {title:()=>"Dynamics 1 — "+CH[state.sel].name, x:370, y:140,w:820, h:610, draw:drawGate},
     comp:    {title:()=>"Dynamics 2 — "+CH[state.sel].name, x:400, y:160,w:820, h:610, draw:drawComp},
     patch:   {title:()=>"Patch Editor",                     x:280, y:100,w:900, h:668, draw:drawPatch},
-    custom:  {title:()=>"CENTRALOGIC — "+(CENTRALOGIC_LB[state.custom]||state.custom),x:90,  y:150,w:660, h:760, draw:drawCustomBank, vh:1010}
+    custom:  {title:()=>"Custom Fader Bank — "+state.custom,x:90,  y:150,w:660, h:760, draw:drawCustomBank, vh:1010}
   };
-  /* CENTRALOGIC assignments — the 8 central faders/encoders map to one bank at a
-     time (the section unique to the M7CL). The Main panel CENTRALOGIC buttons pick it. */
-  const CUSTOMMAP={IN1:'in1',IN2:'in2',IN3:'in3',MIX:'mix1',MTX:'mtx',DCA:'dca',STIN:'stin',ST:'st'};
-  const CENTRALOGIC_LB={IN1:'IN 1-16',IN2:'IN 17-32',IN3:'IN 33-48',MIX:'MIX 1-16',MTX:'MATRIX',DCA:'DCA 1-8',STIN:'ST IN',ST:'ST/MONO'};
+  /* Custom Fader assignments (the Main panel A1…C6 buttons) */
+  const CUSTOMMAP={A1:'in1',B1:'in2',C1:'stin',C4:'mix1',A2:'dca',B2:'mtx',C2:'st',C5:'mix2',C3:'in3',C6:'in4'};
   function drawCustomBank(){ const b=state.bank; state.bank=CUSTOMMAP[state.custom]||'in1'; drawOverview(); state.bank=b; }
   const WINS={};           // id -> live window object
   let zTop=10, focusId=null;
@@ -666,21 +619,21 @@
   // "de clicar em 17x24 abre a outra tela destes canais" — the bank buttons swap the
   // Overview's 16 strips; on a phone the drawer steps aside so the strips are visible.
   function setBank(id){ state.bank=id; openWin('overview'); focusWin('overview');
-    if(LAYOUT==='phone') setDrawer(false); drawScreen(); }
+    if(LAYOUT==='compact') setDrawer(false); drawScreen(); }
 
-  /* ===== MODEL SWITCH (M7CL-48 / M7CL-32) ===================================
-     Changes MAXCH (48/32) → which INPUT bank buttons show + how many channels
+  /* ===== MODEL SWITCH (CL5 / CL3 / CL1) =====================================
+     Changes MAXCH (72/64/48) → which INPUT bank buttons show + how many channels
      get stems + how far the audio loops reach. The audio graph itself is built
-     once to MAXCAP=48, so switching model never rebuilds nodes; it just re-patches
+     once to MAXCAP=72, so switching model never rebuilds nodes; it just re-patches
      the base into the new capacity. repatch=false is used by scene recall (the
      scene already carries the channel snapshot). */
   function applyModel(m,opt){ if(!MODELS[m])return; const repatch=!(opt&&opt.repatch===false);
     state.model=m; MAXCH=MODELS[m].ch;
     const vis=MODELS[m].inBanks;
-    if(/^in[1-3]$/.test(state.bank) && vis.indexOf(state.bank)<0) state.bank='in1';
+    if(/^in[1-5]$/.test(state.bank) && vis.indexOf(state.bank)<0) state.bank='in1';
     if(state.sel>=MAXCH){ state.sel=0; state.selStin=-1; }
-    try{ document.title="M7CL Editor — Yamaha "+m+" (Simulador SMU)";
-      const t=document.querySelector('.apptb .t'); if(t)t.textContent="M7CL Editor — Yamaha "+m;
+    try{ document.title="CL Editor — Yamaha "+m+" (Simulador SMU)";
+      const t=document.querySelector('.apptb .t'); if(t)t.textContent="CL Editor — Yamaha "+m;
       document.querySelectorAll('.mitem[data-model]').forEach(el=>el.classList.toggle('chk', el.dataset.model===m));
     }catch(e){}
     if(repatch) loadSong(curSong);          // re-patch base into the new channel count
@@ -706,12 +659,6 @@
               regions:[], vt:{k:1,ox:0,oy:0}, min:false, max:false };
     w.ctx=w.cv.getContext("2d");
     WINS[id]=w;
-    // a page called on a small desk is centred in the free area instead of using its
-    // 1920x1000 design coords (which would put it off-screen); phone geometry is CSS.
-    if(LAYOUT==='tablet'&&!d.dock){ const fw=freeW(), fh=MDI.offsetHeight;
-      const ww=Math.min(d.w,fw-8), hh=Math.min(d.h,fh-8);
-      el.style.cssText=`left:${Math.max(0,Math.round((fw-ww)/2))}px;top:${Math.max(0,Math.round((fh-hh)/2))}px;`
-        +`width:${ww}px;height:${hh}px`; }
     el.querySelector('.wt').textContent=winTitle(id);
     el.querySelectorAll('.wbtns b').forEach(b=>b.addEventListener("pointerdown",e=>{
       e.stopPropagation();
@@ -729,22 +676,29 @@
         sizeCanvas(); }
       focusWin(id);
     }));
-    dragWin(w); wireCanvas(w); focusWin(id);
-    // Main/Overview are docked panes: (re)opening one snaps it back to its edge, so
-    // Windows › Main always returns the panel to the right of the desk, state intact.
-    if(d.dock) applyLayout(); else sizeCanvas();
+    dragWin(w); wireCanvas(w);
+    // every window (docked Main or a content page) settles through applyLayout: Main snaps
+    // to its edge / drawer, the new content page fills the desk and stashes the rest.
+    focusId=id; applyLayout(); focusWin(id);
     return w;
   }
   function closeWin(id){ const w=WINS[id]; if(!w)return; w.el.remove(); delete WINS[id];
-    if(focusId===id){ focusId=null; const k=Object.keys(WINS); if(k.length) focusWin(k[k.length-1]); } }
+    // closing the shown page reveals the Overview (the console base) again — never a blank desk.
+    if(focusId===id){ focusId=null;
+      const back = WINS.overview ? 'overview' : (contentIds().slice(-1)[0]||(WINS.main?'main':null));
+      if(back){ applyLayout(); focusWin(back); } } }
   function focusWin(id){ const w=WINS[id]; if(!w)return;
+    const changed=(focusId!==id);
     focusId=id; state.mode=id; w.el.style.zIndex=++zTop;
     for(const k in WINS) WINS[k].el.classList.toggle("act",k===id);
+    // focusing a content window makes it THE shown page (un-stash + fill the desk).
+    if(changed && id!=='main'){ try{ layoutContent(); sizeCanvas(); }catch(e){} }
     drawScreen(); }
   function dragWin(w){
     const tb=w.el.querySelector('.wtb'); let dx=0,dy=0,dr=false;
     tb.addEventListener("pointerdown",e=>{ if(e.target.dataset.b)return; if(w.max)return;
-      if(LAYOUT==='phone'||w.def.dock)return;   // docked panes / full-screen pages don't drag
+      if(LAYOUT==='compact'||w.def.dock)return;   // docked panes / full-screen pages don't drag
+      if(w.id!=='main')return;                    // content pages are desk-filled, not floated
       dr=true; const r=w.el.getBoundingClientRect(), m=MDI.getBoundingClientRect();
       const z=appZoom(); dx=(e.clientX-r.left)/z; dy=(e.clientY-r.top)/z;
       tb.setPointerCapture(e.pointerId); focusWin(w.id); e.preventDefault(); });
@@ -763,40 +717,85 @@
      same two things reflow — Main into a drawer, pages to full screen — but the
      app menu bar is part of the frame and is never hidden, in any mode. */
   let LAYOUT='desktop';
-  const MAINW={desktop:352,tablet:300,phone:0};
-  function calcLayout(){ const vw=window.innerWidth; return vw<760?'phone':(vw<1200?'tablet':'desktop'); }
-  // the desk left over beside the docked Main — where a called page is centred on a tablet
-  function freeW(){ const w=WINS.main, mw=(w&&!w.max)?w.el.offsetWidth:(MAINW[LAYOUT]||0);
-    return Math.max(240,MDI.offsetWidth-mw); }
+  let DESKW=0, DESKH=0;                 // the area a content page fills (desk minus docked Main)
+  // LAYOUT DECISION — orientation-aware, not width-only:
+  //   compact : phone (either orientation) OR any PORTRAIT screen. Main becomes a DRAWER so
+  //             the mesa/canais gets the FULL width (owner: "no retrato a mesa deve ficar
+  //             MAIOR que o menu"); every page is full-screen with a visible back/close.
+  //   touch   : roomy LANDSCAPE, < 1200 (tablet landscape). Main docked right, page fills rest.
+  //   desktop : roomy LANDSCAPE, >= 1200 (PC). Same as touch but with the finer desktop chrome.
+  function calcLayout(){ const vw=window.innerWidth, vh=window.innerHeight, portrait=vh>=vw;
+    if(vw<760 || vh<480 || portrait) return 'compact';
+    return vw<1200?'touch':'desktop'; }
+  // the desk left of the docked Main — where a content page fills
+  function freeW(){ return Math.max(240, DESKW||MDI.offsetWidth); }
+  // Phone stacking order: CANAIS (overview) · MENU (main) · EDIÇÃO (selected), then any
+  // extra editor page the user called after. Reordering the DOM reorders the flow.
+  const STACK=['overview','main','selected'];
+  let _ensuring=false;
+  function ensurePhoneSections(){ if(_ensuring)return; _ensuring=true;
+    try{ for(const id of STACK) if(!WINS[id]) openWin(id); }finally{ _ensuring=false; } }
+  function stackOrder(){
+    const ordered=[...STACK.filter(id=>WINS[id]),
+                   ...contentIds().filter(id=>!STACK.includes(id)),
+                   ...(WINS.main&&!STACK.includes('main')?['main']:[])];
+    ordered.forEach(id=>{ const w=WINS[id]; if(w&&w.el) MDI.appendChild(w.el); });
+  }
   function applyLayout(){
     const m=calcLayout(), changed=(m!==LAYOUT); LAYOUT=m;
-    document.body.classList.toggle('phone',m==='phone');
-    document.body.classList.toggle('tablet',m==='tablet');
+    const compact=(m==='compact');
+    document.body.classList.toggle('phone',compact);
     document.body.classList.toggle('touch',m!=='desktop');
-    if(m==='phone'){ if(changed) setDrawer(false); }        // phone geometry lives in CSS
-    else{
-      const MW=MDI.offsetWidth, MH=MDI.offsetHeight;
-      // A docked pane is sized to its CONTENT's aspect at the height available, so it
-      // never letterboxes onto dead bands: Main keeps the 352x751 panel (never blown up
-      // past 1:1), the Overview takes the full desk height and the width its 16 strips
-      // need. The desk left between them is real MDI space — it is where a called page
-      // opens, exactly as in the editor.
-      const o=WINS.overview, w=WINS.main;
-      let mainW=MAINW[m];
+    document.body.classList.remove('tablet');
+    const MW=MDI.offsetWidth, MH=MDI.offsetHeight;
+    if(compact){
+      DESKW=MW; DESKH=MH;
+      // STACKED phone/portrait: the three core sections always exist (canais/menu/edição)
+      // and are laid top-to-bottom; sizeCanvas() fits each to the full width.
+      ensurePhoneSections();
+      stackOrder();
+      document.body.classList.remove('drawer');
+    } else {
+      // WIDE (landscape): Main docked right at its 352:751 aspect (never upscaled past 1:1),
+      // the active page fills ALL the rest of the desk. No floating window, no dead band.
+      const w=WINS.main; let mainW=0;
       if(w&&!w.max){ w.min=false; w.el.classList.remove("min","open");
         const c=paneChrome(w,MH);
-        const bh=Math.min(MH-c.h,751);                      // cap at 100% — never upscale
+        const bh=Math.min(MH-c.h,751);
         mainW=Math.round(bh*352/751)+c.w;
         w.el.style.cssText=`left:${MW-mainW}px;top:0;width:${mainW}px;height:${bh+c.h}px;`
           +`z-index:${w.el.style.zIndex||10}`; }
-      if(o&&!o.max){ o.min=false; o.el.classList.remove("min");
-        const c=paneChrome(o,MH);
-        const bh=MH-c.h;                                    // the strips take the full height
-        const ow=Math.min(MW-mainW,Math.round(bh*910/1010)+c.w);
-        o.el.style.cssText=`left:0;top:0;width:${ow}px;height:${MH}px;z-index:${o.el.style.zIndex||10}`; }
+      DESKW=Math.max(240,MW-mainW); DESKH=MH;
       document.body.classList.remove('drawer');
     }
+    layoutContent();
     sizeCanvas();
+  }
+  // Content windows = everything except Main. Exactly ONE is shown (the focused one), filling
+  // the desk; the others are stashed. Reachable again from the Windows menu or the Main panel.
+  function contentIds(){ return Object.keys(WINS).filter(k=>k!=='main'); }
+  function shownContent(){
+    if(focusId && focusId!=='main' && WINS[focusId]) return focusId;
+    if(WINS.overview) return 'overview';
+    const c=contentIds(); return c.length?c[c.length-1]:null;
+  }
+  function layoutContent(){
+    const compact=(LAYOUT==='compact'), show=shownContent();
+    if(compact){
+      // STACKED: every open window is a visible section (nothing stashed); clear any
+      // desktop inline geometry so the CSS flow rules take over. sizeCanvas() sets heights.
+      for(const id in WINS){ const w=WINS[id]; if(!w||!w.el)continue;
+        w.max=false; w.min=false; w.el.classList.remove('stash','min','open');
+        w.el.style.cssText=''; }
+      stackOrder();
+      return;
+    }
+    for(const id of contentIds()){ const w=WINS[id]; if(!w||!w.el)continue;
+      if(id===show){ w.el.classList.remove('stash');
+        { w.max=false; w.min=false; w.el.classList.remove('min');
+          w.el.style.cssText=`left:0;top:0;width:${DESKW}px;height:${DESKH}px;z-index:${w.el.style.zIndex||10}`; }
+      } else { w.el.classList.add('stash'); }
+    }
   }
   // measure a window's chrome (title bar + borders) instead of hard-coding it, so the
   // touch mode's taller title bar is accounted for automatically.
@@ -830,20 +829,24 @@
   // setMode is THE way a page is called: from a strip control, the Main panel, or the
   // Windows menu. Nothing opens unless it is called this way.
   function setMode(m){ openWin(m); focusWin(m);
-    if(LAYOUT==='phone') setDrawer(m==='main');   // calling a page steps the drawer aside
+    if(LAYOUT==='compact'){                          // stacked: bring the called section into view
+      stackOrder(); sizeCanvas();
+      const w=WINS[m]; if(w&&w.el&&w.el.scrollIntoView){ try{ w.el.scrollIntoView({behavior:'smooth',block:'start'}); }catch(e){ w.el.scrollIntoView(); } }
+    }
   }
 
   function sizeCanvas(){ DPR=Math.min(2,window.devicePixelRatio||1);
-    for(const k in WINS){ const w=WINS[k]; if(w.min)continue;
-      // PHONE = LANE. A page keeps its design aspect at the full height of the screen and
-      // renders at up to 1:1 — never shrunk to fit a portrait phone (the 910x646 pages
-      // would land at ~44% and be unreadable). When that is wider than the screen the
-      // body scrolls horizontally through it. Same content, same labels, thumb-sized.
-      if(LAYOUT==='phone'&&w.body){ const bw=w.body.clientWidth, bh=w.body.clientHeight;
-        if(bw&&bh){ const vw=w.def.vw||910, vh=w.def.vh||646;
-          w.cv.style.width=Math.max(bw,Math.min(Math.round(bh*vw/vh),vw))+"px";
-          w.cv.style.height=bh+"px"; } }
-      else if(w.cv.style.width){ w.cv.style.width=""; w.cv.style.height=""; }
+    for(const k in WINS){ const w=WINS[k]; if(w.min&&LAYOUT!=='compact')continue;
+      // COMPACT = FIT WIDTH (stacked). Each section's canvas is scaled so its DESIGN WIDTH
+      // maps to the FULL desk width — so there is never any horizontal scroll. Its height
+      // follows the design aspect and becomes the section's height; the whole column scrolls
+      // vertically. Same drawing, same skin, just laid out one section below the other.
+      if(LAYOUT==='compact'&&w.body){ const bw=MDI.clientWidth||w.body.clientWidth;
+        if(bw){ const vw=w.def.vw||910, vh=w.def.vh||646;
+          const chh=Math.round(bw*vh/vw);
+          w.cv.style.width=bw+"px"; w.cv.style.height=chh+"px";
+          w.body.style.height=chh+"px"; } }
+      else if(w.cv.style.width||w.body.style.height){ w.cv.style.width=""; w.cv.style.height=""; w.body.style.height=""; }
       const r=w.cv.getBoundingClientRect(); if(!r.width||!r.height)continue;
       w.cw=r.width; w.chh=r.height;
       w.cv.width=Math.round(r.width*DPR); w.cv.height=Math.round(r.height*DPR); }
@@ -863,49 +866,21 @@
   renderScreen=function(){ for(const k in WINS) renderWin(WINS[k]); };
 
 
-  /* ================= MASTER — the M7CL V3 Editor "Master" window ===============
-     Rebuilt against the official figure on p.13 of SM_M7CL_V3.pdf (a 159x482
-     lossless PNG lifted straight out of the manual), with the navigation-key
-     cluster detailed on p.15 (130x93) and the SCENE MEMORY controls specified on
-     p.14 (scene no. · protect "R" · edit "E" · STORE · ▲/▼ · RECALL).
-
-     This window is NOT the CL's "Main". It is narrow, its sections are raised
-     GRAY plates (#76787a) on a dark body, and it ends in the 8-key NAVIGATION
-     cluster — 1-16 / 17-32 / 33-48 / ST IN / DCA / MIX / MTRX / STEREO — each an
-     LED-topped key. Those 8 keys ARE the bank navigator; the CL's big INPUT /
-     OUTPUT / CUSTOM FADER button stacks do not exist on the M7CL.
-
-     Manual p.15: "Opens the corresponding window in the Overview window." So the
-     keys drive setBank() exactly as the old bank buttons did — same engine, real
-     shape. Everything the CL panel used to expose as an extra button (RACK,
-     METER, PATCH, GROUP/LINK, OVERVIEW, scene list) is reached from the Windows
-     menu, which is where the real editor keeps it (manual p.11).
-     ============================================================================ */
+  /* ================= MAIN — the CL Editor "Main" panel = the NAVIGATOR =================
+     CL5 logo · SELECT LCD (−/+) · SENDS ON FADER · SYNC · SCENE MEMORY ·
+     INPUT / OUTPUT / CUSTOM FADER bank buttons. The bank buttons drive which bank
+     the Overview (the console base) shows. */
   function selObj(){ return state.selStin>=0 ? STIN[state.selStin] : CH[state.sel]; }
-  /* One navigation key: LED slot on top of a light key, legend underneath.
-     Input-side keys carry a green LED, output-side keys an amber one; the ACTIVE
-     key's body turns amber (#fdcb25) — exactly as [DCA] is shown lit in both the
-     p.13 and p.15 figures. */
-  function navKey(x,y,label,active,led,cb){
-    const w=16,h=15;
-    ctx.fillStyle=active?ED.yel:ED.navKey; rrect(x,y,w,h,3); ctx.fill();
-    ctx.strokeStyle="#00000060"; ctx.lineWidth=1; rrect(x+.5,y+.5,w-1,h-1,3); ctx.stroke();
-    ctx.fillStyle=led; ctx.fillRect(x+2.5,y+2,w-5,3);          // the LED slot
-    ctx.fillStyle="#ffffff"; ctx.font="700 7px 'Courier New',monospace";
-    ctx.textAlign="center"; ctx.textBaseline="middle";
-    ctx.fillText(label,x+w/2,y+h+6); ctx.textBaseline="alphabetic";
-    if(cb)vreg({x:x-3,y,w:w+6,h:h+10,onDown:cb});
-  }
   function drawMain(){
     ctx.fillStyle=ED.bg; ctx.fillRect(0,0,W,H);   // panel surface fills the docked window
     vbegin(352,751);
     ctx.fillStyle=ED.bg; ctx.fillRect(0,0,352,751);
     const c=selObj();
 
-    /* ---- M7CL logo bar ---- */
+    /* ---- CL5 logo bar ---- */
     ctx.fillStyle="#181818"; ctx.fillRect(8,6,336,26); bevel(8,6,336,26,true);
     ctx.fillStyle="#e8e8e8"; ctx.font="800 15px Arial"; ctx.textAlign="left"; ctx.fillText(state.model,18,25);
-    ctx.fillStyle="#8a8a8a"; ctx.font="700 8px Arial"; ctx.textAlign="right"; ctx.fillText("YAMAHA  M7CL EDITOR",336,24);
+    ctx.fillStyle="#8a8a8a"; ctx.font="700 8px Arial"; ctx.textAlign="right"; ctx.fillText("YAMAHA  CL EDITOR",336,24);
 
     /* ---- SELECT: blue LCD + mic icon + −/+ ---- */
     ctx.fillStyle=ED.panel; ctx.fillRect(8,38,336,86); bevel(8,38,336,86,false);
@@ -915,7 +890,7 @@
     const lg=ctx.createLinearGradient(0,58,0,116); lg.addColorStop(0,"#2438d8"); lg.addColorStop(1,"#101a90");
     ctx.fillStyle=lg; ctx.fillRect(42,58,268,58); bevel(42,58,268,58,true);
     ctx.fillStyle="#fff"; ctx.font="800 22px Arial"; ctx.textAlign="left";
-    ctx.fillText(state.selStin>=0?("ST IN"+(c.rack+1)):("CH"+(state.sel+1)),52,84);
+    ctx.fillText(state.selStin>=0?("FX"+(c.rack+1)+c.lr):("CH"+(state.sel+1)),52,84);
     micIcon(232,86,26);
     ctx.fillStyle="#c8d4ff"; ctx.font="700 10px Arial"; ctx.textAlign="left";
     ctx.fillText(state.selStin>=0?c.name:("ch "+(state.sel+1)),52,104);
@@ -961,7 +936,7 @@
     /* ---- INPUT banks (2 rows) ---- */
     ctx.fillStyle=ED.panel; ctx.fillRect(8,330,336,74); bevel(8,330,336,74,false);
     eTitle(16,342,"INPUT",336,9);
-    const IN_LABELS={in1:"1-16",in2:"17-32",in3:"33-48"};
+    const IN_LABELS={in1:"1-16",in2:"17-32",in3:"33-48",in4:"49-64",in5:"65-72"};
     const inRow=MODELS[state.model].inBanks.map(id=>[id,IN_LABELS[id]]).concat([["stin","ST IN"],["dca","DCA"]]);
     inRow.forEach(([id,lb],i)=>{ const bx=16+(i%4)*82, by=350+Math.floor(i/4)*26;
       eBtn(bx,by,78,22,lb,state.bank===id,()=>setBank(id),ED.btnLit,9); });
@@ -969,15 +944,15 @@
     /* ---- OUTPUT banks ---- */
     ctx.fillStyle=ED.panel; ctx.fillRect(8,410,336,48); bevel(8,410,336,48,false);
     eTitle(16,422,"OUTPUT",336,9);
-    [["mix1","MIX 1-16"],["mtx","MATRIX"],["st","ST/MONO"]].forEach(([id,lb],i)=>{
-      eBtn(16+i*111,430,107,22,lb,state.bank===id,()=>setBank(id),ED.btnLit,9); });
+    [["mix1","MIX 1-16"],["mix2","17-24"],["mtx","MTRX"],["st","ST"]].forEach(([id,lb],i)=>{
+      eBtn(16+i*82,430,78,22,lb,state.bank===id,()=>setBank(id),ED.btnLit,9); });
 
-    /* ---- CENTRALOGIC (the 8 central faders/encoders — unique to the M7CL) ---- */
+    /* ---- CUSTOM FADER ---- */
     ctx.fillStyle=ED.panel; ctx.fillRect(8,464,336,100); bevel(8,464,336,100,false);
-    eTitle(16,476,"CENTRALOGIC",336,9);
-    [["IN1","IN1"],["IN2","IN2"],["IN3","IN3"],["MIX","MIX"],["MTX","MTX"],["DCA","DCA"],["STIN","ST IN"],["ST","ST"]].forEach(([key,lb],i)=>{
+    eTitle(16,476,"CUSTOM FADER",336,9);
+    ["A1","B1","C1","C4","A2","B2","C2","C5","C3","C6"].forEach((lb,i)=>{
       const bx=16+(i%4)*82, by=484+Math.floor(i/4)*26;
-      eBtn(bx,by,78,22,lb,state.custom===key,()=>{state.custom=key;setBank(CUSTOMMAP[key]);},ED.btnLit,9); });
+      eBtn(bx,by,78,22,lb,state.custom===lb,()=>{state.custom=lb;setBank(CUSTOMMAP[lb]);},ED.btnLit,9); });
 
     /* ---- ST master fader + monitor ---- */
     ctx.fillStyle=ED.panel; ctx.fillRect(8,570,336,174); bevel(8,570,336,174,false);
@@ -1004,13 +979,13 @@
     eBtn(252,638,84,20,"METER",state.mode==='meter',()=>setMode('meter'),ED.btnLit,8);
     eBtn(160,662,86,20,"PATCH",state.mode==='patch',()=>setMode('patch'),ED.btnLit,8);
     eBtn(252,662,84,20,"OVERVIEW",state.mode==='overview',()=>setMode('overview'),ED.btnLit,8);
-    eNameBox(160,690,176,14,state.online===false?"OFFLINE EDIT":("SYNC OK — "+state.model));
+    eNameBox(160,690,176,14,state.online===false?"OFFLINE EDIT":("SYNC OK — "+state.model+" @ DANTE PRI"));
     eBtn(160,708,176,16,"SCENE LIST / LIBRARY",false,()=>setMode('scenes'),null,8);
     vend();
   }
   // the SELECT −/+ steps through the current bank (inputs or FX returns)
   function stepSel(d){
-    if(state.selStin>=0) selectStin((state.selStin+N_FX+d)%N_FX);
+    if(state.selStin>=0) selectStin((state.selStin+16+d)%16);
     else selectChannel((state.sel+MAXCH+d)%MAXCH);
     scrollLaneToSel();          // on a phone, bring the stepped-to strip into the lane
   }
@@ -1090,7 +1065,7 @@
       ctx.strokeStyle="#33cc44"; }
     ctx.lineWidth=1.6; ctx.stroke();
     const thr=isGate?ch.gateThr:ch.compThr, tx=X(clamp(thr,lo,0));
-    vreg({x:tx-8,y,w:16,h:s,onDrag:q=>{ const v=clamp(Math.round(lo+(q.x-x)/s*R),-54,0);
+    vreg({x:tx-8,y,w:16,h:s,onDrag:q=>{ const v=clamp(Math.round(lo+(q.x-x)/s*R),isGate?-72:-54,0);
       if(isGate)ch.gateThr=v; else ch.compThr=v; applyChanAudio(ch.i); paintSelected(); checkMissions(); }});
   }
   function dynBlock(x,y,w,h,ch,which){
@@ -1121,7 +1096,7 @@
       eVal(cxk-23,cyk+15,46,11,fmt(get()));
       ctx.fillStyle="#bdbdbd"; ctx.font="700 7px Arial"; ctx.textAlign="center"; ctx.fillText(label,cxk,cyk+34); };
     if(isGate){
-      mkK(kx[0],vy1,"THRESH",()=>ch.gateThr,v=>ch.gateThr=Math.round(v),-54,0,false,v=>Math.round(v)+"dB");
+      mkK(kx[0],vy1,"THRESH",()=>ch.gateThr,v=>ch.gateThr=Math.round(v),-72,0,false,v=>Math.round(v)+"dB");
       mkK(kx[1],vy1,"RANGE",()=>ch.gateRange,v=>ch.gateRange=Math.round(v),-90,0,false,v=>Math.round(v)+"dB");
       mkK(kx[2],vy1,"DECAY",()=>ch.gateDecay,v=>ch.gateDecay=v,5,42300,true,msFmt);
       mkK(kx[0],vy2,"ATTACK",()=>ch.gateAtk,v=>ch.gateAtk=Math.round(v),0,120,false,v=>Math.round(v)+"ms");
@@ -1138,7 +1113,7 @@
     const ky=y+126;
     eTitle(x+4,ky,"KEY IN",x+112,10);
     ctx.fillStyle="#9a9a9a"; ctx.font="700 8px Arial"; ctx.textAlign="left"; ctx.fillText("SOURCE",x+8,ky+16);
-    const srcs=["SELF PRE EQ","SELF POST EQ","MIX 15","MIX 16"];
+    const srcs=["SELF PRE EQ","SELF POST EQ","MIX 21","MIX 22"];
     if(isGate){
       eTitle(x+150,ky,"FILTER",x+240,9);
       eBtn(x+246,ky-6,32,11,"ON",ch.key1Hpf,()=>{ch.key1Hpf=!ch.key1Hpf;},null,7);
@@ -1168,10 +1143,7 @@
   function drawSelCh(){
     const ch=CH[state.sel];
     vbegin(910,646);
-    // The M7CL Selected Channel window is BLUE (#144070, sampled from SM_M7CL_V3.pdf p.29) —
-    // this is THE signature that tells it apart from the CL Editor's dark-charcoal channel.
-    // It was documented in the theme header but never applied (the panel was filled ED.bg).
-    ctx.fillStyle=ED.lcd; ctx.fillRect(0,0,910,646);
+    ctx.fillStyle=ED.bg; ctx.fillRect(0,0,910,646);
     /* ---------- LEFT: CHANNEL block (top, like the editor) + TO MIX / TO MATRIX ---------- */
     eTitle(14,16,"CHANNEL",236); eBtn(242,10,80,12,"LIBRARY",false,()=>toast("LIBRARY (didático)"),null,7);
     ctx.fillStyle="#333333"; ctx.fillRect(20,24,170,72); bevel(20,24,170,72,false);
@@ -1183,32 +1155,34 @@
     ctx.fillStyle="#fff"; ctx.font="800 14px Arial"; ctx.textAlign="left"; ctx.fillText("CH"+(ch.i+1),52,64);
     ctx.font="700 8px Arial"; ctx.textAlign="center"; ctx.fillText(ch.name.slice(0,15),105,84);
     ctx.fillStyle="#9a9a9a"; ctx.font="700 9px Arial"; ctx.fillText("PATCH",250,48);
-    eVal(212,56,86,14,"IN "+(ch.i+1));
-    eTitle(14,110,"TO MIX  (13-16 → EFFECT 1-4)",330);
+    eVal(212,56,86,14,"DANTE"+(ch.i+1));
+    eTitle(14,110,"TO MIX",330);
     for(let r=0;r<8;r++){ const y=120+r*56; busCell(14,y,r*2,false,false); busCell(92,y,r*2+1,true,false); }
+    for(let r=0;r<4;r++){ const y=120+r*52; busCell(178,y,16+r*2,false,false); busCell(256,y,16+r*2+1,true,false); }
     eTitle(178,336,"TO MATRIX",330,11);
     for(let r=0;r<4;r++){ const y=348+r*52; busCell(178,y,r*2,false,true); busCell(256,y,r*2+1,true,true); }
     ctx.strokeStyle="#262626"; ctx.beginPath(); ctx.moveTo(338.5,8); ctx.lineTo(338.5,640); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(612.5,8); ctx.lineTo(612.5,640); ctx.stroke();
-    /* ---------- CENTER: HA / HPF / TO ST / EQ (like the editor) ----------
-       The M7CL head amp is a single analog GAIN — no D.GAIN / gain-compensation
-       knob (those are CL/QL-only). ch.dgain stays in state (default) so the audio
-       chain is untouched; it just has no control on the surface. */
+    /* ---------- CENTER: HA / D.GAIN / HPF / TO ST / EQ (like the editor) ---------- */
     const cx0=346;
     const hy=24;
-    eTitle(cx0,hy,"HA",524,11); eTitle(cx0+186,hy,"HPF",560,11);
+    eTitle(cx0,hy,"HA",436,11); eTitle(cx0+106,hy,"D.GAIN",524,11); eTitle(cx0+186,hy,"HPF",560,11);
     eBtn(cx0+226,hy-6,32,12,"ON",ch.hpfOn,()=>{ch.hpfOn=!ch.hpfOn;applyChanAudio(ch.i);paintSelected();checkMissions();},null,7);
     eKnob(cx0+16,hy+28,13,knobT(ch.gain,-6,45),ED.kGray);
     eKnobReg(cx0+16,hy+28,13,()=>ch.gain,v=>{ch.gain=v;applyChanAudio(ch.i);paintSelected();checkMissions();},-6,45,false);
     eBtn(cx0+38,hy+14,32,12,"48V",ch.phantom,()=>{ch.phantom=!ch.phantom;paintSelected();},ED.red,7);
-    eBtn(cx0+38,hy+28,32,12,"ø",ch.phase,()=>{ch.phase=!ch.phase;applyChanAudio(ch.i);paintSelected();},ED.org,7);
+    eBtn(cx0+38,hy+28,32,12,"GC",false,()=>toast("Gain Compensation (Dante)"),null,7);
     eVal(cx0,hy+48,70,12,(ch.gain>0?"+":"")+Math.round(ch.gain)+"dB");
-    ctx.fillStyle="#bdbdbd"; ctx.font="700 8px Arial"; ctx.textAlign="center"; ctx.fillText("GAIN",cx0+35,hy+70);
+    ctx.fillStyle="#bdbdbd"; ctx.font="700 8px Arial"; ctx.textAlign="center"; ctx.fillText("A. GAIN",cx0+35,hy+70);
+    eKnob(cx0+140,hy+28,13,knobT(ch.dgain,-24,24),ED.kGray);
+    eKnobReg(cx0+140,hy+28,13,()=>ch.dgain,v=>{ch.dgain=v;applyChanAudio(ch.i);},-24,24,false);
+    eVal(cx0+106,hy+48,68,12,(ch.dgain>0?"+":"")+ch.dgain.toFixed(1)+"dB");
+    ctx.fillStyle="#bdbdbd"; ctx.fillText("D. GAIN",cx0+140,hy+70);
     eKnob(cx0+220,hy+28,13,knobT(ch.hpf,20,600,true),ED.kGrn);
     eKnobReg(cx0+220,hy+28,13,()=>ch.hpf,v=>{ch.hpf=Math.round(v);applyChanAudio(ch.i);paintSelected();checkMissions();},20,600,true);
     eVal(cx0+186,hy+48,68,12,fFmt(ch.hpf));
     ctx.fillStyle="#bdbdbd"; ctx.fillText("FREQ",cx0+220,hy+70);
-    // HPF is a fixed -12dB/oct slope on the M7CL (phase Ø lives by the HA, above).
+    eBtn(cx0+128,hy+76,26,14,"ø",ch.phase,()=>{ch.phase=!ch.phase;applyChanAudio(ch.i);paintSelected();},ED.org);
     eNameBox(cx0+178,hy+76,80,13,"-12dB/oct");
     /* TO STEREO / MONO */
     const sy0=128;
@@ -1225,7 +1199,7 @@
     /* EQ */
     const ey=238;
     eTitle(cx0,ey,"EQ",372,11);
-    eVal(cx0+32,ey-7,90,14,ch.eqType,null,()=>{ ch.eqType=cycle(["TYPE I","TYPE II"],ch.eqType); applyChanAudio(ch.i); });
+    eVal(cx0+32,ey-7,90,14,ch.eqType,null,()=>{ ch.eqType=cycle(["PRECISE","AGGRESSIVE","SMOOTH","LEGACY"],ch.eqType); applyChanAudio(ch.i); });
     eBtn(cx0+132,ey-7,62,13,"LIBRARY",false,()=>toast("LIBRARY (didático)"),null,7);
     eBtn(cx0+200,ey-7,40,13,"ON",ch.eqOn,()=>{ch.eqOn=!ch.eqOn;applyChanAudio(ch.i);});
     eEqGraphEd(cx0,ey+12,260,128,ch);
@@ -1288,12 +1262,17 @@
     eVal(rh0+2,by+52,62,11,ch.delayMs.toFixed(2)+"ms");
     eBtn(rh0,by+72,34,13,"DCA",state.scTab==='dca',()=>{state.scTab='dca';},ED.yel,7);
     eBtn(rh0+36,by+72,34,13,"MUTE",state.scTab==='mute',()=>{state.scTab='mute';},ED.yel,7);
-    const isDca=state.scTab==='dca';   // M7CL: 8 DCA · 8 mute — one column of 8
-    for(let k=0;k<8;k++){ const cxk=rh0, cyk=by+90+k*17;
+    const isDca=state.scTab==='dca', nCells=isDca?16:8;
+    for(let k=0;k<16;k++){ const colk=Math.floor(k/8), rowk=k%8, cxk=rh0+colk*38, cyk=by+90+rowk*17;
+      if(k>=nCells){ ctx.fillStyle="#2a2a2a"; ctx.fillRect(cxk,cyk,34,15); continue; }
       const litc=isDca?ch.dca[k]:ch.mute[k];
-      eBtn(cxk,cyk,72,15,(isDca?"DCA ":"MUTE ")+(k+1),litc,()=>{ if(isDca){ch.dca[k]=!ch.dca[k];} else {ch.mute[k]=!ch.mute[k];} applyChanAudio(ch.i); paintBay(); },ED.yel,7);
+      eBtn(cxk,cyk,34,15,""+(k+1),litc,()=>{ if(isDca){ch.dca[k]=!ch.dca[k];} else {ch.mute[k]=!ch.mute[k];} applyChanAudio(ch.i); paintBay(); },ED.yel,7);
     }
     const fx0=rx0+230;
+    // CUE = SOLO-in-place. It was the only channel function with no reachable button anywhere
+    // (only CLEAR CUE existed), so solo could never be engaged. Faithful to the CL Editor,
+    // where each Selected-Channel strip carries a CUE key above ON.
+    eBtn(fx0,by+56,52,13,"CUE",ch.cue,()=>{ch.cue=!ch.cue;applyCue();paintBay();},ED.grn,7);
     eBtn(fx0,by+72,52,14,"ON",ch.on,()=>{ch.on=!ch.on;applyChanAudio(ch.i);paintBay();checkMissions();},ED.btnLit);
     const fy1=by+96, fy2=622, ftx=fx0+20;
     ctx.fillStyle="#141414"; ctx.fillRect(ftx-2,fy1,10,fy2-fy1); bevel(ftx-2,fy1,10,fy2-fy1,true);
@@ -1310,9 +1289,8 @@
     vend();
   }
 
-  /* ================= PATCH EDITOR — M7CL Editor "Patch Editor" (INPUT PATCH) =========
-     Analog/EtherSound input ports (IN) down the left, console channels across the top.
-     The M7CL has no Dante — these are its rear INPUT jacks. */
+  /* ================= PATCH EDITOR — mirrors CL Editor "Patch Editor" (INPUT PATCH) =========
+     DANTE input ports down the left, console channels across the top. */
   function drawPatch(){
     vbegin(910,646);
     ctx.fillStyle=ED.bg; ctx.fillRect(0,0,910,646);
@@ -1324,7 +1302,7 @@
       if(ti>0)vreg({x:tx,y:4,w:175,h:20,onDown:()=>toast(tl+": não incluído no simulador")});
     });
     ctx.fillStyle="#2e2e2e"; ctx.fillRect(8,28,894,610); bevel(8,28,894,610,false);
-    eTitle(16,44,"INPUT PATCH — IN 1-24 ▸ CH 1-24",500,11);
+    eTitle(16,44,"INPUT PATCH — DANTE 1-24 ▸ CH 1-24",500,11);
     const x0=96, y0=96, cw=32, rh=20;
     // channel headers (vertical names, selected one highlighted)
     for(let c=0;c<24;c++){ const x=x0+c*cw;
@@ -1333,18 +1311,18 @@
       ctx.fillText(CH[c].name.slice(0,9),0,0); ctx.restore();
       eBtn(x+2,y0-4,cw-4,10,""+(c+1),c===state.sel,()=>selectChannel(c),ED.yel,6);
     }
-    // rows: input ports; the diagonal is the 1:1 patch this sim ships with
+    // rows: DANTE ports; the diagonal is the 1:1 patch this sim ships with
     for(let p=0;p<24;p++){ const y=y0+10+p*rh;
-      eNameBox(16,y+2,74,15,"IN "+(p+1));
+      eNameBox(16,y+2,74,15,"DANTE "+(p+1));
       for(let c=0;c<24;c++){ const x=x0+c*cw, on=(p===c);
         ctx.fillStyle=on?ED.btnLit:"#3a3a3a"; ctx.fillRect(x+4,y+3,cw-8,rh-8); bevel(x+4,y+3,cw-8,rh-8,on);
         if(on){ ctx.fillStyle="#101010"; ctx.font="700 9px Arial"; ctx.textAlign="center"; ctx.fillText("●",x+cw/2,y+13); }
         vreg({x:x+4,y:y+3,w:cw-8,h:rh-8,onDown:()=>{ selectChannel(c);
-          toast(on?("IN "+(p+1)+" ▸ <b>"+CH[c].name+"</b>"):"Re-patch: não incluído (patch 1:1 fixo)"); }});
+          toast(on?("DANTE "+(p+1)+" ▸ <b>"+CH[c].name+"</b>"):"Re-patch: não incluído (patch 1:1 fixo)"); }});
       }
     }
     ctx.fillStyle="#9a9a9a"; ctx.font="700 9px Arial"; ctx.textAlign="left";
-    ctx.fillText("Patch 1:1 (IN n ▸ CH n) — as bases do SMU entram por estas portas.",16,632);
+    ctx.fillText("Patch 1:1 (DANTE n ▸ CH n) — as bases do SMU entram por estas portas.",16,632);
     vend();
   }
 
@@ -1383,12 +1361,12 @@
     // the blue name footer is a second way into the channel's page (same as SEL)
     if(o.onSel) vreg({x,y:980,w:54,h:14,onDown:o.onSel});
   }
-  // orange MIX 1-16 send column — click opens Sends On Fader, drag sets the send
+  // orange MIX 1-24 send column — click opens Sends On Fader, drag sets the send
   function stripMix(x,c,apply){
     ctx.fillStyle="#d08820"; ctx.fillRect(x,274,54,10); bevel(x,274,54,10,false);
     ctx.fillStyle="#241a08"; ctx.font="700 7px Arial"; ctx.textAlign="center"; ctx.fillText("MIX",x+27,281);
     vreg({x,y:274,w:54,h:10,onDown:()=>setMode('sends')});
-    for(let m=0;m<N_MIX;m++){ const by=288+m*14;
+    for(let m=0;m<24;m++){ const by=288+m*14;
       ctx.fillStyle="#c87c1c"; ctx.font="700 8px Arial"; ctx.textAlign="right"; ctx.fillText(""+(m+1),x+9,by+9);
       ctx.fillStyle="#141414"; ctx.fillRect(x+11,by,41,11);
       const t=clamp((c.sends[m]-FMIN)/(FMAX-FMIN),0,1);
@@ -1397,24 +1375,24 @@
         c.sends[m]=Math.round(FMIN+tt*(FMAX-FMIN)); if(c.sends[m]>FMIN)c.sendOn[m]=true; apply(); checkMissions(); }});
     }
   }
-  // EQ thumbnail + DYN 1 / DYN 2 — each opens its page and toggles for real.
-  // The M7CL overview strip labels these "DYN 1" / "DYN 2" (see CH 1-16 window,
-  // SM_M7CL_V3.pdf p.16) and has NO DELAY row in the strip (delay lives on the
-  // Selected Channel page) — the "DYNA 1/DYNA 2/DELAY" stack was the CL's.
+  // EQ thumbnail + DYNA1/DYNA2 + DELAY — each opens its page and toggles for real
   function stripProc(x,c,apply,openSel){
     eBtn(x,168,54,11,"EQ",c.eqOn,()=>{c.eqOn=!c.eqOn;apply();},"#33cc44",7);
-    ctx.fillStyle="#000"; ctx.fillRect(x,180,54,40); ctx.strokeStyle="#1e1e1e"; ctx.strokeRect(x+.5,180.5,53,39);
+    ctx.fillStyle="#000"; ctx.fillRect(x,180,54,34); ctx.strokeStyle="#1e1e1e"; ctx.strokeRect(x+.5,180.5,53,33);
     ctx.strokeStyle="#33cc44"; ctx.lineWidth=1; ctx.beginPath();
-    for(let px=0;px<=50;px+=2){ const f=fInv(px/50), g=c.eqOn?eqMag(c,f):0, yy=200-clamp(g,-15,15)/15*16;
+    for(let px=0;px<=50;px+=2){ const f=fInv(px/50), g=c.eqOn?eqMag(c,f):0, yy=197-clamp(g,-15,15)/15*14;
       px===0?ctx.moveTo(x+2,yy):ctx.lineTo(x+2+px,yy); }
     ctx.stroke();
-    vreg({x,y:180,w:54,h:40,onDown:()=>{openSel();setMode('eq');}});
-    eBtn(x,226,54,11,"DYN 1",c.gateOn,()=>{openSel();setMode('gate');},ED.cream,6,"#101010");
-    ctx.fillStyle=(c.gateOn&&(c._gr||0)>0.5)?"#e03030":"#242424"; ctx.fillRect(x+2,238,50,3);
-    eBtn(x,247,54,11,"DYN 2",c.compOn,()=>{openSel();setMode('comp');},ED.cream,6,"#101010");
-    ctx.fillStyle="#242424"; ctx.fillRect(x+2,259,50,3);
+    vreg({x,y:180,w:54,h:34,onDown:()=>{openSel();setMode('eq');}});
+    eBtn(x,218,54,10,"DYNA 1",c.gateOn,()=>{openSel();setMode('gate');},ED.yel,6);
+    ctx.fillStyle=(c.gateOn&&(c._gr||0)>0.5)?"#e03030":"#242424"; ctx.fillRect(x+2,229,50,3);
+    eBtn(x,234,54,10,"DYNA 2",c.compOn,()=>{openSel();setMode('comp');},ED.yel,6);
+    ctx.fillStyle="#242424"; ctx.fillRect(x+2,245,50,3);
     const cn=c.isStin?stinN[c.i]:aNodes[c.i];
-    if(c.compOn&&ac&&cn){ const gr=-cn.comp.reduction; ctx.fillStyle="#e03030"; ctx.fillRect(x+2,259,clamp(gr/20,0,1)*50,3); }
+    if(c.compOn&&ac&&cn){ const gr=-cn.comp.reduction; ctx.fillStyle="#e03030"; ctx.fillRect(x+2,245,clamp(gr/20,0,1)*50,3); }
+    // DELAY toggles the delay in place (a toggle must NOT yank you to another page)
+    eBtn(x,250,54,10,"DELAY",c.delayOn,()=>{c.delayOn=!c.delayOn;apply();openSel();},ED.yel,6);
+    eDragVal(x,261,54,10,c.delayMs.toFixed(2)+"ms",()=>c.delayMs,v=>{c.delayMs=v;apply();},0,1000,false);
   }
 
   /* ---- INPUT CHANNEL strip ---- */
@@ -1425,31 +1403,30 @@
     // the edit page — that was the owner's "qualquer lugar que clica entra na pasta de editar".
     // Registered first, so every specific control below (registered later) wins the hit test.
     vreg({x,y:STOP,w:SW,h:SBOT-STOP,onDown:()=>{selectChannel(ci);}});
-    // Input port label -> Patch Editor. The M7CL is EtherSound/analog — its overview
-    // strip header reads "IN n" (see CH 1-16 window, SM_M7CL_V3.pdf p.16). NOT "DANTE"
-    // (Dante belongs to the CL, which is why this used to read like a CL5).
-    eNameBox(x,24,54,12,"IN "+(ci+1));
+    // DANTE patch label -> Patch Editor
+    eNameBox(x,24,54,12,"DANTE"+(ci+1));
     vreg({x,y:24,w:54,h:12,onDown:()=>{selectChannel(ci);setMode('patch');}});
     // HA: analog gain + 48V + Ø — each toggles/adjusts for real and just SELECTS the channel
-    // (a toggle/readout must not navigate away — the SEL button / name are the way into the page).
-    // The M7CL has ONE head-amp knob per input (no digital-gain / gain-compensation knob —
-    // those are CL/QL-only; keeping ch.dgain in state at its default so audio math is intact).
+    // (a toggle/readout must not navigate away — the SEL button / name are the way into the page)
     const ha=()=>{ selectChannel(ci); };
-    eKnob(x+13,58,10,knobT(ch.gain,-6,45),"#484848");
-    eKnobReg(x+13,58,10,()=>ch.gain,v=>{ch.gain=v;apply();checkMissions();},-6,45,false);
-    eBtn(x+27,46,26,10,"48V",ch.phantom,()=>{ch.phantom=!ch.phantom;ha();},ED.red,6);
-    eBtn(x+27,58,26,10,"ø",ch.phase,()=>{ch.phase=!ch.phase;apply();ha();},ED.org,6);
-    eVal(x,72,54,11,(ch.gain>0?"+":"")+Math.round(ch.gain)+"dB",null,ha);
-    // HPF toggles the filter for real and just SELECTS the channel (no page jump — same pattern
-    // as 48V / ø). The freq readout stays a pure drag control over its whole width — it used to
-    // lose its right 10px to a navigation sliver that swallowed the pointerdown, so the value
-    // could not be dragged from there.
-    eBtn(x,94,54,11,"HPF",ch.hpfOn,()=>{ch.hpfOn=!ch.hpfOn;apply();checkMissions();selectChannel(ci);},ED.cream,7,"#101010");
-    eDragVal(x,106,54,11,fFmt(ch.hpf),()=>ch.hpf,v=>{ch.hpf=Math.round(v);apply();},20,600,true);
-    // INS / D.OUT toggle in place and just SELECT the channel (no page jump). The M7CL abbreviates
-    // INSERT to "INS" and lights INS white/orange, D.OUT blue/white (SM_M7CL_V3.pdf p.16) — not the CL's cream.
-    eBtn(x,124,54,10,"INS",ch.insertOn,()=>{ch.insertOn=!ch.insertOn;selectChannel(ci);},ED.btnLit,6,ED.onTx);
-    eBtn(x,135,54,10,"D.OUT",ch.directOn,()=>{ch.directOn=!ch.directOn;selectChannel(ci);},"#2038d0",6,"#ffffff");
+    eKnob(x+13,52,10,knobT(ch.gain,-6,45),"#484848");
+    eKnobReg(x+13,52,10,()=>ch.gain,v=>{ch.gain=v;apply();checkMissions();},-6,45,false);
+    eBtn(x+27,40,26,10,"48V",ch.phantom,()=>{ch.phantom=!ch.phantom;ha();},ED.red,6);
+    eBtn(x+27,52,26,10,"ø",ch.phase,()=>{ch.phase=!ch.phase;apply();ha();},ED.org,6);
+    eVal(x,66,54,11,(ch.gain>0?"+":"")+Math.round(ch.gain)+"dB",null,ha);
+    // D.GAIN
+    eKnob(x+13,92,9,knobT(ch.dgain,-24,24),"#484848");
+    eKnobReg(x+13,92,9,()=>ch.dgain,v=>{ch.dgain=v;apply();},-24,24,false);
+    eVal(x,104,54,11,(ch.dgain>0?"+":"")+ch.dgain.toFixed(1)+"dB",null,ha);
+    // HPF -> HPF/EQ page. The button toggles the filter for real AND opens the page it lives
+    // on (same pattern as 48V / ø / DELAY). The freq readout stays a pure drag control over
+    // its whole width — it used to lose its right 10px to a navigation sliver that swallowed
+    // the pointerdown, so the value could not be dragged from there.
+    eBtn(x,118,54,11,"HPF",ch.hpfOn,()=>{ch.hpfOn=!ch.hpfOn;apply();checkMissions();selectChannel(ci);},ED.yel,7);
+    eDragVal(x,130,54,11,fFmt(ch.hpf),()=>ch.hpf,v=>{ch.hpf=Math.round(v);apply();},20,600,true);
+    // INSERT / D.OUT — toggle in place and select the channel (no page jump)
+    eBtn(x,144,54,10,"INSERT",ch.insertOn,()=>{ch.insertOn=!ch.insertOn;selectChannel(ci);},ED.yel,6);
+    eBtn(x,155,54,10,"D.OUT",ch.directOn,()=>{ch.directOn=!ch.directOn;selectChannel(ci);},ED.yel,6);
     stripProc(x,ch,apply,()=>selectChannel(ci));
     stripMix(x,ch,apply);
     stripTail(x,ch,{ sel:ci===state.sel&&state.selStin<0, on:ch.on, name:ch.name, apply,
@@ -1470,8 +1447,8 @@
     eKnob(x+13,66,9,knobT(c.dgain,-24,24),"#484848");
     eKnobReg(x+13,66,9,()=>c.dgain,v=>{c.dgain=v;apply();},-24,24,false);
     eVal(x,78,54,11,(c.dgain>0?"+":"")+c.dgain.toFixed(1)+"dB");
-    // HPF toggles the filter for real and just SELECTS the ST IN (no page jump)
-    eBtn(x,118,54,11,"HPF",c.hpfOn,()=>{c.hpfOn=!c.hpfOn;apply();selectStin(si);},ED.cream,7,"#101010");
+    // HPF -> HPF/EQ page (the ST IN strip had no route to it at all)
+    eBtn(x,118,54,11,"HPF",c.hpfOn,()=>{c.hpfOn=!c.hpfOn;apply();selectStin(si);},ED.yel,7);
     eDragVal(x,130,54,11,fFmt(c.hpf),()=>c.hpf,v=>{c.hpf=Math.round(v);apply();},20,600,true);
     // LR-MONO SELECT / STEREO (the ST IN pair mode)
     eNameBox(x,144,54,10,"LR-MONO");
@@ -1524,9 +1501,9 @@
       else if(isSt){state.master=v;applyMasterAudio();} else {state.mono=v;applyMasterAudio();} };
     const getOn=()=> isMix?state.mixOn[bIdx] : isMtx?state.mtxOn[bIdx] : true;
     const setOn=()=>{ if(isMix)state.mixOn[bIdx]=!state.mixOn[bIdx]; else if(isMtx)state.mtxOn[bIdx]=!state.mtxOn[bIdx]; };
-    // MIX 13-16 feed the internal EFFECT 1-4 racks: show + open the rack it feeds
-    if(isMix&&bIdx>=12){ eBtn(x,180,54,12,"FX "+(bIdx-11),false,()=>{state.rackKind='fx';state.rackSel=bIdx-12;setMode('fx');},ED.yel,6);
-      eNameBox(x,194,54,11,state.rack[bIdx-12].name.slice(0,9)); }
+    // a MIX 17-24 bus is an Fx bus: show + open the rack that it feeds
+    if(isMix&&bIdx>=16){ eBtn(x,180,54,12,"RACK "+(bIdx-15),false,()=>{state.rackKind='fx';state.rackSel=bIdx-16;setMode('fx');},ED.yel,6);
+      eNameBox(x,194,54,11,state.rack[bIdx-16].name.slice(0,9)); }
     if(isMix||isMtx){ eBtn(x,212,54,12,"SEND",state.sof>=0&&state.sofType===(isMix?'mix':'mtx')&&state.sofBus===bIdx,
       ()=>{engageSof(isMix?'mix':'mtx',bIdx);setMode('sends');},ED.btnLit,6); }
     stripTail(x,{pan:0,stAssign:true,monoAsn:false},{ sel:false, on:getOn(), name:nm, apply:()=>{}, pan:false,
@@ -1567,10 +1544,9 @@
   /* ================= EQ (full page) — enlarged replica of the editor EQ section ================= */
   function drawEQ(){
     const ch=CH[state.sel];
-    // Channel-editing surface — BLUE on the M7CL, like the Selected Channel it belongs to.
-    vbegin(910,646); ctx.fillStyle=ED.lcd; ctx.fillRect(0,0,910,646);
+    vbegin(910,646); ctx.fillStyle=ED.bg; ctx.fillRect(0,0,910,646);
     eTitle(20,22,"EQ",96,16);
-    eVal(104,12,150,20,ch.eqType,null,()=>{ch.eqType=cycle(["TYPE I","TYPE II"],ch.eqType);applyChanAudio(ch.i);});
+    eVal(104,12,150,20,ch.eqType,null,()=>{ch.eqType=cycle(["PRECISE","AGGRESSIVE","SMOOTH","LEGACY"],ch.eqType);applyChanAudio(ch.i);});
     eBtn(266,14,84,17,"LIBRARY",false,()=>toast("LIBRARY (didático)"),null,9);
     eBtn(358,14,54,17,"ON",ch.eqOn,()=>{ch.eqOn=!ch.eqOn;applyChanAudio(ch.i);});
     ctx.fillStyle="#bdbdbd"; ctx.font="700 12px Arial"; ctx.textAlign="right"; ctx.fillText("CH"+(ch.i+1)+" — "+ch.name,890,26);
@@ -1616,8 +1592,7 @@
   }
   function drawGate(){
     const ch=CH[state.sel];
-    // Channel-editing surface — BLUE on the M7CL, like the Selected Channel it belongs to.
-    vbegin(910,646); ctx.fillStyle=ED.lcd; ctx.fillRect(0,0,910,646);
+    vbegin(910,646); ctx.fillStyle=ED.bg; ctx.fillRect(0,0,910,646);
     eTitle(20,22,"DYNAMICS 1",134,15);
     ctx.fillStyle="#9a9a9a"; ctx.font="700 11px Arial"; ctx.textAlign="left"; ctx.fillText("TYPE",142,26);
     eVal(178,12,168,20,"GATE");
@@ -1632,7 +1607,7 @@
       eKnobReg(cxk,cyk,22,get,v=>{set(v);applyChanAudio(ch.i);paintSelected();checkMissions();},min,max,log);
       eVal(cxk-45,cyk+28,90,17,fmt(get()));
       ctx.fillStyle="#bdbdbd"; ctx.font="700 10px Arial"; ctx.textAlign="center"; ctx.fillText(label,cxk,cyk+62); };
-    mkBig(kx2[0],110,"THRESH",()=>ch.gateThr,v=>ch.gateThr=Math.round(v),-54,0,false,v=>Math.round(v)+"dB");
+    mkBig(kx2[0],110,"THRESH",()=>ch.gateThr,v=>ch.gateThr=Math.round(v),-72,0,false,v=>Math.round(v)+"dB");
     mkBig(kx2[1],110,"RANGE",()=>ch.gateRange,v=>ch.gateRange=Math.round(v),-90,0,false,v=>Math.round(v)+"dB");
     mkBig(kx2[2],110,"DECAY",()=>ch.gateDecay,v=>ch.gateDecay=v,5,42300,true,msFmt);
     mkBig(kx2[0],226,"ATTACK",()=>ch.gateAtk,v=>ch.gateAtk=Math.round(v),0,120,false,v=>Math.round(v)+"ms");
@@ -1640,7 +1615,7 @@
     const ky=430;
     eTitle(30,ky,"KEY IN",330,13);
     ctx.fillStyle="#9a9a9a"; ctx.font="700 10px Arial"; ctx.textAlign="left"; ctx.fillText("SOURCE",34,ky+24);
-    eVal(30,ky+32,200,18,ch.key1Src,null,()=>{ch.key1Src=cycle(["SELF PRE EQ","SELF POST EQ","MIX 15","MIX 16"],ch.key1Src);});
+    eVal(30,ky+32,200,18,ch.key1Src,null,()=>{ch.key1Src=cycle(["SELF PRE EQ","SELF POST EQ","MIX 21","MIX 22"],ch.key1Src);});
     eTitle(560,ky,"FILTER",806,12);
     eBtn(820,ky-8,60,16,"ON",ch.key1Hpf,()=>{ch.key1Hpf=!ch.key1Hpf;});
     eKnob(640,ky+38,16,knobT(ch.key1F,20,8000,true),ED.kGray);
@@ -1653,8 +1628,7 @@
   /* ================= DYN2 COMP (full) — enlarged replica of DYNAMICS 2 ================= */
   function drawComp(){
     const ch=CH[state.sel];
-    // Channel-editing surface — BLUE on the M7CL, like the Selected Channel it belongs to.
-    vbegin(910,646); ctx.fillStyle=ED.lcd; ctx.fillRect(0,0,910,646);
+    vbegin(910,646); ctx.fillStyle=ED.bg; ctx.fillRect(0,0,910,646);
     eTitle(20,22,"DYNAMICS 2",134,15);
     ctx.fillStyle="#9a9a9a"; ctx.font="700 11px Arial"; ctx.textAlign="left"; ctx.fillText("TYPE",142,26);
     eVal(178,12,168,20,"COMPRESSOR");
@@ -1678,7 +1652,7 @@
     const ky=430;
     eTitle(30,ky,"KEY IN",330,13);
     ctx.fillStyle="#9a9a9a"; ctx.font="700 10px Arial"; ctx.textAlign="left"; ctx.fillText("SOURCE",34,ky+24);
-    eVal(30,ky+32,200,18,ch.key2Src,null,()=>{ch.key2Src=cycle(["SELF PRE EQ","SELF POST EQ","MIX 15","MIX 16"],ch.key2Src);});
+    eVal(30,ky+32,200,18,ch.key2Src,null,()=>{ch.key2Src=cycle(["SELF PRE EQ","SELF POST EQ","MIX 21","MIX 22"],ch.key2Src);});
     vend();
   }
   /* ================= SENDS — mirrors CL Editor "Sends On Fader" window + TO MIX sends ================= */
@@ -1691,6 +1665,8 @@
     eTitle(56,42,"MIX",140,9);
     for(let i=0;i<16;i++){ const bx=16+(i%2)*70, by2=50+Math.floor(i/2)*17;
       eBtn(bx,by2,66,15,MIX_SHORT[i],state.sof>=0&&state.sofType==='mix'&&state.sofBus===i,()=>engageSof('mix',i),ED.btnLit,7); }
+    for(let i=16;i<24;i++){ const bx=16+(i%2)*70, by2=50+Math.floor(i/2)*17;
+      eBtn(bx,by2,66,15,MIX_SHORT[i],state.sof>=0&&state.sofType==='mix'&&state.sofBus===i,()=>engageSof('mix',i),ED.btnLit,7); }
     eTitle(48,266,"MATRIX",140,9);
     for(let i=0;i<8;i++){ const bx=16+(i%2)*70, by2=274+Math.floor(i/2)*17;
       eBtn(bx,by2,66,15,"MT "+(i+1),state.sof>=0&&state.sofType==='mtx'&&state.sofBus===i,()=>engageSof('mtx',i),ED.btnLit,7); }
@@ -1698,10 +1674,11 @@
     ctx.fillText("Selecione o bus:",16,360); ctx.fillText("os faders do console",16,371); ctx.fillText("viram SENDS (SOF).",16,382);
     /* center: TO MIX / TO MATRIX pairs of the selected channel (like Selected Channel) */
     ctx.fillStyle="#bdbdbd"; ctx.font="700 11px Arial"; ctx.fillText("CH"+(ch.i+1)+" — "+ch.name,176,20);
-    eTitle(176,34,"TO MIX  (13-16 → EFFECT 1-4)",492,11);
+    eTitle(176,34,"TO MIX",492,11);
     for(let r=0;r<8;r++){ const y=44+r*56; busCell(176,y,r*2,false,false); busCell(254,y,r*2+1,true,false); }
-    eTitle(340,44,"TO MATRIX",656,11);
-    for(let r=0;r<4;r++){ const y=56+r*52; busCell(340,y,r*2,false,true); busCell(418,y,r*2+1,true,true); }
+    for(let r=0;r<4;r++){ const y=44+r*52; busCell(340,y,16+r*2,false,false); busCell(418,y,16+r*2+1,true,false); }
+    eTitle(340,260,"TO MATRIX",492,11);
+    for(let r=0;r<4;r++){ const y=272+r*52; busCell(340,y,r*2,false,true); busCell(418,y,r*2+1,true,true); }
     /* right: fader view of the engaged bus (o que os faders do console mostram) */
     ctx.strokeStyle="#262626"; ctx.beginPath(); ctx.moveTo(506.5,8); ctx.lineTo(506.5,638); ctx.stroke();
     if(state.sof>=0){
@@ -1740,7 +1717,7 @@
     ctx.fillStyle="#2e2e2e"; ctx.fillRect(8,28,894,610); bevel(8,28,894,610,false);
     const hx0=126, cw2=26;
     // channel bank paging (banks of 24) — the assign matrix reaches every channel up to MAXCH,
-    // like the console's own bank keys. M7CL=48→2 banks.
+    // like the console's own bank keys. CL5=72→3 banks, LS9=64→3, M7CL=48→2.
     const nBanks=Math.ceil(MAXCH/24);
     if(state.grpBank>=nBanks) state.grpBank=0;
     const bankBase=state.grpBank*24, bankEnd=Math.min(bankBase+24,MAXCH);
@@ -1758,8 +1735,8 @@
       vreg({x,y:52,w:cw2,h:60,onDown:()=>selectChannel(c)});
     }
     if(state.grpTab===0){
-      /* ------ DCA GROUP ASSIGN: 8 rows × 24 ch ------ */
-      for(let g=0;g<N_DCA;g++){ const y=118+g*46;
+      /* ------ DCA GROUP ASSIGN: 16 rows × 24 ch ------ */
+      for(let g=0;g<16;g++){ const y=118+g*31;
         eNameBox(14,y+6,50,16,"DCA"+(g+1));
         eBtn(68,y+6,52,16,"PRE&POST",state.dcaPP[g],()=>{state.dcaPP[g]=!state.dcaPP[g];},null,6);
         for(let c=bankBase;c<bankEnd;c++){ const x=hx0+(c-bankBase)*cw2, onC=CH[c].dca[g];
@@ -1771,7 +1748,7 @@
         eVal(hx0+24*cw2+66,y+6,58,16,faderTxt(state.dcaGain[g])+"dB");
       }
       ctx.fillStyle="#8a8a8a"; ctx.font="700 8px Arial"; ctx.textAlign="left";
-      ctx.fillText("Masters dos DCA: banco DCA 1-8 na seção CENTRALOGIC (8 faders centrais).",16,632);
+      ctx.fillText("Masters dos DCA: bancos DCA 1-8 / 9-16 no Centralogic (faders centrais).",16,632);
     } else {
       /* ------ MUTE GROUP ASSIGN: 8 rows × 24 ch + MUTE SAFE ------ */
       for(let g=0;g<8;g++){ const y=122+g*46;
@@ -1854,12 +1831,12 @@
     /* ---------- left: RACK No. / patch / balance ---------- */
     ctx.fillStyle="#2e2e2e"; ctx.fillRect(8,8,288,630); bevel(8,8,288,630,false);
     eTitle(16,22,"RACK No.",286,11);
-    eTitle(56,38,"GEQ 1-8",240,9);
-    for(let i=0;i<8;i++){ const bx=14+i*29, by2=48;
+    eTitle(60,38,"GEQ",240,9);
+    for(let i=0;i<16;i++){ const bx=14+(i%8)*29, by2=48+Math.floor(i/8)*15;
       eBtn(bx,by2,27,13,""+(i+1),isGeq&&state.geqSel===i,()=>{state.rackKind='geq';state.geqSel=i;},ED.btnLit,7); }
     eBtn(248,48,42,28,"BYPASS",isGeq?!G.on:!R.on,()=>{ if(isGeq){G.on=!G.on;applyGeq();} else {R.on=!R.on;applyRack(r);} },ED.yel,7);
-    eTitle(52,86,"EFFECT 1-4",248,9);
-    for(let i=0;i<N_FX;i++){ const bx=14+i*29;
+    eTitle(56,86,"EFFECT",248,9);
+    for(let i=0;i<8;i++){ const bx=14+i*29;
       eBtn(bx,96,27,13,""+(i+1),!isGeq&&state.rackSel===i,()=>{state.rackKind='fx';state.rackSel=i;},ED.btnLit,7); }
     eTitle(16,126,"EFFECT NAME",286,10);
     const lg2=ctx.createLinearGradient(0,136,0,158); lg2.addColorStop(0,"#1a2ac0"); lg2.addColorStop(1,"#101a80");
@@ -1873,8 +1850,8 @@
     if(isGeq){ const pt=state.geqSel===0?"ST MASTER (INSERT)":"NONE";
       eNameBox(32,228,150,12,pt); eNameBox(32,244,150,12,pt);
     } else {
-      eNameBox(32,228,150,12,"MIX "+(13+r));
-      eNameBox(32,244,150,12,"MIX "+(13+r));
+      eNameBox(32,228,150,12,"MIX "+(17+r)+" / Fx "+(r+1));
+      eNameBox(32,244,150,12,"MIX "+(17+r)+" / Fx "+(r+1));
     }
     eTitle(16,270,"OUTPUT PATCH",286,9);
     ctx.fillStyle="#9a9a9a"; ctx.fillText("L",20,288); ctx.fillText("R",20,304);
@@ -1985,7 +1962,7 @@
     });
     ctx.fillStyle="#2e2e2e"; ctx.fillRect(8,30,894,608); bevel(8,30,894,608,false);
     eVal(20,44,310,16,"NO FILE");
-    ["OPEN","CLOSE","SAVE","SAVE AS..."].forEach((bl,bi)=>eBtn(340+bi*66,44,62,16,bl,false,()=>toast("Arquivo de cenas: recurso do M7CL Editor (PC)"),null,7));
+    ["OPEN","CLOSE","SAVE","SAVE AS..."].forEach((bl,bi)=>eBtn(340+bi*66,44,62,16,bl,false,()=>toast("Arquivo de cenas: recurso do CL Editor (PC)"),null,7));
     ctx.fillStyle="#bdbdbd"; ctx.font="700 10px Arial"; ctx.textAlign="center";
     ctx.fillText("FILE",226,82); ctx.fillText("INTERNAL DATA",690,82);
     const drawList=(x,internal)=>{
@@ -2026,9 +2003,9 @@
   /* ================= METER — mirrors CL Editor "Meter" window ================= */
   let _mtPk={};
   function meterPt(i){ const c=CH[i]; if(!playing||!c.hasAudio)return -90;
-    const pt=state.mtPoint||"PRE HPF";
-    if(pt==="PRE HPF")return chPreDb(i)-c.att;
-    if(pt==="PRE FADER")return chPreDb(i);
+    const pt=state.mtPoint||"PRE D.GAIN";
+    if(pt==="PRE D.GAIN")return chPreDb(i)-c.dgain-c.att;
+    if(pt==="POST EQ")return chPreDb(i);
     return chLevelDb(i); }
   function mBar(x,y,h,db,key){
     ctx.fillStyle="#000"; ctx.fillRect(x,y,14,h);
@@ -2055,7 +2032,7 @@
     ctx.fillStyle="#2e2e2e"; ctx.fillRect(8,30,894,608); bevel(8,30,894,608,false);
     eTitle(20,52,"LEVEL METER",120,10);
     ctx.fillStyle="#9a9a9a"; ctx.font="700 9px Arial"; ctx.textAlign="left"; ctx.fillText("METERING POINT",134,55);
-    eVal(228,44,104,16,state.mtPoint||"PRE HPF",null,()=>{state.mtPoint=cycle(["PRE HPF","PRE FADER","POST ON"],state.mtPoint||"PRE HPF");});
+    eVal(228,44,104,16,state.mtPoint||"PRE D.GAIN",null,()=>{state.mtPoint=cycle(["PRE D.GAIN","POST EQ","POST ON"],state.mtPoint||"PRE D.GAIN");});
     eBtn(352,44,86,16,"PEAK HOLD",!!state.peakHold,()=>{state.peakHold=!state.peakHold; if(!state.peakHold)_mtPk={};},ED.yel,8);
     const mh=110;
     if(mtTab===0){
@@ -2068,28 +2045,34 @@
         if(i<MAXCH)vreg({x:x-2,y,w:20,h:mh,onDown:()=>selectChannel(i)});
       }
       ctx.fillStyle="#9a9a9a"; ctx.font="700 8px Arial"; ctx.textAlign="center"; ctx.fillText("CH",62+16*26,86+mh+34);
-      /* CH 33-48 (frame igual ao editor) */
+      /* CH 33-64 (frame igual ao editor) */
       y=278; mScale(52,y,mh);
-      for(let i=32;i<48;i++){ const x=62+(i-32)*26, db=i<MAXCH?meterPt(i):-90; mBar(x,y,mh,db,"i"+i);
+      for(let i=32;i<64;i++){ const x=62+(i-32)*26, db=i<MAXCH?meterPt(i):-90; mBar(x,y,mh,db,"i"+i);
         eVal(x-4,y+mh+3,23,9,db<=-89?"-∞":Math.round(db)+"");
         ctx.fillStyle=i===state.sel?"#efe3ae":"#9a9a9a"; ctx.font="700 7px Arial"; ctx.textAlign="center"; ctx.fillText(""+(i+1),x+7,y+mh+22);
         if(i<MAXCH)vreg({x:x-2,y,w:20,h:mh,onDown:()=>selectChannel(i)}); }
-      ctx.fillStyle="#9a9a9a"; ctx.font="700 8px Arial"; ctx.textAlign="center"; ctx.fillText("CH 33-48",62+8*26,278+mh+34);
-      /* ST IN 1-4 (retornos dos EFFECT 1-4) */
+      ctx.fillStyle="#9a9a9a"; ctx.font="700 8px Arial"; ctx.textAlign="center"; ctx.fillText("CH",62+16*26,278+mh+34);
+      /* CH 65-72 + ST IN (retornos do rack Fx 1-8) */
       y=470; mScale(52,y,mh);
-      for(let i=0;i<N_FX;i++){ const x=62+i*26, db=stinLevelDb(i); mBar(x,y,mh,db,"st"+i);
+      for(let i=64;i<72;i++){ const x=62+(i-64)*26, db=i<MAXCH?meterPt(i):-90; mBar(x,y,mh,db,"i"+i);
         eVal(x-4,y+mh+3,23,9,db<=-89?"-∞":Math.round(db)+"");
-        ctx.fillStyle=state.selStin===i?"#efe3ae":"#9a9a9a"; ctx.font="700 7px Arial"; ctx.textAlign="center"; ctx.fillText("ST"+(i+1),x+7,y+mh+22);
-        vreg({x:x-2,y,w:20,h:mh,onDown:()=>selectStin(i)}); }
-      ctx.fillStyle="#9a9a9a"; ctx.font="700 8px Arial"; ctx.textAlign="center"; ctx.fillText("ST IN 1-4",62+2*26,470+mh+34);
+        ctx.fillStyle=i===state.sel?"#efe3ae":"#9a9a9a"; ctx.font="700 7px Arial"; ctx.textAlign="center"; ctx.fillText(""+(i+1),x+7,y+mh+22);
+        if(i<MAXCH)vreg({x:x-2,y,w:20,h:mh,onDown:()=>selectChannel(i)}); }
+      ctx.fillStyle="#9a9a9a"; ctx.font="700 8px Arial"; ctx.textAlign="center"; ctx.fillText("CH",62+4*26,470+mh+34);
+      mScale(320,y,mh);
+      for(let r=0;r<16;r++){ const x=330+r*26, db=rackLevelDb(Math.floor(r/2));
+        mBar(x,y,mh,db,"st"+r);
+        eVal(x-4,y+mh+3,23,9,db<=-89?"-∞":Math.round(db)+"");
+        ctx.fillStyle="#9a9a9a"; ctx.font="700 7px Arial"; ctx.textAlign="center"; ctx.fillText(Math.floor(r/2)+1+(r%2?"R":"L"),x+7,y+mh+22); }
+      ctx.fillStyle="#9a9a9a"; ctx.font="700 8px Arial"; ctx.textAlign="center"; ctx.fillText("ST IN",330+8*26,470+mh+34);
     } else {
       /* OUTPUT: MIX 1-24 + MATRIX 1-8 + ST */
       let y=86; mScale(52,y,mh);
-      for(let i=0;i<16;i++){ const x=62+i*26; const db=(i>=12&&playing)?rackLevelDb(i-12):-90;
+      for(let i=0;i<24;i++){ const x=62+i*26; const db=(i>=16&&playing)?rackLevelDb(i-16):-90;
         mBar(x,y,mh,db,"o"+i);
         eVal(x-4,y+mh+3,23,9,db<=-89?"-∞":Math.round(db)+"");
         ctx.fillStyle="#9a9a9a"; ctx.font="700 7px Arial"; ctx.textAlign="center"; ctx.fillText(""+(i+1),x+7,y+mh+22); }
-      ctx.fillStyle="#9a9a9a"; ctx.font="700 8px Arial"; ctx.textAlign="center"; ctx.fillText("MIX 1-16  (13-16 → EFFECT)",62+8*26,86+mh+34);
+      ctx.fillStyle="#9a9a9a"; ctx.font="700 8px Arial"; ctx.textAlign="center"; ctx.fillText("MIX  (17-24 = Fx returns)",62+12*26,86+mh+34);
       y=278; mScale(52,y,mh);
       for(let i=0;i<8;i++){ const x=62+i*26; mBar(x,y,mh,-90,null);
         eVal(x-4,y+mh+3,23,9,"-∞");
@@ -2114,11 +2097,11 @@
       ok:()=>{ const ch=CH[12]; return ch.eq[3].g>=3; } },
     { t:'<b>Dinâmica:</b> abra <b>DYN2 COMP</b>, ative e coloque o threshold ~<b>−18 dB</b>.',
       ok:()=>{ const ch=CH[12]; return ch.compOn && Math.abs(ch.compThr+18)<=4; } },
-    { t:'<b>Monitor:</b> selecione o master <b>MIX 1</b> (CENTRALOGIC) p/ ligar <b>SENDS ON FADER</b> e mande o Lead Voc a ~<b>−6 dB</b>.',
+    { t:'<b>Monitor:</b> selecione o master <b>MIX 1</b> (Centralogic) p/ ligar <b>SENDS ON FADER</b> e mande o Lead Voc a ~<b>−6 dB</b>.',
       ok:()=>{ const ch=CH[12]; return state.sof>=0 && state.sofType==='mix' && state.sofBus===0 && ch.sendOn[0] && Math.abs(ch.sends[0]+6)<=3; } }
   ];
   let mi=0;
-  function paintMission(){ if(mi>=missions.length){ $("#mIdx").textContent="CONCLUÍDO"; $("#mTxt").innerHTML="🎓 <b>Parabéns!</b> Fluxo completo no M7CL: gain → HPF → EQ → dinâmica → monitor."; $("#mSkip").style.display="none"; return; }
+  function paintMission(){ if(mi>=missions.length){ $("#mIdx").textContent="CONCLUÍDO"; $("#mTxt").innerHTML="🎓 <b>Parabéns!</b> Fluxo completo na CL5: gain → HPF → EQ → dinâmica → monitor."; $("#mSkip").style.display="none"; return; }
     $("#mIdx").textContent="MISSÃO "+(mi+1)+"/"+missions.length; $("#mTxt").innerHTML=missions[mi].t; }
   function checkMissions(){ if(mi>=missions.length)return; try{ if(missions[mi].ok()){ mi++; toast(mi>=missions.length?"Missões concluídas! 🎓":"Missão concluída! ✔"); paintMission(); } }catch(e){} }
   $("#mSkip").onclick=()=>{ if(mi<missions.length){ mi++; paintMission(); } };
@@ -2129,7 +2112,7 @@
   const sg=(n,c,f,p,h)=>({n,c,f,p,h});
   /* SONGS_FALLBACK: bases embutidas (offline). Em runtime, loadBasesRuntime()
      tenta ler a lista real do banco (sim_bases) e, se vier, substitui SONGS. */
-  let SONGS=[
+  let SONGS=[{label:"Queen — Bohemian Rhapsody",folder:"mix-queen-bohemian",stems:[sg("Another Guitar","#e0483f","Another_Guitar_1.mp3",0,true),sg("Back up Piano ","#f97316","Back_up_Piano_L_1.mp3",0,true),sg("Backing Piano ","#f4a02a","Backing_Piano_R_1.mp3",0,true),sg("Bass Guitar","#eab308","Bass_Guitar_1.mp3",0,false),sg("Drums 2","#84cc16","Drums_2_1.mp3",0,true),sg("Drums 3","#3ad07a","Drums_3_1.mp3",0,true),sg("Drums C","#14b8a6","Drums_C_1.mp3",0,true),sg("Drums L","#39c0e6","Drums_L_1.mp3",0,true),sg("Drums Low end","#3b82f6","Drums_Low_end_1.mp3",0,false),sg("Drums R","#6366f1","Drums_R_1.mp3",0,true),sg("GONG","#8b5cf6","GONG_1.mp3",0,false),sg("Grand Piano L","#a855f7","Grand_Piano_L_1.mp3",0,true),sg("Grand Piano R","#c084fc","Grand_Piano_R_1.mp3",0,true),sg("Guitar Backing","#ec4899","Guitar_Backing_2_1.mp3",0,true),sg("Guitar FX","#f43f5e","Guitar_FX_1.mp3",0,true),sg("GuitarRoom Bac","#22d3ee","GuitarRoom_Backing.mp3",0,true),sg("Lead Guitar L","#e0483f","Lead_Guitar_L.mp3",0,true),sg("Lead Guitar L","#f97316","Lead_Guitar_L_2.mp3",0,true),sg("Lead Guitar La","#f4a02a","Lead_Guitar_Layer_2_1.mp3",0,true),sg("Lead Guitar La","#eab308","Lead_Guitar_Layer_3_1.mp3",0,true),sg("Lead Guitar R","#84cc16","Lead_Guitar_R.mp3",0,true),sg("Lead Guitar R","#3ad07a","Lead_Guitar_R_2.mp3",0,true),sg("Timpani","#14b8a6","Timpani.mp3",0,false),sg("Vox 10","#39c0e6","Vox_10_1.mp3",0,true),sg("Vox 11","#3b82f6","Vox_11_1.mp3",0,true),sg("Vox 12","#6366f1","Vox_12_1.mp3",0,true),sg("Vox 13","#8b5cf6","Vox_13_1.mp3",0,true),sg("Vox 14","#a855f7","Vox_14_1.mp3",0,true),sg("Vox 15","#c084fc","Vox_15_1.mp3",0,true),sg("Vox 2 Lower Ha","#ec4899","Vox_2_Lower_Harmony_1.mp3",0,false),sg("Vox 2 Upper ha","#f43f5e","Vox_2_Upper_harmony_1.mp3",0,true),sg("Vox 3","#22d3ee","Vox_3_1.mp3",0,true),sg("Vox 4","#e0483f","Vox_4_1.mp3",0,true),sg("Vox 5","#f97316","Vox_5_1.mp3",0,true),sg("Vox 6","#f4a02a","Vox_6_1.mp3",0,true),sg("Vox 7","#eab308","Vox_7_2.mp3",0,true),sg("Vox 8","#84cc16","Vox_8_1.mp3",0,true),sg("Vox 9","#3ad07a","Vox_9_1.mp3",0,true),sg("Vox L","#14b8a6","Vox_L_1.mp3",0,true),sg("Vox R","#39c0e6","Vox_R_1.mp3",0,true),sg("rev in crash L","#3b82f6","rev_in_crash_L_1.mp3",0,true),sg("rev in crash R","#6366f1","rev_in_crash_R_1.mp3",0,true)]},
     {label:"Pagodão — Tá Sozinha", folder:"mix-pagodao-tasozinha", stems:[
       sg("Bumbo","#e0483f","BB.mp3",0,false),sg("Caixa","#f97316","CX.mp3",0,true),sg("Surdo 1","#f4a02a","SD_1.mp3",-8,false),sg("Surdo 2","#eab308","SD_2.mp3",8,false),
       sg("Chimbal","#84cc16","HH.mp3",-15,true),sg("Repique","#3ad07a","REP.mp3",12,true),sg("Rototom","#14b8a6","ROTANTAN.mp3",-10,true),sg("Timbau","#39c0e6","TIMBAL.mp3",10,true),
@@ -2197,6 +2180,7 @@
           var w=(typeof playing!=="undefined" && playing);
           if(typeof stopSong==="function") stopSong(true);
           if(typeof loadSong==="function") loadSong(0);
+          if(typeof preloadSong==="function") preloadSong();
           if(w && typeof playSong==="function") playSong();
         }catch(e){}
       })
@@ -2210,66 +2194,106 @@
       o.textContent=s.label+extra; sel.appendChild(o); }); sel.value=Math.min(curSong,SONGS.length-1); }
   let ac=null,masterGain=null,monoTrim=null,lim=null,masterAn=null,playing=false,curSong=0,loadTok=0,realSources=[];
   let rackN=[],geqN=[],stinN=[]; const bufCache={},aNodes=[];
-
-  /* ===================== P() — automação que TERMINA =====================
-     Um AudioParam com automação pendente sai do caminho rápido do navegador: o
-     parâmetro passa a ser calculado amostra por amostra e, num BiquadFilter, isso
-     obriga a recalcular TODO o coeficiente (com seno/cosseno) 48.000 vezes por
-     segundo — por filtro. São 6 filtros por canal.
-
-     setTargetAtTime é exponencial: matematicamente nunca chega ao alvo, então o
-     evento NUNCA termina. Um fader encostado uma única vez deixava aquele parâmetro
-     caro para sempre, e a mesa parada seguia pesada.
-
-     MEDIDO na CL5 (Queen, 42 canais): 34,5% do áudio deixava de ser renderizado
-     (199 engasgos em 20 s); depois de congelar os parâmetros assentados: 0,7% e 1.
-
-     P() faz o que uma mesa faz: rampa suave enquanto o operador move, valor fixo
-     quando parou. */
-  const _emRampa=[];
-  function P(p,alvo,t,tc){
-    if(!p) return;
-    if(p._alvo===alvo) return;                       // já está indo para lá: não reagenda
-    p._alvo=alvo;
-    if(Math.abs((p.value||0)-alvo)<1e-7){ try{p.cancelScheduledValues(0);}catch(e){} p.value=alvo; return; }
-    p.setTargetAtTime(alvo,t,tc);
-    p._congelaEm=t+Math.max(tc,0.002)*6;             // 6 constantes de tempo ≈ 99,8% do caminho
-    if(_emRampa.indexOf(p)<0)_emRampa.push(p);
+  /* ============ PATCH DINÂMICO DA CADEIA (carga da thread de áudio) ============
+     Um DynamicsCompressorNode é o nó mais caro do Web Audio e ANTES ficava no caminho
+     dos 72 canais mesmo DESLIGADO (só zerava threshold/ratio) — 72 compressores + 72
+     delays + 576 sends processando amostra a amostra sem fazer nada. Aqui o comp e o
+     delay do canal entram no caminho SÓ quando ligados, o canal só se liga ao bus
+     estéreo quando tem áudio, e o send só se liga ao rack quando abre. Como um nó que
+     não alcança a saída não é renderizado, o custo some junto com a função.
+     A troca é feita com um "duck" de 8 ms no makeup (mk), que fica DEPOIS do ponto de
+     comutação — sem clique — e é idempotente (só religa quando o estado muda). */
+  function _duckSwap(n,wire,mkTarget){
+    const g=n.mk.gain,t=ac.currentTime,cur=g.value;
+    try{ g.cancelScheduledValues(t); }catch(e){}
+    g.setValueAtTime(cur,t); g.linearRampToValueAtTime(0,t+0.008);
+    if(n._swapT) clearTimeout(n._swapT);
+    n._swapT=setTimeout(()=>{ n._swapT=0; if(!ac)return;
+      try{ wire(); }catch(e){}
+      const t2=ac.currentTime; try{ g.cancelScheduledValues(t2); }catch(e){}
+      g.setValueAtTime(0,t2); g.linearRampToValueAtTime(mkTarget(),t2+0.010); },20);
   }
-  function congelarParados(){
-    if(!ac)return; const t=ac.currentTime;
-    for(let i=_emRampa.length-1;i>=0;i--){ const p=_emRampa[i];
-      if(t>=p._congelaEm){ const v=p._alvo; try{p.cancelScheduledValues(0);}catch(e){} p.value=v; _emRampa.splice(i,1); } }
+  /* devolve a função de religação se a topologia mudou; senão false (nada a fazer) */
+  function patchChan(i){
+    const n=aNodes[i],c=CH[i]; if(!n||!ac)return false;
+    const wComp=!!c.compOn, wDly=!!c.delayOn, wBus=!!c.hasAudio;
+    if(n._busIn!==wBus){ try{ if(wBus) n.pan.connect(masterGain); else n.pan.disconnect(); }catch(e){} n._busIn=wBus; }
+    if(n._compIn===wComp && n._dlyIn===wDly) return false;
+    return function(){
+      if(n._compIn!==wComp){
+        try{ n.gate.disconnect(); }catch(e){}
+        try{ n.comp.disconnect(); }catch(e){}
+        if(wComp){ n.gate.connect(n.comp); n.comp.connect(n.mk); } else n.gate.connect(n.mk);
+        n._compIn=wComp;
+      }
+      if(n._dlyIn!==wDly){
+        try{ n.mk.disconnect(); }catch(e){}
+        try{ n.dlyN.disconnect(); }catch(e){}
+        const tap=wDly?n.dlyN:n.mk;
+        if(wDly) n.mk.connect(n.dlyN);
+        tap.connect(n.fdr);
+        for(let r=0;r<8;r++) tap.connect(n.fxS[r]);   // sends acompanham o ponto de tomada
+        n._tap=tap; n._dlyIn=wDly;
+      }
+    };
   }
-  /* varre também fora do quadro: aba em segundo plano congela o requestAnimationFrame */
-  setInterval(congelarParados,250);
-
+  /* liga/desliga o send no rack: fechar espera o ramp de 260 ms terminar (sem corte) */
+  function patchSend(n,r,want){
+    n._fxWant[r]=want?1:0;
+    if(want){ if(n._fxT[r]){ clearTimeout(n._fxT[r]); n._fxT[r]=0; }
+      if(!n._fxOut[r]){ try{ n.fxS[r].connect(rackN[r].inG); }catch(e){} n._fxOut[r]=1; } }
+    else if(n._fxOut[r]&&!n._fxT[r]){
+      n._fxT[r]=setTimeout(()=>{ n._fxT[r]=0; if(n._fxWant[r])return;
+        try{ n.fxS[r].disconnect(rackN[r].inG); }catch(e){} n._fxOut[r]=0; },260);
+    }
+  }
+  function patchStin(i){
+    const n=stinN[i],c=STIN[i]; if(!n||!ac)return false;
+    const wComp=!!c.compOn, wDly=!!c.delayOn;
+    if(n._compIn===wComp && n._dlyIn===wDly) return false;
+    return function(){
+      if(n._compIn!==wComp){
+        try{ n.gate.disconnect(); }catch(e){}
+        try{ n.comp.disconnect(); }catch(e){}
+        if(wComp){ n.gate.connect(n.comp); n.comp.connect(n.mk); } else n.gate.connect(n.mk);
+        n._compIn=wComp;
+      }
+      if(n._dlyIn!==wDly){
+        try{ n.mk.disconnect(); }catch(e){}
+        try{ n.dlyN.disconnect(); }catch(e){}
+        const tap=wDly?n.dlyN:n.mk;
+        if(wDly) n.mk.connect(n.dlyN);
+        tap.connect(n.fdr);
+        n._tap=tap; n._dlyIn=wDly;
+      }
+    };
+  }
   /* ST IN strip -> real audio (mirrors applyChanAudio for the FX returns) */
   function applyStinAudio(i){
     if(!ac||!stinN[i])return; const n=stinN[i],c=STIN[i],t=ac.currentTime;
-    P(n.inG.gain,dbToLin(clamp(c.dgain,-96,24))*(c.phase?-1:1),t,0.02);
-    P(n.hpf.frequency,c.hpfOn?c.hpf:20,t,0.02);
+    n.inG.gain.setTargetAtTime(dbToLin(clamp(c.dgain,-96,24))*(c.phase?-1:1),t,0.02);
+    n.hpf.frequency.setTargetAtTime(c.hpfOn?c.hpf:20,t,0.02);
     const kf=eqTypeFactor(c.eqType);
     c.eq.forEach((b,bi)=>{ const f=n.eq[bi]; if(f.type!==b.type)f.type=b.type;
-      P(f.frequency,clamp(b.f,20,20000),t,0.02);
-      P(f.gain,(c.eqOn&&!b.byp)?b.g:0,t,0.02);
-      P(f.Q,clamp(b.q*kf,0.05,18),t,0.02); });
+      f.frequency.setTargetAtTime(clamp(b.f,20,20000),t,0.02);
+      f.gain.setTargetAtTime((c.eqOn&&!b.byp)?b.g:0,t,0.02);
+      f.Q.setTargetAtTime(clamp(b.q*kf,0.05,18),t,0.02); });
     if(c.compOn){ n.comp.threshold.value=c.compThr; n.comp.ratio.value=(c.compRatio>=40?20:Math.max(1,c.compRatio));
-      n.comp.attack.value=clamp(c.compAtk/1000,0,0.12); n.comp.release.value=clamp(c.compRel/1000,0.005,1.5);
-      P(n.mk.gain,dbToLin(c.compGain),t,0.02); }
-    else { n.comp.threshold.value=0; n.comp.ratio.value=1; P(n.mk.gain,1,t,0.02); }
-    P(n.dlyN.delayTime,c.delayOn?clamp(c.delayMs,0,1000)/1000:0,t,0.02);
-    P(n.pan.pan,clamp(c.pan/63,-1,1),t,0.02);
+      n.comp.attack.value=clamp(c.compAtk/1000,0,0.12); n.comp.release.value=clamp(c.compRel/1000,0.005,1.5); }
+    else { n.comp.threshold.value=0; n.comp.ratio.value=1; }
+    n.mk.gain.setTargetAtTime(c.compOn?dbToLin(c.compGain):1,t,0.02);
+    n.dlyN.delayTime.setTargetAtTime(c.delayOn?clamp(c.delayMs,0,1000)/1000:0,t,0.02);
+    n.pan.pan.setTargetAtTime(clamp(c.pan/63,-1,1),t,0.02);
     const soloMuted = anyCue() && !c.cue;
     const onLin=(c.on&&!soloMuted&&c.stAssign)?1:0;
-    P(n.fdr.gain,onLin*(c.fader>FMIN?dbToLin(c.fader):0),t,0.02);
+    n.fdr.gain.setTargetAtTime(onLin*(c.fader>FMIN?dbToLin(c.fader):0),t,0.02);
   }
-  function applyStinAll(){ for(let i=0;i<N_FX;i++) applyStinAudio(i); }
+  function applyStinAll(){ for(let i=0;i<16;i++) applyStinAudio(i); }
   function stinLevelDb(i){ if(!ac||!stinN[i]||!playing)return -90; const n=stinN[i];
     n.an.getFloatTimeDomainData(n.buf); let s=0; for(let k=0;k<n.buf.length;k++)s+=n.buf[k]*n.buf[k];
     const rms=Math.sqrt(s/n.buf.length); return rms>1e-5?20*Math.log10(rms):-90; }
   function applyGeq(){ if(!ac||!geqN.length)return; const s=state.geq[0],t=ac.currentTime;
-    for(let b=0;b<31;b++) P(geqN[b].gain,s.on?clamp(s.bands[b],-15,15):0,t,0.02); }
+    for(let b=0;b<31;b++) geqN[b].gain.setTargetAtTime(s.on?clamp(s.bands[b],-15,15):0,t,0.02); }
   function dbToLin(db){ return db<=FMIN?0:Math.pow(10,db/20); }
   /* Impulse response synth — Reverb Time / Hi Ratio / Low Ratio / Low Freq / Room Size / Diffusion */
   function makeImpulseX(p){
@@ -2293,26 +2317,26 @@
   function scheduleImpulse(r){ clearTimeout(_impT[r]); _impT[r]=setTimeout(()=>{ const R=state.rack[r],n=rackN[r]; if(n&&n.conv){ try{ n.conv.buffer=makeImpulseX(R.p); }catch(e){} } },140); }
   function applyRack(r){
     if(!ac||!rackN[r])return; const R=state.rack[r],n=rackN[r],t=ac.currentTime;
-    P(n.ret.gain,R.on?R.bal:0,t,0.03);
+    n.ret.gain.setTargetAtTime(R.on?R.bal:0,t,0.03);
     if(R.kind==='rev'){
-      P(n.pre.delayTime,clamp(R.p.ini,0,450)/1000,t,0.03);
-      P(n.hp.frequency,R.p.hpf<=20?10:clamp(R.p.hpf,20,8000),t,0.03);
-      P(n.lp.frequency,R.p.lpf>=18000?20000:clamp(R.p.lpf,1000,20000),t,0.03);
+      n.pre.delayTime.setTargetAtTime(clamp(R.p.ini,0,450)/1000,t,0.03);
+      n.hp.frequency.setTargetAtTime(R.p.hpf<=20?10:clamp(R.p.hpf,20,8000),t,0.03);
+      n.lp.frequency.setTargetAtTime(R.p.lpf>=18000?20000:clamp(R.p.lpf,1000,20000),t,0.03);
       scheduleImpulse(r);
     } else if(R.kind==='dly'){
-      P(n.d.delayTime,clamp(R.p.time,1,2000)/1000,t,0.03);
-      P(n.fb.gain,clamp(R.p.fb,0,99)/100,t,0.03);
-      P(n.lp.frequency,R.p.lpf>=18000?20000:clamp(R.p.lpf,1000,20000),t,0.03);
+      n.d.delayTime.setTargetAtTime(clamp(R.p.time,1,2000)/1000,t,0.03);
+      n.fb.gain.setTargetAtTime(clamp(R.p.fb,0,99)/100,t,0.03);
+      n.lp.frequency.setTargetAtTime(R.p.lpf>=18000?20000:clamp(R.p.lpf,1000,20000),t,0.03);
     } else {
-      P(n.dL.delayTime,clamp(R.p.dlyL,1,2000)/1000,t,0.03);
-      P(n.dR.delayTime,clamp(R.p.dlyR,1,2000)/1000,t,0.03);
-      P(n.fbL.gain,clamp(R.p.fbL,0,99)/100,t,0.03);
-      P(n.fbR.gain,clamp(R.p.fbR,0,99)/100,t,0.03);
-      P(n.lpL.frequency,R.p.lpf>=18000?20000:clamp(R.p.lpf,1000,20000),t,0.03);
-      P(n.lpR.frequency,R.p.lpf>=18000?20000:clamp(R.p.lpf,1000,20000),t,0.03);
+      n.dL.delayTime.setTargetAtTime(clamp(R.p.dlyL,1,2000)/1000,t,0.03);
+      n.dR.delayTime.setTargetAtTime(clamp(R.p.dlyR,1,2000)/1000,t,0.03);
+      n.fbL.gain.setTargetAtTime(clamp(R.p.fbL,0,99)/100,t,0.03);
+      n.fbR.gain.setTargetAtTime(clamp(R.p.fbR,0,99)/100,t,0.03);
+      n.lpL.frequency.setTargetAtTime(R.p.lpf>=18000?20000:clamp(R.p.lpf,1000,20000),t,0.03);
+      n.lpR.frequency.setTargetAtTime(R.p.lpf>=18000?20000:clamp(R.p.lpf,1000,20000),t,0.03);
     }
   }
-  function applyRackAll(){ for(let r=0;r<N_FX;r++)applyRack(r); }
+  function applyRackAll(){ for(let r=0;r<8;r++)applyRack(r); }
   function buildAudioGraph(){
     ac=new (window.AudioContext||window.webkitAudioContext)();
     masterGain=ac.createGain(); masterGain.gain.value=dbToLin(state.master);
@@ -2324,9 +2348,9 @@
       prevN.connect(f); prevN=f; geqN.push(f); }
     prevN.connect(monoTrim); monoTrim.connect(lim); lim.connect(ac.destination);
     masterAn=ac.createAnalyser(); masterAn.fftSize=256; masterAn._buf=new Float32Array(masterAn.fftSize); lim.connect(masterAn);
-    /* ----- virtual rack: 4 effect buses (EFFECT 1-4, fed from MIX 13-16) ----- */
+    /* ----- virtual rack: 8 effect buses (Fx 1-8 = MIX 17-24) ----- */
     rackN=[];
-    for(let r=0;r<N_FX;r++){
+    for(let r=0;r<8;r++){
       const R=state.rack[r];
       const inG=ac.createGain(); inG.gain.value=1;
       const ret=ac.createGain(); ret.gain.value=0;
@@ -2355,31 +2379,36 @@
       ret.connect(an);
       rackN[r]=nodes;
     }
-    /* ST IN 1-4: each internal EFFECT return feeds its own stereo strip chain
-       (hpf → 4-band EQ → gate → comp → delay → fader → pan → ST master), so the
-       ST IN bank drives real audio — exactly like the M7CL's 4 stereo returns. */
+    /* ST IN: each rack return is split L/R into its own real strip chain
+       (hpf → 4-band EQ → gate → comp → delay → fader → pan → ST master),
+       so the FX-return strips in the ST IN bank drive real audio. */
     stinN=[];
-    for(let i=0;i<N_FX;i++){
-      const c=STIN[i];
-      const inG=ac.createGain(); inG.gain.value=1;
-      rackN[i].ret.connect(inG);
-      const hpf=ac.createBiquadFilter(); hpf.type="highpass"; hpf.frequency.value=20; hpf.Q.value=0.707;
-      const eq=[0,1,2,3].map(bi=>{ const f=ac.createBiquadFilter(); f.type=c.eq[bi].type;
-        f.frequency.value=c.eq[bi].f; f.gain.value=0; f.Q.value=c.eq[bi].q; return f; });
-      const preAn=ac.createAnalyser(); preAn.fftSize=256;
-      const gate=ac.createGain(); gate.gain.value=1;
-      const comp=ac.createDynamicsCompressor(); comp.threshold.value=0; comp.ratio.value=1;
-      const mk=ac.createGain(); mk.gain.value=1;
-      const dlyN=ac.createDelay(1.0); dlyN.delayTime.value=0;
-      const fdr=ac.createGain(); fdr.gain.value=1;
-      const pan=ac.createStereoPanner(); pan.pan.value=c.pan/63;
-      const an=ac.createAnalyser(); an.fftSize=256;
-      inG.connect(hpf); hpf.connect(eq[0]); eq[0].connect(eq[1]); eq[1].connect(eq[2]); eq[2].connect(eq[3]);
-      eq[3].connect(preAn); eq[3].connect(gate); gate.connect(comp); comp.connect(mk);
-      mk.connect(dlyN); dlyN.connect(fdr); fdr.connect(pan); fdr.connect(an); pan.connect(masterGain);
-      stinN[i]={inG,hpf,eq,preAn,preBuf:new Float32Array(preAn.fftSize),gate,comp,mk,dlyN,fdr,pan,an,buf:new Float32Array(an.fftSize)};
+    for(let r=0;r<8;r++){
+      const sp=ac.createChannelSplitter(2);
+      rackN[r].ret.connect(sp);
+      for(let side=0;side<2;side++){
+        const i=r*2+side, c=STIN[i];
+        const inG=ac.createGain(); inG.gain.value=1;
+        sp.connect(inG,side);
+        const hpf=ac.createBiquadFilter(); hpf.type="highpass"; hpf.frequency.value=20; hpf.Q.value=0.707;
+        const eq=[0,1,2,3].map(bi=>{ const f=ac.createBiquadFilter(); f.type=c.eq[bi].type;
+          f.frequency.value=c.eq[bi].f; f.gain.value=0; f.Q.value=c.eq[bi].q; return f; });
+        const preAn=ac.createAnalyser(); preAn.fftSize=256;
+        const gate=ac.createGain(); gate.gain.value=1;
+        const comp=ac.createDynamicsCompressor(); comp.threshold.value=0; comp.ratio.value=1;
+        const mk=ac.createGain(); mk.gain.value=1;
+        const dlyN=ac.createDelay(1.0); dlyN.delayTime.value=0;
+        const fdr=ac.createGain(); fdr.gain.value=1;
+        const pan=ac.createStereoPanner(); pan.pan.value=c.pan/63;
+        const an=ac.createAnalyser(); an.fftSize=256;
+        inG.connect(hpf); hpf.connect(eq[0]); eq[0].connect(eq[1]); eq[1].connect(eq[2]); eq[2].connect(eq[3]);
+        eq[3].connect(preAn); eq[3].connect(gate); gate.connect(comp); comp.connect(mk);
+        mk.connect(dlyN); dlyN.connect(fdr); fdr.connect(pan); fdr.connect(an); pan.connect(masterGain);
+        stinN[i]={inG,hpf,eq,preAn,preBuf:new Float32Array(preAn.fftSize),gate,comp,mk,dlyN,fdr,pan,an,buf:new Float32Array(an.fftSize),
+          _compIn:false,_dlyIn:false,_tap:mk,_gateIdle:false};
+      }
     }
-    for(let i=0;i<N_FX;i++) applyStinAudio(i);
+    for(let i=0;i<16;i++) applyStinAudio(i);
     /* ----- input channels: built to MAXCAP (72 = CL5). Channels above the loaded
        base render as EMPTY silent strips; only channels WITH a stem get a
        BufferSource (see playSong), so an empty desk stays cheap on the iPad. ----- */
@@ -2397,53 +2426,60 @@
       const fdr=ac.createGain();fdr.gain.value=0; const pan=ac.createStereoPanner();
       const an=ac.createAnalyser();an.fftSize=256;
       trim.connect(hpf);hpf.connect(eq0);eq0.connect(eq1);eq1.connect(eq2);eq2.connect(eq3);eq3.connect(lpf);
+      /* Cadeia montada em BYPASS: o COMP (nó mais caro do Web Audio) e o DELAY só entram
+         no caminho quando LIGADOS — ver patchChan(). Idem a ligação ao bus estéreo, que
+         só existe em canal COM áudio: um canal vazio não é renderizado pela thread. */
       lpf.connect(preAn);lpf.connect(gate);gate.connect(comp);comp.connect(mk);mk.connect(dlyN);dlyN.connect(fdr);
       fdr.connect(pan);pan.connect(masterGain);fdr.connect(an);
       const fxS=[];
-      for(let r=0;r<N_FX;r++){ const g=ac.createGain(); g.gain.value=0; dlyN.connect(g); g.connect(rackN[r].inG); fxS.push(g); }
-      aNodes[i]={trim,hpf,eq:[eq0,eq1,eq2,eq3],lpf,preAn,preBuf:new Float32Array(preAn.fftSize),gate,comp,mk,dlyN,fdr,pan,an,buf:new Float32Array(an.fftSize),fxS};
+      for(let r=0;r<8;r++){ const g=ac.createGain(); g.gain.value=0; dlyN.connect(g); g.connect(rackN[r].inG); fxS.push(g); }
+      aNodes[i]={trim,hpf,eq:[eq0,eq1,eq2,eq3],lpf,preAn,preBuf:new Float32Array(preAn.fftSize),gate,comp,mk,dlyN,fdr,pan,an,buf:new Float32Array(an.fftSize),fxS,
+        _compIn:false,_dlyIn:false,_busIn:false,_tap:mk,_fxOut:[0,0,0,0,0,0,0,0],_fxT:[0,0,0,0,0,0,0,0],_fxWant:[0,0,0,0,0,0,0,0],_gateIdle:false};
     }
     for(let i=0;i<MAXCAP;i++) applyChanAudio(i);
     applyRackAll();
   }
   applyChanAudio=function(i){
     if(!ac||!aNodes[i])return; const n=aNodes[i],c=CH[i],t=ac.currentTime;
-    P(n.trim.gain,dbToLin(clamp(c.gain-16+c.dgain+c.att,-120,30))*(c.phase?-1:1),t,0.02);
-    P(n.hpf.frequency,c.hpfOn?c.hpf:20,t,0.02);
-    P(n.lpf.frequency,c.lpfOn?c.lpf:20000,t,0.02);
+    n.trim.gain.setTargetAtTime(dbToLin(clamp(c.gain-16+c.dgain+c.att,-120,30))*(c.phase?-1:1),t,0.02);
+    n.hpf.frequency.setTargetAtTime(c.hpfOn?c.hpf:20,t,0.02);
+    n.lpf.frequency.setTargetAtTime(c.lpfOn?c.lpf:20000,t,0.02);
     const kf=eqTypeFactor(c.eqType);
-    c.eq.forEach((b,bi)=>{ const f=n.eq[bi]; if(f.type!==b.type)f.type=b.type; P(f.frequency,clamp(b.f,20,20000),t,0.02); P(f.gain,(c.eqOn&&!b.byp)?b.g:0,t,0.02); P(f.Q,clamp(b.q*kf,0.05,18),t,0.02); });
-    if(c.compOn){ n.comp.threshold.value=c.compThr; n.comp.ratio.value=(c.compRatio>=40?20:Math.max(1,c.compRatio)); n.comp.attack.value=clamp(c.compAtk/1000,0,0.12); n.comp.release.value=clamp(c.compRel/1000,0.005,1.5); n.comp.knee.value=(c.compKnee==='HARD'||c.compKnee===0)?0:clamp(c.compKnee*4,0,30); P(n.mk.gain,dbToLin(c.compGain),t,0.02); }
-    else { n.comp.threshold.value=0; n.comp.ratio.value=1; P(n.mk.gain,1,t,0.02); }
-    P(n.dlyN.delayTime,c.delayOn?clamp(c.delayMs,0,1000)/1000:0,t,0.02);
-    P(n.pan.pan,clamp(c.pan/63,-1,1),t,0.02);
+    c.eq.forEach((b,bi)=>{ const f=n.eq[bi]; if(f.type!==b.type)f.type=b.type; f.frequency.setTargetAtTime(clamp(b.f,20,20000),t,0.02); f.gain.setTargetAtTime((c.eqOn&&!b.byp)?b.g:0,t,0.02); f.Q.setTargetAtTime(clamp(b.q*kf,0.05,18),t,0.02); });
+    if(c.compOn){ n.comp.threshold.value=c.compThr; n.comp.ratio.value=(c.compRatio>=40?20:Math.max(1,c.compRatio)); n.comp.attack.value=clamp(c.compAtk/1000,0,0.12); n.comp.release.value=clamp(c.compRel/1000,0.005,1.5); n.comp.knee.value=(c.compKnee==='HARD'||c.compKnee===0)?0:clamp(c.compKnee*4,0,30); }
+    else { n.comp.threshold.value=0; n.comp.ratio.value=1; }
+    n.mk.gain.setTargetAtTime(c.compOn?dbToLin(c.compGain):1,t,0.02);
+    n.dlyN.delayTime.setTargetAtTime(c.delayOn?clamp(c.delayMs,0,1000)/1000:0,t,0.02);
+    n.pan.pan.setTargetAtTime(clamp(c.pan/63,-1,1),t,0.02);
     let dcaLin=1,muted=false;
     for(let g=0;g<N_DCA;g++){ if(c.dca[g]){ if(!state.dcaOn[g])muted=true; dcaLin*=dbToLin(state.dcaGain[g]); } }
     if(!c.muteSafe){ for(let g=0;g<N_MUTE;g++){ if(c.mute[g]&&state.muteActive[g])muted=true; } }
     const soloMuted = anyCue() && !c.cue;
     const onLin=(c.on&&!muted&&!soloMuted&&c.hasAudio)?1:0;
     const fdrLin=onLin*(c.stAssign?1:0)*(c.fader>FMIN?dbToLin(c.fader):0)*dcaLin;
-    P(n.fdr.gain,fdrLin,t,0.02);
-    /* Effect sends: MIX 13-16 feed EFFECT 1-4 (PRE = pré-fader, POST = pós-fader) */
+    n.fdr.gain.setTargetAtTime(fdrLin,t,0.02);
+    /* FX bus sends: MIX 17-24 = Fx 1-8 (PRE = pré-fader, POST = pós-fader) */
     const postLin=onLin*(c.fader>FMIN?dbToLin(c.fader):0)*dcaLin;
-    for(let r=0;r<N_FX;r++){ const si=12+r; let g2=0;
+    for(let r=0;r<8;r++){ const si=16+r; let g2=0;
       if(c.hasAudio&&c.sendOn[si]&&c.sends[si]>FMIN){ const s=dbToLin(c.sends[si]); g2=c.sendPre[si]? s*onLin : s*postLin; }
-      P(n.fxS[r].gain,g2,t,0.02); }
+      n.fxS[r].gain.setTargetAtTime(g2,t,0.02); }
   };
   // Tap Tempo: cada toque marca o tempo; média dos intervalos vira o TIME do delay do rack selecionado.
   function tapTempo(){ const now=perf(); _taps.push(now); _taps=_taps.filter(x=>now-x<3000);
     if(_taps.length>=2){ let sum=0; for(let k=1;k<_taps.length;k++)sum+=_taps[k]-_taps[k-1]; const ms=sum/(_taps.length-1);
       state.bpm=Math.round(60000/ms);
       let R=state.rack[state.rackSel];
-      if(!R||(R.kind!=='dly'&&R.kind!=='echo')){ R=state.rack[N_FX-1]; state.rackSel=N_FX-1; }
+      if(!R||(R.kind!=='dly'&&R.kind!=='echo')){ R=state.rack[7]; state.rackSel=7; }
       if(R.kind==='dly'){ R.p.time=clamp(ms,1,2000); applyRack(state.rackSel); }
       else { R.p.dlyL=clamp(ms,1,2000); R.p.dlyR=clamp(ms*1.5,1,2000); applyRack(state.rackSel); }
       if(state.mode==='fx')drawScreen();
       toast("TAP ▸ "+Math.round(ms)+" ms · "+state.bpm+" BPM"); }
     else toast("TAP… (toque de novo p/ marcar o tempo)"); }
   function processGates(){ if(!ac)return; const t=ac.currentTime, nowMs=perf();
+    /* Só lê o analisador dos canais que TÊM áudio e estão com o GATE ligado — antes eram
+       72 leituras de FFT + 72 escritas de parâmetro por frame, mesmo com o desk vazio. */
     for(let i=0;i<MAXCAP;i++){ const n=aNodes[i],c=CH[i]; if(!n)continue;
-      if(!c.gateOn||!playing||!c.hasAudio){ P(n.gate.gain,1,t,0.01); c._gr=0; continue; }
+      if(!c.gateOn||!playing||!c.hasAudio){ n.gate.gain.setTargetAtTime(1,t,0.01); c._gr=0; continue; }
       n.preAn.getFloatTimeDomainData(n.preBuf); let s=0; for(let k=0;k<n.preBuf.length;k++)s+=n.preBuf[k]*n.preBuf[k];
       const rms=Math.sqrt(s/n.preBuf.length),db=rms>1e-5?20*Math.log10(rms):-90;
       const open=db>c.gateThr;
@@ -2451,10 +2487,10 @@
       const held=!open&&nowMs<(c._holdUntil||0);
       const target=(open||held)?1:dbToLin(Math.max(c.gateRange,-90));
       const tc=Math.max(0.002,((open||held)?Math.max(c.gateAtk,0.5):c.gateDecay)/1000/3);
-      P(n.gate.gain,target,t,tc); c._gr=(open||held)?0:Math.max(0,-c.gateRange); }
+      n.gate.gain.setTargetAtTime(target,t,tc); c._gr=(open||held)?0:Math.max(0,-c.gateRange); }
     /* same gate law on the ST IN (FX return) strips */
-    for(let i=0;i<N_FX;i++){ const n=stinN[i],c=STIN[i]; if(!n)continue;
-      if(!c.gateOn||!playing){ P(n.gate.gain,1,t,0.01); c._gr=0; continue; }
+    for(let i=0;i<16;i++){ const n=stinN[i],c=STIN[i]; if(!n)continue;
+      if(!c.gateOn||!playing){ n.gate.gain.setTargetAtTime(1,t,0.01); c._gr=0; continue; }
       n.preAn.getFloatTimeDomainData(n.preBuf); let s=0; for(let k=0;k<n.preBuf.length;k++)s+=n.preBuf[k]*n.preBuf[k];
       const rms=Math.sqrt(s/n.preBuf.length),db=rms>1e-5?20*Math.log10(rms):-90;
       const open=db>c.gateThr;
@@ -2462,9 +2498,9 @@
       const held=!open&&nowMs<(c._holdUntil||0);
       const target=(open||held)?1:dbToLin(Math.max(c.gateRange,-90));
       const tc=Math.max(0.002,((open||held)?Math.max(c.gateAtk,0.5):c.gateDecay)/1000/3);
-      P(n.gate.gain,target,t,tc); c._gr=(open||held)?0:Math.max(0,-c.gateRange); }
+      n.gate.gain.setTargetAtTime(target,t,tc); c._gr=(open||held)?0:Math.max(0,-c.gateRange); }
   }
-  function applyMasterAudio(){ if(ac&&masterGain){ P(masterGain.gain,dbToLin(state.master),ac.currentTime,0.02); P(monoTrim.gain,dbToLin(state.mono),ac.currentTime,0.02); } }
+  function applyMasterAudio(){ if(ac&&masterGain){ masterGain.gain.setTargetAtTime(dbToLin(state.master),ac.currentTime,0.02); monoTrim.gain.setTargetAtTime(dbToLin(state.mono),ac.currentTime,0.02); } }
   applyMonitor=function(){ /* monitor bus is didactic; dim lowers master monitor feel */ };
   function snapCh(c){ return JSON.parse(JSON.stringify({gain:c.gain,dgain:c.dgain,att:c.att,phase:c.phase,phantom:c.phantom,hpfOn:c.hpfOn,hpf:c.hpf,lpfOn:c.lpfOn,lpf:c.lpf,eqOn:c.eqOn,eq:c.eq,eqType:c.eqType,gateOn:c.gateOn,gateThr:c.gateThr,gateRange:c.gateRange,gateAtk:c.gateAtk,gateHold:c.gateHold,gateDecay:c.gateDecay,compOn:c.compOn,compThr:c.compThr,compRatio:c.compRatio,compAtk:c.compAtk,compRel:c.compRel,compKnee:c.compKnee,compGain:c.compGain,key1Src:c.key1Src,key1F:c.key1F,key1Hpf:c.key1Hpf,key2Src:c.key2Src,pan:c.pan,stMode:c.stMode,stAssign:c.stAssign,monoAsn:c.monoAsn,fader:c.fader,on:c.on,muteSafe:c.muteSafe,recallSafe:c.recallSafe,insertOn:c.insertOn,insertPoint:c.insertPoint,directOn:c.directOn,directLv:c.directLv,directPoint:c.directPoint,delayOn:c.delayOn,delayMs:c.delayMs,sends:c.sends,sendOn:c.sendOn,sendPre:c.sendPre,mtxSends:c.mtxSends,mtxOn:c.mtxOn,mtxPre:c.mtxPre,dca:c.dca,mute:c.mute})); }
   function storeScene(slot){ scenes[slot]={ model:state.model, ch:CH.map(snapCh), master:state.master, mono:state.mono, dcaGain:state.dcaGain.slice(), dcaOn:state.dcaOn.slice(), muteActive:state.muteActive.slice(), rack:JSON.parse(JSON.stringify(state.rack)), geq:JSON.parse(JSON.stringify(state.geq)), ts:Date.now() }; toast("Cena "+(slot+1)+" <b>armazenada</b> ✔"); }
@@ -2480,19 +2516,23 @@
   function chLevelDb(i){ if(!ac||!aNodes[i])return -90; const n=aNodes[i]; n.an.getFloatTimeDomainData(n.buf); let s=0; for(let k=0;k<n.buf.length;k++)s+=n.buf[k]*n.buf[k]; const rms=Math.sqrt(s/n.buf.length); return rms>1e-5?20*Math.log10(rms):-90; }
   function masterLevelDb(){ if(!masterAn)return -90; masterAn.getFloatTimeDomainData(masterAn._buf); let s=0; for(let k=0;k<masterAn._buf.length;k++)s+=masterAn._buf[k]*masterAn._buf[k]; const rms=Math.sqrt(s/masterAn._buf.length); return rms>1e-5?20*Math.log10(rms):-90; }
   function loadBuf(url){ if(!bufCache[url]){ bufCache[url]=(async()=>{ const r=await fetch(url); if(!r.ok)throw new Error("HTTP "+r.status); const ab=await r.arrayBuffer(); return await ac.decodeAudioData(ab); })().catch(e=>{ delete bufCache[url]; throw e; }); } return bufCache[url]; }
-  /* Solta da RAM toda base que não é a atual. Um stem decodificado custa
-     duração × 48000 × 4 bytes por canal (40 s ≈ 7,7 MB; 6 min ≈ 73 MB), então um
-     cache que nunca esvazia soma GB conforme o operador passeia pelo seletor — e
-     quando a aba encosta no teto do navegador, TODA base passa a engasgar. */
-  function freeOutrasBases(){ try{ const atual=SB+SONGS[curSong].folder+"/";
-    Object.keys(bufCache).forEach(u=>{ if(u.indexOf(atual)!==0) delete bufCache[u]; }); }catch(e){} }
   let loadingSong=false;
   function setPlayLoading(n,total){ const b=$("#playBtn"); if(b){ b.disabled=true; b.style.background="#f4a02a"; b.style.color="#04121a"; b.textContent="⏳ CARREGANDO BASE… "+n+"/"+total; } setStatus("baixando stems "+n+"/"+total+"…","#f4a02a"); }
   function preloadSong(){ try{ if(!ac)buildAudioGraph(); }catch(e){ return; } if(!ac)return;
     const song=SONGS[curSong], base=SB+song.folder+"/";
     song.stems.slice(0,MAXCH).forEach(st=>{ try{ loadBuf(base+st.f).catch(()=>{}); }catch(e){} }); }  // only the channels this model can patch
   function setStatus(txt,col){ const el=$("#audioStatus"); if(el){ el.textContent="áudio: "+txt; el.style.color=col||"var(--muted)"; } }
+  /* GAIN STAGING INICIAL — como um operador real faz: quanto MAIS canais abertos, mais
+     baixo o ponto de partida dos faders. Com 42 faixas a soma crua bate +6,3 dBFS de pico;
+     a -3 dB (ponto antigo, igual para todo mundo) estourava o teto digital e esmagava o
+     limitador do master (thr -3 / ratio 12) -> distorção "metalizada".
+     f0 = -3 - K*log10(n/REF), só ATENUA (n<=REF mantém os -3 dB de sempre).
+     REF=20 porque a medição mostrou que 20 faixas somam -7,2 dBFS (NÃO estoura);
+     K é o único número a mexer se a meta de headroom mudar. */
+  const STAGE_REF=20, STAGE_K=30;
+  function startFader(n){ return -3 - STAGE_K*Math.log10(Math.max(n,STAGE_REF)/STAGE_REF); }
   function loadSong(idx){ curSong=idx; const song=SONGS[idx];
+    const nSt=Math.min(song.stems.length,MAXCH), f0=Math.round(startFader(nSt)*10)/10;
     for(let i=0;i<MAXCAP;i++){ const st=(i<MAXCH)?song.stems[i]:null, c=CH[i];   // stems only map to the model's MAXCH channels
       if(st){ c.name=st.n; c.color=st.c; c.file=st.f; c.pan=st.p; c.hpfOn=st.h; c.hpf=st.h?100:80; c.hasAudio=true; c.on=true; c.fader=-3; c.gain=16; c.phase=false; c.phantom=false; }
       else { c.name="—"; c.color="#334155"; c.file=null; c.hasAudio=false; c.on=false; } }
@@ -2501,46 +2541,21 @@
   async function playSong(){ if(loadingSong)return;
     if(!ac)buildAudioGraph(); if(ac.state==="suspended"){ try{await ac.resume();}catch(e){} }
     const song=SONGS[curSong],base=SB+song.folder+"/",tok=++loadTok;
-    const useStems=song.stems.slice(0,MAXCH);   // a base may carry MORE stems than this model has channels
+    const useStems=song.stems.slice(0,MAXCH);   // a base may carry MORE stems than this model has channels — use the first MAXCH
     loadingSong=true; let done=0; setPlayLoading(0,useStems.length);
-    /* Carga em LOTES, não todas de uma vez: baixar tudo em paralelo mantém dezenas de
-       arquivos comprimidos na memória enquanto o navegador ainda decodifica os anteriores,
-       e foi assim que 12 de 17 faixas falharam ao decodificar logo depois de uma base grande.
-       Cada faixa tem direito a UMA segunda tentativa — a primeira falha costuma ser só
-       o coletor de lixo ainda não ter devolvido a base anterior. */
-    let bufs=[];
-    const LOTE=6;
+    let bufs;
     try{
-      for(let k=0;k<useStems.length;k+=LOTE){
-        const fatia=useStems.slice(k,k+LOTE);
-        const parte=await Promise.all(fatia.map(st=>loadBuf(base+st.f)
-          .catch(()=>new Promise(r=>setTimeout(r,120)).then(()=>loadBuf(base+st.f)))
-          .then(b=>{ done++; if(tok===loadTok)setPlayLoading(done,useStems.length); return b; })
-          .catch(err=>{ err.stem=st.f; throw err; })));
-        bufs=bufs.concat(parte);
-        if(tok!==loadTok){ loadingSong=false; setPlayBtn(playing); return; }
-      }
-    }catch(e){ loadingSong=false; loadTok++;   /* invalida: impede que faixas atrasadas apaguem o erro da tela */
-      setPlayBtn(false); setStatus("ERRO ao baixar "+(e.stem||"stem")+" — "+e.message+" (aperte Tocar de novo)","#e0483f"); return; }
+      bufs=await Promise.all(useStems.map(st=>loadBuf(base+st.f).then(b=>{ done++; if(tok===loadTok)setPlayLoading(done,useStems.length); return b; }).catch(err=>{ err.stem=st.f; throw err; })));
+    }catch(e){ loadingSong=false; setPlayBtn(false); setStatus("ERRO ao baixar "+(e.stem||"stem")+" — "+e.message+" (tente de novo)","#e0483f"); return; }
     loadingSong=false;
     if(tok!==loadTok){ setPlayBtn(playing); return; }
     stopSong(true); const t0=ac.currentTime+0.12;
-    /* Base de ENSAIO (todos os stems do mesmo tamanho, ex.: pagodão 40 s) roda em LOOP.
-       MÚSICA INTEIRA (stems de tamanhos diferentes, ex.: Queen) toca até o fim, como um
-       multitrack de verdade. Antes eu igualava os tamanhos copiando cada stem curto para
-       um buffer novo do tamanho do maior — no Queen isso alocava 1.871 MB à toa, em cima
-       dos ~3 GB dos stems, e estourava o teto da aba. Agora não copia nada. */
-    let durMax=0,durMin=Infinity,iLongo=0;
-    bufs.forEach((b,i)=>{ if(!b)return; if(b.duration>durMax){durMax=b.duration;iLongo=i;} if(b.duration<durMin)durMin=b.duration; });
-    const emLoop=(durMax-durMin)<0.02;
-    useStems.forEach((st,i)=>{ if(i>=MAXCH||!aNodes[i])return; const src=ac.createBufferSource();
-      src.buffer=bufs[i]; src.loop=emLoop; src.connect(aNodes[i].trim); src.start(t0); realSources.push(src); });
-    if(!emLoop){ const fim=realSources.find(s=>s.buffer===bufs[iLongo]); if(fim) fim.onended=()=>{ stopSong(); setStatus("fim da música","#7fb2c8"); }; }
+    useStems.forEach((st,i)=>{ if(i>=MAXCH||!aNodes[i])return; const src=ac.createBufferSource(); src.buffer=bufs[i]; src.loop=true; if(bufs.__lm===undefined){var _m=0;for(var _k=0;_k<bufs.length;_k++){if(bufs[_k]&&bufs[_k].duration>_m)_m=bufs[_k].duration;}bufs.__lm=_m;} if(bufs.__lm>0.5&&bufs[i]&&bufs[i].duration<bufs.__lm-0.02){try{var _sr=bufs[i].sampleRate,_pl=Math.round(bufs.__lm*_sr),_nc=bufs[i].numberOfChannels,_pb=ac.createBuffer(_nc,_pl,_sr);for(var _c=0;_c<_nc;_c++){_pb.getChannelData(_c).set(bufs[i].getChannelData(_c));}src.buffer=_pb;}catch(e){}} if(bufs.__lm>0.5){src.loopStart=0;src.loopEnd=bufs.__lm;} src.connect(aNodes[i].trim); src.start(t0); realSources.push(src); });
     for(let i=0;i<MAXCAP;i++)applyChanAudio(i); playing=true; setPlayBtn(true); setStatus("tocando ♪ "+song.label,"#3ad07a"); }
-  function stopSong(keep){ realSources.forEach(s=>{try{s.onended=null;s.stop();s.disconnect();}catch(e){}}); realSources=[]; playing=false; setPlayBtn(false); if(!keep)setStatus("parado"); }
+  function stopSong(keep){ realSources.forEach(s=>{try{s.stop();}catch(e){}}); realSources=[]; playing=false; setPlayBtn(false); if(!keep)setStatus("parado"); }
 
   /* ================= LOOP / METERS ================= */
-  function loop(){ congelarParados(); processGates();
+  function loop(){ processGates();
     drawScreen();               // coalesced: one repaint per frame across all open windows
     requestAnimationFrame(loop);
   }
@@ -2574,7 +2589,9 @@
         const d=it.dataset;
         if(d.win){
           if(d.rack){ if(d.rack==='geq1'){state.rackKind='geq';state.geqSel=0;}
-            else if(d.rack==='effect'||d.rack==='virtual'){state.rackKind='fx';} }
+            else if(d.rack==='geq9'){state.rackKind='geq';state.geqSel=8;}
+            else if(d.rack==='effect'||d.rack==='virtual'){state.rackKind='fx';}
+            else if(d.rack==='premium'){state.rackKind='fx';toast("PREMIUM RACK: usa os módulos REV-X do Virtual Rack");} }
           if(d.mt!=null) state.mtTab=+d.mt;
           if(d.grp!=null){ if(+d.grp<2) state.grpTab=+d.grp; else toast((+d.grp===2?"CHANNEL LINK":"OUTPUT CHANNEL LINK")+": não incluído no simulador"); }
           if(d.sc!=null){ if(+d.sc>0) toast(it.textContent+": não incluído no simulador"); state.scnTab=+d.sc; }
@@ -2602,46 +2619,40 @@
       case "undo": toast("UNDO: <b>cena anterior</b> restaurada"); break;
       case "redo": toast("REDO: não incluído no simulador"); break;
       case "new": case "open": case "save": case "saveas":
-        toast("Arquivo de sessão: recurso do M7CL Editor (PC)"); break;
+        toast("Arquivo de sessão: recurso do CL Editor (PC)"); break;
       case "pc2console": toast("Re-synchronize <b>PC → Console</b> ✔"); state.online=true; break;
       case "console2pc": toast("Re-synchronize <b>Console → PC</b> ✔"); state.online=true; break;
       case "offline": state.online=state.online===false; toast(state.online===false?"<b>OFFLINE EDIT</b> ativo":"<b>ONLINE</b>"); break;
       case "meterview": setMode('meter'); break;
       case "statusbar": { const s=document.querySelector('.smu'); s.style.display=s.style.display==='none'?'':'none'; fitApp(); break; }
-      case "about": toast("<b>M7CL V3 Editor</b> — réplica didática SMU · Yamaha M7CL"); break;
+      case "about": toast("<b>CL Editor</b> 5.8.1 — réplica didática SMU · Yamaha CL5"); break;
     }
     drawScreen();
   }
 
   /* ================= INIT ================= */
-  (function initAudioUI(){ const sel=$("#songSel"); if(sel){ rebuildSongSel(); sel.value=0; sel.onchange=()=>{ if(loadingSong)return; const w=playing; stopSong(true); loadSong(+sel.value); freeOutrasBases(); if(w)playSong(); }; }
+  (function initAudioUI(){ const sel=$("#songSel"); if(sel){ rebuildSongSel(); sel.value=0; sel.onchange=()=>{ if(loadingSong)return; const w=playing; stopSong(true); loadSong(+sel.value); preloadSong(); if(w)playSong(); }; }
     const pb=$("#playBtn"); if(pb){ pb.onclick=()=>{ if(loadingSong)return; if(playing)stopSong(); else playSong(); }; } })();
   // DEFAULT DESK = the Main panel docked right (it is the menu — always visible) plus the
   // Overview with the 16 channels of the current bank filling the rest. Nothing else:
   // Selected Channel / EQ / GATE / COMP / sends / patch open only when they are called.
   openWin('main'); openWin('overview'); focusWin('overview'); applyLayout();
-  // model from URL (?model=M7CL-32/M7CL-48) — set MAXCH BEFORE the first patch. Default M7CL-48.
-  (function initModel(){ let m='M7CL-48'; try{ const q=new URLSearchParams(location.search).get('model'); if(q&&MODELS[q.toUpperCase()])m=q.toUpperCase(); }catch(e){} applyModel(m,{repatch:false}); })();
-  loadSong(0);
+  // model from URL (?model=CL1/CL3/CL5) — set MAXCH BEFORE the first patch. Default CL5.
+  (function initModel(){ let m='CL5'; try{ const q=new URLSearchParams(location.search).get('model'); if(q&&MODELS[q.toUpperCase()])m=q.toUpperCase(); }catch(e){} applyModel(m,{repatch:false}); })();
+  loadSong(0); try{ buildAudioGraph(); }catch(e){}
   // Pré-carrega os stems da música atual (cache) para o play iniciar instantâneo.
+  try{ preloadSong(); }catch(e){}
+  document.addEventListener("pointerdown",()=>{ try{ preloadSong(); }catch(e){} },{once:true,capture:true});
   updateSofUi(); paintMission();
   window.addEventListener("resize",sizeCanvas); setTimeout(sizeCanvas,30); requestAnimationFrame(loop);
 
-  /* ================= FIT (preserved: zoom-to-fit the editor app) ================= */
-  let ZOOM=0;   // 0 = fit to window; otherwise an explicit Zoom-menu factor
+  /* ================= FIT — the app is now ALWAYS fluid (it IS the viewport) =================
+     The old zoom-to-fit of a fixed 1920px desk is what shrank every control below the
+     finger/eye. There is no zoom anymore in any mode; fit simply re-runs the responsive
+     layout (dock vs drawer, which page fills the desk) for the current viewport. */
+  let ZOOM=0;   // kept for the Zoom menu references; no longer applies a CSS zoom
   function fitApp(){ const con=$("#app"); if(!con)return;
-    // Touch modes run the app fluid at 1:1 — zooming a 1920px desk down to a tablet is
-    // what makes the chrome untappable, so instead the app simply *is* the viewport.
-    if(calcLayout()!=='desktop'){ con.style.zoom=''; document.body.style.alignItems='';
-      try{ applyLayout(); }catch(e){} return; }
-    const vw=window.innerWidth,vh=window.innerHeight;
-    con.style.zoom=''; const DW=con.offsetWidth||1920, DH=con.offsetHeight||1000;   // mede o tamanho REAL
-    // In the course's 16:9 sandboxed srcdoc iframe the frame is TALLER than the real
-    // display, so trust screen.height over innerHeight (same guard as the other sims).
-    const scrH=(window.screen&&screen.height)||vh; const iframeTaller=vh>scrH+8; const visH=Math.min(vh,scrH);
-    const headerAllow=iframeTaller?84:(vh>700?40:6); const effVh=Math.max(240,visH-headerAllow);
-    document.body.style.alignItems=(iframeTaller||vh>700)?'flex-start':'center';
-    let s=ZOOM||Math.min((vw-16)/DW,effVh/DH); s=Math.max(0.3,Math.min(s,2.4)); con.style.zoom=s;
+    con.style.zoom=''; document.body.style.alignItems='';
     try{ applyLayout(); }catch(e){}
   }
   window.addEventListener('resize',fitApp); setTimeout(fitApp,45);
@@ -2649,6 +2660,7 @@
   /* ===== verification hook (headless): expõe modelo + nós de áudio p/ medição ===== */
   window.__diag={ CH, state, aN:i=>aNodes[i], rackN:r=>rackN[r], geqN:b=>geqN[b], applyGeq, ac:()=>ac,
     apply:applyChanAudio, applyRack, applyRackAll, tap:tapTempo, setMode,
+    mg:()=>masterGain, mono:()=>monoTrim, limN:()=>lim, startFader,
     chDb:i=>chLevelDb(i), preDb:i=>chPreDb(i), rackDb:r=>rackLevelDb(r), masterDb:()=>masterLevelDb(),
     play:()=>playSong(), stop:()=>stopSong(), isPlaying:()=>playing, isLoading:()=>loadingSong,
     storeScene, recallScene, N_DCA, N_MUTE,

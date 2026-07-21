@@ -1,0 +1,83 @@
+<p><strong>A maioria dos travamentos de vídeo em evento não é falha de equipamento — é arquivo errado.</strong> O cliente manda um MP4 4K que abre lindo no notebook dele, você joga no media server e o clipe engasga, atrasa no seek, ou aparece com o texto da marca todo "sujo" na borda. Nada disso é azar: é codec, é bit depth, é chroma subsampling. Esta aula é sobre <strong>preparar mídia que aguenta um show</strong> — e sobre saber, antes de aceitar o arquivo, se ele vai aguentar.</p>
+
+{{IMG:edicao-timeline}}
+
+<h3>Intra-frame x long-GOP: a decisão que define tudo</h3>
+<p>Um codec <strong>intra-frame</strong> (também dito "all-I") comprime <strong>cada quadro sozinho</strong>. Todo frame é completo e independente. Um codec <strong>long-GOP</strong> guarda um quadro completo (I-frame) a cada 12, 15, 30 ou até 250 quadros, e entre eles guarda só <em>diferenças</em> (P e B-frames) — daí GOP, <em>Group of Pictures</em>.</p>
+<p>Long-GOP é excelente para <strong>entregar</strong> vídeo (streaming, YouTube, arquivo final): comprime muito mais para a mesma qualidade visual. É <strong>péssimo para tocar ao vivo</strong>, por três razões concretas:</p>
+<ul>
+<li><strong>Seek.</strong> Para exibir o frame 137, o decoder precisa achar o I-frame anterior e <em>reconstruir</em> todos os quadros até lá. Um pulo instantâneo de timecode vira meio segundo de trabalho de CPU — ou um congelamento visível.</li>
+<li><strong>Custo de CPU imprevisível.</strong> B-frames dependem de quadros futuros; o decoder trabalha fora de ordem, com buffer. Numa cena de movimento intenso, o pico de decodificação pode estourar o orçamento de tempo do frame e <strong>derrubar frames</strong>.</li>
+<li><strong>Reverse e velocidade variável</strong> são praticamente inviáveis: tocar de trás para frente exige decodificar o GOP inteiro para cada quadro.</li>
+</ul>
+<p>Intra-frame gera arquivo maior, mas o custo por frame é <strong>constante e previsível</strong>, o seek é instantâneo e o reverse funciona. Em show, previsibilidade vale mais que tamanho de arquivo.</p>
+
+<h3>Os codecs que se usa de verdade</h3>
+<table>
+<tr><th>Codec</th><th>Tipo</th><th>Alpha</th><th>Bitrate típico 1080p60</th><th>Onde brilha</th></tr>
+<tr><td><strong>HAP</strong></td><td>Intra, descompressão na <strong>GPU</strong></td><td>Não</td><td>~200–400 Mbps</td><td>Resolume, media server; carga quase zero de CPU</td></tr>
+<tr><td><strong>HAP Q</strong></td><td>Intra, GPU, qualidade maior</td><td>Não</td><td>~400–700 Mbps</td><td>Gradientes e conteúdo com detalhe fino</td></tr>
+<tr><td><strong>HAP Alpha / HAP Q Alpha</strong></td><td>Intra, GPU</td><td><strong>Sim</strong></td><td>~300–900 Mbps</td><td>Lower third, logo, elemento sobreposto</td></tr>
+<tr><td><strong>DXV3</strong></td><td>Intra, GPU (Resolume)</td><td><strong>Sim</strong></td><td>~200–500 Mbps</td><td>Nativo do Resolume; melhor integração com o Alley</td></tr>
+<tr><td><strong>ProRes 422 / 422 HQ</strong></td><td>Intra, CPU</td><td>Não</td><td>~147 / ~220 Mbps</td><td>Intercâmbio, edição, entrega para broadcast</td></tr>
+<tr><td><strong>ProRes 4444 / 4444 XQ</strong></td><td>Intra, CPU</td><td><strong>Sim</strong></td><td>~330 / ~500 Mbps</td><td>Grafismo com alpha, master de qualidade</td></tr>
+<tr><td><strong>NotchLC</strong></td><td>Intra, GPU</td><td><strong>Sim</strong></td><td>~300–800 Mbps</td><td>disguise, xR, conteúdo 12-bit</td></tr>
+<tr><td><strong>DNxHR HQX / 444</strong></td><td>Intra, CPU</td><td>444 sim</td><td>~440–880 Mbps (4K)</td><td>Avid, pipelines Windows</td></tr>
+<tr><td><strong>H.264 / H.265</strong></td><td><strong>Long-GOP</strong></td><td>Não (na prática)</td><td>10–80 Mbps</td><td>Entrega, streaming — <strong>não</strong> para playback ao vivo</td></tr>
+</table>
+<p>A palavra-chave de HAP, DXV3 e NotchLC é <strong>descompressão na GPU</strong>: o arquivo vai comprimido direto para a placa de vídeo e é descomprimido em textura, sem passar pela CPU. Por isso um servidor toca 6 ou 8 camadas de HAP 4K sem suar, e engasga com <strong>duas</strong> de H.264 4K.</p>
+
+<h3>Canal alpha: quando você precisa</h3>
+<p>Alpha é o canal de transparência. Você precisa dele sempre que o elemento vai <strong>sobrepor</strong> outra imagem com borda suave: logo, GC/lower third, moldura de cenografia, partícula, fumaça, elemento de mapping recortado. Sem alpha, você é obrigado a usar <strong>luma key</strong> (chave por luminância) e o resultado tem borda dura e halo — especialmente ruim em texto e em elementos com sombra ou brilho.</p>
+<p>Codecs com alpha: <strong>HAP Alpha, HAP Q Alpha, DXV3 com alpha, ProRes 4444/4444 XQ, NotchLC, DNxHR 444, PNG/TIFF em sequência</strong>. Não têm alpha: H.264, H.265 (na prática), ProRes 422 em qualquer sabor, DNxHR HQ. Detalhe que derruba gente: exportar "ProRes 422 HQ com fundo transparente" <strong>não existe</strong> — o fundo vira preto.</p>
+<p>Cuidado também com <strong>premultiplied x straight</strong>: se o alpha foi premultiplicado contra preto e o servidor trata como straight, aparece uma <strong>franja escura</strong> ao redor do elemento. Se aparecer halo preto no logo, é isso.</p>
+
+<h3>Espaço de cor, bit depth e banding</h3>
+<p><strong>Rec.709</strong> é o espaço de cor padrão de HD e de praticamente todo evento: primárias, ponto branco D65 e curva de transferência definidos. <strong>Rec.2020</strong> é o espaço de UHD/HDR, com gamut muito maior. O problema clássico: conteúdo <strong>criado em Rec.2020 e reproduzido como Rec.709</strong> aparece <strong>lavado e dessaturado</strong>; o inverso aparece <strong>saturado demais, com pele avermelhada</strong>. Se as cores "não batem" com a aprovação do cliente, confira a tag de cor do arquivo antes de mexer no processador.</p>
+<p><strong>Bit depth</strong>: 8 bits dá <strong>256 níveis por canal</strong> (16,7 milhões de cores); 10 bits dá <strong>1.024 níveis</strong> (1,07 bilhão). A diferença aparece exatamente onde o evento mais usa: <strong>fundo em degradê</strong>. Um céu ou um gradiente de marca em 8 bits mostra <strong>banding</strong> — faixas visíveis — e num telão de LED de 6 metros essas faixas são enormes. Soluções: trabalhar e exportar em <strong>10 bits</strong> (ProRes 422 HQ, NotchLC, HAP Q ajudam), aplicar <strong>dither</strong> leve no render, e verificar que o processador de LED está configurado para receber 10 bits e não truncando.</p>
+
+<h3>Chroma subsampling: 4:4:4, 4:2:2 e 4:2:0</h3>
+<p>A notação descreve quantas amostras de cor existem para cada bloco de 4×2 pixels de luminância:</p>
+<table>
+<tr><th>Formato</th><th>Resolução de cor</th><th>Dados de cor</th><th>Uso</th></tr>
+<tr><td><strong>4:4:4</strong></td><td>Cor em <strong>todo</strong> pixel</td><td>100%</td><td>Grafismo, texto, computador, chroma key de qualidade</td></tr>
+<tr><td><strong>4:2:2</strong></td><td>Metade na horizontal</td><td>50%</td><td>Broadcast, SDI, câmera profissional</td></tr>
+<tr><td><strong>4:2:0</strong></td><td>Metade na horizontal <em>e</em> na vertical</td><td>25%</td><td>Entrega/streaming, H.264 de consumo</td></tr>
+</table>
+<p>Por que <strong>4:2:0 estraga texto e grafismo fino</strong>: a informação de cor de um bloco de 2×2 pixels vira <strong>uma única amostra</strong>. Um texto vermelho sobre fundo azul, ou uma linha fina de 1 px de uma marca, tem sua cor "borrada" num bloco de 4 pixels — o resultado é borda serrilhada colorida, halo e texto que parece fora de foco. Em telão de LED, onde cada pixel do arquivo pode virar um LED físico de 3 mm, isso é implacável. <strong>Conteúdo gráfico se entrega em 4:4:4</strong> (HAP Q, ProRes 4444, NotchLC, DXV3). Câmera e imagem natural sobrevivem bem em 4:2:2.</p>
+
+<h3>Nomenclatura e organização de mídia</h3>
+<p>Numa cabine, achar o arquivo certo em 20 segundos vale tanto quanto o codec. Padrão que funciona:</p>
+<ul>
+<li><strong><code>EVENTO_BLOCO_ITEM_RESOLUCAO_FPS_CODEC_vNN.mov</code></strong> — ex.: <code>ACME2026_ABERT_VINHETA_3840x1080_60_HAPQ_v03.mov</code>.</li>
+<li>Nunca use acento, espaço, <code>ç</code>, <code>#</code>, <code>&amp;</code> ou <code>%</code>: quebra em servidor Windows, em caminho de rede e em script.</li>
+<li><strong>Versão sempre com dois dígitos</strong> (<code>v03</code>, não <code>v3</code>) — ordena certo na lista. E <strong>nunca</strong> "final", "final2", "final_ok".</li>
+<li>Pasta por bloco do show, espelhada <strong>igual</strong> no main e no backup. Caminho diferente entre as máquinas = mídia offline no backup.</li>
+<li>Guarde o <strong>master</strong> (o que veio do cliente) separado do <strong>transcode</strong> (o que toca). Se precisar reencodar às 18h, você quer a fonte, não o HAP.</li>
+<li>Registre em planilha: nome, duração exata em frames, tem alpha?, ponto de entrada, quem aprovou, data.</li>
+</ul>
+
+<h3>Armazenamento e taxa de leitura — a conta que ninguém faz</h3>
+<p>A conta é direta: <strong>MB/s = Mbps ÷ 8</strong>. E <strong>GB por minuto = MB/s × 60 ÷ 1024</strong>.</p>
+<p>Exemplo real: um clipe <strong>3840×1080 @ 60 fps em HAP Q</strong> gira em torno de <strong>800 Mbps = 100 MB/s</strong>. Isso é <strong>~5,9 GB por minuto</strong>; um bloco de 20 minutos ocupa <strong>~117 GB</strong>. Agora o que realmente importa: se o show tem <strong>3 camadas simultâneas</strong> desse material, o disco precisa entregar <strong>300 MB/s sustentados</strong> — não em pico, sustentado, com o resto do sistema rodando.</p>
+<ul>
+<li><strong>HD mecânico 7200 rpm</strong>: ~120–180 MB/s no início do prato, cai para ~80 MB/s no fim. Não serve para múltiplas camadas.</li>
+<li><strong>SSD SATA</strong>: ~500 MB/s. Serve para a maioria dos shows de médio porte.</li>
+<li><strong>NVMe PCIe</strong>: 2.000–7.000 MB/s. É o que os servidores de porte usam, e o que dá folga para 4K multicamada.</li>
+<li>Regra de bolso: dimensione o disco para <strong>2× a taxa somada</strong> das camadas e <strong>nunca passe de 80% de ocupação</strong> — SSD cheio perde desempenho de escrita e pode engasgar.</li>
+</ul>
+
+<h3>No palco / erros que acontecem</h3>
+<ul>
+<li><strong>Clipe trava ao pular para um cue.</strong> Long-GOP. O seek está reconstruindo o GOP. Reencode para HAP/NotchLC e o sintoma some.</li>
+<li><strong>Logo com halo escuro na borda.</strong> Alpha premultiplied lido como straight (ou vice-versa). Ajuste no servidor ou reexporte straight.</li>
+<li><strong>Fundo degradê com faixas no telão.</strong> Banding de 8 bits. Reexporte em 10 bits com dither e confirme que o processador de LED não está truncando.</li>
+<li><strong>Texto da marca serrilhado e "sujo".</strong> 4:2:0. Peça o master e reexporte em 4:4:4.</li>
+<li><strong>Cor lavada em relação à aprovação.</strong> Tag Rec.2020 sendo exibida como Rec.709 — ou o contrário. Confira metadados de cor antes de calibrar o processador.</li>
+<li><strong>Mídia offline no backup.</strong> Caminho de pasta diferente ou letra de drive diferente. Espelhe estrutura e letra de unidade.</li>
+<li><strong>Servidor engasga só depois de 40 min.</strong> Disco quase cheio, throttling térmico do NVMe, ou gravação de log/preview concorrendo com a leitura. Deixe folga e desligue o que grava.</li>
+<li><strong>Clipe com 1 frame preto no fim.</strong> Exportação com faixa a mais. Confira duração <strong>em frames</strong>, não em segundos.</li>
+</ul>
+
+<h3>Resumo prático</h3>
+<p>Para playback ao vivo, use sempre codec <strong>intra-frame</strong>: HAP/HAP Q (descompressão na GPU), DXV3 no Resolume, NotchLC no disguise, ProRes 422/4444 e DNxHR para intercâmbio. Long-GOP (H.264/H.265) é para entregar, não para tocar: o seek precisa reconstruir o GOP e o custo de CPU é imprevisível. Se o elemento sobrepõe, precisa de <strong>alpha</strong> — e só HAP Alpha, DXV3, ProRes 4444, NotchLC e DNxHR 444 têm. Trabalhe em <strong>10 bits</strong> para não ter banding em degradê e em <strong>4:4:4</strong> para não destruir texto e linha fina; 4:2:0 é veneno para grafismo. Confira a tag de espaço de cor (Rec.709 x Rec.2020) antes de culpar o processador. Nomeie sem acento e com versão de dois dígitos, espelhe a estrutura no backup, e dimensione o storage pela conta <strong>Mbps ÷ 8 = MB/s</strong>, somando as camadas simultâneas e deixando o dobro de folga.</p>

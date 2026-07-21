@@ -175,7 +175,16 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
       } catch { /* keep polling */ }
     }, 5000);
     pollIntervalRef.current = interval;
-    setTimeout(() => clearInterval(interval), 300_000);
+    // Esgotou o tempo: sai do estado `generating` com aviso — sem isto o player renderiza
+    // null para sempre e o aluno nunca sabe que o simulador existe e falhou.
+    setTimeout(() => {
+      clearInterval(interval);
+      if (pollIntervalRef.current === interval) {
+        pollIntervalRef.current = null;
+        setGenerating(false);
+        setError(t("A geração demorou demais. Recarregue a página ou tente novamente."));
+      }
+    }, 300_000);
   }
 
   // ── Generate ──

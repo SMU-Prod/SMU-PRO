@@ -21,6 +21,19 @@ const SVC = fs.readFileSync("C:/Users/SMUSTU~1/AppData/Local/Temp/claude/D--Show
 const REST = "https://pshynylvvkhhohftouoe.supabase.co/rest/v1";
 const H = { apikey: SVC, Authorization: `Bearer ${SVC}` };
 const g = async p => JSON.parse(await (await fetch(REST+p,{headers:H})).text());
+// ⚠️ O REST corta em 1000 linhas por resposta (o `limit=` da URL NÃO passa disso).
+// Em 21/07 o banco cruzou 1000 aulas e o auditor ficou cego para o excedente sem avisar.
+// gAll pagina por Range até vir página incompleta.
+const gAll = async (p, chunk = 1000) => {
+  let out = [], off = 0;
+  for (;;) {
+    const r = await fetch(REST + p, { headers: { ...H, "Range-Unit": "items", Range: `${off}-${off + chunk - 1}` } });
+    const j = JSON.parse(await r.text());
+    out = out.concat(j);
+    if (j.length < chunk) return out;
+    off += chunk;
+  }
+};
 
 // ⚠️ NÃO filtre por miolo de uuid. A 1ª versão disto usava /^[0-9a-f]{8}-0000-4000-9000-/ e
 // ficava CEGA para luz (miolo b551-4c00), som (b551-4c00), dj (57d1-4d00) e pleno-som
@@ -35,8 +48,8 @@ const problemas = [];
 const P = (grave, msg) => problemas.push({ grave, msg });
 
 const courses = await g(`/courses?select=id,slug,titulo,total_aulas&order=slug`);
-const mods    = await g(`/modules?select=id,course_id,titulo,ordem&limit=3000`);
-const lessons = await g(`/lessons?select=id,module_id,titulo&limit=5000`);
+const mods    = await gAll(`/modules?select=id,course_id,titulo,ordem&order=id`);
+const lessons = await gAll(`/lessons?select=id,module_id,titulo&order=id`);
 const slugDe  = Object.fromEntries(courses.map(c=>[c.id,c.slug]));
 const modDe   = Object.fromEntries(mods.map(m=>[m.id,m]));
 console.log(`auditando: ${courses.length} cursos · ${mods.length} módulos · ${lessons.length} aulas\n`);

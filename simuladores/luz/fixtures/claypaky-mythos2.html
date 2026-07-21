@@ -40,8 +40,9 @@ details.dmx summary::-webkit-details-marker{display:none}
 .mrow{display:flex;align-items:center;gap:8px;margin-top:5px}.dot{width:14px;height:14px;border-radius:50%;border:2px solid #37507a;flex:none}.dot.ok{background:#39d98a;border-color:#39d98a}
 .mission button{margin-top:8px;background:#1b2740;color:#dce7fb;border:1px solid #33507f;border-radius:7px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer}
 .src{font-size:10px;color:#5b6880}
-
-/* ── tela cheia numa tela larga: 2 colunas (o player avisa por mensagem) ── */
+/* ── tela cheia numa tela larga: 2 colunas (o player avisa por mensagem) ──
+   Contrato html.smu-fs: o player injeta a ponte e avisa; aqui só reagimos com CSS.
+   Fica NO GERADOR de propósito — posto só nos HTML gerados, some na próxima regeração. */
 @media (min-width:1250px){
   html.smu-fs .fx{max-width:1900px;display:block;columns:2;column-gap:14px}
   html.smu-fs .fx > *{break-inside:avoid;-webkit-column-break-inside:avoid;margin-bottom:10px}
@@ -59,7 +60,10 @@ details.dmx summary::-webkit-details-marker{display:none}
 <script>
 const MODEL={"slug":"claypaky-mythos2","brand":"Clay Paky","model":"Mythos 2","type":"hybrid","channels":[[1,"Cor 1","c"],[2,"Cor 2","m"],[3,"Cor 3","y"],[4,"Roda de cor 1","colorwheel"],[5,"Roda de cor 2",null],[6,"Roda de cor 3",null],[7,"Shutter/Strobo","strobe"],[8,"Dimmer","dim"],[9,"Dimmer (fino)","dimF"],[10,"Roda de gobo 1","gobo"],[11,"Roda de animação",null],[12,"Rotação animação",null],[13,"Roda de gobo 2","gobo2"],[14,"Rotação gobo 2","goboRot"],[15,"Rotação gobo 2 (fino)","goboRotF"],[16,"Prisma","prism"],[17,"Rotação do prisma","prismRot"],[18,"Frost","frost"],[19,"Zoom","zoom"],[20,"Foco","focus"],[21,"Foco (fino)","focusF"],[22,"Modo do zoom",null],[23,"Pan","pan"],[24,"Pan (fino)","panF"],[25,"Tilt","tilt"],[26,"Tilt (fino)","tiltF"],[27,"Curva do dimmer",null],[28,"Função/Reset",null],[29,"Controle da lâmpada",null],[30,"Macros de efeito",null]],"colorWheel":null,"gobos":["Aberto","Gobo 1","Gobo 2","Gobo 3","Gobo 4","Gobo 5","Gobo 6","Gobo 7"],"features":{"color":"cmy","white":false,"gobo":true,"gobo2":true,"goboRot":true,"prism":true,"zoom":true,"focus":true,"iris":false,"frost":true,"strobe":true,"cto":false}};
 const F=MODEL.features;
-const st={pan:128,tilt:128,dim:0,strobe:0,colorIdx:0,r:255,g:255,b:255,w:0,c:0,m:0,y:0,cto:0,gobo:0,gobo2:0,goboRot:0,prism:false,prismRot:0,zoom:128,focus:128,iris:255,frost:0};
+// Abre ACESO. Com dim:0 o simulador nascia com a tela toda preta e o aluno lia isso como
+// "não funciona" — não dá para aprender com um aparelho apagado. Ele abre com o facho no ar,
+// e o aluno aprende MEXENDO no que já está aceso.
+const st={pan:128,tilt:128,dim:220,strobe:0,colorIdx:0,r:255,g:255,b:255,w:0,c:0,m:0,y:0,cto:0,gobo:0,gobo2:0,goboRot:0,prism:false,prismRot:0,zoom:128,focus:128,iris:255,frost:0};
 // ── controles ──
 const controlsEl=document.getElementById('controls');
 function slider(key,label,min,max,fmt){const c=document.createElement('div');c.className='ctl';
@@ -179,6 +183,29 @@ function render(){const r=cv.getBoundingClientRect();const W=r.width,H=r.height;
  if(F.prism&&st.prism){const spread=poolR*1.6;drawBeam(targetX-spread,targetY,0.7);drawBeam(targetX+spread,targetY,0.7);drawBeam(targetX,targetY,0.85);}
  else drawBeam(targetX,targetY,1);
  document.getElementById('badge').textContent=MODEL.type.toUpperCase()+' · Pan '+Math.round(panDeg)+'° · Tilt '+Math.round(tiltN*270-135)+'° · Dim '+Math.round(st.dim/2.55)+'%';
+ // Tela preta SEM explicação é lida como simulador quebrado — foi o que aconteceu de verdade.
+ // O aparelho apagado tem sempre um porquê; diga qual é, que aí vira aula.
+ let motivo=null;
+ if(st.dim<3) motivo=['Dimmer em 0%','Abra o DIMMER — é ele que deixa a luz sair. Na fixture real vale o mesmo: cor escolhida, dimmer fechado, palco escuro.'];
+ else if(col.r+col.g+col.b<12) motivo=(F.color==='cmy')
+   ? ['Ciano + Magenta + Amarelo no máximo = preto','No sistema CMY os filtros SUBTRAEM luz. Com os três no máximo eles bloqueiam tudo. Abra um deles.']
+   : ['Nenhum emissor aceso','O dimmer está aberto, mas '+(F.white?'R, G, B e W estão':'R, G e B estão')+' em 0 — não há cor nenhuma para sair. Suba um dos canais de cor.'];
+ if(motivo){
+  ctx.save();
+  ctx.fillStyle='rgba(8,11,17,.82)';const bw=Math.min(430,W*0.86),bh=74,bx=(W-bw)/2,by=H*0.5-bh/2;
+  ctx.beginPath();ctx.roundRect(bx,by,bw,bh,10);ctx.fill();
+  ctx.strokeStyle='#2a3550';ctx.lineWidth=1;ctx.stroke();
+  ctx.textAlign='center';
+  ctx.fillStyle='#ffd24d';ctx.font='700 14px system-ui,Segoe UI,Arial';
+  ctx.fillText(motivo[0],W/2,by+27);
+  ctx.fillStyle='#9db6df';ctx.font='12px system-ui,Segoe UI,Arial';
+  // quebra o texto na largura da caixa
+  const pal=motivo[1].split(' ');let ln='',y=by+47;
+  for(const p of pal){const t=ln?ln+' '+p:p;
+   if(ctx.measureText(t).width>bw-28){ctx.fillText(ln,W/2,y);ln=p;y+=15;}else ln=t;}
+  ctx.fillText(ln,W/2,y);
+  ctx.restore();
+ }
 }
 function drawGobo(cx,cy,R,idx,soft){ctx.save();ctx.beginPath();ctx.arc(cx,cy,R*0.92,0,7);ctx.clip();
  ctx.globalCompositeOperation='destination-out';ctx.globalAlpha=0.55-soft*0.4;ctx.fillStyle='#000';
@@ -195,7 +222,8 @@ function drawGobo(cx,cy,R,idx,soft){ctx.save();ctx.beginPath();ctx.arc(cx,cy,R*0
  ctx.restore();}
 function loop(){if(F.strobe&&st.strobe>=8&&st.dim>0)render();requestAnimationFrame(loop);}
 // ── missões ──
-const M_=(function(){const ms=[{t:'Acenda o fixture: suba o <b>Dimmer</b> a 100% e mire com <b>Pan</b> e <b>Tilt</b>.',ok:s=>s.dim>240}];
+// O fixture já abre aceso (dim 86%), então a 1ª missão não pode dizer "acenda".
+const M_=(function(){const ms=[{t:'Abra o <b>Dimmer</b> até 100% e mire o facho com <b>Pan</b> e <b>Tilt</b>.',ok:s=>s.dim>240}];
  if(F.color==='wheel')ms.push({t:'Escolha uma cor <b>saturada</b> na roda de cor oficial.',ok:s=>{const w=MODEL.colorWheel[s.colorIdx];return s.colorIdx>0&&(w[1]<200||w[2]<200||w[3]<200);}});
  if(F.color==='rgb')ms.push({t:'Faça <b>azul</b> com os canais RGB.',ok:s=>s.b>200&&s.r<80&&s.g<80});
  if(F.color==='cmy')ms.push({t:'Feche <b>Magenta</b> e <b>Amarelo</b> para obter <b>vermelho</b> (mistura CMY real).',ok:s=>s.m>180&&s.y>180&&s.c<60});

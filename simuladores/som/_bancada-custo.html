@@ -1,0 +1,207 @@
+<!doctype html><meta charset="utf-8"><title>Bancada — custo do grafo da CL5</title>
+<body style="font:14px monospace;background:#08121a;color:#cfe">
+<h3>Bancada de custo — reproduz o grafo da CL5 e mede quanto cada peça pesa</h3>
+<pre id="out">pronto</pre>
+<script>
+/* Reproduz EXATAMENTE a cadeia de canal da CL5 e mede o atraso do relógio de áudio
+   (starvation) com cada peça ligada/desligada. Saída sempre em ganho 0 = mudo. */
+const OUT=document.getElementById("out");
+function log(s){ OUT.textContent+="\n"+s; }
+
+const N_CAP=72;      // canais que o grafo constrói (MAXCAP da CL5)
+const N_SRC=42;      // fontes tocando (Queen)
+const N_RACK=8;      // efeitos
+
+function montar(op){
+  const ac=new AudioContext();
+  const master=ac.createGain(); master.gain.value=0;            // MUDO
+  let prev=master;
+  if(op.geq){ for(let b=0;b<31;b++){ const f=ac.createBiquadFilter(); f.type="peaking"; f.frequency.value=20*Math.pow(2,b/3); f.Q.value=4.3; prev.connect(f); prev=f; } }
+  const lim=ac.createDynamicsCompressor(); lim.threshold.value=-3; lim.ratio.value=12;
+  prev.connect(lim); lim.connect(ac.destination);
+
+  const racks=[];
+  if(op.racks){ for(let r=0;r<N_RACK;r++){ const inG=ac.createGain(), ret=ac.createGain(); ret.gain.value=0;
+      if(r<4){ const conv=ac.createConvolver(); const ir=ac.createBuffer(2,ac.sampleRate*1.5,ac.sampleRate);
+        for(let c=0;c<2;c++){ const d=ir.getChannelData(c); for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,3); }
+        conv.buffer=ir; inG.connect(conv); conv.connect(ret);
+      } else { const dl=ac.createDelay(2.5), fb=ac.createGain(); fb.gain.value=0.3; inG.connect(dl); dl.connect(ret); dl.connect(fb); fb.connect(dl); }
+      ret.connect(master); racks.push({inG,ret}); } }
+
+  const chans=[];
+  for(let i=0;i<op.canais;i++){
+    const trim=ac.createGain();
+    let node=trim;
+    if(op.eq){ const hpf=ac.createBiquadFilter(); hpf.type="highpass"; hpf.frequency.value=20; node.connect(hpf); node=hpf;
+      for(let b=0;b<4;b++){ const f=ac.createBiquadFilter(); f.type=b===0?"lowshelf":b===3?"highshelf":"peaking"; f.frequency.value=100*(b+1); node.connect(f); node=f; }
+      const lpf=ac.createBiquadFilter(); lpf.type="lowpass"; lpf.frequency.value=20000; node.connect(lpf); node=lpf; }
+    if(op.analisador){ const pre=ac.createAnalyser(); pre.fftSize=256; node.connect(pre); }
+    const gate=ac.createGain(); node.connect(gate); node=gate;
+    if(op.comp){ const comp=ac.createDynamicsCompressor(); comp.threshold.value=0; comp.ratio.value=1; comp.knee.value=0; node.connect(comp); node=comp; }
+    const mk=ac.createGain(); node.connect(mk); node=mk;
+    if(op.delay){ const d=ac.createDelay(1.2); d.delayTime.value=0; node.connect(d); node=d; }
+    const preFdr=node;
+    const fdr=ac.createGain(); fdr.gain.value=0.5; node.connect(fdr);
+    const pan=ac.createStereoPanner(); fdr.connect(pan); pan.connect(master);
+    if(op.analisador){ const an=ac.createAnalyser(); an.fftSize=256; fdr.connect(an); }
+    if(op.sends&&racks.length){ for(let r=0;r<N_RACK;r++){ const g=ac.createGain(); g.gain.value=0; preFdr.connect(g); g.connect(racks[r].inG); } }
+    chans.push({trim});
+  }
+  return {ac,chans};
+}
+
+function tocar(ac,chans,n,seg){
+  const buf=ac.createBuffer(1,ac.sampleRate*8,ac.sampleRate);
+  const d=buf.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*0.2;
+  for(let i=0;i<n&&i<chans.length;i++){ const s=ac.createBufferSource(); s.buffer=buf; s.loop=true; s.connect(chans[i].trim); s.start(); }
+}
+
+function medir(ac,seg){ return new Promise(res=>{ const a0=ac.currentTime,w0=performance.now();
+  setTimeout(()=>{ const da=ac.currentTime-a0, dw=(performance.now()-w0)/1000;
+    res(+(((dw-da)/dw)*100).toFixed(1)); }, seg*1000); }); }
+
+async function cenario(nome,op,seg){
+  const {ac,chans}=montar(op); tocar(ac,chans,N_SRC,seg);
+  await new Promise(r=>setTimeout(r,600));
+  const p=await medir(ac,seg);
+  const nos=op.canais*(1+(op.eq?6:0)+(op.analisador?2:0)+1+(op.comp?1:0)+1+(op.delay?1:0)+2+(op.sends?N_RACK:0));
+  await ac.close();
+  log(String(p).padStart(6)+" %  atraso   |  ~"+String(nos).padStart(5)+" nos  |  "+nome);
+  return p;
+}
+
+/* Isola a OUTRA variavel: a RAM. Mesmo grafo, mesmas 42 fontes — muda so o tamanho
+   dos buffers decodificados (a musica de 6 min custa 72,7 MB por faixa mono). */
+window.rodarMemoria=async function(){
+  OUT.textContent="medindo custo de RAM (grafo completo, 42 fontes)...";
+  for(const dur of [8,60,180,378]){
+    const {ac,chans}=montar({canais:72,eq:1,comp:1,analisador:1,delay:1,sends:1,racks:1,geq:1});
+    let mb=0,erro=null;
+    try{
+      for(let i=0;i<N_SRC;i++){
+        const b=ac.createBuffer(1,Math.round(ac.sampleRate*dur),ac.sampleRate);
+        const d=b.getChannelData(0); for(let k=0;k<d.length;k+=64) d[k]=(Math.random()*2-1)*0.2;
+        mb+=d.length*4/1048576;
+        const s=ac.createBufferSource(); s.buffer=b; s.loop=true; s.connect(chans[i].trim); s.start();
+      }
+    }catch(e){ erro=e.message; }
+    await new Promise(r=>setTimeout(r,800));
+    const p=erro?"ERRO":await medir(ac,6);
+    await ac.close();
+    log(String(p).padStart(6)+" %  atraso  |  faixa de "+String(dur).padStart(3)+"s  |  RAM dos buffers: "+mb.toFixed(0).padStart(5)+" MB"+(erro?"  <<< "+erro:""));
+    await new Promise(r=>setTimeout(r,400));
+  }
+  log("\n(378s = a duracao real do Queen)");
+};
+/* Isola a TERCEIRA variavel: a automacao reagendada por quadro (o processGates da mesa).
+   Agenda de uma vez os eventos que a mesa agendaria em N segundos, para nao depender do
+   timer da aba (que o navegador estrangula quando a aba nao esta na frente). */
+window.rodarAutomacao=async function(){
+  OUT.textContent="medindo custo da automacao por quadro (grafo completo, 42 fontes)...";
+  for(const porSeg of [0,60,120]){
+    const {ac,chans}=montar({canais:72,eq:1,comp:1,analisador:1,delay:1,sends:1,racks:1,geq:1});
+    const buf=ac.createBuffer(1,ac.sampleRate*8,ac.sampleRate);
+    const d=buf.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*0.2;
+    for(let i=0;i<N_SRC;i++){ const s=ac.createBufferSource(); s.buffer=buf; s.loop=true; s.connect(chans[i].trim); s.start(); }
+    const t0=ac.currentTime+0.2; let ev=0;
+    if(porSeg){ for(let i=0;i<88&&i<chans.length;i++){ const p=chans[i].trim.gain;
+        for(let k=0;k<porSeg*8;k++){ p.setTargetAtTime(1,t0+k/porSeg,0.01); ev++; } } }
+    await new Promise(r=>setTimeout(r,600));
+    const p=await medir(ac,6); await ac.close();
+    log(String(p).padStart(6)+" %  atraso  |  "+String(porSeg*88).padStart(5)+" agendamentos/s  ("+ev+" eventos)  |  "
+      +(porSeg===0?"mesa PARADA (nada reagendando)":porSeg===60?"como a mesa faz hoje (60 fps x 88 canais)":"o dobro"));
+    await new Promise(r=>setTimeout(r,300));
+  }
+};
+/* QUARTA variavel: os reverbs. A CL5 sobe 6 convolvers ESTEREO ligados por padrao
+   (2.70 / 1.20 / 1.60 / 2.40 / 0.90 / 1.40 s) e todos os 72 canais tem envio para eles. */
+window.rodarFx=async function(){
+  OUT.textContent="medindo custo dos reverbs (grafo completo, 42 fontes)...";
+  const REAIS=[2.70,1.20,1.60,2.40,0.90,1.40];
+  for(const conj of [[],[2.70],REAIS.slice(0,3),REAIS]){
+    const ac=new AudioContext();
+    const master=ac.createGain(); master.gain.value=0; master.connect(ac.destination);
+    const racks=[];
+    for(const secs of conj){ const inG=ac.createGain(), ret=ac.createGain(); ret.gain.value=1.0;
+      const conv=ac.createConvolver(); const len=Math.floor(ac.sampleRate*secs);
+      const ir=ac.createBuffer(2,len,ac.sampleRate);
+      for(let c=0;c<2;c++){ const d=ir.getChannelData(c); for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*Math.pow(10,-3*(i/len)); }
+      conv.buffer=ir; inG.connect(conv); conv.connect(ret); ret.connect(master); racks.push(inG); }
+    const chans=[];
+    for(let i=0;i<72;i++){ const g=ac.createGain(); const p=ac.createStereoPanner();
+      g.connect(p); p.connect(master);
+      for(const r of racks){ const s=ac.createGain(); s.gain.value=0; g.connect(s); s.connect(r); }
+      chans.push(g); }
+    const buf=ac.createBuffer(1,ac.sampleRate*8,ac.sampleRate);
+    const d=buf.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*0.2;
+    for(let i=0;i<N_SRC;i++){ const s=ac.createBufferSource(); s.buffer=buf; s.loop=true; s.connect(chans[i]); s.start(); }
+    await new Promise(r=>setTimeout(r,700));
+    const p=await medir(ac,6); await ac.close();
+    log(String(p).padStart(6)+" %  atraso  |  "+String(conj.length).padStart(2)+" reverbs estereo ("
+      +(conj.reduce((a,b)=>a+b,0)).toFixed(1)+"s de IR no total)"+(conj.length===6?"  <<< COMO A MESA ESTA HOJE":""));
+    await new Promise(r=>setTimeout(r,300));
+  }
+};
+/* CONTROLE DO INSTRUMENTO: o mesmo grafo medido por 60s em janelas de 10s.
+   Se o atraso CRESCE com o tempo, quem esta atrasando e a aba em segundo plano
+   (Chrome estrangula aba oculta e sem som audivel), nao a mesa. */
+window.rodarControle=async function(){
+  OUT.textContent="controle: mesmo grafo, 6 janelas de 10s seguidas...";
+  const {ac,chans}=montar({canais:72,eq:1,comp:1,analisador:1,delay:1,sends:1,racks:1,geq:1});
+  tocar(ac,chans,N_SRC,60);
+  await new Promise(r=>setTimeout(r,800));
+  for(let j=1;j<=6;j++){ const p=await medir(ac,10);
+    log("  janela "+j+" (t="+(j*10)+"s): "+String(p).padStart(6)+" %  atraso"); }
+  await ac.close();
+  log("\n  se subiu ao longo do tempo => o estrangulamento e da ABA, nao da mesa.");
+};
+/* QUINTA variavel: 42 buffers GRANDES e DISTINTOS, preenchidos de verdade.
+   No teste anterior eu preenchi 1 amostra a cada 64 — o sistema operacional aponta
+   pagina zerada e o cache do processador nem sente. Musica real nao tem pagina zerada. */
+window.rodarBuffersReais=async function(){
+  OUT.textContent="medindo 42 buffers grandes e distintos, cheios de verdade...";
+  for(const dur of [40,378]){
+    const {ac,chans}=montar({canais:72,eq:1,comp:1,analisador:1,delay:1,sends:1,racks:1,geq:1});
+    let mb=0,x=12345;
+    for(let i=0;i<N_SRC;i++){
+      const b=ac.createBuffer(1,Math.round(ac.sampleRate*dur),ac.sampleRate);
+      const d=b.getChannelData(0);
+      for(let k=0;k<d.length;k++){ x=(x*1103515245+12345)&0x7fffffff; d[k]=(x/1073741824-1)*0.2; }
+      mb+=d.length*4/1048576;
+      const s=ac.createBufferSource(); s.buffer=b; s.loop=true; s.connect(chans[i].trim); s.start();
+    }
+    await new Promise(r=>setTimeout(r,1000));
+    const p=await medir(ac,8); await ac.close();
+    log(String(p).padStart(6)+" %  atraso  |  42 buffers de "+String(dur).padStart(3)+"s CHEIOS  |  "+mb.toFixed(0)+" MB"
+      +(dur===378?"   <<< igual ao Queen":"   <<< igual ao pagodao"));
+    await new Promise(r=>setTimeout(r,400));
+  }
+};
+window.rodar=async function(seg){
+  seg=seg||6; OUT.textContent="medindo (cada cenario "+seg+"s)...";
+  const R={};
+  R.completo   = await cenario("COMPLETO (como esta hoje): 72 canais, EQ, comp, analisadores, 8 sends, racks, GEQ",
+                   {canais:72,eq:1,comp:1,analisador:1,delay:1,sends:1,racks:1,geq:1},seg);
+  R.semSends   = await cenario("sem os 8 envios de FX por canal",
+                   {canais:72,eq:1,comp:1,analisador:1,delay:1,sends:0,racks:1,geq:1},seg);
+  R.semComp    = await cenario("sem os compressores de canal",
+                   {canais:72,eq:1,comp:0,analisador:1,delay:1,sends:1,racks:1,geq:1},seg);
+  R.semAnalis  = await cenario("sem os analisadores (medidores)",
+                   {canais:72,eq:1,comp:1,analisador:0,delay:1,sends:1,racks:1,geq:1},seg);
+  R.semEq      = await cenario("sem os 6 filtros de EQ por canal",
+                   {canais:72,eq:0,comp:1,analisador:1,delay:1,sends:1,racks:1,geq:1},seg);
+  R.so42       = await cenario("so os 42 canais com audio (sem os 30 vazios)",
+                   {canais:42,eq:1,comp:1,analisador:1,delay:1,sends:1,racks:1,geq:1},seg);
+  R.minimo     = await cenario("minimo: trim + fader + pan (nada mais)",
+                   {canais:72,eq:0,comp:0,analisador:0,delay:0,sends:0,racks:0,geq:0},seg);
+  log("\n--- quanto cada peca custa (pontos percentuais tirados do COMPLETO) ---");
+  const dif=(k,r)=>log("  "+String(+(R.completo-R[k]).toFixed(1)).padStart(6)+" pp  "+r);
+  dif("semSends","os 8 envios de FX por canal (576 ganhos)");
+  dif("semComp","os 72 compressores de canal");
+  dif("semAnalis","os 144 analisadores");
+  dif("semEq","os 432 filtros de EQ");
+  dif("so42","os 30 canais vazios");
+  log("\n  base: 'minimo' custou "+R.minimo+"% — esse e o piso da maquina.");
+  return R;
+};
+</script>

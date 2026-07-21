@@ -243,6 +243,39 @@
   /* ================= WEB AUDIO ENGINE (adapted from CL5 template) ================= */
   let ac=null,masterGain=null,lim=null,masterAn=null,playing=false,curSong=0,loadTok=0,realSources=[];
   let fxRack=null,auxBus=null; const bufCache={},aNodes=[];
+
+  /* ===================== P() — automação que TERMINA =====================
+     Um AudioParam com automação pendente sai do caminho rápido do navegador: o
+     parâmetro passa a ser calculado amostra por amostra e, num BiquadFilter, isso
+     obriga a recalcular TODO o coeficiente (com seno/cosseno) 48.000 vezes por
+     segundo — por filtro.
+
+     setTargetAtTime é exponencial: matematicamente nunca chega ao alvo, então o
+     evento NUNCA termina. Um fader encostado uma única vez deixava aquele parâmetro
+     caro para sempre, e a mesa parada seguia pesada.
+
+     MEDIDO na CL5 (Queen, 42 canais): 34,5% do áudio deixava de ser renderizado
+     (199 engasgos em 20 s); depois de congelar os parâmetros já assentados, 0,7%.
+
+     P() faz o que uma mesa faz: rampa suave enquanto o operador move, valor fixo
+     quando parou. */
+  const _emRampa=[];
+  function P(p,alvo,t,tc){
+    if(!p) return;
+    if(p._alvo===alvo) return;                       // já está indo para lá: não reagenda
+    p._alvo=alvo;
+    if(Math.abs((p.value||0)-alvo)<1e-7){ try{p.cancelScheduledValues(0);}catch(e){} p.value=alvo; return; }
+    p.setTargetAtTime(alvo,t,tc);
+    p._congelaEm=t+Math.max(tc,0.002)*6;             // 6 constantes de tempo ≈ 99,8% do caminho
+    if(_emRampa.indexOf(p)<0)_emRampa.push(p);
+  }
+  function congelarParados(){
+    if(!ac)return; const t=ac.currentTime;
+    for(let i=_emRampa.length-1;i>=0;i--){ const p=_emRampa[i];
+      if(t>=p._congelaEm){ const v=p._alvo; try{p.cancelScheduledValues(0);}catch(e){} p.value=v; _emRampa.splice(i,1); } }
+  }
+  /* varre também fora do quadro: aba em segundo plano congela o requestAnimationFrame */
+  setInterval(congelarParados,250);
   const SB="https://pshynylvvkhhohftouoe.supabase.co/storage/v1/object/public/media/";
   const sg=(n,c,f,p,h)=>({n,c,f,p,h});
   const SONGS_FALLBACK=[
@@ -317,7 +350,6 @@
           var w=(typeof playing!=="undefined" && playing);
           if(typeof stopSong==="function") stopSong(true);
           if(typeof loadSong==="function") loadSong(0);
-          if(typeof preloadSong==="function") preloadSong();
           if(w && typeof playSong==="function") playSong();
         }catch(e){}
       })
@@ -376,27 +408,27 @@
   function anyCue(){ for(let k=0;k<STRIPS.length;k++){ if(STRIPS[k].cue) return true; } return false; }
   function applyChanAudio(i){
     if(!ac||!aNodes[i])return; const n=aNodes[i],c=CH[i],t=ac.currentTime;
-    n.trim.gain.setTargetAtTime(dbToLin(c.gain-16)*(c.phase?-1:1),t,0.02);
-    n.hpf.frequency.setTargetAtTime(c.hpfOn?c.hpf:20,t,0.02);
-    c.eq.forEach((b,bi)=>{ const f=n.eq[bi]; if(f.type!==b.type)f.type=b.type; f.frequency.setTargetAtTime(clamp(b.f,20,20000),t,0.02); f.gain.setTargetAtTime(b.g,t,0.02); f.Q.setTargetAtTime(clamp(b.q,0.05,18),t,0.02); });
+    P(n.trim.gain,dbToLin(c.gain-16)*(c.phase?-1:1),t,0.02);
+    P(n.hpf.frequency,c.hpfOn?c.hpf:20,t,0.02);
+    c.eq.forEach((b,bi)=>{ const f=n.eq[bi]; if(f.type!==b.type)f.type=b.type; P(f.frequency,clamp(b.f,20,20000),t,0.02); P(f.gain,b.g,t,0.02); P(f.Q,clamp(b.q,0.05,18),t,0.02); });
     if(c.compOn){ n.comp.threshold.value=c.compThr; n.comp.ratio.value=c.compRatio; }
     else { n.comp.threshold.value=0; n.comp.ratio.value=1; }
-    n.pan.pan.setTargetAtTime(clamp(c.pan/63,-1,1),t,0.02);
+    P(n.pan.pan,clamp(c.pan/63,-1,1),t,0.02);
     const soloMuted=anyCue()&&!c.cue;
     const audible=c.on&&!soloMuted&&c.fader>FMIN&&c.hasAudio;
-    n.fdr.gain.setTargetAtTime(audible?dbToLin(c.fader):0,t,0.02);
-    n.revSend.gain.setTargetAtTime((c.hasAudio&&c.fxRev>FMIN)?dbToLin(c.fxRev):0,t,0.02);
-    n.dlySend.gain.setTargetAtTime((c.hasAudio&&c.fxDly>FMIN)?dbToLin(c.fxDly):0,t,0.02);
+    P(n.fdr.gain,audible?dbToLin(c.fader):0,t,0.02);
+    P(n.revSend.gain,(c.hasAudio&&c.fxRev>FMIN)?dbToLin(c.fxRev):0,t,0.02);
+    P(n.dlySend.gain,(c.hasAudio&&c.fxDly>FMIN)?dbToLin(c.fxDly):0,t,0.02);
     // AUX 1-3: open the PRE tap or the POST tap depending on the per-aux PRE/POST switch
     if(n.auxPreG&&c.aux){ for(let a=0;a<3;a++){
       const lvl=(c.hasAudio&&c.aux[a]>-59)?dbToLin(c.aux[a]):0; const pre=!!state.auxPre[a];
-      n.auxPreG[a].gain.setTargetAtTime(pre?lvl:0,t,0.02);
-      n.auxPostG[a].gain.setTargetAtTime(pre?0:lvl,t,0.02);
+      P(n.auxPreG[a].gain,pre?lvl:0,t,0.02);
+      P(n.auxPostG[a].gain,pre?0:lvl,t,0.02);
     } }
   }
   function applyAux(){ if(!ac||!auxBus)return; const t=ac.currentTime;
     if(!state._auxM) state._auxM=[0,0,0];
-    for(let a=0;a<3;a++) auxBus[a].g.gain.setTargetAtTime(state._auxM[a]>-59?dbToLin(state._auxM[a]):0,t,0.03);
+    for(let a=0;a<3;a++) P(auxBus[a].g.gain,state._auxM[a]>-59?dbToLin(state._auxM[a]):0,t,0.03);
     for(let i=0;i<24;i++) applyChanAudio(i);   // PRE/POST switch re-routes the taps
   }
   function auxLevelDb(a){ if(!ac||!auxBus||!auxBus[a])return -90; const o=auxBus[a];
@@ -404,14 +436,20 @@
     const rms=Math.sqrt(s/o.buf.length); return rms>1e-5?20*Math.log10(rms):-90; }
   function applyFX(rebuild){ if(!ac||!fxRack)return; const t=ac.currentTime;
     if(rebuild) fxRack.conv.buffer=makeImpulse(state.fx.rev.decay);
-    fxRack.revRet.gain.setTargetAtTime(state.fx.rev.on?state.fx.rev.mix:0,t,0.03);
-    fxRack.dly.delayTime.setTargetAtTime(clamp(state.fx.dly.time,0,1.5),t,0.03);
-    fxRack.dfb.gain.setTargetAtTime(clamp(state.fx.dly.fb,0,0.9),t,0.03);
-    fxRack.dlyRet.gain.setTargetAtTime(state.fx.dly.on?state.fx.dly.mix:0,t,0.03); }
-  function applyMaster(){ if(ac&&masterGain) masterGain.gain.setTargetAtTime(dbToLin(state.master),ac.currentTime,0.02); }
+    P(fxRack.revRet.gain,state.fx.rev.on?state.fx.rev.mix:0,t,0.03);
+    P(fxRack.dly.delayTime,clamp(state.fx.dly.time,0,1.5),t,0.03);
+    P(fxRack.dfb.gain,clamp(state.fx.dly.fb,0,0.9),t,0.03);
+    P(fxRack.dlyRet.gain,state.fx.dly.on?state.fx.dly.mix:0,t,0.03); }
+  function applyMaster(){ if(ac&&masterGain) P(masterGain.gain,dbToLin(state.master),ac.currentTime,0.02); }
   function chLevelDb(i){ if(!ac||!aNodes[i])return -90; const n=aNodes[i]; n.an.getFloatTimeDomainData(n.buf); let s=0; for(let k=0;k<n.buf.length;k++)s+=n.buf[k]*n.buf[k]; const rms=Math.sqrt(s/n.buf.length); return rms>1e-5?20*Math.log10(rms):-90; }
   function masterLevelDb(){ if(!masterAn)return -90; masterAn.getFloatTimeDomainData(masterAn._buf); let s=0; for(let k=0;k<masterAn._buf.length;k++)s+=masterAn._buf[k]*masterAn._buf[k]; const rms=Math.sqrt(s/masterAn._buf.length); return rms>1e-5?20*Math.log10(rms):-90; }
   function loadBuf(url){ if(!bufCache[url]){ bufCache[url]=(async()=>{ const r=await fetch(url); if(!r.ok)throw new Error("HTTP "+r.status); const ab=await r.arrayBuffer(); return await ac.decodeAudioData(ab); })().catch(e=>{ delete bufCache[url]; throw e; }); } return bufCache[url]; }
+  /* Solta da RAM toda base que não é a atual. Um stem decodificado custa
+     duração × 48000 × 4 bytes por canal, então um cache que nunca esvazia soma GB
+     conforme o operador passeia pelo seletor — e quando a aba encosta no teto do
+     navegador, TODA base passa a engasgar. */
+  function freeOutrasBases(){ try{ const atual=SB+SONGS[curSong].folder+"/";
+    Object.keys(bufCache).forEach(u=>{ if(u.indexOf(atual)!==0) delete bufCache[u]; }); }catch(e){} }
 
   /* ================= STRIP -> CHANNELS ================= */
   function eqBiquads(s){
@@ -654,10 +692,6 @@
     if(ac) for(let ci=0;ci<24;ci++) applyChanAudio(ci);
   }
   function SONGpan(song,ci){ const st=(ci<MAXCH)?song.stems[ci]:null; return st?st.p:0; }
-  // Pré-carrega os stems da base atual (cache) para o play iniciar instantâneo.
-  function preloadSong(){ try{ if(!ac)buildAudioGraph(); }catch(e){ return; } if(!ac)return;
-    const song=SONGS[curSong], base=SB+song.folder+"/";
-    song.stems.slice(0,MAXCH).forEach(st=>{ try{ loadBuf(base+st.f).catch(()=>{}); }catch(e){} }); }
   let loadingSong=false;
   function setPlayLoading(n,total){ const b=$("#playBtn"); if(b){ b.disabled=true; b.style.background="#f4a02a"; b.style.color="#04121a"; b.textContent="⏳ CARREGANDO BASE… "+n+"/"+total; } setStatus("baixando stems "+n+"/"+total+"…","#f4a02a"); }
   function setPlayBtn(on){ const b=$("#playBtn"); if(b){ b.disabled=false; b.textContent=on?"⏸ Parar":"► Tocar base"; b.style.background=on?"#e0483f":"#22b866"; b.style.color="#04121a"; } }
@@ -665,18 +699,41 @@
     if(!ac){ try{buildAudioGraph();}catch(e){ setStatus("erro áudio","#e0483f"); return; } }
     if(ac.state==="suspended"){ try{await ac.resume();}catch(e){} }
     const song=SONGS[curSong],base=SB+song.folder+"/",tok=++loadTok;
-    const stems=song.stems.slice(0,MAXCH), total=stems.length;
-    loadingSong=true; let done=0; setPlayLoading(0,total);
-    let bufs;
+    const useStems=song.stems.slice(0,MAXCH);
+    loadingSong=true; let done=0; setPlayLoading(0,useStems.length);
+    /* Carga em LOTES, não todas de uma vez: baixar tudo em paralelo mantém dezenas de
+       arquivos comprimidos na memória enquanto o navegador ainda decodifica os anteriores.
+       Cada faixa tem direito a UMA segunda tentativa — a primeira falha costuma ser só
+       o coletor de lixo ainda não ter devolvido a base anterior. */
+    let bufs=[];
+    const LOTE=6;
     try{
-      bufs=await Promise.all(stems.map(st=>loadBuf(base+st.f).then(b=>{ done++; if(tok===loadTok)setPlayLoading(done,total); return b; }).catch(err=>{ err.stem=st.f; throw err; })));
-    }catch(e){ loadingSong=false; setPlayBtn(false); setStatus("ERRO ao baixar "+(e.stem||"stem")+" — "+e.message+" (tente de novo)","#e0483f"); return; }
+      for(let k=0;k<useStems.length;k+=LOTE){
+        const fatia=useStems.slice(k,k+LOTE);
+        const parte=await Promise.all(fatia.map(st=>loadBuf(base+st.f)
+          .catch(()=>new Promise(r=>setTimeout(r,120)).then(()=>loadBuf(base+st.f)))
+          .then(b=>{ done++; if(tok===loadTok)setPlayLoading(done,useStems.length); return b; })
+          .catch(err=>{ err.stem=st.f; throw err; })));
+        bufs=bufs.concat(parte);
+        if(tok!==loadTok){ loadingSong=false; setPlayBtn(playing); return; }
+      }
+    }catch(e){ loadingSong=false; loadTok++;   /* invalida: impede que faixas atrasadas apaguem o erro da tela */
+      setPlayBtn(false); setStatus("ERRO ao baixar "+(e.stem||"stem")+" — "+e.message+" (aperte Tocar de novo)","#e0483f"); return; }
     loadingSong=false;
     if(tok!==loadTok){ setPlayBtn(playing); return; }
     stopSong(true); const t0=ac.currentTime+0.12;
-    stems.forEach((st,i)=>{ if(i>=MAXCH||!aNodes[i])return; const src=ac.createBufferSource(); src.buffer=bufs[i]; src.loop=true; if(bufs.__lm===undefined){var _m=0;for(var _k=0;_k<bufs.length;_k++){if(bufs[_k]&&bufs[_k].duration>_m)_m=bufs[_k].duration;}bufs.__lm=_m;} if(bufs.__lm>0.5&&bufs[i]&&bufs[i].duration<bufs.__lm-0.02){try{var _sr=bufs[i].sampleRate,_pl=Math.round(bufs.__lm*_sr),_nc=bufs[i].numberOfChannels,_pb=ac.createBuffer(_nc,_pl,_sr);for(var _c=0;_c<_nc;_c++){_pb.getChannelData(_c).set(bufs[i].getChannelData(_c));}src.buffer=_pb;}catch(e){}} if(bufs.__lm>0.5){src.loopStart=0;src.loopEnd=bufs.__lm;} src.connect(aNodes[i].trim); src.start(t0); realSources.push(src); });
+    /* Base de ENSAIO (todos os stems do mesmo tamanho) roda em LOOP. MÚSICA INTEIRA
+       (stems de tamanhos diferentes) toca até o fim, como um multitrack de verdade.
+       Antes eu igualava os tamanhos copiando cada stem curto para um buffer novo do
+       tamanho do maior — no Queen isso alocava ~1,8 GB à toa e estourava a aba. */
+    let durMax=0,durMin=Infinity,iLongo=0;
+    bufs.forEach((b,i)=>{ if(!b)return; if(b.duration>durMax){durMax=b.duration;iLongo=i;} if(b.duration<durMin)durMin=b.duration; });
+    const emLoop=(durMax-durMin)<0.02;
+    useStems.forEach((st,i)=>{ if(i>=MAXCH||!aNodes[i])return; const src=ac.createBufferSource();
+      src.buffer=bufs[i]; src.loop=emLoop; src.connect(aNodes[i].trim); src.start(t0); realSources.push(src); });
+    if(!emLoop){ const fim=realSources.find(s=>s.buffer===bufs[iLongo]); if(fim) fim.onended=()=>{ stopSong(); setStatus("fim da música","#7fb2c8"); }; }
     for(let i=0;i<24;i++)applyChanAudio(i); playing=true; setPlayBtn(true); setStatus("tocando ♪ "+song.label,"#3fbf6a"); }
-  function stopSong(keep){ realSources.forEach(s=>{try{s.stop();}catch(e){}}); realSources=[]; playing=false; setPlayBtn(false); if(!keep)setStatus("parado"); }
+  function stopSong(keep){ realSources.forEach(s=>{try{s.onended=null;s.stop();s.disconnect();}catch(e){}}); realSources=[]; playing=false; setPlayBtn(false); if(!keep)setStatus("parado"); }
 
   /* ================= METERS / LOOP ================= */
   const mbridge=$("#mbridge"); const mctx=mbridge.getContext('2d'); let DPR=1;
@@ -690,7 +747,7 @@
       const grad=mctx.createLinearGradient(0,h-4,0,4); grad.addColorStop(0,'#37c86a'); grad.addColorStop(0.62,'#37c86a'); grad.addColorStop(0.84,'#e8c33a'); grad.addColorStop(1,'#e0483f');
       mctx.fillStyle=grad; mctx.fillRect(x,h-4-bh,bw,bh); }
   }
-  function loop(){
+  function loop(){ congelarParados();
     for(const o of stripMeters){ const s=o.s; const ci=s.chans[0]; let db;
       if(playing){ db=CH[ci].hasAudio?chLevelDb(ci):-90; if(s.chans.length>1&&CH[s.chans[1]].hasAudio)db=Math.max(db,chLevelDb(s.chans[1])); }
       else db=-90;
@@ -705,14 +762,12 @@
 
   /* ================= INIT ================= */
   (function initUI(){ const sel=$("#songSel"); SONGS.forEach((s,i)=>{ const o=document.createElement("option"); o.value=i; o.textContent=s.label; sel.appendChild(o); }); sel.value=0;
-    sel.onchange=()=>{ if(loadingSong)return; const w=playing; stopSong(true); loadSong(+sel.value); preloadSong(); if(w)playSong(); };
+    sel.onchange=()=>{ if(loadingSong)return; const w=playing; stopSong(true); loadSong(+sel.value); freeOutrasBases(); if(w)playSong(); };
     $("#playBtn").onclick=()=>{ if(loadingSong)return; if(playing)stopSong(); else playSong(); };
   })();
   buildMaster();
   loadSong(0);
-  try{ buildAudioGraph(); }catch(e){}
-  try{ preloadSong(); }catch(e){}
-  document.addEventListener("pointerdown",()=>{ try{ preloadSong(); }catch(e){} },{once:true,capture:true});
+  /* sem AudioContext e sem pré-carga no load: só no PLAY */
   sizeBridge(); window.addEventListener('resize',sizeBridge);
   requestAnimationFrame(loop);
 

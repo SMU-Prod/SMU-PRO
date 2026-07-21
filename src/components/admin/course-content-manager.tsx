@@ -163,8 +163,16 @@ export function CourseContentManager({ course }: { course: any }) {
   // ── DELETE MODULE
   const handleDeleteModule = async (id: string) => {
     if (!confirm(t("Tem certeza? Todas as aulas deste módulo serão removidas."))) return;
-    await adminDeleteModule(id);
-    setModules((prev) => prev.filter((m) => m.id !== id));
+    // Só tira da tela DEPOIS que o banco confirmou. Sem o try/catch, uma falha virava
+    // promessa rejeitada sem tratamento: nenhum aviso e a lista simplesmente não mudava.
+    setLoading(true);
+    try {
+      await adminDeleteModule(id);
+      setModules((prev) => prev.filter((m) => m.id !== id));
+    } catch (err) {
+      console.error("Erro ao excluir módulo:", err);
+      alert(t("Não foi possível excluir o módulo.") + "\n" + ((err as Error)?.message ?? ""));
+    } finally { setLoading(false); }
   };
 
   // ── REORDER ROOT MODULES (drag-drop)
@@ -252,12 +260,18 @@ export function CourseContentManager({ course }: { course: any }) {
   // ── DELETE LESSON
   const handleDeleteLesson = async (lessonId: string, moduleId: string) => {
     if (!confirm(t("Remover esta aula?"))) return;
-    await adminDeleteLesson(lessonId);
-    setModules((prev) =>
-      prev.map((m) =>
-        m.id === moduleId ? { ...m, lessons: m.lessons.filter((l: any) => l.id !== lessonId) } : m
-      )
-    );
+    setLoading(true);
+    try {
+      await adminDeleteLesson(lessonId);
+      setModules((prev) =>
+        prev.map((m) =>
+          m.id === moduleId ? { ...m, lessons: m.lessons.filter((l: any) => l.id !== lessonId) } : m
+        )
+      );
+    } catch (err) {
+      console.error("Erro ao excluir aula:", err);
+      alert(t("Não foi possível excluir a aula.") + "\n" + ((err as Error)?.message ?? ""));
+    } finally { setLoading(false); }
   };
 
   // ── MOVE LESSON TO ANOTHER MODULE
@@ -361,7 +375,11 @@ export function CourseContentManager({ course }: { course: any }) {
               onEditModule={() => { setEditingModule(mod.id); moduleForm.setValue("titulo", mod.titulo); }}
               onCancelEditModule={() => setEditingModule(null)}
               onUpdateModule={(d: any) => handleUpdateModule(mod.id, d)}
-              onDeleteModule={(targetId?: string) => handleDeleteModule(targetId ?? mod.id)}
+              onDeleteModule={(targetId?: string) => {
+                // só aceita string: as props deste componente são `any`, então um onClick
+                // passando o MouseEvent como id não seria pego pelo TypeScript — foi esse o bug.
+                handleDeleteModule(typeof targetId === "string" ? targetId : mod.id);
+              }}
               onCreateLesson={(d: any, targetModuleId?: string) => handleCreateLesson(targetModuleId ?? mod.id, d)}
               onUpdateLesson={(lessonId: string, d: any, targetModuleId?: string) => handleUpdateLesson(lessonId, targetModuleId ?? mod.id, d)}
               onAutoSaveLesson={(lessonId: string, d: any, targetModuleId?: string) => handleAutoSaveLesson(lessonId, targetModuleId ?? mod.id, d)}
@@ -470,11 +488,14 @@ function SortableModule({ mod, modIdx, submodules = [], expanded, editingModule,
             </p>
           </div>
 
-          <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEditModule}>
               <Edit2 size={13} />
             </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-red-400 hover:text-red-500" onClick={onDeleteModule}>
+            {/* onClick={onDeleteModule} passava o MouseEvent como se fosse o id do módulo
+                (a prop é (targetId?) => handleDeleteModule(targetId ?? mod.id)), então o
+                evento — que é truthy — virava o id e o apagar não fazia nada. */}
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-red-400 hover:text-red-500" onClick={() => onDeleteModule()}>
               <Trash2 size={13} />
             </Button>
           </div>
@@ -663,7 +684,7 @@ function SortableSubmodule({ sub, subIdx, expanded, onToggle, editingModule, mod
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
           {/* Promote to root */}
           <Button variant="ghost" size="icon" className="h-6 w-6" title={t("Promover a módulo raiz")} onClick={onPromoteToRoot}>
             <ArrowUp size={11} />
@@ -793,7 +814,7 @@ function SortableLesson({ lesson, lessonIdx, editingLesson, quizLesson, lessonFo
           </div>
         </div>
 
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity shrink-0">
           <Button
             variant="ghost" size="icon"
             className={cn("h-7 w-7", quizLesson === lesson.id && "bg-amber-500/10 text-amber-400")}
@@ -1543,7 +1564,7 @@ function QuestionCard({ question, index, expanded, onToggle, onDelete, onUpdate,
               </button>
               <span className="flex-1 text-sm text-muted">{opt.texto}</span>
               {!isTrueFalse && (
-                <button className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-500 transition-opacity" onClick={() => onDeleteOption(opt.id)}>
+                <button className="opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 text-red-400 hover:text-red-500 transition-opacity" onClick={() => onDeleteOption(opt.id)}>
                   <X size={12} />
                 </button>
               )}

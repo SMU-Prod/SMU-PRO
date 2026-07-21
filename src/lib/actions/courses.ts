@@ -437,8 +437,15 @@ export async function adminUpdateModule(id: string, input: Partial<ModuleInsert>
 export async function adminDeleteModule(id: string) {
   const clerkId = await assertAdmin();
   const supabase = createAdminClient();
-  await assertCanEditCourse(supabase, (await courseIdOfModule(supabase, id)) ?? "", clerkId);
-  await supabase.from("modules").delete().eq("id", id);
+  const courseId = (await courseIdOfModule(supabase, id)) ?? "";
+  await assertCanEditCourse(supabase, courseId, clerkId);
+  // O erro era descartado: um DELETE que falhava passava por sucesso, a lista sumia
+  // da tela e o módulo voltava no F5. Agora estoura, como nas demais actions.
+  const { error } = await supabase.from("modules").delete().eq("id", id);
+  if (error) throw error;
+  if (courseId) revalidatePath(`/admin/cursos/${courseId}`);
+  revalidatePath("/cursos");
+  updateTag("courses");
 }
 
 /**
@@ -484,8 +491,14 @@ export async function adminUpdateLesson(id: string, input: Partial<LessonInsert>
 export async function adminDeleteLesson(id: string) {
   const clerkId = await assertAdmin();
   const supabase = createAdminClient();
-  await assertCanEditCourse(supabase, (await courseIdOfLesson(supabase, id)) ?? "", clerkId);
-  await supabase.from("lessons").delete().eq("id", id);
+  const courseId = (await courseIdOfLesson(supabase, id)) ?? "";
+  await assertCanEditCourse(supabase, courseId, clerkId);
+  // idem adminDeleteModule: o erro do DELETE era descartado silenciosamente.
+  const { error } = await supabase.from("lessons").delete().eq("id", id);
+  if (error) throw error;
+  if (courseId) revalidatePath(`/admin/cursos/${courseId}`);
+  revalidatePath("/cursos");
+  updateTag("courses");
 }
 
 // ============================================================
@@ -697,6 +710,9 @@ export async function adminDuplicateCourse(id: string) {
       thumbnail_url: original.thumbnail_url,
       nivel: original.nivel,
       categoria: original.categoria,
+      // Sem `categorias` o clone troca de ESCOLA: curso do aula (['tecnico']) nasceria
+      // com lista vazia e cairia no catálogo do www (e sumiria do admin do aula).
+      categorias: original.categorias ?? [],
       tipo: original.tipo,
       preco: original.preco,
       carga_horaria: original.carga_horaria,
@@ -729,6 +745,19 @@ export async function adminDuplicateCourse(id: string) {
 
     // Map original module order → new module id
     const sortedNewModules = (newModules ?? []).sort((a: any, b: any) => a.ordem - b.ordem);
+
+    // Reata submódulos: sem isto todo submódulo vira módulo raiz no clone.
+    const novoIdDoAntigo = new Map<string, string>();
+    for (let i = 0; i < modules.length; i++) novoIdDoAntigo.set(modules[i].id, sortedNewModules[i]?.id);
+    for (let i = 0; i < modules.length; i++) {
+      const paiAntigo = modules[i].parent_id;
+      if (!paiAntigo || !novoIdDoAntigo.get(paiAntigo) || !sortedNewModules[i]?.id) continue;
+      const { error: paiErr } = await supabase
+        .from("modules")
+        .update({ parent_id: novoIdDoAntigo.get(paiAntigo) })
+        .eq("id", sortedNewModules[i].id);
+      if (paiErr) throw new Error(`Erro ao reatar submódulo no clone: ${paiErr.message}`);
+    }
 
     // Clone all lessons in batch
     const lessonInserts: any[] = [];

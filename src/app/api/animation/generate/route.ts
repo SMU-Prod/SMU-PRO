@@ -273,15 +273,21 @@ export async function GET(req: NextRequest) {
 
   const record = data[0];
 
-  // Invalidar cache antigo sem HTML inline
+  // Linha `ready` sem HTML inline: NUNCA deletar aqui — este GET roda para qualquer aluno,
+  // e um DELETE destruiria uma edição manual em andamento no banco (urls vazio por um
+  // instante). Apenas responde not_found; limpeza de lixo é tarefa de admin/script.
   if (record.status === "ready") {
     const hasContent = record.urls?.some((u: any) => u.html || u.image);
     if (!hasContent) {
-      await (supabase as any)
-        .from("ai_animations")
-        .delete()
-        .eq("lesson_id", lessonId)
-        .eq("tipo", tipo);
+      return NextResponse.json({ status: "not_found" });
+    }
+  }
+
+  // Linha presa em `generating` (geração morreu no meio): depois de 10 min é lixo — sem
+  // isto o player esconde o simulador para sempre e re-polla 5 min a cada visita.
+  if (record.status === "generating") {
+    const idadeMs = Date.now() - new Date(record.updated_at || record.created_at).getTime();
+    if (idadeMs > 10 * 60 * 1000) {
       return NextResponse.json({ status: "not_found" });
     }
   }
