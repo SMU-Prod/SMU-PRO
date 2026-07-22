@@ -14,6 +14,7 @@ import { LiveDemo } from "@/components/landing/live-demo";
 import { AiTutor } from "@/components/landing/ai-tutor";
 import { CourseExplorer, type ExplorerCourse } from "@/components/landing/course-explorer";
 import { CertCard } from "@/components/landing/cert-card";
+import { AulaHome } from "@/components/landing/aula-home";
 
 export const dynamic = "force-dynamic"; // renderiza por requisição p/ ler o cookie de idioma
 
@@ -25,6 +26,10 @@ export default async function HomePage() {
   const t = await getServerT();
   const portal = await getPortal();
   const isAula = portal === "aula";
+
+  // aula.smuproducoes.com tem home PRÓPRIA (escola profissionalizante);
+  // a landing de eventos abaixo é exclusiva do www (regra do dono: www = eventos).
+  if (isAula) return <AulaHome />;
 
   let scoped: any[] = [];
   let stats = { totalUsers: 0, totalCourses: 0, totalHours: 0, completionRate: 0 };
