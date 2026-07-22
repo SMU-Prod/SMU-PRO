@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador · Geladeira não gela (diagnóstico) — SMU Técnico</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+<div class="wrap">
+<p class="titulo">Geladeira não gela: testar antes de condenar o compressor</p>
+<p class="sub">Simulador de bancada · Curso de Conserto de Eletrodomésticos · SMU Técnico</p>
+<h2 class="sr-only">Simulador de bancada de refrigeração: a geladeira não gela; teste com o multímetro o termostato, o relé de partida, o protetor térmico e os enrolamentos do compressor para achar o defeito antes de condenar o compressor.</h2>
+<div style="padding:1rem 0; font-family:var(--font-sans);">
+  <div style="background:var(--bg-accent); color:var(--text-accent); border-radius:var(--radius); padding:.6rem .9rem; font-size:13px; margin-bottom:14px;">
+    <i class="ti ti-fridge" aria-hidden="true" style="vertical-align:-2px; margin-right:4px;"></i>Geladeira <strong>não gela</strong> (compressor não parte). Teste as peças <strong>baratas primeiro</strong> — só condene o compressor (caro) se o enrolamento estiver aberto ou em curto. (Já desligada da tomada.)
+  </div>
+
+  <div style="background:#0f1a13; border:1px solid var(--border-strong); border-radius:12px; padding:12px 14px; margin-bottom:14px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      <span style="font-size:11px; color:#7bdca8; letter-spacing:1px;">MULTÍMETRO</span>
+      <span id="modo_lbl" style="font-size:11px; color:#7bdca8;">modo: Continuidade</span>
+    </div>
+    <div style="background:#04120a; border-radius:8px; padding:12px; min-height:46px; font-family:var(--font-mono,monospace);">
+      <div id="visor" style="color:#57e08e; font-size:15px; line-height:1.45;">— encoste a ponta numa peça —</div>
+    </div>
+    <div style="display:flex; gap:6px; margin-top:10px; flex-wrap:wrap;">
+      <button class="modo" data-m="cont" type="button">Continuidade</button>
+      <button class="modo" data-m="res" type="button">Resistência (Ω)</button>
+    </div>
+  </div>
+
+  <div style="font-size:12px; color:var(--text-secondary); margin-bottom:6px;">Sistema — clique em <strong>Medir</strong> (no modo certo) e em <strong>Trocar</strong> na peça defeituosa:</div>
+  <div id="pecas" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px;"></div>
+  <div id="fim" style="margin-top:14px;"></div>
+</div>
+<script>
+(function(){
+  var $=function(i){return document.getElementById(i);};
+  var PECAS=[
+    {id:'term', nome:'Termostato', modo:'cont', preco:'barata',
+      bom:'apita (fechado, chamando frio)', ruim:'OL — não fecha, não manda o compressor ligar', rtxt:'aberto'},
+    {id:'rele', nome:'Relé de partida (PTC)', modo:'res', preco:'barata',
+      bom:'≈ 24 Ω', ruim:'OL (aberto) — não dá partida no compressor', rtxt:'aberto'},
+    {id:'prot', nome:'Protetor térmico', modo:'cont', preco:'barata',
+      bom:'apita (fechado, frio)', ruim:'OL — cortando o compressor', rtxt:'aberto'},
+    {id:'comp', nome:'Compressor (enrolamentos)', modo:'res', preco:'cara',
+      bom:'C-R ≈ 2 Ω · C-S ≈ 8 Ω · R-S ≈ 10 Ω · sem fuga à carcaça', ruim:'enrolamento ABERTO (OL) e/ou curto à carcaça', rtxt:'queimado'}
+  ];
+  var MODOS={cont:'Continuidade', res:'Resistência'};
+  var modo='cont', defeito=Math.floor(Math.random()*PECAS.length), acabou=false;
+
+  function setModo(m){ modo=m; $('modo_lbl').textContent='modo: '+MODOS[m];
+    Array.prototype.forEach.call(document.querySelectorAll('.modo'),function(b){
+      var on=b.dataset.m===m; b.style.background=on?'var(--bg-accent)':'var(--surface-2)'; b.style.borderColor=on?'var(--border-accent)':'var(--border-strong)'; b.style.color=on?'var(--text-accent)':'var(--text-primary)';});
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.modo'),function(b){ b.onclick=function(){ if(!acabou) setModo(b.dataset.m); }; });
+
+  function medir(i){
+    if(acabou) return;
+    var c=PECAS[i], ruim=(i===defeito);
+    if(modo!==c.modo){
+      $('visor').innerHTML='<span style="color:#e0a857;">modo errado para '+c.nome.toLowerCase()+'.</span><br><span style="color:#7bdca8; font-size:13px;">Use '+MODOS[c.modo]+'.</span>';
+      return;
+    }
+    var leitura=ruim?c.ruim:c.bom;
+    var tag=ruim?'<span style="color:#f08a8a;">⚠ fora do normal — suspeito</span>':'<span style="color:#57e08e;">leitura normal — ok</span>';
+    $('visor').innerHTML='<span style="color:#eaeaea; font-size:13.5px;">'+c.nome+'</span><br><span style="font-size:14px;">'+leitura+'</span><br>'+tag;
+  }
+  function trocar(i){
+    if(acabou) return; acabou=true;
+    var c=PECAS[i];
+    if(i===defeito){
+      var extra = c.preco==='cara'
+        ? 'Aqui o compressor estava REALMENTE queimado (enrolamento aberto) — e você confirmou no teste dos 3 terminais, não no chute.'
+        : 'Era uma peça barata ('+c.nome.toLowerCase()+'). Muita gente troca o compressor (caro) à toa nesse caso — você testou e resolveu gastando pouco.';
+      $('fim').innerHTML='<div style="background:var(--bg-success); border-radius:var(--radius); padding:.9rem 1rem; font-size:13.5px; color:var(--text-success); line-height:1.6;"><i class="ti ti-circle-check" aria-hidden="true" style="vertical-align:-2px; margin-right:4px;"></i><strong>Voltou a gelar.</strong> '+extra+'</div>';
+    } else {
+      var msg = c.preco==='cara'
+        ? 'Você trocou o COMPRESSOR (peça cara) e ele estava bom — os enrolamentos mediam certo. Prejuízo grande: o defeito era outro. Teste as peças baratas primeiro.'
+        : 'Trocou o(a) '+c.nome.toLowerCase()+', mas ele estava ok — a geladeira continua sem gelar. Meça TODAS no modo certo antes de trocar.';
+      $('fim').innerHTML='<div style="background:var(--bg-danger); border-radius:var(--radius); padding:.9rem 1rem; font-size:13.5px; color:var(--text-danger); line-height:1.6;"><i class="ti ti-x" aria-hidden="true" style="vertical-align:-2px; margin-right:4px;"></i><strong>Não resolveu.</strong> '+msg+'</div>';
+    }
+    $('fim').innerHTML+='<div style="text-align:center; margin-top:12px;"><button id="rst" type="button">Outra geladeira</button></div>';
+    $('rst').onclick=function(){ defeito=Math.floor(Math.random()*PECAS.length); acabou=false; $('fim').innerHTML=''; $('visor').innerHTML='— encoste a ponta numa peça —'; render(); };
+    render();
+  }
+  function render(){
+    var box=$('pecas'); box.innerHTML='';
+    PECAS.forEach(function(c,i){
+      var d=document.createElement('div');
+      d.style.cssText='background:var(--surface-2); border:0.5px solid var(--border-strong); border-radius:12px; padding:.8rem;';
+      d.innerHTML='<div style="font-weight:500; font-size:13.5px; margin-bottom:2px;">'+c.nome+'</div><div style="font-size:11px; color:var(--text-muted); margin-bottom:10px;">testa em: '+MODOS[c.modo]+' · peça '+c.preco+'</div>';
+      var bm=document.createElement('button'); bm.type='button'; bm.textContent='Medir'; bm.style.cssText='font-size:12px; padding:6px 12px; margin-right:6px;'; bm.disabled=acabou; bm.onclick=function(){medir(i);};
+      var bt=document.createElement('button'); bt.type='button'; bt.textContent='Trocar'; bt.style.cssText='font-size:12px; padding:6px 12px; border-color:var(--border-warning); color:var(--text-warning);'; bt.disabled=acabou; bt.onclick=function(){trocar(i);};
+      d.appendChild(bm); d.appendChild(bt); box.appendChild(d);
+    });
+  }
+  setModo('cont'); render();
+})();
+</script>
+</div>
+</body>
+</html>

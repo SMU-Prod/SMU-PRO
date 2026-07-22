@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador · Reparo seguro de micro-ondas — SMU Técnico</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+<div class="wrap">
+<p class="titulo">Reparo seguro de micro-ondas</p>
+<p class="sub">Simulador de procedimento · Curso de Conserto de Eletrodomésticos · SMU Técnico</p>
+<h2 class="sr-only">Simulador de procedimento: execute o reparo seguro de um micro-ondas passo a passo, escolhendo as ferramentas certas e seguindo a sequência de segurança correta.</h2>
+<div style="padding:1rem 0; font-family:var(--font-sans);">
+  <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:1rem;">
+    <div style="flex:1; min-width:120px; background:var(--surface-1); border-radius:var(--radius); padding:.6rem .9rem;">
+      <div style="font-size:12px; color:var(--text-secondary);">Etapa</div>
+      <div style="font-size:20px; font-weight:500;"><span id="et">1</span>/8</div>
+    </div>
+    <div style="flex:1; min-width:120px; background:var(--surface-1); border-radius:var(--radius); padding:.6rem .9rem;">
+      <div style="font-size:12px; color:var(--text-secondary);">Pontos</div>
+      <div style="font-size:20px; font-weight:500;" id="pts">0</div>
+    </div>
+    <div style="flex:1; min-width:120px; background:var(--surface-1); border-radius:var(--radius); padding:.6rem .9rem;">
+      <div style="font-size:12px; color:var(--text-secondary);">Falhas de segurança</div>
+      <div style="font-size:20px; font-weight:500; color:var(--text-danger);" id="viol">0</div>
+    </div>
+  </div>
+  <div style="height:6px; background:var(--surface-1); border-radius:99px; overflow:hidden; margin-bottom:1rem;">
+    <div id="bar" style="height:100%; width:12%; background:var(--text-accent); border-radius:99px; transition:width .25s;"></div>
+  </div>
+  <div id="passo" style="font-size:12px; color:var(--text-accent); font-weight:500; margin-bottom:4px;"></div>
+  <div id="prompt" style="font-size:16px; font-weight:500; margin-bottom:14px; line-height:1.5;"></div>
+  <div id="opts"></div>
+  <div id="fb" style="margin-top:12px;"></div>
+  <div style="margin-top:14px;">
+    <button id="next" type="button" style="display:none;">Próximo <i class="ti ti-arrow-right" aria-hidden="true" style="vertical-align:-2px;"></i></button>
+  </div>
+</div>
+<script>
+(function(){
+  var STEPS = [
+    {passo:"Recepção · Segurança", prompt:"O cliente traz um micro-ondas que 'não esquenta'. Qual é o PRIMEIRO passo, antes de abrir a carcaça?",
+     opts:[
+       {t:"Abrir direto para achar o defeito rápido", ok:false, danger:true, fb:"Nunca abra energizado. Além do risco elétrico, o capacitor guarda carga."},
+       {t:"Desligar da tomada e só então abrir", ok:true, fb:"Correto. Desenergizar é o primeiro passo — mas lembre: o capacitor ainda pode estar carregado."},
+       {t:"Ligar e aproximar a mão do magnetron para sentir o calor", ok:false, danger:true, fb:"Jamais. Risco de choque e de exposição a micro-ondas."}
+     ]},
+    {passo:"Ferramenta · Abertura", prompt:"Para abrir a carcaça, escolha a ferramenta adequada:", tool:true,
+     opts:[
+       {t:"Chave Phillips magnética de bancada", sub:"Ponta ímã · segura o parafuso · CAT n/a", ok:true, fb:"Ideal: a ponta magnética evita perder parafuso dentro do aparelho."},
+       {t:"Chave de fenda comum improvisada na cruz", sub:"Espana a cabeça · escorrega", ok:false, fb:"Espana o parafuso e escorrega — risco de dano e de acidente."},
+       {t:"Alicate para 'forçar' o parafuso", sub:"Ferramenta errada p/ a tarefa", ok:false, fb:"Ferramenta errada; danifica a carcaça."}
+     ]},
+    {passo:"Segurança CRÍTICA", prompt:"Carcaça aberta. Antes de tocar em QUALQUER componente da seção de potência, o que você faz?",
+     opts:[
+       {t:"Começar a medir os componentes direto", ok:false, danger:true, fb:"PERIGO DE MORTE. O capacitor de alta tensão pode estar carregado e matar."},
+       {t:"Descarregar o capacitor de alta tensão e confirmar ausência de tensão", ok:true, fb:"Exatamente. Este é o passo que salva vidas no reparo de micro-ondas."},
+       {t:"Soprar a poeira e ir trocando peças por tentativa", ok:false, danger:true, fb:"Inseguro e sem método. Descarregue o capacitor primeiro."}
+     ]},
+    {passo:"Ferramenta · Descarga", prompt:"Escolha a ferramenta para descarregar o capacitor com segurança:", tool:true,
+     opts:[
+       {t:"Descarregador com resistor isolado", sub:"Resistor limita a corrente · cabo isolado · seguro", ok:true, fb:"Correto. O resistor descarrega de forma controlada, sem arco violento."},
+       {t:"Chave de fenda encostando os dois terminais", sub:"Arco violento · sem limite de corrente · gambiarra", ok:false, danger:true, fb:"Gambiarra perigosa: gera arco, pode danificar e ferir. Nunca faça isso."},
+       {t:"Alicate sem isolação", sub:"Sem isolação · risco de choque", ok:false, danger:true, fb:"Sem isolação = risco de choque direto."}
+     ]},
+    {passo:"Ferramenta · Comparação de qualidade", prompt:"Confirme a ausência de tensão medindo. Escolha o multímetro adequado para a tarefa (alta tensão):", tool:true, compare:true,
+     opts:[
+       {t:"Multímetro profissional", sub:"Segurança CAT III/IV · True RMS · alta tensão OK", ok:true, fb:"Certo. Para alta tensão, a categoria de segurança (CAT III/IV) e True RMS são o que importa no manual."},
+       {t:"Multímetro básico de entrada", sub:"Segurança CAT II · sem True RMS · uso leve", ok:false, fb:"CAT II não é adequado para o risco de alta tensão dessa tarefa."},
+       {t:"Multímetro genérico de brinde", sub:"Sem categoria CAT declarada · sem garantia", ok:false, danger:true, fb:"Sem categoria de segurança declarada = inseguro para AT. Não use."}
+     ]},
+    {passo:"Diagnóstico", prompt:"Tudo descarregado e medido. O forno 'liga, ilumina e gira, mas não esquenta'. Onde está o defeito mais provável?",
+     opts:[
+       {t:"No prato giratório", ok:false, fb:"O prato gira normalmente no sintoma descrito — não é aí."},
+       {t:"Na seção de alta tensão: magnetron, diodo ou capacitor", ok:true, fb:"Correto. O aquecimento depende da seção de AT; agora dá para medir com segurança."},
+       {t:"Na lâmpada interna", ok:false, fb:"A lâmpada não tem relação com o aquecimento."}
+     ]},
+    {passo:"Reparo", prompt:"Você mede o diodo de alta tensão: ele conduz nos DOIS sentidos (em curto). Qual a ação correta?",
+     opts:[
+       {t:"Trocar o diodo pelo equivalente correto", ok:true, fb:"Certo. Diodo em curto é defeito comum e barato; troque pelo equivalente."},
+       {t:"Já trocar o magnetron (peça cara) por garantia", ok:false, fb:"Trocar peça cara sem confirmar é desperdício. O diodo é o defeito."},
+       {t:"Fazer uma ponte no lugar do diodo", ok:false, danger:true, fb:"Ponte no diodo é perigoso e danifica o forno. Nunca."}
+     ]},
+    {passo:"Entrega · Segurança", prompt:"Reparo concluído. Antes de entregar ao cliente:",
+     opts:[
+       {t:"Remontar garantindo os interlocks da porta e testar com segurança", ok:true, fb:"Perfeito. Interlocks garantem que não haja vazamento de micro-ondas; teste antes de entregar."},
+       {t:"Testar com a carcaça ainda aberta para agilizar", ok:false, danger:true, fb:"Perigo: alta tensão exposta e possível emissão de micro-ondas. Remonte antes."},
+       {t:"Entregar sem testar, o cliente testa em casa", ok:false, fb:"Nunca entregue sem testar o próprio reparo."}
+     ]}
+  ];
+  var idx=0, pts=0, viol=0, answered=false;
+  var $=function(id){return document.getElementById(id);};
+  function render(){
+    var s=STEPS[idx];
+    $('et').textContent=idx+1;
+    $('bar').style.width=Math.round((idx)/STEPS.length*100+12)+'%';
+    $('passo').textContent=s.passo.toUpperCase();
+    $('prompt').textContent=s.prompt;
+    $('fb').innerHTML=''; $('next').style.display='none'; answered=false;
+    var box=$('opts'); box.innerHTML='';
+    s.opts.forEach(function(o,i){
+      var b=document.createElement('button'); b.type='button';
+      b.style.cssText='display:block; width:100%; text-align:left; margin-bottom:8px; padding:.7rem .9rem; border-radius:var(--radius); border:0.5px solid var(--border-strong); background:var(--surface-2); cursor:pointer;';
+      var h='<span style="font-size:14.5px; font-weight:500;">'+o.t+'</span>';
+      if(o.sub){ h+='<br><span style="font-size:12px; color:var(--text-secondary);">'+(s.compare?'<i class="ti ti-book-2" aria-hidden="true" style="vertical-align:-1px;"></i> ':'')+o.sub+'</span>'; }
+      b.innerHTML=h;
+      b.onclick=function(){ if(answered) return; choose(o,b,s); };
+      box.appendChild(b);
+    });
+  }
+  function choose(o,btn,s){
+    answered=true;
+    var all=$('opts').querySelectorAll('button');
+    all.forEach(function(x){ x.style.cursor='default'; });
+    if(o.ok){ pts+=10; btn.style.borderColor='var(--border-success)'; btn.style.background='var(--bg-success)'; }
+    else {
+      btn.style.borderColor='var(--border-danger)'; btn.style.background='var(--bg-danger)';
+      if(o.danger){ viol+=1; }
+      s.opts.forEach(function(oo,i){ if(oo.ok){ all[i].style.borderColor='var(--border-success)'; all[i].style.background='var(--bg-success)'; } });
+    }
+    var col=o.ok?'var(--text-success)':(o.danger?'var(--text-danger)':'var(--text-warning)');
+    var ic=o.ok?'ti-check':(o.danger?'ti-alert-triangle':'ti-info-circle');
+    var pre=o.ok?'Correto. ':(o.danger?'FALHA DE SEGURANÇA. ':'Incorreto. ');
+    $('fb').innerHTML='<div style="background:var(--surface-1); border-left:3px solid '+col+'; border-radius:0 var(--radius) var(--radius) 0; padding:.7rem .9rem; font-size:14px; line-height:1.55;"><i class="ti '+ic+'" aria-hidden="true" style="color:'+col+'; vertical-align:-2px; margin-right:4px;"></i><strong style="color:'+col+';">'+pre+'</strong>'+o.fb+'</div>';
+    $('pts').textContent=pts; $('viol').textContent=viol;
+    $('next').style.display='inline-flex';
+    $('next').innerHTML=(idx>=STEPS.length-1)?'Ver resultado':'Próximo <i class="ti ti-arrow-right" aria-hidden="true" style="vertical-align:-2px;"></i>';
+  }
+  $('next').onclick=function(){
+    if(idx>=STEPS.length-1){ finish(); return; }
+    idx++; render();
+  };
+  function finish(){
+    $('passo').textContent=''; $('prompt').textContent=''; $('opts').innerHTML=''; $('next').style.display='none';
+    $('bar').style.width='100%'; $('et').textContent=STEPS.length;
+    var max=STEPS.length*10;
+    var aprovado = (viol===0 && pts>=max*0.7);
+    var head, col, msg;
+    if(viol>0){ head='Reprovado por segurança'; col='var(--text-danger)';
+      msg='Você cometeu '+viol+' falha(s) de segurança. No reparo de micro-ondas, uma falha dessas pode ser fatal (capacitor de alta tensão). Refaça seguindo a sequência: desligar → descarregar o capacitor → confirmar ausência de tensão → só então medir.'; }
+    else if(aprovado){ head='Serviço aprovado!'; col='var(--text-success)';
+      msg='Procedimento correto, seguro e com as ferramentas certas. '+pts+'/'+max+' pontos, zero falhas de segurança. É assim que se entrega um reparo profissional.'; }
+    else { head='Aprovado com ressalvas'; col='var(--text-warning)';
+      msg='Sem falhas de segurança, mas '+pts+'/'+max+' pontos — revise as escolhas técnicas e de ferramenta para chegar ao padrão profissional.'; }
+    $('fb').innerHTML='<div style="text-align:center; padding:1rem 0;">'+
+      '<div style="font-size:20px; font-weight:500; color:'+col+'; margin-bottom:8px;">'+head+'</div>'+
+      '<div style="font-size:14px; color:var(--text-secondary); line-height:1.6; max-width:520px; margin:0 auto 16px;">'+msg+'</div>'+
+      '<button type="button" id="again">Refazer o procedimento</button></div>';
+    document.getElementById('again').onclick=function(){ idx=0; pts=0; viol=0; $('pts').textContent=0; $('viol').textContent=0; render(); };
+  }
+  render();
+})();
+</script>
+</div>
+</body>
+</html>

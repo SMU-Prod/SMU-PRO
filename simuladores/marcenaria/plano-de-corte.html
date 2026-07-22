@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador · Plano de corte de chapa — SMU Técnico</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+<div class="wrap">
+<p class="titulo">Plano de corte de chapa (MDF)</p>
+<p class="sub">Simulador de layout · Curso de Marcenaria · SMU Técnico</p>
+<h2 class="sr-only">Simulador de plano de corte de marcenaria: arraste 7 peças de uma estante sobre uma chapa de MDF sem sobrepor, medindo o aproveitamento da chapa.</h2>
+<div style="padding:1rem 0; font-family:var(--font-sans);">
+  <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:12px; margin-bottom:1rem;">
+    <div style="background:var(--surface-1); border-radius:var(--radius); padding:.75rem 1rem;">
+      <div style="font-size:13px; color:var(--text-secondary);">Peças encaixadas</div>
+      <div style="font-size:24px; font-weight:500;"><span id="okc">0</span>/7</div>
+    </div>
+    <div style="background:var(--surface-1); border-radius:var(--radius); padding:.75rem 1rem;">
+      <div style="font-size:13px; color:var(--text-secondary);">Aproveitamento</div>
+      <div style="font-size:24px; font-weight:500;"><span id="apr">0</span>%</div>
+    </div>
+    <div style="background:var(--surface-1); border-radius:var(--radius); padding:.75rem 1rem;">
+      <div style="font-size:13px; color:var(--text-secondary);">Desperdício</div>
+      <div style="font-size:24px; font-weight:500;"><span id="perda">100</span>%</div>
+    </div>
+  </div>
+
+  <div style="display:flex; gap:8px; align-items:center; margin-bottom:.75rem; flex-wrap:wrap;">
+    <button id="rot" type="button"><i class="ti ti-rotate-clockwise" aria-hidden="true" style="font-size:16px; vertical-align:-2px; margin-right:4px;"></i>Girar 90°</button>
+    <button id="reset" type="button"><i class="ti ti-refresh" aria-hidden="true" style="font-size:16px; vertical-align:-2px; margin-right:4px;"></i>Reiniciar</button>
+    <span style="font-size:13px; color:var(--text-muted);">Clique numa peça para selecionar · duplo-clique gira</span>
+  </div>
+
+  <div id="mesa" style="position:relative; width:100%; max-width:640px; margin:0 auto;">
+    <div id="chapa" style="position:relative; width:640px; height:428px; max-width:100%; background:var(--surface-2); border:2px solid var(--border-strong); border-radius:4px; background-image:linear-gradient(var(--border) 0.5px,transparent 0.5px),linear-gradient(90deg,var(--border) 0.5px,transparent 0.5px); background-size:23.3px 23.3px; touch-action:none; overflow:hidden;">
+      <span style="position:absolute; bottom:4px; right:8px; font-size:12px; color:var(--text-muted);">Chapa MDF 2750 × 1840 mm</span>
+    </div>
+  </div>
+
+  <div id="msg" style="margin-top:1rem; font-size:14px; color:var(--text-secondary);">Empilhei as 7 peças no canto — elas estão sobrepostas (vermelho). Espalhe todas dentro da chapa, sem encostar uma na outra.</div>
+
+  <div style="display:flex; gap:16px; flex-wrap:wrap; margin-top:.75rem; font-size:13px; color:var(--text-secondary);">
+    <span><span style="display:inline-block; width:12px; height:12px; border-radius:3px; background:var(--bg-success); border:1px solid var(--border-success); vertical-align:-1px;"></span> peça OK</span>
+    <span><span style="display:inline-block; width:12px; height:12px; border-radius:3px; background:var(--bg-danger); border:1px solid var(--border-danger); vertical-align:-1px;"></span> fora / sobreposta</span>
+  </div>
+</div>
+
+<script>
+(function(){
+  var SCALE = 640/2750;
+  var CW=640, CH=428;
+  var chapa = document.getElementById('chapa');
+  var pieces = [
+    {name:'Lateral',  w:1800, h:300},
+    {name:'Lateral',  w:1800, h:300},
+    {name:'Topo',     w:600,  h:300},
+    {name:'Base',     w:600,  h:300},
+    {name:'Prateleira',w:564, h:250},
+    {name:'Prateleira',w:564, h:250},
+    {name:'Prateleira',w:564, h:250}
+  ];
+  var els=[], sel=null;
+
+  pieces.forEach(function(p,i){
+    p.pw=Math.round(p.w*SCALE); p.ph=Math.round(p.h*SCALE); p.rot=false;
+    p.x=12+i*16; p.y=12+i*16;
+    var d=document.createElement('div');
+    d.style.cssText='position:absolute; box-sizing:border-box; border:1px solid var(--border-danger); background:var(--bg-danger); color:var(--text-warning); border-radius:3px; cursor:grab; display:flex; align-items:center; justify-content:center; text-align:center; font-size:11px; line-height:1.15; user-select:none; touch-action:none; overflow:hidden;';
+    d.dataset.i=i;
+    chapa.appendChild(d);
+    els.push(d);
+  });
+
+  function rect(p){ var w=p.rot?p.ph:p.pw, h=p.rot?p.pw:p.ph; return {x:p.x,y:p.y,w:w,h:h}; }
+  function inside(r){ return r.x>=0 && r.y>=0 && r.x+r.w<=CW && r.y+r.h<=CH; }
+  function overlap(a,b){ return a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y; }
+
+  function render(){
+    var okCount=0, areaOK=0;
+    pieces.forEach(function(p,i){
+      var r=rect(p), ok=inside(r);
+      if(ok){ for(var j=0;j<pieces.length;j++){ if(j!==i && overlap(r,rect(pieces[j]))){ ok=false; break; } } }
+      var d=els[i];
+      d.style.left=p.x+'px'; d.style.top=p.y+'px';
+      d.style.width=r.w+'px'; d.style.height=r.h+'px';
+      if(ok){ d.style.background='var(--bg-success)'; d.style.borderColor='var(--border-success)'; d.style.color='var(--text-success)'; okCount++; areaOK+=r.w*r.h; }
+      else { d.style.background='var(--bg-danger)'; d.style.borderColor='var(--border-danger)'; d.style.color='var(--text-danger)'; }
+      d.style.outline = (sel===i) ? '2px solid var(--text-accent)' : 'none';
+      d.style.outlineOffset='1px';
+      d.innerHTML='<span>'+p.name+'<br>'+p.w+'×'+p.h+'</span>';
+    });
+    var apr=Math.round(areaOK/(CW*CH)*100);
+    document.getElementById('okc').textContent=okCount;
+    document.getElementById('apr').textContent=apr;
+    document.getElementById('perda').textContent=Math.max(0,100-apr);
+    var msg=document.getElementById('msg');
+    if(okCount===7){ msg.textContent='Estante completa! Aproveitamento de '+apr+'% — você cortou as 7 peças usando '+(100-Math.max(0,100-apr))+'% útil da chapa, sem sobreposição. Numa serra real ainda sobra a perda da espessura do disco (~4 mm por corte).'; msg.style.color='var(--text-success)'; }
+    else { msg.style.color='var(--text-secondary)'; }
+  }
+
+  var drag=null;
+  function down(e){
+    var i=+this.dataset.i; sel=i;
+    var rb=chapa.getBoundingClientRect();
+    var pt=e.touches?e.touches[0]:e;
+    drag={i:i, dx:pt.clientX-rb.left-pieces[i].x, dy:pt.clientY-rb.top-pieces[i].y};
+    this.style.cursor='grabbing';
+    render();
+    e.preventDefault();
+  }
+  function move(e){
+    if(!drag) return;
+    var rb=chapa.getBoundingClientRect();
+    var pt=e.touches?e.touches[0]:e;
+    var p=pieces[drag.i];
+    p.x=Math.round((pt.clientX-rb.left-drag.dx)/6)*6;
+    p.y=Math.round((pt.clientY-rb.top-drag.dy)/6)*6;
+    render();
+    e.preventDefault();
+  }
+  function up(){ if(drag){ els[drag.i].style.cursor='grab'; drag=null; } }
+
+  els.forEach(function(d){
+    d.addEventListener('pointerdown', down);
+    d.addEventListener('dblclick', function(){ var i=+this.dataset.i; pieces[i].rot=!pieces[i].rot; sel=i; render(); });
+  });
+  window.addEventListener('pointermove', move);
+  window.addEventListener('pointerup', up);
+
+  document.getElementById('rot').addEventListener('click', function(){ if(sel!=null){ pieces[sel].rot=!pieces[sel].rot; render(); } });
+  document.getElementById('reset').addEventListener('click', function(){ pieces.forEach(function(p,i){ p.x=12+i*16; p.y=12+i*16; p.rot=false; }); sel=null; render(); });
+
+  render();
+})();
+</script>
+</div>
+</body>
+</html>

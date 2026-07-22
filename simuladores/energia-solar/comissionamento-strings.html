@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador · Comissionamento solar (strings) — SMU Técnico</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+<div class="wrap">
+<p class="titulo">Comissionamento solar: achar a string com defeito</p>
+<p class="sub">Simulador de bancada · Curso de Energia Solar Fotovoltaica · SMU Técnico</p>
+<h2 class="sr-only">Simulador de comissionamento solar: o sistema gera menos que o esperado; meça a tensão e a corrente de cada string com o alicate, ache a string com defeito, corrija e reenergize.</h2>
+<div style="padding:1rem 0; font-family:var(--font-sans);">
+  <div style="background:var(--bg-accent); color:var(--text-accent); border-radius:var(--radius); padding:.6rem .9rem; font-size:13px; margin-bottom:14px;">
+    <i class="ti ti-solar-panel" aria-hidden="true" style="vertical-align:-2px; margin-right:4px;"></i>O inversor gera <strong>menos que o esperado</strong>. Meça cada string (tensão Voc e corrente), ache a que está com defeito, corrija e reenergize. <strong>Atenção: o CC continua vivo com sol — não há "desligar".</strong>
+  </div>
+
+  <div style="background:#141a10; border:1px solid var(--border-strong); border-radius:12px; padding:12px 14px; margin-bottom:14px;">
+    <div style="font-size:11px; color:#bcd47a; letter-spacing:1px; margin-bottom:6px;">INVERSOR</div>
+    <div style="background:#0a0f06; border-radius:8px; padding:12px; font-family:var(--font-mono,monospace);">
+      <div id="ger" style="color:#c8e08a; font-size:16px;">Geração: <span id="kw">2,1</span> kW <span style="color:#8a9a6a; font-size:12px;">(esperado ~4,0 kW)</span></div>
+    </div>
+  </div>
+
+  <div style="font-size:12px; color:var(--text-secondary); margin-bottom:6px;">Strings — <strong>Medir</strong> (alicate) e <strong>Corrigir</strong> na que estiver com defeito:</div>
+  <div id="strings" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px;"></div>
+  <div id="fim" style="margin-top:14px;"></div>
+</div>
+<script>
+(function(){
+  var $=function(i){return document.getElementById(i);};
+  var CAUSAS=[
+    {tipo:'mc4', voc:'0 V', cor:'⚠ 0 V — circuito aberto', diag:'conector MC4 solto/mal crimpado — a string está desconectada', fix:'Reconectou o MC4 (clique firme até travar). A string voltou.'},
+    {tipo:'sombra', voc:'600 V · 2 A', cor:'⚠ tensão ok, corrente baixa (2 A)', diag:'sombreamento parcial ou um módulo com defeito puxando a string para baixo', fix:'Removeu a sombra / trocou o módulo ruim. A corrente normalizou (~9 A).'},
+    {tipo:'polaridade', voc:'− 600 V', cor:'⚠ tensão NEGATIVA', diag:'polaridade invertida (+ e − trocados no MC4)', fix:'Corrigiu a polaridade (positivo no positivo). A string entrou certa.'}
+  ];
+  var N=4, ruim=Math.floor(Math.random()*N), causa=CAUSAS[Math.floor(Math.random()*CAUSAS.length)], acabou=false;
+  var S=[]; for(var k=0;k<N;k++) S.push({medida:false, corrigida:false});
+
+  function medir(i){
+    if(acabou) return; S[i].medida=true;
+    var box=$('fim');
+    if(i===ruim && !S[i].corrigida){
+      box.innerHTML='<div style="background:var(--surface-1); border-left:3px solid var(--border-warning); border-radius:0 var(--radius) var(--radius) 0; padding:.7rem .9rem; font-size:13px; line-height:1.55;"><strong>String '+(i+1)+':</strong> '+causa.cor+'.<br><span style="color:var(--text-secondary);">Provável causa: '+causa.diag+'. Corrija nesta string.</span></div>';
+    } else {
+      box.innerHTML='<div style="background:var(--surface-1); border-left:3px solid var(--border-success); border-radius:0 var(--radius) var(--radius) 0; padding:.7rem .9rem; font-size:13px;"><strong>String '+(i+1)+':</strong> 600 V · 9 A — normal.</div>';
+    }
+    render();
+  }
+  function corrigir(i){
+    if(acabou) return;
+    if(i===ruim){
+      acabou=true; S[i].corrigida=true; $('kw').textContent='4,0';
+      $('fim').innerHTML='<div style="background:var(--bg-success); border-radius:var(--radius); padding:.9rem 1rem; font-size:13.5px; color:var(--text-success); line-height:1.6;"><i class="ti ti-circle-check" aria-hidden="true" style="vertical-align:-2px; margin-right:4px;"></i><strong>Corrigido — geração voltou a 4,0 kW.</strong> '+causa.fix+' É assim no comissionamento: mede string por string (Voc e corrente), acha a fora do padrão e corrige antes de entregar.</div><div style="text-align:center; margin-top:12px;"><button id="rst" type="button">Novo sistema</button></div>';
+      document.getElementById('rst').onclick=reset;
+    } else {
+      acabou=true;
+      $('fim').innerHTML='<div style="background:var(--bg-danger); border-radius:var(--radius); padding:.9rem 1rem; font-size:13.5px; color:var(--text-danger); line-height:1.6;"><i class="ti ti-x" aria-hidden="true" style="vertical-align:-2px; margin-right:4px;"></i><strong>Essa string estava boa.</strong> Você mexeu numa string que media 600 V · 9 A — o problema continua em outra. Meça TODAS antes de corrigir: procure a que está fora do padrão.</div><div style="text-align:center; margin-top:12px;"><button id="rst" type="button">Tentar de novo</button></div>';
+      document.getElementById('rst').onclick=reset;
+    }
+    render();
+  }
+  function reset(){ ruim=Math.floor(Math.random()*N); causa=CAUSAS[Math.floor(Math.random()*CAUSAS.length)]; acabou=false; S=[]; for(var k=0;k<N;k++) S.push({medida:false,corrigida:false}); $('kw').textContent='2,1'; $('fim').innerHTML=''; render(); }
+  function render(){
+    var box=$('strings'); box.innerHTML='';
+    S.forEach(function(s,i){
+      var d=document.createElement('div');
+      d.style.cssText='background:var(--surface-2); border:0.5px solid var(--border-strong); border-radius:12px; padding:.8rem;';
+      d.innerHTML='<div style="font-weight:500; font-size:14px; margin-bottom:2px;">String '+(i+1)+'</div><div style="font-size:11px; color:var(--text-muted); margin-bottom:10px;">'+(s.medida?'medida':'não medida')+'</div>';
+      var bm=document.createElement('button'); bm.type='button'; bm.textContent='Medir'; bm.style.cssText='font-size:12px; padding:6px 12px; margin-right:6px;'; bm.disabled=acabou; bm.onclick=function(){medir(i);};
+      var bc=document.createElement('button'); bc.type='button'; bc.textContent='Corrigir'; bc.style.cssText='font-size:12px; padding:6px 12px; border-color:var(--border-warning); color:var(--text-warning);'; bc.disabled=acabou; bc.onclick=function(){corrigir(i);};
+      d.appendChild(bm); d.appendChild(bc); box.appendChild(d);
+    });
+  }
+  render();
+})();
+</script>
+</div>
+</body>
+</html>

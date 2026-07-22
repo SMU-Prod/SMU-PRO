@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador · Ligar interruptor + lâmpada — SMU Técnico</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+<div class="wrap">
+<p class="titulo">Fiação: ligar interruptor + lâmpada</p>
+<p class="sub">Simulador de fiação · Curso de Elétrica · SMU Técnico</p>
+<h2 class="sr-only">Simulador de fiação: puxe os fios entre os bornes da rede, do interruptor e da lâmpada para acender a luz com segurança.</h2>
+<div style="padding:1rem 0; font-family:var(--font-sans);">
+  <div style="background:var(--bg-accent); color:var(--text-accent); border-radius:var(--radius); padding:.6rem .9rem; font-size:13px; margin-bottom:12px;">
+    <i class="ti ti-bulb" aria-hidden="true" style="vertical-align:-2px; margin-right:4px;"></i><strong>Ligue a lâmpada pelo interruptor.</strong> Clique num borne e depois no outro para puxar um fio. Regra de ouro: <strong>o interruptor corta a FASE</strong>, nunca o neutro.
+  </div>
+
+  <svg viewBox="0 0 360 210" style="width:100%; max-width:520px; display:block; margin:0 auto 8px; background:var(--surface-1); border:0.5px solid var(--border); border-radius:12px;">
+    <text x="42" y="24" fill="var(--text-secondary)" font-size="11" text-anchor="middle" font-family="var(--font-sans)">REDE</text>
+    <text x="180" y="24" fill="var(--text-secondary)" font-size="11" text-anchor="middle" font-family="var(--font-sans)">INTERRUPTOR</text>
+    <text x="315" y="24" fill="var(--text-secondary)" font-size="11" text-anchor="middle" font-family="var(--font-sans)">LÂMPADA</text>
+    <rect x="18" y="40" width="48" height="120" rx="6" fill="none" stroke="var(--border-strong)"/>
+    <rect x="150" y="40" width="60" height="120" rx="6" fill="none" stroke="var(--border-strong)"/>
+    <circle id="bulbo" cx="315" cy="86" r="26" fill="#2a2a2e" stroke="var(--border-strong)"/>
+    <path d="M305 108 h20 M307 116 h16" stroke="var(--border-strong)" stroke-width="2" fill="none"/>
+    <g id="fios"></g>
+    <g id="bornes"></g>
+  </svg>
+
+  <div id="dica" style="font-size:12px; color:var(--text-muted); text-align:center; min-height:16px; margin-bottom:8px;">Clique em dois bornes para ligar um fio.</div>
+  <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+    <button id="ligar" type="button" style="border-color:var(--border-accent); color:var(--text-accent);"><i class="ti ti-power" aria-hidden="true" style="vertical-align:-2px;"></i> Energizar e testar</button>
+    <button id="desfazer" type="button">Desfazer fio</button>
+    <button id="limpar" type="button">Limpar tudo</button>
+  </div>
+  <div id="fb" style="margin-top:14px;"></div>
+</div>
+<script>
+(function(){
+  var $=function(i){return document.getElementById(i);};
+  var T={
+    F :{x:42, y:66, cor:'#EF4444', lb:'F'},
+    N :{x:42, y:134,cor:'#3B82F6', lb:'N'},
+    I1:{x:180,y:66, cor:'#9CA3AF',lb:'1'},
+    I2:{x:180,y:120,cor:'#9CA3AF',lb:'2'},
+    L1:{x:315,y:120,cor:'#9CA3AF',lb:'a'},
+    L2:{x:315,y:150,cor:'#9CA3AF',lb:'b'}
+  };
+  var ordem=['F','N','I1','I2','L1','L2'];
+  var sel=null, fios=[], travado=false;
+  function key(a,b){return [a,b].sort().join('-');}
+
+  function drawBornes(){
+    var g=$('bornes'); g.innerHTML='';
+    ordem.forEach(function(id){
+      var t=T[id];
+      var c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      c.setAttribute('cx',t.x); c.setAttribute('cy',t.y); c.setAttribute('r',9);
+      c.setAttribute('fill', sel===id?'var(--text-accent)':t.cor);
+      c.setAttribute('stroke', sel===id?'var(--text-accent)':'#111'); c.setAttribute('stroke-width', sel===id?3:1);
+      c.style.cursor='pointer';
+      c.addEventListener('click',function(){pick(id);});
+      g.appendChild(c);
+      var tx=document.createElementNS('http://www.w3.org/2000/svg','text');
+      tx.setAttribute('x',t.x); tx.setAttribute('y',t.y+3.5); tx.setAttribute('text-anchor','middle');
+      tx.setAttribute('font-size','9'); tx.setAttribute('fill','#fff'); tx.setAttribute('font-family','var(--font-sans)');
+      tx.style.pointerEvents='none'; tx.textContent=t.lb; g.appendChild(tx);
+    });
+  }
+  function drawFios(){
+    var g=$('fios'); g.innerHTML='';
+    fios.forEach(function(w){
+      var a=T[w[0]], b=T[w[1]];
+      var col = (w[0]==='F'||w[1]==='F')?'#EF4444':((w[0]==='N'||w[1]==='N')?'#3B82F6':'#D1D5DB');
+      var l=document.createElementNS('http://www.w3.org/2000/svg','line');
+      l.setAttribute('x1',a.x); l.setAttribute('y1',a.y); l.setAttribute('x2',b.x); l.setAttribute('y2',b.y);
+      l.setAttribute('stroke',col); l.setAttribute('stroke-width',3); l.setAttribute('stroke-linecap','round');
+      g.appendChild(l);
+    });
+  }
+  function pick(id){
+    if(travado) return;
+    if(sel===null){ sel=id; }
+    else if(sel===id){ sel=null; }
+    else {
+      var k=key(sel,id);
+      if(!fios.some(function(w){return key(w[0],w[1])===k;})) fios.push([sel,id]);
+      sel=null;
+    }
+    drawBornes(); drawFios();
+  }
+  $('desfazer').onclick=function(){ if(travado)return; fios.pop(); sel=null; drawBornes(); drawFios(); };
+  $('limpar').onclick=function(){ if(travado)return; fios=[]; sel=null; $('fb').innerHTML=''; $('bulbo').setAttribute('fill','#2a2a2e'); drawBornes(); drawFios(); };
+
+  function has(a,b){var k=key(a,b);return fios.some(function(w){return key(w[0],w[1])===k;});}
+
+  $('ligar').onclick=function(){
+    travado=true;
+    var box=$('fb'), out, cor, ic, glow=false;
+    var curto = has('F','N');
+    var correto = fios.length===3 && has('F','I1') && has('I2','L1') && has('L2','N');
+    var neutroNoInter = (has('N','I1')||has('N','I2')) && (has('F','L1')||has('F','L2'));
+    if(curto){
+      out='<strong>CURTO!</strong> Fase e neutro ligados direto — o disjuntor desarma na hora (e o fio pode derreter). Fase e neutro nunca se encontram sem uma carga no meio.'; cor='var(--text-danger)'; ic='ti-flame';
+    } else if(correto){
+      out='<strong>Acendeu — e com segurança.</strong> Fase entra no interruptor, o retorno vai à lâmpada e o neutro chega direto. Com o interruptor desligado, o bocal fica SEM energia — seguro para trocar a lâmpada.'; cor='var(--text-success)'; ic='ti-bulb'; glow=true;
+    } else if(neutroNoInter){
+      out='<strong>Acende, mas está errado e perigoso.</strong> Você pôs o interruptor no NEUTRO e a fase foi direto à lâmpada. A luz acende, mas o bocal fica energizado mesmo com o interruptor desligado — choque na hora de trocar a lâmpada.'; cor='var(--text-warning)'; ic='ti-alert-triangle';
+    } else {
+      out='<strong>Não acendeu.</strong> O circuito está incompleto ou trocado. Caminho certo: <em>Fase → borne 1 do interruptor</em>, <em>borne 2 → lâmpada (a)</em>, <em>Neutro → lâmpada (b)</em>.'; cor='var(--text-muted)'; ic='ti-bulb-off';
+    }
+    if(glow){ $('bulbo').setAttribute('fill','#FBBF24'); }
+    box.innerHTML='<div style="background:var(--surface-1); border-left:3px solid '+cor+'; border-radius:0 var(--radius) var(--radius) 0; padding:.8rem 1rem; font-size:13.5px; line-height:1.6;"><i class="ti '+ic+'" aria-hidden="true" style="color:'+cor+'; vertical-align:-2px; margin-right:4px;"></i>'+out+'</div><div style="text-align:center; margin-top:10px;"><button id="rst2" type="button">Refazer</button></div>';
+    document.getElementById('rst2').onclick=function(){ travado=false; $('limpar').onclick(); };
+  };
+  drawBornes(); drawFios();
+})();
+</script>
+</div>
+</body>
+</html>

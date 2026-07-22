@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador · Diagnóstico OBD-II — SMU Técnico</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+<div class="wrap">
+<p class="titulo">Diagnóstico OBD-II: não trocar peça por código</p>
+<p class="sub">Simulador de bancada · Curso de Mecânica de Carros e Motos · SMU Técnico</p>
+<h2 class="sr-only">Simulador de diagnóstico automotivo: leia o código de falha no scanner, confirme com testes qual é a causa real e só então repare — sem trocar peça por código.</h2>
+<div style="padding:1rem 0; font-family:var(--font-sans);">
+  <div style="background:var(--bg-accent); color:var(--text-accent); border-radius:var(--radius); padding:.6rem .9rem; font-size:13px; margin-bottom:14px;">
+    <i class="ti ti-engine" aria-hidden="true" style="vertical-align:-2px; margin-right:4px;"></i>Luz de injeção acesa. <strong>Leia o código</strong>, <strong>confirme com teste</strong> qual é a causa e só então repare. Trocar peça só pelo código é o erro que mais custa dinheiro.
+  </div>
+
+  <div style="background:#101820; border:1px solid var(--border-strong); border-radius:12px; padding:12px 14px; margin-bottom:14px;">
+    <div style="font-size:11px; color:#6fb3e0; letter-spacing:1px; margin-bottom:6px;">SCANNER OBD-II</div>
+    <div style="background:#05121c; border-radius:8px; padding:12px; min-height:44px; font-family:var(--font-mono,monospace);">
+      <div id="scr" style="color:#5fd0ff; font-size:14px; line-height:1.5;">— clique em "Ler scanner" para começar —</div>
+    </div>
+    <div style="margin-top:10px;"><button id="ler" type="button" style="border-color:var(--border-accent); color:var(--text-accent);"><i class="ti ti-plug-connected" aria-hidden="true" style="vertical-align:-2px;"></i> Ler scanner</button></div>
+  </div>
+
+  <div id="area" style="display:none;">
+    <div style="font-size:12px; color:var(--text-secondary); margin-bottom:6px;">Testes de confirmação — clique para executar:</div>
+    <div id="testes" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:8px; margin-bottom:10px;"></div>
+    <div id="visor" style="background:var(--surface-1); border-radius:var(--radius); padding:.7rem .9rem; font-size:13px; min-height:20px; color:var(--text-secondary); line-height:1.55; margin-bottom:12px;">Resultado do teste aparece aqui.</div>
+    <div style="font-size:12px; color:var(--text-secondary); margin-bottom:6px;">Decisão — o que você repara?</div>
+    <div id="acoes" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
+  </div>
+  <div id="fim" style="margin-top:14px;"></div>
+</div>
+<script>
+(function(){
+  var $=function(i){return document.getElementById(i);};
+  var CASOS={
+    A:{ dtc:'P0135', desc:'Aquecedor do sensor de O2 (banco 1, sensor 1) — circuito',
+        live:'Sensor O2: sinal preso em 0,45 V (não oscila)',
+        testes:{
+          o2:'Sinal do sensor O2: fixo em 0,45 V — não responde à aceleração. Suspeito.',
+          aquecedor:'Resistência do aquecedor: OL (aberto). O aquecedor queimou — sensor não trabalha frio.',
+          vacuo:'Borrifei limpa-contato na admissão: a rotação NÃO muda. Sem vazamento de vácuo.',
+          trims:'Combustível (trims): LTFT ≈ +3% — dentro do normal. A mistura está ok.'
+        },
+        certo:'sensor', ok:'Era o sensor mesmo: o aquecedor abriu (OL). Trocou o sensor de O2, apagou o código e a luz ficou apagada. Aqui o teste CONFIRMOU o código.' },
+    B:{ dtc:'P0171', desc:'Sistema de combustível muito pobre (banco 1)',
+        live:'Combustível: LTFT +26% (ECU compensando falta de combustível)',
+        testes:{
+          o2:'Sinal do sensor O2: oscilando 0,1–0,9 V normalmente. O sensor está BOM — só está denunciando mistura pobre.',
+          aquecedor:'Resistência do aquecedor: ~8 Ω — normal.',
+          vacuo:'Borrifei limpa-contato na mangueira de admissão: a ROTAÇÃO SOBE na hora. Achei: entra ar falso = vazamento de vácuo.',
+          trims:'LTFT +26%: a ECU está jogando MUITO combustível a mais para compensar ar entrando fora de hora.'
+        },
+        certo:'vacuo', ok:'O código apontava "pobre", mas o sensor de O2 estava BOM — quem trocasse o sensor pagaria peça à toa e o defeito voltaria. A causa real era vazamento de vácuo (mangueira rachada). Reparou a mangueira, os trims voltaram a ~0% e o código apagou.' }
+  };
+  var caso=null, acabou=false;
+
+  $('ler').onclick=function(){
+    if(acabou) return;
+    caso = Math.random()<0.5 ? CASOS.A : CASOS.B;
+    $('scr').innerHTML='<span style="color:#ffd479;">DTC '+caso.dtc+'</span> — '+caso.desc+'<br><span style="color:#8fd0a0; font-size:12.5px;">Dado ao vivo: '+caso.live+'</span>';
+    $('area').style.display='block'; $('visor').textContent='Rode os testes antes de decidir.'; $('fim').innerHTML='';
+    montaTestes(); montaAcoes();
+  };
+  function montaTestes(){
+    var defs=[['o2','Testar sinal do sensor O2'],['aquecedor','Testar aquecedor (Ω)'],['vacuo','Procurar vazamento de vácuo'],['trims','Ver combustível (trims)']];
+    var box=$('testes'); box.innerHTML='';
+    defs.forEach(function(d){
+      var b=document.createElement('button'); b.type='button'; b.style.cssText='font-size:12px; padding:8px 10px; text-align:left;';
+      b.textContent=d[1]; b.onclick=function(){ if(acabou)return; $('visor').innerHTML='<strong>'+d[1]+':</strong> '+caso.testes[d[0]]; };
+      box.appendChild(b);
+    });
+  }
+  function montaAcoes(){
+    var box=$('acoes'); box.innerHTML='';
+    var acts=[['sensor','Trocar o sensor de O2'],['vacuo','Reparar vazamento de vácuo']];
+    acts.forEach(function(a){
+      var b=document.createElement('button'); b.type='button'; b.style.cssText='font-size:12.5px; border-color:var(--border-warning); color:var(--text-warning);';
+      b.textContent=a[1]; b.onclick=function(){ decidir(a[0]); };
+      box.appendChild(b);
+    });
+  }
+  function decidir(escolha){
+    if(acabou) return; acabou=true;
+    var acerto = (escolha===caso.certo);
+    if(acerto){
+      $('fim').innerHTML='<div style="background:var(--bg-success); border-radius:var(--radius); padding:.9rem 1rem; font-size:13.5px; color:var(--text-success); line-height:1.6;"><i class="ti ti-circle-check" aria-hidden="true" style="vertical-align:-2px; margin-right:4px;"></i><strong>Consertou.</strong> '+caso.ok+'</div>';
+    } else {
+      var msg = caso.certo==='sensor'
+        ? 'Você reparou a admissão, mas o defeito era o próprio sensor (aquecedor aberto). O código volta. Os testes mostravam o sinal preso — era o sensor.'
+        : 'Você trocou o sensor de O2, mas ele estava BOM. Peça paga à toa e a luz volta: a causa real era o vazamento de vácuo (a rotação subiu ao borrifar). Código por "mistura pobre" quase nunca é o sensor.';
+      $('fim').innerHTML='<div style="background:var(--bg-danger); border-radius:var(--radius); padding:.9rem 1rem; font-size:13.5px; color:var(--text-danger); line-height:1.6;"><i class="ti ti-x" aria-hidden="true" style="vertical-align:-2px; margin-right:4px;"></i><strong>Não resolveu.</strong> '+msg+'</div>';
+    }
+    $('fim').innerHTML+='<div style="text-align:center; margin-top:12px;"><button id="rst" type="button">Outro carro</button></div>';
+    $('rst').onclick=function(){ acabou=false; $('area').style.display='none'; $('scr').innerHTML='— clique em "Ler scanner" para começar —'; $('fim').innerHTML=''; };
+  }
+})();
+</script>
+</div>
+</body>
+</html>

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador · Achar o vazamento (teste de estanqueidade) — SMU Técnico</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+<div class="wrap">
+<p class="titulo">Achar o vazamento: teste de estanqueidade</p>
+<p class="sub">Simulador de bancada · Curso de Hidráulica · SMU Técnico</p>
+<h2 class="sr-only">Simulador de teste de estanqueidade: pressurize a tubulação, veja o manômetro cair, inspecione cada junta para achar o vazamento e refaça a solda.</h2>
+<div style="padding:1rem 0; font-family:var(--font-sans);">
+  <div style="background:var(--bg-accent); color:var(--text-accent); border-radius:var(--radius); padding:.6rem .9rem; font-size:13px; margin-bottom:12px;">
+    <i class="ti ti-droplet" aria-hidden="true" style="vertical-align:-2px; margin-right:4px;"></i>Antes de fechar a parede, faça o <strong>teste de estanqueidade</strong>. Se a pressão cair, <strong>inspecione as juntas</strong>, refaça a que estiver vazando e teste de novo.
+  </div>
+
+  <svg viewBox="0 0 360 170" style="width:100%; max-width:520px; display:block; margin:0 auto 6px; background:var(--surface-1); border:0.5px solid var(--border); border-radius:12px;">
+    <circle cx="52" cy="48" r="34" fill="#101014" stroke="var(--border-strong)"/>
+    <g stroke="var(--text-muted)" stroke-width="1">
+      <line x1="52" y1="18" x2="52" y2="24"/><line x1="82" y1="48" x2="76" y2="48"/><line x1="22" y1="48" x2="28" y2="48"/>
+    </g>
+    <text x="52" y="72" fill="var(--text-secondary)" font-size="8" text-anchor="middle" font-family="var(--font-sans)">bar</text>
+    <line id="agulha" x1="52" y1="48" x2="52" y2="22" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round" transform="rotate(-120 52 48)"/>
+    <circle cx="52" cy="48" r="3" fill="#EF4444"/>
+    <text id="pnum" x="52" y="96" fill="var(--text-primary)" font-size="12" text-anchor="middle" font-family="var(--font-sans)" font-weight="600">0,0 bar</text>
+
+    <rect x="112" y="122" width="16" height="16" rx="2" fill="var(--madeira)" stroke="var(--madeira-borda)"/>
+    <text x="120" y="152" fill="var(--text-muted)" font-size="8" text-anchor="middle" font-family="var(--font-sans)">registro</text>
+    <line x1="128" y1="130" x2="336" y2="130" stroke="#6B7280" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="340" cy="130" r="5" fill="none" stroke="var(--text-muted)"/>
+    <g id="juntas"></g>
+    <g id="gotas"></g>
+  </svg>
+
+  <div id="msg" style="font-size:12.5px; color:var(--text-secondary); text-align:center; min-height:18px; margin-bottom:8px;">Pressurize a linha para começar o teste.</div>
+  <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+    <button id="press" type="button" style="border-color:var(--border-accent); color:var(--text-accent);"><i class="ti ti-gauge" aria-hidden="true" style="vertical-align:-2px;"></i> Pressurizar (teste)</button>
+  </div>
+  <div id="painel" style="margin-top:12px;"></div>
+</div>
+<script>
+(function(){
+  var $=function(i){return document.getElementById(i);};
+  var JX=[160,220,280,320];
+  var bad=Math.floor(Math.random()*JX.length), sealed=false, selected=null, done=false;
+
+  function setNeedle(p){
+    var rot=-120+(p/6)*240;
+    $('agulha').setAttribute('transform','rotate('+rot+' 52 48)');
+    $('pnum').textContent=p.toFixed(1).replace('.',',')+' bar';
+  }
+  function drawJuntas(){
+    var g=$('juntas'); g.innerHTML='';
+    JX.forEach(function(x,i){
+      var c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      c.setAttribute('cx',x); c.setAttribute('cy',130); c.setAttribute('r',7);
+      var okFix = (sealed && i===bad);
+      c.setAttribute('fill', selected===i?'var(--text-accent)':(okFix?'var(--text-success)':'#3F3F46'));
+      c.setAttribute('stroke','#111'); c.style.cursor= done?'default':'pointer';
+      if(!done) c.addEventListener('click',function(){ selJunta(i); });
+      g.appendChild(c);
+      var t=document.createElementNS('http://www.w3.org/2000/svg','text');
+      t.setAttribute('x',x); t.setAttribute('y',150); t.setAttribute('text-anchor','middle');
+      t.setAttribute('font-size','8'); t.setAttribute('fill','var(--text-muted)'); t.setAttribute('font-family','var(--font-sans)');
+      t.textContent='J'+(i+1); g.appendChild(t);
+    });
+  }
+  function selJunta(i){
+    if(done) return; selected=i; drawJuntas();
+    var molhada = (i===bad && !sealed);
+    var html='<div style="background:var(--surface-2); border:0.5px solid var(--border-strong); border-radius:var(--radius); padding:.8rem 1rem; font-size:13px; line-height:1.55;">'
+      +'<strong>Junta J'+(i+1)+'</strong> — '
+      +(molhada? '<span style="color:var(--text-warning);">molhada, borbulhando ar. É aqui o vazamento.</span>' : '<span style="color:var(--text-secondary);">seca, sem sinal de vazamento.</span>')
+      +'<div style="margin-top:10px;"><button id="refazer" type="button" style="border-color:var(--border-warning); color:var(--text-warning);">Refazer esta solda</button></div></div>';
+    $('painel').innerHTML=html;
+    document.getElementById('refazer').onclick=function(){ refazer(i); };
+  }
+  function refazer(i){
+    if(i===bad){ sealed=true; $('painel').innerHTML='<div style="font-size:13px; color:var(--text-success); text-align:center;">Solda da J'+(i+1)+' refeita. Lixou, passou adesivo, encaixou 1/4 de volta e respeitou a cura. Agora pressurize de novo.</div>'; }
+    else { $('painel').innerHTML='<div style="font-size:13px; color:var(--text-muted); text-align:center;">Você refez a J'+(i+1)+', mas ela estava boa — o vazamento continua em outra junta. Inspecione as demais.</div>'; }
+    selected=null; drawJuntas();
+  }
+  function limparGotas(){ $('gotas').innerHTML=''; }
+  function pingar(){
+    limparGotas();
+    var x=JX[bad];
+    var g=$('gotas');
+    var d=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    d.setAttribute('cx',x); d.setAttribute('cy',142); d.setAttribute('r',2.5); d.setAttribute('fill','#3B82F6');
+    g.appendChild(d);
+    var d2=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    d2.setAttribute('cx',x); d2.setAttribute('cy',150); d2.setAttribute('r',2); d2.setAttribute('fill','#3B82F6'); d2.setAttribute('opacity','0.6');
+    g.appendChild(d2);
+  }
+
+  $('press').onclick=function(){
+    if(done) return;
+    $('press').disabled=true; $('painel').innerHTML=''; limparGotas();
+    setNeedle(4.0); $('msg').textContent='Pressurizando a 4,0 bar…';
+    setTimeout(function(){
+      if(sealed){
+        setNeedle(4.0); $('msg').innerHTML='<span style="color:var(--text-success);"><strong>Pressão firme em 4,0 bar por 1 hora — estanque!</strong> Pode fechar a parede.</span>';
+        done=true; drawJuntas();
+        $('painel').innerHTML='<div style="background:var(--bg-success); border-radius:var(--radius); padding:.8rem 1rem; font-size:13px; color:var(--text-success); text-align:center;">Teste aprovado. É esta a regra: só reveste depois que a linha segura a pressão.</div><div style="text-align:center; margin-top:10px;"><button id="novo" type="button">Nova linha</button></div>';
+        document.getElementById('novo').onclick=novo;
+      } else {
+        var passos=[3.2,2.3,1.4]; var k=0;
+        var iv=setInterval(function(){
+          setNeedle(passos[k]); k++;
+          if(k>=passos.length){ clearInterval(iv);
+            $('msg').innerHTML='<span style="color:var(--text-warning);"><strong>A pressão caiu para 1,4 bar</strong> — tem vazamento. Clique nas juntas para inspecionar.</span>';
+            pingar(); $('press').disabled=false;
+          }
+        },500);
+      }
+    },800);
+  };
+  function novo(){ bad=Math.floor(Math.random()*JX.length); sealed=false; selected=null; done=false; $('press').disabled=false; $('painel').innerHTML=''; limparGotas(); setNeedle(0); $('msg').textContent='Pressurize a linha para começar o teste.'; drawJuntas(); }
+  setNeedle(0); drawJuntas();
+})();
+</script>
+</div>
+</body>
+</html>

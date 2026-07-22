@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador · Máquina de lavar não centrifuga — SMU Técnico</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+<div class="wrap">
+<p class="titulo">Máquina de lavar não centrifuga</p>
+<p class="sub">Simulador de procedimento · Curso de Conserto de Eletrodomésticos · SMU Técnico</p>
+<h2 class="sr-only">Simulador de procedimento: diagnostique e repare uma máquina de lavar que não centrifuga, seguindo a sequência segura e as escolhas técnicas corretas.</h2>
+<div style="padding:1rem 0; font-family:var(--font-sans);">
+  <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:1rem;">
+    <div style="flex:1; min-width:110px; background:var(--surface-1); border-radius:var(--radius); padding:.6rem .9rem;"><div style="font-size:12px; color:var(--text-secondary);">Etapa</div><div style="font-size:20px; font-weight:500;"><span id="l_et">1</span>/6</div></div>
+    <div style="flex:1; min-width:110px; background:var(--surface-1); border-radius:var(--radius); padding:.6rem .9rem;"><div style="font-size:12px; color:var(--text-secondary);">Pontos</div><div style="font-size:20px; font-weight:500;" id="l_pts">0</div></div>
+    <div style="flex:1; min-width:110px; background:var(--surface-1); border-radius:var(--radius); padding:.6rem .9rem;"><div style="font-size:12px; color:var(--text-secondary);">Falhas de segurança</div><div style="font-size:20px; font-weight:500; color:var(--text-danger);" id="l_viol">0</div></div>
+  </div>
+  <div style="height:6px; background:var(--surface-1); border-radius:99px; overflow:hidden; margin-bottom:1rem;"><div id="l_bar" style="height:100%; width:16%; background:var(--text-accent); border-radius:99px; transition:width .25s;"></div></div>
+  <div id="l_passo" style="font-size:12px; color:var(--text-accent); font-weight:500; margin-bottom:4px;"></div>
+  <div id="l_prompt" style="font-size:16px; font-weight:500; margin-bottom:14px; line-height:1.5;"></div>
+  <div id="l_opts"></div>
+  <div id="l_fb" style="margin-top:12px;"></div>
+  <div style="margin-top:14px;"><button id="l_next" type="button" style="display:none;">Próximo</button></div>
+</div>
+<script>
+(function(){
+  var STEPS=[
+    {passo:"Segurança", prompt:"A lavadora enche e agita, mas NÃO centrifuga. Antes de mexer, o que você faz?",
+     opts:[
+       {t:"Desligar da tomada e fechar o registro de água", ok:true, fb:"Correto. Água + eletricidade: desenergize e feche a água antes de abrir."},
+       {t:"Abrir direto com a máquina ligada para ver o tambor girar", ok:false, danger:true, fb:"Perigo: partes girando e risco elétrico com água por perto."},
+       {t:"Colocar a mão no tambor durante a centrifugação para sentir", ok:false, danger:true, fb:"Jamais — o tambor em alta rotação causa lesão grave."}
+     ]},
+    {passo:"Diagnóstico", prompt:"'Não centrifuga' é o sintoma. O que se verifica PRIMEIRO (antes de suspeitar do motor/placa)?",
+     opts:[
+       {t:"A drenagem (bomba/filtro) e a chave de segurança da tampa", ok:true, fb:"Certo. Muitas máquinas não centrifugam se não drenaram; e a chave da tampa libera a centrifugação."},
+       {t:"Já trocar o motor", ok:false, fb:"Trocar peça cara sem diagnóstico é erro clássico."},
+       {t:"Já trocar a placa eletrônica", ok:false, fb:"Prematuro e caro; a causa costuma ser mais simples."}
+     ]},
+    {passo:"Ferramenta · Medição", prompt:"Para testar a chave de segurança da tampa, qual recurso do multímetro você usa?", tool:true, compare:true,
+     opts:[
+       {t:"Continuidade (apito)", sub:"Verifica se o contato fecha/abre · modo correto", ok:true, fb:"Certo. A chave deve fechar o circuito quando a tampa fecha; a continuidade revela isso."},
+       {t:"Medir tensão nos terminais com a máquina desligada", sub:"Sem energia não há tensão p/ ler", ok:false, fb:"Sem energia não há o que medir em tensão; use continuidade."},
+       {t:"Escala de corrente (A)", sub:"Mede consumo, não o estado do contato", ok:false, fb:"Corrente não diz se o contato da chave abre/fecha."}
+     ]},
+    {passo:"Reparo 1", prompt:"Você acha o filtro de drenagem entupido (moedas, cotão). Ação correta:",
+     opts:[
+       {t:"Limpar o filtro e desobstruir a bomba", ok:true, fb:"Certo. Drenagem livre é condição para a centrifugação em muitas máquinas."},
+       {t:"Trocar a bomba por uma nova mesmo estando boa", ok:false, fb:"Desnecessário: a bomba estava só entupida. Isso encarece o serviço à toa."},
+       {t:"Ignorar e seguir para o motor", ok:false, fb:"Você deixaria a causa real sem resolver."}
+     ]},
+    {passo:"Reparo 2 · Segurança", prompt:"Drenou, mas ainda não centrifuga. A chave da tampa está com contato ABERTO (defeituosa). Ação:",
+     opts:[
+       {t:"Trocar a chave de segurança da tampa pela peça correta", ok:true, fb:"Certo. Peça de segurança defeituosa se troca — nunca se anula."},
+       {t:"Fazer uma ponte (jumper) na chave para 'resolver'", ok:false, danger:true, fb:"FALHA GRAVE. Anular a chave faz o tambor girar com a tampa aberta — risco de mutilação."},
+       {t:"Trocar a placa eletrônica", ok:false, fb:"O defeito é a chave, não a placa."}
+     ]},
+    {passo:"Entrega", prompt:"Reparo feito. Antes de entregar ao cliente:",
+     opts:[
+       {t:"Remontar e testar um ciclo completo com a tampa fechada", ok:true, fb:"Perfeito: confirme que centrifuga e não vaza, com tudo remontado."},
+       {t:"Testar com a máquina aberta e ligada na tomada, perto da torneira", ok:false, danger:true, fb:"Perigo elétrico com água exposta. Remonte antes de testar."},
+       {t:"Entregar sem testar", ok:false, fb:"Nunca entregue sem validar o próprio reparo."}
+     ]}
+  ];
+  var idx=0,pts=0,viol=0,answered=false; var $=function(i){return document.getElementById(i);};
+  function render(){var s=STEPS[idx]; $('l_et').textContent=idx+1; $('l_bar').style.width=Math.round(idx/STEPS.length*100+16)+'%';
+    $('l_passo').textContent=s.passo.toUpperCase(); $('l_prompt').textContent=s.prompt; $('l_fb').innerHTML=''; $('l_next').style.display='none'; answered=false;
+    var box=$('l_opts'); box.innerHTML='';
+    s.opts.forEach(function(o){var b=document.createElement('button'); b.type='button';
+      b.style.cssText='display:block; width:100%; text-align:left; margin-bottom:8px; padding:.7rem .9rem; border-radius:var(--radius); border:0.5px solid var(--border-strong); background:var(--surface-2); cursor:pointer;';
+      var h='<span style="font-size:14.5px; font-weight:500;">'+o.t+'</span>';
+      if(o.sub){h+='<br><span style="font-size:12px; color:var(--text-secondary);">'+(s.compare?'<i class="ti ti-book-2" aria-hidden="true" style="vertical-align:-1px;"></i> ':'')+o.sub+'</span>';}
+      b.innerHTML=h; b.onclick=function(){if(answered)return; choose(o,b,s);}; box.appendChild(b);});
+  }
+  function choose(o,btn,s){answered=true; var all=$('l_opts').querySelectorAll('button'); all.forEach(function(x){x.style.cursor='default';});
+    if(o.ok){pts+=10; btn.style.borderColor='var(--border-success)'; btn.style.background='var(--bg-success)';}
+    else{btn.style.borderColor='var(--border-danger)'; btn.style.background='var(--bg-danger)'; if(o.danger)viol+=1;
+      s.opts.forEach(function(oo,i){if(oo.ok){all[i].style.borderColor='var(--border-success)'; all[i].style.background='var(--bg-success)';}});}
+    var col=o.ok?'var(--text-success)':(o.danger?'var(--text-danger)':'var(--text-warning)'); var ic=o.ok?'ti-check':(o.danger?'ti-alert-triangle':'ti-info-circle');
+    var pre=o.ok?'Correto. ':(o.danger?'FALHA DE SEGURANÇA. ':'Incorreto. ');
+    $('l_fb').innerHTML='<div style="background:var(--surface-1); border-left:3px solid '+col+'; border-radius:0 var(--radius) var(--radius) 0; padding:.7rem .9rem; font-size:14px; line-height:1.55;"><i class="ti '+ic+'" aria-hidden="true" style="color:'+col+'; vertical-align:-2px; margin-right:4px;"></i><strong style="color:'+col+';">'+pre+'</strong>'+o.fb+'</div>';
+    $('l_pts').textContent=pts; $('l_viol').textContent=viol; $('l_next').style.display='inline-flex'; $('l_next').textContent=(idx>=STEPS.length-1)?'Ver resultado':'Próximo';
+  }
+  $('l_next').onclick=function(){if(idx>=STEPS.length-1){finish();return;} idx++; render();};
+  function finish(){$('l_passo').textContent=''; $('l_prompt').textContent=''; $('l_opts').innerHTML=''; $('l_next').style.display='none'; $('l_bar').style.width='100%'; $('l_et').textContent=STEPS.length;
+    var max=STEPS.length*10, aprovado=(viol===0&&pts>=max*0.7), head,col,msg;
+    if(viol>0){head='Reprovado por segurança'; col='var(--text-danger)'; msg='Você cometeu '+viol+' falha(s) de segurança — provavelmente anulou a chave da tampa ou testou com risco elétrico. Isso mutila e choca. Refaça respeitando as proteções.';}
+    else if(aprovado){head='Serviço aprovado!'; col='var(--text-success)'; msg='Diagnóstico do simples ao complexo, causa real resolvida e teste final. '+pts+'/'+max+' pontos, zero falhas. Padrão profissional.';}
+    else{head='Aprovado com ressalvas'; col='var(--text-warning)'; msg='Sem falhas de segurança, mas '+pts+'/'+max+' — revise as escolhas técnicas.';}
+    $('l_fb').innerHTML='<div style="text-align:center; padding:1rem 0;"><div style="font-size:20px; font-weight:500; color:'+col+'; margin-bottom:8px;">'+head+'</div><div style="font-size:14px; color:var(--text-secondary); line-height:1.6; max-width:520px; margin:0 auto 16px;">'+msg+'</div><button type="button" id="l_again">Refazer o procedimento</button></div>';
+    document.getElementById('l_again').onclick=function(){idx=0;pts=0;viol=0;$('l_pts').textContent=0;$('l_viol').textContent=0;render();};
+  }
+  render();
+})();
+</script>
+</div>
+</body>
+</html>

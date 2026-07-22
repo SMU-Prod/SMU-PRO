@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador · Trator diesel que não pega — SMU Técnico</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+<div class="wrap">
+<p class="titulo">Trator diesel que não pega</p>
+<p class="sub">Simulador de procedimento · Curso de Tratores e Máquinas Agrícolas · SMU Técnico</p>
+<h2 class="sr-only">Simulador de procedimento: diagnostique um trator diesel que não pega, do combustível à sangria, com segurança no campo.</h2>
+<div style="padding:1rem 0; font-family:var(--font-sans);">
+  <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:1rem;">
+    <div style="flex:1; min-width:110px; background:var(--surface-1); border-radius:var(--radius); padding:.6rem .9rem;"><div style="font-size:12px; color:var(--text-secondary);">Etapa</div><div style="font-size:20px; font-weight:500;"><span id="t_et">1</span>/6</div></div>
+    <div style="flex:1; min-width:110px; background:var(--surface-1); border-radius:var(--radius); padding:.6rem .9rem;"><div style="font-size:12px; color:var(--text-secondary);">Pontos</div><div style="font-size:20px; font-weight:500;" id="t_pts">0</div></div>
+    <div style="flex:1; min-width:110px; background:var(--surface-1); border-radius:var(--radius); padding:.6rem .9rem;"><div style="font-size:12px; color:var(--text-secondary);">Falhas de segurança</div><div style="font-size:20px; font-weight:500; color:var(--text-danger);" id="t_viol">0</div></div>
+  </div>
+  <div style="height:6px; background:var(--surface-1); border-radius:99px; overflow:hidden; margin-bottom:1rem;"><div id="t_bar" style="height:100%; width:16%; background:var(--text-accent); border-radius:99px; transition:width .25s;"></div></div>
+  <div id="t_passo" style="font-size:12px; color:var(--text-accent); font-weight:500; margin-bottom:4px;"></div>
+  <div id="t_prompt" style="font-size:16px; font-weight:500; margin-bottom:14px; line-height:1.5;"></div>
+  <div id="t_opts"></div><div id="t_fb" style="margin-top:12px;"></div>
+  <div style="margin-top:14px;"><button id="t_next" type="button" style="display:none;">Próximo</button></div>
+</div>
+<script>
+(function(){
+  var STEPS=[
+    {passo:"Diagnóstico", prompt:"O trator não pega. O que você verifica PRIMEIRO?",
+     opts:[{t:"Combustível: tem diesel? Filtro e separador de água ok?", ok:true, fb:"Certo. Comece pelo simples e barato: combustível e filtros."},
+       {t:"Já trocar a bomba injetora (peça cara)", ok:false, fb:"Trocar peça cara sem diagnóstico é desperdício."},
+       {t:"Abrir o motor para ver por dentro", ok:false, fb:"Precipitado; o defeito costuma ser combustível/ar."}]},
+    {passo:"Pista", prompt:"Você descobre que o filtro de diesel foi trocado ontem. O motor gira mas não pega. Causa provável:",
+     opts:[{t:"Ar no sistema de combustível (entrou ao trocar o filtro)", ok:true, fb:"Certo. Diesel não 'puxa' o ar sozinho — é preciso sangrar."},
+       {t:"Bateria fraca", ok:false, fb:"O motor gira, então a partida está ok; o problema é combustível/ar."},
+       {t:"Pneu murcho", ok:false, fb:"Sem relação com o motor pegar."}]},
+    {passo:"Reparo", prompt:"Para tirar o ar do sistema diesel, o correto é:",
+     opts:[{t:"Fazer a sangria: bombear a escorva e abrir os respiros até sair diesel sem bolhas", ok:true, fb:"Certo. A sangria remove o ar; aí o motor pega."},
+       {t:"Dar partidas longas e seguidas forçando até pegar", ok:false, danger:true, fb:"Forçar a partida queima o motor de arranque e descarrega a bateria."},
+       {t:"Jogar diesel direto no coletor de admissão", ok:false, danger:true, fb:"Perigoso e errado — risco de dano e de acidente."}]},
+    {passo:"Segurança no campo", prompt:"Durante a verificação você vê óleo escorrendo perto de uma mangueira hidráulica. O que fazer?",
+     opts:[{t:"Despressurizar e procurar o vazamento com um papelão, nunca com a mão", ok:true, fb:"Certo. Óleo hidráulico sob pressão perfura a pele — jamais use a mão."},
+       {t:"Passar a mão para achar de onde vem o vazamento", ok:false, danger:true, fb:"PERIGO: o jato de alta pressão injeta óleo na pele — lesão gravíssima."},
+       {t:"Ligar o trator para pressurizar e ver o óleo esguichar", ok:false, danger:true, fb:"Aumenta o risco de injeção e de acidente."}]},
+    {passo:"Limite técnico", prompt:"Mesmo após a sangria, os bicos/bomba injetora parecem com defeito. Ação correta:",
+     opts:[{t:"Encaminhar a bomba/bicos a uma retífica especializada (bancada)", ok:true, fb:"Certo. Bomba injetora e bicos são calibrados em bancada própria."},
+       {t:"Abrir a bomba injetora na oficina comum para 'dar uma olhada'", ok:false, fb:"Sem bancada/calibração você danifica a peça (cara)."},
+       {t:"Fazer uma gambiarra para o diesel passar direto", ok:false, danger:true, fb:"Improviso no sistema de injeção é perigoso e destrói o motor."}]},
+    {passo:"Conclusão", prompt:"O motor pegou. Antes de liberar a máquina:",
+     opts:[{t:"Deixar aquecer, conferir marcha lenta/fumaça e a proteção da TDP no lugar", ok:true, fb:"Perfeito. Confirme o funcionamento e a segurança antes de entregar."},
+       {t:"Entregar na hora, sem conferir nada", ok:false, fb:"Sempre valide o reparo antes de entregar."},
+       {t:"Testar a TDP girando, sem a proteção, para ver se aciona", ok:false, danger:true, fb:"PERIGO: a TDP sem proteção enrola roupa/membros e mata."}]}
+  ];
+  var idx=0,pts=0,viol=0,answered=false; var $=function(i){return document.getElementById(i);};
+  function render(){var s=STEPS[idx]; $('t_et').textContent=idx+1; $('t_bar').style.width=Math.round(idx/STEPS.length*100+16)+'%';
+    $('t_passo').textContent=s.passo.toUpperCase(); $('t_prompt').textContent=s.prompt; $('t_fb').innerHTML=''; $('t_next').style.display='none'; answered=false;
+    var box=$('t_opts'); box.innerHTML='';
+    s.opts.forEach(function(o){var b=document.createElement('button'); b.type='button';
+      b.style.cssText='display:block; width:100%; text-align:left; margin-bottom:8px; padding:.7rem .9rem; border-radius:var(--radius); border:0.5px solid var(--border-strong); background:var(--surface-2); cursor:pointer;';
+      b.innerHTML='<span style="font-size:14.5px; font-weight:500;">'+o.t+'</span>'; b.onclick=function(){if(answered)return; choose(o,b,s);}; box.appendChild(b);});
+  }
+  function choose(o,btn,s){answered=true; var all=$('t_opts').querySelectorAll('button'); all.forEach(function(x){x.style.cursor='default';});
+    if(o.ok){pts+=10; btn.style.borderColor='var(--border-success)'; btn.style.background='var(--bg-success)';}
+    else{btn.style.borderColor='var(--border-danger)'; btn.style.background='var(--bg-danger)'; if(o.danger)viol+=1;
+      s.opts.forEach(function(oo,i){if(oo.ok){all[i].style.borderColor='var(--border-success)'; all[i].style.background='var(--bg-success)';}});}
+    var col=o.ok?'var(--text-success)':(o.danger?'var(--text-danger)':'var(--text-warning)'); var ic=o.ok?'ti-check':(o.danger?'ti-alert-triangle':'ti-info-circle');
+    var pre=o.ok?'Correto. ':(o.danger?'FALHA DE SEGURANÇA. ':'Incorreto. ');
+    $('t_fb').innerHTML='<div style="background:var(--surface-1); border-left:3px solid '+col+'; border-radius:0 var(--radius) var(--radius) 0; padding:.7rem .9rem; font-size:14px; line-height:1.55;"><i class="ti '+ic+'" aria-hidden="true" style="color:'+col+'; vertical-align:-2px; margin-right:4px;"></i><strong style="color:'+col+';">'+pre+'</strong>'+o.fb+'</div>';
+    $('t_pts').textContent=pts; $('t_viol').textContent=viol; $('t_next').style.display='inline-flex'; $('t_next').textContent=(idx>=STEPS.length-1)?'Ver resultado':'Próximo';
+  }
+  $('t_next').onclick=function(){if(idx>=STEPS.length-1){finish();return;} idx++; render();};
+  function finish(){$('t_passo').textContent=''; $('t_prompt').textContent=''; $('t_opts').innerHTML=''; $('t_next').style.display='none'; $('t_bar').style.width='100%'; $('t_et').textContent=STEPS.length;
+    var max=STEPS.length*10, aprovado=(viol===0&&pts>=max*0.7), head,col,msg;
+    if(viol>0){head='Reprovado por segurança'; col='var(--text-danger)'; msg='Você cometeu '+viol+' falha(s) de segurança — vazamento hidráulico com a mão, TDP sem proteção ou improviso na injeção. No campo isso mutila. Refaça.';}
+    else if(aprovado){head='Serviço aprovado!'; col='var(--text-success)'; msg='Diagnóstico do simples ao complexo, sangria correta e segurança do campo respeitada. '+pts+'/'+max+' pontos, zero falhas.';}
+    else{head='Aprovado com ressalvas'; col='var(--text-warning)'; msg='Sem falhas de segurança, mas '+pts+'/'+max+' — revise as escolhas técnicas.';}
+    $('t_fb').innerHTML='<div style="text-align:center; padding:1rem 0;"><div style="font-size:20px; font-weight:500; color:'+col+'; margin-bottom:8px;">'+head+'</div><div style="font-size:14px; color:var(--text-secondary); line-height:1.6; max-width:520px; margin:0 auto 16px;">'+msg+'</div><button type="button" id="t_again">Refazer o procedimento</button></div>';
+    document.getElementById('t_again').onclick=function(){idx=0;pts=0;viol=0;$('t_pts').textContent=0;$('t_viol').textContent=0;render();};
+  }
+  render();
+})();
+</script>
+</div>
+</body>
+</html>

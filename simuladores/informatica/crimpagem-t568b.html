@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador · Crimpagem T568B — SMU Técnico</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+<div class="wrap">
+<p class="titulo">Crimpagem de cabo de rede (T568B)</p>
+<p class="sub">Simulador de montagem · Cursos de Informática e CFTV · SMU Técnico</p>
+<h2 class="sr-only">Exercício de montagem: coloque os 8 fios do cabo de rede na sequência de cores correta do padrão T568B e teste o cabo.</h2>
+<div style="padding:1rem 0; font-family:var(--font-sans);">
+  <div style="font-size:14px; color:var(--text-secondary); margin-bottom:6px;">Monte o conector <strong>RJ45</strong> na ordem do padrão <strong>T568B</strong>. Clique nos fios na ordem, do pino 1 ao 8.</div>
+  <div style="font-size:12px; color:var(--text-muted); margin-bottom:14px;"><i class="ti ti-book-2" aria-hidden="true"></i> Padrão (do manual): branco/laranja, laranja, branco/verde, azul, branco/azul, verde, branco/marrom, marrom.</div>
+
+  <div style="font-size:12px; color:var(--text-secondary); margin-bottom:6px;">Conector (pinos 1 → 8):</div>
+  <div id="slots" style="display:flex; gap:5px; margin-bottom:14px; flex-wrap:wrap;"></div>
+
+  <div style="font-size:12px; color:var(--text-secondary); margin-bottom:6px;">Fios disponíveis:</div>
+  <div id="palette" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px;"></div>
+
+  <div style="display:flex; gap:8px; flex-wrap:wrap;">
+    <button id="undo" type="button"><i class="ti ti-arrow-back-up" aria-hidden="true" style="vertical-align:-2px;"></i> Desfazer</button>
+    <button id="clear" type="button"><i class="ti ti-refresh" aria-hidden="true" style="vertical-align:-2px;"></i> Limpar</button>
+    <button id="test" type="button" style="border-color:var(--border-accent); color:var(--text-accent);"><i class="ti ti-plug-connected" aria-hidden="true" style="vertical-align:-2px;"></i> Testar cabo</button>
+  </div>
+  <div id="w_fb" style="margin-top:14px;"></div>
+</div>
+<script>
+(function(){
+  var WIRES={
+    bo:{lb:"Branco/Laranja", base:"#E8871E", st:true},
+    o :{lb:"Laranja", base:"#E8871E", st:false},
+    bg:{lb:"Branco/Verde", base:"#3B8C3B", st:true},
+    a :{lb:"Azul", base:"#2F6FB0", st:false},
+    ba:{lb:"Branco/Azul", base:"#2F6FB0", st:true},
+    g :{lb:"Verde", base:"#3B8C3B", st:false},
+    bm:{lb:"Branco/Marrom", base:"#7A4A2B", st:true},
+    m :{lb:"Marrom", base:"#7A4A2B", st:false}
+  };
+  var CORRECT=["bo","o","bg","a","ba","g","bm","m"];
+  var PAL=["a","bo","m","bg","o","bm","g","ba"];
+  var placed=[]; var $=function(i){return document.getElementById(i);};
+  function swatch(id,w){var W=WIRES[id];
+    if(w<0)w=28;
+    var inner = W.st ? '<div style="width:100%;height:5px;background:'+W.base+';"></div>' : '';
+    var bg = W.st ? '#ffffff' : W.base;
+    return '<div title="'+W.lb+'" style="width:'+w+'px;height:34px;border:0.5px solid var(--border-strong);border-radius:3px;background:'+bg+';display:flex;flex-direction:column;justify-content:center;overflow:hidden;">'+inner+'</div>';
+  }
+  function render(){
+    var sl=$('slots'); sl.innerHTML='';
+    for(var i=0;i<8;i++){
+      var d=document.createElement('div'); d.style.cssText='display:flex;flex-direction:column;align-items:center;gap:2px;';
+      var pin='<div style="font-size:10px;color:var(--text-muted);">'+(i+1)+'</div>';
+      if(placed[i]){ d.innerHTML=pin+swatch(placed[i],26); }
+      else { d.innerHTML=pin+'<div style="width:26px;height:34px;border:1px dashed var(--border-strong);border-radius:3px;background:var(--surface-1);"></div>'; }
+      sl.appendChild(d);
+    }
+    var pa=$('palette'); pa.innerHTML='';
+    PAL.forEach(function(id){
+      var used=placed.indexOf(id)>=0;
+      var b=document.createElement('button'); b.type='button'; b.disabled=used;
+      b.style.cssText='display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:var(--radius);border:0.5px solid var(--border-strong);background:var(--surface-2);cursor:'+(used?'default':'pointer')+';opacity:'+(used?'0.35':'1')+';';
+      b.innerHTML=swatch(id,20)+'<span style="font-size:11.5px;">'+WIRES[id].lb+'</span>';
+      b.onclick=function(){ if(placed.length>=8||used)return; placed.push(id); $('w_fb').innerHTML=''; render(); };
+      pa.appendChild(b);
+    });
+  }
+  $('undo').onclick=function(){ placed.pop(); $('w_fb').innerHTML=''; render(); };
+  $('clear').onclick=function(){ placed=[]; $('w_fb').innerHTML=''; render(); };
+  $('test').onclick=function(){
+    if(placed.length<8){ $('w_fb').innerHTML='<div style="font-size:13px;color:var(--text-warning);">Preencha os 8 pinos antes de testar.</div>'; return; }
+    var wrong=[]; for(var i=0;i<8;i++){ if(placed[i]!==CORRECT[i]) wrong.push(i+1); }
+    if(wrong.length===0){
+      $('w_fb').innerHTML='<div style="background:var(--bg-success);border-radius:var(--radius);padding:.8rem 1rem;font-size:14px;color:var(--text-success);"><i class="ti ti-check" aria-hidden="true" style="vertical-align:-2px;margin-right:4px;"></i><strong>Cabo aprovado no teste!</strong> Todos os 8 pares na ordem T568B — link 1 Gbps ok. É assim que se crimpa um cabo confiável.</div>';
+    } else {
+      var certo=CORRECT.map(function(id,i){return '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;"><div style="font-size:10px;color:var(--text-muted);">'+(i+1)+'</div>'+swatch(id,22)+'</div>';}).join('');
+      $('w_fb').innerHTML='<div style="background:var(--bg-danger);border-radius:var(--radius);padding:.8rem 1rem;font-size:14px;color:var(--text-danger);"><i class="ti ti-x" aria-hidden="true" style="vertical-align:-2px;margin-right:4px;"></i><strong>Cabo reprovou.</strong> Pinos fora de ordem: '+wrong.join(', ')+'. Sequência correta (T568B):</div><div style="display:flex;gap:5px;margin-top:8px;flex-wrap:wrap;">'+certo+'</div>';
+    }
+  };
+  render();
+})();
+</script>
+</div>
+</body>
+</html>

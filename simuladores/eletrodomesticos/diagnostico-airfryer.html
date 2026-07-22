@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador · Diagnóstico da airfryer — SMU Técnico</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+<div class="wrap">
+<p class="titulo">Diagnóstico da airfryer</p>
+<p class="sub">Simulador de procedimento · Curso de Conserto de Eletrodomésticos · SMU Técnico</p>
+<h2 class="sr-only">Simulador de procedimento: diagnostique uma airfryer com defeito, do não liga ao não aquece, com segurança.</h2>
+<div style="padding:1rem 0; font-family:var(--font-sans);">
+  <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:1rem;">
+    <div style="flex:1; min-width:110px; background:var(--surface-1); border-radius:var(--radius); padding:.6rem .9rem;"><div style="font-size:12px; color:var(--text-secondary);">Etapa</div><div style="font-size:20px; font-weight:500;"><span id="af_et">1</span>/6</div></div>
+    <div style="flex:1; min-width:110px; background:var(--surface-1); border-radius:var(--radius); padding:.6rem .9rem;"><div style="font-size:12px; color:var(--text-secondary);">Pontos</div><div style="font-size:20px; font-weight:500;" id="af_pts">0</div></div>
+    <div style="flex:1; min-width:110px; background:var(--surface-1); border-radius:var(--radius); padding:.6rem .9rem;"><div style="font-size:12px; color:var(--text-secondary);">Falhas de segurança</div><div style="font-size:20px; font-weight:500; color:var(--text-danger);" id="af_viol">0</div></div>
+  </div>
+  <div style="height:6px; background:var(--surface-1); border-radius:99px; overflow:hidden; margin-bottom:1rem;"><div id="af_bar" style="height:100%; width:16%; background:var(--text-accent); border-radius:99px; transition:width .25s;"></div></div>
+  <div id="af_passo" style="font-size:12px; color:var(--text-accent); font-weight:500; margin-bottom:4px;"></div>
+  <div id="af_prompt" style="font-size:16px; font-weight:500; margin-bottom:14px; line-height:1.5;"></div>
+  <div id="af_opts"></div><div id="af_fb" style="margin-top:12px;"></div>
+  <div style="margin-top:14px;"><button id="af_next" type="button" style="display:none;">Próximo</button></div>
+</div>
+<script>
+(function(){
+  var STEPS=[
+    {passo:"Segurança", prompt:"O cliente traz uma airfryer que 'não liga'. O primeiro passo antes de abrir é:",
+     opts:[{t:"Desligar da tomada e aguardar esfriar", ok:true, fb:"Certo. Desenergizar e deixar esfriar antes de mexer."},
+       {t:"Abrir com ela ligada para ver a resistência acender", ok:false, danger:true, fb:"Risco de choque e queimadura; sempre desenergize."},
+       {t:"Ligar e colocar a mão dentro para sentir o calor", ok:false, danger:true, fb:"Jamais — risco de queimadura e choque."}]},
+    {passo:"Diagnóstico", prompt:"'Não liga'. Além do cabo, os suspeitos mais comuns são:",
+     opts:[{t:"O contato/chave da gaveta (interlock) e o fusível térmico", ok:true, fb:"Certo. Muitas airfryers só ligam com a gaveta encaixada; e o fusível térmico protege contra superaquecimento."},
+       {t:"Trocar a resistência direto", ok:false, fb:"Prematuro: 'não liga' raramente é a resistência."},
+       {t:"Trocar a placa por garantia", ok:false, fb:"Caro e sem diagnóstico; comece pelo simples."}]},
+    {passo:"Ferramenta · Medição", prompt:"Para testar a chave da gaveta e o fusível térmico, o recurso do multímetro é:",
+     opts:[{t:"Continuidade (apito)", sub:"Verifica se o contato/fusível está íntegro", ok:true, fb:"Certo. Fusível rompido ou chave que não fecha = circuito aberto."},
+       {t:"Escala de corrente com tudo desligado", sub:"Sem energia não há corrente", ok:false, fb:"Sem energia não há o que medir em corrente; use continuidade."},
+       {t:"Medir capacitância", sub:"Não se aplica aqui", ok:false, fb:"Não é o teste para contato/fusível."}]},
+    {passo:"Reparo", prompt:"A airfryer LIGA e o ventilador gira, mas NÃO aquece. O provável é:",
+     opts:[{t:"Resistência aberta ou termostato/controle", ok:true, fb:"Certo. Meça a resistência (aberta = trocar) e verifique o termostato."},
+       {t:"O motor do ventilador", ok:false, fb:"O ventilador está girando — não é ele."},
+       {t:"A gaveta", ok:false, fb:"Ela ligou, então a trava da gaveta está ok."}]},
+    {passo:"Segurança", prompt:"Você descobre que o fusível térmico está rompido (a airfryer superaqueceu). Ação correta:",
+     opts:[{t:"Trocar o fusível térmico e investigar POR QUE superaqueceu", ok:true, fb:"Certo. Fusível não rompe à toa — cheque ventilação/termostato, senão rompe de novo."},
+       {t:"Fazer uma ponte no lugar do fusível para 'resolver'", ok:false, danger:true, fb:"FALHA GRAVE. Anular o fusível térmico deixa o aparelho superaquecer sem proteção — risco de incêndio."},
+       {t:"Ignorar e entregar", ok:false, fb:"Deixaria a causa do superaquecimento sem resolver."}]},
+    {passo:"Entrega", prompt:"Reparo feito. Antes de entregar:",
+     opts:[{t:"Testar o aquecimento e a trava da gaveta, com o aparelho remontado", ok:true, fb:"Perfeito: confirme que aquece, ventila e que a proteção da gaveta funciona."},
+       {t:"Testar aberto e ligado na tomada para agilizar", ok:false, danger:true, fb:"Partes energizadas expostas — remonte antes de testar."},
+       {t:"Entregar sem testar", ok:false, fb:"Nunca entregue sem validar o próprio reparo."}]}
+  ];
+  var idx=0,pts=0,viol=0,answered=false; var $=function(i){return document.getElementById(i);};
+  function render(){var s=STEPS[idx]; $('af_et').textContent=idx+1; $('af_bar').style.width=Math.round(idx/STEPS.length*100+16)+'%';
+    $('af_passo').textContent=s.passo.toUpperCase(); $('af_prompt').textContent=s.prompt; $('af_fb').innerHTML=''; $('af_next').style.display='none'; answered=false;
+    var box=$('af_opts'); box.innerHTML='';
+    s.opts.forEach(function(o){var b=document.createElement('button'); b.type='button';
+      b.style.cssText='display:block; width:100%; text-align:left; margin-bottom:8px; padding:.7rem .9rem; border-radius:var(--radius); border:0.5px solid var(--border-strong); background:var(--surface-2); cursor:pointer;';
+      var h='<span style="font-size:14.5px; font-weight:500;">'+o.t+'</span>'; if(o.sub){h+='<br><span style="font-size:12px; color:var(--text-secondary);"><i class="ti ti-book-2" aria-hidden="true" style="vertical-align:-1px;"></i> '+o.sub+'</span>';}
+      b.innerHTML=h; b.onclick=function(){if(answered)return; choose(o,b,s);}; box.appendChild(b);});
+  }
+  function choose(o,btn,s){answered=true; var all=$('af_opts').querySelectorAll('button'); all.forEach(function(x){x.style.cursor='default';});
+    if(o.ok){pts+=10; btn.style.borderColor='var(--border-success)'; btn.style.background='var(--bg-success)';}
+    else{btn.style.borderColor='var(--border-danger)'; btn.style.background='var(--bg-danger)'; if(o.danger)viol+=1;
+      s.opts.forEach(function(oo,i){if(oo.ok){all[i].style.borderColor='var(--border-success)'; all[i].style.background='var(--bg-success)';}});}
+    var col=o.ok?'var(--text-success)':(o.danger?'var(--text-danger)':'var(--text-warning)'); var ic=o.ok?'ti-check':(o.danger?'ti-alert-triangle':'ti-info-circle');
+    var pre=o.ok?'Correto. ':(o.danger?'FALHA DE SEGURANÇA. ':'Incorreto. ');
+    $('af_fb').innerHTML='<div style="background:var(--surface-1); border-left:3px solid '+col+'; border-radius:0 var(--radius) var(--radius) 0; padding:.7rem .9rem; font-size:14px; line-height:1.55;"><i class="ti '+ic+'" aria-hidden="true" style="color:'+col+'; vertical-align:-2px; margin-right:4px;"></i><strong style="color:'+col+';">'+pre+'</strong>'+o.fb+'</div>';
+    $('af_pts').textContent=pts; $('af_viol').textContent=viol; $('af_next').style.display='inline-flex'; $('af_next').textContent=(idx>=STEPS.length-1)?'Ver resultado':'Próximo';
+  }
+  $('af_next').onclick=function(){if(idx>=STEPS.length-1){finish();return;} idx++; render();};
+  function finish(){$('af_passo').textContent=''; $('af_prompt').textContent=''; $('af_opts').innerHTML=''; $('af_next').style.display='none'; $('af_bar').style.width='100%'; $('af_et').textContent=STEPS.length;
+    var max=STEPS.length*10, aprovado=(viol===0&&pts>=max*0.7), head,col,msg;
+    if(viol>0){head='Reprovado por segurança'; col='var(--text-danger)'; msg='Você cometeu '+viol+' falha(s) de segurança — provável ponte no fusível térmico ou teste com risco elétrico. Isso incendeia. Refaça.';}
+    else if(aprovado){head='Serviço aprovado!'; col='var(--text-success)'; msg='Diagnóstico do simples ao complexo, causa do superaquecimento tratada e teste final. '+pts+'/'+max+' pontos, zero falhas.';}
+    else{head='Aprovado com ressalvas'; col='var(--text-warning)'; msg='Sem falhas de segurança, mas '+pts+'/'+max+' — revise as escolhas técnicas.';}
+    $('af_fb').innerHTML='<div style="text-align:center; padding:1rem 0;"><div style="font-size:20px; font-weight:500; color:'+col+'; margin-bottom:8px;">'+head+'</div><div style="font-size:14px; color:var(--text-secondary); line-height:1.6; max-width:520px; margin:0 auto 16px;">'+msg+'</div><button type="button" id="af_again">Refazer o procedimento</button></div>';
+    document.getElementById('af_again').onclick=function(){idx=0;pts=0;viol=0;$('af_pts').textContent=0;$('af_viol').textContent=0;render();};
+  }
+  render();
+})();
+</script>
+</div>
+</body>
+</html>

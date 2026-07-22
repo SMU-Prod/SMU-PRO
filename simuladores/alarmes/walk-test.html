@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador · Walk test do alarme — SMU Técnico</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+<div class="wrap">
+<p class="titulo">Walk test do alarme: testar todas as zonas</p>
+<p class="sub">Simulador de bancada · Curso de Alarmes / Segurança Eletrônica · SMU Técnico</p>
+<h2 class="sr-only">Simulador de segurança eletrônica: faça o walk test do alarme — passe na frente de cada sensor, ache a zona que não comunica, repare e conclua a instalação com todas as zonas funcionando.</h2>
+<div style="padding:1rem 0; font-family:var(--font-sans);">
+  <div style="background:var(--bg-accent); color:var(--text-accent); border-radius:var(--radius); padding:.6rem .9rem; font-size:13px; margin-bottom:14px;">
+    <i class="ti ti-shield-check" aria-hidden="true" style="vertical-align:-2px; margin-right:4px;"></i>Central em <strong>modo teste (walk test)</strong>. Passe na frente de <strong>cada sensor</strong> e veja se a zona dispara no painel. Ache a que não comunica, repare e só então <strong>conclua a instalação</strong>.
+  </div>
+
+  <div style="background:#101418; border:1px solid var(--border-strong); border-radius:12px; padding:12px 14px; margin-bottom:14px;">
+    <div style="font-size:11px; color:#7aa0c0; letter-spacing:1px; margin-bottom:6px;">PAINEL DA CENTRAL</div>
+    <div style="background:#05090d; border-radius:8px; padding:12px; min-height:40px; font-family:var(--font-mono,monospace);">
+      <div id="painel" style="color:#6fd0ff; font-size:14px; line-height:1.5;">— modo teste ativo · percorra os sensores —</div>
+    </div>
+  </div>
+
+  <div style="font-size:12px; color:var(--text-secondary); margin-bottom:6px;">Ambientes — clique em <strong>Passar na frente</strong> para testar a zona:</div>
+  <div id="zonas" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px;"></div>
+  <div style="text-align:center; margin-top:14px;">
+    <button id="concluir" type="button" style="border-color:var(--border-success); color:var(--text-success);"><i class="ti ti-check" aria-hidden="true" style="vertical-align:-2px;"></i> Concluir instalação</button>
+  </div>
+  <div id="fim" style="margin-top:12px;"></div>
+</div>
+<script>
+(function(){
+  var $=function(i){return document.getElementById(i);};
+  var Z=[
+    {nome:'Sala (IVP)'},{nome:'Cozinha (IVP)'},{nome:'Corredor (IVP)'},
+    {nome:'Garagem (barreira)'},{nome:'Quarto (magnético)'}
+  ];
+  var morto=Math.floor(Math.random()*Z.length), acabou=false;
+  Z.forEach(function(z){ z.testada=false; z.ok=false; });
+
+  function passar(i){
+    if(acabou) return;
+    var z=Z[i]; z.testada=true;
+    if(i===morto && !z.ok){
+      z.ok=false;
+      $('painel').innerHTML='<span style="color:#f0a0a0;">Zona '+(i+1)+' ('+z.nome+'): SEM disparo — sensor não comunica.</span>';
+    } else {
+      z.ok=true;
+      $('painel').innerHTML='<span style="color:#7fe0a0;">DISPARO — Zona '+(i+1)+' ('+z.nome+') OK.</span>';
+    }
+    render();
+  }
+  function reparar(i){
+    if(acabou) return;
+    var z=Z[i];
+    if(i===morto){
+      z.ok=true; z.testada=false;
+      $('painel').innerHTML='<span style="color:#e0c070;">Sensor da Zona '+(i+1)+' reparado (fio/posição). Passe na frente para reconfirmar.</span>';
+    } else {
+      $('painel').innerHTML='<span style="color:#9aa0a6;">A Zona '+(i+1)+' já estava boa — nada a reparar aqui.</span>';
+    }
+    render();
+  }
+  $('concluir').onclick=function(){
+    if(acabou) return;
+    var faltaTestar = Z.some(function(z){return !z.testada;});
+    var temFalha = Z.some(function(z){return z.testada && !z.ok;}) || !Z[morto].ok;
+    if(faltaTestar && !temFalha){
+      $('painel').innerHTML='<span style="color:#e0c070;">Você não testou todas as zonas. Faça o walk test completo antes de concluir.</span>';
+      return;
+    }
+    acabou=true;
+    if(!temFalha && !faltaTestar){
+      $('fim').innerHTML='<div style="background:var(--bg-success); border-radius:var(--radius); padding:.9rem 1rem; font-size:13.5px; color:var(--text-success); line-height:1.6;"><i class="ti ti-circle-check" aria-hidden="true" style="vertical-align:-2px; margin-right:4px;"></i><strong>Instalação concluída.</strong> Todas as zonas dispararam no walk test. É assim que se entrega: caminhando a casa e vendo cada sensor comunicar — não confiando que "deve estar funcionando".</div>';
+    } else {
+      $('fim').innerHTML='<div style="background:var(--bg-danger); border-radius:var(--radius); padding:.9rem 1rem; font-size:13.5px; color:var(--text-danger); line-height:1.6;"><i class="ti ti-x" aria-hidden="true" style="vertical-align:-2px; margin-right:4px;"></i><strong>Entregou com zona cega.</strong> A Zona '+(morto+1)+' ('+Z[morto].nome+') não comunica — o cliente ficaria com um ponto sem proteção. Repare o sensor e refaça o walk test antes de concluir.</div>';
+    }
+    $('fim').innerHTML+='<div style="text-align:center; margin-top:12px;"><button id="rst" type="button">Nova instalação</button></div>';
+    $('rst').onclick=function(){ morto=Math.floor(Math.random()*Z.length); acabou=false; Z.forEach(function(z){z.testada=false;z.ok=false;}); $('fim').innerHTML=''; $('painel').innerHTML='— modo teste ativo · percorra os sensores —'; render(); };
+  };
+  function render(){
+    var box=$('zonas'); box.innerHTML='';
+    Z.forEach(function(z,i){
+      var d=document.createElement('div');
+      var cor = z.testada ? (z.ok?'var(--border-success)':'var(--border-danger)') : 'var(--border-strong)';
+      d.style.cssText='background:var(--surface-2); border:0.5px solid '+cor+'; border-radius:12px; padding:.7rem;';
+      var status = z.testada ? (z.ok?'<span style="color:var(--text-success);">✓ disparou</span>':'<span style="color:var(--text-danger);">✗ não comunica</span>') : '<span style="color:var(--text-muted);">não testada</span>';
+      d.innerHTML='<div style="font-weight:500; font-size:13.5px;">Zona '+(i+1)+'</div><div style="font-size:11.5px; color:var(--text-secondary); margin-bottom:2px;">'+z.nome+'</div><div style="font-size:11px; margin-bottom:8px;">'+status+'</div>';
+      var bp=document.createElement('button'); bp.type='button'; bp.textContent='Passar na frente'; bp.style.cssText='font-size:11.5px; padding:5px 9px; margin-right:5px;'; bp.disabled=acabou; bp.onclick=function(){passar(i);};
+      var br=document.createElement('button'); br.type='button'; br.textContent='Reparar'; br.style.cssText='font-size:11.5px; padding:5px 9px; border-color:var(--border-warning); color:var(--text-warning);'; br.disabled=acabou; br.onclick=function(){reparar(i);};
+      d.appendChild(bp); d.appendChild(br); box.appendChild(d);
+    });
+  }
+  render();
+})();
+</script>
+</div>
+</body>
+</html>

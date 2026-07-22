@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador · Troca de tela de celular — SMU Técnico</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+<div class="wrap">
+<p class="titulo">Troca de tela de celular</p>
+<p class="sub">Simulador de procedimento · Curso de Manutenção de Celulares · SMU Técnico</p>
+<h2 class="sr-only">Simulador de procedimento: troque a tela de um celular com segurança e ética, do backup e IMEI ao teste final.</h2>
+<div style="padding:1rem 0; font-family:var(--font-sans);">
+  <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:1rem;">
+    <div style="flex:1; min-width:110px; background:var(--surface-1); border-radius:var(--radius); padding:.6rem .9rem;"><div style="font-size:12px; color:var(--text-secondary);">Etapa</div><div style="font-size:20px; font-weight:500;"><span id="k_et">1</span>/7</div></div>
+    <div style="flex:1; min-width:110px; background:var(--surface-1); border-radius:var(--radius); padding:.6rem .9rem;"><div style="font-size:12px; color:var(--text-secondary);">Pontos</div><div style="font-size:20px; font-weight:500;" id="k_pts">0</div></div>
+    <div style="flex:1; min-width:110px; background:var(--surface-1); border-radius:var(--radius); padding:.6rem .9rem;"><div style="font-size:12px; color:var(--text-secondary);">Falhas graves</div><div style="font-size:20px; font-weight:500; color:var(--text-danger);" id="k_viol">0</div></div>
+  </div>
+  <div style="height:6px; background:var(--surface-1); border-radius:99px; overflow:hidden; margin-bottom:1rem;"><div id="k_bar" style="height:100%; width:14%; background:var(--text-accent); border-radius:99px; transition:width .25s;"></div></div>
+  <div id="k_passo" style="font-size:12px; color:var(--text-accent); font-weight:500; margin-bottom:4px;"></div>
+  <div id="k_prompt" style="font-size:16px; font-weight:500; margin-bottom:14px; line-height:1.5;"></div>
+  <div id="k_opts"></div><div id="k_fb" style="margin-top:12px;"></div>
+  <div style="margin-top:14px;"><button id="k_next" type="button" style="display:none;">Próximo</button></div>
+</div>
+<script>
+(function(){
+  var STEPS=[
+    {passo:"Ética · Recepção", prompt:"Cliente traz um celular para troca de tela. Antes de aceitar o serviço:",
+     opts:[{t:"Verificar o IMEI/procedência e registrar o estado do aparelho", ok:true, fb:"Certo. Aparelho com trava de conta sem o dono pode ser roubado — recuse."},
+       {t:"Aceitar sem perguntar nada", ok:false, fb:"Você pode acabar consertando um aparelho roubado — risco legal."},
+       {t:"Oferecer para 'desbloquear a conta' do aparelho", ok:false, danger:true, fb:"Contornar trava de conta sem o dono é crime. Nunca."}]},
+    {passo:"Dados", prompt:"O aparelho liga. Antes de abrir:",
+     opts:[{t:"Orientar/realizar backup dos dados do cliente", ok:true, fb:"Certo. O reparo pode dar errado; proteja os dados antes."},
+       {t:"Abrir direto, os dados não são problema seu", ok:false, fb:"Perder fotos/contatos do cliente é o pior pesadelo — faça backup."}]},
+    {passo:"Abertura", prompt:"Para abrir e soltar a tela colada:",
+     opts:[{t:"Aquecer a borda para amolecer a cola e usar ventosa + palhetas", ok:true, fb:"Certo. Calor controlado solta a cola sem quebrar; cuidado com OLED."},
+       {t:"Forçar com uma espátula de metal, sem aquecer", ok:false, danger:true, fb:"Sem calor a tela quebra e você danifica o aparelho."},
+       {t:"Fazer alavanca com uma chave de fenda na lateral", ok:false, danger:true, fb:"Amassa a estrutura e rompe flex."}]},
+    {passo:"Segurança", prompt:"Com a tela levantada, antes de mexer em qualquer coisa:",
+     opts:[{t:"Desconectar a bateria primeiro", ok:true, fb:"Certo. Trabalhar com a bateria ligada arrisca curto e dano à placa."},
+       {t:"Ir trocando a tela com a bateria conectada", ok:false, danger:true, fb:"Risco de curto na placa — desconecte a bateria sempre."},
+       {t:"Dobrar a bateria para tirá-la do caminho", ok:false, danger:true, fb:"PERIGO: dobrar/perfurar a bateria de lítio causa incêndio."}]},
+    {passo:"Montagem", prompt:"Antes de colar a tela nova definitivamente:",
+     opts:[{t:"Conectar e TESTAR a tela nova (imagem e touch)", ok:true, fb:"Certo. Colar e só depois descobrir defeito é retrabalho caro."},
+       {t:"Colar logo para adiantar e testar depois", ok:false, fb:"Se a tela nova tiver defeito, você refaz tudo — teste antes."}]},
+    {passo:"Acabamento", prompt:"Tela testada e ok. Ao fechar o aparelho:",
+     opts:[{t:"Transferir peças necessárias, refazer a vedação e recolocar cada parafuso no lugar", ok:true, fb:"Certo. Parafuso trocado de posição pode furar a placa."},
+       {t:"Fechar de qualquer jeito, sobra parafuso não tem problema", ok:false, danger:true, fb:"Parafuso no lugar errado fura a placa; peça esquecida = defeito novo."}]},
+    {passo:"Entrega", prompt:"Antes de entregar:",
+     opts:[{t:"Rodar o checklist: tela, touch, câmeras, áudio, carga, biometria, sensores", ok:true, fb:"Perfeito. Testar tudo evita o cliente voltar no dia seguinte."},
+       {t:"Entregar sem testar, o cliente testa em casa", ok:false, fb:"Nunca entregue sem validar o próprio reparo."}]}
+  ];
+  var idx=0,pts=0,viol=0,answered=false; var $=function(i){return document.getElementById(i);};
+  function render(){var s=STEPS[idx]; $('k_et').textContent=idx+1; $('k_bar').style.width=Math.round(idx/STEPS.length*100+14)+'%';
+    $('k_passo').textContent=s.passo.toUpperCase(); $('k_prompt').textContent=s.prompt; $('k_fb').innerHTML=''; $('k_next').style.display='none'; answered=false;
+    var box=$('k_opts'); box.innerHTML='';
+    s.opts.forEach(function(o){var b=document.createElement('button'); b.type='button';
+      b.style.cssText='display:block; width:100%; text-align:left; margin-bottom:8px; padding:.7rem .9rem; border-radius:var(--radius); border:0.5px solid var(--border-strong); background:var(--surface-2); cursor:pointer;';
+      b.innerHTML='<span style="font-size:14.5px; font-weight:500;">'+o.t+'</span>'; b.onclick=function(){if(answered)return; choose(o,b,s);}; box.appendChild(b);});
+  }
+  function choose(o,btn,s){answered=true; var all=$('k_opts').querySelectorAll('button'); all.forEach(function(x){x.style.cursor='default';});
+    if(o.ok){pts+=10; btn.style.borderColor='var(--border-success)'; btn.style.background='var(--bg-success)';}
+    else{btn.style.borderColor='var(--border-danger)'; btn.style.background='var(--bg-danger)'; if(o.danger)viol+=1;
+      s.opts.forEach(function(oo,i){if(oo.ok){all[i].style.borderColor='var(--border-success)'; all[i].style.background='var(--bg-success)';}});}
+    var col=o.ok?'var(--text-success)':(o.danger?'var(--text-danger)':'var(--text-warning)'); var ic=o.ok?'ti-check':(o.danger?'ti-alert-triangle':'ti-info-circle');
+    var pre=o.ok?'Correto. ':(o.danger?'FALHA GRAVE. ':'Incorreto. ');
+    $('k_fb').innerHTML='<div style="background:var(--surface-1); border-left:3px solid '+col+'; border-radius:0 var(--radius) var(--radius) 0; padding:.7rem .9rem; font-size:14px; line-height:1.55;"><i class="ti '+ic+'" aria-hidden="true" style="color:'+col+'; vertical-align:-2px; margin-right:4px;"></i><strong style="color:'+col+';">'+pre+'</strong>'+o.fb+'</div>';
+    $('k_pts').textContent=pts; $('k_viol').textContent=viol; $('k_next').style.display='inline-flex'; $('k_next').textContent=(idx>=STEPS.length-1)?'Ver resultado':'Próximo';
+  }
+  $('k_next').onclick=function(){if(idx>=STEPS.length-1){finish();return;} idx++; render();};
+  function finish(){$('k_passo').textContent=''; $('k_prompt').textContent=''; $('k_opts').innerHTML=''; $('k_next').style.display='none'; $('k_bar').style.width='100%'; $('k_et').textContent=STEPS.length;
+    var max=STEPS.length*10, aprovado=(viol===0&&pts>=max*0.7), head,col,msg;
+    if(viol>0){head='Reprovado'; col='var(--text-danger)'; msg='Você cometeu '+viol+' falha(s) grave(s) — abrir sem aquecer/quebrar a tela, mexer com a bateria conectada ou dobrá-la, ou tocar em desbloqueio ilegal. Refaça.';}
+    else if(aprovado){head='Serviço aprovado!'; col='var(--text-success)'; msg='Ética (IMEI), backup, abertura segura, tela testada antes de colar e checklist final. '+pts+'/'+max+' pontos, zero falhas.';}
+    else{head='Aprovado com ressalvas'; col='var(--text-warning)'; msg='Sem falhas graves, mas '+pts+'/'+max+' — revise as escolhas.';}
+    $('k_fb').innerHTML='<div style="text-align:center; padding:1rem 0;"><div style="font-size:20px; font-weight:500; color:'+col+'; margin-bottom:8px;">'+head+'</div><div style="font-size:14px; color:var(--text-secondary); line-height:1.6; max-width:520px; margin:0 auto 16px;">'+msg+'</div><button type="button" id="k_again">Refazer</button></div>';
+    document.getElementById('k_again').onclick=function(){idx=0;pts=0;viol=0;$('k_pts').textContent=0;$('k_viol').textContent=0;render();};
+  }
+  render();
+})();
+</script>
+</div>
+</body>
+</html>

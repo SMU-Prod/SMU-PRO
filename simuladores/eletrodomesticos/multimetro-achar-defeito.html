@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador · Multímetro: achar a peça com defeito — SMU Técnico</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+<div class="wrap">
+<p class="titulo">Multímetro: achar a peça com defeito</p>
+<p class="sub">Simulador de bancada · Elétrica / Eletrodomésticos / Eletrônica · SMU Técnico</p>
+<h2 class="sr-only">Simulador de bancada: use o multímetro no modo certo para medir os componentes de uma placa, achar o que está com defeito, trocar e testar o aparelho.</h2>
+<div style="padding:1rem 0; font-family:var(--font-sans);">
+  <div style="background:var(--bg-accent); color:var(--text-accent); border-radius:var(--radius); padding:.6rem .9rem; font-size:13px; margin-bottom:14px;">
+    <i class="ti ti-device-analytics" aria-hidden="true" style="vertical-align:-2px; margin-right:4px;"></i>Aparelho de aquecimento <strong>não aquece</strong>. Meça cada componente <strong>no modo certo</strong>, ache o defeituoso e troque. (Aparelho já desligado da tomada.)
+  </div>
+
+  <!-- Multimetro -->
+  <div style="background:#0f1a13; border:1px solid var(--border-strong); border-radius:12px; padding:12px 14px; margin-bottom:14px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      <span style="font-size:11px; color:#7bdca8; letter-spacing:1px;">MULTÍMETRO</span>
+      <span id="modo_lbl" style="font-size:11px; color:#7bdca8;">modo: Continuidade</span>
+    </div>
+    <div style="background:#04120a; border-radius:8px; padding:12px; min-height:46px; font-family:var(--font-mono,monospace);">
+      <div id="visor" style="color:#57e08e; font-size:16px; line-height:1.4;">— encoste a ponta num componente —</div>
+    </div>
+    <div style="display:flex; gap:6px; margin-top:10px; flex-wrap:wrap;">
+      <button class="modo" data-m="cont" type="button">Continuidade</button>
+      <button class="modo" data-m="res" type="button">Resistência (Ω)</button>
+      <button class="modo" data-m="dio" type="button">Diodo</button>
+    </div>
+  </div>
+
+  <div style="font-size:12px; color:var(--text-secondary); margin-bottom:6px;">Placa do aparelho — clique em <strong>Medir</strong> (usa o modo selecionado) e depois em <strong>Trocar</strong> no que julgar defeituoso:</div>
+  <div id="placa" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px;"></div>
+  <div id="fim" style="margin-top:14px;"></div>
+</div>
+<script>
+(function(){
+  var $=function(i){return document.getElementById(i);};
+  var COMPS=[
+    {id:'fus', nome:'Fusível térmico', modo:'cont', bom:'0 Ω · apita (íntegro)', ruim:'OL · aberto', rtxt:'rompido'},
+    {id:'res', nome:'Resistência de aquecimento', modo:'res', bom:'≈ 28 Ω', ruim:'OL · circuito aberto', rtxt:'queimada'},
+    {id:'dio', nome:'Diodo', modo:'dio', bom:'conduz num sentido (0,55 V), bloqueia no outro', ruim:'0,00 nos dois sentidos', rtxt:'em curto'},
+    {id:'ter', nome:'Termostato', modo:'cont', bom:'0 Ω · apita (fechado)', ruim:'OL · não fecha', rtxt:'aberto'}
+  ];
+  var MODOS={cont:'Continuidade', res:'Resistência', dio:'Diodo'};
+  var modo='cont', defeito=Math.floor(Math.random()*COMPS.length), acabou=false;
+
+  function setModo(m){ modo=m; $('modo_lbl').textContent='modo: '+MODOS[m];
+    Array.prototype.forEach.call(document.querySelectorAll('.modo'),function(b){
+      var on=b.dataset.m===m; b.style.background=on?'var(--bg-accent)':'var(--surface-2)'; b.style.borderColor=on?'var(--border-accent)':'var(--border-strong)'; b.style.color=on?'var(--text-accent)':'var(--text-primary)';});
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.modo'),function(b){ b.onclick=function(){ if(!acabou) setModo(b.dataset.m); }; });
+
+  function medir(i){
+    if(acabou) return;
+    var c=COMPS[i], ruim=(i===defeito);
+    if(modo!==c.modo){
+      $('visor').innerHTML='<span style="color:#e0a857;">leitura sem sentido neste modo.</span><br><span style="color:#7bdca8; font-size:13px;">Para '+c.nome.toLowerCase()+', use o modo '+MODOS[c.modo]+'.</span>';
+      return;
+    }
+    var leitura = ruim ? c.ruim : c.bom;
+    var tag = ruim ? '<span style="color:#f08a8a;">⚠ fora do normal — suspeito</span>' : '<span style="color:#57e08e;">leitura normal — ok</span>';
+    $('visor').innerHTML='<span style="color:#eaeaea; font-size:14px;">'+c.nome+'</span><br><span style="font-size:15px;">'+leitura+'</span><br>'+tag;
+  }
+  function trocar(i){
+    if(acabou) return;
+    acabou=true;
+    var c=COMPS[i];
+    if(i===defeito){
+      $('fim').innerHTML='<div style="background:var(--bg-success); border-radius:var(--radius); padding:.9rem 1rem; font-size:14px; color:var(--text-success); line-height:1.55;"><i class="ti ti-circle-check" aria-hidden="true" style="vertical-align:-2px; margin-right:4px;"></i><strong>Certo! Era o(a) '+c.nome.toLowerCase()+' ('+c.rtxt+').</strong> Trocou e o aparelho voltou a aquecer. É assim: mede no modo certo, interpreta e troca só a peça ruim.</div><div style="text-align:center; margin-top:12px;"><button id="rst" type="button">Novo defeito</button></div>';
+    } else {
+      $('fim').innerHTML='<div style="background:var(--bg-danger); border-radius:var(--radius); padding:.9rem 1rem; font-size:14px; color:var(--text-danger); line-height:1.55;"><i class="ti ti-x" aria-hidden="true" style="vertical-align:-2px; margin-right:4px;"></i><strong>Trocou peça boa.</strong> O(a) '+c.nome.toLowerCase()+' estava íntegro — o defeito continua. Dica: meça TODOS no modo certo e troque só o que der leitura fora do normal.</div><div style="text-align:center; margin-top:12px;"><button id="rst" type="button">Tentar de novo</button></div>';
+    }
+    document.getElementById('rst').onclick=reset;
+    render();
+  }
+  function reset(){ defeito=Math.floor(Math.random()*COMPS.length); acabou=false; $('fim').innerHTML=''; $('visor').innerHTML='— encoste a ponta num componente —'; render(); }
+
+  function render(){
+    var box=$('placa'); box.innerHTML='';
+    COMPS.forEach(function(c,i){
+      var d=document.createElement('div');
+      d.style.cssText='background:var(--surface-2); border:0.5px solid var(--border-strong); border-radius:12px; padding:.8rem;';
+      d.innerHTML='<div style="font-weight:500; font-size:14px; margin-bottom:2px;">'+c.nome+'</div><div style="font-size:11px; color:var(--text-muted); margin-bottom:10px;">testa em: '+MODOS[c.modo]+'</div>';
+      var bm=document.createElement('button'); bm.type='button'; bm.textContent='Medir'; bm.style.cssText='font-size:12px; padding:6px 12px; margin-right:6px;'; bm.disabled=acabou; bm.onclick=function(){medir(i);};
+      var bt=document.createElement('button'); bt.type='button'; bt.textContent='Trocar'; bt.style.cssText='font-size:12px; padding:6px 12px; border-color:var(--border-warning); color:var(--text-warning);'; bt.disabled=acabou; bt.onclick=function(){trocar(i);};
+      d.appendChild(bm); d.appendChild(bt); box.appendChild(d);
+    });
+  }
+  setModo('cont'); render();
+})();
+</script>
+</div>
+</body>
+</html>

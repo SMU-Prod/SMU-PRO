@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador · Achar o curto na placa (fonte de bancada) — SMU Técnico</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+<div class="wrap">
+<p class="titulo">Achar o curto na placa com a fonte de bancada</p>
+<p class="sub">Simulador de bancada · Curso de Manutenção de Celulares · SMU Técnico</p>
+<h2 class="sr-only">Simulador de bancada de celular: use a fonte de bancada para medir o consumo, localize o componente em curto pelo calor ou pela resistência ao GND, troque e ligue o aparelho.</h2>
+<div style="padding:1rem 0; font-family:var(--font-sans);">
+  <div style="background:var(--bg-accent); color:var(--text-accent); border-radius:var(--radius); padding:.6rem .9rem; font-size:13px; margin-bottom:14px;">
+    <i class="ti ti-device-mobile" aria-hidden="true" style="vertical-align:-2px; margin-right:4px;"></i>Celular <strong>não liga e esquenta</strong>. Ligue a <strong>fonte de bancada</strong> (limitada), veja o consumo e ache o componente em <strong>curto</strong> — pelo calor ou medindo a resistência ao GND. Depois troque e ligue.
+  </div>
+
+  <div style="background:#1a1410; border:1px solid var(--border-strong); border-radius:12px; padding:12px 14px; margin-bottom:14px;">
+    <div style="font-size:11px; color:#e0b070; letter-spacing:1px; margin-bottom:6px;">FONTE DE BANCADA · limite 1,0 A</div>
+    <div style="display:flex; gap:18px; background:#0d0805; border-radius:8px; padding:12px; font-family:var(--font-mono,monospace);">
+      <div><div style="font-size:10px; color:#8a7050;">TENSÃO</div><div style="font-size:20px; color:#ffcf7a;">4,0 V</div></div>
+      <div><div style="font-size:10px; color:#8a7050;">CONSUMO</div><div id="amp" style="font-size:20px; color:#ff8a6a;">— A</div></div>
+    </div>
+    <div style="margin-top:10px;"><button id="fonte" type="button" style="border-color:var(--border-accent); color:var(--text-accent);"><i class="ti ti-bolt" aria-hidden="true" style="vertical-align:-2px;"></i> Ligar a fonte</button></div>
+  </div>
+
+  <div id="area" style="display:none;">
+    <div style="font-size:12px; color:var(--text-secondary); margin-bottom:6px;">Métodos para localizar o curto:</div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+      <button id="alcool" type="button" style="font-size:12.5px;"><i class="ti ti-droplet" aria-hidden="true" style="vertical-align:-2px;"></i> Passar álcool isopropílico</button>
+      <button id="ohm" type="button" style="font-size:12.5px;"><i class="ti ti-current" aria-hidden="true" style="vertical-align:-2px;"></i> Medir Ω ao GND (linha a linha)</button>
+    </div>
+    <div id="visor" style="background:var(--surface-1); border-radius:var(--radius); padding:.7rem .9rem; font-size:13px; min-height:20px; color:var(--text-secondary); line-height:1.55; margin-bottom:12px;">Escolha um método para achar o componente em curto.</div>
+    <div style="font-size:12px; color:var(--text-secondary); margin-bottom:6px;">Placa — clique em <strong>Trocar</strong> no componente que está em curto:</div>
+    <div id="placa" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:8px;"></div>
+  </div>
+  <div id="fim" style="margin-top:14px;"></div>
+</div>
+<script>
+(function(){
+  var $=function(i){return document.getElementById(i);};
+  var COMPS=[
+    {id:'c1', nome:'Capacitor C1 (VBUS)'},
+    {id:'pmic', nome:'PMIC (gerência)'},
+    {id:'carga', nome:'CI de carga'},
+    {id:'c2', nome:'Capacitor C2 (1,8 V)'},
+    {id:'bob', nome:'Bobina L1'}
+  ];
+  var curto=Math.floor(Math.random()*COMPS.length), ligada=false, acabou=false;
+
+  $('fonte').onclick=function(){
+    if(acabou) return;
+    ligada=true;
+    $('amp').textContent='0,68 A';
+    $('area').style.display='block';
+    $('visor').innerHTML='<span style="color:var(--text-warning);"><strong>0,68 A</strong> — muito acima do normal (placa boa fica em ~0,00 A parada). Confirmado: tem curto. Agora localize.</span>';
+  };
+  function reveal(metodo){
+    if(acabou||!ligada) return;
+    var c=COMPS[curto];
+    if(metodo==='alcool'){
+      $('visor').innerHTML='Passei álcool na placa: quase tudo evapora devagar, mas sobre o <strong>'+c.nome+'</strong> o álcool <strong>evapora na hora</strong> — é o ponto que esquenta. É ele em curto.';
+    } else {
+      $('visor').innerHTML='Medindo resistência de cada linha ao GND: as linhas boas dão kΩ, mas a linha do <strong>'+c.nome+'</strong> dá <strong>~0,4 Ω</strong> (quase curto ao terra). É ele.';
+    }
+    render();
+  }
+  $('alcool').onclick=function(){reveal('alcool');};
+  $('ohm').onclick=function(){reveal('ohm');};
+
+  function trocar(i){
+    if(acabou) return; acabou=true;
+    var c=COMPS[i];
+    if(i===curto){
+      $('amp').textContent='0,00 A';
+      $('fim').innerHTML='<div style="background:var(--bg-success); border-radius:var(--radius); padding:.9rem 1rem; font-size:13.5px; color:var(--text-success); line-height:1.6;"><i class="ti ti-circle-check" aria-hidden="true" style="vertical-align:-2px; margin-right:4px;"></i><strong>Curto eliminado.</strong> Removeu o(a) '+c.nome+' em curto, o consumo caiu para 0,00 A e o celular ligou. Fonte de bancada + calor/Ω = você acha o curto sem trocar a placa toda.</div>';
+    } else {
+      $('fim').innerHTML='<div style="background:var(--bg-danger); border-radius:var(--radius); padding:.9rem 1rem; font-size:13.5px; color:var(--text-danger); line-height:1.6;"><i class="ti ti-x" aria-hidden="true" style="vertical-align:-2px; margin-right:4px;"></i><strong>Não era esse.</strong> O consumo continua em 0,68 A — o(a) '+c.nome+' estava bom. Localize pelo calor ou pela resistência ao GND antes de dessoldar.</div>';
+    }
+    $('fim').innerHTML+='<div style="text-align:center; margin-top:12px;"><button id="rst" type="button">Outra placa</button></div>';
+    $('rst').onclick=function(){ curto=Math.floor(Math.random()*COMPS.length); ligada=false; acabou=false; $('area').style.display='none'; $('amp').textContent='— A'; $('fim').innerHTML=''; };
+    render();
+  }
+  function render(){
+    var box=$('placa'); box.innerHTML='';
+    COMPS.forEach(function(c,i){
+      var d=document.createElement('div');
+      var achado = acabou && i===curto;
+      d.style.cssText='background:var(--surface-2); border:0.5px solid '+(achado?'var(--border-success)':'var(--border-strong)')+'; border-radius:10px; padding:.6rem .7rem;';
+      d.innerHTML='<div style="font-size:12.5px; font-weight:500; margin-bottom:8px;">'+c.nome+'</div>';
+      var b=document.createElement('button'); b.type='button'; b.textContent='Trocar'; b.style.cssText='font-size:11.5px; padding:5px 10px; border-color:var(--border-warning); color:var(--text-warning);';
+      b.disabled=acabou; b.onclick=function(){trocar(i);};
+      d.appendChild(b); box.appendChild(d);
+    });
+  }
+  render();
+})();
+</script>
+</div>
+</body>
+</html>

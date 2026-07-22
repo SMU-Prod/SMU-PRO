@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador · EV em modo seguro (alta tensão) — SMU Técnico</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+<div class="wrap">
+<p class="titulo">Colocar o carro elétrico em modo seguro de serviço</p>
+<p class="sub">Simulador de segurança · Curso de Manutenção de Carros Elétricos · SMU Técnico</p>
+<h2 class="sr-only">Simulador de segurança em veículo elétrico: coloque o carro em modo seguro de serviço seguindo a sequência correta de desenergização de alta tensão antes de tocar em qualquer componente laranja.</h2>
+<div style="padding:1rem 0; font-family:var(--font-sans);">
+  <div style="background:var(--bg-danger); color:var(--text-danger); border-radius:var(--radius); padding:.6rem .9rem; font-size:13px; margin-bottom:14px;">
+    <i class="ti ti-bolt" aria-hidden="true" style="vertical-align:-2px; margin-right:4px;"></i><strong>ALTA TENSÃO — centenas de volts CC.</strong> Coloque o EV em <strong>modo seguro de serviço</strong> na ORDEM correta antes de tocar em qualquer cabo/componente laranja. Pular uma etapa de segurança reprova.
+  </div>
+
+  <div id="prog" style="font-size:12.5px; color:var(--text-secondary); margin-bottom:8px; min-height:20px;">Passo 1 de 7 — escolha a próxima ação correta.</div>
+  <div id="acoes" style="display:grid; gap:8px;"></div>
+  <div style="text-align:center; margin-top:14px;">
+    <button id="trabalhar" type="button" style="border-color:var(--border-danger); color:var(--text-danger);"><i class="ti ti-tool" aria-hidden="true" style="vertical-align:-2px;"></i> Trabalhar no sistema de alta tensão</button>
+  </div>
+  <div id="fim" style="margin-top:12px;"></div>
+</div>
+<script>
+(function(){
+  var $=function(i){return document.getElementById(i);};
+  var PASSOS=[
+    {t:'Desligar o veículo (ignição OFF, chave afastada)'},
+    {t:'Vestir o EPI de AT (luva isolante classe 0 + viseira)'},
+    {t:'Desconectar a bateria auxiliar 12 V (polo negativo)'},
+    {t:'Remover o plug de manutenção (service disconnect) da bateria de tração'},
+    {t:'Aguardar a descarga dos capacitores (5 min)'},
+    {t:'Confirmar ausência de tensão (medir nos terminais com multímetro CAT III)'},
+    {t:'Bloquear e etiquetar (LOTO)'}
+  ];
+  var passo=0, acabou=false;
+  function shuffle(a){ for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i];a[i]=a[j];a[j]=t; } return a; }
+  var disposicao = shuffle([0,1,2,3,4,5,6].slice());
+
+  function falha(msg){
+    acabou=true;
+    $('fim').innerHTML='<div style="background:var(--bg-danger); border-radius:var(--radius); padding:.9rem 1rem; font-size:13.5px; color:var(--text-danger); line-height:1.6;"><i class="ti ti-skull" aria-hidden="true" style="vertical-align:-2px; margin-right:4px;"></i><strong>REPROVADO — risco de choque fatal.</strong> '+msg+'</div><div style="text-align:center; margin-top:12px;"><button id="rst" type="button">Recomeçar</button></div>';
+    document.getElementById('rst').onclick=reset; render();
+  }
+  function escolher(idx){
+    if(acabou) return;
+    if(idx===passo){
+      passo++;
+      if(passo>=PASSOS.length){ $('prog').innerHTML='<span style="color:var(--text-success);">Sequência de segurança completa. Agora sim: pode trabalhar.</span>'; }
+      else { $('prog').textContent='Passo '+(passo+1)+' de '+PASSOS.length+' — próxima ação correta.'; }
+      render();
+    } else {
+      var motivo;
+      if(idx>passo){
+        if(passo<1) motivo='Você foi mexer no sistema sem nem desligar o veículo. O primeiro passo é sempre desligar e afastar a chave.';
+        else if(passo<2) motivo='Foi manusear a alta tensão SEM o EPI (luva classe 0 + viseira). Sem EPI, um contato é fatal.';
+        else if(passo<5) motivo='Pulou etapas de isolação/espera. Removeu proteção ou tocou antes da hora.';
+        else motivo='Você pulou a MEDIÇÃO de ausência de tensão. Nunca confie que está desenergizado sem medir com o multímetro.';
+      } else {
+        motivo='Fez fora de ordem — repetiu ou voltou uma etapa já feita.';
+      }
+      falha(motivo);
+    }
+  }
+  $('trabalhar').onclick=function(){
+    if(acabou) return;
+    if(passo>=PASSOS.length){
+      acabou=true;
+      $('fim').innerHTML='<div style="background:var(--bg-success); border-radius:var(--radius); padding:.9rem 1rem; font-size:13.5px; color:var(--text-success); line-height:1.6;"><i class="ti ti-circle-check" aria-hidden="true" style="vertical-align:-2px; margin-right:4px;"></i><strong>Veículo em modo seguro — pode trabalhar.</strong> Desligou, vestiu EPI, isolou o 12 V, removeu o service disconnect, esperou a descarga, MEDIU a ausência de tensão e bloqueou. É essa disciplina que mantém o técnico de EV vivo.</div><div style="text-align:center; margin-top:12px;"><button id="rst" type="button">Novo veículo</button></div>';
+      document.getElementById('rst').onclick=reset; render();
+    } else {
+      falha('Você foi trabalhar na alta tensão ANTES de completar a desenergização segura (faltavam '+(PASSOS.length-passo)+' etapa(s), incluindo medir a ausência de tensão).');
+    }
+  };
+  function reset(){ passo=0; acabou=false; disposicao=shuffle([0,1,2,3,4,5,6].slice()); $('fim').innerHTML=''; $('prog').textContent='Passo 1 de 7 — escolha a próxima ação correta.'; render(); }
+  function render(){
+    var box=$('acoes'); box.innerHTML='';
+    disposicao.forEach(function(idx){
+      var feito = idx<passo;
+      var b=document.createElement('button'); b.type='button';
+      b.textContent=(feito?'✓ ':'')+PASSOS[idx].t;
+      b.disabled=acabou||feito;
+      b.style.cssText='text-align:left; font-size:12.5px; padding:9px 12px; '+(feito?'opacity:.5; border-color:var(--border-success); color:var(--text-success);':'');
+      b.onclick=function(){escolher(idx);};
+      box.appendChild(b);
+    });
+  }
+  render();
+})();
+</script>
+</div>
+</body>
+</html>

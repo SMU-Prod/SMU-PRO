@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador · Circuito do chuveiro — SMU Técnico</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+<div class="wrap">
+<p class="titulo">Dimensionar e energizar o circuito do chuveiro</p>
+<p class="sub">Simulador de dimensionamento · Curso de Elétrica · SMU Técnico</p>
+<h2 class="sr-only">Exercício de elétrica: dimensione a bitola, o disjuntor, o DR e o aterramento do circuito de um chuveiro e energize com segurança.</h2>
+<div style="padding:1rem 0; font-family:var(--font-sans);">
+  <div style="background:var(--bg-accent); color:var(--text-accent); border-radius:var(--radius); padding:.6rem .9rem; font-size:13px; margin-bottom:14px;">
+    <i class="ti ti-bolt" aria-hidden="true" style="vertical-align:-2px; margin-right:4px;"></i><strong>Tarefa:</strong> circuito de um chuveiro de <strong>5500 W em 220 V</strong> (puxa ~25 A), em área molhada. Dimensione e proteja.
+  </div>
+  <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px 16px; margin-bottom:16px;">
+    <label style="font-size:13px; color:var(--text-secondary);">Bitola do fio
+      <select id="e_bit" style="width:100%; margin-top:4px;"><option value="1.5">1,5 mm²</option><option value="2.5">2,5 mm²</option><option value="6" selected>6 mm²</option></select></label>
+    <label style="font-size:13px; color:var(--text-secondary);">Disjuntor
+      <select id="e_dis" style="width:100%; margin-top:4px;"><option value="10">10 A</option><option value="25" selected>25 A</option><option value="40">40 A</option></select></label>
+    <label style="font-size:13px; color:var(--text-secondary);">DR (área molhada)
+      <select id="e_dr" style="width:100%; margin-top:4px;"><option value="sim" selected>Com DR</option><option value="nao">Sem DR</option></select></label>
+    <label style="font-size:13px; color:var(--text-secondary);">Aterramento
+      <select id="e_ter" style="width:100%; margin-top:4px;"><option value="sim" selected>Com terra</option><option value="nao">Sem terra</option></select></label>
+  </div>
+  <button id="e_go" type="button" style="border-color:var(--border-accent); color:var(--text-accent);"><i class="ti ti-plug-connected" aria-hidden="true" style="vertical-align:-2px;"></i> Energizar</button>
+  <div id="e_fb" style="margin-top:14px;"></div>
+</div>
+<script>
+(function(){
+  var $=function(i){return document.getElementById(i);};
+  $('e_go').onclick=function(){
+    var bit=parseFloat($('e_bit').value), dis=parseInt($('e_dis').value), dr=$('e_dr').value, ter=$('e_ter').value;
+    var problemas=[];
+    var capFio = bit===1.5?15:(bit===2.5?21:41);
+    if(dis>capFio) problemas.push({t:"INCÊNDIO: o disjuntor de "+dis+" A é maior do que o fio de "+bit+" mm² suporta (~"+capFio+" A). O fio esquenta sem o disjuntor desarmar.", d:true});
+    if(bit<6 && dis>=25) problemas.push({t:"Fio subdimensionado: "+bit+" mm² não aguenta os ~25 A do chuveiro com segurança. Use 6 mm².", d:true});
+    if(dis<25) problemas.push({t:"O disjuntor de "+dis+" A é pequeno demais: desarma assim que o chuveiro liga.", d:false});
+    if(dr==="nao") problemas.push({t:"CHOQUE: sem DR em área molhada, uma fuga de corrente pode matar. O DR é obrigatório aqui.", d:true});
+    if(ter==="nao") problemas.push({t:"CHOQUE: sem aterramento, a carcaça do chuveiro pode ficar energizada. Aterramento é obrigatório.", d:true});
+    var box=$('e_fb');
+    if(problemas.length===0){
+      box.innerHTML='<div style="background:var(--bg-success); border-radius:var(--radius); padding:.9rem 1rem; font-size:14px; color:var(--text-success); line-height:1.55;"><i class="ti ti-circle-check" aria-hidden="true" style="vertical-align:-2px; margin-right:4px;"></i><strong>Energizou com segurança!</strong> Fio de 6 mm² para ~25 A, disjuntor de 25 A compatível com o fio, DR protegendo a pessoa e aterramento na carcaça. Circuito de chuveiro conforme a norma.</div>';
+    } else {
+      var itens=problemas.map(function(p){var c=p.d?'var(--text-danger)':'var(--text-warning)'; var ic=p.d?'ti-alert-triangle':'ti-info-circle';
+        return '<div style="display:flex; gap:6px; margin-bottom:6px; font-size:13.5px; line-height:1.5;"><i class="ti '+ic+'" aria-hidden="true" style="color:'+c+'; margin-top:2px;"></i><span>'+p.t+'</span></div>';}).join('');
+      var grave=problemas.some(function(p){return p.d;});
+      box.innerHTML='<div style="background:'+(grave?'var(--bg-danger)':'var(--bg-warning)')+'; border-radius:var(--radius); padding:.9rem 1rem;"><div style="font-weight:500; color:'+(grave?'var(--text-danger)':'var(--text-warning)')+'; margin-bottom:8px;">'+(grave?'Circuito reprovado — risco grave':'Circuito não ideal')+'</div>'+itens+'<div style="margin-top:6px; font-size:12.5px; color:var(--text-muted);">Ajuste os componentes e energize de novo.</div></div>';
+    }
+  };
+})();
+</script>
+</div>
+</body>
+</html>

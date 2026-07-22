@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador · Dosagem de traço de concreto — SMU Técnico</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+<div class="wrap">
+<p class="titulo">Dosagem de traço de concreto</p>
+<p class="sub">Simulador de ajuste · Curso de Construção Civil · SMU Técnico</p>
+<h2 class="sr-only">Simulador de dosagem: escolha o traço e a quantidade de água para concretar uma viga e veja o efeito na resistência e na trabalhabilidade.</h2>
+<div style="padding:1rem 0; font-family:var(--font-sans);">
+  <div style="background:var(--bg-accent); color:var(--text-accent); border-radius:var(--radius); padding:.6rem .9rem; font-size:13px; margin-bottom:14px;">
+    <i class="ti ti-building-bridge" aria-hidden="true" style="vertical-align:-2px; margin-right:4px;"></i><strong>Tarefa:</strong> concretar uma <strong>viga estrutural</strong>. Escolha o traço e a água para ter resistência alta e concreto trabalhável.
+  </div>
+  <label style="font-size:13px; color:var(--text-secondary); display:block; margin-bottom:14px;">Traço (cimento : areia : brita)
+    <select id="traco" style="width:100%; margin-top:4px;">
+      <option value="100">1 : 2 : 2 — rico (estrutural exigente)</option>
+      <option value="85" selected>1 : 3 : 3 — estrutural comum</option>
+      <option value="65">1 : 4 : 4 — uso geral</option>
+      <option value="35">1 : 6 : 6 — magro (contrapiso/lastro)</option>
+    </select>
+  </label>
+  <div style="display:flex; align-items:center; gap:12px; margin-bottom:6px;">
+    <label style="font-size:13px; color:var(--text-secondary); min-width:120px;">Água (fator a/c)</label>
+    <input type="range" id="ac" min="38" max="80" step="1" value="65" style="flex:1;">
+    <span style="font-size:14px; font-weight:500; min-width:46px;" id="acv">0,65</span>
+  </div>
+  <div style="font-size:12px; color:var(--text-muted); margin-bottom:16px;">menos água = mais forte, mas mais seco · mais água = mais mole, porém mais fraco</div>
+
+  <div style="background:var(--surface-1); border-radius:var(--radius); padding:.8rem 1rem; margin-bottom:12px;">
+    <div style="display:flex; justify-content:space-between; font-size:13px; color:var(--text-secondary); margin-bottom:6px;"><span>Resistência estimada</span><span id="resv" style="font-weight:500; color:var(--text-primary);">—</span></div>
+    <div style="height:12px; background:var(--surface-2); border-radius:99px; overflow:hidden;"><div id="resbar" style="height:100%; width:0%; background:var(--text-success); border-radius:99px; transition:width .2s, background .2s;"></div></div>
+    <div style="font-size:13px; color:var(--text-secondary); margin-top:10px;">Trabalhabilidade: <span id="trab" style="font-weight:500;">—</span></div>
+  </div>
+  <div id="verd" style="font-size:14px;"></div>
+</div>
+<script>
+(function(){
+  var $=function(i){return document.getElementById(i);};
+  function calc(){
+    var base=parseInt($('traco').value);
+    var ac=parseInt($('ac').value)/100;
+    $('acv').textContent=('0,'+$('ac').value);
+    var f;
+    if(ac<0.40){ f=0.82; }
+    else if(ac<=0.45){ f=1.0; }
+    else if(ac<=0.55){ f=1-(ac-0.45)*1.0; }
+    else { f=0.90-(ac-0.55)*1.8; }
+    var res=Math.max(8, Math.round(base*f));
+    $('resv').textContent=res+' / 100';
+    $('resbar').style.width=res+'%';
+    var cor = res>=75?'var(--text-success)':(res>=50?'var(--text-warning)':'var(--text-danger)');
+    $('resbar').style.background=cor;
+    var trab, tcol;
+    if(ac<0.42){ trab='Seca / difícil de adensar'; tcol='var(--text-warning)'; }
+    else if(ac<=0.55){ trab='Plástica (boa)'; tcol='var(--text-success)'; }
+    else if(ac<=0.62){ trab='Mole'; tcol='var(--text-warning)'; }
+    else { trab='Aguada (muita água)'; tcol='var(--text-danger)'; }
+    $('trab').textContent=trab; $('trab').style.color=tcol;
+
+    var msg, mc, ic;
+    if(ac>0.60){ msg='<strong>Excesso de água.</strong> O concreto fica fácil de jogar, mas a resistência despenca — o pior erro na obra. Reduza a água (fator a/c ~0,50 para viga).'; mc='var(--text-danger)'; ic='ti-alert-triangle'; }
+    else if(base<=35){ msg='<strong>Traço pobre demais para estrutura.</strong> 1:6:6 é para contrapiso/lastro, não para viga. Use um traço mais rico (1:2:2 ou 1:3:3).'; mc='var(--text-danger)'; ic='ti-alert-triangle'; }
+    else if(ac<0.42){ msg='Resistência alta, mas o concreto está seco demais — difícil de adensar sem bicheira. Ajuste a água para a faixa plástica (~0,50).'; mc='var(--text-warning)'; ic='ti-info-circle'; }
+    else if(res>=75 && ac>=0.42 && ac<=0.55){ msg='<strong>Concreto estrutural adequado!</strong> Traço rico, água na medida (plástico) e resistência alta. É assim que se concreta uma viga.'; mc='var(--text-success)'; ic='ti-circle-check'; }
+    else { msg='Aceitável, mas para uma viga mire resistência ≥ 75 com o concreto plástico (traço 1:3:3 ou 1:2:2, a/c ~0,50).'; mc='var(--text-warning)'; ic='ti-info-circle'; }
+    $('verd').innerHTML='<div style="background:var(--surface-1); border-left:3px solid '+mc+'; border-radius:0 var(--radius) var(--radius) 0; padding:.7rem .9rem; line-height:1.55;"><i class="ti '+ic+'" aria-hidden="true" style="color:'+mc+'; vertical-align:-2px; margin-right:4px;"></i>'+msg+'</div>';
+  }
+  ['traco','ac'].forEach(function(id){ $(id).addEventListener('input',calc); });
+  calc();
+})();
+</script>
+</div>
+</body>
+</html>

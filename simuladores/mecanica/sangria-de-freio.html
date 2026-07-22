@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador · Sangria de freio — SMU Técnico</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+<div class="wrap">
+<p class="titulo">Sangria de freio</p>
+<p class="sub">Simulador de procedimento · Curso de Mecânica de Carros e Motos · SMU Técnico</p>
+<h2 class="sr-only">Simulador de procedimento: faça a sangria do sistema de freio na sequência correta e segura, escolhendo o fluido certo e testando o pedal antes de liberar.</h2>
+<div style="padding:1rem 0; font-family:var(--font-sans);">
+  <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:1rem;">
+    <div style="flex:1; min-width:110px; background:var(--surface-1); border-radius:var(--radius); padding:.6rem .9rem;"><div style="font-size:12px; color:var(--text-secondary);">Etapa</div><div style="font-size:20px; font-weight:500;"><span id="s_et">1</span>/7</div></div>
+    <div style="flex:1; min-width:110px; background:var(--surface-1); border-radius:var(--radius); padding:.6rem .9rem;"><div style="font-size:12px; color:var(--text-secondary);">Pontos</div><div style="font-size:20px; font-weight:500;" id="s_pts">0</div></div>
+    <div style="flex:1; min-width:110px; background:var(--surface-1); border-radius:var(--radius); padding:.6rem .9rem;"><div style="font-size:12px; color:var(--text-secondary);">Falhas de segurança</div><div style="font-size:20px; font-weight:500; color:var(--text-danger);" id="s_viol">0</div></div>
+  </div>
+  <div style="height:6px; background:var(--surface-1); border-radius:99px; overflow:hidden; margin-bottom:1rem;"><div id="s_bar" style="height:100%; width:14%; background:var(--text-accent); border-radius:99px; transition:width .25s;"></div></div>
+  <div id="s_passo" style="font-size:12px; color:var(--text-accent); font-weight:500; margin-bottom:4px;"></div>
+  <div id="s_prompt" style="font-size:16px; font-weight:500; margin-bottom:14px; line-height:1.5;"></div>
+  <div id="s_opts"></div><div id="s_fb" style="margin-top:12px;"></div>
+  <div style="margin-top:14px;"><button id="s_next" type="button" style="display:none;">Próximo</button></div>
+</div>
+<script>
+(function(){
+  var STEPS=[
+    {passo:"Preparo · Fluido", prompt:"Você vai sangrar o freio. Qual fluido usar?",
+     opts:[{t:"O DOT especificado no reservatório/manual, novo e lacrado", sub:"Ex.: DOT 3/4 conforme o veículo", ok:true, fb:"Certo. O tipo de DOT é o do fabricante; fluido novo (o velho absorve umidade)."},
+       {t:"Qualquer fluido, a especificação não importa", ok:false, fb:"Importa: o DOT errado compromete o freio e as vedações."},
+       {t:"Completar com água se faltar", ok:false, danger:true, fb:"Nunca. Água ferve no freio e causa falha total."}]},
+    {passo:"Segurança", prompt:"Cuidados com o fluido de freio:",
+     opts:[{t:"Usar luvas/óculos e não respingar na pintura (é corrosivo e higroscópico)", ok:true, fb:"Certo. Corrói a lataria e absorve umidade — mantenha o frasco fechado."},
+       {t:"Pode pingar na lataria, não faz mal", ok:false, fb:"Faz: o fluido danifica a pintura rapidamente."},
+       {t:"Deixar o reservatório aberto por horas, tanto faz", ok:false, fb:"O fluido absorve umidade do ar e perde eficiência."}]},
+    {passo:"Sequência", prompt:"Por qual roda começar a sangria (padrão comum)?",
+     opts:[{t:"Pela mais distante do cilindro mestre, seguindo a ordem do manual", ok:true, fb:"Certo. A ordem correta remove todo o ar do circuito."},
+       {t:"Sempre pela dianteira esquerda, em qualquer carro", ok:false, fb:"A ordem varia com o veículo; siga o manual."},
+       {t:"Tanto faz a ordem", ok:false, fb:"A ordem importa para expulsar o ar por completo."}]},
+    {passo:"Procedimento · Nível", prompt:"Durante a sangria, o reservatório de fluido...",
+     opts:[{t:"Deve ser mantido sempre cheio (senão entra ar de novo)", ok:true, fb:"Certo. Se o reservatório seca, o ar volta ao sistema e você recomeça."},
+       {t:"Pode esvaziar totalmente, sem problema", ok:false, danger:true, fb:"Se secar, entra ar e o freio pode falhar."}]},
+    {passo:"Técnica", prompt:"Em cada sangrador, a sequência correta é:",
+     opts:[{t:"Segurar o pedal → abrir o sangrador → FECHAR o sangrador → só então soltar o pedal", ok:true, fb:"Certo. Fechar antes de soltar impede o ar de ser sugado de volta."},
+       {t:"Abrir o sangrador e soltar o pedal com ele ainda aberto", ok:false, danger:true, fb:"Isso suga ar para dentro — você nunca termina a sangria."},
+       {t:"Soltar o pedal antes de fechar o sangrador", ok:false, danger:true, fb:"Entra ar no sistema; sequência errada."}]},
+    {passo:"Diagnóstico", prompt:"O pedal está mole/esponjoso. Isso indica:",
+     opts:[{t:"Ar no sistema — repetir até sair fluido sem bolhas", ok:true, fb:"Certo. Pedal firme = sem ar; repita a sangria até limpar."},
+       {t:"Freio perfeito, pode liberar", ok:false, danger:true, fb:"Pedal mole = freio comprometido. Jamais libere assim."},
+       {t:"Problema no motor", ok:false, fb:"Não tem relação com o motor."}]},
+    {passo:"Entrega · Segurança", prompt:"Antes de liberar o veículo:",
+     opts:[{t:"Confirmar pedal firme e nível do fluido, e testar o freio com segurança", ok:true, fb:"Perfeito. Freio testado e firme é condição para entregar."},
+       {t:"Liberar com o pedal mole para o cliente 'ir assentando'", ok:false, danger:true, fb:"Freio mole causa acidente. Nunca libere assim."},
+       {t:"Entregar sem testar", ok:false, fb:"Nunca entregue um freio sem testar."}]}
+  ];
+  var idx=0,pts=0,viol=0,answered=false; var $=function(i){return document.getElementById(i);};
+  function render(){var s=STEPS[idx]; $('s_et').textContent=idx+1; $('s_bar').style.width=Math.round(idx/STEPS.length*100+14)+'%';
+    $('s_passo').textContent=s.passo.toUpperCase(); $('s_prompt').textContent=s.prompt; $('s_fb').innerHTML=''; $('s_next').style.display='none'; answered=false;
+    var box=$('s_opts'); box.innerHTML='';
+    s.opts.forEach(function(o){var b=document.createElement('button'); b.type='button';
+      b.style.cssText='display:block; width:100%; text-align:left; margin-bottom:8px; padding:.7rem .9rem; border-radius:var(--radius); border:0.5px solid var(--border-strong); background:var(--surface-2); cursor:pointer;';
+      var h='<span style="font-size:14.5px; font-weight:500;">'+o.t+'</span>'; if(o.sub){h+='<br><span style="font-size:12px; color:var(--text-secondary);">'+o.sub+'</span>';}
+      b.innerHTML=h; b.onclick=function(){if(answered)return; choose(o,b,s);}; box.appendChild(b);});
+  }
+  function choose(o,btn,s){answered=true; var all=$('s_opts').querySelectorAll('button'); all.forEach(function(x){x.style.cursor='default';});
+    if(o.ok){pts+=10; btn.style.borderColor='var(--border-success)'; btn.style.background='var(--bg-success)';}
+    else{btn.style.borderColor='var(--border-danger)'; btn.style.background='var(--bg-danger)'; if(o.danger)viol+=1;
+      s.opts.forEach(function(oo,i){if(oo.ok){all[i].style.borderColor='var(--border-success)'; all[i].style.background='var(--bg-success)';}});}
+    var col=o.ok?'var(--text-success)':(o.danger?'var(--text-danger)':'var(--text-warning)'); var ic=o.ok?'ti-check':(o.danger?'ti-alert-triangle':'ti-info-circle');
+    var pre=o.ok?'Correto. ':(o.danger?'FALHA DE SEGURANÇA. ':'Incorreto. ');
+    $('s_fb').innerHTML='<div style="background:var(--surface-1); border-left:3px solid '+col+'; border-radius:0 var(--radius) var(--radius) 0; padding:.7rem .9rem; font-size:14px; line-height:1.55;"><i class="ti '+ic+'" aria-hidden="true" style="color:'+col+'; vertical-align:-2px; margin-right:4px;"></i><strong style="color:'+col+';">'+pre+'</strong>'+o.fb+'</div>';
+    $('s_pts').textContent=pts; $('s_viol').textContent=viol; $('s_next').style.display='inline-flex'; $('s_next').textContent=(idx>=STEPS.length-1)?'Ver resultado':'Próximo';
+  }
+  $('s_next').onclick=function(){if(idx>=STEPS.length-1){finish();return;} idx++; render();};
+  function finish(){$('s_passo').textContent=''; $('s_prompt').textContent=''; $('s_opts').innerHTML=''; $('s_next').style.display='none'; $('s_bar').style.width='100%'; $('s_et').textContent=STEPS.length;
+    var max=STEPS.length*10, aprovado=(viol===0&&pts>=max*0.7), head,col,msg;
+    if(viol>0){head='Reprovado por segurança'; col='var(--text-danger)'; msg='Você cometeu '+viol+' falha(s) de segurança no freio — sequência de sangria errada, reservatório seco ou entrega com pedal mole. Isso causa acidente. Refaça.';}
+    else if(aprovado){head='Serviço aprovado!'; col='var(--text-success)'; msg='Fluido certo, sequência correta e pedal firme testado. '+pts+'/'+max+' pontos, zero falhas. Freio entregue com segurança.';}
+    else{head='Aprovado com ressalvas'; col='var(--text-warning)'; msg='Sem falhas de segurança, mas '+pts+'/'+max+' — revise as escolhas técnicas.';}
+    $('s_fb').innerHTML='<div style="text-align:center; padding:1rem 0;"><div style="font-size:20px; font-weight:500; color:'+col+'; margin-bottom:8px;">'+head+'</div><div style="font-size:14px; color:var(--text-secondary); line-height:1.6; max-width:520px; margin:0 auto 16px;">'+msg+'</div><button type="button" id="s_again">Refazer o procedimento</button></div>';
+    document.getElementById('s_again').onclick=function(){idx=0;pts=0;viol=0;$('s_pts').textContent=0;$('s_viol').textContent=0;render();};
+  }
+  render();
+})();
+</script>
+</div>
+</body>
+</html>

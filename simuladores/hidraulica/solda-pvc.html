@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador · Solda de PVC e estanqueidade — SMU Técnico</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+<div class="wrap">
+<p class="titulo">Solda de PVC + teste de estanqueidade</p>
+<p class="sub">Simulador de procedimento · Curso de Hidráulica · SMU Técnico</p>
+<h2 class="sr-only">Simulador de procedimento: execute uma solda de PVC e o teste de estanqueidade na ordem correta, respeitando a cura e testando antes de fechar a parede.</h2>
+<div style="padding:1rem 0; font-family:var(--font-sans);">
+  <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:1rem;">
+    <div style="flex:1; min-width:110px; background:var(--surface-1); border-radius:var(--radius); padding:.6rem .9rem;"><div style="font-size:12px; color:var(--text-secondary);">Etapa</div><div style="font-size:20px; font-weight:500;"><span id="h_et">1</span>/7</div></div>
+    <div style="flex:1; min-width:110px; background:var(--surface-1); border-radius:var(--radius); padding:.6rem .9rem;"><div style="font-size:12px; color:var(--text-secondary);">Pontos</div><div style="font-size:20px; font-weight:500;" id="h_pts">0</div></div>
+    <div style="flex:1; min-width:110px; background:var(--surface-1); border-radius:var(--radius); padding:.6rem .9rem;"><div style="font-size:12px; color:var(--text-secondary);">Erros graves</div><div style="font-size:20px; font-weight:500; color:var(--text-danger);" id="h_viol">0</div></div>
+  </div>
+  <div style="height:6px; background:var(--surface-1); border-radius:99px; overflow:hidden; margin-bottom:1rem;"><div id="h_bar" style="height:100%; width:14%; background:var(--text-accent); border-radius:99px; transition:width .25s;"></div></div>
+  <div id="h_passo" style="font-size:12px; color:var(--text-accent); font-weight:500; margin-bottom:4px;"></div>
+  <div id="h_prompt" style="font-size:16px; font-weight:500; margin-bottom:14px; line-height:1.5;"></div>
+  <div id="h_opts"></div><div id="h_fb" style="margin-top:12px;"></div>
+  <div style="margin-top:14px;"><button id="h_next" type="button" style="display:none;">Próximo</button></div>
+</div>
+<script>
+(function(){
+  var STEPS=[
+    {passo:"Preparo do tubo", prompt:"Você vai unir dois tubos de PVC soldável. O primeiro passo é:",
+     opts:[{t:"Cortar no esquadro e remover a rebarba interna/externa", ok:true, fb:"Certo. Corte torto e rebarba impedem uma junta perfeita."},
+       {t:"Colar direto, com a rebarba mesmo", ok:false, danger:true, fb:"A rebarba atrapalha o encaixe e a vedação — vaza."},
+       {t:"Lixar até deixar o tubo bem fino", ok:false, fb:"Não se afina o tubo; só se remove a rebarba e limpa."}]},
+    {passo:"Encaixe", prompt:"Antes de aplicar o adesivo:",
+     opts:[{t:"Testar o encaixe a seco e limpar as superfícies", ok:true, fb:"Certo. O encaixe deve entrar com leve resistência; limpe antes de colar."},
+       {t:"Molhar as peças com água para o adesivo pegar melhor", ok:false, danger:true, fb:"Água atrapalha a solda química do PVC."},
+       {t:"Passar graxa para deslizar", ok:false, danger:true, fb:"Graxa impede a adesão — junta solta."}]},
+    {passo:"Material", prompt:"Qual adesivo usar nesta união de água fria soldável?",
+     opts:[{t:"Adesivo próprio para PVC (solda química)", ok:true, fb:"Certo. Para CPVC (água quente) o adesivo é específico; nunca use adesivo em peça roscável."},
+       {t:"Fita veda-rosca", ok:false, fb:"Veda-rosca é para união roscável, não soldável."},
+       {t:"Cola instantânea (super cola)", ok:false, danger:true, fb:"Não veda tubulação sob pressão — vaza."}]},
+    {passo:"Aplicação", prompt:"Aplicando o adesivo:",
+     opts:[{t:"Camada uniforme nas duas superfícies e encaixar com leve giro até o fundo", ok:true, fb:"Certo. As duas superfícies e o encaixe até o fundo garantem a solda."},
+       {t:"Pouca cola, só na ponta do tubo, encaixe parcial", ok:false, danger:true, fb:"Cola insuficiente e encaixe incompleto vazam sob pressão."},
+       {t:"Excesso enorme de cola escorrendo", ok:false, fb:"Excesso não melhora e pode fragilizar; camada uniforme basta."}]},
+    {passo:"Cura", prompt:"Terminou de soldar. Quando você pode abrir a água/pressurizar?",
+     opts:[{t:"Após o tempo de cura indicado pelo fabricante", ok:true, fb:"Certo. Abrir cedo demais rompe a junta ainda mole."},
+       {t:"Na hora, sem esperar", ok:false, danger:true, fb:"A junta ainda não tem resistência — rompe e vaza."}]},
+    {passo:"Teste", prompt:"Antes de fechar a parede:",
+     opts:[{t:"Fazer o teste de estanqueidade (pressão) e observar se cai", ok:true, fb:"Certo. Testar com a parede aberta permite corrigir sem quebrar depois."},
+       {t:"Fechar a parede e revestir; se vazar, o cliente avisa", ok:false, danger:true, fb:"Vazamento depois vira quebra-quebra caríssimo. Teste antes."}]},
+    {passo:"Correção", prompt:"O teste acusou vazamento numa junta soldada. Ação:",
+     opts:[{t:"Cortar e refazer a junta corretamente", ok:true, fb:"Certo. Junta soldada que vaza se refaz — não tem conserto por fora."},
+       {t:"Passar mais cola por fora da junta vazando", ok:false, danger:true, fb:"Não resolve: a solda é interna. Refaça a junta."},
+       {t:"Apertar com a mão até parar", ok:false, fb:"Solda não se aperta; refaça."}]}
+  ];
+  var idx=0,pts=0,viol=0,answered=false; var $=function(i){return document.getElementById(i);};
+  function render(){var s=STEPS[idx]; $('h_et').textContent=idx+1; $('h_bar').style.width=Math.round(idx/STEPS.length*100+14)+'%';
+    $('h_passo').textContent=s.passo.toUpperCase(); $('h_prompt').textContent=s.prompt; $('h_fb').innerHTML=''; $('h_next').style.display='none'; answered=false;
+    var box=$('h_opts'); box.innerHTML='';
+    s.opts.forEach(function(o){var b=document.createElement('button'); b.type='button';
+      b.style.cssText='display:block; width:100%; text-align:left; margin-bottom:8px; padding:.7rem .9rem; border-radius:var(--radius); border:0.5px solid var(--border-strong); background:var(--surface-2); cursor:pointer;';
+      b.innerHTML='<span style="font-size:14.5px; font-weight:500;">'+o.t+'</span>'; b.onclick=function(){if(answered)return; choose(o,b,s);}; box.appendChild(b);});
+  }
+  function choose(o,btn,s){answered=true; var all=$('h_opts').querySelectorAll('button'); all.forEach(function(x){x.style.cursor='default';});
+    if(o.ok){pts+=10; btn.style.borderColor='var(--border-success)'; btn.style.background='var(--bg-success)';}
+    else{btn.style.borderColor='var(--border-danger)'; btn.style.background='var(--bg-danger)'; if(o.danger)viol+=1;
+      s.opts.forEach(function(oo,i){if(oo.ok){all[i].style.borderColor='var(--border-success)'; all[i].style.background='var(--bg-success)';}});}
+    var col=o.ok?'var(--text-success)':(o.danger?'var(--text-danger)':'var(--text-warning)'); var ic=o.ok?'ti-check':(o.danger?'ti-alert-triangle':'ti-info-circle');
+    var pre=o.ok?'Correto. ':(o.danger?'ERRO GRAVE. ':'Incorreto. ');
+    $('h_fb').innerHTML='<div style="background:var(--surface-1); border-left:3px solid '+col+'; border-radius:0 var(--radius) var(--radius) 0; padding:.7rem .9rem; font-size:14px; line-height:1.55;"><i class="ti '+ic+'" aria-hidden="true" style="color:'+col+'; vertical-align:-2px; margin-right:4px;"></i><strong style="color:'+col+';">'+pre+'</strong>'+o.fb+'</div>';
+    $('h_pts').textContent=pts; $('h_viol').textContent=viol; $('h_next').style.display='inline-flex'; $('h_next').textContent=(idx>=STEPS.length-1)?'Ver resultado':'Próximo';
+  }
+  $('h_next').onclick=function(){if(idx>=STEPS.length-1){finish();return;} idx++; render();};
+  function finish(){$('h_passo').textContent=''; $('h_prompt').textContent=''; $('h_opts').innerHTML=''; $('h_next').style.display='none'; $('h_bar').style.width='100%'; $('h_et').textContent=STEPS.length;
+    var max=STEPS.length*10, aprovado=(viol===0&&pts>=max*0.7), head,col,msg;
+    if(viol>0){head='Reprovado'; col='var(--text-danger)'; msg='Você cometeu '+viol+' erro(s) grave(s) — provável vazamento por junta mal feita, cura não respeitada ou parede fechada sem teste. Refaça.';}
+    else if(aprovado){head='Serviço aprovado!'; col='var(--text-success)'; msg='Preparo, adesivo certo, cura respeitada e teste de estanqueidade antes de fechar. '+pts+'/'+max+' pontos, zero erros graves.';}
+    else{head='Aprovado com ressalvas'; col='var(--text-warning)'; msg='Sem erros graves, mas '+pts+'/'+max+' — revise as escolhas.';}
+    $('h_fb').innerHTML='<div style="text-align:center; padding:1rem 0;"><div style="font-size:20px; font-weight:500; color:'+col+'; margin-bottom:8px;">'+head+'</div><div style="font-size:14px; color:var(--text-secondary); line-height:1.6; max-width:520px; margin:0 auto 16px;">'+msg+'</div><button type="button" id="h_again">Refazer</button></div>';
+    document.getElementById('h_again').onclick=function(){idx=0;pts=0;viol=0;$('h_pts').textContent=0;$('h_viol').textContent=0;render();};
+  }
+  render();
+})();
+</script>
+</div>
+</body>
+</html>
