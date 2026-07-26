@@ -25,10 +25,16 @@ import {
 import type { Course } from "@/types/database";
 
 const schema = z.object({
-  titulo: z.string().min(3, "Mínimo 3 caracteres"),
-  slug: z.string().min(3).regex(/^[a-z0-9-]+$/, "Apenas letras minúsculas, números e hífens"),
+  // Só o essencial. As travas de tamanho barravam cursos que JÁ EXISTEM e funcionam:
+  // "DJ" (2 letras) caía no min(3), e a descrição curta batia no max(160). Pior, salvar
+  // o PREÇO revalidava o form inteiro, então o titulo curto impedia de mudar a cobrança.
+  // O dono escreve o que quiser; o sistema não julga o texto.
+  titulo: z.string().trim().min(1, "Dê um nome ao curso"),
+  // slug continua precisando ser URL-válido (é o endereço do curso), mas sem min(3):
+  // um slug de 2 letras funciona igual.
+  slug: z.string().min(1).regex(/^[a-z0-9-]+$/, "Apenas letras minúsculas, números e hífens"),
   descricao: z.string().optional().nullable(),
-  descricao_curta: z.string().max(160).optional().nullable(),
+  descricao_curta: z.string().optional().nullable(),
   nivel: z.enum(["trainee", "junior", "pleno"]),
   categoria: z.enum(["som", "luz", "producao", "dj", "vj", "roadie", "marketing", "efeitos", "outros"]),
   categorias: z.array(z.string()).default([]),
@@ -267,7 +273,7 @@ export function CourseForm({ course }: { course?: Course }) {
                 </div>
               </Field>
               <Field label={t("Descrição curta")}>
-                <Input {...register("descricao_curta")} placeholder={t("Resumo de até 160 caracteres")} />
+                <Input {...register("descricao_curta")} placeholder={t("Resumo curto do curso (aparece nos cards)")} />
               </Field>
 
               <Field label={t("Nível *")}>
@@ -734,7 +740,7 @@ function FlatForm({ form, loading, error, onSubmit, onCancel, handleTituloChange
       <Section title={t("Informações Básicas")}>
         <Field label={t("Título *")}><Input {...register("titulo")} onChange={handleTituloChange} placeholder={t("Ex: Fundamentos de Áudio ao Vivo")} error={errors.titulo?.message} /></Field>
         <Field label={t("Slug (URL) *")}><Input {...register("slug")} placeholder="fundamentos-audio-ao-vivo" error={errors.slug?.message} /></Field>
-        <Field label={t("Descrição Curta")}><Input {...register("descricao_curta")} placeholder={t("Até 160 caracteres")} /></Field>
+        <Field label={t("Descrição Curta")}><Input {...register("descricao_curta")} placeholder={t("Resumo curto (aparece nos cards)")} /></Field>
         <Field label={t("Descrição Completa")}>
           <textarea {...register("descricao")} placeholder={t("Descreva o conteúdo do curso...")} className="w-full min-h-[120px] rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground placeholder:text-muted-light focus:outline-none focus:border-amber-500 resize-none" />
         </Field>
