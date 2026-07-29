@@ -147,7 +147,22 @@ async function main() {
     feitas++;
   }
 
+  /* ORDEM ALFABETICA (ordem do dono): o `ordem` fixo da tabela AULAS servia so
+     para inserir; a exibicao tem de sair em ordem alfabetica por titulo dentro
+     de cada modulo. Sem isto, cada republicacao desfazia a ordenacao. */
+  async function reordenarAlfabetico() {
+    const mods = await req("GET", `/modules?course_id=eq.${CURSO}&select=id&id=like.d1a00000*`);
+    for (const m of mods) {
+      const ls = await req("GET", `/lessons?module_id=eq.${m.id}&select=id,titulo`);
+      ls.sort((a, b) => a.titulo.localeCompare(b.titulo, "pt-BR"));
+      for (let i = 0; i < ls.length; i++)
+        await req("PATCH", `/lessons?id=eq.${ls[i].id}`, { ordem: i + 1 }, { Prefer: "return=minimal" });
+    }
+    console.log("aulas reordenadas em ordem alfabetica");
+  }
+
   if (!soLista) {
+    await reordenarAlfabetico();
     const ms = (await req("GET", `/modules?course_id=eq.${CURSO}&select=id`)).map(m => m.id).join(",");
     const ls = await req("GET", `/lessons?module_id=in.(${ms})&select=id`);
     await req("PATCH", `/courses?id=eq.${CURSO}`, { total_aulas: ls.length }, { Prefer: "return=minimal" });
