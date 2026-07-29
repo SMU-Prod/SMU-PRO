@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>rekordbox: do computador ao pendrive (SMU)</title>
+<style>
+  :root{ --ink:#e9eef7; --amber:#ffae1a; --green:#39d271; --blue:#37a2ff; --red:#ff4636;
+         --roxo:#8b5cf6; --line:#2a2f37; --painel:#0c0e12; }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{ background:radial-gradient(1100px 640px at 50% -10%,#26292e,#0a0b0d 62%),#08090b; color:var(--ink);
+    font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;
+    user-select:none;overflow:hidden;display:flex;align-items:flex-start;justify-content:center}
+  #stage{transform-origin:top center;flex:0 0 auto}
+  .wrap{width:1080px;display:flex;flex-direction:column;gap:9px;padding:10px}
+
+  .util{display:flex;align-items:center;gap:9px;flex-wrap:wrap;background:linear-gradient(180deg,#202329,#15171b);
+    border:1px solid #0c0d0f;border-radius:11px;padding:8px 12px}
+  .brand b{font-size:15px;letter-spacing:1px}
+  .brand .m{font-size:9px;letter-spacing:2px;color:#8a94a4;text-transform:uppercase;margin-left:6px}
+  .pill{font-size:10px;color:#8b97a9;background:var(--painel);border:1px solid var(--line);border-radius:16px;padding:4px 10px}
+  .pill b{color:#fff}
+  .spacer{flex:1}
+  .btnp{font:inherit;font-size:11px;font-weight:700;border:0;border-radius:8px;padding:7px 12px;cursor:pointer;
+    color:#07120b;background:linear-gradient(180deg,#5be59a,#27b566)}
+  .btnp.ghost{background:transparent;color:#8b97a9;border:1px solid var(--line)}
+  .btnp:disabled{opacity:.4;cursor:not-allowed}
+
+  /* passos */
+  .passos{display:flex;gap:6px}
+  .pa{flex:1;padding:7px 9px;border-radius:8px;background:#11151a;border:1px solid #1c2229;cursor:pointer}
+  .pa.on{background:#151d2a;border-color:var(--blue)}
+  .pa.ok{background:#0f2418;border-color:#1e5c38}
+  .pa .n{font-size:9px;font-weight:900;color:#6b7684}
+  .pa.on .n{color:var(--blue)} .pa.ok .n{color:var(--green)}
+  .pa .t{font-size:10.5px;font-weight:800;margin-top:2px}
+  .pa .s{font-size:9px;color:#8b97a9;margin-top:1px}
+
+  .grid{display:grid;grid-template-columns:1fr 300px;gap:9px}
+  .card{background:var(--painel);border:1px solid var(--line);border-radius:10px;padding:10px;min-height:392px}
+  .card h3{margin:0 0 8px;font-size:10px;letter-spacing:1.4px;color:#8b97a9;text-transform:uppercase;font-weight:800}
+
+  /* rekordbox */
+  .rb{background:#0f1218;border:1px solid #1c2229;border-radius:8px;overflow:hidden}
+  .rbtop{display:flex;align-items:center;gap:8px;padding:6px 9px;background:#151a22;border-bottom:1px solid #1c2229}
+  .rbtop .lg{font-size:11px;font-weight:900;color:#cdd5e0}
+  .rbtop .lg i{color:var(--roxo);font-style:normal}
+  .faixa{display:flex;align-items:center;gap:9px;padding:7px 9px;border-bottom:1px solid #161b22;cursor:pointer}
+  .faixa:hover{background:#141922}
+  .faixa.on{background:#1a2436}
+  .faixa .nm{flex:1;font-size:10.5px;font-weight:700}
+  .faixa .meta{font-size:9px;color:#8b97a9}
+  .faixa .bpm{font-size:10px;font-weight:800;color:var(--green);width:44px;text-align:right}
+  .faixa .key{font-size:10px;font-weight:800;color:var(--amber);width:32px;text-align:right}
+  .faixa .an{font-size:8.5px;font-weight:800;padding:1px 5px;border-radius:4px;background:#2a2f37;color:#8b97a9}
+  .faixa.analisada .an{background:#14432a;color:#7df0a8}
+
+  /* onda + pads */
+  .onda{position:relative;height:66px;background:#080b10;border:1px solid #1c2229;border-radius:6px;margin-top:9px;overflow:hidden}
+  .onda canvas{display:block;width:100%;height:100%}
+  .marca{position:absolute;top:0;bottom:0;width:2px;cursor:pointer}
+  .marca .lb{position:absolute;top:1px;left:3px;font-size:8px;font-weight:900;padding:0 3px;border-radius:2px;color:#0d1116}
+
+  .pads{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:9px}
+  .pad{height:42px;border-radius:5px;border:1px solid #05070a;cursor:pointer;position:relative;
+    background:linear-gradient(180deg,#2b3038,#151a20);display:flex;align-items:center;justify-content:center}
+  .pad b{font-size:9px;font-weight:900;color:#8b97a9}
+  .pad small{position:absolute;top:3px;left:5px;font-size:7.5px;color:#6b7684;font-weight:700}
+  .pad.set{box-shadow:inset 0 0 0 1px currentColor, 0 0 9px -2px currentColor}
+  .pad.set b{color:#fff}
+
+  .modos{display:flex;gap:5px;margin-top:8px}
+  .modo{flex:1;padding:5px 4px;border-radius:5px;border:1px solid #23282f;background:#12161c;cursor:pointer;
+    font-size:8.5px;font-weight:900;text-align:center;color:#8b97a9;letter-spacing:.3px}
+  .modo.on{color:#fff}
+
+  /* pendrive */
+  .pen{display:flex;gap:9px}
+  .penbox{flex:1;background:#0f1218;border:1px solid #1c2229;border-radius:8px;padding:9px}
+  .lin{display:flex;align-items:center;gap:7px;font-size:10px;margin-bottom:6px}
+  .lin .b{width:15px;height:15px;border-radius:50%;flex:0 0 auto;background:#2a3038;border:1px solid #000;
+    display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:#6b7684}
+  .lin.ok .b{background:var(--green);color:#062a13}
+  .lin .tx{color:#c2cbd6}
+  .arv{font-family:Consolas,monospace;font-size:9.5px;line-height:1.5;color:#8fd0ff;background:#080b10;
+    border:1px solid #1c2229;border-radius:6px;padding:8px;margin-top:7px;white-space:pre}
+  .barra{height:7px;border-radius:4px;background:#161b22;overflow:hidden;margin-top:8px}
+  .barra i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--roxo),var(--blue));transition:width .25s}
+
+  .aviso{font-size:9.8px;line-height:1.45;color:#8b97a9;margin-top:9px;border-top:1px dashed #232a32;padding-top:8px}
+  .aviso b{color:#cdd5e0}
+  .chk{display:flex;gap:7px;align-items:flex-start;padding:6px 7px;border-radius:7px;margin-bottom:5px;
+    background:#11151a;border:1px solid #1c2229}
+  .chk.ok{background:#0f2418;border-color:#1e5c38}
+  .chk .b{width:14px;height:14px;border-radius:50%;flex:0 0 auto;margin-top:1px;background:#2a3038;border:1px solid #000;
+    display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:#6b7684}
+  .chk.ok .b{background:var(--green);color:#062a13}
+  .chk .tx{font-size:10px;line-height:1.3;color:#c2cbd6}
+  .chk.ok .tx{color:#9fe3bb}
+</style>
+</head>
+<body>
+<div id="stage">
+<div class="wrap">
+
+  <div class="util">
+    <div class="brand"><b>SMU</b><span class="m">PRO • REKORDBOX → PENDRIVE → CABINE</span></div>
+    <span class="pill">Passo <b id="pnum">1 de 4</b></span>
+    <span class="pill">Faixa <b id="pfaixa">—</b></span>
+    <span class="spacer"></span>
+    <button class="btnp ghost" id="btnReset">Recomeçar</button>
+  </div>
+
+  <div class="passos">
+    <div class="pa on" data-p="1"><div class="n">PASSO 1</div><div class="t">Analisar</div><div class="s">BPM, tom e grade</div></div>
+    <div class="pa" data-p="2"><div class="n">PASSO 2</div><div class="t">Programar os pads</div><div class="s">hot cue e loop</div></div>
+    <div class="pa" data-p="3"><div class="n">PASSO 3</div><div class="t">Exportar</div><div class="s">pendrive FAT32</div></div>
+    <div class="pa" data-p="4"><div class="n">PASSO 4</div><div class="t">Na cabine</div><div class="s">pads já prontos</div></div>
+  </div>
+
+  <div class="grid">
+    <div class="card" id="palco"></div>
+    <div class="card">
+      <h3>O que falta</h3>
+      <div id="lista"></div>
+      <div class="aviso" id="aviso"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+
+/* ---------- estado ---------- */
+const FAIXAS=[
+  {nm:"SOTEX 02 — Groove de abertura", bpm:126.0, key:"8A", dur:372},
+  {nm:"SOTEX 05 — Peak time",          bpm:128.0, key:"9A", dur:341},
+  {nm:"SOTEX 09 — Fecho",              bpm:124.0, key:"8B", dur:407},
+];
+const MODOS=[
+  {id:"hotcue", nome:"HOT CUE",   cor:"#39d271", desc:"Cada pad guarda um PONTO da música. Aperte e a faixa salta pra lá na hora."},
+  {id:"beatloop",nome:"BEAT LOOP",cor:"#ffae1a", desc:"Cada pad liga um loop de tamanho fixo (1, 2, 4, 8 tempos) a partir de onde a música está."},
+  {id:"slip",   nome:"SLIP LOOP", cor:"#37a2ff", desc:"Igual ao loop, mas a música segue correndo por baixo: ao soltar, ela volta de onde estaria."},
+  {id:"bjump",  nome:"BEAT JUMP", cor:"#8b5cf6", desc:"Pula um número exato de tempos pra frente ou pra trás, sem perder a batida."},
+];
+const S={ passo:1, faixa:0, analisada:[false,false,false],
+  pads:{hotcue:{},beatloop:{},slip:{},bjump:{}}, modo:"hotcue",
+  formatado:false, exportado:false, plugado:false, modoCabine:"hotcue" };
+
+/* ---------- render por passo ---------- */
+function render(){
+  $("#pnum").textContent=S.passo+" de 4";
+  $("#pfaixa").textContent=FAIXAS[S.faixa].nm.split("—")[0].trim();
+  $$(".pa").forEach(p=>{ const n=+p.dataset.p;
+    p.classList.toggle("on",n===S.passo);
+    p.classList.toggle("ok", n<S.passo || (n===1&&S.analisada[S.faixa]) || (n===3&&S.exportado) );
+    p.onclick=()=>{ if(podeIr(n)){ S.passo=n; render(); } };
+  });
+  const P=$("#palco");
+  if(S.passo===1) P.innerHTML=telaAnalise();
+  else if(S.passo===2) P.innerHTML=telaPads();
+  else if(S.passo===3) P.innerHTML=telaExport();
+  else P.innerHTML=telaCabine();
+  ligar();
+  desenharOnda();
+  checklist();
+}
+function podeIr(n){
+  if(n<=1) return true;
+  if(n===2) return S.analisada[S.faixa];
+  if(n===3) return Object.keys(S.pads.hotcue).length>0;
+  if(n===4) return S.exportado;
+  return false;
+}
+
+/* ---------- passo 1: analisar ---------- */
+function telaAnalise(){
+  return `<h3>1 · O rekordbox analisa a faixa antes de qualquer coisa</h3>
+  <div class="rb">
+    <div class="rbtop"><span class="lg">rekord<i>box</i></span>
+      <span style="font-size:9px;color:#8b97a9">Coleção · ${FAIXAS.length} faixas</span></div>
+    ${FAIXAS.map((f,i)=>`
+      <div class="faixa ${i===S.faixa?"on":""} ${S.analisada[i]?"analisada":""}" data-f="${i}">
+        <span class="nm">${f.nm}</span>
+        <span class="meta">${Math.floor(f.dur/60)}:${String(f.dur%60).padStart(2,"0")}</span>
+        <span class="bpm">${S.analisada[i]?f.bpm.toFixed(1):"—"}</span>
+        <span class="key">${S.analisada[i]?f.key:"—"}</span>
+        <span class="an">${S.analisada[i]?"ANALISADA":"analisar"}</span>
+      </div>`).join("")}
+  </div>
+  <div class="onda"><canvas id="cv" width="900" height="66"></canvas></div>
+  <button class="btnp" id="btAnalisar" style="margin-top:9px" ${S.analisada[S.faixa]?"disabled":""}>
+    ${S.analisada[S.faixa]?"✓ Faixa analisada":"Analisar a faixa selecionada"}</button>
+  <div class="aviso"><b>Por que isso é o passo 1:</b> sem análise o aparelho não conhece o BPM nem a
+  <b>grade de tempo</b> — e sem grade não existe beat loop, beat jump nem sync. É a análise que
+  transforma o arquivo numa faixa que a cabine entende.</div>`;
+}
+
+/* ---------- passo 2: programar pads ---------- */
+function telaPads(){
+  const m=MODOS.find(x=>x.id===S.modo);
+  const f=FAIXAS[S.faixa];
+  return `<h3>2 · Programe os pads — é aqui que o show fica pronto</h3>
+  <div class="modos">
+    ${MODOS.map(x=>`<div class="modo ${x.id===S.modo?"on":""}" data-modo="${x.id}"
+       style="${x.id===S.modo?`background:${x.cor}22;border-color:${x.cor}`:""}">${x.nome}</div>`).join("")}
+  </div>
+  <div class="onda" style="margin-top:9px"><canvas id="cv" width="900" height="66"></canvas>
+    ${Object.entries(S.pads[S.modo]).map(([n,pos])=>`
+      <div class="marca" style="left:${pos*100}%;background:${m.cor}">
+        <span class="lb" style="background:${m.cor}">${rot(S.modo,n)}</span></div>`).join("")}
+  </div>
+  <div class="pads">
+    ${[1,2,3,4,5,6,7,8].map(n=>{
+      const set=S.pads[S.modo][n]!==undefined;
+      return `<div class="pad ${set?"set":""}" data-pad="${n}" style="color:${m.cor}">
+        <small>${n}</small><b>${set?rot(S.modo,n):"vazio"}</b></div>`;}).join("")}
+  </div>
+  <div class="aviso"><b>${m.nome}:</b> ${m.desc}<br><br>
+  <b>O mesmo pad muda de função conforme o modo.</b> Clique em BEAT LOOP e repare: os 8 pads
+  passam a mostrar tamanhos de loop, não pontos. É o mesmo botão físico com quatro trabalhos —
+  por isso o visor do aparelho sempre mostra em que modo você está.</div>`;
+}
+function rot(modo,n){
+  if(modo==="hotcue") return "ABCDEFGH"[n-1];
+  if(modo==="beatloop") return [1,2,4,8,16,32,"1/2","1/4"][n-1]+"";
+  if(modo==="slip") return [1,2,4,8,16,32,"1/2","1/4"][n-1]+"";
+  return ["−8","−4","−2","−1","+1","+2","+4","+8"][n-1];
+}
+
+/* ---------- passo 3: exportar ---------- */
+function telaExport(){
+  const n=Object.keys(S.pads.hotcue).length+Object.keys(S.pads.beatloop).length
+         +Object.keys(S.pads.slip).length+Object.keys(S.pads.bjump).length;
+  return `<h3>3 · Exportar para o pendrive</h3>
+  <div class="pen">
+    <div class="penbox">
+      <div style="font-size:10px;font-weight:800;margin-bottom:7px">Preparar o pendrive</div>
+      <div class="lin ${S.formatado?"ok":""}"><span class="b">${S.formatado?"✓":"1"}</span>
+        <span class="tx">Formatar em <b>FAT32</b> — é o único que todo CDJ/XDJ lê</span></div>
+      <div class="lin ${S.exportado?"ok":""}"><span class="b">${S.exportado?"✓":"2"}</span>
+        <span class="tx">Exportar a coleção pelo rekordbox (não copiar o MP3 na mão)</span></div>
+      <div class="barra"><i id="bar" style="width:${S.exportado?100:0}%"></i></div>
+      <button class="btnp" id="btFormat" style="margin-top:9px" ${S.formatado?"disabled":""}>
+        ${S.formatado?"✓ Formatado em FAT32":"Formatar em FAT32"}</button>
+      <button class="btnp" id="btExport" style="margin-top:6px" ${(!S.formatado||S.exportado)?"disabled":""}>
+        ${S.exportado?"✓ Exportado":"Exportar coleção"}</button>
+    </div>
+    <div class="penbox">
+      <div style="font-size:10px;font-weight:800;margin-bottom:7px">O que vai no pendrive</div>
+      <div class="arv">${S.exportado?
+`PENDRIVE (FAT32)
+├── CONTENTS/          ← os arquivos de áudio
+│   ├── SOTEX 02.mp3
+│   ├── SOTEX 05.mp3
+│   └── SOTEX 09.mp3
+└── PIONEER/           ← o banco de dados
+    └── rekordbox/
+        ├── export.pdb ← BPM, tom, grade
+        └── ${n} marcações (pads)`
+: `(vazio — exporte para ver)`}</div>
+      <div class="aviso" style="margin-top:7px"><b>Copiar MP3 na mão não funciona:</b> o áudio até
+      toca, mas sem a pasta <b>PIONEER/</b> o aparelho não tem BPM, grade nem os seus pads. É o erro
+      nº 1 de quem chega no clube com pendrive.</div>
+    </div>
+  </div>`;
+}
+
+/* ---------- passo 4: na cabine ---------- */
+function telaCabine(){
+  const m=MODOS.find(x=>x.id===S.modoCabine);
+  return `<h3>4 · Na cabine — o pendrive chega com tudo pronto</h3>
+  <div class="penbox" style="background:#0d1014">
+    <div style="display:flex;align-items:center;gap:9px;margin-bottom:9px">
+      <button class="btnp" id="btPlug" ${S.plugado?"disabled":""}>${S.plugado?"✓ Pendrive conectado":"Conectar o pendrive no XDJ-RX2"}</button>
+      <span style="font-size:9.5px;color:#8b97a9">${S.plugado?"faixa carregada com BPM, grade e pads":"o aparelho ainda não leu nada"}</span>
+    </div>
+    <div class="modos">
+      ${MODOS.map(x=>`<div class="modo ${x.id===S.modoCabine?"on":""}" data-cab="${x.id}"
+         style="${x.id===S.modoCabine?`background:${x.cor}22;border-color:${x.cor}`:""}">${x.nome}</div>`).join("")}
+    </div>
+    <div class="onda" style="margin-top:9px"><canvas id="cv" width="900" height="66"></canvas>
+      ${S.plugado?Object.entries(S.pads[S.modoCabine]).map(([n,pos])=>`
+        <div class="marca" style="left:${pos*100}%;background:${m.cor}">
+          <span class="lb" style="background:${m.cor}">${rot(S.modoCabine,n)}</span></div>`).join(""):""}
+    </div>
+    <div class="pads">
+      ${[1,2,3,4,5,6,7,8].map(n=>{
+        const set=S.plugado && S.pads[S.modoCabine][n]!==undefined;
+        return `<div class="pad ${set?"set":""}" style="color:${m.cor}">
+          <small>${n}</small><b>${set?rot(S.modoCabine,n):"vazio"}</b></div>`;}).join("")}
+    </div>
+    <div class="aviso"><b>É este o ganho:</b> os pads que você programou em casa aparecem
+    <b>já gravados</b> no aparelho — você não perde tempo marcando ponto no meio do set.<br><br>
+    Troque de modo aí em cima e repare: <b>o mesmo pad muda o que faz e o que mostra</b>.
+    ${S.plugado?"Os pontos que você gravou em HOT CUE não aparecem em BEAT JUMP — são memórias separadas.":""}</div>
+  </div>`;
+}
+
+/* ---------- onda ---------- */
+function desenharOnda(){
+  const c=$("#cv"); if(!c) return;
+  const ctx=c.getContext("2d"), W=c.width, H=c.height;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle="#080b10"; ctx.fillRect(0,0,W,H);
+  const an=S.analisada[S.faixa];
+  for(let x=0;x<W;x+=2){
+    const t=x/W;
+    const env=0.35+0.5*Math.abs(Math.sin(t*9))+0.15*Math.sin(t*40);
+    const h=env*H*0.42;
+    ctx.fillStyle= an ? (t<0.12?"#2f6ea5":t>0.86?"#2f6ea5":"#3ba7f0") : "#333a44";
+    ctx.fillRect(x,H/2-h,1.4,h*2);
+  }
+  if(an){ /* grade de tempo: só existe depois de analisar */
+    const bpm=FAIXAS[S.faixa].bpm, dur=FAIXAS[S.faixa].dur;
+    const compassos=dur/(60/bpm*4);
+    for(let i=0;i<compassos;i+=4){
+      const x=i/compassos*W;
+      ctx.fillStyle="rgba(255,255,255,.16)"; ctx.fillRect(x,0,1,H);
+    }
+  }
+}
+
+/* ---------- eventos ---------- */
+function ligar(){
+  $$(".faixa").forEach(el=>el.onclick=()=>{ S.faixa=+el.dataset.f; render(); });
+  const ba=$("#btAnalisar"); if(ba) ba.onclick=()=>{ S.analisada[S.faixa]=true; render(); };
+  $$(".modo[data-modo]").forEach(el=>el.onclick=()=>{ S.modo=el.dataset.modo; render(); });
+  $$(".modo[data-cab]").forEach(el=>el.onclick=()=>{ S.modoCabine=el.dataset.cab; render(); });
+  $$(".pad[data-pad]").forEach(el=>el.onclick=()=>{
+    const n=+el.dataset.pad;
+    if(S.pads[S.modo][n]!==undefined) delete S.pads[S.modo][n];
+    else S.pads[S.modo][n]= 0.08 + Math.min(0.84, (Object.keys(S.pads[S.modo]).length)*0.11 + 0.05);
+    render();
+  });
+  const bf=$("#btFormat"); if(bf) bf.onclick=()=>{ S.formatado=true; render(); };
+  const be=$("#btExport"); if(be) be.onclick=()=>{ S.exportado=true; render(); };
+  const bp=$("#btPlug"); if(bp) bp.onclick=()=>{ S.plugado=true; render(); };
+}
+
+/* ---------- pendências ---------- */
+function checklist(){
+  const nHot=Object.keys(S.pads.hotcue).length;
+  const nOutros=Object.keys(S.pads.beatloop).length+Object.keys(S.pads.slip).length+Object.keys(S.pads.bjump).length;
+  const it=[
+    [S.analisada.some(Boolean), "Analisar a faixa", "Sem análise não há BPM nem grade — e sem grade não existe loop nem sync."],
+    [nHot>0, "Gravar pelo menos um HOT CUE", "É o ponto que você salta na hora certa, sem procurar."],
+    [nOutros>0, "Experimentar outro modo de pad", "O mesmo pad tem 4 trabalhos: hot cue, beat loop, slip e beat jump."],
+    [S.formatado, "Formatar o pendrive em FAT32", "É o único formato que todo CDJ/XDJ lê."],
+    [S.exportado, "Exportar pelo rekordbox", "Copiar MP3 na mão leva o áudio, mas deixa a grade e os pads para trás."],
+    [S.plugado, "Conectar na cabine e conferir", "Os pads têm que chegar prontos no aparelho."],
+  ];
+  const L=$("#lista"); L.innerHTML="";
+  it.forEach(([ok,t,a])=>{
+    const d=document.createElement("div"); d.className="chk"+(ok?" ok":"");
+    d.innerHTML=`<div class="b">${ok?"✓":"!"}</div><div class="tx"><b>${t}</b>${ok?"":"<br><span style='color:#7f8b9c'>"+a+"</span>"}</div>`;
+    L.appendChild(d);
+  });
+  const tudo=it.every(([o])=>o);
+  $("#aviso").innerHTML = tudo
+    ? `<b style="color:#7df0a8">Fluxo completo.</b> É exatamente esta a rotina antes de tocar:
+       analisar em casa, marcar os pontos, exportar em FAT32 e chegar no clube com tudo pronto.
+       Quem faz isso não perde tempo na cabine — e não depende do pendrive de ninguém.`
+    : `<b>Rotina profissional:</b> tudo o que dá para resolver em casa não se resolve na cabine.
+       Analisar, marcar pad e exportar leva minutos no computador — e no clube, com a pista cheia,
+       vira problema.`;
+}
+
+$("#btnReset").addEventListener("pointerdown",()=>location.reload());
+render();
+const fit=()=>{ const w=$(".wrap");
+  const s=Math.max(0.1,Math.min((window.innerWidth-6)/w.offsetWidth,(window.innerHeight-6)/w.offsetHeight,1));
+  $("#stage").style.transform="scale("+s+")"; };
+window.addEventListener("resize",fit); fit();
+</script>
+</body>
+</html>
