@@ -23,9 +23,16 @@
 //   node cursos-novos/pleno-dj/apply-conteudo-mixers-lote.mjs [--dry]
 // ============================================================================
 import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const DRY = process.argv.includes("--dry");
-const SVC = fs.readFileSync("D:/Show smu producoes/SMU-PRO/.local/svckey", "utf8").trim();
+// A chave sai de SMU-PRO/.local/svckey (ou da env SUPABASE_SERVICE_KEY).
+// ⚠️ NÃO aponte para scratchpad de sessão: a pasta morre junto com a sessão e o
+// script passa a dar ENOENT em toda execução. Modelo: cursos-novos/auditar-banco.mjs.
+const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");  // pleno-dj/ -> cursos-novos/ -> SMU-PRO/
+const SVC = process.env.SUPABASE_SERVICE_KEY?.trim()
+  || fs.readFileSync(path.join(RAIZ, ".local", "svckey"), "utf8").trim();
 const REST = "https://pshynylvvkhhohftouoe.supabase.co/rest/v1";
 const H = { apikey: SVC, Authorization: `Bearer ${SVC}`, "Content-Type": "application/json" };
 
@@ -164,7 +171,7 @@ const DJMV10 = `
 
 <h3>O que é e por que existe</h3>
 <p>Um DJM de clube tem 4 canais e EQ de 3 bandas porque esse é o mínimo para tocar disco atrás de disco. O V10 (2020) atende outro público: <b>quem toca em camadas</b>. Um canal para a batida, um para o baixo, um para o loop de sintetizador, um para a voz, um para o sampler, um para o efeito. Com 4 canais isso não cabe. Com 6, cabe.</p>
-<p>É a resposta da Pioneer a mixers de performance como o <b>Allen &amp; Heath Xone:96</b> e o <b>Rane MP2015</b>. Onde você encontra: festival grande, palco de artista com live set e residência de DJ que trabalha com stems. <b>Não</b> é o mixer padrão de balada — em balada você acha o 900NXS2 ou o A9.</p>
+<p>É a resposta da Pioneer a mixers de performance como o <b>Allen &amp; Heath Xone:96</b> e o <b>Rane MP2015</b>. Onde você encontra: festival grande, palco de live set e residência de DJ que trabalha com stems. <b>Não</b> é o mixer padrão de balada — lá você acha o 900NXS2 ou o A9.</p>
 
 <h3>Por que 6 canais e 4 bandas mudam o trabalho</h3>
 <p><b>Os 6 canais</b> mudam o que dá para manter tocando <i>ao mesmo tempo</i>. Num mixer de 4, o DJ soma duas faixas mais um microfone e ainda precisa de canal livre para a próxima. No V10 ele mantém uma base em loop, empilha um a cappella, entra com um segundo groove e ainda sobra canal para o sampler. Isso transforma "mixar duas músicas" em "montar um arranjo ao vivo".</p>
@@ -176,9 +183,7 @@ const DJMV10 = `
 <tr><th>Item</th><th>Valor</th></tr>
 <tr><td>Canais</td><td><b>6</b> de programa + 2 de microfone. Fontes: USB A · USB B · DIGITAL · LINE · <b>PHONO nos canais 1, 3, 4 e 6</b> · <b>MULTI I/O nos canais 2 e 5</b> · BUILT-IN · EXT 1 · EXT 2. TRIM de −∞ a +9 dB</td></tr>
 <tr><td>EQ por canal</td><td><b>4 bandas</b> — HI (−∞ a +6 dB, isolador no mínimo), HI MID (−26 a +6 dB), LOW MID (−26 a +6 dB), LOW (−∞ a +6 dB, isolador no mínimo)</td></tr>
-<tr><td>Compressor e filtro</td><td>Um compressor dedicado <b>em cada um dos 6 canais</b> · um filtro por canal + um no master, com tipo (LPF/HPF) e RESONANCE globais</td></tr>
-<tr><td>Send por canal</td><td>Knob SEND em cada canal — BUILT-IN (Short Delay, Long Delay, Dub Echo, Reverb) ou EXTERNAL (EXT 1 / EXT 2)</td></tr>
-<tr><td>Beat FX</td><td>14, na ordem do painel: DELAY, ECHO, PING PONG, SPIRAL, HELIX, REVERB, SHIMMER, FLANGER, PHASER, FILTER, TRANS, ROLL, PITCH, VINYL BRAKE</td></tr>
+<tr><td>Efeitos</td><td>Compressor e filtro em cada um dos 6 canais · 4 efeitos de SEND · <b>14 Beat FX</b>: DELAY, ECHO, PING PONG, SPIRAL, HELIX, REVERB, SHIMMER, FLANGER, PHASER, FILTER, TRANS, ROLL, PITCH, VINYL BRAKE</td></tr>
 <tr><td>Master e booth</td><td>Isolador de 3 bandas no master (−∞ a +9 dB, com botão ON) · booth com nível próprio e EQ de 2 bandas (−12 a +6 dB)</td></tr>
 <tr><td>Saídas de fone</td><td><b>Duas independentes</b> (A e B), com MIX e LEVEL próprios; a A tem ainda LINK CUE, PRE EQ e MONO SPLIT, em P10 6,3 mm e P2 3,5 mm</td></tr>
 <tr><td>Medidores</td><td>Canal: +12 a −30 dB · Master: +9 a −33 dB. MASTER LEVEL de −∞ a +5 dB (0 dB marcado)</td></tr>
@@ -193,40 +198,39 @@ const DJMV10 = `
 
 <h3>1 · A tira do canal (repetida 6 vezes)</h3>
 <ul>
-<li><b>SELETOR DE ENTRADA</b> — USB A, USB B, DIGITAL, LINE, PHONO (canais 1/3/4/6) ou MULTI I/O (canais 2 e 5), BUILT-IN, EXT 1, EXT 2. <i>Erro comum:</i> procurar PHONO no canal 2 ou 5. Não existe — nesses dois a posição é MULTI I/O.</li>
-<li><b>TRIM</b> — −∞ a +9 dB. Suba até o medidor (+12 a −30 dB) beirar o 0 sem vermelho.</li>
+<li><b>SELETOR DE ENTRADA</b> — USB A, USB B, DIGITAL, LINE, PHONO (canais 1/3/4/6) ou MULTI I/O (canais 2 e 5), BUILT-IN, EXT 1 e EXT 2. Erro comum: procurar PHONO no canal 2 ou 5 — não existe.</li>
+<li><b>TRIM</b> — −∞ a +9 dB. Suba até o medidor beirar o 0 sem vermelho.</li>
 <li><b>COMPRESSOR</b> — a marca do V10. Girando, você aperta a dinâmica: o som fica mais denso e constante. Use pouco, em canal de voz ou a cappella, para o vocal não sumir na base.</li>
 <li><b>EQ HI</b> e EQ LOW (−∞ a +6 dB) — no mínimo são isoladores: a banda some por completo. EQ HI MID (−26 a +6 dB) é o brilho da voz e da caixa; EQ LOW MID (−26 a +6 dB), o embolamento entre bumbo e corpo do vocal.</li>
-<li><b>FILTER</b> — filtro do canal. O tipo (LPF/HPF) e a RESONANCE vêm da seção FILTER, à esquerda, e valem para todos.</li>
-<li><b>BEAT FX ASSIGN</b> — aceso, este canal vai para o Beat FX. CUE — manda o canal para o fone; vários somam.</li>
-<li><b>SEND</b> — quanto deste canal vai para a seção SEND: é assim que se joga eco só na voz sem processar a base. <b>CHANNEL FADER (longo)</b> tem curso maior que o de um DJM comum, para mixagem fina; abaixo dele ficam o CROSS FADER ASSIGN (A / THRU / B) e o indicador A/B.</li>
+<li><b>FILTER</b> — filtro do canal; o tipo (LPF/HPF) e a RESONANCE vêm da seção FILTER, à esquerda, e valem para todos.</li>
+<li><b>BEAT FX ASSIGN</b> — aceso, este canal vai para o Beat FX. CUE manda o canal para o fone.</li>
+<li><b>SEND</b> — quanto deste canal vai para a seção SEND: é assim que se joga eco só na voz sem processar a base. <b>CHANNEL FADER (longo)</b> tem curso maior que o de um DJM comum; abaixo dele ficam o CROSS FADER ASSIGN (A / THRU / B) e o indicador A/B.</li>
 </ul>
 
 <h3>2 · Seção FILTER (global)</h3>
 <ul>
-<li><b>LPF</b> — põe os filtros dos 6 canais em passa-baixa: girando o FILTER você corta os agudos. HPF — passa-alta: girando você corta os graves.</li>
-<li><b>RESONANCE</b> — MIN a MAX. Quanto maior, mais o filtro assobia na frequência de corte. <i>Erro comum:</i> ressonância no talo com o master alto — o pico do filtro sozinho já acende o clip.</li>
+<li><b>LPF / HPF</b> — põe os filtros dos 6 canais em passa-baixa (girando o FILTER você corta os agudos) ou passa-alta (corta os graves).</li>
+<li><b>RESONANCE</b> — MIN a MAX: quanto maior, mais o filtro assobia na frequência de corte. Erro comum: ressonância no talo com o master alto — o pico do filtro sozinho já acende o clip.</li>
 </ul>
 
 <h3>3 · Seção SEND</h3>
 <ul>
-<li><b>SHORT DELAY · LONG DELAY · DUB ECHO · REVERB</b> — os quatro efeitos internos; EXT 1 e EXT 2 mandam o send para processador externo.</li>
-<li><b>MASTER MIX</b> — aceso, o retorno entra no master; apagado, fica só no fone/booth. É assim que você prepara o efeito antes de soltar na pista.</li>
-<li><b>SIZE / FEEDBACK</b>, TIME, TONE (LOW a HI) e MASTER MIX LEVEL — tamanho, tempo, timbre e quanto do retorno entra na mistura.</li>
+<li><b>SHORT DELAY · LONG DELAY · DUB ECHO · REVERB</b> — os quatro efeitos internos; EXT 1 e EXT 2 mandam o send para fora.</li>
+<li><b>MASTER MIX</b> — aceso, o retorno entra no master; apagado, fica só no fone/booth. É assim que se prepara o efeito antes de soltar na pista.</li>
+<li><b>SIZE / FEEDBACK</b>, TIME, TONE e MASTER MIX LEVEL — tamanho, tempo, timbre e quanto do retorno entra na mistura.</li>
 </ul>
 
 <h3>4 · Master, isolador e booth</h3>
 <ul>
-<li><b>MASTER LEVEL</b> (−∞ a +5 dB, com 0 dB marcado) e CLIP. Clip aceso, baixe TRIM/fader — nunca ande no master.</li>
-<li><b>ISOLATOR ON + HI / MID / LOW</b> (−∞ a +9 dB) — isolador de 3 bandas na saída inteira. É o controle de derrubar o grave da pista numa quebra. <i>Erro comum:</i> confundir com o EQ do canal — este aqui pega tudo.</li>
-<li><b>FILTER do master</b> e BEAT FX ASSIGN do master — filtro e efeito na mistura toda.</li>
-<li><b>BOOTH LEVEL + BOOTH EQ HI / LOW</b> (−12 a +6 dB) — o retorno da cabine tem EQ próprio, que não mexe no que vai para a pista. Grave demais no palco? Corte no BOOTH EQ, não no canal.</li>
+<li><b>MASTER LEVEL</b> (−∞ a +5 dB) e CLIP. Clip aceso, baixe TRIM/fader: nunca ande no master.</li>
+<li><b>ISOLATOR ON + HI / MID / LOW</b> (−∞ a +9 dB) — isolador de 3 bandas na saída inteira: é o controle de derrubar o grave da pista numa quebra. Erro comum: confundir com o EQ do canal — este pega tudo.</li>
+<li><b>FILTER e BEAT FX ASSIGN do master</b> — filtro e efeito na mistura toda. <b>BOOTH LEVEL + BOOTH EQ HI / LOW</b> (−12 a +6 dB): o retorno da cabine tem EQ próprio, que não mexe no que vai para a pista. Grave demais no palco? Corte no BOOTH EQ, não no canal.</li>
 </ul>
 
 <h3>5 · Fone A e fone B</h3>
 <ul>
 <li><b>Fone A</b> — LINK CUE (liga o cue do A ao do B), PRE EQ (monitora o canal <i>antes</i> do EQ: você ouve o som cru mesmo com o EQ mexido), MONO SPLIT, MIX e LEVEL.</li>
-<li><b>Fone B</b> — LINK CUE, MIX e LEVEL. Duas saídas independentes = b2b de verdade, cada DJ com seu cue. <i>Erro comum:</i> monitorar pelo B, que não tem PRE EQ, e achar que o EQ do canal não funciona.</li>
+<li><b>Fone B</b> — LINK CUE, MIX e LEVEL. Duas saídas independentes = b2b de verdade, cada DJ com seu cue. Erro comum: monitorar pelo B, que não tem PRE EQ, e achar que o EQ do canal não funciona.</li>
 </ul>
 
 <h3>6 · MULTI I/O</h3>
@@ -236,37 +240,36 @@ const DJMV10 = `
 
 <h3>7 · BEAT FX</h3>
 <ul>
-<li><b>Seletor</b> com 14 efeitos e display mostrando AUTO/TAP, QUANTIZE, efeito, BPM e o X-PAD. BEAT ◄ / ► e TAP (2 toques ou mais definem o BPM na mão).</li>
-<li><b>FX FREQUENCY LOW / MID / HI</b> — em que faixa o efeito age. TIME (encoder) e LEVEL/DEPTH (MIN a MAX).</li>
-<li><b>ON/OFF</b> — liga o Beat FX no que estiver marcado nos BEAT FX ASSIGN. <i>Erro comum:</i> apertar o ON sem ter marcado nenhum ASSIGN e concluir que o efeito não funciona.</li>
+<li><b>Seletor</b> com 14 efeitos e display com AUTO/TAP, QUANTIZE, efeito, BPM e X-PAD; BEAT ◄ / ► e TAP (2 toques ou mais definem o BPM na mão). <b>FX FREQUENCY LOW / MID / HI</b> escolhe a faixa em que o efeito age; TIME e LEVEL/DEPTH são os parâmetros.</li>
+<li><b>ON/OFF</b> — liga o Beat FX no que estiver marcado nos ASSIGN. Erro comum: apertar o ON sem marcar nenhum ASSIGN e concluir que o efeito não funciona.</li>
 </ul>
 
 <h3>Como ligar</h3>
 <ul>
-<li><b>CDJ / XDJ / player digital → LINE</b> (ou DIGITAL, se o player tiver saída digital).</li>
-<li><b>Toca-discos → PHONO</b>, com fio terra no borne. Atenção: no V10 só os canais 1, 3, 4 e 6 têm PHONO. Com dois toca-discos, use 1 e 6 (ou 3 e 4) e deixe 2 e 5 para os players e o MULTI I/O.</li>
-<li><b>Nunca troque os dois.</b> Toca-discos em LINE sai fino e quase inaudível — falta o pré-amplificador e a correção RIAA. CDJ em PHONO sai estourado — o pré amplifica um sinal que já era forte.</li>
-<li><b>Computador → USB A ou USB B</b>, canal no seletor. Duas portas = dois notebooks ao mesmo tempo.</li>
-<li><b>Sampler / drum machine / pedal / iPad → MULTI I/O</b> (USB ou 1/4" JACK, como CH 2 / CH 5 ou INSERT). Processador externo → EXT 1 / EXT 2, que voltam pelas posições EXT do seletor.</li>
-<li><b>Saídas:</b> MASTER para o PA, BOOTH (nível e EQ próprios) para o monitor da cabine, e as duas saídas de fone no painel frontal. Ordem: fontes → mixer → amplificação; para desligar, o inverso.</li>
+<li><b>CDJ / XDJ / player digital → LINE</b> (ou DIGITAL, se ele tiver essa saída).</li>
+<li><b>Toca-discos → PHONO</b>, com fio terra no borne. No V10 só os canais <b>1, 3, 4 e 6</b> têm PHONO: com dois toca-discos use 1 e 6, e deixe 2 e 5 para os players e o MULTI I/O.</li>
+<li><b>Nunca troque os dois.</b> Toca-discos em LINE sai fino e quase inaudível (falta o pré e a correção RIAA); CDJ em PHONO sai estourado, porque o pré amplifica um sinal que já era forte.</li>
+<li><b>Computador → USB A ou USB B</b>: duas portas, dois notebooks juntos.</li>
+<li><b>Sampler / drum machine / pedal / iPad → MULTI I/O</b> (USB ou 1/4" JACK, como CH 2 / CH 5 ou INSERT). <b>Processador externo → EXT 1 / EXT 2</b>, que voltam pelas posições EXT do seletor.</li>
+<li><b>Saídas:</b> MASTER para o PA, BOOTH (nível e EQ próprios) para a cabine e os dois fones na frente. <b>Ordem:</b> fontes → mixer → amplificação; desligar, o inverso.</li>
 </ul>
-<aside ${AVISO}><p><b>O que não consta:</b> o tipo de conector de cada entrada e saída do painel traseiro do V10 não está no material que consultei. Antes de comprar cabo, confira o manual ou o próprio painel.</p></aside>
+<aside ${AVISO}><p><b>O que não consta:</b> o tipo de conector de cada entrada e saída traseira do V10 não está no material que consultei. Antes de comprar cabo, confira o manual ou o painel.</p></aside>
 
 <h3>Na prática — faça no simulador desta aula</h3>
 <ul>
-<li><b>1.</b> Ligue o áudio e suba o channel fader longo do CH 1. O curso é maior que o de um DJM de 4 canais: dá para entrar com a faixa em muito mais passos.</li>
+<li><b>1.</b> Ligue o áudio e suba o channel fader longo do CH 1: o curso é maior que o de um DJM de 4 canais, então dá para entrar com a faixa em muito mais passos.</li>
 <li><b>2. O exercício do EQ de 4 bandas.</b> Com CH 1 e CH 2 tocando juntos, corte o LOW MID do CH 2 e ouça o embolamento sumir sem perder brilho. Agora corte o HI MID no lugar dele: a voz apaga e o grave continua embolado. É a escolha que um mixer de 3 bandas não deixa fazer.</li>
-<li><b>3.</b> Leve o EQ LOW do CH 1 ao mínimo e confirme que o grave some por completo — no V10, HI e LOW são isoladores, não EQ.</li>
-<li><b>4.</b> Gire o COMPRESSOR do CH 1 e ouça a dinâmica apertar. Ligue e desligue algumas vezes para gravar a diferença no ouvido.</li>
+<li><b>3.</b> Leve o EQ LOW do CH 1 ao mínimo e confirme que o grave some por completo: no V10, HI e LOW são isoladores, não EQ.</li>
+<li><b>4.</b> Gire o COMPRESSOR do CH 1 e ouça a dinâmica apertar; volte ao zero e repita para gravar a diferença no ouvido.</li>
 <li><b>5.</b> Escolha HPF na seção FILTER, suba a RESONANCE e gire o FILTER do CH 2. Depois marque o BEAT FX ASSIGN do CH 2, escolha um efeito e aperte o ON/OFF vermelho.</li>
 </ul>
 
 <h3>Erros que custam caro</h3>
 <ul>
-<li><b>Comprimir tudo.</b> O compressor por canal é ferramenta de precisão, não botão de deixar mais alto. Seis canais comprimidos no talo viram uma parede de som sem dinâmica — a pista cansa em 10 minutos e ninguém sabe explicar por quê.</li>
+<li><b>Comprimir tudo.</b> O compressor por canal é ferramenta de precisão, não botão de deixar mais alto. Seis canais no talo viram parede de som sem dinâmica — a pista cansa em 10 minutos e ninguém sabe explicar por quê.</li>
 <li><b>Contar com PHONO nos canais 2 e 5.</b> Eles não têm. Montou dois toca-discos no 2 e no 5, você perde o soundcheck descobrindo isso. Planeje o mapa de canais antes de encostar em cabo.</li>
-<li><b>Confundir ISOLATOR de master com EQ de canal.</b> O isolador pega a mistura inteira, incluindo o microfone e o que o outro DJ toca no b2b. Derrubar o LOW ali é decisão de sala, não de faixa.</li>
-<li><b>Encher os 6 canais porque eles existem.</b> Seis fontes ao mesmo tempo viram lama se você não abriu espaço no EQ para cada uma. O V10 dá o bisturi, não decide onde cortar.</li>
+<li><b>Confundir ISOLATOR de master com EQ de canal.</b> O isolador pega a mistura inteira, inclusive o microfone e o que o outro DJ toca no b2b. Derrubar o LOW ali é decisão de sala, não de faixa.</li>
+<li><b>Encher os 6 canais porque eles existem.</b> Seis fontes ao mesmo tempo viram lama se você não abriu espaço no EQ para cada uma. O V10 dá o bisturi; não decide onde cortar.</li>
 </ul>
 `.trim();
 
@@ -288,12 +291,10 @@ const X1850 = `
 <tr><td>Portas USB</td><td>Duas — <b>dois computadores ao mesmo tempo</b>; a chave USB 1/2 escolhe de qual porta vem o canal. Placa de som interna de 4 canais</td></tr>
 <tr><td>EQ por canal</td><td>3 bandas (HIGH / MID / LOW). O <b>tipo</b> de EQ se escolhe no menu Utility</td></tr>
 <tr><td>Filtro e Sweep FX</td><td>Filtro por canal (esquerda LPF, direita HPF, centro neutro), ligado pelo botão FILTER global · 4 Sweep FX (DUB ECHO · NOISE · WASH OUT · GATE), com knob próprio em cada canal</td></tr>
-<tr><td>BPM FX</td><td>FX SELECT, FX AMOUNT, FX TIME/PARAMETER, FX FREQUENCY, FX CUE, faixa de toque e modo INSTANT. Destino: canal 1–4, X-FADER A ou B, MIC ou MASTER</td></tr>
 <tr><td>Entradas de microfone</td><td>MIC 1 combo <b>XLR + P10 (6,35 mm)</b> no painel superior; MIC 2 em P10 atrás. EQ HIGH/LOW <b>compartilhado</b> pelos dois</td></tr>
 <tr><td>Saídas</td><td>Master XLR balanceada + RCA, com chave <b>STEREO / MONO</b> e <b>PAN</b> · booth com volume próprio · fone P10 6,35 mm e P2 3,5 mm, com SPLIT CUE e CUE MIX</td></tr>
 <tr><td>Crossfader</td><td><b>Flex Fader</b>, tensão regulável por baixo do painel, curva no X FADER CONTOUR · fader start de canal e de crossfader (com players Denon ligados)</td></tr>
-<tr><td>Rede</td><td>Portas Link + <b>Engine Connect</b>: recebe andamento e BPM dos players e troca faixas e perfis entre eles</td></tr>
-<tr><td>Displays</td><td>Dois monocromáticos: parâmetros do efeito, canal atribuído, BPM, divisão de tempo e menu Utility</td></tr>
+<tr><td>BPM FX e displays</td><td>Módulo com FX SELECT, AMOUNT, TIME/PARAMETER, FREQUENCY, CUE, faixa de toque e modo INSTANT; destino em canal 1–4, X-FADER A/B, MIC ou MASTER. Dois displays monocromáticos mostram efeito, canal, BPM, divisão de tempo e o menu Utility</td></tr>
 <tr><td>Dimensões (L × P × A)</td><td>12,2" × 17,5" × 4,3" = <b>311 × 445 × 108 mm</b> (X1850 PRIME User Guide v1.1, p. 74)</td></tr>
 <tr><td>Peso, consumo, resposta de frequência</td><td><b>Não consta</b> no material que consultei nesta rodada</td></tr>
 </table>
@@ -302,7 +303,7 @@ const X1850 = `
 
 <h3>1 · A tira do canal</h3>
 <ul>
-<li><b>INPUT SELECT</b> — DIGITAL, LINE, PHONO, USB ou DVS. O DVS embutido é um diferencial real: você toca com vinil de controle sem interface externa. <i>Erro comum:</i> deixar em USB sem computador ligado e achar que o canal queimou.</li>
+<li><b>INPUT SELECT</b> — DIGITAL, LINE, PHONO, USB ou DVS. O DVS embutido é um diferencial real: você toca com vinil de controle sem interface externa. Erro comum: deixar em USB sem computador ligado e achar que o canal queimou.</li>
 <li><b>USB 1 / 2</b> — com o INPUT SELECT em USB, escolhe de qual das duas portas vem o canal. É o que permite trocar de DJ sem parar o som.</li>
 <li><b>LEVEL / TRIM</b> — ganho de entrada, antes do fader e antes do EQ. É aqui que se acerta o nível olhando o medidor.</li>
 <li><b>EQ HIGH / MID / LOW</b> — <i>detalhe do X1850:</i> o tipo de EQ (o quanto o mínimo corta) se escolhe no menu Utility. Dois X1850 podem responder diferente ao mesmo giro.</li>
@@ -314,57 +315,54 @@ const X1850 = `
 
 <h3>2 · Botão FILTER e os SWEEP FX</h3>
 <ul>
-<li><b>FILTER (botão)</b> — liga/desliga o filtro de todos os canais de uma vez. Sem ele aceso, os knobs FILTER não fazem nada.</li>
-<li><b>DUB ECHO</b> — eco curto. Do centro para a esquerda encurta o delay e sobe a realimentação; para a direita alonga o delay e também sobe a realimentação.</li>
+<li><b>FILTER (botão)</b> — liga/desliga o filtro de todos os canais de uma vez; sem ele aceso, os knobs FILTER não fazem nada.</li>
+<li><b>DUB ECHO</b> — eco curto. Do centro para a esquerda encurta o delay e sobe a realimentação; para a direita alonga o delay, também subindo a realimentação.</li>
 <li><b>NOISE</b> — à esquerda, ruído branco com gate sincronizado ao andamento; à direita, ruído branco puro.</li>
-<li><b>WASH OUT</b> — transição. No extremo esquerdo aplica eco de 1/2 tempo e silencia o áudio normal do canal; no direito, eco de 1 tempo. É o "apagar a faixa" numa quebra. <i>Erro comum:</i> girar até o fim e esquecer — o canal fica mudo e você procura defeito no player.</li>
-<li><b>GATE</b> — gate ritmado. Do centro para a esquerda, sincronizado ao andamento; para a direita, atenuando cada vez mais.</li>
-<li><i>Regra da seção:</i> <b>só um Sweep FX por vez</b> — escolher outro desliga o anterior.</li>
+<li><b>WASH OUT</b> — transição. No extremo esquerdo aplica eco de 1/2 tempo e silencia o áudio normal do canal; no direito, eco de 1 tempo. É o "apagar a faixa" numa quebra. Erro comum: girar até o fim e esquecer — o canal fica mudo e você procura defeito no player.</li>
+<li><b>GATE</b> — gate ritmado. Do centro para a esquerda, sincronizado ao andamento; para a direita, atenuando cada vez mais. Regra da seção: <b>só um Sweep FX por vez</b> — escolher outro desliga o anterior.</li>
 </ul>
 
 <h3>3 · Módulo BPM FX</h3>
 <ul>
 <li><b>BPM FX ON/OFF</b> — liga o módulo (Echo, Delay, Roll, BeatBreak…). FX AMOUNT — quanto do sinal processado sai na mistura.</li>
 <li><b>FX SELECT / ENTER</b> — gira para escolher o efeito; no Utility, gira para navegar e aperta para confirmar. FX CHANNEL ASSIGN — onde o efeito age: canal 1–4, X-FADER A ou B, MIC ou MASTER.</li>
-<li><b>FX TIME / PARAMETER</b> — gira para escolher a divisão de tempo; apertando, alterna entre divisão de tempo e milissegundos.</li>
-<li><b>FX FREQUENCY</b> — em que faixa o efeito age; no centro (12h) pega o espectro inteiro. FX CUE — escuta o efeito no fone antes de soltar no PA (nem todo efeito aceita).</li>
-<li><b>FX TOUCH STRIP</b> + INSTANT — com o INSTANT apagado, tocar a faixa escolhe a divisão de tempo; com ele aceso, encostar já dispara o efeito e arrastar muda a divisão.</li>
+<li><b>FX TIME / PARAMETER</b> — gira para escolher a divisão de tempo; apertando, alterna entre divisão e milissegundos.</li>
+<li><b>FX FREQUENCY</b> — em que faixa o efeito age; no centro (12h) pega o espectro inteiro. <b>FX CUE</b> escuta o efeito no fone antes de soltar no PA (nem todo efeito aceita).</li>
+<li><b>FX TOUCH STRIP</b> + INSTANT — com o INSTANT apagado, tocar a faixa escolhe a divisão de tempo; com ele aceso, encostar dispara o efeito e arrastar muda a divisão.</li>
 <li><b>TAP / -AUTO</b> — bate o andamento na mão; segurando, volta para AUTO. QUANTIZE / -UTILITY — quantiza aos players das portas Link; segurando, entra e sai do menu Utility (sair salva).</li>
 </ul>
 
 <h3>4 · Master, booth e microfone</h3>
 <ul>
 <li><b>MASTER</b> — volume das saídas XLR e RCA. STEREO / MONO soma os dois canais quando a sala pede mono; PAN posiciona o master no campo estéreo; BOOTH é o volume do monitor da cabine, independente do master.</li>
-<li><b>MIC 1 / MIC 2 LEVEL</b> e ON/OFF — cada um com LED de nível: verde (ótimo), laranja (médio), vermelho (pico).</li>
-<li><b>MIC EQ HIGH / LOW</b> — atenção: mexe nos dois microfones ao mesmo tempo. Não dá para equalizar um sem mexer no outro.</li>
-<li><b>TALK OVER</b> — abaixa a mistura quando você fala. Quanto abaixa e a velocidade de volta se ajustam no menu Utility.</li>
+<li><b>MIC 1 / MIC 2 LEVEL</b> e ON/OFF — cada um com LED de nível: verde (ótimo), laranja (médio), vermelho (pico). <b>MIC EQ HIGH / LOW</b> mexe nos <b>dois microfones ao mesmo tempo</b>: não dá para equalizar um sem mexer no outro.</li>
+<li><b>TALK OVER</b> — abaixa a mistura quando você fala; o quanto e a velocidade de volta se ajustam no menu Utility.</li>
 </ul>
 
 <h3>5 · Fone, faders e rede</h3>
 <ul>
 <li><b>SPLIT CUE</b> — em ON, cue em mono no ouvido esquerdo e master em mono no direito. CUE MIX e HEADPHONE LEVEL — quanto de cada um e o volume do fone.</li>
 <li><b>CH FADER CONTOUR</b> e X FADER CONTOUR — curva dos faders: à esquerda o volume sobe perto do topo e o crossfader mistura macio; à direita sobe logo e o crossfader corta seco, para scratch.</li>
-<li><b>CROSSFADER (FLEX FADER)</b> — tensão regulável por baixo do painel. DJ de scratch aperta; DJ de mixagem longa afrouxa.</li>
-<li><b>CHANNEL FADER START</b> e X FADER START — com media player Denon ligado, subir o fader (ou mover o crossfader) dá play sozinho. <i>Erro comum:</i> deixar ligado sem querer e o player disparar quando você só ia conferir o nível.</li>
+<li><b>CROSSFADER (FLEX FADER)</b> — tensão regulável por baixo do painel: DJ de scratch aperta, DJ de mixagem longa afrouxa.</li>
+<li><b>CHANNEL FADER START</b> e X FADER START — com media player Denon ligado, subir o fader (ou mover o crossfader) dá play sozinho. Erro comum: deixar ligado sem querer e o player disparar quando você só ia conferir o nível.</li>
 <li><b>ENGINE CONNECT</b> — com os players Denon nas portas Link, o mixer recebe andamento e BPM e troca faixas e perfis entre eles. USB 1 / 2 ligam dois computadores; MIDI START/STOP envia Start/Stop pela USB ou pela saída MIDI.</li>
 </ul>
 
 <h3>Como ligar</h3>
 <ul>
-<li><b>Media player / CDJ / SC6000 → LINE</b> (ou DIGITAL, pela saída digital do player).</li>
-<li><b>Toca-discos → PHONO</b>, com fio terra no borne. Sinal de agulha é fraquíssimo: só a posição PHONO liga o pré-amplificador e a correção RIAA. Se você ouviu um som fino e baixo, é toca-discos em LINE. Se ouviu um estouro distorcido, é player em PHONO.</li>
-<li><b>Toca-discos com vinil de controle → PHONO no cabo, DVS no INPUT SELECT.</b> O DVS é embutido; não precisa de interface externa.</li>
-<li><b>Computador → USB 1 ou USB 2</b>, INPUT SELECT em USB e a chave USB 1/2 no canal apontando para a porta certa.</li>
-<li><b>Microfone 1 → combo XLR/P10 do painel superior. Microfone 2 → P10 traseiro.</b></li>
+<li><b>Media player / CDJ / SC6000 → LINE</b> (ou DIGITAL, pela saída digital dele).</li>
+<li><b>Toca-discos → PHONO</b>, com fio terra no borne. Sinal de agulha é fraquíssimo: só a posição PHONO liga o pré-amplificador e a correção RIAA. <b>Som fino e baixo = toca-discos em LINE; estouro distorcido = player em PHONO.</b></li>
+<li><b>Toca-discos com vinil de controle → PHONO no cabo, DVS no INPUT SELECT.</b> O DVS é embutido, sem interface externa.</li>
+<li><b>Computador → USB 1 ou USB 2</b>, INPUT SELECT em USB e a chave USB 1/2 do canal na porta certa.</li>
+<li><b>Microfone 1 → combo XLR/P10 de cima; microfone 2 → P10 traseiro.</b></li>
 <li><b>Players Denon → portas Link</b>, com cabo de rede, para Engine Connect, fader start e quantize.</li>
-<li><b>Saídas:</b> MASTER XLR para o PA (é a saída balanceada, a que aguenta cabo longo sem chiado), MASTER RCA para gravação ou sistema pequeno, e BOOTH para o monitor da cabine. Fone no painel frontal, P10 ou P2.</li>
-<li><b>Ordem:</b> fontes → mixer → amplificação. Desligar, o inverso.</li>
+<li><b>Saídas:</b> MASTER XLR para o PA (balanceada, aguenta cabo longo sem chiado), MASTER RCA para gravação e BOOTH para a cabine; fone na frente. <b>Ordem:</b> fontes → mixer → amplificação; desligar, o inverso.</li>
 </ul>
 
 <h3>Na prática — faça no simulador desta aula</h3>
 <ul>
-<li><b>1.</b> Ligue o áudio e acerte o LEVEL/TRIM dos canais 1 e 2 olhando o CHANNEL LEVEL METER — lembre que ele mede antes do fader, então o nível certo aparece mesmo com o fader baixo.</li>
-<li><b>2.</b> Aperte o botão FILTER (verde) e só então gire o knob FILTER do canal 1 para os dois lados. Depois desligue o botão e gire de novo: nada acontece. Guarde essa lição.</li>
+<li><b>1.</b> Ligue o áudio e acerte o LEVEL/TRIM dos canais 1 e 2 olhando o CHANNEL LEVEL METER — ele mede antes do fader, então o nível certo aparece mesmo com o fader baixo.</li>
+<li><b>2.</b> Aperte o botão FILTER (verde) e só então gire o knob FILTER do canal 1 para os dois lados. Depois desligue o botão e gire de novo: nada acontece.</li>
 <li><b>3.</b> Escolha WASH OUT e leve o knob SWEEP FX do canal 2 até o extremo esquerdo. O canal silencia e fica só o eco — é o efeito, não um defeito. Volte o knob ao centro.</li>
 <li><b>4.</b> Ponha o FX CHANNEL ASSIGN no canal 1, ligue o BPM FX ON/OFF e suba o FX AMOUNT. Depois experimente apertar o FX TIME/PARAMETER para alternar entre divisão de tempo e milissegundos.</li>
 <li><b>5.</b> Mixe canal 1 e canal 2 só com o FLEX FADER. Depois mude o X FADER CONTOUR de um extremo ao outro e sinta a diferença entre corte seco e mistura macia.</li>
@@ -373,7 +371,7 @@ const X1850 = `
 <h3>Erros que custam caro</h3>
 <ul>
 <li><b>Esquecer que o EQ é configurável no Utility.</b> Você aprende a mão num X1850 e, no outro, o corte do LOW responde diferente. Antes de set em mixer emprestado, entre no Utility (segurando QUANTIZE) e confira o tipo de EQ e o TALK OVER.</li>
-<li><b>Deixar o WASH OUT ou o GATE fora do centro.</b> São os dois Sweep FX que mutam ou picotam o canal. Fora do centro, o canal parece defeituoso. No fim de cada transição, o knob volta ao centro.</li>
+<li><b>Deixar o WASH OUT ou o GATE fora do centro.</b> São os dois Sweep FX que mutam ou picotam o canal — fora do centro, ele parece defeituoso. No fim de cada transição, o knob volta ao centro.</li>
 <li><b>Fader start ligado sem querer.</b> Com players Denon em rede, encostar no fader dá play — e numa conferência de nível antes do show isso solta música no PA na frente do público.</li>
 <li><b>Confundir o BPM FX INDICATOR com um botão.</b> Ele só informa: quem escolhe o destino é o FX CHANNEL ASSIGN e quem liga é o BPM FX ON/OFF. Perder três minutos apertando um LED no meio do set é constrangedor e comum.</li>
 </ul>
@@ -383,113 +381,101 @@ const X1850 = `
 // 301 — DENON DJ PRIME 4+
 // ============================================================================
 const PRIME4 = `
-<p><b>O Prime 4 é uma cabine inteira dentro de um aparelho só — e sem computador.</b> Quatro decks, mixer de 4 canais, tela de 10,1 polegadas, e a música vindo de pendrive, cartão SD ou de um HD parafusado <i>dentro</i> dele. Você chega no evento com o Prime 4, dois cabos XLR e um fone. Acabou a montagem.</p>
+<p><b>O Prime 4 é uma cabine inteira dentro de um aparelho só — e sem computador.</b> Quatro decks, mixer de 4 canais, tela de 10,1", e a música vindo de pendrive, cartão SD ou de um HD parafusado <i>dentro</i> dele. Você chega com o Prime 4, dois cabos XLR e um fone. Acabou a montagem.</p>
 
 <h3>O que é e por que existe</h3>
-<p>O DJ de casamento, formatura e evento corporativo tem um problema que o DJ de clube não tem: <b>ele leva a cabine</b>. Cada aparelho a mais é uma caixa no carro, um cabo a mais para dar defeito e dez minutos de montagem num salão onde o cliente já está impaciente. O padrão CDJ + mixer resolve o problema do clube, não o dele.</p>
-<p>Os all-in-one nasceram para isso. A Pioneer fez o XDJ-RX e depois o RR / RX2 / RX3 e o XZ — hoje os concorrentes diretos. A Denon DJ respondeu com o <b>Prime 4</b> (2019), apostando em duas coisas que os rivais da faixa não tinham: <b>4 decks</b> (não 2) e <b>tela de 10,1"</b>, a maior da categoria. O <b>Prime 4+</b> é a revisão com o Engine OS mais novo, streaming e biblioteca em nuvem. O que ele resolveu: <b>tocar quatro faixas ao mesmo tempo, sem laptop, sem interface, sem mixer separado</b> — e ainda mandar uma segunda sala pela saída <b>Zone</b>, o recurso que fecha contrato corporativo.</p>
+<p>O DJ de casamento, formatura e evento corporativo tem um problema que o DJ de clube não tem: <b>ele leva a cabine</b>. Cada aparelho a mais é uma caixa no carro, um cabo a mais para dar defeito e dez minutos de montagem num salão com o cliente impaciente. O padrão CDJ + mixer resolve o problema do clube, não o dele.</p>
+<p>Os all-in-one nasceram para isso. A Pioneer fez o XDJ-RX e depois o RR / RX2 / RX3 e o XZ — hoje os concorrentes diretos. A Denon respondeu com o <b>Prime 4</b> (2019), apostando no que os rivais não tinham: <b>4 decks</b> (não 2) e <b>tela de 10,1"</b>, a maior da categoria. O <b>Prime 4+</b> é a revisão com Engine OS novo, streaming e nuvem. O que ele resolveu: <b>tocar quatro faixas ao mesmo tempo, sem laptop, sem interface e sem mixer separado</b> — e ainda mandar uma segunda sala pela <b>Zone</b>.</p>
 
 <h3>Ficha técnica</h3>
-<p>Todos os números abaixo vêm do <b>Prime 4 User Guide</b> oficial, seção <i>Appendix &gt; Technical Specifications</i> (p. 34-35).</p>
+<p>Números do <b>Prime 4 User Guide</b> oficial (Appendix, p. 34-35).</p>
 <table ${TB}>
 <tr><th>Item</th><th>Valor</th></tr>
 <tr><td>Dimensões (L × P × A)</td><td>28,68" × 19,56" × 4,08" = <b>728,47 × 496,82 × 103,63 mm</b></td></tr>
 <tr><td>Peso</td><td>21,34 lb = <b>9,7 kg</b></td></tr>
-<tr><td>Decks e telas</td><td>4 decks (cada lado controla o 1/3 ou o 2/4) · tela principal com toque de <b>10,1" / 257 mm</b> (216 × 139 mm) · prato <b>2,2" / 56 mm</b> · FX OLED 128 × 32 px</td></tr>
-<tr><td>Áudio digital</td><td>24 bits · 44,1 kHz. Resposta 20 Hz – 20 kHz (±1 dB) · dinâmica &gt; 117 dB · SNR &gt; 93 dB (pond. A) · THD line/phono &lt; 0,01%, microfone &lt; 0,02%</td></tr>
-<tr><td>Mídia aceita</td><td>Cartão SD / SDHC / SDXC, pendrive e HD USB, <b>SATA 2,5" interno</b>. Arquivos em exFAT ou FAT32 (recomendado)</td></tr>
-<tr><td>Formatos de áudio</td><td>AAC/M4A · AIF/AIFF · ALAC · FLAC · MP3 (32–320 kbps, VBR) · MP4 · Ogg Vorbis · WAV. AIFF e WAV até 192 kHz / 32 bits</td></tr>
-<tr><td>Saídas de áudio</td><td>2 XLR master (balanceada) · 1 par RCA master · 2 XLR booth · 2 XLR <b>zone</b> · fone P10 6,35 mm e P2 3,5 mm (&lt; 150 mW em 40 Ω)</td></tr>
-<tr><td>Entradas de áudio</td><td>2 pares RCA de linha · 2 pares RCA <b>line ou phono</b> (com chave e borne de terra) · 2 combo XLR + P10 6,35 mm (microfone)</td></tr>
-<tr><td>Nível do master</td><td>Balanceada +24 dBu máx (+4 unity) · não balanceada +20 dBu máx (0 unity)</td></tr>
+<tr><td>Decks e telas</td><td>4 decks (cada lado controla o 1/3 ou o 2/4) · tela de toque de <b>10,1" / 257 mm</b> (216 × 139 mm) · prato <b>2,2" / 56 mm</b> · FX OLED 128 × 32 px</td></tr>
+<tr><td>Áudio</td><td>24 bits · 44,1 kHz · 20 Hz – 20 kHz (±1 dB) · dinâmica &gt; 117 dB · SNR &gt; 93 dB (pond. A) · THD line/phono &lt; 0,01%, mic &lt; 0,02%</td></tr>
+<tr><td>Mídia e formatos</td><td>SD / SDHC / SDXC, pendrive, HD USB e <b>SATA 2,5" interno</b>, em exFAT ou FAT32. Toca AAC/M4A · AIF/AIFF · ALAC · FLAC · MP3 (32–320 kbps, VBR) · MP4 · Ogg Vorbis · WAV (AIFF e WAV até 192 kHz / 32 bits)</td></tr>
+<tr><td>Saídas</td><td>2 XLR master (balanceada, +24 dBu máx) · 1 par RCA master (+20 dBu máx) · 2 XLR booth · 2 XLR <b>zone</b> · fone P10 e P2 (&lt; 150 mW em 40 Ω)</td></tr>
+<tr><td>Entradas de áudio</td><td>2 pares RCA de linha · 2 pares RCA <b>line ou phono</b> (com chave e borne de terra) · 2 combo XLR + P10 (microfone)</td></tr>
 <tr><td>Outras conexões</td><td>4 USB para pendrive (a <b>porta 4 dá 5 V / 1 A</b>) · 1 USB para computador · 1 Ethernet (Link/StagelinQ) · IEC 100–240 V, 38–45 W</td></tr>
-<tr><td>Alcance de pitch e tamanho do prato</td><td><b>Não constam</b> na tabela do manual. O range é ajustável por Shift + PITCH BEND, mas os valores não são publicados; do prato, só consta a tela</td></tr>
+<tr><td>Alcance de pitch e tamanho do prato</td><td><b>Não constam</b> na tabela do manual: o range é ajustável por Shift + PITCH BEND, mas os valores não são publicados; do prato só consta a tela</td></tr>
 </table>
 
 <h3>Controle por controle</h3>
 
 <h3>1 · Deck — transporte e prato</h3>
 <ul>
-<li><b>PLATTER</b> — prato capacitivo. Com VINYL aceso, girar o topo faz scratch; tocando só a lateral, você faz pitch bend para casar a batida. <i>Erro comum:</i> tentar scratch com o VINYL apagado — aí o prato só empurra o andamento.</li>
-<li><b>PLAY / PAUSE</b> — toca ou pausa; com Shift, stutter-play a partir do cue inicial.</li>
-<li><b>CUE / TRACK START</b> — tocando, volta ao cue temporário e pausa. Pausado num ponto novo, define o cue ali. Segurando, toca a partir do cue; ao soltar, volta e pausa.</li>
-<li><b>SYNC</b> alinha BPM e batida com o outro deck; <b>KEY LOCK / KEY SYNC</b> trava o tom mesmo mudando a velocidade.</li>
-<li><b>CENSOR / REVERSE</b> — segure para tocar de trás para frente sem perder o lugar; ao soltar, a música volta ao ponto certo. É o botão do palavrão.</li>
+<li><b>PLATTER</b> — prato capacitivo. Com VINYL aceso, girar o topo faz scratch; tocando só a lateral, faz pitch bend para casar a batida. Erro comum: tentar scratch com o VINYL apagado — aí ele só empurra o andamento.</li>
+<li><b>PLAY / PAUSE</b> — toca ou pausa; com Shift, stutter-play a partir do cue inicial. <b>CUE / TRACK START</b>: tocando, volta ao cue temporário e pausa; pausado num ponto novo, define o cue ali; segurando, toca a partir dele e, ao soltar, volta e pausa.</li>
+<li><b>SYNC</b> alinha BPM e batida com o outro deck; <b>KEY LOCK / KEY SYNC</b> trava o tom mesmo mudando a velocidade. <b>CENSOR / REVERSE</b>: segure para tocar de trás para frente sem perder o lugar; ao soltar, a música volta ao ponto certo. É o botão do palavrão.</li>
 <li><b>SLIP</b> — a linha do tempo continua correndo durante loop, cue ou scratch; ao soltar, a música retoma onde estaria. É o que deixa fazer maluquice sem perder a batida.</li>
-<li><b>PITCH FADER</b> e PITCH BEND − / + — velocidade da faixa e o empurrão momentâneo para adiantar ou atrasar. <b>DECK 1/3 e 2/4</b> escolhe qual deck este lado controla (Shift + Deck 3/4 alterna entre 4 e 2 decks); TRACK SKIP e BEAT JUMP trocam de faixa e saltam no tamanho do Auto Loop.</li>
+<li><b>PITCH FADER</b> e PITCH BEND − / + — velocidade da faixa e o empurrão momentâneo. <b>DECK 1/3 e 2/4</b> escolhe qual deck este lado controla; TRACK SKIP e BEAT JUMP trocam de faixa e saltam no tamanho do Auto Loop.</li>
 </ul>
 
 <h3>2 · Loop e pads</h3>
 <ul>
-<li><b>LOOP IN / LOOP OUT</b> — início e fim do loop manual. <b>AUTO LOOP / LOOP MOVE</b>: gire para escolher o tamanho, pressione para ligar/desligar, com Shift desloca o loop.</li>
-<li><b>HOT CUE</b> — os 8 pads viram pontos quentes. Pad apagado grava o hot cue ali; pad aceso salta para ele; Shift + pad apaga.</li>
-<li><b>LOOP</b> — a primeira apertada é loop manual (o pad marca IN e, na 2ª vez, OUT); a segunda apertada no botão entra em Auto Loop, com um tamanho por pad.</li>
-<li><b>ROLL</b> — segure um pad para disparar um loop-roll momentâneo; ao soltar, a faixa continua de onde estaria. Rolls em tercina acendem em outra cor.</li>
-<li><b>SLICER</b> — os 8 pads viram 8 batidas seguidas da grade; apertar um pad toca aquela fatia. Segunda apertada = Slicer Loop. <b>PARAMETER ◄ / ►</b> ajusta o modo ativo (tamanho do loop, do roll, das fatias).</li>
-<li><b>EDIT GRID</b> e BEAT GRID ◄ / ► — corrige a grade de batidas. Faixa antiga ou tocada por músico vivo quase sempre precisa disso, senão o SYNC erra.</li>
+<li><b>LOOP IN / LOOP OUT</b> — início e fim do loop manual. <b>AUTO LOOP / LOOP MOVE</b>: gire para o tamanho, pressione para ligar/desligar, com Shift desloca o loop.</li>
+<li><b>HOT CUE</b> — os 8 pads viram pontos quentes: pad apagado grava o hot cue ali, pad aceso salta para ele, Shift + pad apaga. <b>LOOP</b>: a primeira apertada é loop manual (o pad marca IN e, na 2ª vez, OUT) e a segunda entra em Auto Loop, com um tamanho por pad.</li>
+<li><b>ROLL</b> — segure um pad para disparar um loop-roll momentâneo; ao soltar, a faixa continua de onde estaria (rolls em tercina acendem em outra cor). <b>SLICER</b>: os 8 pads viram 8 batidas da grade e apertar um toca aquela fatia; a segunda apertada vira Slicer Loop. <b>PARAMETER ◄ / ►</b> ajusta o modo ativo.</li>
+<li><b>EDIT GRID</b> e BEAT GRID ◄ / ► — corrigem a grade de batidas. Faixa antiga ou tocada por músico vivo quase sempre precisa, senão o SYNC erra.</li>
 </ul>
 
 <h3>3 · Mixer — a tira do canal</h3>
 <ul>
-<li><b>INPUT SELECTOR</b> (painel frontal) — Engine/USB (faixa do software, pendrive ou SD) ou Line (aparelho ligado atrás). <i>Atenção:</i> em Line, dos Sweep FX só o Filter funciona.</li>
-<li><b>CHANNEL LEVEL</b> — ganho pré-fader e pré-EQ: é aqui que se faz o gain staging, olhando o LEVEL METER (verde/âmbar; vermelho é clip).</li>
-<li><b>CHANNEL EQ (HIGH / MID / LOW)</b> e SWEEP FX (um knob por canal, centro neutro). CHANNEL FX 1 / 2 roteia o canal para o módulo Effect 1 ou 2; CUE manda o sinal pré-fader para o fone.</li>
-<li><b>CHANNEL FADER</b> e CROSSFADER ASSIGN (L, R ou centro = Thru, que ignora o crossfader).</li>
-<li><i>Detalhe do layout:</i> os canais estão na ordem física <b>3 · 1 | 2 · 4</b>, com os cues 3 e 4 em verde e 1 e 2 em azul — de propósito, para os decks principais ficarem no centro.</li>
+<li><b>INPUT SELECTOR</b> (na frente) — Engine/USB (pendrive, SD ou software) ou Line (aparelho ligado atrás). Atenção: em Line, dos Sweep FX só o Filter age.</li>
+<li><b>CHANNEL LEVEL</b> — ganho pré-fader e pré-EQ: é o gain staging, olhando o LEVEL METER (verde/âmbar; vermelho é clip).</li>
+<li><b>CHANNEL EQ (HIGH / MID / LOW)</b> e SWEEP FX (um knob por canal, centro neutro). CHANNEL FX 1 / 2 manda o canal para o módulo Effect 1 ou 2; CUE manda o sinal pré-fader para o fone; o CROSSFADER ASSIGN joga o canal em L, R ou Thru (centro).</li>
+<li>Detalhe do layout: os canais estão na ordem física <b>3 · 1 | 2 · 4</b>, com os cues 3 e 4 em verde e 1 e 2 em azul — para os decks principais ficarem no centro.</li>
 </ul>
 
 <h3>4 · Sweep FX e os módulos FX 1 / FX 2</h3>
 <ul>
-<li><b>FILTER</b> — do centro, à esquerda passa-baixa; à direita passa-alta. ECHO — à esquerda encurta o delay e sobe a realimentação; à direita alonga.</li>
-<li><b>NOISE</b> — à esquerda ruído rosa, à direita ruído branco. WASH OUT — no mínimo, eco de 1 tempo que também muta o canal; no máximo, eco de 1/2 tempo. Só um Sweep FX fica ativo por vez.</li>
-<li><b>FX 1 / FX 2</b> (módulos independentes) — cada um com FX ON, FX SELECT, FX PARAMETER (knob + botão do parâmetro secundário), FX FREQUENCY (faixa onde o efeito age; 12h = espectro inteiro), WET/DRY, RESET e BEATS ◄ / ►.</li>
-<li>Os efeitos do manual incluem <b>Reverb, Echo, Delay, Hall Echo, Ping Pong, Auto Gate, Flanger, Filter LFO, Phaser, Bit Crush, Roll e Rev. Roll</b>, com divisões de 1/32 até 8 tempos e Dry/Wet de 0 a 100.</li>
+<li>Os quatro Sweep FX, sempre do centro para os lados: <b>FILTER</b> (esquerda passa-baixa, direita passa-alta) · <b>ECHO</b> (esquerda encurta o delay e sobe a realimentação, direita alonga) · <b>NOISE</b> (esquerda rosa, direita branco) · <b>WASH OUT</b> (no mínimo, eco de 1 tempo que também muta o canal; no máximo, eco de 1/2). Só um fica ativo por vez.</li>
+<li><b>FX 1 / FX 2</b> (módulos independentes) — cada um com FX ON, FX SELECT, FX PARAMETER (knob + botão do parâmetro secundário), FX FREQUENCY (12h = espectro inteiro), WET/DRY, RESET e BEATS.</li>
+<li>Efeitos do manual: <b>Reverb, Echo, Delay, Hall Echo, Ping Pong, Auto Gate, Flanger, Filter LFO, Phaser, Bit Crush, Roll e Rev. Roll</b>, com divisões de 1/32 a 8 tempos e Dry/Wet 0 a 100.</li>
 </ul>
 
 <h3>5 · Master, Booth, Zone e microfone</h3>
 <ul>
-<li><b>MASTER LEVEL</b> — volume das saídas master (XLR e RCA). <b>BOOTH LEVEL + BOOTH EQ</b> controlam o monitor da cabine, com EQ próprio.</li>
-<li><b>ZONE CHANNEL ASSIGN + ZONE LEVEL + ZONE EQ</b> — o recurso que vende o aparelho. Apertando o Zone Assign, o Deck 4 vira playlist independente que sai só pelas saídas Zone; nesse modo o level e o EQ do canal 4 são ignorados. Pista no salão, lounge com outra playlist, um aparelho só.</li>
-<li><b>MIC 1 / MIC 2 ON-OFF, LEVEL e EQ</b> — MIC 1 tem EQ de 3 bandas; MIC 2 tem só 2 (HIGH/LOW). Os LEDs de pico indicam verde (baixo), âmbar (ótimo) e vermelho (pico). ECHO ON/OFF + MIC ECHO LEVEL e TALKOVER completam a seção.</li>
-<li><b>Atenção de rota:</b> pelo manual, o sinal dos microfones vai direto para as saídas Master. Ele não passa pelo canal, então não tente equalizar microfone no EQ do canal.</li>
+<li><b>MASTER LEVEL</b> — volume do master. <b>BOOTH LEVEL + BOOTH EQ</b> controlam o monitor da cabine.</li>
+<li><b>ZONE CHANNEL ASSIGN + ZONE LEVEL + ZONE EQ</b> — o recurso que vende o aparelho. Apertando o Zone Assign, o Deck 4 vira playlist independente que sai só pelas saídas Zone, e o level e o EQ do canal 4 são ignorados. Pista no salão, lounge com outra playlist, um aparelho.</li>
+<li><b>MIC 1 / MIC 2 ON-OFF, LEVEL e EQ</b> — MIC 1 tem EQ de 3 bandas; MIC 2, só 2. Os LEDs indicam verde (baixo), âmbar (ótimo) e vermelho (pico); ECHO ON/OFF, MIC ECHO LEVEL e TALKOVER completam a seção. <b>Atenção de rota:</b> pelo manual o sinal dos microfones vai <b>direto para as saídas Master</b> — não passa pelo canal, então não tente equalizá-lo no EQ do canal.</li>
 </ul>
 
 <h3>6 · Navegação, mídia e fone</h3>
 <ul>
-<li><b>Tela de 10,1"</b> — biblioteca, waveforms dos 4 decks, cue points e loops; ela e os controles físicos operam a mesma interface.</li>
-<li><b>BROWSE</b> (gira para navegar, aperta para entrar), BACK, FWD, VIEW/MENU (Biblioteca ⇄ Performance; segure para o Menu) e LOAD ◄ / ►.</li>
-<li><b>SD CARD SLOT</b>, USB 1 / 2 no topo e USB 3 / 4 atrás. EJECT — sempre ejete antes de arrancar o pendrive.</li>
-<li><b>PHONES MIX</b>, PHONES LEVEL e SPLIT CUE (cue em mono à esquerda, master em mono à direita). FADER START L / R e X-FADER CONTOUR (esquerda = fade suave, direita = corte seco).</li>
+<li><b>Tela de 10,1"</b> — biblioteca, waveforms dos 4 decks, cue points e loops; ela e os controles físicos operam a mesma interface. Navega-se pelo <b>BROWSE</b> (gira para percorrer, aperta para entrar), BACK, FWD, VIEW/MENU e LOAD ◄ / ►.</li>
+<li>A mídia entra pelo <b>SD CARD SLOT</b> e pelas USB 1 / 2 do topo e 3 / 4 de trás — e o <b>EJECT</b> é obrigatório antes de arrancar o pendrive.</li>
+<li><b>PHONES MIX</b>, PHONES LEVEL e SPLIT CUE (cue em mono à esquerda, master à direita). <b>FADER START L / R</b> e <b>X-FADER CONTOUR</b> (esquerda = fade suave, direita = corte seco).</li>
 </ul>
 
 <h3>Como ligar</h3>
-<p>O Prime 4 <b>é</b> o mixer — não existe "ligar o Prime 4 no mixer". Tudo entra nele e ele fala com o PA.</p>
+<p>O Prime 4 <b>é</b> o mixer: tudo entra nele e só ele fala com o PA.</p>
 <ul>
-<li><b>Toca-discos → entradas Line/Phono RCA com a chave em PHONO</b>, e o fio terra no borne. O manual é explícito: com toca-discos de nível phono, a chave vai em Phono para dar a amplificação extra que esse sinal precisa. Zumbido ou "hum" quase sempre é terra solto.</li>
-<li><b>CD player, sampler, celular, notebook de outro DJ → entradas de linha</b> (ou as Line/Phono com a chave em LINE). Player digital nunca vai em PHONO.</li>
-<li><b>Trocar os dois não funciona:</b> toca-discos em LINE sai fino e baixíssimo; player em PHONO sai estourado. A chave é física, atrás — confira antes do primeiro fader.</li>
-<li><b>Microfone → as duas entradas combo XLR ou P10 (6,35 mm)</b>, para microfone dinâmico.</li>
-<li><b>Música → pendrive nas USB 1–4, cartão SD ou HD SATA 2,5" interno.</b> Formate em exFAT ou FAT32 e prepare a biblioteca no Engine antes.</li>
-<li><b>Computador → USB B</b> (MIDI). Rede → Link/Ethernet, para software de luz e vídeo compatível com StagelinQ.</li>
-<li><b>Saídas:</b> MASTER XLR para o PA (balanceada, é a de evento), MASTER RCA para sistema pequeno ou gravação, BOOTH XLR para o monitor da cabine e ZONE XLR para a segunda sala.</li>
-<li><b>Ordem, direto do manual:</b> (1) fontes, (2) Prime 4, (3) amplificação e caixas. Para desligar, o inverso — e siga o aviso da tela, que desmonta a mídia com segurança.</li>
+<li><b>Toca-discos → entradas Line/Phono RCA com a chave em PHONO</b> e o fio terra no borne. O manual é explícito: a posição Phono dá a amplificação extra que o sinal de agulha precisa. Zumbido é quase sempre terra solto.</li>
+<li><b>CD player, sampler, celular, notebook → entradas de linha</b> (ou as Line/Phono com a chave em LINE): player digital nunca vai em PHONO. <b>Trocar os dois não funciona</b> — toca-discos em LINE sai fino e baixíssimo, player em PHONO sai estourado. Confira a chave antes do fader.</li>
+<li><b>Microfone → as duas combo XLR/P10</b>. <b>Computador → USB B</b> (MIDI) e <b>rede → Link/Ethernet</b>, para software de luz e vídeo com StagelinQ.</li>
+<li><b>Música → pendrive nas USB 1–4, cartão SD ou HD SATA interno</b>, em exFAT ou FAT32 e com a biblioteca preparada no Engine.</li>
+<li><b>Saídas:</b> MASTER XLR para o PA (balanceada), MASTER RCA para gravação, BOOTH XLR para a cabine e ZONE XLR para a segunda sala.</li>
+<li><b>Ordem, direto do manual:</b> (1) fontes, (2) Prime 4, (3) amplificação; desligar, o inverso. Siga o aviso da tela, que desmonta a mídia com segurança.</li>
 </ul>
 
 <h3>Na prática — faça no simulador desta aula</h3>
 <ul>
-<li><b>1.</b> Dê PLAY no deck esquerdo, deixe correr e aperte CUE: volta ao ponto de partida. Pause num ponto novo e aperte CUE — o ponto de partida mudou para ali.</li>
-<li><b>2. Grave um hot cue no primeiro tempo e volte nele duas vezes.</b> Com o modo HOT CUE ativo, aperte um pad apagado exatamente na primeira batida — ele acende. Deixe a música correr e aperte esse pad duas vezes para saltar de volta.</li>
-<li><b>3.</b> Faça um loop de 4 tempos com LOOP IN e LOOP OUT, deixe rodar e desligue. Refaça pelo AUTO LOOP e veja qual é mais rápido no meio de um set.</li>
-<li><b>4.</b> Ligue o VINYL e faça scratch segurando o centro do prato, indo e voltando. Depois apague o VINYL e repita: agora o prato só faz pitch bend.</li>
-<li><b>5.</b> Abra o crossfader de um lado ao outro com os dois decks tocando. Em seguida ponha os dois canais em Thru (centro do Crossfader Assign) e confirme que ele deixou de agir.</li>
+<li><b>1.</b> Dê PLAY no deck esquerdo, deixe correr e aperte CUE: volta ao ponto de partida. Pause num ponto novo e aperte CUE — o ponto mudou para ali.</li>
+<li><b>2. Grave um hot cue no primeiro tempo e volte nele duas vezes.</b> No modo HOT CUE, aperte um pad apagado na primeira batida: ele acende. Deixe a música correr e aperte-o duas vezes para saltar de volta.</li>
+<li><b>3.</b> Faça um loop de 4 tempos com LOOP IN e LOOP OUT, deixe rodar e desligue. Refaça pelo AUTO LOOP e veja qual é mais rápido.</li>
+<li><b>4.</b> Ligue o VINYL e faça scratch segurando o centro do prato. Apague o VINYL e repita: agora o prato só faz pitch bend.</li>
+<li><b>5.</b> Abra o crossfader de um lado ao outro com os dois decks tocando; depois ponha os canais em Thru (centro do Assign) e confirme que ele deixou de agir.</li>
 </ul>
 
 <h3>Erros que custam caro</h3>
 <ul>
-<li><b>Arrancar o pendrive sem ejetar.</b> O Engine grava dados na mídia. Puxar no meio de uma escrita corrompe a biblioteca — e você descobre na próxima festa, com o salão cheio. Sempre EJECT.</li>
-<li><b>Chegar no evento com a biblioteca sem análise.</b> O Prime 4 analisa ao carregar, mas leva tempo e você fica esperando com a pista olhando. Prepare no Engine em casa.</li>
-<li><b>Esquecer o Zone atribuído.</b> Com o Zone Assign ligado, o Deck 4 sai só na Zone e o level e o EQ do canal 4 não fazem nada. Você vai jurar que o canal 4 quebrou.</li>
-<li><b>Confiar no SYNC sem conferir a grade.</b> O SYNC alinha pela beat grid que o Engine calculou. Em faixa antiga, ao vivo ou com introdução livre, a grade sai torta e o SYNC acerta no lugar errado. Use o EDIT GRID antes do show, não durante.</li>
+<li><b>Arrancar o pendrive sem ejetar.</b> O Engine grava dados na mídia; puxar no meio de uma escrita corrompe a biblioteca — e você descobre na próxima festa.</li>
+<li><b>Chegar com a biblioteca sem análise.</b> O Prime 4 analisa ao carregar, mas leva tempo e você fica parado com a pista olhando. Prepare no Engine em casa.</li>
+<li><b>Esquecer o Zone atribuído.</b> Com ele ligado, o Deck 4 sai só na Zone e o level e o EQ do canal 4 não fazem nada — e você jura que o canal quebrou.</li>
+<li><b>Confiar no SYNC sem conferir a grade.</b> Ele alinha pela beat grid que o Engine calculou; em faixa antiga, ao vivo ou com introdução livre a grade sai torta e o SYNC acerta no lugar errado. Use o EDIT GRID antes do show, não durante.</li>
 </ul>
 `.trim();
 

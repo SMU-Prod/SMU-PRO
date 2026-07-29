@@ -21,10 +21,16 @@
  * SO faz PATCH de conteudo_rico. Nao toca em id, module_id, ordem nem ai_animations.
  */
 import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const REST = 'https://pshynylvvkhhohftouoe.supabase.co/rest/v1';
-const KEY = fs.readFileSync(path.resolve('D:/Show smu producoes/SMU-PRO/.local/svckey'), 'utf8').trim();
+// A chave sai de SMU-PRO/.local/svckey (ou da env SUPABASE_SERVICE_KEY).
+// ⚠️ NÃO aponte para scratchpad de sessão: a pasta morre junto com a sessão e o
+// script passa a dar ENOENT em toda execução. Modelo: cursos-novos/auditar-banco.mjs.
+const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");  // pleno-dj/ -> cursos-novos/ -> SMU-PRO/
+const KEY = process.env.SUPABASE_SERVICE_KEY?.trim()
+  || fs.readFileSync(path.join(RAIZ, '.local', 'svckey'), 'utf8').trim();
 
 /* ========================================================================= */
 /* 113 — PIONEER CDJ-850                                                     */
@@ -185,8 +191,8 @@ const CDJ900 = `
 <h3>Loop e efeito de batida</h3>
 <ul>
 <li><strong>LOOP IN / CUE (IN ADJUST)</strong> e <strong>LOOP OUT (OUT ADJUST)</strong> — marcam início e fim do loop ao vivo; segurando, entram no ajuste fino de cada ponto.</li>
-<li><strong>RELOOP / EXIT</strong> — sai do loop ou refaz o último.</li>
-<li><strong>4-BEAT LOOP (LOOP CUTTER)</strong> — cria um loop de 4 tempos a partir do ponto atual. Apertado <em>durante</em> o loop, corta o loop pela metade.</li>
+<li><strong>RELOOP / EXIT</strong> — sai ou refaz o último loop.</li>
+<li><strong>4-BEAT LOOP (LOOP CUTTER)</strong> — cria um loop de 4 tempos no ponto atual. Apertado <em>durante</em> o loop, corta pela metade.</li>
 <li><strong>CUE/LOOP CALL ◄ (1/2X) e ► (2X)</strong> — fora do loop chamam os pontos salvos; dentro do loop, dividem e dobram o tamanho dele. Dois usos no mesmo botão: preste atenção no estado do player.</li>
 <li><strong>BEAT DIVIDE 3/4 · 1/3 · 1/2 · 1/4 · 1/8</strong> — repete uma fração do compasso sem perder o tempo. O 1/2 é a "gagueira" clássica; o 1/8 vira quase um roll. Com o SLIP aceso, viram slip beat loop.</li>
 <li><strong>SLIP</strong> — a faixa corre por baixo enquanto você faz loop, scratch ou reverso; ao soltar, volta onde estaria.</li>
@@ -203,9 +209,9 @@ const CDJ900 = `
 <ul>
 <li><strong>rekordbox · LINK · USB · DISC</strong> — a coluna de fontes. <strong>LINK</strong> é a que confunde: toca a mídia que está em <em>outro</em> player da rede PRO DJ LINK.</li>
 <li><strong>Slot USB (5 V, 2,1 A)</strong> e <strong>USB STOP</strong> — segure o USB STOP por pelo menos <strong>2 segundos</strong> antes de tirar o pen drive.</li>
-<li><strong>ROTARY SELECTOR</strong> — gire para mover o cursor, aperte para entrar/carregar.</li>
+<li><strong>ROTARY SELECTOR</strong> — gire para mover o cursor, aperte para carregar.</li>
 <li><strong>BROWSE · TAG LIST · INFO (LINK INFO) · MENU (UTILITY) · BACK</strong> — navegar na mídia; fila marcada; dados da faixa (segurando 1 s, mostra o que está nos outros players); menu e preferências; voltar uma tela.</li>
-<li><strong>TAG TRACK / REMOVE</strong> — adiciona e remove faixas da TAG LIST. <strong>DISC EJECT ⏏</strong> só funciona com a reprodução parada.</li>
+<li><strong>TAG TRACK / REMOVE</strong> — põe e tira faixas da TAG LIST. <strong>DISC EJECT ⏏</strong> só funciona com a reprodução parada.</li>
 <li><strong>TIME MODE / AUTO CUE</strong> — alterna REMAIN/ELAPSED; segurando 1 s liga/desliga o AUTO CUE.</li>
 <li><strong>Visor</strong> — nome da faixa, forma de onda ampliada e geral, tempo, BPM, TEMPO, QUANTIZE, memórias e as telas BROWSE / TAG LIST / INFO / MENU.</li>
 </ul>
@@ -274,7 +280,7 @@ const CDJNXS2 = `
 <ul>
 <li><strong>PLAY / PAUSE</strong> — acende tocando, pisca em pausa. Em VINYL o prato continua vivo sob o dedo.</li>
 <li><strong>CUE</strong> — acende quando há cue gravado, pisca quando dá para gravar um novo em pausa. Tocando, faz back-cue.</li>
-<li><strong>SEARCH ◄◄ / ►►</strong> e <strong>TRACK SEARCH ❙◄◄ / ►►❙</strong> — busca rápida dentro da faixa; faixa anterior / próxima.</li>
+<li><strong>SEARCH ◄◄ / ►►</strong> e <strong>TRACK SEARCH ❙◄◄ / ►►❙</strong> — busca dentro da faixa; faixa anterior / próxima.</li>
 <li><strong>DIRECTION — FWD / REV / SLIP REV</strong> — alavanca de sentido. FWD normal, REV ao contrário, <strong>SLIP REV</strong> reverte com a música correndo por baixo. O indicador <strong>REV</strong> acende quando está invertido. <em>Erro comum:</em> deixar a alavanca em REV e voltar do fone para o ar.</li>
 </ul>
 
@@ -288,10 +294,10 @@ const CDJNXS2 = `
 <h3>Loop</h3>
 <ul>
 <li><strong>LOOP IN/CUE (IN ADJUST)</strong> e <strong>LOOP OUT (OUT ADJUST)</strong> — marcam início e fim ao vivo, com ajuste fino de cada ponto. <strong>RELOOP/EXIT</strong> sai ou refaz o último.</li>
-<li><strong>4/8BEAT (LOOP CUTTER)</strong> — loop automático de 4 tempos (segurando, 8). Dentro do loop, corta pela metade.</li>
+<li><strong>4/8BEAT (LOOP CUTTER)</strong> — loop automático de 4 tempos (segurando, 8); dentro do loop, corta pela metade.</li>
 <li><strong>CUE/LOOP CALL ◄ (1/2X) e ► (2X)</strong> — fora do loop chamam os pontos salvos; dentro do loop, cortam e dobram o tamanho. <strong>MEMORY</strong> e <strong>DELETE</strong> gravam e apagam esses pontos.</li>
-<li><strong>SLIP</strong> — a música continua correndo por baixo durante loop, scratch ou reverso; ao soltar, volta para onde estaria.</li>
-<li><strong>QUANTIZE</strong> — cola hot cue, cue e loop na batida mais próxima da grade do rekordbox. Ligado, nada dispara fora do compasso.</li>
+<li><strong>SLIP</strong> — a música corre por baixo durante loop, scratch ou reverso; ao soltar, volta onde estaria.</li>
+<li><strong>QUANTIZE</strong> — cola hot cue, cue e loop na batida mais próxima da grade do rekordbox: nada dispara fora do compasso.</li>
 </ul>
 
 <h3>Prato, velocidade e sincronismo</h3>
@@ -299,8 +305,8 @@ const CDJNXS2 = `
 <li><strong>Jog dial (206 mm) com anel iluminado</strong> — topo = scratch/parada em VINYL; borda = pitch bend. No centro, o display do jog. <strong>JOG MODE</strong> alterna VINYL ⇄ CDJ.</li>
 <li><strong>JOG ADJUST</strong> — regula o <em>peso</em> do prato: LIGHT gira leve, HEAVY gira pesado como um toca-discos.</li>
 <li><strong>VINYL SPEED ADJUST — TOUCH/BRAKE</strong> e <strong>RELEASE/START</strong> — um regula a rapidez com que a música <em>para</em> ao tocar no prato; o outro, com que ela <em>volta</em> ao normal.</li>
-<li><strong>TEMPO (fader)</strong> e <strong>±6/±10/±16/WIDE</strong> — velocidade dentro do alcance escolhido; quanto menor o alcance, mais fino o ajuste. Mixagem se faz em ±6 %. Olhe a marcação <strong>+/−</strong> impressa ao lado do fader.</li>
-<li><strong>MASTER TEMPO</strong> trava o tom; <strong>TEMPO RESET</strong> zera o pitch na hora, onde quer que o fader esteja.</li>
+<li><strong>TEMPO (fader)</strong> e <strong>±6/±10/±16/WIDE</strong> — quanto menor o alcance, mais fino o ajuste; mixagem se faz em ±6 %. Olhe a marcação <strong>+/−</strong> ao lado do fader.</li>
+<li><strong>MASTER TEMPO</strong> trava o tom; <strong>TEMPO RESET</strong> zera o pitch na hora, onde o fader estiver.</li>
 <li><strong>BEAT SYNC</strong> e <strong>MASTER</strong> — casa BPM e grade com o player mestre; o MASTER elege este player como mestre.</li>
 </ul>
 
@@ -308,7 +314,7 @@ const CDJNXS2 = `
 <ul>
 <li><strong>rekordbox · LINK · USB · SD · DISC</strong> — a coluna de fontes. <strong>LINK</strong> é a que confunde: toca a mídia que está em <em>outro</em> player, pela rede PRO DJ LINK.</li>
 <li><strong>Entrada USB</strong> e <strong>USB STOP</strong> — a luz pisca enquanto o player lê a mídia; nunca puxe piscando. Segure USB STOP por <strong>2 segundos</strong> antes de tirar.</li>
-<li><strong>Slot de cartão SD</strong> — a mídia reserva clássica: muita gente leva o set duplicado no SD. <strong>Seletor rotativo</strong>: gire para mover o cursor, aperte para carregar.</li>
+<li><strong>Slot de cartão SD</strong> — a mídia reserva clássica: muita gente leva o set duplicado nele. <strong>Seletor rotativo</strong>: gire e aperte para carregar.</li>
 <li><strong>BROWSE (SEARCH) · TAG LIST · INFO (LINK INFO) · MENU (UTILITY) · BACK</strong> — navegar (segurando 1 s, busca por texto); fila marcada; detalhes da faixa e do que toca nos outros players; menu e preferências; voltar.</li>
 <li><strong>TRACK FILTER / EDIT</strong> e <strong>SHORTCUT</strong> — filtram pelas marcações do rekordbox (BPM, tom, tags) e dão atalho para TRACK, PLAYLIST e SEARCH. <strong>TIME MODE / AUTO CUE</strong> alterna REMAIN ↔ ELAPSED e, segurando 1 s, liga o AUTO CUE.</li>
 <li><strong>Tela de 7 polegadas</strong> — forma de onda ampliada colorida, forma de onda da faixa inteira, tempo, BPM, ±RANGE, hot cues, LOOP e QUANTIZE. Sensível ao toque: o <em>needle search</em> deixa você tocar na barra e cair naquele ponto da faixa.</li>
@@ -330,14 +336,14 @@ const CDJNXS2 = `
 <li>Aperte <strong>BANK</strong> e repita no banco <strong>E–H</strong>: são 8 hot cues em quatro botões. Confira que A–D continuam lá quando você volta o banco.</li>
 <li>Ligue o <strong>QUANTIZE</strong> e dispare os mesmos hot cues fora do tempo de propósito: veja o player encaixar na batida. Depois desligue e repita — a diferença é o motivo do botão existir.</li>
 <li>Faça um loop com <strong>4/8BEAT</strong>, aperte de novo dentro do loop (loop cutter) e use <strong>CALL ► (2X)</strong> para dobrar. Saia com <strong>RELOOP/EXIT</strong>.</li>
-<li>Ponha o <strong>±RANGE em ±6 %</strong>, desafine a faixa no <strong>TEMPO</strong> e devolva ela à velocidade original com <strong>TEMPO RESET</strong> — sem tocar no fader.</li>
+<li>Ponha o <strong>±RANGE em ±6 %</strong>, desafine a faixa no <strong>TEMPO</strong> e devolva a velocidade original com <strong>TEMPO RESET</strong>, sem tocar no fader.</li>
 </ol>
 
 <h2>6. Erros que custam caro</h2>
 <ul>
-<li><strong>Confiar no SYNC sem ouvir.</strong> O beat sync só é tão bom quanto a grade que o rekordbox criou. Faixa com grade torta (gravação ao vivo, BPM não constante) desanda no ar. Ouça sempre no fone antes de abrir o fader.</li>
+<li><strong>Confiar no SYNC sem ouvir.</strong> O beat sync só é tão bom quanto a grade que o rekordbox criou: faixa com grade torta (gravação ao vivo, BPM não constante) desanda no ar. Ouça no fone antes de abrir o fader.</li>
 <li><strong>Puxar o pen drive com a luz piscando.</strong> Piscando = o player está lendo. Segure USB STOP por 2 segundos e espere. Base corrompida no meio do set é set perdido.</li>
-<li><strong>Esquecer a alavanca DIRECTION em REV.</strong> Acontece muito com quem usa SLIP REV como efeito. Antes de abrir o fader, cheque o indicador REV.</li>
+<li><strong>Esquecer a alavanca DIRECTION em REV.</strong> Acontece com quem usa SLIP REV como efeito. Antes de abrir o fader, cheque o indicador REV.</li>
 <li><strong>Chegar com a biblioteca sem exportar pelo rekordbox.</strong> Copiar MP3 na mão para o pen drive funciona, mas você perde grade, hot cue, tag list e busca. Metade do que este aparelho sabe fazer depende da análise feita em casa.</li>
 </ul>
 `.trim();
@@ -348,11 +354,11 @@ const CDJNXS2 = `
 const CDJ3000 = `
 <h2>1. O que é e por que existe</h2>
 <p>O <strong>Pioneer CDJ-3000</strong> (2020) é o topo de linha atual e o primeiro player da família com <strong>MPU</strong> (unidade de processamento) própria. Foi essa mudança que permitiu a tela de <strong>9 polegadas HD sensível ao toque</strong>, o cache do arquivo de áudio inteiro na memória e o <strong>KEY SYNC / KEY SHIFT</strong>, que trabalha a tonalidade em tempo real.</p>
-<p>Três coisas mudam a vida de quem vem de um CDJ-2000NXS2:</p>
+<p>Três coisas mudam a vida de quem vem do CDJ-2000NXS2:</p>
 <ul>
 <li><strong>Oito pastilhas de HOT CUE em linha (A–H)</strong>, sem banco.</li>
-<li><strong>Não tem leitor de CD.</strong> Na lista oficial de mídias tocáveis não existe drive óptico — só USB, computador, iPhone e o que chega pela rede. É o primeiro "CDJ" sem CD; o nome ficou por herança.</li>
-<li><strong>Rede Gigabit (1000Base-T)</strong> em vez de 100 Mbit: com um mixer de 6 canais (como o DJM-V10), <strong>até 6 CDJ-3000</strong> dividem a mesma mídia no PRO DJ LINK.</li>
+<li><strong>Não tem leitor de CD.</strong> Na lista oficial de mídias tocáveis não existe drive óptico — só USB, computador, iPhone e o que chega pela rede. É o primeiro "CDJ" sem CD.</li>
+<li><strong>Rede Gigabit (1000Base-T)</strong> no lugar de 100 Mbit: com um mixer de 6 canais (o DJM-V10), <strong>até 6 CDJ-3000</strong> dividem a mesma mídia no PRO DJ LINK.</li>
 </ul>
 <p>A spec cita "SD Card" entre as mídias tocáveis, mas os terminais listados são só <strong>1 USB A, 1 USB B e LAN</strong>: não há leitor de cartão no corpo, e o diagrama do painel no manual confirma. SD chega lido em outro player, pela rede.</p>
 <p>Onde encontrar: clube grande, festival, palco principal e locadora de ponta. É o que aparece no rider quando o artista pede o melhor.</p>
@@ -383,25 +389,24 @@ const CDJ3000 = `
 <ul>
 <li><strong>PLAY / PAUSE</strong> — toca e pausa. Botão redesenhado, mais resistente que o das gerações anteriores.</li>
 <li><strong>CUE</strong> — define e volta ao ponto cue; tocando faz back-cue; parado num ponto novo, fixa o cue.</li>
-<li><strong>SEARCH ◄◄ / ►►</strong> e <strong>TRACK SEARCH ◄◄ / ►►</strong> — busca rápida dentro da faixa; faixa anterior / próxima.</li>
-<li><strong>DIRECTION (FWD / REV / SLIP REV)</strong> — sentido da faixa e do prato. SLIP REV reverte com a música correndo por baixo.</li>
-<li><strong>POWER</strong> — no alto, atrás do painel. O cabo tem trava <strong>V-lock</strong>: ninguém arranca a energia no meio do show.</li>
+<li><strong>SEARCH ◄◄ / ►►</strong> e <strong>TRACK SEARCH ◄◄ / ►►</strong> — busca dentro da faixa; faixa anterior / próxima.</li>
+<li><strong>DIRECTION (FWD / REV / SLIP REV)</strong> — sentido da faixa e do prato; SLIP REV reverte com a música correndo por baixo. O <strong>POWER</strong> fica no alto, atrás do painel, e o cabo tem trava <strong>V-lock</strong>.</li>
 </ul>
 
 <h3>Os 8 hot cues</h3>
 <ul>
-<li><strong>Pastilhas A–H</strong> — vazia: aperte e ela <em>grava</em> o ponto atual na cor definida. Gravada: aperte e ela <em>salta</em> para lá tocando.</li>
-<li><strong>CALL / DELETE</strong> — chama os pontos de cue/loop salvos na mídia; <strong>segurar apaga</strong>. Para apagar um hot cue: aperte CALL/DELETE (ele acende) e depois a pastilha.</li>
+<li><strong>Pastilhas A–H</strong> — vazia: aperte e ela <em>grava</em> o ponto atual na cor definida. Gravada: aperte e ela <em>salta</em> para lá.</li>
+<li><strong>CALL / DELETE</strong> — chama os pontos de cue/loop salvos na mídia; <strong>segurar apaga</strong>. Para limpar um hot cue: aperte CALL/DELETE (acende) e depois a pastilha.</li>
 <li><em>Quando o DJ usa:</em> marcar a entrada da batida, o refrão, o drop e a saída — com 8 pontos à mão dá para tocar a música fora da ordem. <em>Erro comum:</em> gravar por cima de um ponto que já existia; pastilha acesa já está gravada.</li>
 </ul>
 
 <h3>Loop e salto</h3>
 <ul>
-<li><strong>IN / CUE (IN ADJUST)</strong> e <strong>OUT (OUT ADJUST)</strong> — marcam início e fim do loop ao vivo, com ajuste fino de cada ponto. <strong>RELOOP / EXIT</strong> sai ou refaz o último.</li>
-<li><strong>BEAT LOOP 4 (1/2X) e BEAT LOOP 8 (2X)</strong> — loops automáticos de 4 e de 8 batidas. O 8 é novidade em relação ao clássico botão de 4 tempos.</li>
+<li><strong>IN / CUE (IN ADJUST)</strong> e <strong>OUT (OUT ADJUST)</strong> — marcam início e fim do loop ao vivo, com ajuste fino. <strong>RELOOP / EXIT</strong> sai ou refaz o último.</li>
+<li><strong>BEAT LOOP 4 (1/2X) e BEAT LOOP 8 (2X)</strong> — loops automáticos de 4 e de 8 batidas; o 8 é novidade sobre o clássico botão de 4 tempos.</li>
 <li><strong>BEAT JUMP ◄ / ►</strong> — salta em blocos de batidas <em>sem perder o tempo</em>: o jeito limpo de pular oito compassos de introdução sem quebrar a mixagem.</li>
 <li><strong>MEMORY · CUE/LOOP CALL ◄ ► · DELETE</strong> — salvam, chamam e apagam pontos de cue/loop na mídia.</li>
-<li><strong>SLIP</strong> — a faixa corre por baixo; ao soltar loop, scratch ou hot cue, ela volta para onde estaria. <strong>QUANTIZE</strong> alinha hot cues e loops à grade: ligado, nada dispara fora do tempo.</li>
+<li><strong>SLIP</strong> — a faixa corre por baixo; ao soltar loop, scratch ou hot cue, volta onde estaria. <strong>QUANTIZE</strong> alinha hot cues e loops à grade: nada dispara fora do tempo.</li>
 </ul>
 
 <h3>Prato, velocidade e tonalidade</h3>
@@ -409,17 +414,17 @@ const CDJ3000 = `
 <li><strong>Jog wheel (206 mm) com LCD colorido no centro</strong> — centro = scratch em modo VINYL; borda = nudge. O display central mostra arte e posição da faixa: você não tira o olho do prato. <strong>JOG MODE</strong> e o indicador <strong>VINYL/CDJ</strong> alternam e mostram o modo.</li>
 <li><strong>JOG ADJUST</strong> — peso do prato entre LIGHT e HEAVY: pesado demais atrapalha o scratch, leve demais atrapalha o nudge. <strong>VINYL SPEED ADJUST (TOUCH / BRAKE)</strong> define quão rápido o prato para e volta.</li>
 <li><strong>TEMPO (fader)</strong> e <strong>±RANGE</strong> — velocidade em ±6 / ±10 / ±16 / WIDE; ±6 % é onde se mixa. Olhe a marcação <strong>+/−</strong> impressa ao lado do fader antes de puxar.</li>
-<li><strong>MASTER TEMPO</strong> trava o tom (LED aceso = ativo); <strong>TEMPO RESET</strong> devolve a faixa a 0 % na hora, ignorando onde está o fader.</li>
-<li><strong>BEAT SYNC / MASTER</strong> — sincroniza BPM e grade com o outro player pela rede; MASTER elege este como mestre.</li>
+<li><strong>MASTER TEMPO</strong> trava o tom (LED aceso = ativo); <strong>TEMPO RESET</strong> devolve a faixa a 0 % na hora, onde quer que o fader esteja.</li>
+<li><strong>BEAT SYNC / MASTER</strong> — sincroniza BPM e grade com o outro player; MASTER elege este como mestre.</li>
 <li><strong>KEY SYNC</strong> — casa a <em>tonalidade</em> desta faixa com a do outro deck: o recurso que mais separa o CDJ-3000 dos anteriores. <em>Cuidado:</em> forçar tom demais deixa timbre artificial.</li>
 </ul>
 
 <h3>Fonte, navegação e tela</h3>
 <ul>
-<li><strong>SOURCE</strong> — a origem: USB, rekordbox (USB/Wi-Fi/link) ou mídia de outros players via PRO DJ LINK.</li>
+<li><strong>SOURCE</strong> — a origem: USB, rekordbox (USB/Wi-Fi/link) ou mídia de outro player via PRO DJ LINK.</li>
 <li><strong>BROWSE · TAG LIST · PLAY LIST · SEARCH · MENU (UTILITY) · BACK</strong> — a fileira de navegação. SEARCH busca por texto (nome, artista, BPM, tom); MENU segurado abre as preferências; BACK sobe um nível.</li>
-<li><strong>TAG TRACK / REMOVE · TRACK FILTER / EDIT · SHORT CUT</strong> — monta a fila; filtra por BPM, tom e avaliação; abre os atalhos de tela.</li>
-<li><strong>Seletor rotativo (push)</strong> — gira para percorrer, aperta para carregar. <strong>USB STOP</strong> desconecta o pen drive com segurança. <strong>TIME MODE</strong> alterna REMAIN ↔ ELAPSED e, segurando, liga o AUTO CUE.</li>
+<li><strong>TAG TRACK · TRACK FILTER / EDIT · SHORT CUT</strong> — monta a fila; filtra por BPM, tom e avaliação; abre os atalhos de tela.</li>
+<li><strong>Seletor rotativo (push)</strong> — gira para percorrer, aperta para carregar. <strong>USB STOP</strong> desconecta o pen drive com segurança. <strong>TIME MODE</strong> alterna REMAIN ↔ ELAPSED e, segurando, liga o AUTO CUE (pula o silêncio).</li>
 <li><strong>Tela touch de 9 polegadas</strong> — forma de onda, tempo, BPM, tom (key), os 8 hot cues coloridos, artwork e barra de reprodução. O brilho máximo é bem maior que o do NXS2: resolve tela apagada em palco claro.</li>
 </ul>
 
@@ -436,7 +441,7 @@ const CDJ3000 = `
 <h2>5. Na prática (faça no simulador desta aula)</h2>
 <ol>
 <li>Grave um <strong>hot cue no primeiro tempo</strong> (pastilha A) e volte nele <strong>duas vezes</strong>. Depois grave B, C e D em pontos diferentes e ande entre eles no compasso.</li>
-<li>Apague um hot cue do jeito certo: aperte <strong>CALL/DELETE</strong> (ele acende) e depois a pastilha.</li>
+<li>Apague um hot cue: aperte <strong>CALL/DELETE</strong> (ele acende) e depois a pastilha.</li>
 <li>Faça um <strong>BEAT LOOP 4</strong>, depois um <strong>BEAT LOOP 8</strong>, saia com <strong>RELOOP/EXIT</strong> e use <strong>BEAT JUMP ◄ ►</strong> para pular oito compassos sem perder o tempo.</li>
 <li>Ligue o <strong>SLIP</strong>, segure o centro do prato e faça um scratch. Solte: a música tem que voltar onde estaria. Repita com o SLIP desligado e compare o estrago.</li>
 <li>Desafine a faixa com o <strong>TEMPO</strong>, ligue o <strong>MASTER TEMPO</strong> e volte a zero com o <strong>TEMPO RESET</strong>. Por último, experimente o <strong>KEY SYNC</strong>.</li>
@@ -445,19 +450,22 @@ const CDJ3000 = `
 <h2>6. Erros que custam caro</h2>
 <ul>
 <li><strong>Chegar com CD achando que o CDJ-3000 toca.</strong> Não toca: não tem drive óptico. Quem tem acervo em CD leva tudo em pen drive exportado pelo rekordbox, ou pede outro player no rider.</li>
-<li><strong>Formatar o pen drive no sistema errado.</strong> A spec aceita FAT, FAT32, exFAT e HFS+. Fora disso o player não monta a mídia — e você descobre na frente do público.</li>
-<li><strong>Abusar do KEY SHIFT / KEY SYNC.</strong> Deslocar muito a tonalidade deixa a voz metálica e o grave sem corpo: é tempero, não base da mixagem.</li>
+<li><strong>Formatar o pen drive no sistema errado.</strong> A spec aceita FAT, FAT32, exFAT e HFS+. Fora disso o player não monta a mídia — e você descobre em público.</li>
+<li><strong>Abusar do KEY SHIFT / KEY SYNC.</strong> Deslocar muito o tom deixa a voz metálica e o grave sem corpo: é tempero, não base da mixagem.</li>
 <li><strong>Rede improvisada e pen drive puxado no susto.</strong> Cabo ruim, switch doméstico ou número de player repetido derrubam o PRO DJ LINK — com 6 players numa mídia só, derrubar a rede é derrubar a cabine. E puxar o pen drive sem USB STOP corrompe a base do rekordbox.</li>
 </ul>
 `.trim();
 
 /* ========================================================================= */
 
+/* tira as linhas em branco do fonte — nao muda nada na renderizacao */
+const enxuto = (h) => h.replace(/\n\s*\n/g, '\n').trim();
+
 const AULAS = [
-  { id: 'd1a00000-0000-4000-9000-000000000113', nome: 'Pioneer CDJ-850',      html: CDJ850 },
-  { id: 'd1a00000-0000-4000-9000-000000000114', nome: 'Pioneer CDJ-900NXS',   html: CDJ900 },
-  { id: 'd1a00000-0000-4000-9000-000000000115', nome: 'Pioneer CDJ-2000NXS2', html: CDJNXS2 },
-  { id: 'd1a00000-0000-4000-9000-000000000116', nome: 'Pioneer CDJ-3000',     html: CDJ3000 },
+  { id: 'd1a00000-0000-4000-9000-000000000113', nome: 'Pioneer CDJ-850',      html: enxuto(CDJ850) },
+  { id: 'd1a00000-0000-4000-9000-000000000114', nome: 'Pioneer CDJ-900NXS',   html: enxuto(CDJ900) },
+  { id: 'd1a00000-0000-4000-9000-000000000115', nome: 'Pioneer CDJ-2000NXS2', html: enxuto(CDJNXS2) },
+  { id: 'd1a00000-0000-4000-9000-000000000116', nome: 'Pioneer CDJ-3000',     html: enxuto(CDJ3000) },
 ];
 
 async function main() {

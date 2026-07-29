@@ -35,8 +35,15 @@
  */
 
 import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const KEY = fs.readFileSync('D:/Show smu producoes/SMU-PRO/.local/svckey', 'utf8').trim();
+// A chave sai de SMU-PRO/.local/svckey (ou da env SUPABASE_SERVICE_KEY).
+// ⚠️ NÃO aponte para scratchpad de sessão: a pasta morre junto com a sessão e o
+// script passa a dar ENOENT em toda execução. Modelo: cursos-novos/auditar-banco.mjs.
+const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");  // pleno-dj/ -> cursos-novos/ -> SMU-PRO/
+const KEY = process.env.SUPABASE_SERVICE_KEY?.trim()
+  || fs.readFileSync(path.join(RAIZ, '.local', 'svckey'), 'utf8').trim();
 const REST = 'https://pshynylvvkhhohftouoe.supabase.co/rest/v1';
 const H = {
   apikey: KEY,
@@ -52,8 +59,8 @@ const RX3 = `
 <h2>1. O que é o XDJ-RX3 e por que ele existe</h2>
 <p>O <strong>XDJ-RX3</strong> é um <em>all-in-one</em>: dois players digitais e um mixer de dois canais num chassi só, com tela sensível ao toque no meio. Não é "um CDJ pequeno" nem um controlador — é a cabine inteira reduzida a uma peça, e roda <strong>sozinho, sem computador</strong>, lendo direto do pendrive.</p>
 <p>Para entender por que ele existe, lembre do que era montar cabine antes: dois CDJ, um DJM, seis cabos RCA, dois de rede, três de força, três cases. O RX3 resolve na força bruta — um cabo de força, um par de XLR, um pendrive, e você toca; <strong>9,3 kg</strong> num case só.</p>
-<p>É a terceira geração da família — XDJ-RX, XDJ-RX2 e RX3 (o manual do RX3 é de 2021). Abaixo dele fica o <strong>XDJ-RR</strong>, mais simples; acima, o <strong>XDJ-XZ</strong>, com mixer de quatro canais. Fora da casa Pioneer, disputa com o <strong>Denon Prime 4</strong> e o <strong>Prime 2</strong> — tela maior e disco interno, mas sem a nomenclatura que o rider brasileiro cobra.</p>
-<p>Onde você o encontra hoje: bar de médio porte, festa universitária, casamento, formatura, cabine de locadora e reserva de festival. Aceita <strong>rekordbox</strong> e <strong>Serato DJ Pro</strong> em <em>hardware unlock</em> — quem chega com laptop toca sem pagar licença.</p>
+<p>É a terceira geração da família — XDJ-RX, XDJ-RX2 e RX3 (o manual do RX3 é de 2021). Abaixo dele fica o <strong>XDJ-RR</strong>, mais simples; acima, o <strong>XDJ-XZ</strong>, com mixer de quatro canais. Fora da casa Pioneer, disputa com o <strong>Denon Prime 4</strong> e o <strong>Prime 2</strong> — tela maior e disco interno, mas sem a nomenclatura que o rider brasileiro pede.</p>
+<p>Onde encontrar hoje: bar de médio porte, festa universitária, casamento, formatura, cabine de locadora e reserva de festival. Aceita <strong>rekordbox</strong> e <strong>Serato DJ Pro</strong> em <em>hardware unlock</em> — quem chega com laptop toca sem pagar licença.</p>
 
 <h2>2. Ficha técnica (manual DRI1702C)</h2>
 <table>
