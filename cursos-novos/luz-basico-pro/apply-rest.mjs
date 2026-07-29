@@ -2,10 +2,17 @@
 // reutilizando o MESMO modelo do gerador (build-sql.mjs). Reliable, verificável passo a passo.
 // Uso: node cursos-novos/luz-basico-pro/apply-rest.mjs
 import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { COURSE, MODULES, LAYOUT, MOD, lidHex, qidHex, qqHex, readFrag, readSim, byFrag } from "./build-sql.mjs";
 import { faixa, conferirFaixa } from "../_REGISTRO-IDS.mjs";
 
-const SVC = fs.readFileSync("C:/Users/SMUSTU~1/AppData/Local/Temp/claude/D--Show-smu-producoes/316628a9-19db-4729-a6a2-8cb2c01b8171/scratchpad/.svckey","utf8").trim();
+// A chave sai de SMU-PRO/.local/svckey (ou da env SUPABASE_SERVICE_KEY).
+// ⚠️ NÃO aponte para scratchpad de sessão: a pasta morre junto com a sessão e o
+// script passa a dar ENOENT em toda execução. Modelo: cursos-novos/auditar-banco.mjs.
+const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");  // luz-basico-pro/ -> cursos-novos/ -> SMU-PRO/
+const SVC = process.env.SUPABASE_SERVICE_KEY?.trim()
+  || fs.readFileSync(path.join(RAIZ, ".local", "svckey"), "utf8").trim();
 const REST = "https://pshynylvvkhhohftouoe.supabase.co/rest/v1";
 const H = { "apikey": SVC, "Authorization": `Bearer ${SVC}`, "Content-Type": "application/json" };
 

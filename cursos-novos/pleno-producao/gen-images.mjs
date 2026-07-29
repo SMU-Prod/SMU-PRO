@@ -13,7 +13,12 @@ import { IMAGES, FOLDER } from "./images.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DRY = process.argv.includes("--dry");
-const SVC = fs.readFileSync("C:/Users/SMUSTU~1/AppData/Local/Temp/claude/D--Show-smu-producoes/8fd20cdc-9ebc-46ef-af35-7d39227ac99c/scratchpad/.svckey","utf8").trim();
+// A chave sai de SMU-PRO/.local/svckey (ou da env SUPABASE_SERVICE_KEY).
+// ⚠️ NÃO aponte para scratchpad de sessão: a pasta morre junto com a sessão e o
+// script passa a dar ENOENT em toda execução. Modelo: cursos-novos/auditar-banco.mjs.
+const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");  // pleno-producao/ -> cursos-novos/ -> SMU-PRO/
+const SVC = process.env.SUPABASE_SERVICE_KEY?.trim()
+  || fs.readFileSync(path.join(RAIZ, ".local", "svckey"), "utf8").trim();
 const SB  = "https://pshynylvvkhhohftouoe.supabase.co";
 const RW_KEY = process.env.RUNWAY_API_KEY;
 const RW = "https://api.dev.runwayml.com/v1";

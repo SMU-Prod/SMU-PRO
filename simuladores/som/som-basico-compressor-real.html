@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Compressor e Gate — ouça o que cada botão faz (SMU)</title>
+<style>
+:root{--bg:#0d1117;--pan:#161b22;--bd:#26303c;--ink:#e6edf5;--dim:#8b97a8;
+      --amb:#e0a03a;--grn:#3fb950;--red:#e0483f;--cy:#4aa8e0}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+  font:13px/1.45 Inter,Segoe UI,system-ui,sans-serif}
+/* TELA CHEIA: o player avisa por postMessage e marca html.smu-fs.
+   Resposta é SÓ CSS — nada de JS (contrato do animation-player). */
+html.smu-fs .wrap{max-width:1500px}
+html.smu-fs .grid{grid-template-columns:1.15fr .85fr}
+html.smu-fs canvas.curva{height:300px}
+.wrap{max-width:1040px;margin:0 auto;padding:12px}
+.top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.marca{font-weight:800;letter-spacing:1px}
+.marca b{color:var(--amb)}
+.pill{font-size:11px;background:#101722;border:1px solid var(--bd);border-radius:20px;
+  padding:4px 10px;color:var(--dim)}
+.pill b{color:var(--ink)}
+.sp{flex:1}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--bd);
+  background:#1b2330;color:var(--ink);padding:7px 13px;font-weight:700}
+button:hover{background:#222d3d}
+button.on{background:#123020;border-color:#1d5638;color:#b7f5cf}
+button.pri{background:#1d3a5c;border-color:#2b6cb0;color:#dbeafe}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.pan{background:var(--pan);border:1px solid var(--bd);border-radius:12px;padding:12px}
+.pan h3{margin:0 0 4px;font-size:12px;letter-spacing:1.2px;color:var(--amb);text-transform:uppercase}
+.pan p.sub{margin:0 0 10px;font-size:11.5px;color:var(--dim)}
+.ctrl{display:grid;grid-template-columns:96px 1fr 66px;align-items:center;gap:8px;margin:9px 0}
+.ctrl label{font-size:11.5px;color:var(--dim);font-weight:700}
+.ctrl output{font-size:12px;font-weight:800;text-align:right;color:var(--ink)}
+input[type=range]{width:100%;accent-color:var(--amb)}
+.med{display:flex;gap:10px;align-items:flex-end;margin-top:6px}
+.col{flex:1;text-align:center}
+.bar{height:120px;background:#07090c;border:1px solid #000;border-radius:5px;
+  position:relative;overflow:hidden}
+.bar i{position:absolute;left:0;right:0;bottom:0;height:0%;
+  background:linear-gradient(0deg,var(--grn) 0 62%,#f4d03a 62% 84%,var(--red) 84% 100%)}
+.bar.gr i{background:linear-gradient(180deg,var(--red),#f4d03a);top:0;bottom:auto}
+.rot{font-size:10px;color:var(--dim);margin-top:4px}
+.val{font-size:13px;font-weight:800}
+canvas.curva{width:100%;height:230px;background:#07090c;border:1px solid #000;border-radius:8px;display:block}
+.miss{margin-top:12px;background:#0c0e12;border:1px solid #223;border-radius:10px;padding:10px 12px}
+.miss h4{margin:0 0 7px;font-size:12px;color:var(--amb);letter-spacing:1px}
+.miss li{font-size:12px;margin:5px 0;color:#c7d0de;list-style:none;padding-left:22px;position:relative}
+.miss li::before{content:"○";position:absolute;left:4px;color:var(--dim)}
+.miss li.ok{color:var(--grn)}
+.miss li.ok::before{content:"●";color:var(--grn)}
+.dica{margin-top:10px;font-size:11.5px;color:#a9b7cc;line-height:1.5;
+  border-top:1px solid #1e2733;padding-top:9px}
+.dica b{color:#fff}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <span class="marca">SMU <b>· COMPRESSOR E GATE</b></span>
+    <span class="pill">Áudio: <b id="est">clique em Ligar</b></span>
+    <span class="pill" id="pGR">Redução: <b>0.0 dB</b></span>
+    <span class="sp"></span>
+    <button class="pri" id="bLigar">▶ Ligar áudio</button>
+    <button id="bByp">COMPRESSOR: <span id="tByp">ON</span></button>
+    <button id="bGate">GATE: <span id="tGate">OFF</span></button>
+  </div>
+
+  <div class="grid">
+    <div class="pan">
+      <h3>Compressor</h3>
+      <p class="sub">Fonte: voz com dinâmica larga (sussurro → grito) e um bumbo marcando. É de propósito difícil de mixar.</p>
+
+      <div class="ctrl"><label>THRESHOLD</label>
+        <input type="range" id="thr" min="-60" max="0" step="1" value="-24">
+        <output id="oThr">−24 dB</output></div>
+      <div class="ctrl"><label>RATIO</label>
+        <input type="range" id="rat" min="1" max="20" step="0.5" value="4">
+        <output id="oRat">4:1</output></div>
+      <div class="ctrl"><label>ATTACK</label>
+        <input type="range" id="atk" min="0" max="200" step="1" value="10">
+        <output id="oAtk">10 ms</output></div>
+      <div class="ctrl"><label>RELEASE</label>
+        <input type="range" id="rel" min="20" max="1000" step="10" value="250">
+        <output id="oRel">250 ms</output></div>
+      <div class="ctrl"><label>KNEE</label>
+        <input type="range" id="kne" min="0" max="24" step="1" value="6">
+        <output id="oKne">6 dB</output></div>
+      <div class="ctrl"><label>MAKE-UP</label>
+        <input type="range" id="mk" min="0" max="18" step="0.5" value="0">
+        <output id="oMk">0 dB</output></div>
+
+      <div class="med">
+        <div class="col"><div class="bar"><i id="mIn"></i></div><div class="rot">ENTRADA</div></div>
+        <div class="col"><div class="bar gr"><i id="mGR"></i></div><div class="rot">REDUÇÃO</div>
+          <div class="val" id="vGR">0.0</div></div>
+        <div class="col"><div class="bar"><i id="mOut"></i></div><div class="rot">SAÍDA</div></div>
+      </div>
+    </div>
+
+    <div class="pan">
+      <h3>A curva — o que você está fazendo</h3>
+      <p class="sub">A bolinha mostra onde o sinal está AGORA. Abaixo do threshold ela anda na diagonal; acima, a curva dobra.</p>
+      <canvas class="curva" id="cv"></canvas>
+
+      <div class="miss">
+        <h4>MISSÕES</h4>
+        <ul id="lm">
+          <li data-m="gr">Faça o medidor de REDUÇÃO passar de 6 dB</li>
+          <li data-m="rat">Compare 2:1 com 12:1 e sinta a diferença de aperto</li>
+          <li data-m="fast">Use release rápido (abaixo de 80 ms) e ouça o "bombeamento"</li>
+          <li data-m="mk">Reponha o volume no MAKE-UP e compare no mesmo nível (botão do compressor)</li>
+          <li data-m="gate">Ligue o GATE e faça o ruído de fundo sumir nas pausas</li>
+        </ul>
+      </div>
+      <div class="dica">
+        <b>Por que comparar no mesmo volume?</b> Comprimir baixa o pico e, sem repor, tudo fica mais baixo —
+        e mais baixo o cérebro entende como "pior". Só dá para julgar compressão comparando no <b>mesmo nível percebido</b>:
+        é para isso que existe o make-up.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+let AC=null, src=null, comp=null, gate=null, mkGain=null, anIn=null, anOut=null;
+let ligado=false, bypass=false, gateOn=false, buf=null;
+/* ⚠ cv/cx TÊM de ser declarados aqui, no topo. liga() chama upd() na hora e
+   upd() chama desenhar(), que usa cv. Com `const cv` lá embaixo, o init
+   estourava por zona morta temporal e matava o resto do script (o botão
+   "Ligar áudio" ficava sem handler). Mesmo motivo do bloco de missões. */
+const cv = document.querySelector("#cv"), cx = cv.getContext("2d");
+
+/* ---------- fonte: voz sintética com dinâmica larga + bumbo + chiado de fundo ---------- */
+async function fazerFonte(){
+  const sr=44100, dur=8, off=new OfflineAudioContext(1, sr*dur, sr);
+  const dst=off.destination;
+  // chiado baixo contínuo (é ele que o GATE vai matar nas pausas)
+  const nb=off.createBuffer(1, sr*dur, sr), nd=nb.getChannelData(0);
+  for(let i=0;i<nd.length;i++) nd[i]=(Math.random()*2-1)*0.012;
+  const ns=off.createBufferSource(); ns.buffer=nb; ns.connect(dst); ns.start(0);
+
+  // "voz": formantes simples com envelope MUITO variável (sussurro -> grito)
+  const frases=[{t:0.3,d:1.1,a:0.05},{t:1.8,d:0.9,a:0.55},{t:3.1,d:1.3,a:0.12},
+                {t:4.8,d:0.8,a:0.95},{t:6.0,d:1.2,a:0.30},{t:7.4,d:0.5,a:0.75}];
+  for(const f of frases){
+    [220,440,880,1320].forEach((fr,k)=>{
+      const o=off.createOscillator(), g=off.createGain();
+      o.type = k?"sine":"sawtooth"; o.frequency.value = fr*(1+(k?0.004*k:0));
+      const amp=f.a*(k? 0.22/k : 0.5);
+      g.gain.setValueAtTime(0.0001,f.t);
+      g.gain.exponentialRampToValueAtTime(Math.max(amp,0.0002), f.t+0.05);
+      g.gain.setValueAtTime(Math.max(amp,0.0002), f.t+f.d*0.7);
+      g.gain.exponentialRampToValueAtTime(0.0001, f.t+f.d);
+      // pequeno vibrato p/ soar orgânico
+      const lfo=off.createOscillator(), lg=off.createGain();
+      lfo.frequency.value=5.2; lg.gain.value=fr*0.006;
+      lfo.connect(lg); lg.connect(o.frequency); lfo.start(f.t); lfo.stop(f.t+f.d);
+      o.connect(g); g.connect(dst); o.start(f.t); o.stop(f.t+f.d+0.02);
+    });
+  }
+  // bumbo a cada 1 s — dá o pico curto que testa o ATTACK
+  for(let t=0.5;t<dur;t+=1.0){
+    const o=off.createOscillator(), g=off.createGain();
+    o.frequency.setValueAtTime(150,t); o.frequency.exponentialRampToValueAtTime(46,t+0.12);
+    g.gain.setValueAtTime(0.9,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.3);
+    o.connect(g); g.connect(dst); o.start(t); o.stop(t+0.32);
+  }
+  return await off.startRendering();
+}
+
+async function ligar(){
+  if(ligado) return; ligado=true;
+  $("#est").textContent="carregando…";
+  AC = new (window.AudioContext||window.webkitAudioContext)();
+  buf = await fazerFonte();
+
+  src = AC.createBufferSource(); src.buffer=buf; src.loop=true;
+  anIn = AC.createAnalyser(); anIn.fftSize=1024;
+  /* GATE simples: um ganho controlado pela energia de entrada.
+     Não existe GateNode no Web Audio — o gate real é feito assim mesmo,
+     medindo o sinal e abrindo/fechando um ganho. */
+  gate = AC.createGain(); gate.gain.value=1;
+  comp = AC.createDynamicsCompressor();
+  mkGain = AC.createGain(); mkGain.gain.value=1;
+  anOut = AC.createAnalyser(); anOut.fftSize=1024;
+
+  src.connect(anIn); anIn.connect(gate);
+  gate.connect(comp); comp.connect(mkGain);
+  mkGain.connect(anOut); anOut.connect(AC.destination);
+
+  aplicar(); src.start();
+  $("#est").textContent="tocando";
+  $("#bLigar").textContent="● Áudio ligado"; $("#bLigar").classList.add("on");
+  laco();
+}
+
+/* ---------- missões ----------
+   ⚠ ESTE BLOCO TEM DE VIR ANTES DE liga(): liga() chama upd() na hora, upd()
+   chama checar(), e checar() usa `ratVistos`. Com o `let` declarado embaixo,
+   o init estourava por zona morta temporal (TDZ) e MATAVA o resto do script —
+   o botão "Ligar áudio" ficava sem handler e só o 1º slider funcionava. */
+const feito = {};
+let ratVistos = new Set();
+function marcar(k){ if(feito[k]) return; feito[k]=true;
+  const li=document.querySelector('[data-m="'+k+'"]'); if(li) li.classList.add("ok"); }
+function checar(){
+  if(P.rat<=2.5) ratVistos.add("baixo");
+  if(P.rat>=10)  ratVistos.add("alto");
+  if(ratVistos.size===2) marcar("rat");
+  if(P.rel<=80) marcar("fast");
+  if(P.mk>=3 && bypass===false) marcar("mk");
+}
+
+/* ---------- controles ---------- */
+const P = {thr:-24, rat:4, atk:10, rel:250, kne:6, mk:0};
+function aplicar(){
+  if(!AC) return;
+  const t=AC.currentTime;
+  comp.threshold.setTargetAtTime(bypass? 0 : P.thr, t, 0.01);
+  comp.ratio.setTargetAtTime(bypass? 1 : P.rat, t, 0.01);
+  comp.attack.setTargetAtTime(P.atk/1000, t, 0.01);
+  comp.release.setTargetAtTime(P.rel/1000, t, 0.01);
+  comp.knee.setTargetAtTime(bypass? 0 : P.kne, t, 0.01);
+  mkGain.gain.setTargetAtTime(bypass? 1 : Math.pow(10, P.mk/20), t, 0.02);
+}
+function liga(id, campo, fmt){
+  const el=$("#"+id), out=$("#o"+id[0].toUpperCase()+id.slice(1));
+  const upd=()=>{ P[campo]=parseFloat(el.value); out.textContent=fmt(P[campo]); aplicar(); checar(); desenhar(); };
+  el.addEventListener("input", upd); upd();
+}
+liga("thr","thr", v=>(v<0?"−":"")+Math.abs(v)+" dB");
+liga("rat","rat", v=>v.toFixed(v%1?1:0)+":1");
+liga("atk","atk", v=>v+" ms");
+liga("rel","rel", v=>v+" ms");
+liga("kne","kne", v=>v+" dB");
+liga("mk","mk",  v=>v.toFixed(1)+" dB");
+
+$("#bLigar").addEventListener("click", ligar);
+$("#bByp").addEventListener("click", ()=>{ bypass=!bypass;
+  $("#tByp").textContent = bypass? "BYPASS" : "ON";
+  $("#bByp").classList.toggle("on", !bypass); aplicar(); checar(); });
+$("#bGate").addEventListener("click", ()=>{ gateOn=!gateOn;
+  $("#tGate").textContent = gateOn? "ON":"OFF";
+  $("#bGate").classList.toggle("on", gateOn); checar(); });
+$("#bByp").classList.add("on");
+
+/* ---------- medição e desenho ---------- */
+function nivel(an){
+  const a=new Uint8Array(an.frequencyBinCount); an.getByteTimeDomainData(a);
+  let p=0; for(const v of a){ const d=Math.abs(v-128)/128; if(d>p)p=d; }
+  return p;
+}
+let picoGR=0;
+function laco(){
+  requestAnimationFrame(laco);
+  if(!AC) return;
+  const ni=nivel(anIn), no=nivel(anOut);
+  const gr=Math.abs(comp.reduction);            // redução de ganho REAL, em dB
+  picoGR=Math.max(picoGR*0.94, gr);
+
+  /* gate: abre quando a entrada passa do limiar, fecha nas pausas */
+  const lim=0.055;
+  const alvo = (!gateOn || ni>lim) ? 1 : 0.02;
+  gate.gain.setTargetAtTime(alvo, AC.currentTime, alvo>0.5?0.004:0.06);
+
+  $("#mIn").style.height  = Math.min(100, ni*130)+"%";
+  $("#mOut").style.height = Math.min(100, no*130)+"%";
+  $("#mGR").style.height  = Math.min(100, gr*5)+"%";
+  $("#vGR").textContent   = gr.toFixed(1);
+  $("#pGR").innerHTML     = "Redução: <b>"+gr.toFixed(1)+" dB</b>";
+  if(gr>6) marcar("gr");
+  if(gateOn && ni<lim) marcar("gate");
+  desenhar(ni);
+}
+
+function desenhar(nivelAtual){
+  const w=cv.width=cv.clientWidth*2, h=cv.height=cv.clientHeight*2;
+  cx.clearRect(0,0,w,h);
+  const m=44*2, gw=w-m*1.4, gh=h-m*1.5, x0=m, y0=m*0.5;
+  const px=db=>x0+gw*(db+60)/60, py=db=>y0+gh*(1-(db+60)/60);
+  cx.strokeStyle="#1b2530"; cx.lineWidth=2; cx.font="20px Inter,sans-serif"; cx.fillStyle="#63708a";
+  for(let v=-60; v<=0; v+=10){
+    cx.beginPath(); cx.moveTo(px(v),y0); cx.lineTo(px(v),y0+gh); cx.stroke();
+    cx.beginPath(); cx.moveTo(x0,py(v)); cx.lineTo(x0+gw,py(v)); cx.stroke();
+    cx.fillText(v, px(v)-14, y0+gh+26); cx.fillText(v, x0-42, py(v)+7);
+  }
+  /* diagonal 1:1 */
+  cx.strokeStyle="#3b4756"; cx.setLineDash([8,6]); cx.beginPath();
+  cx.moveTo(px(-60),py(-60)); cx.lineTo(px(0),py(0)); cx.stroke(); cx.setLineDash([]);
+  /* curva atual */
+  const thr = bypass? 0 : P.thr, rat = bypass? 1 : P.rat, kne = bypass? 0 : P.kne;
+  cx.strokeStyle="#e0a03a"; cx.lineWidth=5; cx.beginPath();
+  for(let i=0;i<=240;i++){
+    const inp=-60+60*i/240; const x=inp-thr; let out;
+    if(kne>0 && Math.abs(x)<=kne/2) out = inp + ((1/rat-1)*Math.pow(x+kne/2,2))/(2*kne);
+    else out = inp<=thr ? inp : thr + x/rat;
+    out += bypass?0:P.mk;
+    i? cx.lineTo(px(inp),py(Math.min(out,6))) : cx.moveTo(px(inp),py(out));
+  }
+  cx.stroke();
+  /* linha do threshold */
+  cx.strokeStyle="#e0483f"; cx.lineWidth=3; cx.setLineDash([6,6]);
+  cx.beginPath(); cx.moveTo(px(thr),y0); cx.lineTo(px(thr),y0+gh); cx.stroke(); cx.setLineDash([]);
+  cx.fillStyle="#e0483f"; cx.font="bold 20px Inter,sans-serif";
+  cx.fillText("THRESHOLD", px(thr)-56, y0-6);
+  /* bolinha: onde o sinal está agora */
+  if(nivelAtual!=null && nivelAtual>0.002){
+    const db=Math.max(-60, 20*Math.log10(nivelAtual));
+    const x=db-thr; let out;
+    if(kne>0 && Math.abs(x)<=kne/2) out = db + ((1/rat-1)*Math.pow(x+kne/2,2))/(2*kne);
+    else out = db<=thr ? db : thr + x/rat;
+    out += bypass?0:P.mk;
+    cx.fillStyle="#4aa8e0"; cx.beginPath();
+    cx.arc(px(db), py(Math.min(out,6)), 11, 0, 7); cx.fill();
+  }
+  cx.fillStyle="#63708a"; cx.font="20px Inter,sans-serif";
+  cx.fillText("ENTRA (dB)", x0+gw/2-56, y0+gh+52);
+}
+addEventListener("resize", ()=>desenhar());
+
+desenhar();
+</script>
+</body>
+</html>

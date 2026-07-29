@@ -1,9 +1,16 @@
 // Adiciona a 2ª aula do módulo DSP: dbx DriveRack PA2. Regra 5: id via idAula() + conferirFaixa().
 import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import crypto from "node:crypto";
 import { faixa, idModulo, idAula, conferirFaixa } from "../_REGISTRO-IDS.mjs";
 
-const SVC = fs.readFileSync("C:/Users/SMUSTUDIO/AppData/Local/Temp/claude/D--Show-smu-producoes/8fd20cdc-9ebc-46ef-af35-7d39227ac99c/scratchpad/.svckey", "utf8").trim();
+// A chave sai de SMU-PRO/.local/svckey (ou da env SUPABASE_SERVICE_KEY).
+// ⚠️ NÃO aponte para scratchpad de sessão: a pasta morre junto com a sessão e o
+// script passa a dar ENOENT em toda execução. Modelo: cursos-novos/auditar-banco.mjs.
+const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");  // pleno-som-dsp/ -> cursos-novos/ -> SMU-PRO/
+const SVC = process.env.SUPABASE_SERVICE_KEY?.trim()
+  || fs.readFileSync(path.join(RAIZ, ".local", "svckey"), "utf8").trim();
 const BASE = "https://pshynylvvkhhohftouoe.supabase.co/rest/v1";
 const H = { apikey: SVC, Authorization: "Bearer " + SVC, "Content-Type": "application/json" };
 const ROOT = "D:/Show smu producoes/SMU-PRO";

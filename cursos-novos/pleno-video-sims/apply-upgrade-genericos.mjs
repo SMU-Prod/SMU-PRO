@@ -8,7 +8,12 @@ import { fileURLToPath } from "node:url";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SIM_DIR = path.resolve(HERE, "../../simuladores");
 const DRY = process.argv.includes("--dry");
-const SVC = fs.readFileSync("C:/Users/SMUSTU~1/AppData/Local/Temp/claude/D--Show-smu-producoes/29547da5-1a58-4f32-b63c-9d3c40871300/scratchpad/.svckey","utf8").trim();
+// A chave sai de SMU-PRO/.local/svckey (ou da env SUPABASE_SERVICE_KEY).
+// ⚠️ NÃO aponte para scratchpad de sessão: a pasta morre junto com a sessão e o
+// script passa a dar ENOENT em toda execução. Modelo: cursos-novos/auditar-banco.mjs.
+const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");  // pleno-video-sims/ -> cursos-novos/ -> SMU-PRO/
+const SVC = process.env.SUPABASE_SERVICE_KEY?.trim()
+  || fs.readFileSync(path.join(RAIZ, ".local", "svckey"), "utf8").trim();
 const REST = "https://pshynylvvkhhohftouoe.supabase.co/rest/v1";
 const H = { apikey: SVC, Authorization: `Bearer ${SVC}`, "Content-Type": "application/json" };
 async function req(method,p,body,extra={}){ const r=await fetch(REST+p,{method,headers:{...H,...extra},body:body?JSON.stringify(body):undefined}); const t=await r.text(); if(!r.ok) throw new Error(`${method} ${p} -> ${r.status}: ${t.slice(0,300)}`); return t?(t[0]==='['||t[0]==='{'?JSON.parse(t):t):null; }

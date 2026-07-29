@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reverb e Delay — a lógica do ENVIO (SMU)</title>
+<style>
+:root{--bg:#0d1117;--pan:#161b22;--bd:#26303c;--ink:#e6edf5;--dim:#8b97a8;
+      --amb:#e0a03a;--grn:#3fb950;--red:#e0483f;--cy:#4aa8e0;--rox:#9b6ede}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+  font:13px/1.45 Inter,Segoe UI,system-ui,sans-serif}
+/* TELA CHEIA — contrato html.smu-fs do animation-player: só CSS, nada de JS. */
+html.smu-fs .wrap{max-width:1520px}
+html.smu-fs .grid{grid-template-columns:.9fr 1.1fr 1fr}
+html.smu-fs canvas{height:250px}
+.wrap{max-width:1080px;margin:0 auto;padding:12px}
+.top{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:10px}
+.marca{font-weight:800;letter-spacing:1px}.marca b{color:var(--amb)}
+.pill{font-size:11px;background:#101722;border:1px solid var(--bd);border-radius:20px;padding:4px 10px;color:var(--dim)}
+.pill b{color:var(--ink)}.sp{flex:1}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--bd);
+  background:#1b2330;color:var(--ink);padding:7px 12px;font-weight:700}
+button:hover{background:#222d3d}
+button.on{background:#123020;border-color:#1d5638;color:#b7f5cf}
+button.pri{background:#1d3a5c;border-color:#2b6cb0;color:#dbeafe}
+button.rox{background:#241a3a;border-color:#4b3580;color:#d9c7ff}
+.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px}
+.pan{background:var(--pan);border:1px solid var(--bd);border-radius:12px;padding:11px}
+.pan h3{margin:0 0 3px;font-size:11.5px;letter-spacing:1.2px;color:var(--amb);text-transform:uppercase}
+.pan h3.cy{color:var(--cy)}.pan h3.rox{color:var(--rox)}
+.pan p.sub{margin:0 0 9px;font-size:11px;color:var(--dim);line-height:1.4}
+.ctrl{display:grid;grid-template-columns:82px 1fr 58px;align-items:center;gap:7px;margin:8px 0}
+.ctrl label{font-size:11px;color:var(--dim);font-weight:700}
+.ctrl output{font-size:11.5px;font-weight:800;text-align:right}
+input[type=range]{width:100%;accent-color:var(--amb)}
+.pan.fxA input[type=range]{accent-color:var(--cy)}
+.pan.fxB input[type=range]{accent-color:var(--rox)}
+canvas{width:100%;height:120px;background:#07090c;border:1px solid #000;border-radius:8px;display:block;margin-top:8px}
+.rota{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--dim);
+  background:#0c1017;border:1px solid #1b2330;border-radius:8px;padding:7px 9px;margin-top:8px;flex-wrap:wrap}
+.rota b{color:var(--ink)}
+.tag{font-size:9.5px;font-weight:800;padding:2px 6px;border-radius:4px}
+.tag.dry{background:#123020;color:#b7f5cf}
+.tag.wet{background:#1a2740;color:#a8cdf0}
+.miss{margin-top:11px;background:#0c0e12;border:1px solid #223;border-radius:10px;padding:10px 12px}
+.miss h4{margin:0 0 6px;font-size:11.5px;color:var(--amb);letter-spacing:1px}
+.miss li{font-size:11.5px;margin:5px 0;color:#c7d0de;list-style:none;padding-left:20px;position:relative}
+.miss li::before{content:"○";position:absolute;left:3px;color:var(--dim)}
+.miss li.ok{color:var(--grn)}.miss li.ok::before{content:"●";color:var(--grn)}
+.dica{margin-top:9px;font-size:11px;color:#a9b7cc;line-height:1.5;border-top:1px solid #1e2733;padding-top:8px}
+.dica b{color:#fff}
+.err{background:#2a1010;border-color:#5b2020;color:#ffc9c9}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <span class="marca">SMU <b>· REVERB E DELAY</b></span>
+    <span class="pill">Áudio: <b id="est">clique em Ligar</b></span>
+    <span class="pill">BPM do tap: <b id="pBpm">—</b></span>
+    <span class="sp"></span>
+    <button class="pri" id="bLigar">▶ Ligar áudio</button>
+    <button id="bSeco">Só o SECO (A/B)</button>
+    <button class="rox" id="bTap">TAP tempo</button>
+  </div>
+
+  <div class="grid">
+
+    <div class="pan">
+      <h3>Canal — a voz</h3>
+      <p class="sub">O canal manda o som <b>seco</b> direto pro PA e, em paralelo, uma <b>cópia</b> para os efeitos. É isso que a palavra ENVIO significa.</p>
+      <div class="ctrl"><label>FADER</label>
+        <input type="range" id="fad" min="0" max="1.2" step="0.01" value="0.85"><output id="oFad">0.85</output></div>
+      <div class="ctrl"><label>SEND → REV</label>
+        <input type="range" id="sRev" min="0" max="1" step="0.01" value="0"><output id="oSRev">0%</output></div>
+      <div class="ctrl"><label>SEND → DLY</label>
+        <input type="range" id="sDly" min="0" max="1" step="0.01" value="0"><output id="oSDly">0%</output></div>
+
+      <div class="rota">
+        <span class="tag dry">SECO</span> canal <b>→</b> PA
+      </div>
+      <div class="rota">
+        <span class="tag wet">CÓPIA</span> send <b>→</b> efeito <b>→</b> retorno <b>→</b> PA
+      </div>
+      <canvas id="cvNivel"></canvas>
+
+      <div class="dica">
+        <b>Por que ENVIO e não INSERT?</b> No insert o efeito fica <b>no caminho</b> do canal:
+        tudo que passa vira molhado. No envio, o efeito é <b>paralelo</b> — o seco continua
+        intacto e você dosa quanto de ambiente quer. Além disso, um só reverb atende
+        <b>vários canais</b> ao mesmo tempo.
+      </div>
+    </div>
+
+    <div class="pan fxA">
+      <h3 class="cy">Retorno 1 — REVERB</h3>
+      <p class="sub">Simula a sala. O retorno fica <b>100% molhado</b>: o seco já veio pelo canal.</p>
+      <div class="ctrl"><label>TAMANHO</label>
+        <input type="range" id="rvSize" min="0.3" max="4" step="0.1" value="1.6"><output id="oRvSize">1.6 s</output></div>
+      <div class="ctrl"><label>PRE-DELAY</label>
+        <input type="range" id="rvPre" min="0" max="120" step="5" value="20"><output id="oRvPre">20 ms</output></div>
+      <div class="ctrl"><label>BRILHO</label>
+        <input type="range" id="rvTon" min="800" max="12000" step="100" value="5000"><output id="oRvTon">5.0 k</output></div>
+      <div class="ctrl"><label>RETORNO</label>
+        <input type="range" id="rvOut" min="0" max="1.4" step="0.01" value="0.9"><output id="oRvOut">0.90</output></div>
+      <canvas id="cvRev"></canvas>
+      <div class="dica">
+        <b>Pre-delay</b> é o silêncio entre a voz e o começo da cauda. Um pouco dele
+        (20–40 ms) mantém a palavra <b>inteligível</b> mesmo com reverb longo —
+        é o truque de quem trabalha com voz falada em igreja e evento.
+      </div>
+    </div>
+
+    <div class="pan fxB">
+      <h3 class="rox">Retorno 2 — DELAY</h3>
+      <p class="sub">Repete o som. Use o <b>TAP</b> lá em cima para casar com o andamento da música.</p>
+      <div class="ctrl"><label>TEMPO</label>
+        <input type="range" id="dlTime" min="60" max="900" step="10" value="375"><output id="oDlTime">375 ms</output></div>
+      <div class="ctrl"><label>REPETIÇÕES</label>
+        <input type="range" id="dlFb" min="0" max="0.85" step="0.01" value="0.35"><output id="oDlFb">35%</output></div>
+      <div class="ctrl"><label>FILTRO</label>
+        <input type="range" id="dlTon" min="600" max="9000" step="100" value="3000"><output id="oDlTon">3.0 k</output></div>
+      <div class="ctrl"><label>RETORNO</label>
+        <input type="range" id="dlOut" min="0" max="1.4" step="0.01" value="0.8"><output id="oDlOut">0.80</output></div>
+      <canvas id="cvDly"></canvas>
+
+      <div class="miss">
+        <h4>MISSÕES</h4>
+        <ul id="lm">
+          <li data-m="send">Abra o SEND do reverb e ouça a cauda aparecer <b>sem</b> o seco mudar</li>
+          <li data-m="pre">Use pre-delay de 20 ms ou mais e note a palavra ficar mais clara</li>
+          <li data-m="tap">Bata o TAP 4 vezes e case o delay com o andamento</li>
+          <li data-m="fb">Passe as repetições de 70% e ouça a cauda se acumular</li>
+          <li data-m="ab">Compare com o botão <b>Só o SECO</b> — o efeito deve somar, não substituir</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+
+/* ===== estado e refs de canvas ANTES de qualquer init =====
+   ⚠ liga() chama upd() na hora; upd() desenha. Tudo que o desenho usa TEM de
+   estar declarado aqui em cima, senão o init estoura por zona morta temporal
+   (TDZ) e mata o resto do script — inclusive o listener do botão de ligar. */
+let AC=null, src=null, buf=null, ligado=false, soSeco=false;
+let canal=null, sendRev=null, sendDly=null, rev=null, revPre=null, revTon=null, revOut=null;
+let dly=null, dlyFb=null, dlyTon=null, dlyOut=null, anSeco=null, anRev=null, anDly=null;
+const cvN=$("#cvNivel"), ctxN=cvN.getContext("2d");
+const cvR=$("#cvRev"),   ctxR=cvR.getContext("2d");
+const cvD=$("#cvDly"),   ctxD=cvD.getContext("2d");
+const feito={};
+let tapT=[], bpmTap=null;
+
+const P={fad:0.85, sRev:0, sDly:0, rvSize:1.6, rvPre:20, rvTon:5000, rvOut:0.9,
+         dlTime:375, dlFb:0.35, dlTon:3000, dlOut:0.8};
+
+function marcar(k){ if(feito[k])return; feito[k]=true;
+  const li=document.querySelector('[data-m="'+k+'"]'); if(li) li.classList.add("ok"); }
+function checar(){
+  if(P.sRev>=0.25) marcar("send");
+  if(P.rvPre>=20 && P.sRev>=0.15) marcar("pre");
+  if(P.dlFb>=0.70) marcar("fb");
+}
+
+/* ---------- fonte: frase falada + violão marcando 160 BPM (375 ms = 1/8) ---------- */
+async function fazerFonte(){
+  const sr=44100, dur=8, off=new OfflineAudioContext(1, sr*dur, sr);
+  const dst=off.destination;
+  const frases=[{t:0.25,d:0.85},{t:1.6,d:0.7},{t:3.0,d:1.0},{t:4.7,d:0.65},{t:6.1,d:0.9}];
+  for(const f of frases){
+    [180,360,900,1600,2600].forEach((fr,k)=>{
+      const o=off.createOscillator(), g=off.createGain();
+      o.type = k?"sine":"sawtooth"; o.frequency.value=fr;
+      const amp = k? 0.20/k : 0.42;
+      g.gain.setValueAtTime(0.0001,f.t);
+      g.gain.exponentialRampToValueAtTime(amp, f.t+0.04);
+      g.gain.setValueAtTime(amp, f.t+f.d*0.65);
+      g.gain.exponentialRampToValueAtTime(0.0001, f.t+f.d);
+      const lfo=off.createOscillator(), lg=off.createGain();
+      lfo.frequency.value=4.8; lg.gain.value=fr*0.007;
+      lfo.connect(lg); lg.connect(o.frequency); lfo.start(f.t); lfo.stop(f.t+f.d);
+      o.connect(g); g.connect(dst); o.start(f.t); o.stop(f.t+f.d+0.02);
+    });
+  }
+  // pulso de 160 BPM (0,375 s) — é o alvo do TAP e do delay
+  for(let t=0.1;t<dur;t+=0.375){
+    const o=off.createOscillator(), g=off.createGain();
+    o.type="triangle"; o.frequency.value=196*(Math.random()<0.5?1:1.5);
+    g.gain.setValueAtTime(0.16,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.22);
+    o.connect(g); g.connect(dst); o.start(t); o.stop(t+0.24);
+  }
+  return await off.startRendering();
+}
+
+/* impulso de reverb gerado: ruído com decaimento exponencial = RT60 aproximado */
+function fazerIR(segundos, brilho){
+  const sr=AC.sampleRate, n=Math.max(1, Math.floor(sr*segundos));
+  const ir=AC.createBuffer(2, n, sr);
+  for(let c=0;c<2;c++){
+    const d=ir.getChannelData(c);
+    let lp=0; const k=Math.min(1, brilho/(sr/2));
+    for(let i=0;i<n;i++){
+      const env=Math.pow(1 - i/n, 2.6);          // cauda que morre
+      const r=(Math.random()*2-1)*env;
+      lp += k*(r-lp);                            // passa-baixa = sala mais escura
+      d[i]=lp;
+    }
+  }
+  return ir;
+}
+
+async function ligar(){
+  if(ligado) return; ligado=true;
+  $("#est").textContent="carregando…";
+  AC=new (window.AudioContext||window.webkitAudioContext)();
+  buf=await fazerFonte();
+
+  src=AC.createBufferSource(); src.buffer=buf; src.loop=true;
+  canal=AC.createGain();                       // fader do canal (SECO)
+  sendRev=AC.createGain(); sendDly=AC.createGain();
+
+  revPre=AC.createDelay(0.5);                  // pre-delay
+  rev=AC.createConvolver();
+  revTon=AC.createBiquadFilter(); revTon.type="lowpass";
+  revOut=AC.createGain();
+
+  dly=AC.createDelay(1.2);
+  dlyFb=AC.createGain(); dlyTon=AC.createBiquadFilter(); dlyTon.type="lowpass";
+  dlyOut=AC.createGain();
+
+  anSeco=AC.createAnalyser(); anRev=AC.createAnalyser(); anDly=AC.createAnalyser();
+  [anSeco,anRev,anDly].forEach(a=>a.fftSize=1024);
+
+  /* SECO: canal -> PA. O send sai ANTES do fader? Não: aqui é POST-fader,
+     que é o padrão para efeito (abaixou o canal, o efeito acompanha). */
+  src.connect(canal);
+  canal.connect(anSeco); anSeco.connect(AC.destination);
+
+  /* CÓPIA -> reverb (paralelo) */
+  canal.connect(sendRev); sendRev.connect(revPre); revPre.connect(rev);
+  rev.connect(revTon); revTon.connect(revOut);
+  revOut.connect(anRev); anRev.connect(AC.destination);
+
+  /* CÓPIA -> delay com realimentação */
+  canal.connect(sendDly); sendDly.connect(dly);
+  dly.connect(dlyTon); dlyTon.connect(dlyFb); dlyFb.connect(dly);  // feedback
+  dly.connect(dlyOut); dlyOut.connect(anDly); anDly.connect(AC.destination);
+
+  rev.buffer=fazerIR(P.rvSize, P.rvTon);
+  aplicar(); src.start();
+  $("#est").textContent="tocando";
+  $("#bLigar").textContent="● Áudio ligado"; $("#bLigar").classList.add("on");
+  laco();
+}
+
+function aplicar(){
+  if(!AC) return; const t=AC.currentTime, s=0.02;
+  canal.gain.setTargetAtTime(P.fad, t, s);
+  sendRev.gain.setTargetAtTime(soSeco?0:P.sRev, t, s);
+  sendDly.gain.setTargetAtTime(soSeco?0:P.sDly, t, s);
+  revPre.delayTime.setTargetAtTime(P.rvPre/1000, t, s);
+  revTon.frequency.setTargetAtTime(P.rvTon, t, s);
+  revOut.gain.setTargetAtTime(P.rvOut, t, s);
+  dly.delayTime.setTargetAtTime(P.dlTime/1000, t, s);
+  dlyFb.gain.setTargetAtTime(P.dlFb, t, s);
+  dlyTon.frequency.setTargetAtTime(P.dlTon, t, s);
+  dlyOut.gain.setTargetAtTime(P.dlOut, t, s);
+}
+
+let irPend=null;
+function refazerIR(){
+  if(!AC) return;
+  clearTimeout(irPend);                       // gerar IR é caro: só depois que parar de arrastar
+  irPend=setTimeout(()=>{ rev.buffer=fazerIR(P.rvSize, P.rvTon); }, 140);
+}
+
+function liga(id, campo, fmt, extra){
+  const el=$("#"+id), out=$("#o"+id[0].toUpperCase()+id.slice(1));
+  const upd=()=>{ P[campo]=parseFloat(el.value); out.textContent=fmt(P[campo]);
+                  aplicar(); if(extra) extra(); checar(); };
+  el.addEventListener("input", upd); upd();
+}
+liga("fad","fad", v=>v.toFixed(2));
+liga("sRev","sRev", v=>Math.round(v*100)+"%");
+liga("sDly","sDly", v=>Math.round(v*100)+"%");
+liga("rvSize","rvSize", v=>v.toFixed(1)+" s", refazerIR);
+liga("rvPre","rvPre", v=>v+" ms");
+liga("rvTon","rvTon", v=>(v/1000).toFixed(1)+" k", refazerIR);
+liga("rvOut","rvOut", v=>v.toFixed(2));
+liga("dlTime","dlTime", v=>v+" ms");
+liga("dlFb","dlFb", v=>Math.round(v*100)+"%");
+liga("dlTon","dlTon", v=>(v/1000).toFixed(1)+" k");
+liga("dlOut","dlOut", v=>v.toFixed(2));
+
+$("#bLigar").addEventListener("click", ligar);
+$("#bSeco").addEventListener("click", ()=>{ soSeco=!soSeco;
+  $("#bSeco").classList.toggle("on", soSeco);
+  $("#bSeco").textContent = soSeco? "SECO + EFEITO" : "Só o SECO (A/B)";
+  if(soSeco) marcar("ab"); aplicar(); });
+
+$("#bTap").addEventListener("click", ()=>{
+  const agora = performance.now();
+  tapT = tapT.filter(t => agora - t < 2600); tapT.push(agora);
+  if(tapT.length >= 3){
+    let soma=0; for(let i=1;i<tapT.length;i++) soma += tapT[i]-tapT[i-1];
+    const ms = soma/(tapT.length-1);
+    bpmTap = Math.round(60000/ms);
+    $("#pBpm").textContent = bpmTap + " BPM";
+    const alvo = Math.max(60, Math.min(900, Math.round(ms/2/10)*10));  // colcheia
+    const el=$("#dlTime"); el.value=alvo; el.dispatchEvent(new Event("input"));
+    if(tapT.length>=4) marcar("tap");
+  } else $("#pBpm").textContent = "bata "+(3-tapT.length)+"×…";
+});
+
+/* ---------- desenho ---------- */
+function pico(an){
+  if(!an) return 0;
+  const a=new Uint8Array(an.frequencyBinCount); an.getByteTimeDomainData(a);
+  let p=0; for(const v of a){ const d=Math.abs(v-128)/128; if(d>p)p=d; }
+  return p;
+}
+const hist={seco:[],rev:[],dly:[]};
+function faixa(ctx, cv, arr, cor, rot){
+  const w=cv.width=cv.clientWidth*2, h=cv.height=cv.clientHeight*2;
+  ctx.clearRect(0,0,w,h);
+  ctx.strokeStyle="#1b2530"; ctx.lineWidth=2;
+  for(let i=1;i<4;i++){ const y=h*i/4; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
+  ctx.strokeStyle=cor; ctx.lineWidth=3; ctx.beginPath();
+  arr.forEach((v,i)=>{ const x=w*i/Math.max(arr.length-1,1), y=h-Math.min(1,v*1.3)*h;
+    i? ctx.lineTo(x,y) : ctx.moveTo(x,y); });
+  ctx.stroke();
+  ctx.fillStyle=cor; ctx.font="bold 20px Inter,sans-serif"; ctx.fillText(rot, 10, 26);
+}
+function laco(){
+  requestAnimationFrame(laco);
+  if(!AC) return;
+  const s=pico(anSeco), r=pico(anRev), d=pico(anDly);
+  [["seco",s],["rev",r],["dly",d]].forEach(([k,v])=>{
+    hist[k].push(v); if(hist[k].length>110) hist[k].shift(); });
+  faixa(ctxN, cvN, hist.seco, "#3fb950", "SECO (o canal)");
+  faixa(ctxR, cvR, hist.rev, "#4aa8e0", "CAUDA DO REVERB");
+  faixa(ctxD, cvD, hist.dly, "#9b6ede", "REPETIÇÕES DO DELAY");
+}
+faixa(ctxN, cvN, [0], "#3fb950", "SECO (o canal)");
+faixa(ctxR, cvR, [0], "#4aa8e0", "CAUDA DO REVERB");
+faixa(ctxD, cvD, [0], "#9b6ede", "REPETIÇÕES DO DELAY");
+addEventListener("resize", ()=>{ if(!AC){ faixa(ctxN,cvN,[0],"#3fb950","SECO (o canal)");
+  faixa(ctxR,cvR,[0],"#4aa8e0","CAUDA DO REVERB"); faixa(ctxD,cvD,[0],"#9b6ede","REPETIÇÕES DO DELAY"); } });
+</script>
+</body>
+</html>

@@ -15,20 +15,59 @@
 //    6. total_aulas do curso divergindo da contagem real
 //
 import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { REGISTRO, donoDoId } from "./_REGISTRO-IDS.mjs";
 
-const SVC = fs.readFileSync("C:/Users/SMUSTU~1/AppData/Local/Temp/claude/D--Show-smu-producoes/8fd20cdc-9ebc-46ef-af35-7d39227ac99c/scratchpad/.svckey","utf8").trim();
+// A chave sai de SMU-PRO/.local/svckey (ou da env), igual aos demais scripts.
+// ⚠️ NÃO aponte para scratchpad de sessão: a pasta morre com a sessão e o auditor
+// passa a dar ENOENT em toda execução — foi exatamente o que aconteceu aqui.
+// RAIZ vem do import.meta.url para o script rodar de qualquer cwd (a REGRA 5 manda
+// chamá-lo de SMU-PRO/ como `node cursos-novos/auditar-banco.mjs`).
+const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const SVC = process.env.SUPABASE_SERVICE_KEY?.trim()
+  || fs.readFileSync(path.join(RAIZ, ".local", "svckey"), "utf8").trim();
 const REST = "https://pshynylvvkhhohftouoe.supabase.co/rest/v1";
 const H = { apikey: SVC, Authorization: `Bearer ${SVC}` };
-const g = async p => JSON.parse(await (await fetch(REST+p,{headers:H})).text());
+// ⚠️ TODO GET passa por aqui e EXIGE array de volta. Não é preciosismo:
+// quando a chave está inválida/expirada o PostgREST responde 401 com um OBJETO
+// ({message,hint}) — que é JSON perfeitamente válido. Sem esta conferência,
+// `JSON.parse` engolia o objeto, `j.length` virava undefined, `undefined < 1000`
+// dava false e o gAll NUNCA retornava: laço infinito pedindo Range 0-999,
+// 1000-1999, 2000-2999… para sempre, sem imprimir uma linha. O dono via o
+// comando "pendurado" e nenhuma mensagem de erro. (comprovado em 29/07/2026)
+// Melhor morrer alto com o corpo da resposta do que travar mudo.
+const pega = async (p, extra) => {
+  const r = await fetch(REST + p, { headers: extra ? { ...H, ...extra } : H });
+  const txt = await r.text();
+  let j = null;
+  try { j = JSON.parse(txt); } catch { /* HTML de proxy/502 cai aqui */ }
+  if (!r.ok || !Array.isArray(j)) {
+    console.error(`\n🔴 AUDITOR ABORTADO — o banco não respondeu uma lista.`);
+    console.error(`   GET ${p}`);
+    console.error(`   -> HTTP ${r.status} ${r.statusText}; resposta: ${txt.slice(0, 300)}`);
+    if (r.status === 401)
+      console.error(`   👉 chave inválida ou expirada: confira a env SUPABASE_SERVICE_KEY ou SMU-PRO/.local/svckey`);
+    // ⚠️ NÃO troque isto por `throw`, nem tire a espera. Medido em 29/07/2026 neste
+    // Node 24 + Windows: sair (por exceção OU por process.exit) com socket do undici
+    // ainda fechando bate numa asserção do libuv (UV_HANDLE_CLOSING), ABORTA com
+    // código 127 e ainda imprime lixo em cima da mensagem acima — quebrando o
+    // contrato "sai 1" da linha 4. Com a espera curta o socket fecha e sai 1 limpo.
+    await new Promise(s => setTimeout(s, 200));
+    process.exit(1);
+  }
+  return j;
+};
+const g = p => pega(p);
 // ⚠️ O REST corta em 1000 linhas por resposta (o `limit=` da URL NÃO passa disso).
 // Em 21/07 o banco cruzou 1000 aulas e o auditor ficou cego para o excedente sem avisar.
-// gAll pagina por Range até vir página incompleta.
+// gAll pagina por Range até vir página incompleta. Passar do fim da tabela é seguro:
+// medido em 29/07, o Supabase devolve 200 com `[]` (NÃO 416), então total múltiplo
+// exato de `chunk` também para — a última volta só traz página vazia.
 const gAll = async (p, chunk = 1000) => {
   let out = [], off = 0;
   for (;;) {
-    const r = await fetch(REST + p, { headers: { ...H, "Range-Unit": "items", Range: `${off}-${off + chunk - 1}` } });
-    const j = JSON.parse(await r.text());
+    const j = await pega(p, { "Range-Unit": "items", Range: `${off}-${off + chunk - 1}` });
     out = out.concat(j);
     if (j.length < chunk) return out;
     off += chunk;
