@@ -15,13 +15,35 @@ const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", ".
 const SIMS = path.join(RAIZ, "simuladores", "dj");
 const SAIDA = path.join(SIMS, "_aulas", "praticando-montagem-cabine.html");
 
-/* o que o aluno pode escolher */
+/* TODOS os simuladores ficam disponiveis (ordem do dono).
+   Os HTML ficam num array; so os 3 ESCOLHIDOS viram iframe — o resto e texto
+   parado na memoria, entao nao pesa em CPU nem em audio. */
 const CATALOGO = [
-  { id:"cdj1000", arq:"pioneer-cdj-1000mk3-real.html", tipo:"deck",  sub:"CD player · scratch" },
-  { id:"cdj400",  arq:"pioneer-cdj-400-real.html",     tipo:"deck",  sub:"CD/USB · jog break" },
-  { id:"sl1200",  arq:"technics-sl1200mk7-real.html",  tipo:"deck",  sub:"toca-discos" },
-  { id:"djm800",  arq:"pioneer-djm-800-real.html",     tipo:"mixer", sub:"4 canais · COLOR" },
-  { id:"djm600",  arq:"pioneer-djm-600-real.html",     tipo:"mixer", sub:"4 canais · Beat FX" },
+  /* --- players digitais: saida LINE --- */
+  { id:"cdj100s",  arq:"pioneer-cdj-100s-real.html",     tipo:"deck", sub:"CD player · Jog Break" },
+  { id:"cdj200",   arq:"pioneer-cdj-200-real.html",      tipo:"deck", sub:"CD compacto · Beat Loop" },
+  { id:"cdj400",   arq:"pioneer-cdj-400-real.html",      tipo:"deck", sub:"CD/USB · Hot Loop" },
+  { id:"cdj800mk2",arq:"pioneer-cdj-800mk2-real.html",   tipo:"deck", sub:"vinil · Auto Beat Loop" },
+  { id:"cdj850",   arq:"pioneer-cdj-850-real.html",      tipo:"deck", sub:"rekordbox · jog grande" },
+  { id:"cdj900nxs",arq:"pioneer-cdj-900nxs-real.html",   tipo:"deck", sub:"Nexus · memoria de pontos" },
+  { id:"cdj1000",  arq:"pioneer-cdj-1000mk3-real.html",  tipo:"deck", sub:"padrao de clube · scratch" },
+  { id:"cdj2000",  arq:"pioneer-cdj-2000nxs2-real.html", tipo:"deck", sub:"tela colorida · 8 hot cue" },
+  { id:"cdj3000",  arq:"pioneer-cdj-3000-real.html",     tipo:"deck", sub:"flagship · tela 9\"" },
+  { id:"xdj700",   arq:"pioneer-xdj-700-real.html",      tipo:"deck", sub:"USB · touch compacto" },
+  { id:"xdj1000",  arq:"pioneer-xdj-1000mk2-real.html",  tipo:"deck", sub:"touch 7\" · sem bandeja" },
+  /* --- toca-discos: saida PHONO + fio terra --- */
+  { id:"plx1000",  arq:"pioneer-plx-1000-real.html",     tipo:"deck", sub:"toca-discos direct drive" },
+  { id:"sl1200mk2",arq:"technics-sl1200mk2-real.html",   tipo:"deck", sub:"toca-discos · o classico" },
+  { id:"sl1200",   arq:"technics-sl1200mk7-real.html",   tipo:"deck", sub:"toca-discos · atual" },
+  /* --- mixers --- */
+  { id:"djm450",   arq:"pioneer-djm-450-real.html",      tipo:"mixer", sub:"2 canais · COLOR FX" },
+  { id:"djm600",   arq:"pioneer-djm-600-real.html",      tipo:"mixer", sub:"4 canais · Beat FX" },
+  { id:"djm750",   arq:"pioneer-djm-750mk2-real.html",   tipo:"mixer", sub:"4 canais · COLOR" },
+  { id:"djm800",   arq:"pioneer-djm-800-real.html",      tipo:"mixer", sub:"4 canais · COLOR" },
+  { id:"djm900",   arq:"pioneer-djm-900nxs2-real.html",  tipo:"mixer", sub:"padrao de clube · X-PAD" },
+  { id:"djm2000",  arq:"pioneer-djm-2000-real.html",     tipo:"mixer", sub:"flagship · tela touch" },
+  { id:"djmv10",   arq:"pioneer-djm-v10-real.html",      tipo:"mixer", sub:"6 canais · EQ 4 bandas" },
+  { id:"x1850",    arq:"denon-x1850-real.html",          tipo:"mixer", sub:"Denon Prime · 4 canais" },
 ];
 
 const PONTE = `<script>/* PONTE SMU */
