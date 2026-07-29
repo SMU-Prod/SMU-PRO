@@ -1,0 +1,619 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>Set de conclusão: montar, gravar e ouvir (SMU)</title>
+<style>
+  :root{ --ink:#e9eef7; --amber:#ffae1a; --green:#39d271; --blue:#37a2ff; --red:#ff4636;
+         --roxo:#8b5cf6; --line:#2a2f37; --painel:#0c0e12; }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{ background:radial-gradient(1100px 640px at 50% -10%,#26292e,#0a0b0d 62%),#08090b; color:var(--ink);
+    font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;
+    user-select:none;overflow:hidden;display:flex;align-items:flex-start;justify-content:center}
+  #stage{transform-origin:top center;flex:0 0 auto}
+  .wrap{width:1080px;display:flex;flex-direction:column;gap:9px;padding:10px}
+  /* contrato html.smu-fs: em tela cheia o player avisa e o sim deixa o corpo crescer */
+  html.smu-fs .wrap{padding:4px}
+
+  .util{display:flex;align-items:center;gap:9px;flex-wrap:wrap;background:linear-gradient(180deg,#202329,#15171b);
+    border:1px solid #0c0d0f;border-radius:11px;padding:8px 12px}
+  .brand b{font-size:15px;letter-spacing:1px}
+  .brand .m{font-size:9px;letter-spacing:2px;color:#8a94a4;text-transform:uppercase;margin-left:6px}
+  .pill{font-size:10px;color:#8b97a9;background:var(--painel);border:1px solid var(--line);border-radius:16px;padding:4px 10px}
+  .pill b{color:#fff}
+  .pill.mal{border-color:#7a2a24;color:#ffb3aa} .pill.mal b{color:#ff8f83}
+  .pill.bom{border-color:#1e5c38;color:#9fe3bb} .pill.bom b{color:#7df0a8}
+  .spacer{flex:1}
+  .btnp{font:inherit;font-size:11px;font-weight:700;border:0;border-radius:8px;padding:7px 12px;cursor:pointer;
+    color:#07120b;background:linear-gradient(180deg,#5be59a,#27b566)}
+  .btnp.ghost{background:transparent;color:#8b97a9;border:1px solid var(--line)}
+  .btnp:disabled{opacity:.4;cursor:not-allowed}
+
+  /* passos */
+  .passos{display:flex;gap:6px}
+  .pa{flex:1;padding:7px 9px;border-radius:8px;background:#11151a;border:1px solid #1c2229;cursor:pointer}
+  .pa.on{background:#151d2a;border-color:var(--blue)}
+  .pa.ok{background:#0f2418;border-color:#1e5c38}
+  .pa.trv{opacity:.45;cursor:not-allowed}
+  .pa .n{font-size:9px;font-weight:900;color:#6b7684}
+  .pa.on .n{color:var(--blue)} .pa.ok .n{color:var(--green)}
+  .pa .t{font-size:10.5px;font-weight:800;margin-top:2px}
+  .pa .s{font-size:9px;color:#8b97a9;margin-top:1px}
+
+  .grid{display:grid;grid-template-columns:1fr 300px;gap:9px}
+  .card{background:var(--painel);border:1px solid var(--line);border-radius:10px;padding:10px;min-height:436px}
+  .card h3{margin:0 0 8px;font-size:10px;letter-spacing:1.4px;color:#8b97a9;text-transform:uppercase;font-weight:800}
+  .dupla{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .cx{background:#0f1218;border:1px solid #1c2229;border-radius:8px;overflow:hidden}
+  .cxtop{display:flex;align-items:center;gap:8px;padding:6px 9px;background:#151a22;border-bottom:1px solid #1c2229}
+  .cxtop .lg{font-size:10.5px;font-weight:900;color:#cdd5e0}
+  .cxtop .sub{font-size:9px;color:#8b97a9}
+
+  /* grade e catalogo */
+  .slot{display:flex;align-items:center;gap:6px;padding:5px 7px;border-bottom:1px solid #161b22;min-height:33px}
+  .slot.vazio{background:#0b0e13;cursor:pointer}
+  .slot.alvo{background:#151d2a;box-shadow:inset 2px 0 0 var(--blue)}
+  .slot .h{font-size:9.5px;font-weight:900;color:#6b7684;width:36px;flex:0 0 auto}
+  .slot.alvo .h{color:var(--blue)}
+  .slot .nm{flex:1;font-size:10px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .slot .vz{flex:1;font-size:9.5px;color:#4d5661;font-style:italic}
+  .slot.err{background:#1d1113}
+  .trk{display:flex;align-items:center;gap:6px;padding:5px 7px;border-bottom:1px solid #161b22;cursor:pointer}
+  .trk:hover{background:#141922}
+  .nm2{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+  .nm2 b{font-size:10px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .nm2 i{font-style:normal;font-size:8.5px;color:#6b7684;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bpm{font-size:9.5px;font-weight:800;color:var(--green);width:36px;text-align:right;flex:0 0 auto}
+  .key{font-size:9.5px;font-weight:800;color:var(--amber);width:26px;text-align:right;flex:0 0 auto}
+  .en{width:42px;flex:0 0 auto;text-align:right;white-space:nowrap}
+  .en i{display:inline-block;width:6px;height:6px;border-radius:50%;background:#252b33;margin-left:2px}
+  .en i.on{background:var(--roxo)}
+  .mini{font:inherit;font-size:9px;font-weight:900;border:1px solid #2a3038;background:#161b22;color:#8b97a9;
+    border-radius:4px;width:18px;height:18px;line-height:1;text-align:center;cursor:pointer;padding:0;flex:0 0 auto}
+  .mini:disabled{opacity:.25;cursor:not-allowed}
+  .mini.x{color:#ff9c92;border-color:#4a2a26}
+
+  /* diagnostico */
+  .dg{display:flex;gap:7px;padding:6px 8px;border-radius:7px;margin-bottom:5px;background:#11151a;border:1px solid #1c2229}
+  .dg .ic{width:15px;height:15px;border-radius:50%;flex:0 0 auto;margin-top:1px;font-size:9px;font-weight:900;
+    display:flex;align-items:center;justify-content:center;background:#2a3038;color:#8b97a9}
+  .dg .tx{font-size:9.8px;line-height:1.4;color:#c2cbd6}
+  .dg .tx b{color:#fff}
+  .dg.err{background:#22100f;border-color:#6d2620}.dg.err .ic{background:var(--red);color:#2a0b08}
+  .dg.avi{background:#211a0d;border-color:#6d5220}.dg.avi .ic{background:var(--amber);color:#2a1e04}
+  .dg.ok{background:#0f2418;border-color:#1e5c38}.dg.ok .ic{background:var(--green);color:#062a13}
+  .dg.ok .tx{color:#9fe3bb}
+
+  .cvbox{background:#080b10;border:1px solid #1c2229;border-radius:7px;overflow:hidden}
+  .cvbox canvas{display:block;width:100%;height:auto}
+
+  /* decisoes */
+  .opt{display:block;width:100%;text-align:left;font:inherit;font-size:9.6px;line-height:1.35;padding:7px 9px;
+    border-radius:7px;margin-bottom:5px;cursor:pointer;background:#11151a;border:1px solid #1c2229;color:#9aa5b3}
+  .opt b{display:block;font-size:10.2px;color:#dfe5ec;margin-bottom:2px;font-weight:800}
+  .opt.ok{background:#0f2418;border-color:#1e5c38}
+  .opt.ok b{color:#9fe3bb}
+  .opt.mal{background:#22100f;border-color:#6d2620}
+  .opt.mal b{color:#ffb3aa}
+  .opt .cons{display:none;margin-top:4px;padding-top:4px;border-top:1px dashed #2c3540}
+  .opt.ok .cons,.opt.mal .cons{display:block}
+  .opt.mal .cons{color:#ffb3aa}
+  .opt.ok .cons{color:#9fe3bb}
+
+  .barra{height:7px;border-radius:4px;background:#161b22;overflow:hidden;margin-top:8px}
+  .barra i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--roxo),var(--blue));transition:width .3s}
+
+  /* passagens */
+  .tl{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:8px}
+  .ps{padding:6px 3px;border-radius:6px;background:#11151a;border:1px solid #1c2229;cursor:pointer;text-align:center}
+  .ps.on{border-color:var(--blue);background:#151d2a}
+  .ps.ouvida{background:#0f2418;border-color:#1e5c38}
+  .ps.on.ouvida{border-color:var(--blue)}
+  .ps .hh{font-size:9.5px;font-weight:900;color:#cdd5e0}
+  .ps .nn{font-size:8px;color:#6b7684;margin-top:1px}
+
+  .fi{display:flex;gap:7px;padding:6px 8px;border-radius:7px;margin-bottom:4px;background:#11151a;
+    border:1px solid #1c2229;cursor:pointer}
+  .fi .bx{width:14px;height:14px;border-radius:4px;border:1px solid #39414b;background:#0b0e12;flex:0 0 auto;
+    margin-top:1px;font-size:10px;line-height:12px;text-align:center;font-weight:900;color:transparent}
+  .fi.mk .bx{background:var(--green);border-color:var(--green);color:#062a13}
+  .fi.mk.ruim{background:#22100f;border-color:#6d2620}
+  .fi.mk.ruim .bx{background:var(--red);border-color:var(--red);color:#2a0b08}
+  .fi .tx{font-size:9.7px;line-height:1.35;color:#c2cbd6}
+  .fi .pq{display:none;font-size:9.2px;color:#ffb3aa;margin-top:3px}
+  .fi.mk.ruim .pq{display:block}
+
+  .aviso{font-size:9.8px;line-height:1.45;color:#8b97a9;margin-top:9px;border-top:1px dashed #232a32;padding-top:8px}
+  .aviso b{color:#cdd5e0}
+  .chk{display:flex;gap:7px;align-items:flex-start;padding:6px 7px;border-radius:7px;margin-bottom:5px;
+    background:#11151a;border:1px solid #1c2229}
+  .chk.ok{background:#0f2418;border-color:#1e5c38}
+  .chk .b{width:14px;height:14px;border-radius:50%;flex:0 0 auto;margin-top:1px;background:#2a3038;border:1px solid #000;
+    display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:#6b7684}
+  .chk.ok .b{background:var(--green);color:#062a13}
+  .chk .tx{font-size:10px;line-height:1.3;color:#c2cbd6}
+  .chk.ok .tx{color:#9fe3bb}
+</style>
+</head>
+<body>
+<div id="stage">
+<div class="wrap">
+
+  <div class="util">
+    <div class="brand"><b>SMU</b><span class="m">PRO • SET DE CONCLUSÃO — MONTAR, GRAVAR, OUVIR</span></div>
+    <span class="pill">Passo <b id="pnum">1 de 4</b></span>
+    <span class="pill">Grade <b>22h → 02h</b></span>
+    <span class="pill" id="pgrade">Slots <b>0 de 8</b></span>
+    <span class="pill" id="perro">Erros <b>—</b></span>
+    <span class="spacer"></span>
+    <button class="btnp ghost" id="btnReset">Recomeçar</button>
+  </div>
+
+  <div class="passos">
+    <div class="pa on" data-p="1"><div class="n">PASSO 1</div><div class="t">Montar o set</div><div class="s">8 horários, 4 horas</div></div>
+    <div class="pa" data-p="2"><div class="n">PASSO 2</div><div class="t">Ler a curva</div><div class="s">BPM, tom e energia</div></div>
+    <div class="pa" data-p="3"><div class="n">PASSO 3</div><div class="t">Gravar</div><div class="s">fonte, nível e nome</div></div>
+    <div class="pa" data-p="4"><div class="n">PASSO 4</div><div class="t">Ouvir depois</div><div class="s">as passagens</div></div>
+  </div>
+
+  <div class="grid">
+    <div class="card" id="palco"></div>
+    <div class="card">
+      <h3>O que falta</h3>
+      <div id="lista"></div>
+      <div class="aviso" id="aviso"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+
+/* ===== DADOS ===== */
+const HORAS=["22:00","22:30","23:00","23:30","00:00","00:30","01:00","01:30"];
+const FAIXAS=[
+  {nm:"SOTEX 11 — Abre a casa",    bpm:120, key:"8A",  e:1, tg:"house · instrumental"},
+  {nm:"SOTEX 14 — Primeira roda",  bpm:122, key:"8B",  e:2, tg:"house · vocal solto"},
+  {nm:"SOTEX 18 — Ela chega",      bpm:124, key:"9B",  e:3, tg:"house · refrão curto"},
+  {nm:"SOTEX 21 — Corpo",          bpm:126, key:"9A",  e:3, tg:"tech house · grave seco"},
+  {nm:"SOTEX 25 — Sobe",           bpm:128, key:"10A", e:4, tg:"tech house · build longo"},
+  {nm:"SOTEX 27 — Pico",           bpm:128, key:"10B", e:5, tg:"tech house · refrão gritado"},
+  {nm:"SOTEX 30 — Segura",         bpm:126, key:"11B", e:4, tg:"house · groove redondo"},
+  {nm:"SOTEX 33 — Fecho",          bpm:124, key:"11A", e:2, tg:"deep · fim com pad"},
+  {nm:"SOTEX 36 — Hino",           bpm:130, key:"10A", e:5, tg:"o hino que todo mundo canta"},
+  {nm:"SOTEX 40 — Peso",           bpm:142, key:"4A",  e:5, tg:"outra praia · pesado"},
+  {nm:"SOTEX 43 — Respiro",        bpm:123, key:"9A",  e:2, tg:"house · pausa de grave"},
+  {nm:"SOTEX 47 — Rua",            bpm:127, key:"2A",  e:4, tg:"funk house · vocal forte"}
+];
+const FONTES=[
+  {id:"cel",  tit:"Celular apoiado em cima da caixa",
+   cons:"O celular grava a SALA, não a sua mixagem: microfone comprimindo, gente falando na frente e o grave da caixa estourando a cápsula. Serve de lembrança da noite. Para julgar passagem, não serve."},
+  {id:"rec",  tit:"Saída REC do mixer (ou a gravação interna do aparelho / do software)", ok:true,
+   cons:"É o mesmo sinal que sai para o sistema, sem a sala no meio. Você ouve o que VOCÊ fez — não o que a caixa e o salão fizeram com o som."},
+  {id:"video",tit:"Áudio do vídeo que alguém postou no story",
+   cons:"O vídeo corta grave, comprime e nivela o volume sozinho. A passagem chega mastigada — e você ainda fica dependendo de outra pessoa ter filmado justo naquele minuto."},
+  {id:"cam",  tit:"Câmera no fundo do salão gravando o ambiente",
+   cons:"Distância vira atraso e reverberação da sala. O encaixe das batidas chega borrado e você vai ouvir erro de tempo que não existiu."}
+];
+const NIVEIS=[
+  {id:"talo", tit:"No talo — medidor no vermelho a noite toda",
+   cons:"Clipa. Acima de 0 dBFS não existe gordura no digital: o pico vira um estalo seco e some justo o trecho que você queria conferir."},
+  {id:"m6",   tit:"Teste de 30 s antes, picos batendo perto de −6 dBFS", ok:true,
+   cons:"Sobra teto para o pico do grave. Se ficar baixo demais você resolve no volume depois — o que não se conserta é gravação clipada."},
+  {id:"nao",  tit:"Não olho o medidor, deixo como veio",
+   cons:"Não existe aviso automático. Ou você olhou o medidor ANTES de começar, ou vai descobrir no dia seguinte — quando não dá mais para refazer a noite."}
+];
+const NOMES=[
+  {id:"set",   tit:"set.wav",
+   cons:"No mês que vem você tem set.wav, set(1).wav e set(2).wav. Não dá para saber qual é de onde, e comparar a sua evolução fica impossível."},
+  {id:"datado",tit:"2026-07-25_bar-do-ze_22h-02h.wav", ok:true,
+   cons:"Data na frente ordena a pasta sozinha. Local e horário dizem que público era aquele — é isso que deixa você comparar o set de hoje com o do mesmo lugar em março."},
+  {id:"final", tit:"set_final_bom2_AGORAVAI.mp3",
+   cons:"Nome de arquivo de quem nunca mais vai abrir. Sem data e sem local, daqui a três meses é só peso no HD."}
+];
+const FICHA=[
+  {id:"encaixe", certo:true,  tx:"Se a batida entrou encaixada ou entrou correndo/atrasando"},
+  {id:"grave",   certo:true,  tx:"Se o grave somou e embolou nos compassos em que as duas tocaram juntas"},
+  {id:"volume",  certo:true,  tx:"Se o volume caiu ou pulou de uma faixa para a outra"},
+  {id:"tempo",   certo:true,  tx:"Quanto tempo a passagem levou — 8, 16 ou 32 compassos"},
+  {id:"musica",  certo:false, tx:"Se a música que você tocou é boa",
+   pq:"Repertório você já escolheu em casa. Na gravação a música é justamente a parte que você já conhece de cor — o que você nunca ouviu direito é a emenda."},
+  {id:"publico", certo:false, tx:"Se o público estava dançando naquela hora",
+   pq:"Na gravação da saída REC o público não existe. Isso você lê ao vivo, com o olho. A gravação serve para o que o seu ouvido não pegou enquanto você tocava."}
+];
+const S={ passo:1, grade:[null,null,null,null,null,null,null,null], alvo:0,
+  fonte:null, nivel:null, nome:null, gravando:false, gravado:false,
+  passagem:null, ouvidas:[], ficha:[] };
+/* ===== /DADOS ===== */
+
+/* ===== MOTOR ===== */
+/* Camelot: combina se for o mesmo numero (inclui a troca A<->B) ou o numero
+   vizinho com a MESMA letra, com a volta 12 -> 1. Todo o resto nao fecha. */
+function camelotOk(a,b){
+  const na=+a.slice(0,-1), la=a.slice(-1), nb=+b.slice(0,-1), lb=b.slice(-1);
+  if(!na||!nb) return false;
+  if(na===nb) return true;
+  if(la!==lb) return false;
+  const d=Math.abs(na-nb);
+  return d===1 || d===11;
+}
+/* Le o set inteiro e devolve erros (travam), avisos (passam) e acertos. */
+function analisar(ordem){
+  const f=ordem.filter(v=>v!==null&&v!==undefined).map(i=>FAIXAS[i]);
+  const erros=[], avisos=[], oks=[];
+  if(f.length<2) return {erros,avisos,oks,limpas:0,pares:0};
+  let limpas=0;
+  for(let i=0;i<f.length-1;i++){
+    const A=f[i], B=f[i+1], d=Math.abs(B.bpm-A.bpm);
+    let ruim=false;
+    if(d>6){ ruim=true; erros.push({tipo:"bpm",i,
+      tx:"<b>"+HORAS[i+1]+" — salto de "+d+" BPM</b> ("+A.bpm+" → "+B.bpm+"). Para encaixar isso o pitch teria que ir além do que o ouvido aceita: a voz vira desenho animado e o grave perde o corpo. Na pista, a batida muda de andamento no meio da dança e a roda abre."}); }
+    else if(d>=4){ avisos.push({tipo:"bpm-aviso",i,
+      tx:"<b>"+HORAS[i+1]+" — "+d+" BPM de diferença</b> ("+A.bpm+" → "+B.bpm+"). Dá para fazer, mas é mixagem longa, com o pitch andando devagar. Não é o que você quer fazer no meio do pico, com a pista cheia."}); }
+    if(!camelotOk(A.key,B.key)){ ruim=true; erros.push({tipo:"tom",i,
+      tx:"<b>"+HORAS[i+1]+" — "+A.key+" → "+B.key+" não fecha.</b> Combina mesmo número (8A→8B), número vizinho com a mesma letra (8A→7A/9A) ou a mesma faixa de tom. Fora disso, as duas melodias tocam juntas desafinadas por 8 compassos: a pista não sabe explicar o que houve, mas sente e para de cantar."}); }
+    if(A.e===5 && B.e===5){ ruim=true; erros.push({tipo:"colado",i,
+      tx:"<b>"+HORAS[i+1]+" — dois picos colados.</b> "+A.nm.split("—")[0].trim()+" e "+B.nm.split("—")[0].trim()+" são energia 5 seguidas. A segunda não sobe nada, porque já estava tudo em cima; o corpo cansa e a próxima descida deixa de ser respiro e vira despedida."}); }
+    if(!ruim) limpas++;
+  }
+  const mx=Math.max.apply(null,f.map(x=>x.e));
+  if(mx<5){ erros.push({tipo:"sempico",i:-1,
+    tx:"<b>O set nunca chega ao pico.</b> A maior energia aqui é "+mx+". Um set que anda em linha reta não dá para a pista o momento de gritar — as pessoas dançam educadas e vão embora sem lembrar de nada."}); }
+  else{
+    const pos=f.findIndex(x=>x.e===mx)+1, p=pos/f.length;
+    if(p<=0.5){ erros.push({tipo:"cedo",i:pos-1,
+      tx:"<b>Pico cedo demais — "+HORAS[pos-1]+" (faixa "+pos+" de "+f.length+").</b> A casa ainda está enchendo e você já gastou a bala. Depois desse ponto o set só tem para onde descer, e quem chegou às 23h30 pegou a sobra."}); }
+    else if(p>=1){ erros.push({tipo:"tarde",i:pos-1,
+      tx:"<b>Pico tarde demais — na última faixa.</b> Você levantou a pista quando não sobra set para segurar em cima nem para descer. Boa parte de quem esperava a hora já pediu o carro."}); }
+    else{ oks.push({tipo:"pico",i:pos-1,
+      tx:"<b>Pico na hora certa — "+HORAS[pos-1]+".</b> Depois dos dois terços do set, com casa cheia, e ainda sobrando faixa para segurar em cima e descer com a pista junto."}); }
+  }
+  if(f[0].e>=4){ avisos.push({tipo:"abertura",i:0,
+    tx:"<b>Abertura em energia "+f[0].e+".</b> Às "+HORAS[0]+" a casa está vazia e o bar cheio. Abrir forte com dez pessoas no salão é tocar para o segurança — e você queima faixa que faria falta à meia-noite."}); }
+  else{ oks.push({tipo:"abertura-ok",i:0,
+    tx:"<b>Abriu no chão — energia "+f[0].e+" às "+HORAS[0]+".</b> É o certo: com a casa enchendo, a música ainda é fundo de conversa. Quem abre no talo não tem para onde subir depois."}); }
+  const ult=f[f.length-1];
+  if(ult.e>=4){ avisos.push({tipo:"semdescida",i:f.length-1,
+    tx:"<b>Terminou em energia "+ult.e+".</b> Sem descida, quando a luz acende é um susto: a pista sai do escuro no talo direto para a fila do guarda-volumes."}); }
+  else{ oks.push({tipo:"descida-ok",i:f.length-1,
+    tx:"<b>Fechou descendo — energia "+ult.e+" às "+HORAS[f.length-1]+".</b> A última meia hora existe para a pista descer junto com você e sair inteira, não para o som simplesmente parar."}); }
+  return {erros,avisos,oks,limpas,pares:f.length-1};
+}
+function cheia(){ return S.grade.every(v=>v!==null); }
+function podeGravar(){ return S.fonte==="rec" && S.nivel==="m6" && S.nome==="datado"; }
+function fichaOk(){
+  const certos=FICHA.filter(x=>x.certo).map(x=>x.id);
+  const temTodos=certos.every(id=>S.ficha.indexOf(id)>=0);
+  const semErrado=S.ficha.every(id=>certos.indexOf(id)>=0);
+  return temTodos && semErrado;
+}
+function ouviuTudo(){ return S.ouvidas.length===HORAS.length-1; }
+/* Sequencia travada: so libera o passo quando o anterior esta de pe. */
+function podeIr(n){
+  if(n<=1) return true;
+  if(n===2) return cheia();
+  if(n===3) return cheia() && analisar(S.grade).erros.length===0;
+  if(n===4) return S.gravado;
+  return false;
+}
+/* ===== /MOTOR ===== */
+
+function nomeCurto(f){ return f.nm.split("—")[0].trim(); }
+function dots(e){ let s=""; for(let i=1;i<=5;i++) s+='<i class="'+(i<=e?"on":"")+'"></i>'; return '<span class="en">'+s+'</span>'; }
+
+/* ---------- render ---------- */
+function render(){
+  const n=S.grade.filter(v=>v!==null).length;
+  $("#pnum").textContent=S.passo+" de 4";
+  $("#pgrade").innerHTML="Slots <b>"+n+" de 8</b>";
+  const A=cheia()?analisar(S.grade):null;
+  const pe=$("#perro");
+  pe.className="pill"+(A?(A.erros.length?" mal":" bom"):"");
+  pe.innerHTML="Erros <b>"+(A?A.erros.length:"—")+"</b>";
+
+  const feito={1:cheia(), 2:!!(A&&!A.erros.length), 3:S.gravado, 4:ouviuTudo()&&fichaOk()};
+  $$(".pa").forEach(p=>{ const k=+p.dataset.p;
+    p.classList.toggle("on",k===S.passo);
+    p.classList.toggle("ok", feito[k] && k!==S.passo);
+    p.classList.toggle("trv", !podeIr(k));
+    p.onclick=()=>{ if(podeIr(k)){ S.passo=k; render(); } };
+  });
+
+  const P=$("#palco");
+  if(S.passo===1) P.innerHTML=telaGrade();
+  else if(S.passo===2) P.innerHTML=telaCurva();
+  else if(S.passo===3) P.innerHTML=telaGravar();
+  else P.innerHTML=telaOuvir();
+  ligar();
+  desenharCurva();
+  checklist();
+}
+
+/* ---------- passo 1 ---------- */
+function telaGrade(){
+  const usadas=S.grade.filter(v=>v!==null);
+  const livres=FAIXAS.map((f,i)=>i).filter(i=>usadas.indexOf(i)<0);
+  const A=cheia()?analisar(S.grade):{erros:[]};
+  const pares=new Set(A.erros.filter(e=>e.i>=0&&["bpm","tom","colado"].indexOf(e.tipo)>=0).map(e=>e.i));
+  return '<h3>1 · Monte o set — 22h às 2h, 8 faixas de meia hora</h3>'
+  +'<div class="dupla">'
+    +'<div class="cx"><div class="cxtop"><span class="lg">A GRADE DA NOITE</span>'
+      +'<span class="sub">clique no horário e depois na faixa</span></div>'
+      +S.grade.map((v,i)=>{
+        if(v===null) return '<div class="slot vazio '+(S.alvo===i?"alvo":"")+'" data-slot="'+i+'">'
+          +'<span class="h">'+HORAS[i]+'</span><span class="vz">— vazio —</span></div>';
+        const f=FAIXAS[v];
+        return '<div class="slot '+(pares.has(i)||pares.has(i-1)?"err":"")+'" data-slot="'+i+'">'
+          +'<span class="h">'+HORAS[i]+'</span>'
+          +'<span class="nm">'+nomeCurto(f)+'</span>'
+          +'<span class="bpm">'+f.bpm.toFixed(1)+'</span><span class="key">'+f.key+'</span>'+dots(f.e)
+          +'<button class="mini" data-sobe="'+i+'" '+(i===0?"disabled":"")+'>&#9650;</button>'
+          +'<button class="mini" data-desce="'+i+'" '+(i===7?"disabled":"")+'>&#9660;</button>'
+          +'<button class="mini x" data-tira="'+i+'">&#10005;</button></div>';
+      }).join("")
+    +'</div>'
+    +'<div class="cx"><div class="cxtop"><span class="lg">CAIXA DE FAIXAS</span>'
+      +'<span class="sub">'+livres.length+' disponíveis · BPM · tom · energia</span></div>'
+      +(livres.length?livres.map(i=>{ const f=FAIXAS[i];
+        return '<div class="trk" data-add="'+i+'"><span class="nm2"><b>'+nomeCurto(f)+'</b><i>'+f.tg+'</i></span>'
+        +'<span class="bpm">'+f.bpm.toFixed(1)+'</span><span class="key">'+f.key+'</span>'+dots(f.e)+'</div>';
+      }).join(""):'<div style="padding:12px;font-size:10px;color:#6b7684">Todas as faixas estão na grade.</div>')
+    +'</div>'
+  +'</div>'
+  +'<div class="aviso"><b>A energia é a coluna vertebral.</b> BPM e tom só decidem se a passagem vai ficar limpa; '
+  +'quem decide se a noite funciona é a ORDEM. Você tem 4 horas: comece baixo com a casa vazia, suba junto com o salão '
+  +'enchendo, dê o pico depois dos dois terços e desça com a pista antes de a luz acender.<br><br>'
+  +'<b>Energia:</b> 1 = ninguém dança ainda, dá para conversar · 3 = pista formada · 5 = todo mundo cantando junto, '
+  +'copo no alto. Duas faixas 5 seguidas não somam: a segunda não tem para onde subir.</div>';
+}
+
+/* ---------- passo 2 ---------- */
+function telaCurva(){
+  const A=analisar(S.grade);
+  const lin=[];
+  A.erros.forEach(e=>lin.push('<div class="dg err"><div class="ic">!</div><div class="tx">'+e.tx+'</div></div>'));
+  A.avisos.forEach(e=>lin.push('<div class="dg avi"><div class="ic">~</div><div class="tx">'+e.tx+'</div></div>'));
+  A.oks.forEach(e=>lin.push('<div class="dg ok"><div class="ic">&#10003;</div><div class="tx">'+e.tx+'</div></div>'));
+  if(A.limpas) lin.push('<div class="dg ok"><div class="ic">&#10003;</div><div class="tx"><b>'+A.limpas+' de '+A.pares
+    +' passagens limpas</b> — BPM perto, tom fechando e energia com para onde ir.</div></div>');
+  return '<h3>2 · A curva do seu set — onde ele acerta e onde você perderia a pista</h3>'
+  +'<div class="cvbox"><canvas id="cv" width="1000" height="188"></canvas></div>'
+  +'<div style="max-height:196px;overflow:auto;margin-top:9px">'+lin.join("")+'</div>'
+  +(A.erros.length
+    ? '<div class="aviso"><b>Enquanto houver erro em vermelho, o passo 3 fica travado</b> — e é assim mesmo: '
+      +'gravar um set torto só te dá a prova gravada de que ele era torto. Volte no passo 1, troque a faixa do horário '
+      +'apontado ou mude a ordem. Amarelo passa: é escolha sua, sabendo do preço.'
+      +'<br><br><button class="btnp" id="btVolta" style="margin-top:2px">Voltar e corrigir a grade</button></div>'
+    : '<div class="aviso"><b style="color:#7df0a8">Set de pé.</b> Curva com começo, subida, pico depois dos dois terços '
+      +'e descida. Agora vem a parte que separa quem evolui de quem repete o mesmo ano cinco vezes: <b>gravar</b>.</div>');
+}
+
+/* ---------- passo 3 ---------- */
+function telaGravar(){
+  const bloco=(tit,arr,campo,sel)=>'<div style="margin-bottom:9px">'
+    +'<div style="font-size:9.5px;font-weight:900;color:#8b97a9;letter-spacing:1px;margin-bottom:5px">'+tit+'</div>'
+    +arr.map(o=>'<button class="opt '+(sel===o.id?(o.ok?"ok":"mal"):"")+'" data-'+campo+'="'+o.id+'">'
+      +'<b>'+o.tit+'</b><span class="cons">'+o.cons+'</span></button>').join("")+'</div>';
+  return '<h3>3 · Gravar o set — decidido antes de começar, nunca no meio</h3>'
+  +'<div class="dupla">'
+    +'<div>'+bloco("DE ONDE SAI A GRAVAÇÃO",FONTES,"fonte",S.fonte)
+           +bloco("NÍVEL DE GRAVAÇÃO",NIVEIS,"nivel",S.nivel)+'</div>'
+    +'<div>'+bloco("NOME DO ARQUIVO",NOMES,"nome",S.nome)
+      +'<div class="cx" style="padding:9px">'
+        +'<button class="btnp" id="btGravar" '+(podeGravar()&&!S.gravado?"":"disabled")+'>'
+        +(S.gravado?"&#10003; Set gravado (4 h · 1 arquivo)":"&#9679; Gravar as 4 horas")+'</button>'
+        +'<div class="barra"><i id="bar" style="width:'+(S.gravado?100:0)+'%"></i></div>'
+        +'<div style="font-size:9.4px;line-height:1.4;color:#8b97a9;margin-top:8px">'
+        +(S.gravado
+          ? 'Arquivo fechado: <b style="color:#9fd0ff">2026-07-25_bar-do-ze_22h-02h.wav</b>.<br>'
+            +'Agora a parte difícil: <b style="color:#cdd5e0">não ouça hoje.</b> Saindo do evento você ainda está com a '
+            +'adrenalina fazendo o papel de elogio. Espere 48 horas e você vira público do seu próprio set.'
+          : 'As três escolhas acima têm que estar certas antes de o botão liberar. Gravação é uma daquelas coisas '
+            +'que só dá para resolver ANTES: no meio do set, com a pista cheia, você não vai refazer nada.')
+        +'</div></div></div>'
+  +'</div>';
+}
+
+/* ---------- passo 4 ---------- */
+function escuta(i){
+  const A=FAIXAS[S.grade[i]], B=FAIXAS[S.grade[i+1]], d=Math.abs(B.bpm-A.bpm), t=[];
+  if(d===0) t.push("Mesmo BPM: o encaixe sai de graça, então o que sobra para escutar é o <b>grave somado</b> — as duas com o bumbo aberto ao mesmo tempo viram um borrão sem definição. Na gravação isso aparece como um trecho sem soco.");
+  else if(d<=3) t.push(d+" BPM de diferença: ouça os primeiros compassos da entrada. <b>A batida encaixou ou entrou correndo</b> e você foi corrigindo no jog? Ao vivo você não percebe; na gravação, é escancarado.");
+  else t.push(d+" BPM de diferença: passagem longa. Ouça <b>quanto tempo</b> você deixou as duas juntas — se passou de 32 compassos, quem está dançando já cansou de esperar a música mudar.");
+  t.push("Tom "+A.key+" → "+B.key+": com as duas tocando juntas, <b>as melodias brigaram?</b> Preste atenção nos 8 compassos do meio da passagem, não no começo.");
+  if(B.e>A.e) t.push("A energia sobe de "+A.e+" para "+B.e+". <b>Subiu de verdade ou só ficou mais alto?</b> Se você teve que empurrar no volume, a subida foi sua, não da música.");
+  else if(B.e<A.e) t.push("A energia cai de "+A.e+" para "+B.e+". <b>Foi decisão ou foi tropeço?</b> Descida planejada tem o momento certo; descida por acaso soa como pausa técnica.");
+  else t.push("Energia igual dos dois lados ("+A.e+"). Aqui o risco é a pista <b>não perceber que a música mudou</b> — ouça se a passagem tem algum ponto de virada ou se são cinco minutos de mesma coisa.");
+  return t;
+}
+function telaOuvir(){
+  const i=S.passagem;
+  const painel = i===null
+    ? '<div style="padding:14px;font-size:10px;color:#8b97a9;line-height:1.5">Clique numa passagem acima. '
+      +'São <b style="color:#cdd5e0">7 passagens</b> num set de 8 faixas — e são elas que você tem que ouvir. '
+      +'As músicas você já conhece de cor; o que você nunca escutou direito é a emenda.</div>'
+    : (function(){ const A=FAIXAS[S.grade[i]], B=FAIXAS[S.grade[i+1]];
+        return '<div style="padding:9px">'
+        +'<div style="font-size:10.5px;font-weight:800;margin-bottom:2px">Passagem '+(i+1)+' · '+HORAS[i+1]+'</div>'
+        +'<div style="font-size:9.5px;color:#8b97a9;margin-bottom:8px">'+nomeCurto(A)+' <b style="color:#cdd5e0">&#8594;</b> '
+          +nomeCurto(B)+' &nbsp;·&nbsp; '+A.bpm.toFixed(1)+' &#8594; '+B.bpm.toFixed(1)+' BPM &nbsp;·&nbsp; '
+          +A.key+' &#8594; '+B.key+' &nbsp;·&nbsp; energia '+A.e+' &#8594; '+B.e+'</div>'
+        +escuta(i).map(x=>'<div class="dg"><div class="ic">&#9835;</div><div class="tx">'+x+'</div></div>').join("")
+        +'</div>'; })();
+  return '<h3>4 · 48 horas depois — ouça a gravação (e ouça as passagens)</h3>'
+  +'<div class="tl">'+HORAS.slice(1).map((h,k)=>
+      '<div class="ps '+(S.passagem===k?"on":"")+' '+(S.ouvidas.indexOf(k)>=0?"ouvida":"")+'" data-ps="'+k+'">'
+      +'<div class="hh">'+h+'</div><div class="nn">passagem '+(k+1)+'</div></div>').join("")+'</div>'
+  +'<div class="dupla" style="margin-top:9px">'
+    +'<div class="cx" style="min-height:210px">'+painel+'</div>'
+    +'<div class="cx" style="padding:9px">'
+      +'<div style="font-size:9.5px;font-weight:900;color:#8b97a9;letter-spacing:1px;margin-bottom:6px">FICHA DE ESCUTA — MARQUE O QUE SE OUVE NUMA GRAVAÇÃO</div>'
+      +FICHA.map(f=>{ const mk=S.ficha.indexOf(f.id)>=0;
+        return '<div class="fi '+(mk?"mk":"")+' '+(mk&&!f.certo?"ruim":"")+'" data-fi="'+f.id+'">'
+        +'<div class="bx">&#10003;</div><div class="tx">'+f.tx
+        +(f.pq?'<div class="pq">'+f.pq+'</div>':'')+'</div></div>';}).join("")
+      +'<div style="font-size:9.4px;line-height:1.4;color:#8b97a9;margin-top:7px">'
+      +(fichaOk()
+        ? '<b style="color:#7df0a8">É isso.</b> Quatro coisas, todas dentro da emenda. Ouça o set inteiro sem pular, '
+          +'anote o <b style="color:#cdd5e0">minuto</b> de cada tropeço e escolha <b style="color:#cdd5e0">UM</b> item '
+          +'para treinar no próximo set. Lista de doze defeitos vira desânimo; um item por set some em três meses.'
+        : 'Marque tudo o que a gravação te mostra — e só isso. Item marcado errado fica vermelho com o motivo.')
+      +'</div></div>'
+  +'</div>';
+}
+
+/* ---------- curva ---------- */
+function desenharCurva(){
+  const c=$("#cv"); if(!c) return;
+  const ctx=c.getContext("2d"), W=c.width, H=c.height;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle="#080b10"; ctx.fillRect(0,0,W,H);
+  const L=34,R=14,T=30,B=40, IW=W-L-R, IH=H-T-B, n=HORAS.length;
+  const px=i=>L+(i+0.5)*IW/n, py=e=>T+IH-((e-1)/4)*IH;
+  const f=S.grade.map(v=>v===null?null:FAIXAS[v]);
+
+  /* janela onde o pico cabe: depois da metade e antes da ultima */
+  const ja=L+Math.floor(n/2)*IW/n, jb=L+(n-1)*IW/n;
+  ctx.fillStyle="rgba(57,210,113,.07)"; ctx.fillRect(ja,T,jb-ja,IH);
+  ctx.strokeStyle="rgba(57,210,113,.35)"; ctx.setLineDash([3,3]); ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(ja,T); ctx.lineTo(ja,T+IH); ctx.moveTo(jb,T); ctx.lineTo(jb,T+IH); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle="rgba(57,210,113,.55)"; ctx.font="700 9px Inter,system-ui,sans-serif"; ctx.textAlign="center";
+  ctx.fillText("janela do pico",(ja+jb)/2,T-16);
+
+  /* grade de energia */
+  ctx.textAlign="right"; ctx.font="700 8.5px Inter,system-ui,sans-serif";
+  for(let e=1;e<=5;e++){ const y=py(e);
+    ctx.strokeStyle="rgba(255,255,255,.07)"; ctx.beginPath(); ctx.moveTo(L,y); ctx.lineTo(L+IW,y); ctx.stroke();
+    ctx.fillStyle="#4d5661"; ctx.fillText("e"+e,L-6,y+3);
+  }
+  /* linha da energia */
+  const pts=[];
+  f.forEach((x,i)=>{ if(x) pts.push([px(i),py(x.e),x,i]); });
+  if(pts.length>1){
+    ctx.strokeStyle="#8b5cf6"; ctx.lineWidth=2.4; ctx.beginPath();
+    pts.forEach((p,k)=>k?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1])); ctx.stroke();
+  }
+  /* marcas de problema entre vizinhas */
+  if(pts.length>1){
+    for(let i=0;i<pts.length-1;i++){
+      const A=pts[i][2],Bx=pts[i+1][2], d=Math.abs(Bx.bpm-A.bpm);
+      const err = d>6 || !camelotOk(A.key,Bx.key) || (A.e===5&&Bx.e===5);
+      const avi = !err && d>=4;
+      if(err||avi){
+        ctx.strokeStyle=err?"#ff4636":"#ffae1a"; ctx.lineWidth=3;
+        ctx.beginPath(); ctx.moveTo(pts[i][0],pts[i][1]); ctx.lineTo(pts[i+1][0],pts[i+1][1]); ctx.stroke();
+        const mx=(pts[i][0]+pts[i+1][0])/2, my=(pts[i][1]+pts[i+1][1])/2-11;
+        ctx.fillStyle=err?"#ff4636":"#ffae1a"; ctx.font="900 10px Inter,system-ui,sans-serif"; ctx.textAlign="center";
+        ctx.fillText(err?"✕":"!",mx,my+4);
+      }
+    }
+  }
+  /* pontos + rotulos */
+  ctx.textAlign="center";
+  f.forEach((x,i)=>{
+    const xx=px(i);
+    ctx.fillStyle="#4d5661"; ctx.font="700 8.5px Inter,system-ui,sans-serif";
+    ctx.fillText(HORAS[i],xx,H-24);
+    if(!x){ ctx.fillStyle="#242a32"; ctx.beginPath(); ctx.arc(xx,py(3),4,0,7); ctx.fill();
+      ctx.fillStyle="#3a424c"; ctx.fillText("—",xx,H-11); return; }
+    ctx.fillStyle= x.e>=5?"#ff6b3d" : x.e>=4?"#ffae1a" : x.e>=3?"#8b5cf6" : "#37a2ff";
+    ctx.beginPath(); ctx.arc(xx,py(x.e),5,0,7); ctx.fill();
+    ctx.fillStyle="#0b0e12"; ctx.font="900 8px Inter,system-ui,sans-serif"; ctx.fillText(x.e,xx,py(x.e)+3);
+    ctx.fillStyle="#8b97a9"; ctx.font="700 8.5px Inter,system-ui,sans-serif";
+    ctx.fillText(x.bpm.toFixed(0)+" · "+x.key,xx,H-11);
+  });
+}
+
+/* ---------- eventos ---------- */
+function ligar(){
+  $$(".slot[data-slot]").forEach(el=>el.onclick=e=>{
+    if(e.target.closest(".mini")) return;
+    const i=+el.dataset.slot; if(S.grade[i]===null){ S.alvo=i; render(); }
+  });
+  $$(".trk[data-add]").forEach(el=>el.onclick=()=>{
+    const t=+el.dataset.add;
+    let i=(S.grade[S.alvo]===null)?S.alvo:S.grade.indexOf(null);
+    if(i<0) return;
+    S.grade[i]=t;
+    const prox=S.grade.indexOf(null); S.alvo=prox<0?i:prox;
+    render();
+  });
+  $$("[data-tira]").forEach(el=>el.onclick=()=>{ const i=+el.dataset.tira; S.grade[i]=null; S.alvo=i; render(); });
+  $$("[data-sobe]").forEach(el=>el.onclick=()=>{ const i=+el.dataset.sobe;
+    const t=S.grade[i-1]; S.grade[i-1]=S.grade[i]; S.grade[i]=t; render(); });
+  $$("[data-desce]").forEach(el=>el.onclick=()=>{ const i=+el.dataset.desce;
+    const t=S.grade[i+1]; S.grade[i+1]=S.grade[i]; S.grade[i]=t; render(); });
+  const bv=$("#btVolta"); if(bv) bv.onclick=()=>{ S.passo=1; render(); };
+
+  $$("[data-fonte]").forEach(el=>el.onclick=()=>{ S.fonte=el.dataset.fonte; render(); });
+  $$("[data-nivel]").forEach(el=>el.onclick=()=>{ S.nivel=el.dataset.nivel; render(); });
+  $$("[data-nome]").forEach(el=>el.onclick=()=>{ S.nome=el.dataset.nome; render(); });
+  const bg=$("#btGravar"); if(bg) bg.onclick=()=>{
+    if(!podeGravar()||S.gravando||S.gravado) return;
+    S.gravando=true; const bar=$("#bar"); let p=0;
+    const t=setInterval(()=>{ p+=8; if(bar) bar.style.width=Math.min(100,p)+"%";
+      if(p>=100){ clearInterval(t); S.gravando=false; S.gravado=true; render(); } },40);
+  };
+
+  $$("[data-ps]").forEach(el=>el.onclick=()=>{ const k=+el.dataset.ps;
+    S.passagem=k; if(S.ouvidas.indexOf(k)<0) S.ouvidas.push(k); render(); });
+  $$("[data-fi]").forEach(el=>el.onclick=()=>{ const id=el.dataset.fi;
+    const k=S.ficha.indexOf(id); if(k>=0) S.ficha.splice(k,1); else S.ficha.push(id); render(); });
+}
+
+/* ---------- pendencias ---------- */
+function checklist(){
+  const A=cheia()?analisar(S.grade):{erros:[],avisos:[]};
+  const n=S.grade.filter(v=>v!==null).length;
+  const it=[
+    [cheia(), "Preencher os 8 horários ("+n+"/8)", "Set sem ordem não é set: é pasta de música."],
+    [cheia()&&!A.erros.length, "Zerar os erros da curva"+(cheia()?" ("+A.erros.length+" abertos)":""), "Cada erro em vermelho é um pedaço de pista indo para o bar."],
+    [S.fonte==="rec", "Escolher a fonte da gravação", "Celular na caixa grava a sala, não a sua mixagem."],
+    [S.nivel==="m6", "Conferir o nível antes do REC", "Gravação clipada esconde justamente o pico que você quer ouvir."],
+    [S.nome==="datado", "Nomear com data e local", "Sem isso você não compara o set de hoje com o do mês passado."],
+    [S.gravado, "Gravar as 4 horas", "O arquivo não tem ego: ele mostra o que a pista ouviu."],
+    [ouviuTudo(), "Ouvir as 7 passagens ("+S.ouvidas.length+"/7)", "Ouvir só os trechos legais é autoelogio, não estudo."],
+    [fichaOk(), "Fechar a ficha de escuta", "O que se escuta na gravação é a emenda, não a música."]
+  ];
+  const L=$("#lista"); L.innerHTML="";
+  it.forEach(([ok,t,a])=>{
+    const d=document.createElement("div"); d.className="chk"+(ok?" ok":"");
+    d.innerHTML='<div class="b">'+(ok?"&#10003;":"!")+'</div><div class="tx"><b>'+t+'</b>'
+      +(ok?"":'<br><span style="color:#7f8b9c">'+a+'</span>')+'</div>';
+    L.appendChild(d);
+  });
+  const tudo=it.every(x=>x[0]);
+  let extra="";
+  if(tudo){
+    const f=S.grade.map(v=>FAIXAS[v]);
+    let pior=0,val=-1;
+    for(let i=0;i<f.length-1;i++){ const d=Math.abs(f[i+1].bpm-f[i].bpm); if(d>val){val=d;pior=i;} }
+    extra=' A passagem mais frágil do seu set é a das <b>'+HORAS[pior+1]+'</b> ('+val+' BPM de diferença) — '
+      +'comece a escuta por ela.';
+  }
+  $("#aviso").innerHTML = tudo
+    ? '<b style="color:#7df0a8">Fechou o ciclo.</b> Montar com curva, gravar do jeito certo, esperar 48 h, ouvir as '
+      +'passagens e escolher um item para treinar. Repita isso a cada set e em três meses o seu set não é o mesmo.'
+      +extra+' O curso acaba aqui; o ciclo, não.'
+    : '<b>Por que nesta ordem:</b> montar → ler a curva → gravar → ouvir. Gravar um set torto só produz a prova '
+      +'gravada de que ele era torto, e ouvir sem método vira autoelogio. Cada passo só abre quando o anterior está de pé.';
+}
+
+$("#btnReset").addEventListener("pointerdown",()=>location.reload());
+render();
+const fit=()=>{ const w=$(".wrap");
+  const cap=document.documentElement.classList.contains("smu-fs")?2.2:1;
+  const s=Math.max(0.1,Math.min((window.innerWidth-6)/w.offsetWidth,(window.innerHeight-6)/w.offsetHeight,cap));
+  $("#stage").style.transform="scale("+s+")"; };
+window.addEventListener("resize",fit);
+window.addEventListener("message",e=>{ if(!e||!e.data) return;
+  if(e.data.type==="smu-fullscreen") document.documentElement.classList.toggle("smu-fs",!!e.data.on);
+  if(e.data.type==="smu-fullscreen"||e.data.smu==="fullscreen") setTimeout(fit,60); });
+fit();
+</script>
+</body>
+</html>

@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>Monte a sua cabine (SMU)</title>
+<style>
+  :root{ --ink:#e9eef7; --amber:#ffae1a; --green:#39d271; --blue:#37a2ff; --red:#ff4636;
+         --line:#2a2f37; --painel:#0c0e12; }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{ background:radial-gradient(1100px 640px at 50% -10%,#26292e,#0a0b0d 62%),#08090b; color:var(--ink);
+    font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;
+    user-select:none;overflow:hidden;display:flex;align-items:flex-start;justify-content:center}
+  #stage{transform-origin:top center;flex:0 0 auto}
+  .wrap{width:1180px;display:flex;flex-direction:column;gap:9px;padding:10px}
+
+  .util{display:flex;align-items:center;gap:9px;flex-wrap:wrap;background:linear-gradient(180deg,#202329,#15171b);
+    border:1px solid #0c0d0f;border-radius:11px;padding:8px 12px}
+  .brand b{font-size:15px;letter-spacing:1px}
+  .brand .m{font-size:9px;letter-spacing:2px;color:#8a94a4;text-transform:uppercase;margin-left:6px}
+  .pill{font-size:10px;color:#8b97a9;background:var(--painel);border:1px solid var(--line);border-radius:16px;padding:4px 10px}
+  .pill b{color:#fff}
+  .spacer{flex:1}
+  .btnp{font:inherit;font-size:11px;font-weight:700;border:0;border-radius:8px;padding:7px 12px;cursor:pointer;
+    color:#07120b;background:linear-gradient(180deg,#5be59a,#27b566)}
+  .btnp.ghost{background:transparent;color:#8b97a9;border:1px solid var(--line)}
+  .btnp:disabled{opacity:.35;cursor:not-allowed}
+
+  .passos{display:flex;gap:6px}
+  .pa{flex:1;padding:7px 10px;border-radius:8px;background:#11151a;border:1px solid #1c2229}
+  .pa.on{background:#151d2a;border-color:var(--blue)}
+  .pa.ok{background:#0f2418;border-color:#1e5c38}
+  .pa .n{font-size:9px;font-weight:900;color:#6b7684}
+  .pa.on .n{color:var(--blue)} .pa.ok .n{color:var(--green)}
+  .pa .t{font-size:10.5px;font-weight:800;margin-top:2px}
+
+  .grid{display:grid;grid-template-columns:1fr 292px;gap:9px}
+  .card{background:var(--painel);border:1px solid var(--line);border-radius:10px;padding:10px;min-height:530px}
+  .card h3{margin:0 0 9px;font-size:10px;letter-spacing:1.4px;color:#8b97a9;text-transform:uppercase;font-weight:800}
+
+  /* ---- escolha ---- */
+  .escolha{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
+  .col .lb{font-size:9px;color:#7f8b9c;margin-bottom:5px;letter-spacing:.6px;font-weight:800}
+  .opt{display:flex;align-items:center;gap:7px;padding:7px 8px;border:1px solid #23282f;border-radius:7px;
+    background:linear-gradient(180deg,#171a1f,#101317);cursor:pointer;margin-bottom:5px}
+  .opt.on{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue) inset}
+  .opt .ic{width:30px;height:20px;border-radius:3px;flex:0 0 auto;border:1px solid #000;
+    background:linear-gradient(180deg,#3b4148,#191c20)}
+  .opt.vinil .ic{background:radial-gradient(circle at 50% 50%,#5a6068 16%,#0f1114 18%,#1a1d21 70%)}
+  .opt .nm{font-size:10.5px;font-weight:700;line-height:1.15}
+  .opt .tp{font-size:8.5px;color:#7f8b9c}
+  .opt .tag{margin-left:auto;font-size:8px;font-weight:900;padding:2px 5px;border-radius:4px}
+  .tag.line{background:#123a5c;color:#8fd0ff}
+  .tag.phono{background:#4a2a12;color:#ffc98a}
+
+  /* ---- traseira ---- */
+  .tras{position:relative;background:#0a0d11;border:1px solid #1c2229;border-radius:8px;padding:12px;min-height:430px}
+  .apar{position:absolute;border-radius:6px;border:1px solid #05070a;
+    background:linear-gradient(180deg,#2a2e34,#16191d 60%,#0f1216);
+    box-shadow:0 5px 14px #000a, inset 0 1px 0 #ffffff14}
+  .apar .tit{position:absolute;top:-15px;left:2px;font-size:9px;font-weight:800;color:#9aa4b1;letter-spacing:.4px}
+  .apar .grade{position:absolute;inset:6px 6px 22px 6px;border-radius:3px;
+    background:repeating-linear-gradient(90deg,#0d1014 0 2px,#171b20 2px 4px);opacity:.7}
+
+  .rca{position:absolute;width:15px;height:15px;border-radius:50%;cursor:pointer;
+    background:radial-gradient(circle at 50% 32%,#d8dde3,#8f959c 60%,#4a4f55);border:2px solid #b03a2e;
+    box-shadow:0 1px 3px #000a}
+  .rca.b{border-color:#e8e8e8}
+  .rca:hover{box-shadow:0 0 0 2px #fff6}
+  .rca.sel{box-shadow:0 0 0 3px var(--amber),0 0 12px var(--amber)}
+  .rca.ok{border-color:var(--green)}
+  .ac{position:absolute;width:20px;height:14px;border-radius:2px;cursor:pointer;
+    background:linear-gradient(180deg,#2b2f35,#111417);border:1.5px solid #6b7684}
+  .ac:hover{box-shadow:0 0 0 2px #fff5}
+  .ac.sel{box-shadow:0 0 0 3px var(--amber)}
+  .ac.ok{border-color:var(--green);background:linear-gradient(180deg,#14351f,#0c1d12)}
+  .terra{position:absolute;width:11px;height:11px;border-radius:50%;cursor:pointer;
+    background:radial-gradient(circle at 50% 32%,#c9a227,#6b5510);border:1.5px solid #3a2f08}
+  .terra.ok{border-color:var(--green);box-shadow:0 0 8px #39d27166}
+  .lbj{position:absolute;font-size:7px;font-weight:800;color:#8a94a4;letter-spacing:.3px;pointer-events:none}
+
+  /* regua AC */
+  .regua{position:absolute;left:12px;right:12px;bottom:8px;height:40px;border-radius:6px;
+    background:linear-gradient(180deg,#23272d,#131619);border:1px solid #05070a;
+    box-shadow:inset 0 1px 0 #ffffff12,0 4px 10px #0009;display:flex;align-items:center;gap:14px;padding:0 14px}
+  .regua .rt{font-size:8.5px;font-weight:900;color:#8a94a4;letter-spacing:1px}
+  .tom{width:24px;height:22px;border-radius:3px;cursor:pointer;position:relative;
+    background:linear-gradient(180deg,#101317,#0a0c0f);border:1.5px solid #4a5058}
+  .tom::before,.tom::after{content:"";position:absolute;top:5px;width:3px;height:8px;background:#4a5058;border-radius:1px}
+  .tom::before{left:6px} .tom::after{right:6px}
+  .tom.ok{border-color:var(--green)} .tom.ok::before,.tom.ok::after{background:var(--green)}
+  .tom.sel{box-shadow:0 0 0 3px var(--amber)}
+  .chaveac{margin-left:auto;font-size:8.5px;font-weight:900;padding:4px 9px;border-radius:5px;cursor:pointer;
+    background:#3a1a16;border:1px solid #6b241c;color:#ff9c90;letter-spacing:.5px}
+  .chaveac.on{background:#14351f;border-color:#1e6b3c;color:#7df0a8}
+
+  svg.cabos{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:3}
+
+  /* ---- frente ---- */
+  .frente{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .fap{border:1px solid #1b2027;border-radius:8px;overflow:hidden;background:#08090b}
+  .fap.mix{grid-column:1/-1}
+  .fap .cap{display:flex;align-items:center;gap:7px;padding:5px 8px;background:#12161b;border-bottom:1px solid #1b2027}
+  .fap .cap .nm{font-size:10px;font-weight:800}
+  .fap iframe{display:block;width:100%;border:0;background:#08090b}
+
+  /* ---- painel ---- */
+  .chk{display:flex;gap:7px;align-items:flex-start;padding:6px 7px;border-radius:7px;margin-bottom:5px;
+    background:#11151a;border:1px solid #1c2229}
+  .chk.ok{background:#0f2418;border-color:#1e5c38}
+  .chk .b{width:14px;height:14px;border-radius:50%;flex:0 0 auto;margin-top:1px;background:#2a3038;border:1px solid #000;
+    display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:#6b7684}
+  .chk.ok .b{background:var(--green);color:#062a13}
+  .chk .tx{font-size:10px;line-height:1.3;color:#c2cbd6}
+  .chk.ok .tx{color:#9fe3bb}
+  .chk .tx b{color:#fff}
+  .som{margin-top:8px;padding:9px;border-radius:8px;text-align:center;font-size:11px;font-weight:800;
+    background:#2a1414;border:1px solid #52201c;color:#ff9c90}
+  .som.on{background:#0f2a18;border-color:#1e6b3c;color:#7df0a8}
+  .ctrl{margin-top:9px;padding-top:8px;border-top:1px dashed #232a32}
+  .lin{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+  .lin .lb{font-size:9px;font-weight:800;color:#8b97a9;width:56px}
+  .fad{flex:1;height:15px;border-radius:4px;position:relative;cursor:ew-resize;touch-action:none;
+    background:linear-gradient(180deg,#07090b,#1b1f24 50%,#07090b);border:1px solid #000}
+  .fad .cap2{position:absolute;top:50%;width:12px;height:21px;transform:translate(-50%,-50%);border-radius:2px;
+    background:linear-gradient(180deg,#eef1f4,#a9afb7);border:1px solid #000}
+  .dica{margin-top:9px;font-size:9.5px;line-height:1.45;color:#8b97a9;border-top:1px dashed #232a32;padding-top:8px}
+  .dica b{color:#cdd5e0}
+</style>
+</head>
+<body>
+<div id="stage">
+<div class="wrap">
+
+  <div class="util">
+    <div class="brand"><b>SMU</b><span class="m">PRO • MONTE A SUA CABINE</span></div>
+    <span class="pill">Energia <b id="pEnergia">desligada</b></span>
+    <span class="pill">Sinal <b id="pSinal">interrompido</b></span>
+    <span class="spacer"></span>
+    <button class="btnp ghost" id="btnVirar">Virar os aparelhos</button>
+    <button class="btnp ghost" id="btnReset">Recomeçar</button>
+  </div>
+
+  <div class="passos">
+    <div class="pa on" data-p="1"><div class="n">PASSO 1</div><div class="t">Escolher os aparelhos</div></div>
+    <div class="pa" data-p="2"><div class="n">PASSO 2</div><div class="t">Traseira: força e RCA</div></div>
+    <div class="pa" data-p="3"><div class="n">PASSO 3</div><div class="t">Frente: fazer o som sair</div></div>
+  </div>
+
+  <div class="grid">
+    <div class="card" id="palco"></div>
+    <div class="card" style="min-height:auto">
+      <h3>O que falta</h3>
+      <div id="lista"></div>
+      <div class="som" id="som">SEM SOM</div>
+      <div class="ctrl" id="ctrl"></div>
+      <div class="dica" id="dica"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+
+/* os simuladores REAIS embutidos, injetados pelo gerador */
+const SIMS = __SIMS__;
+
+const S={ passo:1, d1:null, d2:null, mix:null,
+  rca:{1:null,2:null},              /* rca[deck] = canal do mixer */
+  entrada:{1:"LINE",2:"LINE"},
+  forca:{d1:false,d2:false,mix:false},   /* plugado na regua */
+  terra:{1:false,2:false},               /* fio terra do toca-discos */
+  reguaLigada:false,
+  ligando:null,                          /* {tipo:'rca'|'ac', quem} */
+  fader:{1:0,2:0}, master:0 };
+
+const ehVinil = t => /technics|plx|sl-1200/i.test(t);
+const saidaDe = t => ehVinil(t) ? "PHONO" : "LINE";
+
+/* ---------- PASSO 1: escolher ---------- */
+function telaEscolha(){
+  const decks=SIMS.filter(s=>s.tipo!=="mixer");
+  const mixers=SIMS.filter(s=>s.tipo==="mixer");
+  const bloco=(lista,sel,campo)=>lista.map(s=>`
+    <div class="opt ${ehVinil(s.nome)?"vinil":""} ${sel===s.id?"on":""}" data-campo="${campo}" data-id="${s.id}">
+      <div class="ic"></div>
+      <div><div class="nm">${s.nome}</div><div class="tp">${s.sub||""}</div></div>
+      ${s.tipo!=="mixer"?`<span class="tag ${saidaDe(s.nome).toLowerCase()}">${saidaDe(s.nome)}</span>`:""}
+    </div>`).join("");
+  return `<h3>1 · Escolha os aparelhos da sua cabine</h3>
+  <div class="escolha">
+    <div class="col"><div class="lb">DECK 1</div>${bloco(decks,S.d1,"d1")}</div>
+    <div class="col"><div class="lb">DECK 2</div>${bloco(decks,S.d2,"d2")}</div>
+    <div class="col"><div class="lb">MIXER</div>${bloco(mixers,S.mix,"mix")}</div>
+  </div>
+  <div class="dica" style="margin-top:12px">
+    Repare na etiqueta de cada aparelho: <b>LINE</b> é fonte digital (CDJ/XDJ),
+    <b>PHONO</b> é toca-discos. Isso decide onde o cabo entra no mixer — e você vai fazer essa ligação
+    no próximo passo, <b>pela traseira</b>, como na vida real.
+  </div>`;
+}
+
+/* ---------- PASSO 2: traseira ---------- */
+function nomeDe(id){ const s=SIMS.find(x=>x.id===id); return s?s.nome:"—"; }
+function telaTraseira(){
+  const v1=ehVinil(nomeDe(S.d1)), v2=ehVinil(nomeDe(S.d2));
+  return `<h3>2 · Traseira dos aparelhos — ligue a força e os cabos RCA</h3>
+  <div class="tras" id="tras">
+    <svg class="cabos" id="svg"></svg>
+
+    <div class="apar" id="t1" style="left:14px;top:26px;width:300px;height:96px">
+      <div class="tit">${nomeDe(S.d1)} — traseira</div><div class="grade"></div>
+      <div class="ac" id="ac-d1" style="left:12px;bottom:6px"></div>
+      <span class="lbj" style="left:10px;bottom:22px">AC IN</span>
+      <div class="rca" id="rca-1" style="right:40px;bottom:6px"></div>
+      <div class="rca b" style="right:20px;bottom:6px;pointer-events:none"></div>
+      <span class="lbj" style="right:18px;bottom:22px">AUDIO OUT ${saidaDe(nomeDe(S.d1))}</span>
+      ${v1?`<div class="terra" id="ter-1" style="right:72px;bottom:8px"></div>
+            <span class="lbj" style="right:64px;bottom:22px">GND</span>`:""}
+    </div>
+
+    <div class="apar" id="t2" style="right:14px;top:26px;width:300px;height:96px">
+      <div class="tit">${nomeDe(S.d2)} — traseira</div><div class="grade"></div>
+      <div class="ac" id="ac-d2" style="left:12px;bottom:6px"></div>
+      <span class="lbj" style="left:10px;bottom:22px">AC IN</span>
+      <div class="rca" id="rca-2" style="right:40px;bottom:6px"></div>
+      <div class="rca b" style="right:20px;bottom:6px;pointer-events:none"></div>
+      <span class="lbj" style="right:18px;bottom:22px">AUDIO OUT ${saidaDe(nomeDe(S.d2))}</span>
+      ${v2?`<div class="terra" id="ter-2" style="right:72px;bottom:8px"></div>
+            <span class="lbj" style="right:64px;bottom:22px">GND</span>`:""}
+    </div>
+
+    <div class="apar" id="tm" style="left:50%;transform:translateX(-50%);top:158px;width:420px;height:104px">
+      <div class="tit">${nomeDe(S.mix)} — traseira</div><div class="grade"></div>
+      <div class="ac" id="ac-mix" style="left:12px;bottom:6px"></div>
+      <span class="lbj" style="left:10px;bottom:22px">AC IN</span>
+      ${[1,2].map(n=>`
+        <div style="position:absolute;left:${90+(n-1)*110}px;bottom:4px;text-align:center">
+          <div class="sw" data-ch="${n}" style="cursor:pointer;display:flex;border:1px solid #000;border-radius:3px;overflow:hidden;margin-bottom:3px">
+            <span style="font-size:7px;font-weight:900;padding:1px 4px;background:${S.entrada[n]==="LINE"?"#2f6ea5":"#15181c"};color:${S.entrada[n]==="LINE"?"#fff":"#7f8b9c"}">LINE</span>
+            <span style="font-size:7px;font-weight:900;padding:1px 4px;background:${S.entrada[n]==="PHONO"?"#a56a2f":"#15181c"};color:${S.entrada[n]==="PHONO"?"#fff":"#7f8b9c"}">PHONO</span>
+          </div>
+          <div style="display:flex;gap:4px;justify-content:center">
+            <div class="rca ent" data-ch="${n}" style="position:relative;right:auto;bottom:auto"></div>
+            <div class="rca b" style="position:relative;right:auto;bottom:auto;pointer-events:none"></div>
+          </div>
+          <span class="lbj" style="position:relative;display:block;margin-top:2px">CH ${n} IN</span>
+        </div>`).join("")}
+      <div style="position:absolute;right:14px;bottom:6px;text-align:center">
+        <div class="rca b" style="position:relative;right:auto;bottom:auto;display:inline-block"></div>
+        <div class="rca" style="position:relative;right:auto;bottom:auto;display:inline-block;pointer-events:none"></div>
+        <span class="lbj" style="position:relative;display:block;margin-top:2px">MASTER OUT</span>
+      </div>
+      ${(ehVinil(nomeDe(S.d1))||ehVinil(nomeDe(S.d2)))?`
+        <div class="terra" id="ter-mix" style="left:210px;bottom:78px"></div>
+        <span class="lbj" style="left:196px;bottom:92px">SIGNAL GND</span>`:""}
+    </div>
+
+    <div class="regua" id="regua">
+      <span class="rt">RÉGUA AC 110/220V</span>
+      <div class="tom" data-tom="1"></div>
+      <div class="tom" data-tom="2"></div>
+      <div class="tom" data-tom="3"></div>
+      <div class="chaveac ${S.reguaLigada?"on":""}" id="chaveac">${S.reguaLigada?"LIGADA":"DESLIGADA"}</div>
+    </div>
+  </div>`;
+}
+
+/* ---------- PASSO 3: frente ---------- */
+function telaFrente(){
+  const s1=SIMS.find(s=>s.id===S.d1), s2=SIMS.find(s=>s.id===S.d2), sm=SIMS.find(s=>s.id===S.mix);
+  return `<h3>3 · Frente — agora faça o som sair</h3>
+  <div class="frente">
+    <div class="fap"><div class="cap"><span class="nm">${s1.nome}</span></div>
+      <iframe id="if1" sandbox="allow-scripts" srcdoc="${s1.html}" height="300"></iframe></div>
+    <div class="fap"><div class="cap"><span class="nm">${s2.nome}</span></div>
+      <iframe id="if2" sandbox="allow-scripts" srcdoc="${s2.html}" height="300"></iframe></div>
+    <div class="fap mix"><div class="cap"><span class="nm">${sm.nome}</span></div>
+      <iframe id="ifm" sandbox="allow-scripts" srcdoc="${sm.html}" height="280"></iframe></div>
+  </div>`;
+}
+
+/* ---------- cabos ---------- */
+function cabos(){
+  const svg=$("#svg"); if(!svg) return;
+  const b=$("#tras").getBoundingClientRect(); svg.innerHTML="";
+  const traco=(a,c,cor,curva)=>{
+    if(!a||!c) return;
+    const r1=a.getBoundingClientRect(), r2=c.getBoundingClientRect();
+    const x1=r1.left+r1.width/2-b.left, y1=r1.top+r1.height/2-b.top;
+    const x2=r2.left+r2.width/2-b.left, y2=r2.top+r2.height/2-b.top;
+    const p=document.createElementNS("http://www.w3.org/2000/svg","path");
+    p.setAttribute("d",`M${x1},${y1} C${x1},${y1+curva} ${x2},${y2-curva} ${x2},${y2}`);
+    p.setAttribute("stroke",cor); p.setAttribute("stroke-width","3"); p.setAttribute("fill","none");
+    p.setAttribute("opacity",".9"); svg.appendChild(p);
+  };
+  /* RCA */
+  [1,2].forEach(n=>{ const c=S.rca[n]; if(!c) return;
+    const ok = saidaDe(nomeDe(n===1?S.d1:S.d2))===S.entrada[c];
+    traco($("#rca-"+n), $$(".rca.ent")[c-1], ok?"#39d271":"#ff4636", 50); });
+  /* forca */
+  const toms=$$(".tom");
+  [["d1","#ac-d1",0],["d2","#ac-d2",1],["mix","#ac-mix",2]].forEach(([k,sel,i])=>{
+    if(S.forca[k]) traco($(sel), toms[i], "#e0a33a", 60); });
+  /* terra */
+  [1,2].forEach(n=>{ if(S.terra[n]) traco($("#ter-"+n), $("#ter-mix"), "#c9a227", 40); });
+}
+
+/* ---------- eventos ---------- */
+function ligar(){
+  /* escolha */
+  $$(".opt[data-campo]").forEach(el=>el.onclick=()=>{
+    S[el.dataset.campo]=el.dataset.id;
+    if(S.d1&&S.d2&&S.mix) S.passo=2;
+    render();
+  });
+  /* traseira: RCA */
+  [1,2].forEach(n=>{ const j=$("#rca-"+n); if(j) j.onclick=()=>{
+    S.ligando = (S.ligando&&S.ligando.tipo==="rca"&&S.ligando.quem===n) ? null : {tipo:"rca",quem:n};
+    render(); }; });
+  $$(".rca.ent").forEach((j,i)=>j.onclick=()=>{
+    if(S.ligando&&S.ligando.tipo==="rca"){
+      const ch=i+1;
+      Object.keys(S.rca).forEach(k=>{ if(S.rca[k]===ch) S.rca[k]=null; });
+      S.rca[S.ligando.quem]=ch; S.ligando=null; render(); } });
+  /* chave LINE/PHONO */
+  $$(".sw[data-ch]").forEach(el=>el.onclick=()=>{
+    const n=+el.dataset.ch; S.entrada[n]= S.entrada[n]==="LINE"?"PHONO":"LINE"; render(); });
+  /* forca */
+  [["d1","#ac-d1"],["d2","#ac-d2"],["mix","#ac-mix"]].forEach(([k,sel])=>{
+    const el=$(sel); if(el) el.onclick=()=>{
+      S.ligando = (S.ligando&&S.ligando.tipo==="ac"&&S.ligando.quem===k) ? null : {tipo:"ac",quem:k};
+      render(); }; });
+  $$(".tom").forEach(el=>el.onclick=()=>{
+    if(S.ligando&&S.ligando.tipo==="ac"){ S.forca[S.ligando.quem]=true; S.ligando=null; render(); } });
+  const ch=$("#chaveac"); if(ch) ch.onclick=()=>{ S.reguaLigada=!S.reguaLigada; render(); };
+  /* terra */
+  [1,2].forEach(n=>{ const t=$("#ter-"+n); if(t) t.onclick=()=>{ S.terra[n]=!S.terra[n]; render(); }; });
+  /* marca o que esta selecionado */
+  $$(".rca,.ac").forEach(e=>e.classList.remove("sel"));
+  if(S.ligando){
+    const el = S.ligando.tipo==="rca" ? $("#rca-"+S.ligando.quem) : $("#ac-"+S.ligando.quem);
+    if(el) el.classList.add("sel");
+  }
+  [1,2].forEach(n=>{ const j=$("#rca-"+n); if(j) j.classList.toggle("ok",!!S.rca[n]);
+    const t=$("#ter-"+n); if(t) t.classList.toggle("ok",S.terra[n]); });
+  [["d1","#ac-d1"],["d2","#ac-d2"],["mix","#ac-mix"]].forEach(([k,sel])=>{
+    const e=$(sel); if(e) e.classList.toggle("ok",S.forca[k]); });
+  $$(".tom").forEach((e,i)=>e.classList.toggle("ok", Object.values(S.forca).filter(Boolean).length>i));
+  /* passos clicaveis */
+  $$(".pa").forEach(p=>p.onclick=()=>{ const n=+p.dataset.p;
+    if(n===1 || (n===2&&S.d1&&S.d2&&S.mix) || (n===3&&tudoLigado())){ S.passo=n; render(); } });
+}
+
+/* ---------- regras ---------- */
+const precisaTerra = ()=> ehVinil(nomeDe(S.d1))||ehVinil(nomeDe(S.d2));
+function casa(n){ const c=S.rca[n]; return c ? saidaDe(nomeDe(n===1?S.d1:S.d2))===S.entrada[c] : false; }
+function tudoLigado(){
+  return S.forca.d1&&S.forca.d2&&S.forca.mix&&S.reguaLigada&&S.rca[1]&&S.rca[2]&&casa(1)&&casa(2)
+    && (!precisaTerra() || (ehVinil(nomeDe(S.d1))?S.terra[1]:true) && (ehVinil(nomeDe(S.d2))?S.terra[2]:true));
+}
+
+function checklist(){
+  const it=[];
+  if(S.passo===1){
+    it.push([!!S.d1&&!!S.d2,"Escolher os <b>dois decks</b>","O mixer não toca sozinho — precisa de fonte."]);
+    it.push([!!S.mix,"Escolher o <b>mixer</b>","CDJ e pickup não vão direto na caixa."]);
+  } else {
+    it.push([S.forca.d1&&S.forca.d2&&S.forca.mix,"Plugar a <b>força</b> dos 3 na régua",
+      "Clique no <b>AC IN</b> da traseira e depois numa tomada da régua."]);
+    it.push([S.reguaLigada,"<b>Ligar a régua</b>","Aparelho plugado com a régua desligada continua morto."]);
+    it.push([!!S.rca[1]&&!!S.rca[2],"Ligar o <b>RCA</b> de cada deck num canal",
+      "Clique no <b>AUDIO OUT</b> e depois na entrada do canal."]);
+    it.push([casa(1)&&casa(2),"Pôr a chave do canal na <b>entrada certa</b>",
+      "CDJ/XDJ = <b>LINE</b> · pickup = <b>PHONO</b>."]);
+    if(precisaTerra())
+      it.push([(ehVinil(nomeDe(S.d1))?S.terra[1]:true)&&(ehVinil(nomeDe(S.d2))?S.terra[2]:true),
+        "Ligar o <b>fio terra</b> do toca-discos","Sem o GND no mixer, o som vem com <b>zumbido</b>."]);
+    if(S.passo===3){
+      it.push([S.fader[1]>0.05||S.fader[2]>0.05,"Subir o <b>fader do canal</b>","Começa no mínimo, como numa cabine real."]);
+      it.push([S.master>0.05,"Abrir o <b>MASTER</b>","É o último a subir e o primeiro a baixar."]);
+    }
+  }
+  const L=$("#lista"); L.innerHTML="";
+  it.forEach(([ok,t,a])=>{
+    const d=document.createElement("div"); d.className="chk"+(ok?" ok":"");
+    d.innerHTML=`<div class="b">${ok?"✓":"!"}</div><div class="tx">${t}${ok?"":"<br><span style='color:#7f8b9c'>"+a+"</span>"}</div>`;
+    L.appendChild(d);
+  });
+  const som = S.passo===3 && tudoLigado() && (S.fader[1]>0.05||S.fader[2]>0.05) && S.master>0.05;
+  const sm=$("#som"); sm.className="som"+(som?" on":""); sm.textContent= som?"SOM NO AR ♪":"SEM SOM";
+  $("#pSinal").textContent = som?"passando":"interrompido";
+  $("#pEnergia").textContent = S.reguaLigada && S.forca.mix ? "ligada":"desligada";
+
+  /* faders so no passo 3 */
+  const C=$("#ctrl");
+  C.innerHTML = S.passo===3 ? `
+    <div class="lin"><span class="lb">CANAL 1</span><div class="fad" id="f1"><div class="cap2"></div></div></div>
+    <div class="lin"><span class="lb">CANAL 2</span><div class="fad" id="f2"><div class="cap2"></div></div></div>
+    <div class="lin"><span class="lb">MASTER</span><div class="fad" id="fm"><div class="cap2"></div></div></div>` : "";
+  if(S.passo===3){
+    fader($("#f1"),S.fader[1],v=>{S.fader[1]=v;aplicar();});
+    fader($("#f2"),S.fader[2],v=>{S.fader[2]=v;aplicar();});
+    fader($("#fm"),S.master, v=>{S.master=v; aplicar();});
+  }
+  $("#dica").innerHTML = S.passo===2
+    ? `<b>Por que pela traseira:</b> é assim na cabine. Você chega, olha atrás do aparelho e decide
+       onde cada cabo entra. <b>Força primeiro</b> — sem energia não há o que testar.<br><br>
+       ${precisaTerra()?`O <b>fio terra</b> do toca-discos parafusa no <b>SIGNAL GND</b> do mixer.
+       Esquecer disso é o zumbido clássico que ninguém acha a causa.`:
+       `Repare que os dois decks são digitais: os dois entram em <b>LINE</b>.`}`
+    : S.passo===3
+    ? `<b>A ordem de subir:</b> régua ligada → aparelhos ligados → fader do canal → <b>master por último</b>.
+       Para baixar, o caminho é o inverso. Master fechado é o hábito que salva caixa e ouvido.`
+    : `Escolha o que quiser: dois CDJ, dois toca-discos, ou um de cada. A ligação muda conforme
+       a escolha — e é isso que você vai descobrir no próximo passo.`;
+  return som;
+}
+
+function fader(el,ini,cb){
+  if(!el) return;
+  const cap=el.querySelector(".cap2"); let v=ini;
+  const põe=()=>{ cap.style.left=(6+v*88)+"%"; }; põe();
+  let drag=false;
+  const mv=e=>{ if(!drag)return; const r=el.getBoundingClientRect();
+    v=clamp((e.clientX-r.left)/r.width,0,1); põe(); cb(v); };
+  el.addEventListener("pointerdown",e=>{drag=true;el.setPointerCapture(e.pointerId);mv(e);});
+  el.addEventListener("pointermove",mv);
+  const up=()=>drag=false; el.addEventListener("pointerup",up); el.addEventListener("pointercancel",up);
+}
+
+function aplicar(){
+  const som=checklist();
+  [1,2].forEach(n=>{
+    const c=S.rca[n];
+    const v = (som && c && casa(n)) ? S.fader[c]*S.master : 0;
+    const f=$("#if"+n); if(f&&f.contentWindow) f.contentWindow.postMessage({smu:"vol",v},"*");
+  });
+  const m=$("#ifm"); if(m&&m.contentWindow) m.contentWindow.postMessage({smu:"vol",v:0},"*");
+}
+
+/* ---------- render ---------- */
+function render(){
+  $$(".pa").forEach(p=>{ const n=+p.dataset.p;
+    p.classList.toggle("on",n===S.passo);
+    p.classList.toggle("ok", (n===1&&S.d1&&S.d2&&S.mix) || (n===2&&tudoLigado()) ); });
+  const P=$("#palco");
+  P.innerHTML = S.passo===1?telaEscolha() : S.passo===2?telaTraseira() : telaFrente();
+  ligar(); checklist();
+  if(S.passo===2) cabos();
+  $("#btnVirar").disabled = !(S.d1&&S.d2&&S.mix);
+  $("#btnVirar").textContent = S.passo===3 ? "Ver a traseira" : "Virar os aparelhos";
+}
+$("#btnVirar").onclick=()=>{ if(S.passo===3) S.passo=2; else if(tudoLigado()) S.passo=3; else S.passo=2; render(); };
+$("#btnReset").onclick=()=>location.reload();
+
+render();
+const fit=()=>{ const w=$(".wrap");
+  const s=Math.max(0.1,Math.min((window.innerWidth-6)/w.offsetWidth,(window.innerHeight-6)/w.offsetHeight,1));
+  $("#stage").style.transform="scale("+s+")"; };
+window.addEventListener("resize",()=>{fit(); if(S.passo===2)cabos();}); fit();
+</script>
+</body>
+</html>

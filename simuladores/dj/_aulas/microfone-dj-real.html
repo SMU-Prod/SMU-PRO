@@ -1,0 +1,942 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>Microfone na cabine: falar sem se enrolar (SMU)</title>
+<style>
+  :root{ --ink:#e9eef7; --amber:#ffae1a; --green:#39d271; --blue:#37a2ff; --red:#ff4636;
+         --roxo:#8b5cf6; --line:#2a2f37; --painel:#0c0e12; }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{ background:radial-gradient(1100px 640px at 50% -10%,#26292e,#0a0b0d 62%),#08090b; color:var(--ink);
+    font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;
+    user-select:none;overflow:hidden;display:flex;align-items:flex-start;justify-content:center}
+  #stage{transform-origin:top center;flex:0 0 auto}
+  .wrap{width:1080px;display:flex;flex-direction:column;gap:9px;padding:10px}
+
+  .util{display:flex;align-items:center;gap:9px;flex-wrap:wrap;background:linear-gradient(180deg,#202329,#15171b);
+    border:1px solid #0c0d0f;border-radius:11px;padding:8px 12px}
+  .brand b{font-size:15px;letter-spacing:1px}
+  .brand .m{font-size:9px;letter-spacing:2px;color:#8a94a4;text-transform:uppercase;margin-left:6px}
+  .pill{font-size:10px;color:#8b97a9;background:var(--painel);border:1px solid var(--line);border-radius:16px;padding:4px 10px}
+  .pill b{color:#fff}
+  .spacer{flex:1}
+  .btnp{font:inherit;font-size:11px;font-weight:700;border:0;border-radius:8px;padding:7px 12px;cursor:pointer;
+    color:#07120b;background:linear-gradient(180deg,#5be59a,#27b566)}
+  .btnp.ghost{background:transparent;color:#8b97a9;border:1px solid var(--line)}
+  .btnp.amb{color:#1a1204;background:linear-gradient(180deg,#ffc95a,#f0980d)}
+  .btnp.rd{color:#fff;background:linear-gradient(180deg,#ff6a5c,#d02b1c)}
+  .btnp:disabled{opacity:.4;cursor:not-allowed}
+
+  .passos{display:flex;gap:6px}
+  .pa{flex:1;padding:7px 9px;border-radius:8px;background:#11151a;border:1px solid #1c2229;cursor:pointer}
+  .pa.on{background:#151d2a;border-color:var(--blue)}
+  .pa.ok{background:#0f2418;border-color:#1e5c38}
+  .pa .n{font-size:9px;font-weight:900;color:#6b7684}
+  .pa.on .n{color:var(--blue)} .pa.ok .n{color:var(--green)}
+  .pa .t{font-size:10.5px;font-weight:800;margin-top:2px}
+  .pa .s{font-size:9px;color:#8b97a9;margin-top:1px}
+
+  .grid{display:grid;grid-template-columns:1fr 300px;gap:9px}
+  .card{background:var(--painel);border:1px solid var(--line);border-radius:10px;padding:10px;min-height:352px}
+  .card h3{margin:0 0 8px;font-size:10px;letter-spacing:1.4px;color:#8b97a9;text-transform:uppercase;font-weight:800}
+
+  .aviso{font-size:9.8px;line-height:1.45;color:#8b97a9;margin-top:9px;border-top:1px dashed #232a32;padding-top:8px}
+  .aviso b{color:#cdd5e0}
+  .chk{display:flex;gap:7px;align-items:flex-start;padding:6px 7px;border-radius:7px;margin-bottom:5px;
+    background:#11151a;border:1px solid #1c2229}
+  .chk.ok{background:#0f2418;border-color:#1e5c38}
+  .chk .b{width:14px;height:14px;border-radius:50%;flex:0 0 auto;margin-top:1px;background:#2a3038;border:1px solid #000;
+    display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:#6b7684}
+  .chk.ok .b{background:var(--green);color:#062a13}
+  .chk .tx{font-size:10px;line-height:1.3;color:#c2cbd6}
+  .chk.ok .tx{color:#9fe3bb}
+
+  /* ---------- mesa (fixa) ---------- */
+  .mesa{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;background:linear-gradient(180deg,#171a1f,#101318);
+    border:1px solid #05070a;border-radius:11px;padding:9px}
+  .mod{background:#0b0e12;border:1px solid #1c2229;border-radius:8px;padding:8px 9px}
+  .mt{font-size:8.5px;letter-spacing:1.3px;color:#7d8797;font-weight:900;text-transform:uppercase;margin-bottom:6px}
+  .mn{font-size:8.6px;color:#6b7684;line-height:1.35;margin-top:5px}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:16px;background:transparent;cursor:pointer;margin:0}
+  input[type=range]::-webkit-slider-runnable-track{height:5px;border-radius:3px;background:#232a33}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:16px;border-radius:3px;margin-top:-6px;
+    background:linear-gradient(180deg,#f2f5fa,#9aa5b4);border:1px solid #05070a}
+  input[type=range]::-moz-range-track{height:5px;border-radius:3px;background:#232a33}
+  input[type=range]::-moz-range-thumb{width:14px;height:16px;border-radius:3px;border:1px solid #05070a;
+    background:linear-gradient(180deg,#f2f5fa,#9aa5b4)}
+  .mv{display:flex;align-items:baseline;gap:8px;margin-top:3px}
+  .mv b{font-size:15px;font-weight:900}
+  .mv span{font-size:9.5px;color:#8b97a9}
+  .eqr{display:flex;align-items:center;gap:7px;margin-bottom:4px}
+  .eqr span{font-size:9px;font-weight:900;color:#8b97a9;width:26px}
+  .eqr b{font-size:10px;font-weight:900;width:30px;text-align:right}
+  .seg{display:flex;gap:4px;flex-wrap:wrap}
+  .seg button{flex:1;min-width:0;font:inherit;font-size:8.8px;font-weight:800;padding:5px 3px;border-radius:5px;
+    border:1px solid #23282f;background:#12161c;color:#8b97a9;cursor:pointer;white-space:nowrap}
+  .seg button.on{background:#1a2436;border-color:var(--blue);color:#fff}
+  .tog{width:100%;margin-top:5px;font:inherit;font-size:9px;font-weight:800;padding:6px 4px;border-radius:6px;
+    border:1px solid #23282f;background:#12161c;color:#8b97a9;cursor:pointer}
+  .tog.on{background:#3a1d10;border-color:var(--amber);color:#ffd48a}
+  .big{width:100%;font:inherit;font-size:12px;font-weight:900;padding:9px;border-radius:7px;border:1px solid #05070a;
+    background:linear-gradient(180deg,#2b3038,#151a20);color:#8b97a9;cursor:pointer;letter-spacing:1px}
+  .big.on{background:linear-gradient(180deg,#ff6a5c,#c8261a);color:#fff;box-shadow:0 0 12px -3px var(--red)}
+  .med{display:flex;align-items:center;gap:6px;margin-top:5px}
+  .med span{font-size:8.4px;color:#6b7684;width:26px;font-weight:800}
+  .bar{flex:1;height:7px;border-radius:4px;background:#161b22;overflow:hidden}
+  .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#27b566,#ffae1a 72%,#ff4636)}
+
+  /* ---------- palco ---------- */
+  .txt{font-size:10.4px;line-height:1.5;color:#c2cbd6}
+  .txt b{color:#fff}
+  .sub{font-size:9.6px;line-height:1.45;color:#8b97a9;margin-top:6px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:9px}
+  .box{background:#0f1218;border:1px solid #1c2229;border-radius:8px;padding:9px;margin-top:9px}
+  .lab{font-size:8.5px;letter-spacing:1.2px;color:#7d8797;font-weight:900;text-transform:uppercase}
+  .num{font-size:19px;font-weight:900;line-height:1.1}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .cols3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .vd{font-size:10px;font-weight:800;padding:3px 8px;border-radius:12px;display:inline-block}
+  .vd.bad{background:#3a1210;color:#ff9b90} .vd.mid{background:#3a2c10;color:#ffd48a} .vd.good{background:#0f2418;color:#7df0a8}
+
+  /* mapa do salao */
+  .mapa{position:relative;height:104px;background:#080b10;border:1px solid #1c2229;border-radius:7px;overflow:hidden;margin-top:9px}
+  .cx{position:absolute;width:15px;height:38px;border-radius:3px;background:linear-gradient(180deg,#3a424e,#1b2027);
+    border:1px solid #05070a;top:33px}
+  .cx::after{content:"";position:absolute;left:3px;top:11px;width:9px;height:9px;border-radius:50%;background:#11151a;border:1px solid #000}
+  .dj{position:absolute;top:52px;width:13px;height:13px;border-radius:50%;background:var(--amber);
+    border:2px solid #1a1204;margin-left:-6px;margin-top:-6px;transition:left .2s}
+  .setinha{position:absolute;height:2px;background:var(--red);top:51px;transform-origin:left center}
+  .mlb{position:absolute;font-size:8px;color:#6b7684;font-weight:800}
+  .onda{position:absolute;border-radius:50%;border:1px solid rgba(55,162,255,.18)}
+
+  /* barra de estrutura */
+  .estr{position:relative;height:46px;border-radius:7px;overflow:hidden;border:1px solid #1c2229;margin-top:8px;display:flex}
+  .zn{flex:1;position:relative;display:flex;align-items:flex-end;justify-content:center;padding-bottom:4px;
+    font-size:8.6px;font-weight:900;letter-spacing:.6px}
+  .zn.bom{background:linear-gradient(180deg,#0e2a1a,#0b1a12);color:#6fd99a}
+  .zn.ruim{background:linear-gradient(180deg,#2c1114,#1a0c0e);color:#ff9b90}
+  .ph{position:absolute;top:0;bottom:0;width:2px;background:#fff;box-shadow:0 0 8px #fff;left:0}
+  .fala{position:absolute;top:0;bottom:0;background:rgba(255,174,26,.28);border-left:1px solid var(--amber);
+    border-right:1px solid var(--amber)}
+
+  .opt{display:block;width:100%;text-align:left;font:inherit;font-size:10px;line-height:1.4;padding:8px 9px;margin-top:6px;
+    border-radius:7px;border:1px solid #1c2229;background:#11151a;color:#c2cbd6;cursor:pointer}
+  .opt:hover{background:#151b23}
+  .opt.err{border-color:#6b2018;background:#1e0f0e}
+  .opt.cer{border-color:#1e5c38;background:#0f2418}
+  .opt small{display:block;margin-top:5px;font-size:9.2px;color:#8b97a9;line-height:1.45}
+  .flash{border:1px solid #23282f;border-radius:8px;padding:8px 9px;margin-top:8px;font-size:10px;line-height:1.45}
+  .flash.bad{border-color:#6b2018;background:#1a0d0c;color:#ffb4ab}
+  .flash.good{border-color:#1e5c38;background:#0d2117;color:#9fe3bb}
+</style>
+</head>
+<body>
+<div id="stage">
+<div class="wrap">
+
+  <div class="util">
+    <div class="brand"><b>SMU</b><span class="m">PRO • MICROFONE NA CABINE</span></div>
+    <span class="pill">Passo <b id="pnum">1 de 4</b></span>
+    <span class="pill" id="pill2">som <b>desligado</b></span>
+    <span class="spacer"></span>
+    <button class="btnp amb" id="btSom">▶ Ligar o som</button>
+    <button class="btnp ghost" id="btnReset">Recomeçar</button>
+  </div>
+
+  <div class="passos">
+    <div class="pa on" data-p="1"><div class="n">PASSO 1</div><div class="t">Passagem de som</div><div class="s">achar onde apita</div></div>
+    <div class="pa" data-p="2"><div class="n">PASSO 2</div><div class="t">EQ do microfone</div><div class="s">grave e agudo</div></div>
+    <div class="pa" data-p="3"><div class="n">PASSO 3</div><div class="t">Talk over</div><div class="s">com e sem</div></div>
+    <div class="pa" data-p="4"><div class="n">PASSO 4</div><div class="t">No ar</div><div class="s">três anúncios</div></div>
+  </div>
+
+  <div class="grid">
+    <div class="card" id="palco"></div>
+    <div class="card">
+      <h3>O que falta</h3>
+      <div id="lista"></div>
+      <div class="aviso" id="aviso"></div>
+    </div>
+  </div>
+
+  <div class="mesa">
+    <div class="mod">
+      <div class="mt">Mic level (fader do canal)</div>
+      <input type="range" id="rFader" min="0" max="10" step="0.1" value="4">
+      <div class="mv"><b id="vFader">4.0</b><span id="vMargem">ligue o som</span></div>
+      <div class="mn">Cada ponto do fader vale ≈ 4,6 dB. A folga é a distância que falta para o sistema apitar.</div>
+    </div>
+
+    <div class="mod">
+      <div class="mt">EQ do microfone</div>
+      <div class="eqr"><span>HI</span><input type="range" id="rHi" min="-12" max="12" step="1" value="0"><b id="vHi">0 dB</b></div>
+      <div class="eqr"><span>LOW</span><input type="range" id="rLow" min="-12" max="12" step="1" value="0"><b id="vLow">0 dB</b></div>
+      <div class="mn">HI = prateleira acima de 2 kHz (é a faixa que realimenta). LOW = prateleira abaixo de 200 Hz (é onde mora o embolado).</div>
+    </div>
+
+    <div class="mod">
+      <div class="mt">Canal do microfone</div>
+      <button class="big" id="btCanal">FECHADO</button>
+      <div class="med"><span>PA</span><div class="bar"><i id="mPA"></i></div></div>
+      <div class="med"><span>3 kHz</span><div class="bar"><i id="mFB"></i></div></div>
+      <div class="mn" id="txAviso">Canal fechado: ninguém ouve a cabine — e nada apita.</div>
+    </div>
+
+    <div class="mod">
+      <div class="mt">Distância da boca</div>
+      <div class="seg" id="segBoca">
+        <button data-b="colado">colado (3 cm)</button>
+        <button data-b="palmo" class="on">um palmo (20 cm)</button>
+        <button data-b="longe">longe (60 cm)</button>
+      </div>
+      <div class="mn">Colado estoura o grave e os “p”. Longe some e obriga a subir o fader — e aí apita.</div>
+    </div>
+
+    <div class="mod">
+      <div class="mt">Onde você está / para onde aponta</div>
+      <div class="seg" id="segLugar">
+        <button data-l="cabine" class="on">na cabine</button>
+        <button data-l="pista">meio da pista</button>
+        <button data-l="caixa">na frente da caixa</button>
+      </div>
+      <button class="tog" id="btApont">apontar o mic para a caixa: NÃO</button>
+    </div>
+
+    <div class="mod">
+      <div class="mt">Talk over</div>
+      <button class="tog" id="btTalk">DESLIGADO</button>
+      <div class="seg" id="segTalk" style="margin-top:5px">
+        <button data-t="-6">−6</button><button data-t="-12">−12</button>
+        <button data-t="-18" class="on">−18</button><button data-t="-24">−24</button>
+      </div>
+      <div class="mn">Quanto a música abaixa sozinha enquanto você fala, em dB.</div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const dbf=v=>(v>0?"+":"")+v.toFixed(1);
+
+/* ===================== ESTADO ===================== */
+const S={
+  passo:1, som:false, carregando:false,
+  fader:4.0, hi:0, low:0, boca:"palmo", lugar:"cabine", apont:false,
+  canal:false, talk:false, talkDb:-18,
+  /* aprendizado */
+  ouviuApito:false, ringCabine:0, ringApont:0, testouApontado:false,
+  teto:0, tetoOk:false, tetoMsg:"",
+  ouviuEmbolado:false, vozLimpa:false, viuAgudo:false, ultDesq:null, ultNivel:0,
+  snrSem:null, snrCom:null, talkOK:false, talkMsg:"",
+  ex:0, exOK:[false,false,false], frase:[null,null,null], exMsg:["","",""],
+  falando:false, apitando:false, aguardaFechar:false, esqueceuCanal:false,
+  falaIni:0, falaFim:0, ctxFala:null
+};
+
+/* ===================== REGRAS (puras — testadas em tabela-verdade) ===================== */
+const ZONAS=[
+  {a:0.00,b:0.25,n:"INTRO",  ok:true,  d:"só a batida rolando — janela livre"},
+  {a:0.25,b:0.50,n:"VOCAL",  ok:false, d:"tem voz cantando — falar aqui é falar POR CIMA de alguém"},
+  {a:0.50,b:0.75,n:"VIRADA", ok:true,  d:"trecho instrumental — é a melhor janela"},
+  {a:0.75,b:1.00,n:"REFRÃO", ok:false, d:"o pico da música — falar aqui derruba a pista"}
+];
+function zonaEm(p){ p=((p%1)+1)%1; for(const z of ZONAS){ if(p>=z.a&&p<z.b) return z; } return ZONAS[ZONAS.length-1]; }
+function janelaOk(p0,seg,total){
+  const n=32; let mau=0;
+  for(let i=0;i<n;i++){ if(!zonaEm(p0+(i/n)*(seg/total)).ok) mau++; }
+  return mau/n<=0.22;
+}
+function avaliarTeto(teto,ring){
+  const d=ring-teto;
+  if(ring<=0) return {ok:false,txt:"Você ainda não fez o sistema apitar na cabine. O teto só existe depois que você conhece o ponto que apita."};
+  if(d<0.3)   return {ok:false,txt:"Esse teto está colado no ponto que apitou. Basta um convidado passar na frente da caixa, ou você virar o corpo, e apita no meio da festa. Desça mais."};
+  if(d>1.6)   return {ok:false,txt:"Você desceu demais: nesse nível o microfone não vence a música e ninguém entende o que você fala. Teto não é fader no chão — é logo abaixo do ponto que apita."};
+  return {ok:true,txt:"Teto anotado: cerca de "+(d*4.6).toFixed(0)+" dB abaixo do ponto que apitou. É essa a margem que sobra para a festa encher e o som mudar."};
+}
+function avaliarAnuncio(o){
+  if(!o.fraseOk)  return {ok:false,t:"A frase não era essa."};
+  if(o.apitou)    return {ok:false,t:"Apitou no meio do anúncio. Duzentas pessoas ouviram o apito, não o recado — e o contratante ouviu junto. Volte o fader para o teto que você anotou antes de abrir o microfone."};
+  if(!o.talkOn)   return {ok:false,t:"Você falou com a música cheia e sem talk over. Sua voz ficou por baixo da batida: quem estava a cinco metros não entendeu uma palavra."};
+  if(o.talkDb>-10)return {ok:false,t:"Talk over em −6 dB quase não abaixou nada. Continuou ininteligível — o talk over só serve se abrir espaço de verdade."};
+  if(o.talkDb<-22)return {ok:false,t:"Talk over em −24 dB praticamente desligou a música. A pista parou para ouvir um recado de dez segundos e não voltou a dançar no mesmo pique."};
+  if(!o.zonaOk)   return {ok:false,t:"Você entrou por cima do vocal / do refrão. Falar POR CIMA da batida é o certo; falar por cima de quem está cantando é atropelar a música — e a pista escuta duas vozes e não entende nenhuma."};
+  if(o.embolado)  return {ok:false,t:"A voz saiu embolada de tanto grave. Numa festa, voz com grave demais vira ronco: o recado sai, mas as palavras não."};
+  if(o.esqueceu)  return {ok:false,t:"Você deixou o canal aberto depois de falar. A cabine inteira foi para o PA: tosse, conversa e o que você comentou baixinho. Fechou a boca, fecha o canal."};
+  return {ok:true,t:"Anúncio limpo: dentro da janela, voz acima da música, sem apito e canal fechado logo depois."};
+}
+function podeIr(n){
+  if(n<=1) return true;
+  if(n===2) return S.ouviuApito && S.testouApontado && S.tetoOk;
+  if(n===3) return S.tetoOk && S.ouviuEmbolado && S.vozLimpa && S.viuAgudo;
+  if(n===4) return S.vozLimpa && S.talkOK;
+  return false;
+}
+/* ===================== /REGRAS ===================== */
+
+/* ===================== ÁUDIO ===================== */
+const ACOPL={cabine:0.140,pista:0.403,caixa:1.513};   /* acoplamento acústico mic↔caixa */
+const APONT=3.0;                                       /* mic virado para a caixa */
+const PROX ={colado:13,palmo:7,longe:1};               /* efeito de proximidade, dB no grave */
+const VOZL ={colado:1.00,palmo:0.58,longe:0.22};
+const RUID ={colado:1.0,palmo:1.25,longe:2.6};
+const PICO_FB=7.94;                                    /* +18 dB do filtro que ressoa em 3,15 kHz */
+const MUSVOL=0.5;
+const KVOZ=7;                                          /* ganho de boca do falante */
+let CAL=0;                                             /* calibração do medidor de bandas (por navegador) */
+const micDb=f=>-40+4.6*f, micLin=f=>Math.pow(10,micDb(f)/20);
+function loopGain(){
+  const hiF=Math.pow(10,(S.hi*0.8)/20);
+  return micLin(S.fader)*PICO_FB*ACOPL[S.lugar]*(S.apont?APONT:1)*hiF*(S.canal?1:0);
+}
+
+let AC=null,T0=0,MUSDUR=30,noiseBuf=null;
+let mixBus,lim,masterOut,musSrc,musGain,musAna;
+let micSum,micLowF,micHiF,micLvlG,micSat,micGate,micBus,micAna,micOut;
+let fbDelay,fbHp,fbLp,fbFilt,fbG;
+let vozEnv,vozNivel,proxLow,f1,f2,ruidoG;
+let fbBuf,tdA,tdB;
+
+async function renderMusica(){
+  const sr=44100,bpm=126,root=110,spb=60/bpm,bars=16,dur=spb*4*bars;
+  const off=new OfflineAudioContext(2,Math.ceil(dur*sr),sr),dst=off.destination;
+  const nz=off.createBuffer(1,sr*0.4,sr),nd=nz.getChannelData(0);
+  for(let i=0;i<nd.length;i++) nd[i]=Math.random()*2-1;
+  const step=spb/4;
+  const PK=[1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0],PS=[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
+        PH=[0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0],PB=[1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0],
+        PO=[0,1,0,0,0,1,0,0,0,1,0,0,0,1,0,0];
+  const kick=t=>{const o=off.createOscillator(),a=off.createGain();o.frequency.setValueAtTime(150,t);
+    o.frequency.exponentialRampToValueAtTime(48,t+0.12);a.gain.setValueAtTime(0.85,t);
+    a.gain.exponentialRampToValueAtTime(0.001,t+0.3);o.connect(a);a.connect(dst);o.start(t);o.stop(t+0.32);};
+  const clap=t=>{const s=off.createBufferSource();s.buffer=nz;const bp=off.createBiquadFilter();bp.type="bandpass";
+    bp.frequency.value=1800;const a=off.createGain();a.gain.setValueAtTime(0.5,t);
+    a.gain.exponentialRampToValueAtTime(0.001,t+0.15);s.connect(bp);bp.connect(a);a.connect(dst);s.start(t);s.stop(t+0.17);};
+  const hat=(t,op)=>{const s=off.createBufferSource();s.buffer=nz;const hp=off.createBiquadFilter();hp.type="highpass";
+    hp.frequency.value=8200;const a=off.createGain();const dd=op?0.13:0.05;a.gain.setValueAtTime(op?0.26:0.22,t);
+    a.gain.exponentialRampToValueAtTime(0.001,t+dd);s.connect(hp);hp.connect(a);a.connect(dst);s.start(t);s.stop(t+dd+0.03);};
+  const bass=t=>{const o=off.createOscillator();o.type="sawtooth";o.frequency.value=root;
+    const lp=off.createBiquadFilter();lp.type="lowpass";lp.frequency.setValueAtTime(460,t);
+    lp.frequency.exponentialRampToValueAtTime(120,t+0.15);lp.Q.value=5;const a=off.createGain();
+    a.gain.setValueAtTime(0.0001,t);a.gain.linearRampToValueAtTime(0.38,t+0.01);
+    a.gain.exponentialRampToValueAtTime(0.001,t+0.2);o.connect(lp);lp.connect(a);a.connect(dst);o.start(t);o.stop(t+0.22);};
+  /* a "voz" da música: é ela que você não pode atropelar */
+  const lead=(t,f,d,g)=>{const o=off.createOscillator();o.type="triangle";o.frequency.setValueAtTime(f,t);
+    const v=off.createOscillator(),vg=off.createGain();v.frequency.value=5.2;vg.gain.value=f*0.012;
+    v.connect(vg);vg.connect(o.frequency);v.start(t);v.stop(t+d);
+    const bp=off.createBiquadFilter();bp.type="bandpass";bp.frequency.value=f*2.2;bp.Q.value=1.4;
+    const a=off.createGain();a.gain.setValueAtTime(0.0001,t);a.gain.linearRampToValueAtTime(g,t+0.05);
+    a.gain.linearRampToValueAtTime(g*0.7,t+d*0.7);a.gain.linearRampToValueAtTime(0.0001,t+d);
+    o.connect(bp);bp.connect(a);a.connect(dst);o.start(t);o.stop(t+d+0.02);};
+  const MEL=[0,3,5,7,7,5,3,0];
+  for(let bar=0;bar<bars;bar++){
+    const fase = bar<4?0 : bar<8?1 : bar<12?2 : 3;   /* intro · vocal · virada · refrão */
+    for(let st=0;st<16;st++){ const t=(bar*16+st)*step;
+      if(PK[st])kick(t);
+      if(fase>0&&PS[st])clap(t);
+      if(PH[st])hat(t,false);
+      if(fase>0&&PO[st])hat(t,true);
+      if(fase>0&&PB[st])bass(t); }
+    if(fase===1||fase===3){
+      MEL.forEach((s,i)=>lead(bar*16*step+i*step*2, 246.9*Math.pow(2,s/12), step*1.7, fase===3?0.26:0.19));
+    }
+  }
+  return off.startRendering();
+}
+
+async function ligarSom(){
+  if(S.som||S.carregando) return;
+  S.carregando=true; $("#btSom").disabled=true; $("#btSom").textContent="carregando…";
+  AC=new (window.AudioContext||window.webkitAudioContext)();
+  if(AC.state!=="running"){ try{ await AC.resume(); }catch(e){} }
+  const buf=await renderMusica(); MUSDUR=buf.duration;
+
+  noiseBuf=AC.createBuffer(1,AC.sampleRate*2,AC.sampleRate);
+  const nd=noiseBuf.getChannelData(0); for(let i=0;i<nd.length;i++) nd[i]=Math.random()*2-1;
+
+  masterOut=AC.createGain(); masterOut.gain.value=0.6;
+  lim=AC.createDynamicsCompressor();
+  lim.threshold.value=-12; lim.knee.value=3; lim.ratio.value=20; lim.attack.value=0.003; lim.release.value=0.22;
+  mixBus=AC.createGain(); mixBus.gain.value=1;
+  mixBus.connect(lim); lim.connect(masterOut); masterOut.connect(AC.destination);
+
+  musGain=AC.createGain(); musGain.gain.value=MUSVOL;
+  musAna=AC.createAnalyser(); musAna.fftSize=1024; musAna.smoothingTimeConstant=0.6;
+  musSrc=AC.createBufferSource(); musSrc.buffer=buf; musSrc.loop=true;
+  musSrc.connect(musGain); musGain.connect(musAna); musAna.connect(mixBus);
+  T0=AC.currentTime+0.06; musSrc.start(T0);
+
+  /* --- caminho do microfone --- */
+  micSum=AC.createGain(); micSum.gain.value=1;
+  micLowF=AC.createBiquadFilter(); micLowF.type="lowshelf";  micLowF.frequency.value=200;
+  micHiF =AC.createBiquadFilter(); micHiF.type="highshelf";  micHiF.frequency.value=2000;
+  micLvlG=AC.createGain(); micLvlG.gain.value=micLin(S.fader);
+  micSat =AC.createWaveShaper(); micSat.curve=curvaSat(0.9); micSat.oversample="2x";
+  micGate=AC.createGain(); micGate.gain.value=0;
+  micBus =AC.createGain(); micBus.gain.value=1;
+  micAna =AC.createAnalyser(); micAna.fftSize=2048; micAna.smoothingTimeConstant=0.55;
+  micAna.minDecibels=-90; micAna.maxDecibels=-10;
+  micOut =AC.createGain(); micOut.gain.value=0.85;
+  micSum.connect(micLowF); micLowF.connect(micHiF); micHiF.connect(micLvlG);
+  micLvlG.connect(micSat); micSat.connect(micGate); micGate.connect(micBus);
+  micBus.connect(micAna); micAna.connect(micOut); micOut.connect(mixBus);
+
+  /* --- realimentação de verdade: mic → PA → mic (o DelayNode é a distância até a caixa) --- */
+  fbDelay=AC.createDelay(0.2); fbDelay.delayTime.value=0.0131;
+  fbHp=AC.createBiquadFilter(); fbHp.type="highpass"; fbHp.frequency.value=900;
+  fbLp=AC.createBiquadFilter(); fbLp.type="lowpass";  fbLp.frequency.value=5500;
+  fbFilt=AC.createBiquadFilter(); fbFilt.type="peaking"; fbFilt.frequency.value=3150; fbFilt.Q.value=9; fbFilt.gain.value=18;
+  fbG=AC.createGain(); fbG.gain.value=ACOPL[S.lugar];
+  micBus.connect(fbDelay); fbDelay.connect(fbHp); fbHp.connect(fbLp); fbLp.connect(fbFilt);
+  fbFilt.connect(fbG); fbG.connect(micSum);
+
+  /* --- voz sintética: ruído + zumbido glotal em banda de voz --- */
+  const src=AC.createBufferSource(); src.buffer=noiseBuf; src.loop=true;
+  const ng=AC.createGain(); ng.gain.value=0.55;
+  const bz=AC.createOscillator(); bz.type="sawtooth"; bz.frequency.value=118;
+  const bg=AC.createGain(); bg.gain.value=0.10;
+  const fonte=AC.createGain(); fonte.gain.value=1;
+  src.connect(ng); ng.connect(fonte); bz.connect(bg); bg.connect(fonte);
+  f1=AC.createBiquadFilter(); f1.type="bandpass"; f1.frequency.value=560;  f1.Q.value=4;
+  f2=AC.createBiquadFilter(); f2.type="bandpass"; f2.frequency.value=1450; f2.Q.value=6;
+  const f3=AC.createBiquadFilter(); f3.type="bandpass"; f3.frequency.value=2550; f3.Q.value=9;
+  /* corpo da voz (fundamental + peito): é ESTE trecho que o efeito de proximidade levanta */
+  const fb0=AC.createBiquadFilter(); fb0.type="lowpass"; fb0.frequency.value=300; fb0.Q.value=0.7;
+  const g1=AC.createGain(),g2=AC.createGain(),g3=AC.createGain(),g0=AC.createGain();
+  g1.gain.value=1; g2.gain.value=0.7; g3.gain.value=0.34; g0.gain.value=0.8;
+  fonte.connect(f1); f1.connect(g1); fonte.connect(f2); f2.connect(g2); fonte.connect(f3); f3.connect(g3);
+  fonte.connect(fb0); fb0.connect(g0);
+  vozEnv=AC.createGain(); vozEnv.gain.value=0.0001;
+  g1.connect(vozEnv); g2.connect(vozEnv); g3.connect(vozEnv); g0.connect(vozEnv);
+  vozNivel=AC.createGain(); vozNivel.gain.value=VOZL[S.boca]*KVOZ;
+  proxLow=AC.createBiquadFilter(); proxLow.type="lowshelf"; proxLow.frequency.value=190; proxLow.gain.value=PROX[S.boca];
+  vozEnv.connect(vozNivel); vozNivel.connect(proxLow); proxLow.connect(micSum);
+  src.start(); bz.start();
+
+  /* --- chiado de sala: é ele que a realimentação amplifica até virar apito --- */
+  const rs=AC.createBufferSource(); rs.buffer=noiseBuf; rs.loop=true;
+  const rlp=AC.createBiquadFilter(); rlp.type="lowpass"; rlp.frequency.value=6000;
+  ruidoG=AC.createGain(); ruidoG.gain.value=0.0022*RUID[S.boca];
+  rs.connect(rlp); rlp.connect(ruidoG); ruidoG.connect(micSum); rs.start();
+
+  fbBuf=new Uint8Array(micAna.frequencyBinCount);
+  tdA=new Float32Array(1024); tdB=new Float32Array(1024);
+
+  await calibrar();
+
+  S.som=true; S.carregando=false;
+  $("#btSom").textContent="som ligado"; $("#pill2").innerHTML="som <b>ligado</b>";
+  aplicar(); render();
+}
+function curvaSat(L){ const n=1024,c=new Float32Array(n);
+  for(let i=0;i<n;i++){ const x=(i/(n-1))*2-1; c[i]=L*Math.tanh(x/L); } return c; }
+
+/* medidor de bandas: média dos bins, em bytes (0-255 = -90..-10 dBFS) */
+const BPD=255/80;
+function idxHz(f){ const bin=AC.sampleRate/micAna.fftSize; return clamp(Math.round(f/bin),0,fbBuf.length-1); }
+function banda(f1h,f2h){ let s=0,n=0; for(let i=idxHz(f1h);i<=idxHz(f2h);i++){ s+=fbBuf[i]; n++; } return n?s/n:0; }
+
+/* Calibra o medidor com a própria voz, EQ plano e alto-falante mudo:
+   depois disso o número que aparece na tela é só o que o aluno mexeu (proximidade + LOW). */
+const espera=ms=>new Promise(r=>setTimeout(r,ms));
+async function calibrar(){
+  const sv=[proxLow.gain.value,micLowF.gain.value,micHiF.gain.value,fbG.gain.value,
+            micOut.gain.value,micLvlG.gain.value,vozNivel.gain.value,ruidoG.gain.value];
+  proxLow.gain.value=0; micLowF.gain.value=0; micHiF.gain.value=0;
+  fbG.gain.value=0; micOut.gain.value=0; micLvlG.gain.value=1; vozNivel.gain.value=1; ruidoG.gain.value=0;
+  micGate.gain.value=1; vozEnv.gain.value=1;
+  await espera(280);
+  let L=0,M=0,n=0;
+  for(let k=0;k<8;k++){ micAna.getByteFrequencyData(fbBuf); L+=banda(100,280); M+=banda(700,2800); n++; await espera(30); }
+  CAL=((L/n)-(M/n))/BPD;
+  vozEnv.gain.value=0.0001; micGate.gain.value=0;
+  proxLow.gain.value=sv[0]; micLowF.gain.value=sv[1]; micHiF.gain.value=sv[2]; fbG.gain.value=sv[3];
+  micOut.gain.value=sv[4]; micLvlG.gain.value=sv[5]; vozNivel.gain.value=sv[6]; ruidoG.gain.value=sv[7];
+}
+
+function aplicar(){
+  if(!S.som) return;
+  const t=AC.currentTime;
+  micLvlG.gain.setValueAtTime(micLin(S.fader),t);
+  micLowF.gain.setValueAtTime(S.low,t);
+  micHiF.gain.setValueAtTime(S.hi,t);
+  fbG.gain.setValueAtTime(ACOPL[S.lugar]*(S.apont?APONT:1),t);
+  vozNivel.gain.setValueAtTime(VOZL[S.boca]*KVOZ,t);
+  proxLow.gain.setValueAtTime(PROX[S.boca],t);
+  ruidoG.gain.setValueAtTime(0.0022*RUID[S.boca],t);
+  micGate.gain.cancelScheduledValues(t);
+  micGate.gain.setValueAtTime(micGate.gain.value,t);
+  micGate.gain.linearRampToValueAtTime(S.canal?1:0,t+0.02);
+}
+function duck(on){
+  if(!S.som) return;
+  const t=AC.currentTime, alvo=on?MUSVOL*Math.pow(10,S.talkDb/20):MUSVOL;
+  musGain.gain.cancelScheduledValues(t);
+  musGain.gain.setValueAtTime(musGain.gain.value,t);
+  musGain.gain.linearRampToValueAtTime(alvo,t+(on?0.06:0.35));
+}
+function plosiva(t){
+  const o=AC.createOscillator(),g=AC.createGain();
+  o.type="sine"; o.frequency.setValueAtTime(125,t); o.frequency.linearRampToValueAtTime(52,t+0.09);
+  g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(0.85,t+0.008);
+  g.gain.linearRampToValueAtTime(0.0001,t+0.12);
+  o.connect(g); g.connect(proxLow); o.start(t); o.stop(t+0.14);
+}
+function tossir(){
+  if(!S.som) return;
+  const t=AC.currentTime+0.05;
+  const s=AC.createBufferSource(); s.buffer=noiseBuf; s.loop=true;
+  const bp=AC.createBiquadFilter(); bp.type="bandpass"; bp.frequency.value=680; bp.Q.value=1.1;
+  const g=AC.createGain();
+  g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(0.8,t+0.02);
+  g.gain.linearRampToValueAtTime(0.05,t+0.2); g.gain.linearRampToValueAtTime(0.0001,t+0.4);
+  s.connect(bp); bp.connect(g); g.connect(micSum); s.start(t); s.stop(t+0.45);
+}
+
+/* ---- medição real do que sai no PA ---- */
+let MED=null;
+function novaMedida(){ return {micMax:0,musSum:0,musN:0,lowS:0,midS:0,nB:0,apitou:false}; }
+
+function falar(ctx,seg,fim){
+  if(!S.som||S.falando) return;
+  S.falando=true; S.ctxFala=ctx; MED=novaMedida();
+  S.canal=true; aplicar(); sincMesa();
+  if(S.talk) duck(true);
+  const t=AC.currentTime+0.06, g=vozEnv.gain;
+  g.cancelScheduledValues(AC.currentTime); g.setValueAtTime(0.0001,t);
+  const VOG=[[560,1450],[420,2050],[730,1180],[400,900],[330,2350],[610,1700]];
+  let x=t,i=0;
+  while(x<t+seg-0.14){
+    const d=0.10+Math.random()*0.09;
+    g.setValueAtTime(0.0001,x);
+    g.linearRampToValueAtTime(1,x+0.022);
+    g.linearRampToValueAtTime(0.72,x+d*0.72);
+    g.linearRampToValueAtTime(0.0001,x+d);
+    const v=VOG[(Math.random()*VOG.length)|0];
+    f1.frequency.setValueAtTime(v[0],x); f2.frequency.setValueAtTime(v[1],x);
+    if(S.boca==="colado"&&i%4===1) plosiva(x);
+    x+=d+(Math.random()<0.17?0.15+Math.random()*0.11:0.032+Math.random()*0.04); i++;
+  }
+  g.setValueAtTime(0.0001,x+0.02);
+  S.falaIni=t; S.falaFim=x+0.02;
+  const ms=(x-AC.currentTime+0.18)*1000;
+  setTimeout(()=>{
+    const tt=AC.currentTime;
+    vozEnv.gain.cancelScheduledValues(tt); vozEnv.gain.setValueAtTime(0.0001,tt);
+    f1.frequency.cancelScheduledValues(tt); f1.frequency.setValueAtTime(560,tt);
+    f2.frequency.cancelScheduledValues(tt); f2.frequency.setValueAtTime(1450,tt);
+    if(S.talk) duck(false);
+    S.falando=false;
+    if(fim) fim(resultado());
+  },ms);
+}
+function resultado(){
+  const m=MED||novaMedida();
+  const desq=(m.nB>3)?(((m.lowS/m.nB)-(m.midS/m.nB))/BPD)-CAL:null;
+  const mus=m.musN?m.musSum/m.musN:1e-6;
+  const snr=20*Math.log10((m.micMax+1e-7)/(mus+1e-7));
+  return {desq,snr,micMax:m.micMax,apitou:m.apitou};
+}
+
+/* ===================== LAÇO DE RENDER / MEDIÇÃO ===================== */
+let apitCont=0;
+function laco(){
+  requestAnimationFrame(laco);
+  if(S.som&&AC){
+    micAna.getByteFrequencyData(fbBuf);
+    micAna.getFloatTimeDomainData(tdA);
+    musAna.getFloatTimeDomainData(tdB);
+    /* apito = pico ESTREITO e sustentado na faixa que realimenta (3,15 kHz).
+       A voz também tem energia ali, mas espalhada — por isso o teste é do ombro, não do nível. */
+    let pico=0,ip=0;
+    for(let i=idxHz(2200);i<=idxHz(4600);i++) if(fbBuf[i]>pico){ pico=fbBuf[i]; ip=i; }
+    let so=0,no=0;
+    for(let d=10;d<=24;d++){
+      const a=ip-d,b=ip+d;
+      if(a>=0){ so+=fbBuf[a]; no++; }
+      if(b<fbBuf.length){ so+=fbBuf[b]; no++; }
+    }
+    const ombro=no?so/no:0;
+    const ap=(pico>205&&(pico-ombro)>45);
+    apitCont = ap?apitCont+1:0;
+    const apitando = apitCont>=4;
+    if(apitando&&!S.apitando) marcarApito();
+    S.apitando=apitando;
+
+    let s1=0; for(let i=0;i<tdA.length;i++) s1+=tdA[i]*tdA[i];
+    const rmsMic=Math.sqrt(s1/tdA.length);
+    let s2=0; for(let i=0;i<tdB.length;i++) s2+=tdB[i]*tdB[i];
+    const rmsMus=Math.sqrt(s2/tdB.length);
+
+    if(S.falando&&MED){
+      if(rmsMic>MED.micMax) MED.micMax=rmsMic;
+      MED.musSum+=rmsMus; MED.musN++;
+      if(apitando) MED.apitou=true;
+      const L=banda(100,280), M=banda(700,2800);
+      if(L>30&&M>30){ MED.lowS+=L; MED.midS+=M; MED.nB++; }
+    }
+
+    const pa=$("#mPA"), fb=$("#mFB");
+    if(pa) pa.style.width=clamp(rmsMic*260,0,100)+"%";
+    if(fb) fb.style.width=clamp(pico/2.55,0,100)+"%";
+    const lg=loopGain(), marg=-20*Math.log10(Math.max(lg,1e-6));
+    const vm=$("#vMargem");
+    if(vm){
+      if(!S.canal) vm.textContent="canal fechado";
+      else if(apitando) vm.innerHTML="<b style='color:#ff8f84'>APITANDO</b>";
+      else vm.textContent=(marg>0?"+":"")+marg.toFixed(1)+" dB de folga";
+    }
+    const ta=$("#txAviso");
+    if(ta) ta.textContent = !S.canal ? "Canal fechado: ninguém ouve a cabine — e nada apita."
+      : apitando ? "APITANDO. Desça o fader e saia da frente da caixa — nessa ordem."
+      : "Canal ABERTO: tudo que acontece na cabine está indo para o PA.";
+    const ph=$("#ph");
+    if(ph) ph.style.left=(posMus()*100)+"%";
+    const cd=$("#cd");
+    if(cd) cd.textContent=segAteJanela().toFixed(1)+" s";
+  }
+}
+function posMus(){ if(!S.som||!AC) return 0; return (((AC.currentTime-T0)%MUSDUR)+MUSDUR)%MUSDUR/MUSDUR; }
+function segAteJanela(){
+  let p=posMus();
+  for(let i=0;i<200;i++){ const q=(p+i*0.005)%1; if(zonaEm(q).ok&&janelaOk(q,3.0,MUSDUR)) return i*0.005*MUSDUR; }
+  return 0;
+}
+function marcarApito(){
+  S.ouviuApito=true;
+  if(S.apont){ S.testouApontado=true; if(!S.ringApont||S.fader<S.ringApont) S.ringApont=S.fader; }
+  else if(S.lugar==="cabine"){ if(!S.ringCabine||S.fader<S.ringCabine) S.ringCabine=S.fader; }
+  if(S.passo<=2) setTimeout(()=>{ render(); },40);
+}
+
+/* ===================== TELAS ===================== */
+function semSom(){
+  return `<div class="box" style="border-color:#5a4410;background:#231a06">
+    <div class="txt"><b>Este simulador é de ouvido.</b> Aperte <b>▶ Ligar o som</b> ali em cima: a música é
+    sintetizada aqui dentro e o microfone tem realimentação de verdade — o apito não é um efeito gravado,
+    ele nasce do ganho do sistema, igual na festa.</div></div>`;
+}
+
+function telaP1(){
+  const r=S.ringCabine, ra=S.ringApont;
+  return `<h3>1 · Passagem de som: descubra onde apita ANTES de ter plateia</h3>
+  <div class="txt">Microfonia não é azar, é conta: o microfone ouve a caixa, o sistema devolve, e quando o
+  que volta é maior do que o que saiu, o som sobe sozinho até virar apito. Sua tarefa aqui é a mesma de
+  qualquer passagem de som: <b>abrir o canal, subir o fader devagar até apitar, e depois descer</b>.</div>
+  ${S.som?"":semSom()}
+  <div class="mapa" id="mapa"></div>
+  <div class="row">
+    <button class="btnp" id="btFalar1" ${(!S.som||S.falando)?"disabled":""}>Falar no microfone (3 s)</button>
+    <button class="btnp amb" id="btTeto" ${(!S.som||!S.ringCabine)?"disabled":""}>Anotar o teto neste fader</button>
+    <span class="sub" style="margin:0">Abra o canal do microfone e suba o fader até apitar.</span>
+  </div>
+  <div class="cols3" style="margin-top:9px">
+    <div class="box" style="margin:0"><div class="lab">Apitou na cabine</div>
+      <div class="num" style="color:${r?"#ffae1a":"#4a535f"}">${r?r.toFixed(1):"—"}</div>
+      <div class="sub">fader onde começou a apitar com o mic na cabine</div></div>
+    <div class="box" style="margin:0"><div class="lab">Apitou apontado p/ caixa</div>
+      <div class="num" style="color:${ra?"#ff6a5c":"#4a535f"}">${ra?ra.toFixed(1):"—"}</div>
+      <div class="sub">${(r&&ra)?"são "+((r-ra)*4.6).toFixed(0)+" dB de folga jogados fora só por virar o microfone":"ligue “apontar o mic para a caixa” e repita"}</div></div>
+    <div class="box" style="margin:0"><div class="lab">Teto anotado</div>
+      <div class="num" style="color:${S.tetoOk?"#39d271":"#4a535f"}">${S.tetoOk?S.teto.toFixed(1):"—"}</div>
+      <div class="sub">é com esse fader que você trabalha a noite toda</div></div>
+  </div>
+  ${S.tetoMsg?`<div class="flash ${S.tetoOk?"good":"bad"}">${S.tetoMsg}</div>`:""}
+  <div class="aviso"><b>Ordem de instinto quando apita:</b> afaste-se da caixa e desça o fader — nessa
+  ordem. Quem sai correndo mexer no equalizador do sistema no meio da festa piora tudo.</div>`;
+}
+
+function telaP2(){
+  const d=S.ultDesq;
+  const vd = d===null ? ["—","mid"] : d>8 ? ["EMBOLADA","bad"] : d>3 ? ["QUASE","mid"] : ["LIMPA","good"];
+  return `<h3>2 · EQ do microfone: tirar o embolado sem perder a voz</h3>
+  <div class="txt">Todo microfone cardioide levanta o grave quando a fonte chega perto — é o
+  <b>efeito de proximidade</b>. Colado na boca ele soma uns 12 dB abaixo de 200 Hz: a voz vira ronco e as
+  palavras somem. A correção tem duas mãos: <b>afastar para um palmo</b> e <b>cortar o LOW</b> uns 4 a 6 dB.</div>
+  ${S.som?"":semSom()}
+  <div class="row">
+    <button class="btnp" id="btFalar2" ${(!S.som||S.falando)?"disabled":""}>Falar e medir (3 s)</button>
+    <button class="btnp amb" id="btAgudo" ${(!S.som||S.falando||!S.tetoOk)?"disabled":""}>Testar: HI em +12 com o fader no teto</button>
+  </div>
+  <div class="cols" style="margin-top:9px">
+    <div class="box" style="margin:0">
+      <div class="lab">Grave acima do médio (medido no PA)</div>
+      <div class="num">${d===null?"—":dbf(d)+" dB"}</div>
+      <div style="margin-top:5px"><span class="vd ${vd[1]}">${vd[0]}</span></div>
+      <div class="sub">Acima de +8 dB a voz emborracha. Alvo: no máximo +3 dB, com corpo (nível de PA acima de −26 dBFS).</div>
+    </div>
+    <div class="box" style="margin:0">
+      <div class="lab">Diagnóstico</div>
+      <div class="txt" style="margin-top:4px">${
+        d===null?"Fale uma vez para o simulador medir o que está saindo na caixa."
+        :d>8?"Está saindo ronco. Se você está colado, afaste para um palmo; se já está a um palmo, corte o LOW."
+        :d>3?"Melhorou, mas ainda pesa no grave. Corte mais uns 3 ou 4 dB de LOW."
+        :S.boca!=="palmo"?"O equilíbrio está bom, mas você chegou nele pela distância errada. Colado com o LOW no fundo deixa a voz fina e sem corpo; longe demais te obriga a subir o fader e apitar. A distância de trabalho é <b>um palmo</b> — o EQ só afina o resto."
+        :"Voz limpa e com corpo, a um palmo da boca. É esse o som com que se trabalha a noite inteira."}</div>
+    </div>
+  </div>
+  <div class="aviso"><b>E o agudo?</b> O agudo não emborracha nada — ele <b>apita</b>. A realimentação
+  deste sistema mora em 3,15 kHz; toda vez que você levanta o HI, o ponto que apita desce junto.
+  Aperte o botão de teste e ouça: mesmo fader, mesmo lugar, só o agudo mudou.
+  ${S.viuAgudo?"<br><br><b style='color:#7df0a8'>Foi exatamente isso que aconteceu.</b> Por isso, na festa, presença de voz se resolve com posição e distância antes de se resolver no HI.":""}</div>`;
+}
+
+function telaP3(){
+  const a=S.snrSem,b=S.snrCom;
+  return `<h3>3 · Talk over: abrir espaço para a voz sem parar a música</h3>
+  <div class="txt">Talk over abaixa a música sozinho enquanto você fala e devolve quando você cala.
+  Serve para uma coisa só: <b>abrir espaço para a palavra</b>. Para a pista entender o que você diz, sua
+  voz precisa ficar uns <b>6 dB acima</b> da música — abaixo disso ela vira mais um instrumento.</div>
+  ${S.som?"":semSom()}
+  <div class="row">
+    <button class="btnp" id="btSem" ${(!S.som||S.falando)?"disabled":""}>Falar SEM talk over</button>
+    <button class="btnp" id="btCom" ${(!S.som||S.falando)?"disabled":""}>Falar COM talk over (${S.talkDb} dB)</button>
+    <button class="btnp amb" id="btAprova" ${(!S.som||S.snrSem===null||S.snrCom===null)?"disabled":""}>Aprovar esta regulagem</button>
+  </div>
+  <div class="cols" style="margin-top:9px">
+    <div class="box" style="margin:0"><div class="lab">Sem talk over</div>
+      <div class="num" style="color:${a===null?"#4a535f":a>=6?"#39d271":"#ff6a5c"}">${a===null?"—":dbf(a)+" dB"}</div>
+      <div class="sub">voz em relação à música</div></div>
+    <div class="box" style="margin:0"><div class="lab">Com talk over (${S.talkDb} dB)</div>
+      <div class="num" style="color:${b===null?"#4a535f":b>=6?"#39d271":"#ff6a5c"}">${b===null?"—":dbf(b)+" dB"}</div>
+      <div class="sub">a música desce, a voz aparece</div></div>
+  </div>
+  ${S.talkMsg?`<div class="flash ${S.talkOK?"good":"bad"}">${S.talkMsg}</div>`:""}
+  <div class="aviso"><b>A regulagem não é “o máximo possível”.</b> −6 dB quase não abre espaço e você
+  continua ininteligível. −24 dB apaga a música: a pista para, escuta o recado e não volta no mesmo pique.
+  O ponto de trabalho de festa fica entre <b>−12 e −18 dB</b>: dá para entender cada palavra e a batida
+  continua segurando a pista. Escolha na mesa e aprove.</div>`;
+}
+
+const EXS=[
+  { tit:"Anunciar a próxima música",
+    ctx:"Casamento, 23h10. A pista está cheia e a noiva pediu que você avise que a próxima é o pedido dela. Você tem que informar e sumir — a pista está no ponto, não pode esfriar.",
+    fr:[
+      {t:"“Aêêê família! Segura essa que agora o DJ vai detonar! Quem tá vivo faz barulho!”",ok:false,
+       p:"Isso é locutor de carro de som, não DJ. Oito segundos de microfone e nenhuma informação: o único assunto foi você. A pista para de dançar para ouvir, descobre que não era nada, e a energia cai um degrau que custa duas músicas para recuperar."},
+      {t:"“Essa próxima é pedido da noiva. Bora!”",ok:true,
+       p:"Cinco segundos. Informa, dá o crédito a quem pediu e devolve a pista. O assunto do microfone é a música e a festa — nunca o DJ."},
+      {t:"“Atenção, atenção! Próxima música: faixa 14 do meu set, uma pérola de 1998 que eu garimpei...”",ok:false,
+       p:"Ninguém na festa liga para o número da faixa nem para a sua garimpagem. Informação que só interessa a você é enrolação — e enrolação com o canal aberto vira constrangimento."}
+    ]},
+  { tit:"Chamar para o parabéns",
+    ctx:"Aniversário de 15 anos, 22h40. O cerimonial te dá o sinal: o bolo sai em cinco minutos e ninguém está perto da mesa. Sua função aqui é mover 120 pessoas de lugar.",
+    fr:[
+      {t:"“Gente, acho que já é a hora do bolo, né? Alguém sabe se pode?”",ok:false,
+       p:"Dúvida no microfone não move ninguém. Quem ouve entende “ainda não é agora” e fica onde está. Se você não tem certeza, confirme com o cerimonial ANTES de abrir o canal — nunca no ar."},
+      {t:"“Atenção, pessoal! Todo mundo para a mesa do bolo: em cinco minutos tem parabéns da Marina!”",ok:true,
+       p:"Diz o que fazer, quando, e para quem — com o nome certo, conferido antes com o cerimonial. Gente demora a se mover: chame de novo dois ou três minutos depois."},
+      {t:"“Parabéns pra você, nesta data querida...” (puxando o parabéns na hora)",ok:false,
+       p:"Você puxou o coro com a mesa do bolo vazia e cantou sozinho no PA. Quem rege junta o povo primeiro, depois conta “um, dois, três”. E no coro o microfone sai da SUA boca: quem canta é a festa."}
+    ]},
+  { tit:"Recado do estacionamento",
+    ctx:"Confraternização de empresa, 0h20. A recepção te manda um bilhete: Gol prata, placa ABC-1D34, está bloqueando a saída. É recado de serviço, não é animação.",
+    fr:[
+      {t:"“Galera, o dono do Gol prata ABC-1D34 tá com o carro atrapalhando geral, vem cá resolver, hein!”",ok:false,
+       p:"Você deu bronca no sujeito pelo PA, na frente dos colegas de trabalho dele. O carro até sai, mas a noite daquela pessoa acabou ali — e a sua imagem com o contratante também. Recado operacional é neutro, sempre."},
+      {t:"“Recado rápido: o proprietário do Gol prata, placa ABC-1D34, favor procurar a recepção. Obrigado.”",ok:true,
+       p:"Voz de aeroporto: informação exata, tom neutro, uma vez só. Se ninguém aparecer, repete uma vez daqui a cinco minutos e acabou — depois é problema da recepção, não seu."},
+      {t:"“Ó, tem um carro lá fora que precisa sair. Se o dono estiver aqui, aparece aí.”",ok:false,
+       p:"Sem modelo, sem placa e sem para onde ir, ninguém se identifica. Você vai repetir isso quatro vezes na noite — e quatro anúncios inúteis cansam a festa mais do que um bem-feito."}
+    ]}
+];
+
+function telaP4(){
+  const i=S.ex, E=EXS[i], esc=S.frase[i];
+  const z=S.som?zonaEm(posMus()):ZONAS[0];
+  return `<h3>4 · No ar — anúncio ${i+1} de 3: ${E.tit}</h3>
+  <div class="txt">${E.ctx}</div>
+  ${S.som?"":semSom()}
+  <div class="sub" style="margin-top:8px"><b style="color:#cdd5e0">Escolha a frase</b> — depois espere a janela certa da música e abra o microfone.</div>
+  ${E.fr.map((f,k)=>`<button class="opt ${esc===null?"":k===esc?(f.ok?"cer":"err"):""}" data-fr="${k}">${f.t}
+    ${esc===k?`<small>${f.p}</small>`:""}</button>`).join("")}
+  <div class="estr">
+    ${ZONAS.map(z2=>`<div class="zn ${z2.ok?"bom":"ruim"}">${z2.n}</div>`).join("")}
+    <div class="ph" id="ph"></div>
+  </div>
+  <div class="row">
+    <span class="pill">agora: <b style="color:${z.ok?"#7df0a8":"#ff9b90"}">${z.n}</b></span>
+    <span class="pill">próxima janela em <b id="cd">—</b></span>
+    <button class="btnp" id="btAr" ${(!S.som||S.falando||S.aguardaFechar||esc===null||!E.fr[esc].ok||S.exOK[i])?"disabled":""}>Abrir o microfone e falar</button>
+    <button class="btnp rd" id="btFechar" ${S.aguardaFechar?"":"disabled"}>Fechar o canal</button>
+  </div>
+  <div class="sub">${z.d}</div>
+  ${S.exMsg[i]?`<div class="flash ${S.exOK[i]?"good":"bad"}">${S.exMsg[i]}</div>`:""}
+  ${S.exOK[i]&&i<2?`<div class="row"><button class="btnp" id="btProx">Próximo anúncio →</button></div>`:""}`;
+}
+
+/* ===================== RENDER ===================== */
+function render(){
+  $("#pnum").textContent=S.passo+" de 4";
+  $$(".pa").forEach(p=>{ const n=+p.dataset.p;
+    p.classList.toggle("on",n===S.passo);
+    p.classList.toggle("ok", (n===1&&S.tetoOk)||(n===2&&S.vozLimpa&&S.viuAgudo)||(n===3&&S.talkOK)||(n===4&&S.exOK.every(Boolean)));
+    p.onclick=()=>{ if(podeIr(n)){ S.passo=n; render(); } };
+  });
+  const P=$("#palco");
+  if(S.passo===1) P.innerHTML=telaP1();
+  else if(S.passo===2) P.innerHTML=telaP2();
+  else if(S.passo===3) P.innerHTML=telaP3();
+  else P.innerHTML=telaP4();
+  ligarPalco(); desenharMapa(); sincMesa(); checklist();
+}
+
+function desenharMapa(){
+  const m=$("#mapa"); if(!m) return;
+  const X={cabine:0.50,pista:0.30,caixa:0.12};
+  const x=X[S.lugar]*100;
+  m.innerHTML=`
+    <div class="cx" style="left:16px"></div>
+    <div class="cx" style="right:16px"></div>
+    <div class="mlb" style="left:14px;top:8px">CAIXA</div>
+    <div class="mlb" style="right:14px;top:8px">CAIXA</div>
+    <div class="mlb" style="left:50%;top:8px;transform:translateX(-50%)">CABINE</div>
+    <div class="onda" style="left:24px;top:22px;width:60px;height:60px"></div>
+    <div class="onda" style="left:24px;top:8px;width:110px;height:88px"></div>
+    <div class="dj" style="left:${x}%"></div>
+    ${S.apont?`<div class="setinha" style="left:${x}%;width:${x-4}%;transform:rotate(180deg)"></div>`:""}
+    <div class="mlb" style="left:${x}%;top:70px;transform:translateX(-50%);color:#ffae1a">VOCÊ</div>`;
+}
+
+function sincMesa(){
+  $("#rFader").value=S.fader; $("#vFader").textContent=S.fader.toFixed(1);
+  $("#rHi").value=S.hi; $("#vHi").textContent=(S.hi>0?"+":"")+S.hi+" dB";
+  $("#rLow").value=S.low; $("#vLow").textContent=(S.low>0?"+":"")+S.low+" dB";
+  $$("#segBoca button").forEach(b=>b.classList.toggle("on",b.dataset.b===S.boca));
+  $$("#segLugar button").forEach(b=>b.classList.toggle("on",b.dataset.l===S.lugar));
+  $$("#segTalk button").forEach(b=>b.classList.toggle("on",+b.dataset.t===S.talkDb));
+  $("#btApont").textContent="apontar o mic para a caixa: "+(S.apont?"SIM":"NÃO");
+  $("#btApont").classList.toggle("on",S.apont);
+  $("#btTalk").textContent=S.talk?"LIGADO":"DESLIGADO";
+  $("#btTalk").classList.toggle("on",S.talk);
+  $("#btCanal").textContent=S.canal?"ABERTO":"FECHADO";
+  $("#btCanal").classList.toggle("on",S.canal);
+}
+
+/* ===================== EVENTOS DO PALCO ===================== */
+function ligarPalco(){
+  const b1=$("#btFalar1"); if(b1) b1.onclick=()=>falar("p1",3.0,()=>render());
+  const bt=$("#btTeto"); if(bt) bt.onclick=()=>{
+    const r=avaliarTeto(S.fader,S.ringCabine);
+    S.tetoOk=r.ok; S.teto=S.fader; S.tetoMsg=r.txt;
+    if(!r.ok) S.teto=0;
+    render();
+  };
+  const b2=$("#btFalar2"); if(b2) b2.onclick=()=>falar("p2",3.0,r=>{
+    if(r.desq!==null&&!r.apitou){
+      S.ultDesq=r.desq; S.ultNivel=r.micMax;
+      if(r.desq>8) S.ouviuEmbolado=true;
+      if(r.desq<=3&&S.boca==="palmo"&&r.micMax>=0.05) S.vozLimpa=true;
+    }
+    render();
+  });
+  const ba=$("#btAgudo"); if(ba) ba.onclick=()=>{
+    S.fader=S.teto; S.hi=12; S.canal=true; aplicar(); sincMesa();
+    falar("agudo",2.4,r=>{ if(r.apitou||S.apitando) S.viuAgudo=true; render(); });
+  };
+  const bs=$("#btSem"); if(bs) bs.onclick=()=>{ S.talk=false; sincMesa(); aplicar();
+    falar("p3",3.0,r=>{ if(!r.apitou) S.snrSem=r.snr; render(); }); };
+  const bc=$("#btCom"); if(bc) bc.onclick=()=>{ S.talk=true; sincMesa(); aplicar();
+    falar("p3",3.0,r=>{ if(!r.apitou) S.snrCom=r.snr; render(); }); };
+  const bp=$("#btAprova"); if(bp) bp.onclick=()=>{
+    if(!S.talk){ S.talkOK=false; S.talkMsg="Talk over desligado não é regulagem: é a música cheia por cima da sua voz. Ligue."; }
+    else if(S.talkDb>-10){ S.talkOK=false; S.talkMsg="−6 dB não abre espaço nenhum. Você mediu: a voz continua encostada na música e a pista continua sem entender."; }
+    else if(S.talkDb<-22){ S.talkOK=false; S.talkMsg="−24 dB apaga a música. Dá para entender cada palavra, sim — e dá também para ver a pista parar. Recado de dez segundos não vale um buraco de silêncio no meio da festa."; }
+    else if(S.snrCom===null||S.snrCom<6){ S.talkOK=false; S.talkMsg="A medição ainda não mostra a voz 6 dB acima da música. Confira o fader do microfone (sem passar do teto) e meça de novo."; }
+    else { S.talkOK=true; S.talkMsg="Regulagem aprovada: "+S.talkDb+" dB de talk over, voz "+S.snrCom.toFixed(1)+" dB acima da música. Dá para entender sem apagar a festa."; }
+    render();
+  };
+  $$(".opt[data-fr]").forEach(el=>el.onclick=()=>{ S.frase[S.ex]=+el.dataset.fr; render(); });
+  const bar=$("#btAr"); if(bar) bar.onclick=()=>abrirNoAr();
+  const bf=$("#btFechar"); if(bf) bf.onclick=()=>fecharCanalEx();
+  const bx=$("#btProx"); if(bx) bx.onclick=()=>{ S.ex=Math.min(2,S.ex+1); render(); };
+}
+
+/* --- passo 4 --- */
+let tmrEsq=null, exDados=null;
+function abrirNoAr(){
+  const i=S.ex, p0=posMus();
+  exDados={ zonaOk:janelaOk(p0,3.0,MUSDUR), talkOn:S.talk, talkDb:S.talkDb };
+  S.exMsg[i]=""; S.esqueceuCanal=false;
+  falar("ex",3.0,r=>{
+    exDados.apitou=r.apitou||S.apitando;
+    exDados.embolado=(r.desq!==null&&r.desq>8);
+    S.aguardaFechar=true; render();
+    tmrEsq=setTimeout(()=>{ S.esqueceuCanal=true; tossir(); setTimeout(()=>fecharCanalEx(true),700); },5000);
+  });
+}
+function fecharCanalEx(auto){
+  if(tmrEsq){ clearTimeout(tmrEsq); tmrEsq=null; }
+  const i=S.ex;
+  S.canal=false; S.aguardaFechar=false; aplicar(); sincMesa();
+  const esc=S.frase[i];
+  const r=avaliarAnuncio({
+    fraseOk: esc!==null&&EXS[i].fr[esc].ok,
+    apitou: !!(exDados&&exDados.apitou),
+    talkOn: !!(exDados&&exDados.talkOn),
+    talkDb: exDados?exDados.talkDb:0,
+    zonaOk: !!(exDados&&exDados.zonaOk),
+    embolado: !!(exDados&&exDados.embolado),
+    esqueceu: S.esqueceuCanal
+  });
+  S.exOK[i]=r.ok; S.exMsg[i]=r.t+(r.ok&&i<2?" Vá para o próximo.":"");
+  render();
+}
+
+/* ===================== PENDÊNCIAS ===================== */
+function checklist(){
+  const it=[
+    [S.ouviuApito,"Ouvir a microfonia acontecer","Apito é ganho de sistema maior que 1. Só se aprende o limite ouvindo ele estourar — na passagem de som, não na festa."],
+    [S.testouApontado,"Provar que apontar o mic para a caixa apita antes","Virar o microfone para a caixa custa vários dB de folga de uma vez."],
+    [S.tetoOk,"Anotar o teto logo abaixo do ponto que apita","Sem teto anotado você trabalha no escuro: sobe o fader no meio do anúncio e apita."],
+    [S.ouviuEmbolado,"Ouvir a voz embolada de perto","É o efeito de proximidade: colado na boca o microfone soma grave e a palavra some."],
+    [S.vozLimpa,"Chegar na voz limpa a um palmo, com o LOW cortado","Distância certa primeiro, EQ depois. O EQ afina — não conserta posição errada."],
+    [S.viuAgudo,"Ver que quem apita é o agudo","Levantar HI aproxima o ponto de apito. Presença de voz se ganha com posição, não com agudo."],
+    [S.snrSem!==null&&S.snrCom!==null,"Comparar falar com e sem TALK OVER","Sem talk over sua voz disputa com a música — e perde."],
+    [S.talkOK,"Escolher a atenuação que dá para entender sem matar o clima","−6 dB não resolve; −24 dB para a festa. O ponto de trabalho é entre −12 e −18 dB."],
+    [S.exOK.every(Boolean),"Fechar os três anúncios no ar","Frase certa, janela certa, sem apito e canal fechado depois."]
+  ];
+  const L=$("#lista"); L.innerHTML="";
+  it.forEach(([ok,t,a])=>{
+    const d=document.createElement("div"); d.className="chk"+(ok?" ok":"");
+    d.innerHTML=`<div class="b">${ok?"✓":"!"}</div><div class="tx"><b>${t}</b>${ok?"":"<br><span style='color:#7f8b9c'>"+a+"</span>"}</div>`;
+    L.appendChild(d);
+  });
+  const tudo=it.every(([o])=>o);
+  $("#aviso").innerHTML = tudo
+    ? `<b style="color:#7df0a8">Rotina fechada.</b> É esta a sequência de quem trabalha com microfone em
+       festa: descobrir na passagem de som onde o sistema apita, anotar o teto e não passar dele; um palmo
+       da boca com o grave cortado; talk over entre −12 e −18 dB; a frase pronta na cabeça <b>antes</b> de
+       abrir o canal; falar por cima da batida e nunca por cima de quem está cantando; e fechar o canal
+       assim que calar a boca. Fale pouco, fale claro, saia.`
+    : `<b>Regra de ouro nenhuma.</b> Microfone de DJ de festa é conta e rotina: ganho abaixo do ponto que
+       apita, voz acima da música, frase decidida antes de abrir o canal. Enrolação começa quando alguém
+       liga o microfone para descobrir o que vai dizer.`;
+}
+
+/* ===================== MESA (eventos fixos) ===================== */
+$("#rFader").addEventListener("input",e=>{ S.fader=+e.target.value; $("#vFader").textContent=S.fader.toFixed(1); aplicar(); });
+$("#rHi").addEventListener("input",e=>{ S.hi=+e.target.value; $("#vHi").textContent=(S.hi>0?"+":"")+S.hi+" dB"; aplicar(); });
+$("#rLow").addEventListener("input",e=>{ S.low=+e.target.value; $("#vLow").textContent=(S.low>0?"+":"")+S.low+" dB"; aplicar(); });
+$$("#segBoca button").forEach(b=>b.onclick=()=>{ S.boca=b.dataset.b; aplicar(); sincMesa(); });
+$$("#segLugar button").forEach(b=>b.onclick=()=>{ S.lugar=b.dataset.l; aplicar(); sincMesa(); desenharMapa(); });
+$$("#segTalk button").forEach(b=>b.onclick=()=>{ S.talkDb=+b.dataset.t; sincMesa(); if(S.passo===3) render(); });
+$("#btApont").onclick=()=>{ S.apont=!S.apont; aplicar(); sincMesa(); desenharMapa(); };
+$("#btTalk").onclick=()=>{ S.talk=!S.talk; sincMesa(); };
+$("#btCanal").onclick=()=>{ if(S.aguardaFechar){ fecharCanalEx(); return; } S.canal=!S.canal; aplicar(); sincMesa(); };
+$("#btSom").onclick=()=>ligarSom();
+$("#btnReset").addEventListener("pointerdown",()=>location.reload());
+
+render(); laco();
+const fit=()=>{ const w=$(".wrap");
+  const s=Math.max(0.1,Math.min((window.innerWidth-6)/w.offsetWidth,(window.innerHeight-6)/w.offsetHeight,1));
+  $("#stage").style.transform="scale("+s+")"; };
+window.addEventListener("resize",fit); fit();
+</script>
+</body>
+</html>

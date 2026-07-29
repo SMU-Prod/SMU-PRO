@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>Plano B: emergência na cabine (SMU)</title>
+<style>
+  :root{ --ink:#e9eef7; --amber:#ffae1a; --green:#39d271; --blue:#37a2ff; --red:#ff4636;
+         --roxo:#8b5cf6; --line:#2a2f37; --painel:#0c0e12; }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{ background:radial-gradient(1100px 640px at 50% -10%,#26292e,#0a0b0d 62%),#08090b; color:var(--ink);
+    font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;
+    user-select:none;overflow:hidden;display:flex;align-items:flex-start;justify-content:center}
+  #stage{transform-origin:top center;flex:0 0 auto}
+  .wrap{width:1080px;display:flex;flex-direction:column;gap:9px;padding:10px}
+
+  .util{display:flex;align-items:center;gap:9px;flex-wrap:wrap;background:linear-gradient(180deg,#202329,#15171b);
+    border:1px solid #0c0d0f;border-radius:11px;padding:8px 12px}
+  .brand b{font-size:15px;letter-spacing:1px}
+  .brand .m{font-size:9px;letter-spacing:2px;color:#8a94a4;text-transform:uppercase;margin-left:6px}
+  .pill{font-size:10px;color:#8b97a9;background:var(--painel);border:1px solid var(--line);border-radius:16px;padding:4px 10px}
+  .pill b{color:#fff;font-variant-numeric:tabular-nums}
+  .pill.mudo{border-color:#7a2118;background:#20100e}
+  .pill.mudo b{color:var(--red)}
+  .spacer{flex:1}
+  .btnp{font:inherit;font-size:11px;font-weight:700;border:0;border-radius:8px;padding:7px 12px;cursor:pointer;
+    color:#07120b;background:linear-gradient(180deg,#5be59a,#27b566)}
+  .btnp.ghost{background:transparent;color:#8b97a9;border:1px solid var(--line)}
+  .btnp:disabled{opacity:.4;cursor:not-allowed}
+
+  /* fases */
+  .passos{display:flex;gap:6px}
+  .pa{flex:1;padding:7px 9px;border-radius:8px;background:#11151a;border:1px solid #1c2229;cursor:pointer}
+  .pa.on{background:#151d2a;border-color:var(--blue)}
+  .pa.ok{background:#0f2418;border-color:#1e5c38}
+  .pa.trav{opacity:.55}
+  .pa .n{font-size:9px;font-weight:900;color:#6b7684}
+  .pa.on .n{color:var(--blue)} .pa.ok .n{color:var(--green)}
+  .pa .t{font-size:10.5px;font-weight:800;margin-top:2px}
+  .pa .s{font-size:9px;color:#8b97a9;margin-top:1px}
+
+  .grid{display:grid;grid-template-columns:1fr 300px;gap:9px}
+  .card{background:var(--painel);border:1px solid var(--line);border-radius:10px;padding:10px;min-height:392px}
+  .card h3{margin:0 0 8px;font-size:10px;letter-spacing:1.4px;color:#8b97a9;text-transform:uppercase;font-weight:800}
+
+  .cena{font-size:11px;line-height:1.45;color:#c2cbd6;background:#0f1218;border:1px solid #1c2229;
+    border-left:3px solid var(--amber);border-radius:6px;padding:8px 10px}
+  .cena b{color:#fff}
+
+  /* cabine */
+  .cab{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:9px}
+  .eq{background:#0f1218;border:1px solid #1c2229;border-radius:7px;padding:6px 7px}
+  .eq .h{display:flex;align-items:center;gap:5px}
+  .eq .led{width:8px;height:8px;border-radius:50%;background:#2a3038;box-shadow:0 0 0 1px #05070a inset}
+  .eq .nm{font-size:8.5px;font-weight:900;letter-spacing:.6px;color:#8b97a9}
+  .eq .st{font-size:9.5px;font-weight:700;color:#c2cbd6;margin-top:3px;min-height:12px}
+  .eq.ok .led{background:var(--green);box-shadow:0 0 7px -1px var(--green)}
+  .eq.play .led{background:var(--green);box-shadow:0 0 7px -1px var(--green)}
+  .eq.play{border-color:#1e5c38}
+  .eq.erro .led{background:var(--red);box-shadow:0 0 7px -1px var(--red)}
+  .eq.erro{border-color:#5c211b}
+  .eq.stop .led{background:var(--amber)}
+  .eq.off .led{background:#3a3f47}
+  .eq.off{opacity:.6}
+  .eq.sujo .led{background:var(--amber);box-shadow:0 0 7px -1px var(--amber)}
+  .eq.sujo{border-color:#6b4a10}
+
+  /* pista */
+  .pistabox{margin-top:9px;background:#0f1218;border:1px solid #1c2229;border-radius:7px;padding:7px 9px}
+  .pistatop{display:flex;align-items:center;gap:8px}
+  .pistatop .lb{font-size:8.5px;font-weight:900;letter-spacing:.8px;color:#8b97a9}
+  .pistatop .msg{font-size:10px;font-weight:700;margin-left:auto}
+  .dancers{display:flex;align-items:flex-end;gap:2px;height:26px;margin-top:5px}
+  .dancers i{flex:1;border-radius:2px 2px 0 0;background:linear-gradient(180deg,#37a2ff,#1c5f96);transition:height .5s,background .5s,opacity .5s}
+  .barra{height:6px;border-radius:4px;background:#161b22;overflow:hidden;margin-top:6px}
+  .barra i{display:block;height:100%;background:linear-gradient(90deg,#27b566,#5be59a);transition:width .4s,background .4s}
+
+  /* acoes */
+  .acoes{margin-top:9px;display:flex;flex-direction:column;gap:4px}
+  .ac{display:flex;gap:7px;align-items:flex-start;padding:6px 8px;border-radius:7px;cursor:pointer;
+    background:#11151a;border:1px solid #1c2229}
+  .ac:hover{background:#161c24}
+  .ac .b{width:15px;height:15px;border-radius:4px;flex:0 0 auto;margin-top:1px;background:#2a3038;border:1px solid #000;
+    display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:#6b7684}
+  .ac .tx{font-size:10.5px;line-height:1.3;color:#c2cbd6}
+  .ac.ok{background:#0f2418;border-color:#1e5c38;cursor:default}
+  .ac.ok .b{background:var(--green);color:#062a13} .ac.ok .tx{color:#9fe3bb}
+  .ac.err{border-color:#5c211b;background:#1a0f0e}
+  .ac.err .b{background:var(--red);color:#2a0a06}
+  .ac.fora{border-color:#6b4a10;background:#181309}
+  .ac.fora .b{background:var(--amber);color:#2a1c02}
+  .ac.travado{opacity:.5;cursor:not-allowed}
+
+  .resp{margin-top:9px;border-top:1px dashed #232a32;padding-top:8px;font-size:10.5px;line-height:1.45;color:#8b97a9;min-height:52px}
+  .resp b{color:#cdd5e0}
+  .resp .tag{display:inline-block;font-size:8.5px;font-weight:900;letter-spacing:.8px;padding:2px 6px;border-radius:4px;margin-right:6px}
+  .resp .tag.bom{background:#14432a;color:#7df0a8}
+  .resp .tag.ruim{background:#3d1310;color:#ff9b90}
+  .resp .tag.fora{background:#3d2c08;color:#ffd07a}
+
+  .aviso{font-size:9.8px;line-height:1.45;color:#8b97a9;margin-top:9px;border-top:1px dashed #232a32;padding-top:8px}
+  .aviso b{color:#cdd5e0}
+  .chk{display:flex;gap:7px;align-items:flex-start;padding:6px 7px;border-radius:7px;margin-bottom:5px;
+    background:#11151a;border:1px solid #1c2229}
+  .chk.ok{background:#0f2418;border-color:#1e5c38}
+  .chk.agora{border-color:var(--blue);background:#141c28}
+  .chk .b{width:14px;height:14px;border-radius:50%;flex:0 0 auto;margin-top:1px;background:#2a3038;border:1px solid #000;
+    display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:#6b7684}
+  .chk.ok .b{background:var(--green);color:#062a13}
+  .chk.agora .b{background:var(--blue);color:#04121f}
+  .chk .tx{font-size:10px;line-height:1.3;color:#c2cbd6}
+  .chk.ok .tx{color:#9fe3bb}
+
+  .start{display:flex;flex-direction:column;align-items:flex-start;gap:7px;margin-top:9px;
+    background:#0f1218;border:1px dashed #2a3444;border-radius:7px;padding:10px}
+  .start .q{font-size:10.5px;color:#8b97a9;line-height:1.4}
+  .fim{background:#0f1218;border:1px solid #1e5c38;border-radius:8px;padding:12px}
+  .fim h4{margin:0 0 7px;font-size:13px;color:#7df0a8}
+  .fim p{margin:0 0 7px;font-size:11px;line-height:1.5;color:#c2cbd6}
+  .fim b{color:#fff}
+  .placar{display:flex;gap:7px;margin:9px 0}
+  .plc{flex:1;background:#11151a;border:1px solid #1c2229;border-radius:7px;padding:7px 9px}
+  .plc .v{font-size:19px;font-weight:900;font-variant-numeric:tabular-nums}
+  .plc .k{font-size:8.5px;letter-spacing:.8px;color:#8b97a9;text-transform:uppercase;font-weight:800}
+</style>
+</head>
+<body>
+<div id="stage">
+<div class="wrap">
+
+  <div class="util">
+    <div class="brand"><b>SMU</b><span class="m">PRO • PLANO B — EMERGÊNCIA NA CABINE</span></div>
+    <span class="pill">Pane <b id="prod">1 de 7</b></span>
+    <span class="pill">Relógio <b id="prel">0:00</b></span>
+    <span class="pill" id="psil">Silêncio na pista <b>0s</b></span>
+    <span class="pill">Ações erradas <b id="perr">0</b></span>
+    <span class="spacer"></span>
+    <button class="btnp ghost" id="btnReset">Recomeçar</button>
+  </div>
+
+  <div class="passos" id="passos"></div>
+
+  <div class="grid">
+    <div class="card" id="palco"></div>
+    <div class="card">
+      <h3>O que falta</h3>
+      <div id="lista"></div>
+      <div class="aviso" id="aviso"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const mmss=s=>{s=Math.max(0,Math.round(s));return Math.floor(s/60)+":"+String(s%60).padStart(2,"0");};
+
+/* ---------- as 4 fases: a mesma ordem para qualquer pane ---------- */
+const FASES=[
+  {n:1,t:"Som no ar",     s:"a pista não pode ficar muda", pq:"Silêncio na pista é o único erro que ninguém perdoa. Antes de descobrir a causa, garanta que sai som — pelo outro deck, por outra fonte, pelo master."},
+  {n:2,t:"Diagnóstico",   s:"pelo caminho do sinal",       pq:"Com som no ar você tem tempo. Medidor da mesa e fone de cue dizem em 30 segundos se o defeito é antes ou depois da mesa. Um teste por vez."},
+  {n:3,t:"Conserto",      s:"agora dá para resolver",      pq:"Só agora se mexe de verdade no que quebrou — com a pista tocando, ninguém está te esperando."},
+  {n:4,t:"Fecho",         s:"para não repetir hoje",       pq:"O que impede a mesma pane de voltar daqui a uma hora: marcar, avisar, repor. É isso que separa quem apanhou de quem aprendeu."}
+];
+
+/* ---------- as panes ---------- */
+const PANES=[
+{id:"pendrive", nome:"O pendrive parou de ler",
+ cena:"23h40, pista cheia. O deck 2 está tocando e faltam <b>1:50</b> de faixa. Você vai carregar a próxima no deck 1 e o player mostra <b>CANNOT PLAY THIS TRACK</b> — o USB some da tela.",
+ som:"no ar", fus:110,
+ fora:"A faixa do deck 2 continua correndo enquanto você faz isso. Quando ela acabar sem próxima carregada, a pista fica muda.",
+ eq:{d1:["erro","USB não lido"],d2:["play","tocando"],mx:["ok","normal"],mo:["ok","normal"],pa:["ok","normal"]},
+ eq1:{d1:["ok","reserva lido"]}, eq3:{},
+ acoes:[
+  {f:1,t:"Espeto o pendrive reserva no deck 1 e já carrego a próxima faixa",
+     r:"É isso. A faixa que toca é o seu cronômetro: com a próxima já carregada de outra fonte, o pior caso vira 'a noite seguiu'. O reserva existe exatamente para este minuto."},
+  {f:2,t:"Ejeto e espeto o pendrive problemático — uma vez só — e testo na outra porta USB / no outro player",
+     r:"Agora sim. Um teste responde se o defeito é o pendrive ou a porta do player. Com a próxima faixa garantida, dá para gastar 30 segundos nisso."},
+  {f:3,t:"Sigo a noite no reserva e guardo o problemático na mochila para formatar e exportar de novo em casa",
+     r:"No meio do evento não se recupera pendrive corrompido. Ele volta pra bolsa; em casa é formatar em FAT32 e exportar de novo pelo rekordbox."},
+  {f:4,t:"Anoto que esse pendrive falhou e reponho o par reserva antes do próximo evento",
+     r:"Você saiu do evento com um pendrive a menos. Se não repuser, no próximo você não tem plano B — só teve sorte uma vez."},
+  {f:0,k:30,dano:25,t:"Paro a faixa que está tocando para o player 'liberar' e reconhecer o USB",
+     r:"Você tirou o único som que ainda tinha para tentar consertar. Pista muda por opção sua: é o erro que não tem perdão."},
+  {f:0,k:22,t:"Fico tirando e espetando o pendrive até ele pegar, com a pista esperando",
+     r:"Espetar sem parar não conserta tabela de arquivo corrompida e ainda aumenta a chance de corromper de vez. Um teste — depois é o reserva."},
+  {f:0,k:26,t:"Formato o pendrive ali mesmo, pelo player, para ver se ele volta",
+     r:"Formatar apaga tudo: a coleção inteira e as marcações que você levou dias fazendo. Nunca se formata pendrive dentro do evento."},
+  {f:0,k:18,t:"Pego o microfone e explico que o pendrive deu problema",
+     r:"A pista não precisa saber do seu pendrive. Explicação técnica no microfone transforma um problema seu num problema de todo mundo."}
+]},
+
+{id:"canal", nome:"Canal mudo na mixer",
+ cena:"Você sobe o fader do <b>canal 2</b> com a faixa tocando e não sai nada — o medidor do canal está parado. O deck 1 segue na pista com <b>2:20</b> de faixa.",
+ som:"no ar", fus:140,
+ fora:"O deck 1 é o que sustenta a pista, e a faixa dele está acabando enquanto você mexe na mesa.",
+ eq:{d1:["play","tocando"],d2:["stop","pronto, canal 2"],mx:["erro","canal 2 mudo"],mo:["ok","normal"],pa:["ok","normal"]},
+ eq1:{d2:["ok","passou pro canal 3"]}, eq3:{mx:["ok","canal 3 no ar"]},
+ acoes:[
+  {f:1,t:"Deixo o deck 1 tocando e passo a próxima faixa para um canal que funciona (canal 3)",
+     r:"Canal mudo não pode virar pista muda. A mesa tem 4 canais: use um que funciona. Conserto de canal é depois."},
+  {f:2,t:"Aperto o CUE do canal 2 e olho o medidor: chega sinal ou está parado?",
+     r:"O teste de 10 segundos. Medidor parado e cue mudo = o sinal não chega (cabo ou fonte). Medidor mexendo e cue com som = o sinal chega e morre depois do canal (fader, assign do crossfader, master)."},
+  {f:3,t:"Corrijo o que o teste apontou: chave LINE/PHONO trocada, trim zerado, assign do crossfader no lado errado ou cabo fora do lugar",
+     r:"As quatro causas de canal mudo, em ordem de frequência. Nenhuma precisa de ferramenta — todas precisam que você olhe a mesa antes de mexer."},
+  {f:4,t:"Marco o canal com fita, aviso o técnico da casa e sigo a noite no canal bom",
+     r:"Ninguém desmonta mesa em evento. Você registra, entrega a informação e toca. Manutenção é amanhã, na bancada."},
+  {f:0,k:25,t:"Subo o trim e o master no talo para 'forçar' o canal",
+     r:"Forçar ganho não faz sinal aparecer. E se o canal voltar, volta com tudo aberto: estouro nas caixas e susto na pista."},
+  {f:0,k:28,dano:20,t:"Puxo o fader do canal 1 (o que está tocando) para escutar melhor se o 2 voltou",
+     r:"Você silenciou a pista para escutar um canal quebrado. Para isso existe o fone: cue no canal 2, pista no canal 1."},
+  {f:0,k:30,dano:25,t:"Desligo e ligo a mesa para 'resetar' o canal",
+     r:"Mesa reiniciando = evento sem som por 20 a 40 segundos. E canal mudo por chave errada ou cabo solto continua mudo depois do reset."},
+  {f:0,k:24,t:"Troco todos os cabos da mesa de uma vez, para garantir",
+     r:"Quando voltar você não vai saber o que era — e vai repetir o defeito no próximo evento. Um teste por vez, pelo caminho do sinal."}
+]},
+
+{id:"distorcao", nome:"O som está distorcendo",
+ cena:"O master bate no vermelho e o som chega <b>rasgado</b> nas caixas. A pista está cheia e continua com música — só que feia. O técnico do PA olha para a cabine.",
+ som:"sujo", fus:null,
+ fora:"Cada segundo de clipe é um segundo de som sujo no salão inteiro — e de risco real para o driver de agudo.",
+ eq:{d1:["play","tocando"],d2:["stop","pronto"],mx:["sujo","master no vermelho"],mo:["sujo","rasgando"],pa:["sujo","clipando"]},
+ eq1:{mx:["ok","fora do vermelho"],mo:["ok","limpo"],pa:["ok","limpo"]}, eq3:{},
+ acoes:[
+  {f:1,t:"Puxo o trim/gain do canal até o medidor sair do vermelho — sem cortar o som",
+     r:"A correção que mantém a pista tocando. Distorção se resolve tirando ganho de onde ele está sobrando, não fechando a torneira do master."},
+  {f:2,t:"Vejo ONDE clipa: só o master ou o canal também? E no fone: a faixa já vem distorcida da origem?",
+     r:"Diagnóstico pelo caminho do sinal. Canal no vermelho = ganho de entrada. Só o master = soma dos canais e do EQ. Faixa suja no fone = arquivo ruim, e aí nenhum ajuste na mesa salva."},
+  {f:3,t:"Refaço o ganho: pico do canal em torno do 0 (amarelo), EQ sem exagero no grave, master abaixo do vermelho — e troco a faixa se o arquivo é ruim",
+     r:"Gain structure na prática. Quem faz volume é o amplificador do PA, não o vermelho da sua mesa."},
+  {f:4,t:"Aviso o técnico do PA que houve clipe e confiro se alguma caixa entrou em protect",
+     r:"Distorção não é só estética: é o que mata driver de agudo e faz a caixa se proteger e baixar sozinha no meio da noite."},
+  {f:0,k:26,dano:18,t:"Puxo o master para quase zero até entender o que é",
+     r:"Você trocou som feio por silêncio. Som ruim a pista aguenta um minuto; silêncio, não."},
+  {f:0,k:22,t:"Aumento o volume do amplificador e baixo o master para compensar",
+     r:"Você mudou a distorção de lugar, não tirou. Quem está clipando é a mesa: o sinal já sai sujo antes de chegar no PA."},
+  {f:0,k:20,t:"Deixo como está — ninguém percebe",
+     r:"Percebem sim: é o 'som ruim' que o convidado lembra e conta. E clipe constante queima o driver de agudo — aí você perde a caixa inteira."},
+  {f:0,k:18,t:"Uso o EQ para 'limpar' o rasgado",
+     r:"EQ não desfaz clipe. Depois que o pico foi cortado, o estrago já está dentro do áudio — não existe filtro que devolva o que foi ceifado."}
+]},
+
+{id:"usb-alheio", nome:"O outro DJ desconectou o USB errado",
+ cena:"Virada de DJ. O colega puxa um USB do player 2 achando que era o dele — e o player 2 estava tocando a <b>sua</b> faixa. O som parou. 300 pessoas na pista.",
+ som:"mudo", fus:0,
+ fora:"A pista está muda agora. Cada segundo aqui é um segundo de 300 pessoas em silêncio olhando para a cabine.",
+ eq:{d1:["stop","faixa carregada, parada"],d2:["erro","USB removido"],mx:["ok","normal"],mo:["ok","sem sinal"],pa:["ok","sem sinal"]},
+ eq1:{d1:["play","tocando"],mo:["ok","normal"],pa:["ok","normal"]}, eq3:{d2:["ok","USB relido"]},
+ acoes:[
+  {f:1,t:"Dou play no deck 1, que já está com faixa carregada, e subo o fader",
+     r:"Exatamente. Você tinha uma faixa carregada e parada a um botão de distância. Som na pista primeiro; o resto é conversa."},
+  {f:2,t:"Só então vejo o que aconteceu: qual USB saiu, de qual player, e falo com o colega — baixo, sem plateia",
+     r:"Diagnóstico depois do som. E cabine não é lugar de discussão: o público lê a cara de vocês dois antes de ouvir qualquer explicação."},
+  {f:3,t:"Reespeto o meu pendrive, espero o player reler o banco e recarrego a faixa com calma",
+     r:"Com som no ar, o player pode levar os 15 segundos que precisar para reler o banco de dados. Sem som no ar, esses mesmos 15 segundos são um vexame."},
+  {f:4,t:"Combino a regra da virada: cada um na sua porta, pendrives etiquetados, e ninguém tira USB sem olhar qual deck está tocando",
+     r:"Virada de DJ é o momento em que mais se perde som numa noite — e é o mais fácil de combinar antes, em dez segundos de conversa."},
+  {f:0,k:30,t:"Espeto o pendrive de volta e espero o player recarregar a faixa do ponto em que parou",
+     r:"O player carrega do começo e ainda leva de 10 a 20 segundos relendo o banco. A pista fica muda o tempo inteiro — por escolha sua."},
+  {f:0,k:28,t:"Reclamo com o colega ali mesmo, antes de pôr som",
+     r:"A pista está muda e está vendo dois DJs discutindo. O problema técnico dura 20 segundos; essa cena dura a noite toda."},
+  {f:0,k:22,t:"Pego o microfone e explico que tiraram o meu pendrive",
+     r:"Ninguém na pista sabe o que é USB. Só ouviram você contando que o som parou — e que a culpa não é sua."},
+  {f:0,k:24,t:"Procuro outro pendrive na mochila antes de fazer qualquer coisa",
+     r:"Você tem uma faixa carregada e parada no deck 1. Procurar na mochila com a pista muda é gastar justamente o que você não tem."}
+]},
+
+{id:"energia", nome:"Caiu a energia da cabine",
+ cena:"Apagou a cabine inteira: mixer, players e a luminária. As <b>caixas da pista ainda têm LED aceso</b> — estão em outra régua. Salão em silêncio, 300 convidados.",
+ som:"mudo", fus:0,
+ fora:"Sem energia e sem som, o salão inteiro está parado esperando alguém fazer alguma coisa. Esse alguém é você.",
+ eq:{d1:["off","sem energia"],d2:["off","sem energia"],mx:["off","sem energia"],mo:["off","sem energia"],pa:["ok","com energia, sem sinal"]},
+ eq1:{}, eq3:{d1:["ok","voltou"],d2:["ok","voltou"],mx:["ok","voltou"],mo:["ok","voltou"]},
+ acoes:[
+  {f:1,t:"Assumo a pista pela voz: microfone da casa, se ele tiver energia, ou eu na frente puxando palmas e coro",
+     r:"É o que resta e é o que funciona. Sem equipamento, quem sustenta a pista é você. Parabéns à capela já salvou casamento — pista constrangida é o que não pode."},
+  {f:2,t:"Leio o que morreu e o que não: só a cabine ou o salão inteiro? As caixas ainda têm LED?",
+     r:"Trinta segundos de leitura. Caixa acesa e cabine morta = circuito ou régua da cabine. Tudo apagado = quadro geral ou a rua."},
+  {f:3,t:"Chamo o responsável da casa que eu identifiquei na passagem de som — disjuntor e gerador são com ele",
+     r:"Por isso a pergunta de trinta segundos na passagem de som: onde é o quadro, tem gerador, quem eu chamo. Na crise você aciona em vez de procurar."},
+  {f:4,t:"Quando voltar: master zerado, ligo fonte → mixer → caixas por último, e começo com faixa segura num volume um pouco abaixo",
+     r:"A ordem que evita o estouro. Caixa ligada antes da fonte recebe o 'pop' do sistema inteiro — é assim que se queima agudo na frente de todo mundo."},
+  {f:0,k:30,t:"Vou religando tudo assim que a luz volta, do jeito que estava",
+     r:"Tudo religa junto com o master aberto: estouro nas caixas em cima de 300 pessoas, com risco real de queimar o driver de agudo."},
+  {f:0,k:26,t:"Vou eu mesmo ao quadro de energia da casa e religo o disjuntor",
+     r:"Elétrica de terceiro não é seu departamento. Se caiu por sobrecarga, religar sem tirar carga derruba de novo — e agora o risco é seu."},
+  {f:0,k:24,t:"Fico atrás da mesa mexendo em cabo enquanto o salão espera",
+     r:"Ninguém está te vendo consertar: estão te vendo sumir. Sem energia, cabo não resolve nada."},
+  {f:0,k:20,t:"Espero quieto até alguém resolver",
+     r:"Silêncio com o DJ parado é a imagem que o contratante leva pra casa. Mesmo sem energia existe o que fazer: assumir a pista pela voz."}
+]},
+
+{id:"monitor", nome:"Monitor de cabine sem som",
+ cena:"O monitor da cabine ficou mudo — você não escuta o que está fazendo. A <b>pista continua ouvindo normal</b>: medidor do master dançando e gente dançando junto.",
+ som:"no ar", fus:null,
+ fora:"A pista está ótima. Tudo o que você fizer aqui só pode piorar o que já está funcionando.",
+ eq:{d1:["play","tocando"],d2:["stop","pronto"],mx:["ok","master normal"],mo:["erro","mudo"],pa:["ok","normal"]},
+ eq1:{}, eq3:{mo:["ok","voltou (ou fone)"]},
+ acoes:[
+  {f:1,t:"Confirmo que a PISTA continua com som e assumo a mixagem pelo FONE enquanto resolvo",
+     r:"O pulo do gato: aqui não existe emergência. O som da pista está no ar, e a primeira obrigação é não estragar o que está funcionando. Dá para tocar a noite inteira só no fone."},
+  {f:2,t:"Vejo se o problema é só o monitor: knob de BOOTH zerado, cabo do retorno solto, caixa de retorno sem energia",
+     r:"Do mais bobo para o mais grave. Botão de booth esbarrado é a causa nº 1 — a cabine é onde mais gente encosta na mesa a noite inteira."},
+  {f:3,t:"Corrijo o que achei; se não voltar, sigo no fone até o fim da noite",
+     r:"Monitor é conforto seu, não serviço do cliente. Ninguém na pista percebe que você tocou a noite inteira no fone."},
+  {f:4,t:"Anoto: na próxima passagem de som testar retorno E fone, e marcar o volume do booth com fita",
+     r:"Metade das emergências morre na passagem de som — inclusive as chatas como esta."},
+  {f:0,k:26,t:"Subo o master para conseguir escutar da cabine",
+     r:"Você aumentou o volume da PISTA porque VOCÊ não escuta. O PA vai para o vermelho, o salão fica insuportável — e o problema continua sendo o seu monitor."},
+  {f:0,k:24,dano:20,t:"Paro tudo para consertar o retorno",
+     r:"A pista estava ótima e você criou uma emergência que não existia. Nunca troque um problema seu por um problema da pista."},
+  {f:0,k:22,dano:18,t:"Tiro o cabo do master para testar no monitor",
+     r:"Você desligou a pista para ouvir a si mesmo. E ainda plugou com o sistema aberto: 'toc' em todas as caixas."},
+  {f:0,k:18,t:"Peço ao técnico para desligar o PA um instante e testar",
+     r:"O PA é da pista. Retorno de cabine se testa com a pista tocando, no fone e no cue — nunca parando o sistema."}
+]},
+
+{id:"cabo-deck", nome:"O cabo de um deck saiu",
+ cena:"Você abre o canal do deck 1 no meio da mixagem e sai som <b>só de um lado</b>, chiando e sumindo. O deck 2 está tocando na pista com <b>1:20</b> de faixa.",
+ som:"no ar", fus:80,
+ fora:"O deck 2 está com 1:20 e caindo. Se ele acabar sem próxima faixa pronta, o problema deixa de ser um cabo e vira silêncio.",
+ eq:{d1:["erro","RCA fora do lugar"],d2:["play","tocando"],mx:["sujo","canal 1 chiando"],mo:["ok","normal"],pa:["ok","normal"]},
+ eq1:{mx:["ok","canal 1 fechado"]}, eq3:{d1:["ok","RCA reencaixado"]},
+ acoes:[
+  {f:1,t:"Fecho o canal do deck 1, deixo o deck 2 tocando e já carrego a próxima faixa no deck que funciona",
+     r:"Repare no 'fecho o canal': canal aberto com cabo solto manda chiado e estouro para o PA. Com a próxima faixa no deck bom, a pista está garantida."},
+  {f:2,t:"Com o canal fechado, aperto o cue e mexo de leve no RCA: chiou ou voltou = é o encaixe, não é a fonte",
+     r:"O teste que responde em cinco segundos — e no fone, sem passar pela pista."},
+  {f:3,t:"Reencaixo o RCA no par certo (vermelho = direita, branco = esquerda) com o canal fechado, ou passo o deck para o canal livre com o cabo reserva",
+     r:"É para este minuto que o cabo RCA reserva mora na mochila. Encaixe firme, canal fechado, e só então abre."},
+  {f:4,t:"Gaffer no cabo e alívio no chão — cabo que 'sai sozinho' quase sempre saiu porque alguém tropeçou",
+     r:"Sem isso, o mesmo cabo sai de novo daqui a uma hora, quando o garçom passar pelo mesmo lugar."},
+  {f:0,k:26,dano:22,t:"Puxo o fader do deck 2 para escutar se o 1 voltou",
+     r:"Silêncio na pista para escutar um deck quebrado. É exatamente isso que o fone faz — sem ninguém ouvir."},
+  {f:0,k:24,t:"Fico plugando e desplugando o RCA com o canal aberto e o master no ar",
+     r:"Plugar RCA com canal aberto manda um 'toc' altíssimo para o PA — é assim que se queima agudo. Fecha o canal, depois plugue."},
+  {f:0,k:22,t:"Troco todos os cabos da mesa de uma vez para garantir",
+     r:"Quando voltar você não vai saber o que era, e vai repetir o defeito no próximo evento. Um teste por vez, pelo caminho do sinal."},
+  {f:0,k:20,t:"Aviso no microfone que caiu um cabo e peço um minuto",
+     r:"O deck 2 está tocando. Não existe emergência para a pista — só para você. Anunciar problema que ninguém viu é criar problema."}
+]}
+];
+
+const NOMES={d1:"DECK 1",d2:"DECK 2",mx:"MIXER",mo:"MONITOR",pa:"PA / PISTA"};
+const CUSTO_FORA=15;   /* segundos que custa investigar antes de garantir o som */
+
+/* ---------- estado ---------- */
+const S={ ordem:[], rodada:0, feitas:{}, marca:{}, t:0, sil:0, silTotal:0, erros:0,
+          animo:100, som:"no ar", fus:0, rodando:false, resolvida:false, fim:false, resp:null, eq:{} };
+
+function embaralhar(a){ const b=a.slice(); for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];} return b; }
+function pane(){ return PANES[S.ordem[S.rodada]]; }
+
+function novaRodada(){
+  const p=pane();
+  S.feitas={}; S.marca={}; S.t=0; S.sil=0; S.animo=100; S.som=p.som; S.fus=p.fus;
+  S.rodando=false; S.resolvida=false; S.resp=null;
+  S.eq=JSON.parse(JSON.stringify(p.eq));
+  S.ordemAcoes=embaralhar(p.acoes.map((_,i)=>i));
+}
+function reset(){
+  S.ordem=embaralhar(PANES.map((_,i)=>i));
+  S.rodada=0; S.silTotal=0; S.erros=0; S.fim=false;
+  novaRodada(); render();
+}
+
+/* ---------- a regra travada: só avança na ordem ---------- */
+function podeIr(n){
+  if(n<=1) return true;
+  if(n>4) return false;
+  return !!S.feitas[n-1] && podeIr(n-1);
+}
+function faseAtual(){ for(let n=1;n<=4;n++) if(!S.feitas[n]) return n; return 5; }
+
+/* ---------- relógio ---------- */
+function tick(dt){
+  if(!S.rodando||S.resolvida||S.fim) return;
+  S.t+=dt;
+  if(S.som==="mudo"){ S.sil+=dt; S.animo-=2.2*dt; }
+  else if(S.som==="sujo"){ S.animo-=0.7*dt; }
+  else { S.animo=Math.min(100,S.animo+0.6*dt); }
+  if(S.fus!==null && !S.feitas[1]){
+    S.fus-=dt;
+    if(S.fus<=0){ S.fus=0;
+      if(S.som!=="mudo"){ S.som="mudo"; S.eq.d1=["stop","faixa acabou"]; S.eq.d2=["stop","faixa acabou"];
+        S.resp={tipo:"parou",txt:"<b>A faixa acabou.</b> Ninguém pausou nada: o tempo simplesmente correu enquanto você resolvia outra coisa. Agora a pista está muda — e era exatamente isso que a fase 1 existia para evitar."}; }
+    }
+  }
+  S.animo=clamp(S.animo,0,100);
+  pintar();
+}
+
+/* ---------- escolher uma ação ---------- */
+function custo(seg,dano){
+  S.t+=seg; S.erros++;
+  if(S.som==="mudo") S.sil+=seg;
+  if(dano){ S.sil+=dano; S.animo-=2.2*dano; }
+  S.animo-=(S.som==="mudo"?2.2:S.som==="sujo"?0.7:0.25)*seg;
+  if(S.fus!==null && !S.feitas[1]){
+    S.fus-=seg;
+    if(S.fus<=0){ S.fus=0; if(S.som!=="mudo"){ S.som="mudo"; S.eq.d1=["stop","faixa acabou"]; S.eq.d2=["stop","faixa acabou"]; } }
+  }
+  S.animo=clamp(S.animo,0,100);
+}
+function aplicar(ov){ for(const k in ov) S.eq[k]=ov[k].slice(); }
+
+function escolher(i){
+  if(!S.rodando&&!S.resolvida&&!S.fim){
+    S.resp={tipo:"trava",txt:"<b>A pane ainda não começou.</b> Leia a cena e aperte <b>▶ A pane acontece agora</b> — dali em diante o relógio anda e a pista reage."};
+    pintar(); return "bloqueado";
+  }
+  if(!S.rodando||S.resolvida||S.fim) return "bloqueado";
+  const p=pane(), a=p.acoes[i];
+  if(a.f>0 && S.feitas[a.f]) return "jafeito";
+
+  if(a.f===0){                                   /* ação que só piora */
+    custo(a.k, a.dano||0); S.marca[i]="err";
+    S.resp={tipo:"ruim",txt:a.r};
+    pintar(); return "errado";
+  }
+  if(!podeIr(a.f)){                              /* certa, na hora errada */
+    custo(CUSTO_FORA,0); S.marca[i]="fora";
+    S.resp={tipo:"fora",txt:"<b>Fora de ordem.</b> "+p.fora+" A regra não muda de pane para pane: <b>primeiro garanta que continua saindo som</b>, só depois investigue a causa."};
+    pintar(); return "fora";
+  }
+  /* certa e na hora certa */
+  S.feitas[a.f]=true; S.marca[i]="ok";
+  S.resp={tipo:"bom",txt:a.r};
+  if(a.f===1){ S.som="no ar"; aplicar(p.eq1||{}); }
+  if(a.f===3){ aplicar(p.eq3||{}); }
+  if(faseAtual()===5){
+    S.resolvida=true; S.rodando=false; S.silTotal+=S.sil;
+    if(S.rodada>=PANES.length-1){ S.fim=true; render(); return "certo"; }  /* última pane: entra no fecho */
+  }
+  pintar(); return "certo";
+}
+
+function proxima(){
+  if(!S.resolvida||S.fim) return;
+  S.rodada++; novaRodada(); render();
+}
+function iniciar(){ if(!S.rodando&&!S.resolvida&&!S.fim){ S.rodando=true; render(); } }
+
+/* ---------- render ---------- */
+/* a régua de fases é redesenhada sempre que o aluno fecha uma fase — não só na troca de pane */
+function desenharFases(){
+  const sig=JSON.stringify(S.feitas)+"|"+faseAtual()+"|"+S.fim;
+  if(sig===S._sigFa) return; S._sigFa=sig;
+  $("#passos").innerHTML=FASES.map(f=>{
+    const ok=!!S.feitas[f.n], on=faseAtual()===f.n, trav=!podeIr(f.n)&&!ok;
+    return `<div class="pa ${ok?"ok":""} ${on?"on":""} ${trav?"trav":""}" data-f="${f.n}">
+      <div class="n">FASE ${f.n}${trav?" 🔒":""}</div><div class="t">${f.t}</div><div class="s">${f.s}</div></div>`;
+  }).join("");
+  $$(".pa").forEach(el=>el.onclick=()=>{
+    const n=+el.dataset.f;
+    if(!podeIr(n)){ S.resp={tipo:"trava",txt:"<b>Travado.</b> "+FASES[n-1].t.toUpperCase()+" só depois de "+FASES[n-2].t.toUpperCase()+". "+FASES[n-2].pq}; }
+    else { S.resp={tipo:"bom",txt:"<b>"+FASES[n-1].t.toUpperCase()+":</b> "+FASES[n-1].pq}; }
+    pintar();
+  });
+}
+function render(){
+  /* o palco foi refeito: os caches de assinatura precisam cair junto */
+  S._sigFa=null; S._sigCab=null; S._sigAc=null;
+  desenharFases();
+  $("#palco").innerHTML = S.fim&&S.resolvida ? telaFim() : telaPane();
+  ligar(); pintar();
+}
+
+function telaPane(){
+  const p=pane();
+  return `<h3>Pane ${S.rodada+1} de ${PANES.length} — ${p.nome}</h3>
+  <div class="cena">${p.cena}</div>
+  <div class="cab" id="cab"></div>
+  <div class="pistabox">
+    <div class="pistatop"><span class="lb">PISTA</span>
+      <span class="lb" id="fuslb"></span>
+      <span class="msg" id="pmsg"></span></div>
+    <div class="dancers" id="dancers">${Array.from({length:34},()=>"<i></i>").join("")}</div>
+    <div class="barra"><i id="pbar"></i></div>
+  </div>
+  ${S.rodando||S.resolvida?`<div class="acoes" id="acoes"></div>`
+  :`<div class="start">
+      <div class="q">Leia a cena e as opções com calma — <b>na cabine você não vai ter esse tempo</b>.
+      Quando apertar o botão, o relógio começa a andar e a pista começa a reagir.</div>
+      <button class="btnp" id="btGo">▶ A pane acontece agora</button>
+    </div>
+    <div class="acoes" id="acoes"></div>`}
+  <div class="resp" id="resp"></div>`;
+}
+
+function telaFim(){
+  const media=(S.silTotal/PANES.length);
+  return `<div class="fim">
+    <h4>As 7 panes resolvidas — e a regra é sempre a mesma</h4>
+    <div class="placar">
+      <div class="plc"><div class="v" style="color:${S.silTotal<=90?"#7df0a8":S.silTotal<=200?"#ffae1a":"#ff9b90"}">${S.silTotal}s</div><div class="k">silêncio total</div></div>
+      <div class="plc"><div class="v">${media.toFixed(0)}s</div><div class="k">média por pane</div></div>
+      <div class="plc"><div class="v" style="color:${S.erros===0?"#7df0a8":"#ffae1a"}">${S.erros}</div><div class="k">ações erradas</div></div>
+    </div>
+    <p><b>Fase 1 sempre primeiro.</b> Sete panes diferentes, a mesma sequência: garantir som, diagnosticar,
+    consertar, fechar. Pendrive, canal, cabo, energia — muda a causa, não muda a ordem.</p>
+    <p><b>A pista não precisa da solução definitiva</b>, precisa de música em menos de um minuto.
+    O conserto elegante é depois; às vezes é só amanhã, na bancada.</p>
+    <p><b>Som ruim se aguenta um minuto; silêncio, não.</b> Por isso baixar o ganho é melhor que fechar
+    o master, o fone é melhor que puxar o fader do deck que toca, e o outro deck é melhor que o reset.</p>
+    <p><b>O que faz a fase 1 existir cabe numa bolsa:</b> 2º pendrive espelhado, celular com playlist
+    offline e cabo já testado na sua mesa, RCA e XLR reserva, adaptadores, fone reserva, régua, gaffer.
+    Backup que nunca foi testado é enfeite de mochila.</p>
+    <p><b>E o plano B nasce na passagem de som:</b> testar a fonte reserva de verdade, fotografar a mesa
+    configurada e perguntar onde é o quadro, se tem gerador e quem chamar. Trinta segundos que valem
+    a noite inteira.</p>
+    <button class="btnp" id="btNovo" style="margin-top:4px">Sortear as 7 panes de novo</button>
+  </div>`;
+}
+
+function pintar(){
+  desenharFases();
+  $("#prod").textContent=(S.rodada+1)+" de "+PANES.length;
+  $("#prel").textContent=mmss(S.t);
+  const ps=$("#psil"); ps.innerHTML="Silêncio na pista <b>"+Math.round(S.sil)+"s</b>";
+  ps.className="pill"+(S.som==="mudo"?" mudo":"");
+  $("#perr").textContent=S.erros;
+
+  /* o painel da cabine só é redesenhado quando algum aparelho muda de estado */
+  const cab=$("#cab"), sigCab=JSON.stringify(S.eq);
+  if(cab && sigCab!==S._sigCab){ S._sigCab=sigCab;
+    cab.innerHTML=Object.keys(NOMES).map(k=>{
+      const e=S.eq[k]||["ok",""];
+      return `<div class="eq ${e[0]}"><div class="h"><span class="led"></span><span class="nm">${NOMES[k]}</span></div>
+        <div class="st">${e[1]}</div></div>`;
+    }).join("");
+  }
+
+  const d=$("#dancers");
+  if(d){ const n=S.animo;
+    [...d.children].forEach((el,i)=>{
+      const base=8+((i*37)%11);
+      const h= n>15 ? base+ (n/100)*16 + (S.som!=="mudo"? (Math.sin((S.t+i)*1.7)*3):0) : 5;
+      el.style.height=Math.round(h)+"px";
+      el.style.opacity= n>60?1: n>30?.75:.45;
+      el.style.background= S.som==="mudo"?"linear-gradient(180deg,#6b7684,#3a4049)"
+        : S.som==="sujo"?"linear-gradient(180deg,#ffae1a,#a06c08)"
+        : "linear-gradient(180deg,#37a2ff,#1c5f96)";
+    });
+  }
+  const bar=$("#pbar");
+  if(bar){ bar.style.width=S.animo+"%";
+    bar.style.background= S.animo>60?"linear-gradient(90deg,#27b566,#5be59a)"
+      : S.animo>30?"linear-gradient(90deg,#a06c08,#ffae1a)":"linear-gradient(90deg,#8f2318,#ff4636)"; }
+  const msg=$("#pmsg");
+  if(msg){ const a=S.animo;
+    const txt = S.som==="mudo" ? (a>70?"a pista percebeu que parou":a>40?"pista parando, olhares na cabine":a>15?"gente saindo da pista":"pista vazia — o cerimonialista está vindo falar com você")
+      : S.som==="sujo" ? (a>60?"som feio, mas todo mundo dançando":"o som rasgado está espantando a pista")
+      : (a>85?"pista cheia — ninguém percebeu nada":a>55?"a pista está voltando":"a pista volta devagar, mas volta");
+    msg.textContent=txt;
+    msg.style.color= S.som==="no ar"?"#7df0a8": S.som==="sujo"?"#ffd07a":"#ff9b90";
+  }
+  const fl=$("#fuslb");
+  if(fl) fl.textContent = (S.fus!==null&&!S.feitas[1]&&S.fus>0) ? ("• faixa no ar acaba em "+mmss(S.fus)) : "";
+
+  /* a lista de ações também: só redesenha quando muda de verdade
+     (senão o relógio de 1s reescreveria os botões debaixo do dedo do aluno) */
+  const ac=$("#acoes"), sigAc=JSON.stringify(S.marca)+"|"+S.rodando+"|"+S.resolvida+"|"+S.rodada;
+  if(ac && sigAc!==S._sigAc){ S._sigAc=sigAc;
+    const p=pane();
+    ac.innerHTML=S.ordemAcoes.map(i=>{
+      const a=p.acoes[i], m=S.marca[i]||"";
+      const cls= m==="ok"?"ok": m==="err"?"err": m==="fora"?"fora":"";
+      const trav=(!S.rodando&&!S.resolvida)?" travado":"";
+      const ic= m==="ok"?"✓": m==="err"?"✕": m==="fora"?"!":"";
+      return `<div class="ac ${cls}${trav}" data-i="${i}"><div class="b">${ic}</div><div class="tx">${a.t}</div></div>`;
+    }).join("");
+    $$(".ac").forEach(el=>el.onclick=()=>{ escolher(+el.dataset.i); });
+  }
+
+  const r=$("#resp");
+  if(r){
+    if(S.resolvida&&!S.fim){
+      r.innerHTML=`<span class="tag bom">PANE RESOLVIDA</span> Você fechou as 4 fases em <b>${mmss(S.t)}</b>,
+        com <b>${Math.round(S.sil)}s</b> de silêncio na pista.
+        <div style="margin-top:7px"><button class="btnp" id="btNext">Próxima pane →</button></div>`;
+      const bn=$("#btNext"); if(bn) bn.onclick=proxima;
+    } else if(S.resp){
+      const TAGS={bom:['bom','CERTO'],fora:['fora','CUSTOU TEMPO'],ruim:['ruim','PIOROU'],
+                  trava:['fora','TRAVADO'],parou:['ruim','A PISTA PAROU']};
+      const g=TAGS[S.resp.tipo]||TAGS.ruim;
+      r.innerHTML=`<span class="tag ${g[0]}">${g[1]}</span>`+S.resp.txt;
+    } else if(!S.rodando){
+      r.innerHTML=`<b>A regra que vale para toda pane:</b> primeiro garanta que continua saindo som —
+        o outro deck, outra fonte, o master. Só depois investigue a causa.
+        Silêncio na pista é o único erro imperdoável.`;
+    } else r.innerHTML=`<b>Fase ${faseAtual()}:</b> ${FASES[faseAtual()-1].pq}`;
+  }
+  checklist();
+}
+
+function ligar(){
+  const g=$("#btGo"); if(g) g.onclick=iniciar;
+  const nv=$("#btNovo"); if(nv) nv.onclick=reset;
+}
+
+function checklist(){
+  const L=$("#lista"); if(!L) return;
+  L.innerHTML="";
+  FASES.forEach(f=>{
+    const ok=!!S.feitas[f.n], agora=faseAtual()===f.n&&!S.fim;
+    const d=document.createElement("div");
+    d.className="chk"+(ok?" ok":agora?" agora":"");
+    d.innerHTML=`<div class="b">${ok?"✓":agora?"→":"🔒"}</div><div class="tx"><b>${f.n}. ${f.t}</b>`+
+      (ok?"":`<br><span style='color:#7f8b9c'>${f.pq}</span>`)+`</div>`;
+    L.appendChild(d);
+  });
+  const a=$("#aviso");
+  if(S.fim&&S.resolvida){
+    a.innerHTML=`<b style="color:#7df0a8">7 de 7.</b> A ordem é a mesma em qualquer pane —
+      é isso que você leva para a cabine, não a lista de defeitos.`;
+  } else if(S.resolvida){
+    a.innerHTML=`<b style="color:#7df0a8">Resolvida.</b> Repare que a fase 1 nunca foi consertar:
+      foi <b>manter som na pista</b>. O conserto veio depois, com a pista tocando.`;
+  } else {
+    a.innerHTML=`<b>Panes resolvidas:</b> ${S.rodada} de ${PANES.length} ·
+      <b>silêncio acumulado:</b> ${Math.round(S.silTotal+S.sil)}s<br><br>
+      <b>Meta profissional:</b> menos de 1 minuto de silêncio por pane. Não existe nota por consertar
+      bonito — existe pista tocando.`;
+  }
+}
+
+$("#btnReset").addEventListener("pointerdown",()=>location.reload());
+reset();
+setInterval(()=>tick(1),1000);
+const fit=()=>{ const w=$(".wrap");
+  const s=Math.max(0.1,Math.min((window.innerWidth-6)/w.offsetWidth,(window.innerHeight-6)/w.offsetHeight,1));
+  $("#stage").style.transform="scale("+s+")"; };
+window.addEventListener("resize",fit); fit();
+window.__SMU={S,PANES,FASES,podeIr,faseAtual,escolher,tick,iniciar,proxima,reset,novaRodada,CUSTO_FORA};
+</script>
+</body>
+</html>
