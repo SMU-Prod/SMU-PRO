@@ -667,10 +667,31 @@ const KNOB_DEF={ trim:0.55,hi:0.81,mid:0.81,low:0.81,color:0.5,mic1lvl:0.15,mic2
   parameter:0.5,mixing:0.5,hplevel:0.45,masterlvl:0.78,balance:0.5,booth:0.5,srlevel:0.5,time:0.4,leveldepth:0.55 };
 function knobVal(k){ return knobState[k]!==undefined?knobState[k]:0.5; }   // k = act (estado por controle)
 
+/* ===== ANGULO x VALOR — o eixo do knob nao e o mesmo do valor =====
+   ORDEM DO DONO: "num DJM real o EQ (HI/MID/LOW) e o TRIM nascem no CENTRO,
+   apontando para cima (0 dB)".
+   O valor de repouso deles NAO e 0,5. O EQ vai de -26 dB a +6 dB (manual do
+   DJM-900NXS2, "Channel equalizer characteristic"), logo 0 dB cai em
+   26/32 = 0,8125 do curso — e e por isso que KNOB_DEF.hi/mid/low vale 0,81.
+   Com o mapa antigo, linear, angulo=(v-0,5)*280, esse ponto ia parar em
+   +86,8 graus: o knob NASCIA DEITADO PARA A DIREITA. Medido na tela, igual no
+   avulso e na aula — nao era o encaixe.
+   Agora o arco e PARTIDO no valor de repouso: repouso = 0 grau (12 h) e o
+   fundo de escala continua em -140 / +140 graus. O mapa valor->dB nao mudou
+   uma virgula; mudou so o desenho do ponteiro.
+   ⚠️ ESTIMADO: o alcance de +-140 graus nao esta escrito no manual (a figura
+   do painel nao traz cota angular). Se o dono medir outro, e UMA linha: ARCO. */
+const ARCO_KNOB = 140;                       /* graus de cada lado do repouso */
+const KNOB_CENTRADO = { trim:1, hi:1, mid:1, low:1 };
+function anguloKnob(base, v){
+  const rep = KNOB_CENTRADO[base] ? (KNOB_DEF[base]!==undefined?KNOB_DEF[base]:0.5) : 0.5;
+  if(v<=rep) return rep>0 ? -(1-v/rep)*ARCO_KNOB : 0;
+  return rep<1 ? (v-rep)/(1-rep)*ARCO_KNOB : 0;
+}
 function makeKnob(act,base,cls){
   const el=document.createElement("div"); el.className="knob"+(cls?" "+cls:"");
   let v=KNOB_DEF[base]!==undefined?KNOB_DEF[base]:0.5; knobState[act]=v;
-  const rot=()=>{ el.style.rotate=((v-0.5)*280)+"deg"; }; rot();
+  const rot=()=>{ el.style.rotate=anguloKnob(base,v)+"deg"; }; rot();
   el.addEventListener("mouseenter",()=>{const q=info(act);teach(q[0],q[1]);});
   el.addEventListener("pointerdown",e=>{ const q=info(act); teach(q[0],q[1]);
     if(!started){ startAudio(); return; }

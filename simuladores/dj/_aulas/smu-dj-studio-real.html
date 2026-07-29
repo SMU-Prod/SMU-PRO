@@ -171,6 +171,23 @@
   .tag.prem{background:#10241a;color:#b7f5cf;border:1px solid #1d5638}
   .adhint{font-size:10.5px;color:#8fa0ba;line-height:1.45;margin-top:6px;border-top:1px solid #16233a;padding-top:6px}
   .adhint a{color:var(--cyan)}
+  /* busca do YouTube: a lista precisa caber no modal sem empurrar os botoes */
+  .ytpasso{font-size:11px;color:#8fa0ba;margin:10px 0 5px}
+  .ytpasso b{color:#fff;font-size:11.5px}
+  .ytbusca{display:flex;gap:6px}
+  .ytbusca input{flex:1}
+  .ytres{max-height:190px;overflow:auto;margin-top:7px;display:flex;flex-direction:column;gap:5px}
+  .ytres:empty{display:none}
+  .ytit{display:flex;gap:8px;align-items:center;background:#0a1018;border:1px solid #1b3252;border-radius:7px;padding:5px;cursor:pointer;text-align:left}
+  .ytit:hover{border-color:var(--cyan)}
+  .ytit img{width:56px;height:42px;object-fit:cover;border-radius:4px;flex:none;background:#000}
+  .ytit .yti{min-width:0}
+  .ytit .ytt{font-size:11px;color:#e7f0ff;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .ytit .ytc{font-size:9.5px;color:#8fa0ba;margin-top:2px}
+  .ytmsg{font-size:11px;color:#ffd07a;line-height:1.45;padding:6px 2px}
+  /* aviso de que o video esta FORA do simulador (na moldura da aula) */
+  #ytForaAviso{display:none;font-size:11px;line-height:1.45;color:#c7d0de}
+  #ytForaAviso b{color:#fff}
 </style>
 </head>
 <body>
@@ -291,6 +308,15 @@
   <!-- Painel de video do YouTube. TEM de viver DENTRO do #stage: fora dele o
        elemento flutuava no body e ficava sem escala junto com a cabine. -->
   <div id="ytHost">
+    <!-- Dentro da aula o vídeo não pode viver aqui: este simulador roda num iframe
+         sandbox sem allow-same-origin e o player do YouTube nem sobe (medido —
+         ver a nota grande no JS). Lá o player aparece logo abaixo do simulador,
+         na moldura da aula, e continua VISÍVEL como a API exige. -->
+    <div id="ytForaAviso">
+      <b>▶ O vídeo do YouTube está logo abaixo do simulador.</b> Ele fica fora do painel de propósito:
+      dentro desta janela o player da plataforma não funciona, e a regra da API não permite escondê-lo.
+      Use o <b>play/pause do deck</b> normalmente — o comando vai para o player oficial.
+    </div>
     <div class="ytnote">
       <b>Por que o vídeo aparece aqui?</b> No modo YouTube a música toca <b>pelo player oficial da
       plataforma</b> — é assim que a execução é contabilizada e o <b>artista recebe</b>. A regra da
@@ -323,8 +349,16 @@
     <div class="adhint">Quer treinar <b>sem anúncio e com o mixer completo</b>? Use o <b>🎵 Banco SMU</b> — faixas liberadas, sem streaming.</div>
   </div>
 
-  <input id="ytUrl" placeholder="https://www.youtube.com/watch?v=…">
+  <div class="ytpasso"><b>1. Cole o link</b> <span>— caminho preferido: entra na hora e não gasta cota nenhuma</span></div>
+  <input id="ytUrl" placeholder="https://www.youtube.com/watch?v=…  (ou só o ID do vídeo)">
   <div class="drow"><button class="btnp ghost" id="ytCancel">Cancelar</button><button class="btnp" id="ytOk">Adicionar ao pen</button></div>
+
+  <div class="ytpasso" style="margin-top:12px"><b>2. Ou procure pelo nome</b> <span id="ytQuotaNota">— a busca é limitada; ache pelo nome e confirme</span></div>
+  <div class="ytbusca">
+    <input id="ytQ" placeholder="nome da música ou do artista">
+    <button class="btnp" id="ytGo">Buscar</button>
+  </div>
+  <div id="ytRes" class="ytres"></div>
 </dialog>
 
 <script>
@@ -407,7 +441,11 @@ function deckSeek(d,to){ if(d.mode==="yt"){ if(d.ytp)d.ytp.seekTo(to,true); d.po
   if(!d.buffer)return; to=clamp(to,0,d.buffer.duration-0.05); if(d.playing)fileStart(d,to); else d.pos=to; }
 function setPitch(d,pct){ d.pitch=clamp(pct,-8,8);
   if(d.mode==="file"&&d.src){ d.pos=curPos(d); d.startedAt=AC.currentTime; d.src.playbackRate.value=rate(d); }
-  if(d.mode==="yt"&&d.ytp&&d.ytp.setPlaybackRate){ d.ytp.setPlaybackRate(Math.round(rate(d)*20)/20); }
+  /* Streaming NÃO recebe pitch: mudar a velocidade é modificar o áudio do YouTube,
+     e a API não permite. Antes isto chamava setPlaybackRate e o aluno achava que
+     estava beatmatchando de verdade. Agora o tempo mexe no número, avisa, e não
+     toca no som — igual ao rekordbox/Serato com faixa de streaming. */
+  if(d.mode==="yt"){ avisaLimiteStream("tempo"); }
   $("#pct"+d.id).textContent=(d.pitch>=0?"+":"")+d.pitch.toFixed(1)+"%"; refreshBpm(d); updateDelta(); }
 function setPlayBtn(d){ const btn=$(`.cdj[data-deck="${d.id}"] .rbtn.play`); if(!btn)return;
   btn.classList.toggle("on",d.playing); btn.querySelector(".ico").textContent=d.playing?"❚❚":"▶"; }
@@ -479,6 +517,9 @@ function loadTrack(id,t){
     d.mode="file"; d.buffer=t.buffer; d.bpm=t.bpm; d.peaks=buildPeaks(t.buffer,900);
     $("#src"+id).textContent="PEN · PLAY COMPLETO"; $("#src"+id).classList.remove("yt");
     $("#hub"+id).innerHTML="PEN";
+    /* Saiu do streaming: tira o player da moldura. Sem isto o vídeo do YouTube
+       ficaria pendurado embaixo da aula depois de o deck já estar tocando o pen. */
+    if(d.ytp&&d.ytp._ponte){ ponteManda({cmd:"unmount",slot:id}); d.ytp=null; }
   } else {
     d.mode="yt"; d.buffer=null; d.peaks=null; d.bpm=null;
     $("#src"+id).textContent="YOUTUBE · STREAMING"; $("#src"+id).classList.add("yt");
@@ -641,23 +682,130 @@ async function tryRestoreFolder(){
   }catch(e){}
 }
 
-/* ---------- YouTube (toca pela plataforma) ---------- */
-function ytIdFrom(u){ const m=String(u).match(/(?:youtu\.be\/|v=|shorts\/|embed\/)([A-Za-z0-9_-]{11})/); return m?m[1]:null; }
-function loadYtApi(){ if(window.YT&&window.YT.Player){ ytApiReady=true; return; }
+/* ============================================================================
+   YouTube — toca PELA PLATAFORMA, no player oficial visível
+   ----------------------------------------------------------------------------
+   ⚠️ POR QUE O PLAYER NÃO MORA MAIS AQUI DENTRO (testado em 29/07/2026)
+
+   Na aula, este simulador é montado em
+       <iframe srcDoc sandbox="allow-scripts allow-popups">   (SEM allow-same-origin)
+   o que dá origem opaca: location.origin === "null". Reproduzindo esse sandbox
+   exato, lado a lado com um controle idêntico que só ganhava allow-same-origin:
+
+       aqui dentro (sandbox real)            | controle com allow-same-origin
+       --------------------------------------|-------------------------------
+       iframe_api carregou              ✓    | ✓
+       onYouTubeIframeAPIReady disparou ✓    | ✓
+       new YT.Player() sem exceção      ✓    | ✓
+       onReady .......................  NUNCA| +675ms ✓
+       onStateChange .................  NUNCA| -1 → 3 → 1 (tocou até o fim)
+       quadro do vídeo ...............  PRETO| vídeo visível
+       localStorage ..................  SecurityError "…lacks the
+                                        'allow-same-origin' flag."
+
+   O embed cru (youtube.com/embed/… sem a JS API) também fica PRETO: o iframe
+   aninhado HERDA o sandbox do pai, então a página do player do YouTube sobe sem
+   allow-same-origin e não funciona. Ou seja: NÃO EXISTE jeito de tocar YouTube
+   dentro deste iframe. Não tente de novo por dedução — está medido.
+
+   SOLUÇÃO: o player vive na MOLDURA da aula (componente youtube-bridge.tsx, que
+   roda na origem real do site) e este simulador só manda comando por
+   postMessage. Testado: a moldura recebeu play/ler/pause vindos de origem
+   "null", executou e devolveu ready/state/tempo.
+
+   FORA da aula (abrindo este HTML direto, sem sandbox) não existe moldura: aí
+   o simulador cria o player localmente. `pontePronta` decide qual dos dois.
+
+   O QUE PODE E O QUE NÃO PODE (Termos da API do YouTube)
+   - Player sempre VISÍVEL. Nada de display:none, tamanho 0, opacidade 0 ou
+     fora da tela. Já teve o bug de left:-9999px aqui; não voltar.
+   - O áudio do stream NÃO pode ser separado nem modificado: sem EQ, sem filtro,
+     sem scratch, sem pitch. Só play, pause, seek e volume.
+   ============================================================================ */
+function ytIdFrom(u){
+  const s=String(u||"").trim();
+  if(/^[A-Za-z0-9_-]{11}$/.test(s)) return s;               // ID puro colado
+  const m=s.match(/(?:youtu\.be\/|v=|shorts\/|embed\/|live\/)([A-Za-z0-9_-]{11})/);
+  return m?m[1]:null;
+}
+
+/* ---- ponte com a moldura da aula ---- */
+let pontePronta=false, ponteTestada=false;
+const ponteEspera=[];           // o que fazer quando souber se há moldura
+function ponteManda(msg){ try{ parent.postMessage(Object.assign({smu:"yt"},msg),"*"); }catch(e){} }
+function ponteDetecta(){
+  if(ponteTestada) return;
+  ponteTestada=true;
+  if(parent===window){ ponteResolve(false); return; }   // ninguém por fora
+  ponteManda({cmd:"hello"});
+  setTimeout(()=>{ if(!pontePronta) ponteResolve(false); },700);
+}
+function ponteResolve(ok){
+  pontePronta=ok;
+  if(!ok) loadYtApiLocal();
+  ponteEspera.splice(0).forEach(f=>f());
+}
+addEventListener("message",ev=>{
+  const d=ev.data; if(!d||d.smu!=="ytev") return;
+  if(d.ev==="hello"){ if(!pontePronta) ponteResolve(true); return; }
+  const dk=decks[d.slot]; if(!dk||!dk.ytp) return;
+  if(d.ev==="ready"){ dk.ytp._pronto=true; applyYtVol(dk); }
+  if(d.ev==="tempo"){ dk.ytp._t=d.t; dk.ytp._dur=d.dur; dk.ytp._em=performance.now(); dk.ytp._st=d.st; }
+  if(d.ev==="state"){
+    if(d.data===1)dk.playing=true;
+    if(d.data===2||d.data===0)dk.playing=false;
+    setPlayBtn(dk);
+  }
+  if(d.ev==="error"){ toast("O YouTube recusou este vídeo (bloqueado para embed ou indisponível). Tente outro link."); }
+});
+
+/* Proxy do player. Os pontos de uso do simulador (play/pause/seek/volume/tempo)
+   continuam iguais nos dois modos — muda só quem executa por baixo.
+   getCurrentTime é síncrono porque a tela desenha a cada quadro; a moldura manda
+   o tempo 4x/s e aqui a gente interpola entre um aviso e outro. */
+function fazProxyPonte(d){
+  const P={ _t:0,_dur:0,_em:0,_st:-1,_pronto:false,
+    playVideo(){ ponteManda({cmd:"play",slot:d.id}); },
+    pauseVideo(){ ponteManda({cmd:"pause",slot:d.id}); },
+    stopVideo(){ ponteManda({cmd:"stop",slot:d.id}); },
+    seekTo(t){ P._t=t; P._em=performance.now(); ponteManda({cmd:"seek",slot:d.id,val:t}); },
+    setVolume(v){ ponteManda({cmd:"volume",slot:d.id,val:v}); },
+    loadVideoById(v){ ponteManda({cmd:"load",slot:d.id,videoId:v,label:"DECK "+d.id}); },
+    getDuration(){ return P._dur||0; },
+    getCurrentTime(){
+      if(!P._em) return P._t||0;
+      const extra=(P._st===1)?(performance.now()-P._em)/1000:0;
+      return Math.min((P._t||0)+extra, P._dur||Infinity);
+    } };
+  return P;
+}
+
+/* ---- modo local (só quando NÃO há moldura: HTML aberto direto) ---- */
+function loadYtApiLocal(){ if(window.YT&&window.YT.Player){ ytApiReady=true; ytQueue.splice(0).forEach(f=>f()); return; }
+  if(window.__ytCarregando) return; window.__ytCarregando=true;
   const s=document.createElement("script"); s.src="https://www.youtube.com/iframe_api";
-  s.onerror=()=>toast("YouTube bloqueado neste ambiente — use o pen ou a pasta.");
+  s.onerror=()=>toast("YouTube bloqueado neste ambiente — use o pen ou o Banco SMU.");
   document.head.appendChild(s);
   window.onYouTubeIframeAPIReady=()=>{ ytApiReady=true; ytQueue.splice(0).forEach(f=>f()); }; }
-/* Mostra o painel de video se ALGUM deck estiver em modo YouTube.
-   Player escondido = infracao da politica da API (ver nota no CSS). */
+
+/* Painel interno: no modo ponte ele é só o aviso de onde o vídeo está; no modo
+   local ele hospeda os players. Nos dois casos o player fica VISÍVEL. */
 function refreshYtPanel(){
   const algum=Object.values(decks).some(x=>x.mode==="yt");
   $("#ytHost").classList.toggle("on",algum);
+  const av=$("#ytForaAviso"); if(av) av.style.display=(algum&&pontePronta)?"block":"none";
   Object.values(decks).forEach(x=>{ const s=document.getElementById("ytslot"+x.id);
-    if(s)s.style.display=(x.mode==="yt")?"flex":"none"; });
+    if(s)s.style.display=(x.mode==="yt"&&!pontePronta)?"flex":"none"; });
 }
 function ensureYtPlayer(d,vid){
-  const make=()=>{
+  const agir=()=>{
+    if(pontePronta){
+      if(!d.ytp||!d.ytp._ponte){ d.ytp=fazProxyPonte(d); d.ytp._ponte=true; }
+      d.ytp._t=0; d.ytp._dur=0; d.ytp._em=0; d.ytp._st=-1;
+      ponteManda({cmd:"load",slot:d.id,videoId:vid,label:"DECK "+d.id});
+      refreshYtPanel(); return;
+    }
+    /* ----- local ----- */
     const hostId="ytp"+d.id;
     let el=document.getElementById(hostId);
     if(!el){
@@ -669,18 +817,61 @@ function ensureYtPlayer(d,vid){
       slot.appendChild(lbl); slot.appendChild(el); $("#ytHost").appendChild(slot);
     }
     refreshYtPanel();
-    if(d.ytp){ try{ d.ytp.loadVideoById(vid); d.ytp.pauseVideo(); }catch(e){} applyYtVol(d); return; }
+    if(d.ytp&&!d.ytp._ponte){ try{ d.ytp.loadVideoById(vid); d.ytp.pauseVideo(); }catch(e){} applyYtVol(d); return; }
+    if(!window.YT||!window.YT.Player){ ytQueue.push(()=>ensureYtPlayer(d,vid)); loadYtApiLocal(); return; }
     d.ytp=new YT.Player(hostId,{ width:320,height:180, videoId:vid,
-      playerVars:{controls:0,disablekb:1,rel:0,playsinline:1},
+      playerVars:{rel:0,playsinline:1,controls:1},
       events:{ onReady:()=>{ applyYtVol(d); try{d.ytp.pauseVideo();}catch(e){} },
         onStateChange:ev=>{ if(ev.data===YT.PlayerState.PLAYING)d.playing=true;
           if(ev.data===YT.PlayerState.PAUSED||ev.data===YT.PlayerState.ENDED)d.playing=false; setPlayBtn(d); } } });
   };
-  if(ytApiReady)make(); else { ytQueue.push(make); loadYtApi(); }
+  /* Três esperas diferentes, e cada uma tem a sua fila. Misturá-las já deixou o
+     modo local pendurado: `ponteEspera` só é drenada quando a detecção termina,
+     então quem chega DEPOIS da detecção tem de entrar na fila da API (ytQueue). */
+  if(!ponteTestada){ ponteEspera.push(agir); ponteDetecta(); return; }   // ainda não sei se há moldura
+  if(pontePronta){ agir(); return; }                                    // tem moldura: manda e pronto
+  if(window.YT&&window.YT.Player){ agir(); return; }                    // modo local, API já carregada
+  ytQueue.push(agir); loadYtApiLocal();                                 // modo local, esperando a API
 }
 function applyYtVol(d){ if(!d.ytp||!d.ytp.setVolume)return;
   const v=clamp(d.fader.gain.value*d.xf.gain.value*(masterGain?masterGain.gain.value:1),0,1.4);
   try{ d.ytp.setVolume(Math.round(clamp(v,0,1)*100)); }catch(e){} }
+
+/* ---- busca por nome (quota: 100 unidades por busca) ----
+   Só dispara quando o aluno CONFIRMA (Enter ou botão) — nunca a cada tecla — e
+   o resultado fica em cache aqui também. Quem tem a chave é o servidor; se a
+   busca não estiver ligada, o aviso manda colar o link (que não gasta nada). */
+const buscaCache=new Map(); let buscaSeq=0; const buscaEmVoo=new Map();
+function buscarYt(q){
+  return new Promise(resolve=>{
+    const chave=q.toLowerCase().trim();
+    if(buscaCache.has(chave)) return resolve(buscaCache.get(chave));
+    if(!pontePronta) return resolve({itens:[],erro:"A busca por nome só funciona dentro da aula. Aqui, cole o link do vídeo."});
+    const reqId=++buscaSeq;
+    buscaEmVoo.set(reqId,r=>{ if(!r.erro) buscaCache.set(chave,r); resolve(r); });
+    ponteManda({cmd:"buscar",q:q,reqId:reqId});
+    setTimeout(()=>{ if(buscaEmVoo.has(reqId)){ buscaEmVoo.delete(reqId); resolve({itens:[],erro:"A busca demorou demais. Cole o link do vídeo."}); } },12000);
+  });
+}
+addEventListener("message",ev=>{
+  const d=ev.data; if(!d||d.smu!=="ytev"||d.ev!=="busca") return;
+  const f=buscaEmVoo.get(d.reqId); if(!f) return;
+  buscaEmVoo.delete(d.reqId); f({itens:d.itens||[],erro:d.erro||null});
+});
+
+/* Explica o limite do streaming em vez de fingir que o controle funcionou.
+   Um aviso por tipo a cada 8s: repetir a cada toque no jog vira spam. */
+const avisoQuando={};
+const avisoTexto={
+  tempo:"TEMPO/pitch não age em faixa do YouTube: alterar a velocidade é modificar o áudio do stream, e a API não deixa. Para beatmatch de verdade, use o pen ou o 🎵 Banco SMU.",
+  jog:"Jog e scratch não agem em faixa do YouTube — o áudio do stream não pode ser processado. Use o pen ou o 🎵 Banco SMU para treinar scratch.",
+  eq:"EQ e filtro não agem em faixa do YouTube: o áudio do stream não pode ser modificado. No streaming a mixagem é por volume — igual ao rekordbox e ao Serato."
+};
+function avisaLimiteStream(tipo){
+  const agora=Date.now();
+  if(avisoQuando[tipo]&&agora-avisoQuando[tipo]<8000) return;
+  avisoQuando[tipo]=agora; toast(avisoTexto[tipo]||avisoTexto.eq);
+}
 
 /* ---------- toast ---------- */
 let toastT=null;
@@ -716,7 +907,9 @@ function bindJog(id){ const el=$(`[data-jog="${id}"]`); let last=null,drag=false
     const d=decks[id]; if(!d)return; rot+=da; const m=$(`[data-marker="${id}"]`); if(m)m.style.transform=`translate(-50%,0) rotate(${rot}rad)`;
     if(d.mode==="file"&&d.buffer){ const nud=da*0.35; // segundos por radiano — nudge/scrub
       if(d.playing){ deckSeek(d,curPos(d)+nud); } else { d.pos=clamp(d.pos+nud,0,d.buffer.duration-0.05); } }
-    else if(d.mode==="yt"&&d.ytp&&d.ytp.getCurrentTime){ try{ d.ytp.seekTo(d.ytp.getCurrentTime()+da*0.5,true); }catch(e){} } });
+    /* Faixa do YouTube não recebe nudge: mexer no jog "empurrando" o som é
+       processar o áudio do stream. Explica em vez de fingir que funcionou. */
+    else if(d.mode==="yt"){ avisaLimiteStream("jog"); } });
   el.addEventListener("pointerup",()=>drag=false); el.addEventListener("pointercancel",()=>drag=false); }
 function bindXF(){ const el=$("[data-xfader]"); const cap=el.querySelector(".cap"); let x=0.5; place();
   function place(){ const w=el.clientWidth; cap.style.left=(10+x*(w-20))+"px"; apply(); }
@@ -760,7 +953,7 @@ function buildChannels(){ const grid=$("#chgrid");
 function applyChannel(dk,ck,val){ const d=decks[dk]; if(!d)return;
   if(ck==="trim")d.trim.gain.value=val;
   else if(ck==="hi")d.eqHi.gain.value=val; else if(ck==="mid")d.eqMid.gain.value=val; else if(ck==="low")d.eqLow.gain.value=val;
-  if(d.mode==="yt"&&(ck==="hi"||ck==="mid"||ck==="low")) toast("EQ completo só em faixas do PEN — no streaming a mixagem é por volume.");
+  if(d.mode==="yt"&&(ck==="hi"||ck==="mid"||ck==="low"||ck==="filter")) avisaLimiteStream("eq");
 }
 function applyMaster(k,val){ if(k==="master"&&masterGain){ masterGain.gain.value=val; applyYtVol(decks.A); applyYtVol(decks.B); }
   else if(k==="phmix"&&cueBus)cueBus.gain.value=(1-val)*1.1;
@@ -828,16 +1021,63 @@ function init(){
   $("#btnFolder").addEventListener("pointerdown",()=>pickFolder());
   $("#btnBanco").addEventListener("pointerdown",()=>addBancoSmu());
   $("#btnDemo").addEventListener("pointerdown",()=>addDemo());
-  $("#btnYt").addEventListener("pointerdown",()=>{ $("#dlgYt").showModal(); });
+  $("#btnYt").addEventListener("pointerdown",()=>{ ponteDetecta(); $("#dlgYt").showModal(); });
   $("#ytCancel").addEventListener("pointerdown",()=>$("#dlgYt").close());
+
+  /* Guarda no pen. `nome` vem da busca quando existe; colando link só temos o ID. */
+  function addYtAoPen(vid,nome){
+    if(PEN.some(t=>t.type==="yt"&&t.ytId===vid)){ toast("Essa faixa já está no pen."); return; }
+    PEN.push({ id:Math.random().toString(36).slice(2), type:"yt", name:nome||("YouTube · "+vid), ytId:vid, dur:0, bpm:null });
+    /* No sandbox da aula o localStorage lança SecurityError — por isso o try.
+       Lá a lista vale só a sessão; fora da aula ela persiste. */
+    try{ const saved=JSON.parse(localStorage.getItem("smu-dj-yt")||"[]");
+      saved.push({v:vid,n:nome||""}); const vistos=new Set();
+      const limpo=saved.filter(x=>{ const k=(x&&x.v)||x; if(vistos.has(k))return false; vistos.add(k); return true; }).slice(-20);
+      localStorage.setItem("smu-dj-yt",JSON.stringify(limpo)); }catch(e){}
+    renderPen(); toast("Adicionado ao pen: "+(nome||vid));
+  }
+
   $("#ytOk").addEventListener("pointerdown",()=>{ const vid=ytIdFrom($("#ytUrl").value);
-    if(!vid){ toast("Link do YouTube inválido."); return; }
-    PEN.push({ id:Math.random().toString(36).slice(2), type:"yt", name:"YouTube · "+vid, ytId:vid, dur:0, bpm:null });
-    try{ const saved=JSON.parse(localStorage.getItem("smu-dj-yt")||"[]"); saved.push(vid); localStorage.setItem("smu-dj-yt",JSON.stringify([...new Set(saved)].slice(-20))); }catch(e){}
-    $("#ytUrl").value=""; $("#dlgYt").close(); renderPen(); loadYtApi(); });
+    if(!vid){ toast("Link do YouTube inválido. Cole a URL inteira (ou só o ID de 11 caracteres)."); return; }
+    addYtAoPen(vid,null); $("#ytUrl").value=""; $("#dlgYt").close(); });
+  $("#ytUrl").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); $("#ytOk").dispatchEvent(new Event("pointerdown")); } });
+
+  /* BUSCA — só ao confirmar (botão ou Enter). Nada de buscar a cada tecla:
+     cada busca custa 100 unidades da cota diária do YouTube. */
+  let buscando=false;
+  async function rodaBusca(){
+    const q=$("#ytQ").value.trim(); const res=$("#ytRes");
+    if(q.length<2){ res.innerHTML='<div class="ytmsg">Escreva pelo menos 2 letras.</div>'; return; }
+    if(buscando) return; buscando=true;
+    res.innerHTML='<div class="ytmsg">Procurando…</div>';
+    const r=await buscarYt(q); buscando=false;
+    if(r.erro){ res.innerHTML='<div class="ytmsg">'+esc(r.erro)+'</div>'; return; }
+    if(!r.itens.length){ res.innerHTML='<div class="ytmsg">Nada encontrado. Tente outro nome ou cole o link.</div>'; return; }
+    res.innerHTML="";
+    r.itens.forEach(it=>{
+      const b=document.createElement("button"); b.type="button"; b.className="ytit";
+      /* nada de innerHTML com dado vindo da API: título/canal são texto de terceiro.
+         Aqui vai tudo por textContent/propriedade — não tem como injetar marcação. */
+      const im=document.createElement("img"); im.alt=""; if(/^https:\/\//.test(it.thumb)) im.src=it.thumb;
+      const bx=document.createElement("div"); bx.className="yti";
+      const t1=document.createElement("div"); t1.className="ytt"; t1.textContent=it.titulo;
+      const t2=document.createElement("div"); t2.className="ytc"; t2.textContent=it.canal;
+      bx.appendChild(t1); bx.appendChild(t2); b.appendChild(im); b.appendChild(bx);
+      b.addEventListener("click",()=>{ addYtAoPen(it.id,it.titulo); $("#dlgYt").close(); });
+      res.appendChild(b);
+    });
+  }
+  $("#ytGo").addEventListener("click",rodaBusca);
+  $("#ytQ").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); rodaBusca(); } });
 
   // restaura YT salvos (se o aluno autorizou implicitamente ao adicionar) + pasta
-  try{ JSON.parse(localStorage.getItem("smu-dj-yt")||"[]").forEach(vid=>PEN.push({id:vid,type:"yt",name:"YouTube · "+vid,ytId:vid,dur:0,bpm:null})); }catch(e){}
+  /* Formato antigo era só a string do id; o novo guarda {v:id,n:nome}. Lê os dois.
+     Dentro da aula (iframe sandbox) o localStorage lança SecurityError: o catch
+     deixa o simulador subir igual, só sem lembrar a lista da sessão passada. */
+  try{ JSON.parse(localStorage.getItem("smu-dj-yt")||"[]").forEach(x=>{
+    const vid=(x&&x.v)||x; if(typeof vid!=="string") return;
+    const nome=(x&&x.n)||("YouTube · "+vid);
+    PEN.push({id:vid,type:"yt",name:nome,ytId:vid,dur:0,bpm:null}); }); }catch(e){}
   tryRestoreFolder(); renderPen();
 
   $$(".cdj").forEach(cdj=>{ const id=cdj.dataset.deck;

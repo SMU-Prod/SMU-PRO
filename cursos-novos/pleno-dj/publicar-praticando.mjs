@@ -51,11 +51,11 @@ const conteudo = `<p><strong>Agora é você que monta.</strong> Nesta aula os ap
 <p>Repare que os faders começam no <strong>mínimo</strong> e o <strong>master fechado</strong>: essa é a ordem certa de subir numa cabine. O painel da direita mostra o que ainda falta para o som sair.</p>`;
 
 const ja = await req("GET", `/lessons?id=eq.${AULA}&select=id,titulo`);
-if (ja.length && !/cabine/i.test(ja[0].titulo)) throw new Error(`ABORTADO: id ja usado por "${ja[0].titulo}"`);
+if (ja.length && !/cabine|setup/i.test(ja[0].titulo)) throw new Error(`ABORTADO: id ja usado por "${ja[0].titulo}"`);
 
 if (!ja.length) {
   await req("POST", "/lessons", [{
-    id: AULA, module_id: MOD, titulo: "Monte a sua cabine: cabos, canais e o som saindo",
+    id: AULA, module_id: MOD, titulo: "Monte seu Setup e treine",
     tipo: "texto", conteudo_rico: conteudo, duracao_min: 20, ordem: 1,
     tem_quiz: false, preview_gratis: false
   }], { Prefer: "return=minimal" });

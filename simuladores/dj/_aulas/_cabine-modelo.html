@@ -2,543 +2,1273 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="icon" href="data:,">
 <title>Monte a sua cabine (SMU)</title>
 <style>
-  :root{ --ink:#e9eef7; --amber:#ffae1a; --green:#39d271; --blue:#37a2ff; --red:#ff4636;
-         --line:#2a2f37; --painel:#0c0e12; }
+/* ============================================================================
+   MOLDURA DAS DUAS AULAS DA CABINE
+
+   REGRA DE OURO DESTE ARQUIVO (ordem do dono, 29/07/2026):
+   "na barra superior, ponha janelas que abrindo tem as informacoes, mas algo
+    que nao ocupe a tela. Deixa a maior parte da tela para as CDJs e mixers."
+
+   Por isso:
+   - NAO existe coluna lateral, nem fita de passos, nem paragrafo embaixo da
+     mesa. Tudo isso virou POPOVER ancorado num botao da barra.
+   - O #palco recebe TODA a altura que sobra (flex:1) e os aparelhos moram nele.
+   - O popover e position:ABSOLUTE. Nunca fixed: a aula roda dentro de iframe,
+     e fixed em iframe se ancora no iframe, nao na tela do aluno.
+   - Nada de escalar a pagina inteira com transform (era o que fazia tudo virar
+     miniatura). Quem escala e SO o simulador, dentro da propria moldura dele.
+   ============================================================================ */
+  :root{
+    --ink:#e9eef7; --amber:#ffae1a; --green:#39d271; --blue:#37a2ff; --red:#ff4636;
+    --line:#2a2f37; --painel:#0c0e12; --barra:46px;
+  }
   *{box-sizing:border-box}
-  html,body{margin:0;height:100%}
-  body{ background:radial-gradient(1100px 640px at 50% -10%,#26292e,#0a0b0d 62%),#08090b; color:var(--ink);
-    font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;
-    user-select:none;overflow:hidden;display:flex;align-items:flex-start;justify-content:center}
-  #stage{transform-origin:top center;flex:0 0 auto}
-  .wrap{width:1180px;display:flex;flex-direction:column;gap:9px;padding:10px}
+  html,body{margin:0;height:100%;overflow:hidden}
+  body{
+    background:radial-gradient(1100px 640px at 50% -10%,#26292e,#0a0b0d 62%),#08090b;
+    color:var(--ink);
+    font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    -webkit-text-size-adjust:100%;
+    user-select:none;
+  }
+  #app{display:flex;flex-direction:column;height:100%;width:100%}
 
-  .util{display:flex;align-items:center;gap:9px;flex-wrap:wrap;background:linear-gradient(180deg,#202329,#15171b);
-    border:1px solid #0c0d0f;border-radius:11px;padding:8px 12px}
-  .brand b{font-size:15px;letter-spacing:1px}
-  .brand .m{font-size:9px;letter-spacing:2px;color:#8a94a4;text-transform:uppercase;margin-left:6px}
-  .pill{font-size:10px;color:#8b97a9;background:var(--painel);border:1px solid var(--line);border-radius:16px;padding:4px 10px}
-  .pill b{color:#fff}
-  .spacer{flex:1}
-  .btnp{font:inherit;font-size:11px;font-weight:700;border:0;border-radius:8px;padding:7px 12px;cursor:pointer;
-    color:#07120b;background:linear-gradient(180deg,#5be59a,#27b566)}
-  .btnp.ghost{background:transparent;color:#8b97a9;border:1px solid var(--line)}
-  .btnp:disabled{opacity:.35;cursor:not-allowed}
+  /* ---------------- BARRA SUPERIOR (compacta) ---------------- */
+  #barra{
+    flex:0 0 auto;position:relative;z-index:60;
+    display:flex;align-items:center;gap:6px;flex-wrap:nowrap;
+    min-height:var(--barra);padding:4px 8px;
+    background:linear-gradient(180deg,#20232a,#14161a);
+    border-bottom:1px solid #05070a;
+  }
+  .marca{display:flex;align-items:baseline;gap:5px;flex:0 0 auto}
+  .marca b{font-size:14px;letter-spacing:1px}
+  .marca .m{font-size:8px;letter-spacing:1.5px;color:#8a94a4;text-transform:uppercase;white-space:nowrap}
+  #passos{display:flex;gap:4px;flex:0 0 auto;margin-left:4px}
+  .pa{
+    font:inherit;font-size:9.5px;font-weight:800;letter-spacing:.3px;
+    border:1px solid #1c2229;background:#11151a;color:#8b97a9;
+    border-radius:14px;padding:5px 9px;cursor:pointer;white-space:nowrap;
+    touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+  }
+  .pa.on{background:#151d2a;border-color:var(--blue);color:#cfe6ff}
+  .pa.ok{background:#0f2418;border-color:#1e5c38;color:#9fe3bb}
+  .pa:disabled{opacity:.35;cursor:not-allowed}
+  .vazio{flex:1 1 auto;min-width:4px}
 
-  .passos{display:flex;gap:6px}
-  .pa{flex:1;padding:7px 10px;border-radius:8px;background:#11151a;border:1px solid #1c2229}
-  .pa.on{background:#151d2a;border-color:var(--blue)}
-  .pa.ok{background:#0f2418;border-color:#1e5c38}
-  .pa .n{font-size:9px;font-weight:900;color:#6b7684}
-  .pa.on .n{color:var(--blue)} .pa.ok .n{color:var(--green)}
-  .pa .t{font-size:10.5px;font-weight:800;margin-top:2px}
+  .btn{
+    font:inherit;font-size:10px;font-weight:800;letter-spacing:.3px;
+    border:1px solid #262c34;border-radius:8px;padding:7px 10px;cursor:pointer;
+    color:#cbd4e0;background:linear-gradient(180deg,#1c2026,#12151a);
+    display:inline-flex;align-items:center;gap:6px;white-space:nowrap;
+    touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+  }
+  .btn:hover{border-color:#37414d}
+  .btn.on{border-color:var(--blue);color:#cfe6ff;background:#152232}
+  .btn:disabled{opacity:.35;cursor:not-allowed}
+  .btn .sel{font-size:9px;font-weight:900;border-radius:9px;padding:1px 6px;background:#3a2a10;color:#ffc98a}
+  .btn .sel.zero{background:#123a2a;color:#7df0a8}
+  .ponto{width:8px;height:8px;border-radius:50%;background:var(--red);box-shadow:0 0 7px #ff463699}
+  .ponto.ok{background:var(--green);box-shadow:0 0 7px #39d27199}
 
-  .grid{display:grid;grid-template-columns:1fr 292px;gap:9px}
-  .card{background:var(--painel);border:1px solid var(--line);border-radius:10px;padding:10px;min-height:530px}
-  .card h3{margin:0 0 9px;font-size:10px;letter-spacing:1.4px;color:#8b97a9;text-transform:uppercase;font-weight:800}
+  /* ---------------- POPOVER (absolute, nunca fixed) ---------------- */
+  .pop{
+    display:none;position:absolute;top:calc(100% + 4px);right:6px;z-index:70;
+    width:min(430px,calc(100vw - 16px));max-height:min(70vh,520px);overflow:auto;
+    -webkit-overflow-scrolling:touch;
+    background:#0d1015;border:1px solid #2b323b;border-radius:11px;
+    box-shadow:0 18px 44px #000c,0 0 0 1px #ffffff08 inset;padding:11px 12px;
+  }
+  .pop.on{display:block}
+  .pop h4{margin:0 0 8px;font-size:10px;letter-spacing:1.3px;color:#8b97a9;text-transform:uppercase;font-weight:800}
+  .pop p{margin:0 0 9px;font-size:11.5px;line-height:1.5;color:#c2cbd6}
+  .pop b{color:#fff}
+  .pop code{background:#161a20;border-radius:3px;padding:0 3px;font-size:11px}
 
-  /* ---- escolha ---- */
-  .escolha{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
+  .chk{display:flex;gap:7px;align-items:flex-start;padding:7px 8px;border-radius:8px;margin-bottom:5px;
+    background:#11151a;border:1px solid #1c2229}
+  .chk.ok{background:#0f2418;border-color:#1e5c38}
+  .chk .b{width:15px;height:15px;border-radius:50%;flex:0 0 auto;margin-top:1px;background:#2a3038;border:1px solid #000;
+    display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:#6b7684}
+  .chk.ok .b{background:var(--green);color:#062a13}
+  .chk .tx{font-size:11px;line-height:1.35;color:#c2cbd6}
+  .chk.ok .tx{color:#9fe3bb}
+  .chk .tx b{color:#fff}
+  .som{margin:2px 0 9px;padding:9px;border-radius:8px;text-align:center;font-size:11.5px;font-weight:800;
+    background:#2a1414;border:1px solid #52201c;color:#ff9c90}
+  .som.on{background:#0f2a18;border-color:#1e6b3c;color:#7df0a8}
+  .elo{margin:0 0 9px;padding:8px 10px;border-radius:8px;font-size:11px;line-height:1.45;
+    background:#1b1410;border:1px solid #4a3418;color:#ffd9a6}
+  .elo b{color:#fff}
+  .est{font-size:9px;font-weight:900;padding:2px 6px;border-radius:4px;background:#4a2a12;color:#ffc98a;white-space:nowrap}
+
+  /* ---------------- PALCO: os aparelhos ficam com a tela ---------------- */
+  #palco{flex:1 1 auto;min-height:0;position:relative;overflow:auto;-webkit-overflow-scrolling:touch;padding:6px}
+
+  /* -------- passo 1: escolha -------- */
+  .razao{font-size:11px;line-height:1.45;color:#9fb0c4;margin:0 2px 8px;padding:7px 9px;border-radius:7px;
+    background:#0e1a26;border:1px solid #1d3350}
+  .razao b{color:#fff}
+  .escolha{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:8px}
   .col .lb{font-size:9px;color:#7f8b9c;margin-bottom:5px;letter-spacing:.6px;font-weight:800}
-  .opt{display:flex;align-items:center;gap:7px;padding:7px 8px;border:1px solid #23282f;border-radius:7px;
-    background:linear-gradient(180deg,#171a1f,#101317);cursor:pointer;margin-bottom:5px}
+  .opt{display:flex;align-items:center;gap:7px;padding:8px;border:1px solid #23282f;border-radius:8px;
+    background:linear-gradient(180deg,#171a1f,#101317);cursor:pointer;margin-bottom:5px;
+    min-height:42px;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
   .opt.on{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue) inset}
   .opt .ic{width:30px;height:20px;border-radius:3px;flex:0 0 auto;border:1px solid #000;
     background:linear-gradient(180deg,#3b4148,#191c20)}
   .opt.vinil .ic{background:radial-gradient(circle at 50% 50%,#5a6068 16%,#0f1114 18%,#1a1d21 70%)}
-  .opt .nm{font-size:10.5px;font-weight:700;line-height:1.15}
+  .opt .nm{font-size:11px;font-weight:700;line-height:1.15}
   .opt .tp{font-size:8.5px;color:#7f8b9c}
-  .opt .tag{margin-left:auto;font-size:8px;font-weight:900;padding:2px 5px;border-radius:4px}
+  .opt .tag{margin-left:auto;font-size:8px;font-weight:900;padding:2px 5px;border-radius:4px;white-space:nowrap}
   .tag.line{background:#123a5c;color:#8fd0ff}
   .tag.phono{background:#4a2a12;color:#ffc98a}
+  .tag.aio{background:#123a2a;color:#7df0a8}
+  .aio-bloco{margin-top:10px;border-top:1px dashed #232a32;padding-top:9px}
+  .aio-bloco .lb{font-size:9px;color:#7f8b9c;margin-bottom:6px;letter-spacing:.6px;font-weight:800}
 
-  /* ---- traseira ---- */
-  .tras{position:relative;background:#0a0d11;border:1px solid #1c2229;border-radius:8px;padding:12px;min-height:430px}
-  .apar{position:absolute;border-radius:6px;border:1px solid #05070a;
-    background:linear-gradient(180deg,#2a2e34,#16191d 60%,#0f1216);
-    box-shadow:0 5px 14px #000a, inset 0 1px 0 #ffffff14}
-  .apar .tit{position:absolute;top:-15px;left:2px;font-size:9px;font-weight:800;color:#9aa4b1;letter-spacing:.4px}
-  .apar .grade{position:absolute;inset:6px 6px 22px 6px;border-radius:3px;
-    background:repeating-linear-gradient(90deg,#0d1014 0 2px,#171b20 2px 4px);opacity:.7}
+  /* -------- passo 2 (praticando): A MESA --------
+     Cada aparelho ocupa a LARGURA TODA e nunca e cortado: a altura da moldura
+     sai do tamanho natural que o proprio simulador informa, entao o fit() dele
+     cabe exato. Se os tres nao couberem na altura, todos encolhem juntos —
+     encolhe, nao recorta. */
+  .mesa{display:flex;gap:6px;align-items:flex-start;justify-content:center;min-height:100%}
+  .mesa.coluna{flex-direction:column;align-items:center}
+  .mesa.linha{flex-direction:row;align-items:flex-start}
+  .apl{display:flex;flex-direction:column;background:#08090b;border:1px solid #1b2027;border-radius:9px;
+    overflow:hidden;flex:0 0 auto;max-width:100%}
+  .apl .cab{display:flex;align-items:center;gap:7px;padding:4px 7px;background:#12161b;border-bottom:1px solid #1b2027;flex:0 0 auto}
+  .apl .cab .nm{font-size:10.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .apl .cab .ch{font-size:9px;font-weight:900;letter-spacing:.5px;padding:2px 6px;border-radius:4px;
+    background:#10304a;color:#7fd4ff;border:1px solid #1c4e73;white-space:nowrap}
+  .apl .cab .ch.mix{background:#2b1f3a;color:#d3b6ff;border-color:#4b3670}
+  .apl .cab .esq{margin-left:auto;display:flex;gap:5px}
+  /* A MOLDURA e so a janela. Quem encolhe e o IFRAME INTEIRO, por transform:
+     medida em px (fonte, borda, padding) nao escala sozinha — escalar o
+     contexto todo resolve tudo junto e nunca encavala. */
+  .moldura{position:relative;background:#08090b;overflow:hidden;width:100%}
+  .moldura iframe{display:block;border:0;background:#08090b;position:absolute;left:50%;top:0;
+    transform-origin:top center}
+  /* aparelho ampliado: cobre o palco inteiro. Nao e fixed — e absolute no palco. */
+  .apl.ampliado{position:absolute;left:6px;right:6px;top:6px;bottom:6px;z-index:40;border-color:var(--blue);
+    width:auto !important;max-width:none}
+  .apl.ampliado .moldura{flex:1 1 auto}
+  .mesa.temAmpliado{display:block;min-height:0}
+  .mesa.temAmpliado .apl:not(.ampliado){display:none}
+  html.ampliado #barra{min-height:32px;padding:2px 6px}
+  html.ampliado .marca,html.ampliado #passos{display:none}
 
-  .rca{position:absolute;width:15px;height:15px;border-radius:50%;cursor:pointer;
-    background:radial-gradient(circle at 50% 32%,#d8dde3,#8f959c 60%,#4a4f55);border:2px solid #b03a2e;
-    box-shadow:0 1px 3px #000a}
-  .rca.b{border-color:#e8e8e8}
-  .rca:hover{box-shadow:0 0 0 2px #fff6}
-  .rca.sel{box-shadow:0 0 0 3px var(--amber),0 0 12px var(--amber)}
-  .rca.ok{border-color:var(--green)}
-  .ac{position:absolute;width:20px;height:14px;border-radius:2px;cursor:pointer;
-    background:linear-gradient(180deg,#2b2f35,#111417);border:1.5px solid #6b7684}
-  .ac:hover{box-shadow:0 0 0 2px #fff5}
-  .ac.sel{box-shadow:0 0 0 3px var(--amber)}
-  .ac.ok{border-color:var(--green);background:linear-gradient(180deg,#14351f,#0c1d12)}
-  .terra{position:absolute;width:11px;height:11px;border-radius:50%;cursor:pointer;
-    background:radial-gradient(circle at 50% 32%,#c9a227,#6b5510);border:1.5px solid #3a2f08}
-  .terra.ok{border-color:var(--green);box-shadow:0 0 8px #39d27166}
-  .lbj{position:absolute;font-size:7px;font-weight:800;color:#8a94a4;letter-spacing:.3px;pointer-events:none}
+  /* -------- passo 2 (cabeamento): AS TRASEIRAS -------- */
+  .cabos-topo{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+  .cabo-b{font:inherit;font-size:10px;font-weight:900;letter-spacing:.4px;border-radius:8px;padding:8px 12px;cursor:pointer;
+    border:1px solid #2a3038;color:#c2cbd6;background:linear-gradient(180deg,#171a1f,#101317);
+    min-height:38px;touch-action:manipulation}
+  .cabo-b.on{border-color:var(--amber);color:#ffd79a;background:#2a1f0d;box-shadow:0 0 0 1px var(--amber) inset}
+  .cabo-b .pt{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+  .pt.ac{background:#e0a33a} .pt.rca{background:#e05a4a} .pt.link{background:#4ab0e0}
+  .instr{font-size:10.5px;line-height:1.4;color:#9fb0c4;margin-left:2px}
+  .instr b{color:#fff}
 
+  .bancada{position:relative;display:flex;flex-direction:column;gap:9px}
+  .painel{position:relative;border-radius:7px;border:1px solid #05070a;
+    background:linear-gradient(180deg,#2c3037,#181b20 55%,#0f1216);
+    box-shadow:0 5px 14px #000a, inset 0 1px 0 #ffffff14;width:100%}
+  .painel .tit{position:absolute;top:-13px;left:3px;font-size:9px;font-weight:800;color:#9aa4b1;letter-spacing:.4px;white-space:nowrap}
+  .painel .fonte{position:absolute;top:-13px;right:3px;font-size:8px;color:#6b7684;white-space:nowrap}
+  .painel .grade{position:absolute;left:0;right:0;top:8%;height:22%;
+    background:repeating-linear-gradient(90deg,#0b0e11 0 2px,#191d22 2px 5px);opacity:.5;pointer-events:none}
+  .con{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;
+    justify-content:center;min-width:16px;min-height:16px}
+  .con .pino{border-radius:3px;border:1.5px solid #6b7684;background:linear-gradient(180deg,#2b2f35,#0f1215);
+    width:100%;height:100%;min-width:14px;min-height:12px}
+  .con .sig{position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:1px;
+    font-size:6.5px;font-weight:800;color:#94a0ae;letter-spacing:.2px;white-space:nowrap;pointer-events:none;text-shadow:0 1px 2px #000}
+  .con.clicavel{cursor:pointer;touch-action:manipulation}
+  .con.clicavel::after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:max(100%,30px);height:max(100%,30px)}                 /* alvo de dedo */
+  .con.clicavel:hover .pino{box-shadow:0 0 0 2px #fff6}
+  .con.sel .pino{box-shadow:0 0 0 3px var(--amber),0 0 12px var(--amber)}
+  .con.ok .pino{border-color:var(--green);background:linear-gradient(180deg,#14351f,#0b1d12)}
+  .con.rca .pino{border-radius:50%;background:radial-gradient(circle at 50% 32%,#d8dde3,#8f959c 58%,#43484e)}
+  .con.rca.entrada .pino{border-color:#b03a2e}
+  .con.link .pino{border-radius:2px;background:linear-gradient(180deg,#1a1e23,#0a0c0f);border-color:#4ab0e0}
+  .con.gnd .pino{border-radius:50%;background:radial-gradient(circle at 50% 32%,#c9a227,#6b5510);border-color:#3a2f08}
+  .con.morto .pino{opacity:.45;border-color:#3a4048}
+  .con.canal .sig{color:#ffc98a}
 
-  /* --- pecas da traseira (fieis a foto oficial de cada modelo) --- */
-  .apar .vent{position:absolute;top:16px;height:36px;border-radius:2px;
-    background:repeating-linear-gradient(90deg,#0b0e11 0 2px,#191d22 2px 5px);opacity:.85}
-  .fileira{position:absolute;left:0;right:0;bottom:7px;height:46px}
-  .bloco{position:absolute;bottom:0;text-align:center}
-  .bloco .lbj{position:static;display:block;margin-top:2px;font-size:6.2px;line-height:1.15;
-    color:#8a94a4;font-weight:800;letter-spacing:.2px;white-space:nowrap}
-  .bloco .cn{font-size:6.5px;font-weight:900;color:#9aa4b1;margin-bottom:1px}
-  .par{display:flex;gap:4px;justify-content:center;align-items:flex-end}
-  .rcaw{display:flex;flex-direction:column;align-items:center;gap:1px}
-  .rcaw em{font-size:5.2px;font-style:normal;color:#6b7684;font-weight:800}
-  .rca{display:block;width:12px;height:12px;border-radius:50%;
-    background:radial-gradient(circle at 50% 32%,#d8dde3,#8f959c 58%,#43484e);
-    border:2px solid #4a4f55;box-shadow:0 1px 2px #000a}
-  .rca.vermelho{border-color:#b03a2e} .rca.branco{border-color:#dfe3e8}
-  .rca.ent,.rca[id^="rca-"]{cursor:pointer}
-  .rca.ent:hover,.rca[id^="rca-"]:hover{box-shadow:0 0 0 2px #fff7}
-  .rca.sel{box-shadow:0 0 0 3px var(--amber),0 0 12px var(--amber)}
-  .rca.ok{border-color:var(--green)}
-  .iec{width:21px;height:14px;margin:0 auto;border-radius:2px;cursor:pointer;position:relative;
-    background:linear-gradient(180deg,#2b2f35,#0f1215);border:1.5px solid #6b7684}
-  .iec::before{content:"";position:absolute;left:4px;right:4px;top:4px;height:5px;border-radius:1px;
-    background:repeating-linear-gradient(90deg,#6b7684 0 2px,transparent 2px 5px)}
-  .iec:hover{box-shadow:0 0 0 2px #fff6}
-  .iec.sel{box-shadow:0 0 0 3px var(--amber)}
-  .iec.ok{border-color:var(--green);background:linear-gradient(180deg,#14351f,#0b1d12)}
-  .mini{width:11px;height:11px;border-radius:50%;margin:0 auto;
-    background:radial-gradient(circle at 50% 32%,#7c848e,#2a2e33);border:1.5px solid #3a4048}
-  .usb{width:15px;height:8px;margin:2px auto;border-radius:1px;
-    background:linear-gradient(180deg,#1a1e23,#0d1014);border:1.5px solid #7c848e}
-  .dcin{width:12px;height:12px;border-radius:50%;margin:0 auto;
-    background:radial-gradient(circle at 50% 32%,#5a6068,#15181c);border:1.5px solid #6b7684}
-  .xlr{display:block;width:14px;height:14px;border-radius:50%;
-    background:radial-gradient(circle at 50% 34%,#9aa4b1,#3a4048 60%,#15181c);border:2px solid #5a6068}
-  .pares{display:flex;gap:6px}
-  .ent-grp{padding:2px 3px;border-radius:4px;border:1px solid transparent;cursor:pointer}
-  .ent-grp.ativo{border-color:var(--blue);background:#12233a}
-  .ent-grp[data-modo="PHONO"].ativo{border-color:#a56a2f;background:#2a1a0d}
+  svg.fios{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;overflow:visible}
 
-  /* regua AC */
-  .regua{position:absolute;left:12px;right:12px;bottom:8px;height:40px;border-radius:6px;
+  .regua{position:relative;display:flex;align-items:center;gap:12px;padding:0 12px;height:46px;border-radius:7px;
     background:linear-gradient(180deg,#23272d,#131619);border:1px solid #05070a;
-    box-shadow:inset 0 1px 0 #ffffff12,0 4px 10px #0009;display:flex;align-items:center;gap:14px;padding:0 14px}
-  .regua .rt{font-size:8.5px;font-weight:900;color:#8a94a4;letter-spacing:1px}
-  .tom{width:24px;height:22px;border-radius:3px;cursor:pointer;position:relative;
-    background:linear-gradient(180deg,#101317,#0a0c0f);border:1.5px solid #4a5058}
-  .tom::before,.tom::after{content:"";position:absolute;top:5px;width:3px;height:8px;background:#4a5058;border-radius:1px}
-  .tom::before{left:6px} .tom::after{right:6px}
+    box-shadow:inset 0 1px 0 #ffffff12,0 4px 10px #0009}
+  .regua .rt{font-size:8.5px;font-weight:900;color:#8a94a4;letter-spacing:1px;white-space:nowrap}
+  .tom{width:30px;height:26px;border-radius:3px;cursor:pointer;position:relative;flex:0 0 auto;
+    background:linear-gradient(180deg,#101317,#0a0c0f);border:1.5px solid #4a5058;touch-action:manipulation}
+  .tom::before,.tom::after{content:"";position:absolute;top:7px;width:3px;height:9px;background:#4a5058;border-radius:1px}
+  .tom::before{left:8px} .tom::after{right:8px}
   .tom.ok{border-color:var(--green)} .tom.ok::before,.tom.ok::after{background:var(--green)}
   .tom.sel{box-shadow:0 0 0 3px var(--amber)}
-  .chaveac{margin-left:auto;font-size:8.5px;font-weight:900;padding:4px 9px;border-radius:5px;cursor:pointer;
-    background:#3a1a16;border:1px solid #6b241c;color:#ff9c90;letter-spacing:.5px}
+  .chaveac{margin-left:auto;font:inherit;font-size:9px;font-weight:900;padding:7px 11px;border-radius:6px;cursor:pointer;
+    background:#3a1a16;border:1px solid #6b241c;color:#ff9c90;letter-spacing:.5px;touch-action:manipulation}
   .chaveac.on{background:#14351f;border-color:#1e6b3c;color:#7df0a8}
+  .fonte12{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:6px;
+    background:linear-gradient(180deg,#20242a,#111417);border:1px solid #05070a}
+  .fonte12 .ft{font-size:8.5px;font-weight:900;color:#8a94a4;letter-spacing:.6px;white-space:nowrap}
+  .switch{display:flex;align-items:center;gap:9px;padding:7px 11px;border-radius:7px;
+    background:linear-gradient(180deg,#1d2128,#0f1216);border:1px solid #05070a}
+  .switch .st{font-size:8.5px;font-weight:900;color:#7fd4ff;letter-spacing:.6px;white-space:nowrap}
 
-  svg.cabos{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:3}
+  .semdado{padding:14px;border-radius:8px;background:#1b1410;border:1px solid #4a3418;color:#ffd9a6;
+    font-size:11.5px;line-height:1.5}
+  .semdado b{color:#fff}
 
-  /* ---- frente ---- */
-  .frente{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-  .fap{border:1px solid #1b2027;border-radius:8px;overflow:hidden;background:#08090b}
-  .fap.mix{grid-column:1/-1}
-  .fap .cap{display:flex;align-items:center;gap:7px;padding:5px 8px;background:#12161b;border-bottom:1px solid #1b2027}
-  .fap .cap .nm{font-size:10px;font-weight:800}
-  .fap iframe{display:block;width:100%;border:0;background:#08090b}
+  /* -------- MUSICAS -------- */
+  .faixa{display:flex;align-items:center;gap:7px;padding:7px 8px;border-radius:7px;margin-bottom:4px;
+    background:#11151a;border:1px solid #1c2229;font-size:11px}
+  .faixa .fn{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .faixa .fb{font:inherit;font-size:9px;font-weight:900;border:1px solid #2a3038;border-radius:6px;padding:5px 8px;
+    cursor:pointer;color:#aab4c2;background:linear-gradient(180deg,#171a1f,#101317);touch-action:manipulation}
+  .faixa .fb.on{border-color:var(--green);color:#7df0a8;background:#0f2418}
 
-  /* ---- painel ---- */
-  .chk{display:flex;gap:7px;align-items:flex-start;padding:6px 7px;border-radius:7px;margin-bottom:5px;
-    background:#11151a;border:1px solid #1c2229}
-  .chk.ok{background:#0f2418;border-color:#1e5c38}
-  .chk .b{width:14px;height:14px;border-radius:50%;flex:0 0 auto;margin-top:1px;background:#2a3038;border:1px solid #000;
-    display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:#6b7684}
-  .chk.ok .b{background:var(--green);color:#062a13}
-  .chk .tx{font-size:10px;line-height:1.3;color:#c2cbd6}
-  .chk.ok .tx{color:#9fe3bb}
-  .chk .tx b{color:#fff}
-  .som{margin-top:8px;padding:9px;border-radius:8px;text-align:center;font-size:11px;font-weight:800;
-    background:#2a1414;border:1px solid #52201c;color:#ff9c90}
-  .som.on{background:#0f2a18;border-color:#1e6b3c;color:#7df0a8}
-  .ctrl{margin-top:9px;padding-top:8px;border-top:1px dashed #232a32}
-  .lin{display:flex;align-items:center;gap:8px;margin-bottom:7px}
-  .lin .lb{font-size:9px;font-weight:800;color:#8b97a9;width:56px}
-  .fad{flex:1;height:15px;border-radius:4px;position:relative;cursor:ew-resize;touch-action:none;
-    background:linear-gradient(180deg,#07090b,#1b1f24 50%,#07090b);border:1px solid #000}
-  .fad .cap2{position:absolute;top:50%;width:12px;height:21px;transform:translate(-50%,-50%);border-radius:2px;
-    background:linear-gradient(180deg,#eef1f4,#a9afb7);border:1px solid #000}
-  .dica{margin-top:9px;font-size:9.5px;line-height:1.45;color:#8b97a9;border-top:1px dashed #232a32;padding-top:8px}
-  .dica b{color:#cdd5e0}
+  /* alvo de dedo maior no toque */
+  @media (pointer:coarse){
+    .btn,.pa{min-height:38px}
+    .cabo-b{min-height:44px}
+    .opt{min-height:50px}
+  }
+  /* retrato de iPad: a barra nao pode comer altura — quebra em duas linhas curtas */
+  @media (max-width:820px){
+    .marca .m{display:none}
+    #barra{gap:4px;padding:3px 5px}
+    .btn{padding:7px 8px;font-size:9.5px}
+  }
+
+  /* CONTRATO DE TELA CHEIA (html.smu-fs) — o player da aula avisa, o simulador
+     responde SO com CSS. Em tela cheia a barra encolhe e o palco cresce. */
+  html.smu-fs #barra{min-height:38px;padding:3px 8px}
+  html.smu-fs #palco{padding:4px}
+  html.smu-fs .pop{max-height:min(78vh,640px)}
 </style>
 </head>
 <body>
-<div id="stage">
-<div class="wrap">
+<div id="app">
 
-  <div class="util">
-    <div class="brand"><b>SMU</b><span class="m">PRO • MONTE A SUA CABINE</span></div>
-    <span class="pill">Energia <b id="pEnergia">desligada</b></span>
-    <span class="pill">Sinal <b id="pSinal">interrompido</b></span>
-    <span class="spacer"></span>
-    <button class="btnp ghost" id="btnVirar">Virar os aparelhos</button>
-    <button class="btnp ghost" id="btnReset">Recomeçar</button>
-  </div>
+  <header id="barra">
+    <div class="marca"><b>SMU</b><span class="m" id="sub">PRO • CABINE</span></div>
+    <div id="passos"></div>
+    <span class="vazio"></span>
 
-  <div class="passos">
-    <div class="pa on" data-p="1"><div class="n">PASSO 1</div><div class="t">Escolher os aparelhos</div></div>
-    <div class="pa" data-p="2"><div class="n">PASSO 2</div><div class="t">Traseira: força e RCA</div></div>
-    <div class="pa" data-p="3"><div class="n">PASSO 3</div><div class="t">Frente: fazer o som sair</div></div>
-  </div>
+    <button class="btn" id="bFalta" data-pop="falta">
+      <span class="ponto" id="pontoSom"></span>O QUE FALTA <span class="sel" id="selFalta">0</span>
+    </button>
+    <button class="btn" id="bComo" data-pop="como">COMO FUNCIONA</button>
+    <button class="btn" id="bMus" data-pop="mus">MÚSICAS</button>
+    <button class="btn" id="btnAmpliar">AMPLIAR</button>
+    <button class="btn" id="btnReset">RECOMEÇAR</button>
 
-  <div class="grid">
-    <div class="card" id="palco"></div>
-    <div class="card" style="min-height:auto">
-      <h3>O que falta</h3>
-      <div id="lista"></div>
+    <div class="pop" id="pop-falta">
+      <h4>O que falta</h4>
       <div class="som" id="som">SEM SOM</div>
-      <div class="ctrl" id="ctrl"></div>
-      <div class="dica" id="dica"></div>
+      <div id="elo"></div>
+      <div id="lista"></div>
     </div>
-  </div>
-</div>
+    <div class="pop" id="pop-como"><h4>Como funciona</h4><div id="como"></div></div>
+    <div class="pop" id="pop-mus"><h4>Músicas</h4><div id="mus"></div></div>
+  </header>
+
+  <main id="palco"></main>
 </div>
 
 <script>
+/* ============================================================================
+   1. DADOS INJETADOS PELO GERADOR
+   ============================================================================ */
+const SIMS = __SIMS__;   /* os simuladores REAIS, HTML inteiro de cada um */
+const TRAS = __TRAS__;   /* traseiras MEDIDAS no manual (_ref-traseiras/*.json) */
+
+/* MODO DA AULA — o gerador troca esta linha. Um modelo, duas aulas:
+     "cabeamento" = "Ligando a cabine"  -> traseiras + AC + RCA + RJ45 (LINK)
+     "praticando" = "Praticando"        -> a mesa montada, para operar */
+const MODO = "__MODO__";
+const eCabeamento = MODO === "cabeamento";
+
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const esc=s=>String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 
-/* os simuladores REAIS embutidos, injetados pelo gerador */
-const SIMS = __SIMS__;
-
-const S={ passo:1, d1:null, d2:null, mix:null,
-  rca:{1:null,2:null},              /* rca[deck] = canal do mixer */
-  entrada:{1:"LINE",2:"LINE"},
-  forca:{d1:false,d2:false,mix:false},   /* plugado na regua */
-  terra:{1:false,2:false},               /* fio terra do toca-discos */
+/* ============================================================================
+   2. ESTADO
+   ============================================================================ */
+const S = {
+  passo:1,
+  d1:null, d2:null, mix:null, aio:null,
+  /* --- aula 1 (cabeamento) --- */
+  cabo:"ac",                    /* ac | rca | link */
+  pegou:null,                   /* {dono, i} do conector escolhido */
+  ligacoes:[],                  /* {tipo, a:{dono,i}, b:{dono,i}} */
   reguaLigada:false,
-  ligando:null,                          /* {tipo:'rca'|'ac', quem} */
-  fader:{1:0,2:0}, master:0 };
-
-const ehVinil = t => /technics|plx|sl-1200/i.test(t);
-const saidaDe = t => ehVinil(t) ? "PHONO" : "LINE";
-
-/* ---------- PASSO 1: escolher ---------- */
-function telaEscolha(){
-  const decks=SIMS.filter(s=>s.tipo!=="mixer");
-  const mixers=SIMS.filter(s=>s.tipo==="mixer");
-  const bloco=(lista,sel,campo)=>lista.map(s=>`
-    <div class="opt ${ehVinil(s.nome)?"vinil":""} ${sel===s.id?"on":""}" data-campo="${campo}" data-id="${s.id}">
-      <div class="ic"></div>
-      <div><div class="nm">${s.nome}</div><div class="tp">${s.sub||""}</div></div>
-      ${s.tipo!=="mixer"?`<span class="tag ${saidaDe(s.nome).toLowerCase()}">${saidaDe(s.nome)}</span>`:""}
-    </div>`).join("");
-  return `<h3>1 · Escolha os aparelhos da sua cabine</h3>
-  <div class="escolha">
-    <div class="col"><div class="lb">DECK 1</div>${bloco(decks,S.d1,"d1")}</div>
-    <div class="col"><div class="lb">DECK 2</div>${bloco(decks,S.d2,"d2")}</div>
-    <div class="col"><div class="lb">MIXER</div>${bloco(mixers,S.mix,"mix")}</div>
-  </div>
-  <div class="dica" style="margin-top:12px">
-    Repare na etiqueta de cada aparelho: <b>LINE</b> é fonte digital (CDJ/XDJ),
-    <b>PHONO</b> é toca-discos. Isso decide onde o cabo entra no mixer — e você vai fazer essa ligação
-    no próximo passo, <b>pela traseira</b>, como na vida real.
-  </div>`;
-}
-
-/* ---------- PASSO 2: traseira ---------- */
-function nomeDe(id){ const s=SIMS.find(x=>x.id===id); return s?s.nome:"—"; }
-/* ============================================================
-   TRASEIRA REAL DE CADA APARELHO
-   Cada modelo tem o seu painel — conferido nas fotos oficiais do fabricante.
-   pecas: [tipo, rotulo, x%, largura%]  (y e fixo na fileira de conectores)
-     iec    = tomada de forca IEC        gnd  = parafuso de terra
-     rcaOut = par RCA de saida           rcaIn= par RCA de entrada (canal)
-     xlr    = saida balanceada           mini = jack pequeno (control/digital)
-     usb    = porta USB                  dcin = fonte externa 12V
-   ============================================================ */
-const REAR = {
-  /* CDJ-1000MK3 — foto oficial: AC IN a esquerda, grade de ventilacao no meio,
-     e a direita CONTROL, DIGITAL OUT e AUDIO OUT (par RCA). */
-  cdj1000: { largura:322, vent:[70,70],
-    pecas:[["iec","AC IN",4,17],["mini","CONTROL",50,12],["mini","DIGITAL OUT",64,13],
-           ["rcaOut","AUDIO OUT",80,17]] },
-  /* CDJ-400 — igual em espirito, mas tem USB na traseira. */
-  cdj400: { largura:322, vent:[70,80],
-    pecas:[["iec","AC IN",4,17],["usb","USB",42,10],["mini","CONTROL",56,12],
-           ["mini","DIGITAL OUT",69,13],["rcaOut","AUDIO OUT",84,15]] },
-  /* Technics SL-1200MK7 — cabo de forca, par RCA de PHONO e o parafuso de TERRA. */
-  sl1200: { largura:322, vent:[0,0],
-    pecas:[["iec","AC IN",5,17],["gnd","SIGNAL GND",56,14],["rcaOut","PHONO OUT",76,18]] },
-  /* DJM-800 — AC IN, SIGNAL GND, PHONO/LINE por canal, BOOTH e MASTER 1 (XLR) + 2 (RCA). */
-  djm800: { largura:540, vent:[60,64], mixer:true,
-    pecas:[["iec","AC IN",3,11],["gnd","SIGNAL GND",15,10],
-           ["rcaIn1","CH 1",27,17],["rcaIn2","CH 2",47,17],
-           ["rcaOut","BOOTH",68,11],["xlr","MASTER 1",79,10],["rcaOut","MASTER 2",90,9]] },
-  /* DJM-600 — mesma familia, sem saida XLR dupla. */
-  djm600: { largura:540, vent:[60,64], mixer:true,
-    pecas:[["iec","AC IN",3,11],["gnd","SIGNAL GND",15,10],
-           ["rcaIn1","CH 1",27,17],["rcaIn2","CH 2",47,17],
-           ["rcaOut","BOOTH",70,12],["rcaOut","MASTER OUT",86,12]] },
+  /* --- aula 2 (praticando) --- */
+  ampliado:null,                /* "1" | "m" | "2" */
+  mixEstado:null,               /* estado publicado pelo simulador do mixer */
+  nivel:{1:0,2:0},              /* nivel de audio medido na saida de cada deck */
+  tam:{},                       /* tamanho natural informado por cada simulador */
+  faixaDe:{1:null,2:null},
+  faixas:[],
+  popAberto:null,
 };
-function rearDe(id){ return REAR[id] || REAR.cdj1000; }
 
-/* desenha uma peca da traseira */
-function peca(tipo, rot, x, w, ctx){
-  const est=`left:${x}%;width:${w}%`;
-  const par=(idAlvo,cls)=>`<div class="par">
-      <span class="rcaw"><i class="rca vermelho ${cls}" ${idAlvo}></i><em>R</em></span>
-      <span class="rcaw"><i class="rca branco"></i><em>L</em></span></div>`;
-  if(tipo==="iec")  return `<div class="bloco" style="${est}"><div class="iec" id="ac-${ctx.dono}"></div><span class="lbj">${rot}</span></div>`;
-  if(tipo==="gnd")  return `<div class="bloco" style="${est}"><div class="terra" id="ter-${ctx.gnd}"></div><span class="lbj">${rot}</span></div>`;
-  if(tipo==="mini") return `<div class="bloco" style="${est}"><div class="mini"></div><span class="lbj">${rot}</span></div>`;
-  if(tipo==="usb")  return `<div class="bloco" style="${est}"><div class="usb"></div><span class="lbj">${rot}</span></div>`;
-  if(tipo==="dcin") return `<div class="bloco" style="${est}"><div class="dcin"></div><span class="lbj">${rot}</span></div>`;
-  if(tipo==="xlr")  return `<div class="bloco" style="${est}"><div class="par">
-      <span class="rcaw"><i class="xlr"></i><em>R</em></span><span class="rcaw"><i class="xlr"></i><em>L</em></span>
-    </div><span class="lbj">${rot}</span></div>`;
-  if(tipo==="rcaOut") return `<div class="bloco" style="${est}">${par(ctx.saida?`id="rca-${ctx.saida}"`:"", "")}<span class="lbj">${rot}</span></div>`;
-  if(tipo.startsWith("rcaIn")){
-    const n=+tipo.slice(-1);
-    /* BUG QUE QUEBROU A AULA: eu montava estes pares pelo helper par(), passando
-       class="..." no lugar do id. Saia <i class="rca vermelho " class="rca ... ent">
-       — dois atributos class, e o navegador fica com o PRIMEIRO. A classe `ent`
-       sumia, os conectores de entrada nao existiam e o aluno nao tinha onde
-       plugar o cabo. Agora o par de ENTRADA e montado aqui, direto. */
-    const parIn = modo => `<div class="par">
-        <span class="rcaw"><i class="rca vermelho ent" data-ch="${n}" data-modo="${modo}"></i><em>R</em></span>
-        <span class="rcaw"><i class="rca branco"></i><em>L</em></span></div>`;
-    return `<div class="bloco" style="${est}"><div class="cn">${rot}</div>
-      <div class="pares">
-        <div class="ent-grp ${S.entrada[n]==="PHONO"?"ativo":""}" data-ch="${n}" data-modo="PHONO">
-          ${parIn("PHONO")}<span class="lbj">PHONO</span></div>
-        <div class="ent-grp ${S.entrada[n]==="LINE"?"ativo":""}" data-ch="${n}" data-modo="LINE">
-          ${parIn("LINE")}<span class="lbj">LINE</span></div>
-      </div></div>`;
+const simDe = id => SIMS.find(s=>s.id===id) || null;
+const nomeDe = id => (simDe(id)||{}).nome || "—";
+const ehVinil = t => /technics|plx|sl-?1200/i.test(t||"");
+const saidaDe = t => ehVinil(t) ? "PHONO" : "LINE";
+const prontoEscolha = ()=> S.aio ? true : !!(S.d1&&S.d2&&S.mix);
+/* na MESA a posicao e que manda: esquerda = CANAL 1, direita = CANAL 2 */
+const canalDoSlot = slot => slot==="1" ? 1 : slot==="2" ? 2 : null;
+
+/* ============================================================================
+   3. TRASEIRAS — SO DO JSON MEDIDO NO MANUAL
+   A tabela REAR escrita a mao que existia aqui foi APAGADA: estava espelhada
+   em cdj1000/cdj400/sl1200, com os canais invertidos em djm800/djm600 e um
+   "MASTER OUT" inventado. Agora tudo sai de _ref-traseiras/*.json.
+   ============================================================================ */
+const trasDe = id => TRAS[id] || null;
+function temTraseira(id){ const t=trasDe(id); return !!(t && t.temDados); }
+/* itens de uma categoria */
+function itens(id, cat){ const t=trasDe(id); if(!t||!t.itens) return [];
+  return t.itens.map((c,i)=>({...c,i})).filter(c=>cat?c.cat===cat:true); }
+function primeiro(id, cat){ return itens(id,cat)[0] || null; }
+
+/* como o aparelho recebe forca:
+     "iec"    tomada IEC no proprio aparelho
+     "dcin"   jack DC — precisa da FONTE EXTERNA de 12 V (DJM-450, XDJ-RR, XDJ-700)
+     "cativo" cabo de forca preso no aparelho (CDJ-100S, SL-1200MK2) */
+function comoRecebeForca(id){
+  if(primeiro(id,"ac")) return "iec";
+  if(primeiro(id,"dcin")) return "dcin";
+  if(primeiro(id,"plugAC")) return "plug";   /* cabo fixo desenhado na traseira (CDJ-100S) */
+  return "cativo";                            /* sem figura: as pontas ficam soltas */
+}
+const temLink = id => itens(id,"link").length>0;
+const portasLink = id => itens(id,"link").reduce((n,c)=>n+(c.portas||1),0);
+
+/* ============================================================================
+   4. POPOVERS DA BARRA — sobrepostos, fecham fora e no Esc
+   ============================================================================ */
+function abrirPop(nome){
+  S.popAberto = (S.popAberto===nome) ? null : nome;
+  ["falta","como","mus"].forEach(n=>{
+    const p=$("#pop-"+n); if(p) p.classList.toggle("on", S.popAberto===n);
+    const b=document.querySelector('.btn[data-pop="'+n+'"]'); if(b) b.classList.toggle("on", S.popAberto===n);
+  });
+  if(S.popAberto==="mus"){ pintarMusicas(); pedirFaixas(); }
+}
+$$('.btn[data-pop]').forEach(b=>b.addEventListener("click",ev=>{ ev.stopPropagation(); abrirPop(b.dataset.pop); }));
+document.addEventListener("click",ev=>{
+  if(!S.popAberto) return;
+  if(ev.target.closest(".pop") || ev.target.closest(".btn[data-pop]")) return;
+  abrirPop(S.popAberto);          /* clique fora fecha */
+});
+document.addEventListener("keydown",ev=>{
+  if(ev.key!=="Escape") return;
+  if(S.popAberto){ abrirPop(S.popAberto); return; }
+  if(S.ampliado) ampliar(null);
+});
+
+/* ============================================================================
+   5. PASSO 1 — ESCOLHER OS APARELHOS
+   ============================================================================ */
+function telaEscolha(){
+  const decks=SIMS.filter(s=>s.tipo==="deck");
+  const mixers=SIMS.filter(s=>s.tipo==="mixer");
+  const aios=SIMS.filter(s=>s.tipo==="allinone");
+  const marca=s=>{
+    if(eCabeamento && !temTraseira(s.id)) return '<span class="tag phono">SEM TRASEIRA</span>';
+    if(s.tipo==="allinone") return '<span class="tag aio">TUDO-EM-UM</span>';
+    if(s.tipo==="mixer") return "";
+    const t=saidaDe(s.nome); return '<span class="tag '+t.toLowerCase()+'">'+t+'</span>';
+  };
+  const bloco=(lista,sel,campo)=>lista.map(s=>
+    '<div class="opt '+(ehVinil(s.nome)?"vinil":"")+' '+(sel===s.id?"on":"")+'" data-campo="'+campo+'" data-id="'+s.id+'">'+
+      '<div class="ic"></div><div><div class="nm">'+esc(s.nome)+'</div><div class="tp">'+esc(s.sub||"")+'</div></div>'+
+      marca(s)+'</div>').join("");
+  const blocoAio = eCabeamento ? "" :
+    '<div class="aio-bloco"><div class="lb">OU — UM APARELHO SÓ (TUDO-EM-UM · XDJ / OPUS / PRIME)</div>'+
+    '<div class="escolha">'+bloco(aios,S.aio,"aio")+'</div></div>';
+  /* A ORDEM DAS COLUNAS E A DA CABINE: player · mixer · player.
+     E a mesma disposicao do passo 2, onde esquerda = CANAL 1 e direita = CANAL 2 —
+     o aluno ja escolhe vendo onde cada coisa vai ficar. */
+  return '<div class="razao">Escolha na ordem da cabine: <b>player à esquerda, mixer no meio, player à direita</b> — '+
+      'é a mesma disposição da mesa, onde a <b>esquerda é o CANAL 1</b> e a <b>direita o CANAL 2</b>.</div>'+
+    '<div class="escolha">'+
+      '<div class="col"><div class="lb">'+(eCabeamento?"1 · PLAYER DA ESQUERDA":"1 · DECK DA ESQUERDA — CANAL 1")+'</div>'+bloco(decks,S.d1,"d1")+'</div>'+
+      '<div class="col"><div class="lb">2 · MIXER (no meio, como na cabine)</div>'+bloco(mixers,S.mix,"mix")+'</div>'+
+      '<div class="col"><div class="lb">'+(eCabeamento?"3 · PLAYER DA DIREITA":"3 · DECK DA DIREITA — CANAL 2")+'</div>'+bloco(decks,S.d2,"d2")+'</div>'+
+    '</div>'+blocoAio;
+}
+
+/* ============================================================================
+   6. AULA 1 — LIGANDO A CABINE (traseiras de verdade)
+   ============================================================================ */
+const CABOS = {
+  ac:   { nome:"AC (força)", cor:"#e0a33a", pt:"ac" },
+  rca:  { nome:"RCA (áudio)", cor:"#e05a4a", pt:"rca" },
+  link: { nome:"RJ45 (PRO DJ LINK)", cor:"#4ab0e0", pt:"link" },
+};
+/* que conectores este cabo aceita, por dono */
+function aceita(cabo, dono, c){
+  if(cabo==="ac")   return c.cat==="ac"||c.cat==="dcin"||c.cat==="plugAC";
+  if(cabo==="rca")  return c.cat==="rca-out"||c.cat==="rca-in";
+  if(cabo==="link") return c.cat==="link";
+  return false;
+}
+const donoEhPlayer = d => d==="d1"||d==="d2";
+
+function chaveLig(l){ return l.tipo+"|"+l.a.dono+":"+l.a.i+"|"+l.b.dono+":"+l.b.i; }
+function achaLig(tipo, dono, i){
+  return S.ligacoes.find(l=>l.tipo===tipo && ((l.a.dono===dono&&l.a.i===i)||(l.b.dono===dono&&l.b.i===i)));
+}
+function ligado(tipo, dono, i){ return !!achaLig(tipo,dono,i); }
+
+/* desenha um painel traseiro a partir do JSON */
+function painelHTML(id, dono, rot){
+  const t=trasDe(id);
+  if(!t || !t.temDados){
+    const motivo = t && t.motivo ? t.motivo : "não achei figura de painel traseiro no manual oficial deste modelo.";
+    return '<div class="semdado"><b>'+esc(rot)+' — '+esc(nomeDe(id))+'</b><br>'+
+      '<span class="est">⚠️ ESTIMADO</span> '+esc(motivo)+
+      (t&&t.cativoAC?' O que o manual garante: <b>cabos cativos</b> — o cabo de força e o par RCA saem do aparelho e não se encaixam atrás. Use o <b>plugue do cabo</b> aqui embaixo.':'')+
+      '</div>'+ (t&&t.cativoAC ? plugsCativosHTML(id,dono,rot) : "");
   }
-  return "";
+  const alturaPct = 100/t.razao;   /* padding-bottom = altura relativa a largura */
+  const cons = t.itens.map((c,i)=>{
+    const cx=c.x+c.w/2, cy=c.y+c.h/2;
+    const clic = aceita(S.cabo,dono,c);
+    const cls = ["con", c.cat==="rca-out"||c.cat==="rca-in"?"rca":"", c.cat==="rca-in"?"entrada":"",
+      c.cat==="link"?"link":"", c.cat==="gnd"?"gnd":"", c.canal?"canal":"",
+      clic?"clicavel":"morto",
+      (S.pegou&&S.pegou.dono===dono&&S.pegou.i===i)?"sel":"",
+      (ligado(S.cabo,dono,i))?"ok":""].filter(Boolean).join(" ");
+    const rotulo = (c.canal?("CH"+c.canal+" "):"")+c.sig+(c.det?" "+c.det:"");
+    return '<div class="'+cls+'" id="c-'+dono+'-'+i+'" data-dono="'+dono+'" data-i="'+i+'" '+
+      'style="left:'+cx+'%;top:'+cy+'%;width:'+Math.max(c.w,1.4)+'%;height:'+Math.max(c.h,8)+'%" '+
+      'title="'+esc(rotulo)+' — '+esc(c.tipo)+'">'+
+      '<div class="pino"></div><span class="sig">'+esc(rotulo)+'</span></div>';
+  }).join("");
+  return '<div class="painel" id="p-'+dono+'" style="padding-bottom:'+alturaPct.toFixed(2)+'%">'+
+    '<div class="tit">'+esc(rot)+' — '+esc(nomeDe(id))+' (traseira)</div>'+
+    '<div class="fonte">'+esc(t.fonte||"")+'</div>'+
+    '<div class="grade"></div>'+cons+'</div>';
+}
+/* aparelho de cabo cativo: os plugues ficam soltos, como na vida real */
+function plugsCativosHTML(id,dono){
+  const t=trasDe(id)||{};
+  const p=[];
+  if(t.cativoAC) p.push({cat:"plugAC",sig:"PLUGUE DE FORÇA (cabo cativo)"});
+  if(t.cativoRCA) p.push({cat:"rca-out",sig:"PAR RCA L/R (cabo cativo)"});
+  if(t.cativoGND) p.push({cat:"gnd",sig:"TERRA (garfo)"});
+  if(!p.length) return "";
+  return '<div class="regua" style="margin-top:6px">'+
+    '<span class="rt">PONTAS DO CABO — '+esc(nomeDe(id))+'</span>'+
+    p.map((c,k)=>{
+      const i=1000+k;                         /* indice virtual: nao existe no JSON */
+      const clic=aceita(S.cabo,dono,c);
+      const cls=["con",c.cat==="rca-out"?"rca":"",c.cat==="gnd"?"gnd":"",clic?"clicavel":"morto",
+        (S.pegou&&S.pegou.dono===dono&&S.pegou.i===i)?"sel":"", ligado(S.cabo,dono,i)?"ok":""].filter(Boolean).join(" ");
+      return '<div class="'+cls+'" id="c-'+dono+'-'+i+'" data-dono="'+dono+'" data-i="'+i+'" '+
+        'style="position:relative;left:auto;top:auto;transform:none;width:34px;height:26px">'+
+        '<div class="pino"></div><span class="sig">'+esc(c.sig)+'</span></div>';
+    }).join("")+'</div>';
 }
 
-function painelDe(idSim, dono, estilo, ctxExtra){
-  const R=rearDe(idSim), nome=SIMS.find(x=>x.id===idSim)?.nome||"";
-  const ctx=Object.assign({dono}, ctxExtra||{});
-  const alt = R.mixer?118:106;
-  return `<div class="apar" id="p-${dono}" style="${estilo};width:${R.largura}px;height:${alt}px">
-    <div class="tit">${nome} — traseira</div>
-    ${R.vent[0]?`<div class="vent" style="left:${R.vent[0]}px;right:${R.vent[1]}px"></div>`:""}
-    <div class="fileira">${R.pecas.map(([t,r,x,w])=>peca(t,r,x,w,ctx)).join("")}</div>
-  </div>`;
+function precisaSwitch(){
+  const players=[S.d1,S.d2].filter(temLink);
+  if(!players.length) return false;
+  const p = portasLink(S.mix);
+  return p < players.length;         /* mixer sem porta suficiente -> switch */
 }
+function linkAplicavel(){ return [S.d1,S.d2].some(temLink); }
 
 function telaTraseira(){
-  const v1=ehVinil(nomeDe(S.d1)), v2=ehVinil(nomeDe(S.d2));
-  return `<h3>2 · Traseira dos aparelhos — cada modelo tem o seu painel</h3>
-  <div class="tras" id="tras">
-    <svg class="cabos" id="svg"></svg>
-    ${painelDe(S.d1,"d1","left:10px;top:26px",{saida:1,gnd:1})}
-    ${painelDe(S.d2,"d2","right:10px;top:26px",{saida:2,gnd:2})}
-    ${painelDe(S.mix,"mix","left:50%;transform:translateX(-50%);top:170px",{gnd:"mix"})}
-    <div class="regua" id="regua">
-      <span class="rt">RÉGUA AC 110/220 V</span>
-      <div class="tom" data-tom="1"></div><div class="tom" data-tom="2"></div><div class="tom" data-tom="3"></div>
-      <div class="chaveac ${S.reguaLigada?"on":""}" id="chaveac">${S.reguaLigada?"LIGADA":"DESLIGADA"}</div>
-    </div>
-  </div>`;
+  const forcas=[["d1",S.d1],["d2",S.d2],["mix",S.mix]];
+  const precisaFonte = forcas.some(([d,id])=>comoRecebeForca(id)==="dcin");
+  const sw = precisaSwitch();
+  const botoes = Object.entries(CABOS).map(([k,c])=>
+    '<button class="cabo-b '+(S.cabo===k?"on":"")+'" data-cabo="'+k+'">'+
+    '<span class="pt '+c.pt+'"></span>'+esc(c.nome)+'</button>').join("");
+  const instr = S.cabo==="ac"
+    ? 'Clique na <b>entrada de força</b> do aparelho e depois numa <b>tomada da régua</b>. Quem usa fonte externa passa pela <b>FONTE 12 V</b>.'
+    : S.cabo==="rca"
+    ? 'Clique no <b>AUDIO OUT</b> do player e depois no par <b>LINE</b> ou <b>PHONO</b> do canal no mixer. <b>Olhe a serigrafia</b> — não a ordem.'
+    : linkAplicavel()
+      ? 'Clique no <b>LINK</b> do player e depois no <b>LINK</b> do mixer'+(sw?' ou do <b>switch</b>':'')+'.'
+      : 'Estes players <b>não têm PRO DJ LINK</b> — nesta cabine não há cabo de rede a passar.';
+  const regua =
+    '<div class="regua" id="regua"><span class="rt">RÉGUA AC 110/220 V</span>'+
+      [0,1,2,3].map(n=>'<div class="tom'+(tomOcupada(n)?" ok":"")+(S.pegou&&S.pegou.dono==="tom"&&S.pegou.i===n?" sel":"")+'" data-tom="'+n+'"></div>').join("")+
+      '<button class="chaveac '+(S.reguaLigada?"on":"")+'" id="chaveac">'+(S.reguaLigada?"LIGADA":"DESLIGADA")+'</button>'+
+    '</div>';
+  const fonte = precisaFonte ?
+    '<div class="fonte12"><span class="ft">FONTE EXTERNA 12 V</span>'+
+      '<div class="con '+(S.cabo==="ac"?"clicavel":"morto")+(S.pegou&&S.pegou.dono==="fonte"&&S.pegou.i===0?" sel":"")+(ligado("ac","fonte",0)?" ok":"")+'" '+
+        'data-dono="fonte" data-i="0" style="position:relative;left:auto;top:auto;transform:none;width:26px;height:22px">'+
+        '<div class="pino"></div><span class="sig">SAÍDA 12 V</span></div>'+
+      '<div class="con '+(S.cabo==="ac"?"clicavel":"morto")+(S.pegou&&S.pegou.dono==="fonte"&&S.pegou.i===1?" sel":"")+(ligado("ac","fonte",1)?" ok":"")+'" '+
+        'data-dono="fonte" data-i="1" style="position:relative;left:auto;top:auto;transform:none;width:26px;height:22px">'+
+        '<div class="pino"></div><span class="sig">ENTRADA AC</span></div>'+
+      '<span class="instr">DJM-450, XDJ-RR e XDJ-700 <b>não têm tomada IEC</b>: usam fonte de 12 V.</span></div>' : "";
+  const switchHTML = sw ?
+    '<div class="switch"><span class="st">SWITCH GIGABIT — PRO DJ LINK</span>'+
+      [0,1,2,3].map(n=>'<div class="con link '+(S.cabo==="link"?"clicavel":"morto")+(S.pegou&&S.pegou.dono==="sw"&&S.pegou.i===n?" sel":"")+(ligado("link","sw",n)?" ok":"")+'" '+
+        'data-dono="sw" data-i="'+n+'" style="position:relative;left:auto;top:auto;transform:none;width:22px;height:20px">'+
+        '<div class="pino"></div><span class="sig">'+(n+1)+'</span></div>').join("")+
+      '<span class="instr">O mixer escolhido não tem porta LINK para os dois players — no clube entra um <b>switch</b>.</span></div>' : "";
+  return '<div class="cabos-topo">'+botoes+'<span class="instr">'+instr+'</span></div>'+
+    '<div class="bancada" id="bancada">'+
+      '<svg class="fios" id="fios"></svg>'+
+      painelHTML(S.d1,"d1","ESQUERDA")+
+      painelHTML(S.mix,"mix","MIXER")+
+      painelHTML(S.d2,"d2","DIREITA")+
+      switchHTML+fonte+regua+
+    '</div>';
 }
+function tomOcupada(n){ return S.ligacoes.some(l=>l.tipo==="ac" && ((l.a.dono==="tom"&&l.a.i===n)||(l.b.dono==="tom"&&l.b.i===n))); }
 
-/* ---------- PASSO 3: frente ---------- */
-function telaFrente(){
-  const s1=SIMS.find(s=>s.id===S.d1), s2=SIMS.find(s=>s.id===S.d2), sm=SIMS.find(s=>s.id===S.mix);
-  return `<h3>3 · Frente — agora faça o som sair</h3>
-  <div class="frente">
-    <div class="fap"><div class="cap"><span class="nm">${s1.nome}</span></div>
-      <iframe id="if1" sandbox="allow-scripts" srcdoc="${s1.html}" height="300"></iframe></div>
-    <div class="fap"><div class="cap"><span class="nm">${s2.nome}</span></div>
-      <iframe id="if2" sandbox="allow-scripts" srcdoc="${s2.html}" height="300"></iframe></div>
-    <div class="fap mix"><div class="cap"><span class="nm">${sm.nome}</span></div>
-      <iframe id="ifm" sandbox="allow-scripts" srcdoc="${sm.html}" height="280"></iframe></div>
-  </div>`;
+/* ---- regras de ligacao da aula 1 ---- */
+function conDe(dono,i){
+  if(dono==="tom")   return {cat:"tomada", sig:"TOMADA "+(i+1)};
+  if(dono==="fonte") return {cat:i===0?"dcSaida":"plugAC", sig:i===0?"SAÍDA 12 V":"ENTRADA AC DA FONTE"};
+  if(dono==="sw")    return {cat:"link", sig:"SWITCH porta "+(i+1)};
+  if(i>=1000){       /* pontas de cabo cativo */
+    const t=trasDe(donoId(dono))||{};
+    const p=[]; if(t.cativoAC)p.push({cat:"plugAC",sig:"PLUGUE DE FORÇA"});
+    if(t.cativoRCA)p.push({cat:"rca-out",sig:"PAR RCA L/R (cativo)"});
+    if(t.cativoGND)p.push({cat:"gnd",sig:"TERRA"});
+    return p[i-1000] || null;
+  }
+  const t=trasDe(donoId(dono)); if(!t||!t.itens) return null;
+  return t.itens[i] || null;
 }
+function donoId(d){ return d==="d1"?S.d1 : d==="d2"?S.d2 : d==="mix"?S.mix : null; }
 
-/* ---------- cabos ---------- */
-function cabos(){
-  const svg=$("#svg"); if(!svg) return;
-  const b=$("#tras").getBoundingClientRect(); svg.innerHTML="";
-  const traco=(a,c,cor,curva)=>{
-    if(!a||!c) return;
-    const r1=a.getBoundingClientRect(), r2=c.getBoundingClientRect();
-    const x1=r1.left+r1.width/2-b.left, y1=r1.top+r1.height/2-b.top;
-    const x2=r2.left+r2.width/2-b.left, y2=r2.top+r2.height/2-b.top;
+/* devolve null se pode ligar, ou a EXPLICACAO do erro */
+function porQueNao(a,b){
+  const ca=conDe(a.dono,a.i), cb=conDe(b.dono,b.i);
+  if(!ca||!cb) return "conector desconhecido.";
+  if(a.dono===b.dono) return "os dois lados do cabo estão no mesmo aparelho.";
+  if(S.cabo==="ac"){
+    const ehTom = x=>x.cat==="tomada";
+    const ehEntrada = x=>x.cat==="ac"||x.cat==="plugAC";
+    const ehDC = x=>x.cat==="dcin";
+    const ehSaidaDC = x=>x.cat==="dcSaida";
+    if(ehTom(ca)&&ehEntrada(cb)) return null;
+    if(ehEntrada(ca)&&ehTom(cb)) return null;
+    if(ehDC(ca)&&ehSaidaDC(cb)) return null;
+    if(ehSaidaDC(ca)&&ehDC(cb)) return null;
+    if((ehDC(ca)&&ehTom(cb))||(ehTom(ca)&&ehDC(cb)))
+      return "esse aparelho tem <b>DC IN 12 V</b>, não tomada: ele não vai direto na régua. Passe pela <b>FONTE 12 V</b>.";
+    return "cabo de força liga <b>entrada de força</b> na <b>tomada</b> — nada mais.";
+  }
+  if(S.cabo==="rca"){
+    const saida = ca.cat==="rca-out" ? ca : cb.cat==="rca-out" ? cb : null;
+    const entra = ca.cat==="rca-in" ? ca : cb.cat==="rca-in" ? cb : null;
+    if(!saida||!entra) return "RCA liga uma <b>saída</b> de player numa <b>entrada</b> de canal do mixer.";
+    const donoSaida = ca.cat==="rca-out" ? a.dono : b.dono;
+    if(!donoEhPlayer(donoSaida)) return "a saída tem de ser a do <b>player</b>.";
+    const idPlayer = donoId(donoSaida);
+    const ehPhonoEnt = /PHONO/i.test(entra.sig);
+    const ehVinilP = ehVinil(nomeDe(idPlayer));
+    if(ehVinilP && !ehPhonoEnt)
+      return "o <b>"+esc(nomeDe(idPlayer))+"</b> é toca-discos: sai em <b>nível de agulha</b> e precisa de uma entrada <b>PHONO</b>. Em LINE o som fica fininho e baixo.";
+    if(!ehVinilP && ehPhonoEnt)
+      return "o <b>"+esc(nomeDe(idPlayer))+"</b> sai em <b>nível de linha</b>. Numa entrada <b>PHONO</b> o pré-amplificador de agulha satura: distorce e estoura.";
+    return null;
+  }
+  if(S.cabo==="link"){
+    if(ca.cat!=="link"||cb.cat!=="link") return "cabo de rede liga <b>LINK</b> em <b>LINK</b>.";
+    if(donoEhPlayer(a.dono)&&donoEhPlayer(b.dono))
+      return "player com player não fecha o PRO DJ LINK: os dois vão ao <b>mixer</b> ou ao <b>switch</b>.";
+    return null;
+  }
+  return "cabo desconhecido.";
+}
+function clicarConector(dono,i){
+  if(!S.pegou){ S.pegou={dono,i}; render(); return; }
+  if(S.pegou.dono===dono && S.pegou.i===i){ S.pegou=null; render(); return; }
+  const a=S.pegou, b={dono,i};
+  const erro=porQueNao(a,b);
+  if(erro){ S.erroCabo=erro; S.pegou=null; render(); return; }
+  S.erroCabo=null;
+  /* um conector so aceita um cabo: tira o que estava */
+  S.ligacoes = S.ligacoes.filter(l=>!(l.tipo===S.cabo &&
+    (l.a.dono===a.dono&&l.a.i===a.i || l.b.dono===a.dono&&l.b.i===a.i ||
+     l.a.dono===b.dono&&l.a.i===b.i || l.b.dono===b.dono&&l.b.i===b.i)));
+  S.ligacoes.push({tipo:S.cabo, a, b});
+  S.pegou=null; render();
+}
+/* desenha os fios */
+function fios(){
+  const svg=$("#fios"), banc=$("#bancada"); if(!svg||!banc) return;
+  const B=banc.getBoundingClientRect(); svg.innerHTML="";
+  for(const l of S.ligacoes){
+    const ea=$("#c-"+l.a.dono+"-"+l.a.i)||$('[data-tom="'+l.a.i+'"]');
+    const eb=$("#c-"+l.b.dono+"-"+l.b.i)||$('[data-tom="'+l.b.i+'"]');
+    const ea2 = l.a.dono==="tom" ? $('[data-tom="'+l.a.i+'"]') : ea;
+    const eb2 = l.b.dono==="tom" ? $('[data-tom="'+l.b.i+'"]') : eb;
+    if(!ea2||!eb2) continue;
+    const r1=ea2.getBoundingClientRect(), r2=eb2.getBoundingClientRect();
+    const x1=r1.left+r1.width/2-B.left, y1=r1.top+r1.height/2-B.top;
+    const x2=r2.left+r2.width/2-B.left, y2=r2.top+r2.height/2-B.top;
     const p=document.createElementNS("http://www.w3.org/2000/svg","path");
-    p.setAttribute("d",`M${x1},${y1} C${x1},${y1+curva} ${x2},${y2-curva} ${x2},${y2}`);
-    p.setAttribute("stroke",cor); p.setAttribute("stroke-width","3"); p.setAttribute("fill","none");
-    p.setAttribute("opacity",".9"); svg.appendChild(p);
-  };
-  /* RCA */
-  [1,2].forEach(n=>{ const c=S.rca[n]; if(!c) return;
-    const ok = saidaDe(nomeDe(n===1?S.d1:S.d2))===S.entrada[c];
-    traco($("#rca-"+n), document.querySelector(`.rca.ent[data-ch="${c}"][data-modo="${S.entrada[c]}"]`), ok?"#39d271":"#ff4636", 50); });
-  /* forca */
-  const toms=$$(".tom");
-  [["d1","#ac-d1",0],["d2","#ac-d2",1],["mix","#ac-mix",2]].forEach(([k,sel,i])=>{
-    if(S.forca[k]) traco($(sel), toms[i], "#e0a33a", 60); });
-  /* terra */
-  [1,2].forEach(n=>{ if(S.terra[n]) traco($("#ter-"+n), $("#ter-mix"), "#c9a227", 40); });
-}
-
-/* ---------- eventos ---------- */
-function ligar(){
-  /* escolha */
-  $$(".opt[data-campo]").forEach(el=>el.onclick=()=>{
-    S[el.dataset.campo]=el.dataset.id;
-    if(S.d1&&S.d2&&S.mix) S.passo=2;
-    render();
-  });
-  /* traseira: RCA */
-  [1,2].forEach(n=>{ const j=$("#rca-"+n); if(j) j.onclick=()=>{
-    S.ligando = (S.ligando&&S.ligando.tipo==="rca"&&S.ligando.quem===n) ? null : {tipo:"rca",quem:n};
-    render(); }; });
-  $$(".rca.ent").forEach(j=>j.onclick=ev=>{
-    ev.stopPropagation();
-    if(S.ligando&&S.ligando.tipo==="rca"){
-      const ch=+j.dataset.ch;
-      S.entrada[ch]=j.dataset.modo;                    /* plugou no par PHONO ou LINE */
-      Object.keys(S.rca).forEach(k=>{ if(S.rca[k]===ch) S.rca[k]=null; });
-      S.rca[S.ligando.quem]=ch; S.ligando=null; render(); } });
-  /* chave LINE/PHONO */
-  $$(".ent-grp").forEach(el=>el.onclick=()=>{
-    S.entrada[+el.dataset.ch]=el.dataset.modo; render(); });
-  /* forca */
-  [["d1","#ac-d1"],["d2","#ac-d2"],["mix","#ac-mix"]].forEach(([k,sel])=>{
-    const el=$(sel); if(el) el.onclick=()=>{
-      S.ligando = (S.ligando&&S.ligando.tipo==="ac"&&S.ligando.quem===k) ? null : {tipo:"ac",quem:k};
-      render(); }; });
-  $$(".tom").forEach(el=>el.onclick=()=>{
-    if(S.ligando&&S.ligando.tipo==="ac"){ S.forca[S.ligando.quem]=true; S.ligando=null; render(); } });
-  const ch=$("#chaveac"); if(ch) ch.onclick=()=>{ S.reguaLigada=!S.reguaLigada; render(); };
-  /* terra */
-  [1,2].forEach(n=>{ const t=$("#ter-"+n); if(t) t.onclick=()=>{ S.terra[n]=!S.terra[n]; render(); }; });
-  /* marca o que esta selecionado */
-  $$(".rca,.ac").forEach(e=>e.classList.remove("sel"));
-  if(S.ligando){
-    const el = S.ligando.tipo==="rca" ? $("#rca-"+S.ligando.quem) : $("#ac-"+S.ligando.quem);
-    if(el) el.classList.add("sel");
+    const curva=Math.max(24,Math.abs(y2-y1)*0.45);
+    p.setAttribute("d","M"+x1+","+y1+" C"+x1+","+(y1+curva)+" "+x2+","+(y2-curva)+" "+x2+","+y2);
+    p.setAttribute("stroke",(CABOS[l.tipo]||{}).cor||"#888");
+    p.setAttribute("stroke-width","3"); p.setAttribute("fill","none");
+    p.setAttribute("stroke-linecap","round"); p.setAttribute("opacity",".92");
+    svg.appendChild(p);
   }
-  [1,2].forEach(n=>{ const j=$("#rca-"+n); if(j) j.classList.toggle("ok",!!S.rca[n]);
-    const t=$("#ter-"+n); if(t) t.classList.toggle("ok",S.terra[n]); });
-  [["d1","#ac-d1"],["d2","#ac-d2"],["mix","#ac-mix"]].forEach(([k,sel])=>{
-    const e=$(sel); if(e) e.classList.toggle("ok",S.forca[k]); });
-  $$(".tom").forEach((e,i)=>e.classList.toggle("ok", Object.values(S.forca).filter(Boolean).length>i));
-  /* passos clicaveis */
-  $$(".pa").forEach(p=>p.onclick=()=>{ const n=+p.dataset.p;
-    if(n===1 || (n===2&&S.d1&&S.d2&&S.mix) || (n===3&&tudoLigado())){ S.passo=n; render(); } });
 }
 
-/* ---------- regras ---------- */
-const precisaTerra = ()=> ehVinil(nomeDe(S.d1))||ehVinil(nomeDe(S.d2));
-function casa(n){ const c=S.rca[n]; return c ? saidaDe(nomeDe(n===1?S.d1:S.d2))===S.entrada[c] : false; }
-function tudoLigado(){
-  return S.forca.d1&&S.forca.d2&&S.forca.mix&&S.reguaLigada&&S.rca[1]&&S.rca[2]&&casa(1)&&casa(2)
-    && (!precisaTerra() || (ehVinil(nomeDe(S.d1))?S.terra[1]:true) && (ehVinil(nomeDe(S.d2))?S.terra[2]:true));
-}
-
-function checklist(){
+/* ---- o que falta na aula 1 ---- */
+function faltaCabeamento(){
   const it=[];
-  if(S.passo===1){
-    it.push([!!S.d1&&!!S.d2,"Escolher os <b>dois decks</b>","O mixer não toca sozinho — precisa de fonte."]);
-    it.push([!!S.mix,"Escolher o <b>mixer</b>","CDJ e pickup não vão direto na caixa."]);
+  const forcas=[["d1",S.d1,"esquerda"],["mix",S.mix,"mixer"],["d2",S.d2,"direita"]];
+  const forcaOk = d => {
+    const modo=comoRecebeForca(donoId(d));
+    if(modo==="iec"){ const c=primeiro(donoId(d),"ac"); return c?ligado("ac",d,c.i):false; }
+    if(modo==="plug"){ const c=primeiro(donoId(d),"plugAC"); return c?ligado("ac",d,c.i):false; }
+    if(modo==="dcin"){ const c=primeiro(donoId(d),"dcin");
+      return !!(c && ligado("ac",d,c.i) && ligado("ac","fonte",0) && ligado("ac","fonte",1)); }
+    return ligado("ac",d,1000);
+  };
+  it.push([forcas.every(([d])=>forcaOk(d)), "Ligar a <b>força</b> dos três",
+    "Cada um do seu jeito: tomada IEC vai direto na régua; <b>DC IN 12 V</b> passa pela fonte; cabo cativo é o plugue solto."]);
+  it.push([S.reguaLigada, "<b>Ligar a régua</b>", "Aparelho plugado com a régua desligada continua morto."]);
+  const rcaOk = d => {
+    const outs=itens(donoId(d),"rca-out");
+    const alvo = outs.length ? outs : (trasDe(donoId(d))||{}).cativoRCA ? [{i:1001}] : [];
+    return alvo.some(o=>ligado("rca",d,o.i));
+  };
+  it.push([rcaOk("d1")&&rcaOk("d2"), "Ligar o <b>RCA</b> dos dois players",
+    "Na traseira dos mixers Pioneer os canais vêm ao contrário: da esquerda para a direita lê-se <b>CH4, CH3, CH2, CH1</b>. Leia a serigrafia."]);
+  if(linkAplicavel()){
+    const linkOk = d => temLink(donoId(d)) ? itens(donoId(d),"link").some(c=>ligado("link",d,c.i)) : true;
+    it.push([linkOk("d1")&&linkOk("d2"), "Ligar o <b>RJ45 (PRO DJ LINK)</b>",
+      "É o cabo de rede que faz os players conversarem: BPM, onda e a mesma pasta do USB em todos."]);
   } else {
-    it.push([S.forca.d1&&S.forca.d2&&S.forca.mix,"Plugar a <b>força</b> dos 3 na régua",
-      "Clique no <b>AC IN</b> da traseira e depois numa tomada da régua."]);
-    it.push([S.reguaLigada,"<b>Ligar a régua</b>","Aparelho plugado com a régua desligada continua morto."]);
-    it.push([!!S.rca[1]&&!!S.rca[2],"Ligar o <b>RCA</b> de cada deck num canal",
-      "Clique no <b>AUDIO OUT</b> e depois na entrada do canal."]);
-    it.push([casa(1)&&casa(2),"Pôr a chave do canal na <b>entrada certa</b>",
-      "CDJ/XDJ = <b>LINE</b> · pickup = <b>PHONO</b>."]);
-    if(precisaTerra())
-      it.push([(ehVinil(nomeDe(S.d1))?S.terra[1]:true)&&(ehVinil(nomeDe(S.d2))?S.terra[2]:true),
-        "Ligar o <b>fio terra</b> do toca-discos","Sem o GND no mixer, o som vem com <b>zumbido</b>."]);
-    if(S.passo===3){
-      it.push([S.fader[1]>0.05||S.fader[2]>0.05,"Subir o <b>fader do canal</b>","Começa no mínimo, como numa cabine real."]);
-      it.push([S.master>0.05,"Abrir o <b>MASTER</b>","É o último a subir e o primeiro a baixar."]);
-    }
+    it.push([true, "<b>PRO DJ LINK</b>: não se aplica",
+      "Nenhum dos dois players tem porta LINK — nesta cabine não há cabo de rede."]);
   }
+  return it;
+}
+
+/* ============================================================================
+   7. AULA 2 — A MESA (mixer no centro, esquerda=CH1, direita=CH2)
+   ============================================================================ */
+function telaMesa(){
+  if(S.aio){
+    const s=simDe(S.aio);
+    return '<div class="mesa" id="mesa">'+
+      caixaAparelho("m", s, "TUDO-EM-UM · canais de fábrica", "mix")+
+    '</div>';
+  }
+  const s1=simDe(S.d1), s2=simDe(S.d2), sm=simDe(S.mix);
+  return '<div class="mesa" id="mesa">'+
+    caixaAparelho("1", s1, "CANAL 1", "")+
+    caixaAparelho("m", sm, "MIXER", "mix")+
+    caixaAparelho("2", s2, "CANAL 2", "")+
+  '</div>';
+}
+function caixaAparelho(slot, s, rot, cls){
+  return '<section class="apl" id="apl-'+slot+'" data-slot="'+slot+'">'+
+    '<div class="cab"><span class="nm">'+esc(s.nome)+'</span>'+
+      '<span class="ch '+cls+'">'+esc(rot)+'</span>'+
+      '<span class="esq">'+
+        '<button class="btn" data-ampliar="'+slot+'">AMPLIAR</button>'+
+      '</span></div>'+
+    '<div class="moldura" id="mol-'+slot+'">'+
+      '<iframe id="if-'+slot+'" sandbox="allow-scripts allow-popups" srcdoc="'+s.html+'"></iframe>'+
+    '</div></section>';
+}
+
+/* ============================================================================
+   DIMENSIONAR — a regra é CABER, nunca preencher.
+   ----------------------------------------------------------------------------
+     escala = Math.min(larguraDisponível/larguraNatural, alturaDisponível/alturaNatural)
+   Math.min, sempre. Com Math.max o aparelho preenche e sai pelas laterais, que
+   foi o defeito do AMPLIAR. Com min, sobra folga — e a folga é centralizada.
+
+   O tamanho NATURAL vem do próprio simulador (a ponte responde {smu:"tam"}),
+   então nada aqui é chutado. O iframe fica no tamanho natural e é o TRANSFORM
+   que encolhe/cresce: assim fonte, borda e padding (medidos em px, que não
+   escalam sozinhos) encolhem junto e nada encavala. O simulador por dentro
+   continua achando que tem a tela inteira — o fit() dele fica em 1:1.
+
+   Arranjo: testamos EMPILHADO e LADO A LADO e ficamos com o que dá o aparelho
+   MAIOR. Se nenhum dos dois passa de MIN_K, empilhamos em tamanho legível e o
+   palco ROLA. Cortar, nunca.
+   ============================================================================ */
+const GAP=6, CAB=27, MIN_K=0.55;
+function tamDe(slot){ const t=S.tam[slot]; return (t&&t.w>0&&t.h>0)?t:{w:560,h:760}; }
+
+function escalar(slot, k, dispH){
+  const mol=$("#mol-"+slot), fr=$("#if-"+slot), sec=$("#apl-"+slot);
+  if(!mol||!fr) return;
+  const t=tamDe(slot);
+  const lw=Math.round(t.w*k), lh=Math.round(t.h*k);
+  fr.style.width=t.w+"px"; fr.style.height=t.h+"px";
+  fr.style.transform="translateX(-50%) scale("+k+")";
+  const alturaCaixa = (dispH!=null && dispH>lh) ? dispH : lh;
+  mol.style.height=alturaCaixa+"px";
+  fr.style.top=Math.max(0,Math.round((alturaCaixa-lh)/2))+"px";
+  if(sec && !sec.classList.contains("ampliado")) sec.style.width=(lw+2)+"px";
+}
+function dimensionar(){
+  const mesa=$("#mesa"); if(!mesa) return;
+  const palco=$("#palco");
+  const slots = S.aio ? ["m"] : ["1","m","2"];
+  const W = palco.clientWidth-14, H = palco.clientHeight-14;
+  if(W<=0||H<=0) return;
+
+  if(S.ampliado){
+    const sec=$("#apl-"+S.ampliado); if(!sec) return;
+    const dispW = sec.clientWidth-2, dispH = sec.clientHeight-CAB-2;
+    const t=tamDe(S.ampliado);
+    escalar(S.ampliado, Math.min(dispW/t.w, dispH/t.h), dispH);   /* CABER */
+    return;
+  }
+  const n=slots.length;
+  const somaW=slots.reduce((a,s)=>a+tamDe(s).w,0);
+  const somaH=slots.reduce((a,s)=>a+tamDe(s).h,0);
+  const maxW=Math.max(...slots.map(s=>tamDe(s).w));
+  const maxH=Math.max(...slots.map(s=>tamDe(s).h));
+  const kCol=Math.min(W/maxW, (H-n*CAB-(n-1)*GAP)/somaH);
+  const kLin=Math.min((W-(n-1)*GAP)/somaW, (H-CAB)/maxH);
+  const melhor=Math.max(kCol,kLin);
+  let k, linha, rola=false;
+  if(melhor<MIN_K){ linha=false; rola=true; k=Math.min(1, W/maxW); }
+  else { linha = kLin>kCol; k = linha?kLin:kCol; }
+  mesa.classList.toggle("linha", linha);
+  mesa.classList.toggle("coluna", !linha);
+  mesa.classList.toggle("rola", rola);
+  slots.forEach(s=>escalar(s,k,null));
+}
+function ampliar(slot){
+  S.ampliado = (S.ampliado===slot) ? null : slot;
+  const mesa=$("#mesa");
+  if(mesa){
+    mesa.classList.toggle("temAmpliado", !!S.ampliado);
+    $$(".apl",mesa).forEach(a=>{
+      a.classList.toggle("ampliado", a.dataset.slot===S.ampliado);
+      if(a.dataset.slot===S.ampliado) a.style.width="";
+    });
+    $$("[data-ampliar]",mesa).forEach(b=>{
+      b.textContent = (b.dataset.ampliar===S.ampliado) ? "VOLTAR" : "AMPLIAR";
+    });
+  }
+  document.documentElement.classList.toggle("ampliado", !!S.ampliado);
+  const bt=$("#btnAmpliar"); if(bt) bt.textContent = S.ampliado ? "VOLTAR" : "AMPLIAR";
+  requestAnimationFrame(()=>{ dimensionar(); requestAnimationFrame(dimensionar); });
+}
+
+/* ============================================================================
+   8. O SOM: o deck toca, o MIXER manda — a moldura traduz
+   ------------------------------------------------------------------------
+   Audio NAO atravessa iframe (MediaStream nao e clonavel por postMessage).
+   Entao ninguem tenta conectar grafo com grafo: o simulador do MIXER publica o
+   ESTADO dele (fader, EQ, trim, crossfader, master, seletor) e a moldura manda
+   GANHO e EQ para cada deck, que aplica no proprio grafo. O som do mixer fica
+   mudo — quem toca e o player, como na cabine.
+   ============================================================================ */
+function faderLaw(v){ return v<=0 ? 0 : Math.pow(v,1.6); }
+function xfGanho(xf, lado){
+  if(xf==null) return 1;
+  if(lado==="A") return Math.cos(xf*Math.PI/2);
+  if(lado==="B") return Math.cos((1-xf)*Math.PI/2);
+  return 1;                                    /* THRU: crossfader nao mexe */
+}
+function eqDb(v){ return (clamp(v==null?0.81:v,0,1)-0.81)/0.19*6; }   /* 0.81 = centro dos EQ Pioneer */
+
+/* ---- o SELETOR DE ENTRADA do canal ----
+   A serigrafia vem do proprio simulador (SEL_LAB, que ja saiu do manual).
+   Aqui so se decide se ela CASA com o que esta entrando. Se o simulador nao
+   souber informar, o elo fica "desconhecido" e NAO silencia: silenciar por
+   chute seria pior que nao silenciar (regra 3 do projeto). */
+function tipoDaPosicao(pos){
+  if(!pos) return null;
+  if(/PHONO/i.test(pos)) return "phono";
+  if(/DECK|ENGINE/i.test(pos)) return "deck";      /* player interno */
+  if(/LINE|\bCD\d?\b/i.test(pos)) return "line";
+  return "outra";                                   /* USB, DIGITAL, RETURN/AUX... */
+}
+const fonteDoPlayer = id => ehVinil(nomeDe(id)) ? "phono" : "line";
+
+/* POSICOES IMPRESSAS NO SELETOR — so entra aqui o que esta CONFERIDO NO MANUAL.
+   Serve de 2a fonte: se o proprio simulador publicar a serigrafia (SEL_LAB),
+   ela vence. Se nao houver nem uma nem outra, o elo fica DESCONHECIDO e a aula
+   NAO silencia — silenciar por chute seria pior que nao silenciar. */
+const POSICOES = {
+  /* DJM-800 — manual oficial: "Note that no PHONO input connector is provided
+     for channel 1." CH2 tem CD/DIGITAL, CH3/CH4 tem LINE/DIGITAL. */
+  djm800:{1:["CD/DIGITAL","LINE"],2:["CD/DIGITAL","PHONO"],3:["LINE/DIGITAL","PHONO"],4:["LINE/DIGITAL","PHONO"]},
+  /* DJM-600 — manual oficial, citacao literal: "CH-1: Switches between CD1/LINE
+     and LINE · CH-2: CD2/LINE and PHONO 1 · CH-3: LINE and PHONO 2 · CH-4:
+     LINE and SUB MIC/PHONO 3". O CH-1 nao tem PHONO nenhum. */
+  djm600:{1:["CD1/LINE","LINE"],2:["CD2/LINE","PHONO 1"],3:["LINE","PHONO 2"],4:["LINE","SUB MIC/PHONO 3"]},
+  djm750:{1:["USB","LINE","PHONO","RETURN AUX"],2:["USB","LINE","PHONO","RETURN AUX"],
+          3:["USB","LINE","PHONO","RETURN AUX"],4:["USB","LINE","PHONO","RETURN AUX"]},
+  djm900:{1:["USB A","USB B","DIGITAL","LINE","PHONO","RETURN/AUX"],2:["USB A","USB B","DIGITAL","LINE","PHONO","RETURN/AUX"],
+          3:["USB A","USB B","DIGITAL","LINE","PHONO","RETURN/AUX"],4:["USB A","USB B","DIGITAL","LINE","PHONO","RETURN/AUX"]},
+  djm2000:{1:["CD/DIGITAL","PHONO","USB 1/2"],2:["CD/DIGITAL","LINE","USB 3/4"],
+           3:["CD/DIGITAL","LINE","USB 5/6"],4:["CD/DIGITAL","PHONO","USB 7/8"]},
+  djmv10:{1:["USB A","USB B","DIGITAL","LINE","PHONO","BUILT-IN"],2:["USB A","USB B","DIGITAL","LINE","MULTI I/O","BUILT-IN"],
+          3:["USB A","USB B","DIGITAL","LINE","PHONO","BUILT-IN"],4:["USB A","USB B","DIGITAL","LINE","PHONO","BUILT-IN"],
+          5:["USB A","USB B","DIGITAL","LINE","MULTI I/O","BUILT-IN"],6:["USB A","USB B","DIGITAL","LINE","PHONO","BUILT-IN"]},
+  /* ⚠️ DJM-450 e X1850: o manual nao esta em disco. As posicoes saem da REPLICA
+     fiel em disco. Marcado como nao conferido — ver estimado() abaixo. */
+  djm450:{1:["USB","LINE","PHONO"],2:["USB","LINE","PHONO"]},
+  x1850:{1:["DIGITAL","LINE","PHONO","USB","DVS"],2:["DIGITAL","LINE","PHONO","USB","DVS"],
+         3:["DIGITAL","LINE","PHONO","USB","DVS"],4:["DIGITAL","LINE","PHONO","USB","DVS"]},
+};
+const SEM_MANUAL = new Set(["djm450","x1850"]);
+
+function selDoCanal(c){
+  const m=S.mixEstado;
+  if(!m) return {conhecido:false};
+  const ops = (m.selOps && m.selOps[c]) || (POSICOES[S.mix]||{})[c] || null;
+  const idx = m.selIdx ? m.selIdx[c] : null;
+  if(!ops || idx==null) return {conhecido:false};
+  /* chave de 2 posicoes: o simulador usa 0 e 2 (esquerda/direita) */
+  const i = ops.length<=2 ? (idx>=2?1:0) : Math.min(idx, ops.length-1);
+  const pos = ops[i];
+  const alvo = fonteDoPlayer(c===1?S.d1:S.d2);
+  const certas = ops.filter(p=>tipoDaPosicao(p)===alvo);
+  return {conhecido:true, pos, casa: tipoDaPosicao(pos)===alvo, certas,
+          estimado: SEM_MANUAL.has(S.mix) && !(m.selOps&&m.selOps[c])};
+}
+
+/* qual elo esta cortando o som do canal — a resposta que o painel mostra */
+function eloDoCanal(c){
+  const m=S.mixEstado;
+  if(!m) return {ok:false, txt:"o simulador do mixer ainda não respondeu — toque no mixer uma vez para acordá-lo."};
+  const sel=selDoCanal(c);
+  if(sel.conhecido && !sel.casa)
+    return {ok:false, txt:"o <b>seletor de entrada do CANAL "+c+"</b> está em <b>"+esc(sel.pos)+"</b>. Nessa posição o canal ouve outra fonte — o player não sai. "+
+      (sel.certas.length?"Neste canal a posição é <b>"+sel.certas.map(esc).join("</b> ou <b>")+"</b>.":"Este canal não tem posição para essa fonte — o player teria de ir para outro canal.")+
+      (sel.estimado?" <span class='est'>⚠️ ESTIMADO</span> a serigrafia deste mixer saiu da réplica em disco, não do manual oficial.":"")};
+  const f = m.fader && m.fader[c];
+  if(f!=null && f<0.03) return {ok:false, txt:"o <b>fader do CANAL "+c+"</b> está fechado."};
+  const t = m.trim && m.trim[c];
+  if(t!=null && t<0.03) return {ok:false, txt:"o <b>TRIM do CANAL "+c+"</b> está no zero."};
+  const lado = m.assign ? m.assign[c] : null;
+  const gx = xfGanho(m.xf, lado);
+  if(gx<0.03) return {ok:false, txt:"o <b>crossfader</b> está todo do outro lado (canal "+c+" atribuído a <b>"+esc(lado||"?")+"</b>)."};
+  if(m.master!=null && m.master<0.03) return {ok:false, txt:"o <b>MASTER</b> do mixer está fechado."};
+  if((S.nivel[c]||0)<0.004) return {ok:false, txt:"o <b>player do canal "+c+"</b> não está tocando: dê play e carregue uma faixa."};
+  return {ok:true, txt:""};
+}
+function ganhoDoCanal(c){
+  const m=S.mixEstado; if(!m) return {v:0, eq:null};
+  if(m.sel && m.sel[c] && m.sel[c].casa===false) return {v:0, eq:null};
+  const f = m.fader && m.fader[c]!=null ? m.fader[c] : 1;
+  const t = m.trim  && m.trim[c]!=null  ? m.trim[c]  : 0.55;
+  const lado = m.assign ? m.assign[c] : null;
+  const mst = m.master!=null ? m.master : 0.75;
+  const v = faderLaw(f) * xfGanho(m.xf,lado) * (0.35+t*1.3) * (mst*1.2);
+  const eq = m.eq && m.eq[c] ? { hi:eqDb(m.eq[c].hi), mid:eqDb(m.eq[c].mid), low:eqDb(m.eq[c].low) } : null;
+  return {v:clamp(v,0,2), eq};
+}
+/* ============================================================================
+   OS DOIS VU DO MIXER — sao medidores DIFERENTES, e de proposito.
+   ----------------------------------------------------------------------------
+   Manual do DJM-900NXS2, "Part names and functions" (citacao literal):
+     k) Channel Level Indicator — "Displays the sound level of the respective
+        channels BEFORE passing through the channel faders."
+     q) Master Level Indicator  — "Displays the audio level output from the
+        [MASTER1] and [MASTER2] terminals."
+   Ou seja: fechar o fader do canal NAO derruba o VU daquele canal (ele mede
+   antes do fader, depois do TRIM e do EQ), mas derruba o do MASTER.
+   O manual ainda confirma o uso: "Adjust the [TRIM] control so that the channel
+   level indicator lights at about [0 dB] at the peak level."
+
+   ⛔ A ESCALA em dB nao e feita aqui. Ela ja esta dentro de cada simulador,
+   tirada do manual dele (o DJM-900NXS2 desenha 15 segmentos por medidor:
+   canal +12..-30 dB e master +15..-27 dB, exatamente como na figura do painel).
+   O que a aula manda e o SINAL — o nivel que existiria no cabo. Quem converte
+   sinal em LED continua sendo o aparelho.
+   ============================================================================ */
+function ganhoEq(c){
+  const m=S.mixEstado, e=m&&m.eq&&m.eq[c];
+  if(!e) return 1;
+  const db=(eqDb(e.hi)+eqDb(e.mid)+eqDb(e.low))/3;    /* media das 3 bandas */
+  return Math.pow(10, db/20);
+}
+function vuDoCanal(c){
+  const m=S.mixEstado; if(!m) return 0;
+  const sel=selDoCanal(c);
+  if(sel.conhecido && !sel.casa) return 0;      /* seletor noutra fonte: nada entra */
+  const t = m.trim && m.trim[c]!=null ? m.trim[c] : 0.55;
+  return clamp((S.nivel[c]||0)*(0.35+t*1.3)*ganhoEq(c), 0, 1);
+}
+function vuMaster(){
+  const m=S.mixEstado; if(!m) return 0;
+  const mst = m.master!=null ? m.master : 0.75;
+  let s=0;
+  [1,2].forEach(c=>{
+    const f = m.fader && m.fader[c]!=null ? m.fader[c] : 1;
+    const lado = m.assign ? m.assign[c] : null;
+    s += vuDoCanal(c) * faderLaw(f) * xfGanho(m.xf,lado);
+  });
+  return clamp(s*(mst*1.2), 0, 1);
+}
+function mandarVU(){
+  if(eCabeamento || S.aio) return;              /* tudo-em-um mede o proprio audio */
+  manda("m",{smu:"vu", ch:{1:vuDoCanal(1), 2:vuDoCanal(2)}, master:vuMaster()});
+}
+function aplicarAudio(){
+  if(eCabeamento) return;
+  if(S.aio){                                   /* tudo-em-um: um aparelho so */
+    manda("m",{smu:"vol",v:1});
+    return;
+  }
+  manda("m",{smu:"vol",v:0});                  /* o mixer nao toca: quem toca e o player */
+  [1,2].forEach(c=>{
+    const g=ganhoDoCanal(c);
+    manda(String(c),{smu:"vol",v:g.v,eq:g.eq});
+  });
+  mandarVU();
+}
+function manda(slot,msg){
+  const f=$("#if-"+slot);
+  if(f&&f.contentWindow) try{ f.contentWindow.postMessage(msg,"*"); }catch(e){}
+}
+
+/* ---- conversa com os simuladores ---- */
+addEventListener("message",ev=>{
+  const d=ev.data; if(!d||!d.smu) return;
+  const slot = slotDaJanela(ev.source);
+  if(d.smu==="tam" && slot){
+    S.tam[slot]={w:d.w,h:d.h};
+    dimensionar();
+    return;
+  }
+  if(d.smu==="estado" && slot==="m"){ S.mixEstado=d.est; aplicarAudio(); pintarPainel(); return; }
+  /* o pico do player chega ~7x por segundo; e ele que move o VU do mixer */
+  if(d.smu==="nivel" && (slot==="1"||slot==="2")){ S.nivel[+slot]=d.v; mandarVU(); pintarPainel(); return; }
+  if(d.smu==="faixas"){ S.faixas=d.lista||[]; if(S.popAberto==="mus") pintarMusicas(); return; }
+  /* PONTE DO YOUTUBE: o player mora na moldura da AULA (React), nunca no
+     simulador. Aqui a aula so repassa — ela e o iframe direto do player. */
+  if(d.smu==="yt"){ try{ parent.postMessage(d,"*"); }catch(e){} return; }
+  if(d.smu==="ytev"){ ["1","2","m"].forEach(s=>manda(s,d)); return; }
+});
+function slotDaJanela(w){
+  for(const s of ["1","2","m"]){ const f=$("#if-"+s); if(f&&f.contentWindow===w) return s; }
+  return null;
+}
+function pedirFaixas(){ ["1","2","m"].forEach(s=>manda(s,{smu:"faixas?"})); }
+
+/* ============================================================================
+   9. PAINEL "O QUE FALTA" / "COMO FUNCIONA" / "MUSICAS"
+   ============================================================================ */
+function faltaPraticando(){
+  const it=[];
+  if(S.aio){
+    it.push([true,"<b>Tudo-em-um</b>: player e mixer no mesmo corpo",
+      "Não há canal para escolher nem cabo para ligar — os decks já saem no mixer interno."]);
+    it.push([(S.nivel[1]||0)>0.004||(S.nivel[2]||0)>0.004 ? true : false,
+      "Dar <b>play</b> e subir o fader",
+      "Toque no aparelho, carregue uma faixa e suba o fader do canal."]);
+    return it;
+  }
+  const e1=eloDoCanal(1), e2=eloDoCanal(2);
+  it.push([true,"Cabine <b>montada</b>: esquerda = <b>CANAL 1</b>, direita = <b>CANAL 2</b>",
+    "A posição na mesa é que manda. Não há canal a escolher."]);
+  it.push([e1.ok,"Fazer o <b>canal 1</b> sair", e1.txt || "está passando."]);
+  it.push([e2.ok,"Fazer o <b>canal 2</b> sair", e2.txt || "está passando."]);
+  return it;
+}
+function pintarPainel(){
+  const it = eCabeamento ? faltaCabeamento()
+           : S.passo===1 ? [[prontoEscolha(),"Escolher o <b>equipamento</b>",
+               "Dois decks + um mixer, ou um <b>tudo-em-um</b> sozinho."]]
+           : faltaPraticando();
   const L=$("#lista"); L.innerHTML="";
   it.forEach(([ok,t,a])=>{
     const d=document.createElement("div"); d.className="chk"+(ok?" ok":"");
-    d.innerHTML=`<div class="b">${ok?"✓":"!"}</div><div class="tx">${t}${ok?"":"<br><span style='color:#7f8b9c'>"+a+"</span>"}</div>`;
+    d.innerHTML='<div class="b">'+(ok?"✓":"!")+'</div><div class="tx">'+t+
+      (ok?"":"<br><span style='color:#7f8b9c'>"+a+"</span>")+'</div>';
     L.appendChild(d);
   });
-  const som = S.passo===3 && tudoLigado() && (S.fader[1]>0.05||S.fader[2]>0.05) && S.master>0.05;
-  const sm=$("#som"); sm.className="som"+(som?" on":""); sm.textContent= som?"SOM NO AR ♪":"SEM SOM";
-  $("#pSinal").textContent = som?"passando":"interrompido";
-  $("#pEnergia").textContent = S.reguaLigada && S.forca.mix ? "ligada":"desligada";
+  const pendentes = it.filter(x=>!x[0]).length;
+  const bad=$("#selFalta"); if(bad){ bad.textContent=pendentes; bad.classList.toggle("zero",pendentes===0); }
 
-  /* faders so no passo 3 */
-  const C=$("#ctrl");
-  C.innerHTML = S.passo===3 ? `
-    <div class="lin"><span class="lb">CANAL 1</span><div class="fad" id="f1"><div class="cap2"></div></div></div>
-    <div class="lin"><span class="lb">CANAL 2</span><div class="fad" id="f2"><div class="cap2"></div></div></div>
-    <div class="lin"><span class="lb">MASTER</span><div class="fad" id="fm"><div class="cap2"></div></div></div>` : "";
-  if(S.passo===3){
-    fader($("#f1"),S.fader[1],v=>{S.fader[1]=v;aplicar();});
-    fader($("#f2"),S.fader[2],v=>{S.fader[2]=v;aplicar();});
-    fader($("#fm"),S.master, v=>{S.master=v; aplicar();});
+  let som=false, elo="";
+  if(eCabeamento){
+    som = it.every(x=>x[0]);
+    elo = som ? "" : "<div class='elo'>Continua <b>mudo</b>: "+esc(it.find(x=>!x[0])[1].replace(/<[^>]+>/g,""))+".</div>";
+  } else if(S.passo>1){
+    if(S.aio){ som=(S.nivel[1]||0)>0.004||(S.nivel[2]||0)>0.004; }
+    else{
+      const e1=eloDoCanal(1), e2=eloDoCanal(2);
+      som = e1.ok || e2.ok;
+      const cortes=[]; if(!e1.ok) cortes.push("<b>Canal 1</b> — "+e1.txt);
+      if(!e2.ok) cortes.push("<b>Canal 2</b> — "+e2.txt);
+      elo = cortes.length ? "<div class='elo'>"+cortes.join("<br>")+"</div>" : "";
+    }
   }
-  $("#dica").innerHTML = S.passo===2
-    ? `<b>Por que pela traseira:</b> é assim na cabine. Você chega, olha atrás do aparelho e decide
-       onde cada cabo entra. <b>Força primeiro</b> — sem energia não há o que testar.<br><br>
-       ${precisaTerra()?`O <b>fio terra</b> do toca-discos parafusa no <b>SIGNAL GND</b> do mixer.
-       Esquecer disso é o zumbido clássico que ninguém acha a causa.`:
-       `Repare que os dois decks são digitais: os dois entram em <b>LINE</b>.`}`
-    : S.passo===3
-    ? `<b>A ordem de subir:</b> régua ligada → aparelhos ligados → fader do canal → <b>master por último</b>.
-       Para baixar, o caminho é o inverso. Master fechado é o hábito que salva caixa e ouvido.`
-    : `Escolha o que quiser: dois CDJ, dois toca-discos, ou um de cada. A ligação muda conforme
-       a escolha — e é isso que você vai descobrir no próximo passo.`;
-  return som;
+  const sm=$("#som");
+  sm.className="som"+(som?" on":"");
+  sm.textContent = som ? "SOM NO AR ♪" : (S.passo===1?"cabine ainda não montada":"SEM SOM");
+  $("#elo").innerHTML = elo;
+  const p=$("#pontoSom"); if(p) p.classList.toggle("ok",som);
+  pintarPassos();
 }
 
-function fader(el,ini,cb){
-  if(!el) return;
-  const cap=el.querySelector(".cap2"); let v=ini;
-  const põe=()=>{ cap.style.left=(6+v*88)+"%"; }; põe();
-  let drag=false;
-  const mv=e=>{ if(!drag)return; const r=el.getBoundingClientRect();
-    v=clamp((e.clientX-r.left)/r.width,0,1); põe(); cb(v); };
-  el.addEventListener("pointerdown",e=>{drag=true;el.setPointerCapture(e.pointerId);mv(e);});
-  el.addEventListener("pointermove",mv);
-  const up=()=>drag=false; el.addEventListener("pointerup",up); el.addEventListener("pointercancel",up);
+function textoComo(){
+  if(eCabeamento) return ''+
+    '<p><b>Por que pela traseira.</b> É assim na cabine: você chega, olha atrás do aparelho e decide onde cada cabo entra. '+
+    'Cada painel desta tela foi <b>medido na figura do manual oficial</b> — a serigrafia e a posição são as do aparelho real.</p>'+
+    '<p><b>A pegadinha número 1 — a ordem dos canais.</b> Na traseira dos mixers Pioneer os canais aparecem <b>ao contrário</b> do painel de cima: '+
+    'da esquerda para a direita lê-se <b>CH4, CH3, CH2, CH1</b>. Quem liga "na ordem" pluga tudo no canal errado e depois não entende por que o fader 1 não sobe o player da esquerda. '+
+    'A única exceção é o DJM-2000, que parte os canais em dois grupos com as saídas no meio.</p>'+
+    '<p><b>Força.</b> Nem todo aparelho tem tomada IEC: o <b>DJM-450</b>, o <b>XDJ-RR</b> e o <b>XDJ-700</b> usam <b>fonte externa de 12 V</b> — o cabo vai da fonte ao DC IN, e a fonte é que entra na régua. '+
+    'E o <b>Technics SL-1200MK2</b> não tem conector nenhum atrás: o cabo de força e o par RCA são <b>cativos</b>, saem do aparelho.</p>'+
+    '<p><b>RCA.</b> Player digital sai em <b>nível de linha</b> e entra em <b>LINE</b>. Toca-discos sai em <b>nível de agulha</b> e entra em <b>PHONO</b> — e ainda quer o <b>terra</b>, senão zumbe. Trocar os dois não é detalhe: em LINE o vinil fica inaudível, e em PHONO o CDJ estoura.</p>'+
+    '<p><b>RJ45 — PRO DJ LINK.</b> É cabo de rede comum ligando os players ao mixer. É ele que leva BPM, forma de onda e a mesma pasta do pendrive para todos os aparelhos. '+
+    'Se o mixer não tem porta LINK para todo mundo, entra um <b>switch</b> — exatamente como no clube.</p>';
+  return ''+
+    '<p><b>A posição é que manda.</b> O player da <b>esquerda</b> está no <b>CANAL 1</b> do mixer e o da <b>direita</b> no <b>CANAL 2</b>. '+
+    'Não há canal para escolher: é assim que a cabine chega montada. Suba o fader do canal 1 e quem sobe é o player da esquerda.</p>'+
+    '<p><b>O caminho do som.</b> O som nasce no player, atravessa o <b>seletor de entrada</b> do canal, o <b>TRIM</b>, o <b>EQ</b>, o <b>fader do canal</b>, o <b>crossfader</b> e só então o <b>MASTER</b>. '+
+    'Qualquer um desses fechado e não sai nada — e o painel <b>O QUE FALTA</b> diz qual deles está cortando, em vez de só dizer "sem som".</p>'+
+    '<p><b>O seletor de entrada</b> é o defeito nº 1 da cabine de verdade. Player no canal certo, fader em cima, e mesmo assim silêncio: a chave estava em PHONO. '+
+    'Some em 2 segundos quando você sabe onde olhar.</p>'+
+    '<p><b>Ampliar.</b> Toque em <b>AMPLIAR</b> no cabeçalho de qualquer aparelho para ele ocupar a tela toda — e de novo para voltar. No iPad é o jeito de operar o jog com o dedo.</p>'+
+    '<p style="color:#8b97a9">Força e cabos são a outra aula, <b>“Ligando a cabine”</b>. Aqui a cabine já está ligada: o assunto é operar.</p>';
+}
+/* ---------------------------------------------------------------------------
+   AS FAIXAS SAO DA AULA, nao do aparelho.
+   Antes a janela MUSICAS pedia a lista ao simulador embutido — e a maioria dos
+   29 aparelhos nao tem o Banco SMU dentro, entao a janela ficava vazia. Agora a
+   lista mora aqui e a aula MANDA a faixa para o deck.
+   URL absoluta com CORS "*" e obrigatoria: o sim roda em iframe de origem
+   opaca, caminho relativo da 404 e o fetch sai com Origin: null.            */
+const BANCO_BASE = "https://pshynylvvkhhohftouoe.supabase.co/storage/v1/object/public/musicas-dj/";
+const BANCO_FAIXAS = [
+  {arquivo:"sotex-1.mp3", nome:"SOTEX 01", bpm:98.4 },{arquivo:"sotex-2.mp3", nome:"SOTEX 02", bpm:144.6},
+  {arquivo:"sotex-3.mp3", nome:"SOTEX 03", bpm:146.4},{arquivo:"sotex-4.mp3", nome:"SOTEX 04", bpm:95.3 },
+  {arquivo:"sotex-5.mp3", nome:"SOTEX 05", bpm:133.4},{arquivo:"sotex-6.mp3", nome:"SOTEX 06", bpm:113.3},
+  {arquivo:"sotex-7.mp3", nome:"SOTEX 07", bpm:117.7},{arquivo:"sotex-8.mp3", nome:"SOTEX 08", bpm:117.7},
+  {arquivo:"sotex-9.mp3", nome:"SOTEX 09", bpm:160.2},{arquivo:"sotex-10.mp3",nome:"SOTEX 10", bpm:160.2},
+  {arquivo:"sotex-11.mp3",nome:"SOTEX 11", bpm:89.6 },{arquivo:"sotex-12.mp3",nome:"SOTEX 12", bpm:139.6},
+  {arquivo:"sotex-13.mp3",nome:"SOTEX 13", bpm:122.5}
+];
+
+/* extrai o id de um link do YouTube em qualquer formato, ou aceita o id cru.
+   Colar link NAO gasta cota de API — e o caminho recomendado ao aluno. */
+function idDoYoutube(t){
+  t=(t||"").trim(); if(!t) return null;
+  if(/^[\w-]{11}$/.test(t)) return t;
+  const m=t.match(/(?:youtu\.be\/|v=|\/embed\/|\/shorts\/|\/live\/)([\w-]{11})/);
+  return m?m[1]:null;
 }
 
-function aplicar(){
-  const som=checklist();
-  [1,2].forEach(n=>{
-    const c=S.rca[n];
-    const v = (som && c && casa(n)) ? S.fader[c]*S.master : 0;
-    const f=$("#if"+n); if(f&&f.contentWindow) f.contentWindow.postMessage({smu:"vol",v},"*");
-  });
-  const m=$("#ifm"); if(m&&m.contentWindow) m.contentWindow.postMessage({smu:"vol",v:0},"*");
+function pintarMusicas(){
+  const M=$("#mus");
+  if(eCabeamento){ M.innerHTML='<p>Nesta aula nao ha musica: o assunto e o cabo. As faixas entram na aula <b>"Monte seu Setup e treine"</b>.</p>'; return; }
+  if(S.passo!==2){ M.innerHTML='<p>Escolha os aparelhos primeiro. Depois volte aqui para por musica em cada deck.</p>'; return; }
+
+  const L = S.faixas.length ? S.faixas : BANCO_FAIXAS;
+  const linha=(f,i)=>'<div class="faixa"><span class="fn">'+esc(f.nome)+(f.bpm?" &middot; "+f.bpm+" BPM":"")+'</span>'+
+    '<button class="fb '+(S.faixaDe[1]===i?"on":"")+'" data-faixa="1" data-i="'+i+'">DECK 1</button>'+
+    '<button class="fb '+(S.faixaDe[2]===i?"on":"")+'" data-faixa="2" data-i="'+i+'">DECK 2</button></div>';
+
+  M.innerHTML =
+    '<p><b>Minhas faixas</b> — as musicas do Banco SMU. Escolha uma para cada deck.</p>'+
+    L.map(linha).join("")+
+    '<hr style="border:0;border-top:1px solid #1c2229;margin:12px 0">'+
+    '<p><b>YouTube</b> — cole o link do video e mande para um deck.</p>'+
+    '<div class="faixa" style="gap:5px">'+
+      '<input id="ytUrl" class="fn" placeholder="cole aqui o link do YouTube" '+
+        'style="font:inherit;font-size:11px;padding:6px 7px;border-radius:6px;background:#0c1015;'+
+        'color:#dbe4ee;border:1px solid #22303c;min-width:0">'+
+      '<button class="fb" id="ytD1">DECK 1</button><button class="fb" id="ytD2">DECK 2</button>'+
+    '</div>'+
+    '<div id="ytMsg" style="font-size:10.5px;color:#8b97a9;margin-top:5px">'+
+      'Colar o link funciona sempre e nao gasta cota. <b>Nao e preciso entrar na sua conta Google</b> '+
+      'para ouvir — a conta so serve para playlist particular, que a aula nao usa.</div>'+
+    '<p style="color:#8b97a9;margin-top:9px;font-size:10.5px">O player do YouTube aparece na '+
+      '<b>moldura da aula</b>, nunca dentro do aparelho: sem <code>allow-same-origin</code> o '+
+      '<code>onReady</code> nunca chega (testado lado a lado). Por isso <b>pitch, jog e EQ nao agem</b> '+
+      'em faixa de streaming — o audio do YouTube nao pode ser processado.</p>';
+
+  $$("[data-faixa]",M).forEach(b=>b.addEventListener("click",()=>{
+    const d=+b.dataset.faixa, i=+b.dataset.i;
+    S.faixaDe[d] = (S.faixaDe[d]===i) ? null : i;
+    const f = L[i];
+    /* manda o ENDERECO junto: assim funciona ate no aparelho que nao tem o Banco */
+    manda(String(d), {smu:"faixa", i:S.faixaDe[d],
+      url: S.faixaDe[d]===null?null:(BANCO_BASE+f.arquivo), nome:f.nome, bpm:f.bpm});
+    pintarMusicas();
+  }));
+
+  const mandarYT = d => {
+    const id = idDoYoutube($("#ytUrl").value);
+    const msg = $("#ytMsg");
+    if(!id){ msg.innerHTML='<span style="color:#ff9b9b">Nao reconheci esse link. '+
+      'Vale youtube.com/watch?v=..., youtu.be/... ou o id de 11 caracteres.</span>'; return; }
+    /* o player mora na moldura do curso; a aula so avisa */
+    parent.postMessage({smu:"youtube", deck:d, id:id}, "*");
+    manda(String(d), {smu:"fonte", tipo:"youtube", id:id});
+    msg.innerHTML='<span style="color:#7df0a8">Video mandado para o DECK '+d+'. '+
+      'O player aparece na moldura da aula.</span>';
+  };
+  $("#ytD1").addEventListener("click",()=>mandarYT(1));
+  $("#ytD2").addEventListener("click",()=>mandarYT(2));
 }
 
-/* ---------- render ---------- */
+/* ============================================================================
+   10. PASSOS (compactos, na propria barra)
+   ============================================================================ */
+function passosDaAula(){
+  return eCabeamento
+    ? [["1","Escolher"],["2","Cabear a traseira"]]
+    : [["1","Escolher"],["2","A mesa"]];
+}
+function pintarPassos(){
+  const P=$("#passos");
+  const feito2 = eCabeamento ? faltaCabeamento().every(x=>x[0])
+                             : (S.passo>1 && !!S.mixEstado);
+  P.innerHTML = passosDaAula().map(([n,t])=>{
+    const on = +n===S.passo;
+    const ok = (n==="1"&&prontoEscolha()) || (n==="2"&&feito2);
+    const liberado = n==="1" || prontoEscolha();
+    return '<button class="pa '+(on?"on":"")+' '+(ok?"ok":"")+'" data-p="'+n+'" '+(liberado?"":"disabled")+'>'+
+      n+" · "+t+'</button>';
+  }).join("");
+  $$(".pa",P).forEach(b=>b.addEventListener("click",()=>{
+    const n=+b.dataset.p; if(n===2&&!prontoEscolha()) return;
+    S.passo=n; render();
+  }));
+}
+
+/* ============================================================================
+   11. LIGAR OS EVENTOS DA TELA
+   ============================================================================ */
+function ligar(){
+  $$(".opt[data-campo]").forEach(el=>el.addEventListener("click",()=>{
+    const campo=el.dataset.campo;
+    if(campo==="aio"){
+      S.aio = (S.aio===el.dataset.id) ? null : el.dataset.id;
+      if(S.aio){ S.d1=S.d2=S.mix=null; }
+    } else { S[campo]=el.dataset.id; S.aio=null; }
+    S.ligacoes=[]; S.pegou=null; S.tam={}; S.mixEstado=null;
+    if(prontoEscolha()) S.passo=2;
+    render();
+  }));
+  /* --- aula 1 --- */
+  $$(".cabo-b").forEach(b=>b.addEventListener("click",()=>{ S.cabo=b.dataset.cabo; S.pegou=null; S.erroCabo=null; render(); }));
+  $$(".con.clicavel").forEach(c=>c.addEventListener("click",ev=>{
+    ev.stopPropagation(); clicarConector(c.dataset.dono, +c.dataset.i);
+  }));
+  $$(".tom").forEach(t=>t.addEventListener("click",ev=>{
+    ev.stopPropagation();
+    if(S.cabo!=="ac"){ S.erroCabo="a régua só recebe <b>cabo AC</b>. Troque o cabo lá em cima."; render(); return; }
+    clicarConector("tom", +t.dataset.tom);
+  }));
+  const ch=$("#chaveac"); if(ch) ch.addEventListener("click",()=>{ S.reguaLigada=!S.reguaLigada; render(); });
+  /* --- aula 2 --- */
+  $$("[data-ampliar]").forEach(b=>b.addEventListener("click",ev=>{ ev.stopPropagation(); ampliar(b.dataset.ampliar); }));
+}
+
+/* ============================================================================
+   12. RENDER
+   ============================================================================ */
 function render(){
-  $$(".pa").forEach(p=>{ const n=+p.dataset.p;
-    p.classList.toggle("on",n===S.passo);
-    p.classList.toggle("ok", (n===1&&S.d1&&S.d2&&S.mix) || (n===2&&tudoLigado()) ); });
   const P=$("#palco");
-  P.innerHTML = S.passo===1?telaEscolha() : S.passo===2?telaTraseira() : telaFrente();
-  ligar(); checklist();
-  if(S.passo===2) cabos();
-  $("#btnVirar").disabled = !(S.d1&&S.d2&&S.mix);
-  $("#btnVirar").textContent = S.passo===3 ? "Ver a traseira" : "Virar os aparelhos";
+  const antes = S.passo===2 && !eCabeamento ? assinaturaMesa() : null;
+  if(antes && antes===P.dataset.assinatura){
+    /* a MESA ja esta montada: nao remontar (isso recarregaria os simuladores
+       e mataria o audio do aluno). So repinta o painel. */
+    pintarPainel(); pintarComo(); return;
+  }
+  P.innerHTML = S.passo===1 ? telaEscolha() : (eCabeamento ? telaTraseira() : telaMesa());
+  P.dataset.assinatura = antes || "";
+  ligar(); pintarPainel(); pintarComo();
+  if(eCabeamento && S.passo===2){
+    requestAnimationFrame(fios);
+    if(S.erroCabo){ $("#elo").innerHTML="<div class='elo'>"+S.erroCabo+"</div>"; }
+  }
+  if(!eCabeamento && S.passo===2){
+    S.ampliado=null;
+    document.documentElement.classList.remove("ampliado");
+    requestAnimationFrame(()=>{ dimensionar(); requestAnimationFrame(dimensionar); });
+  }
+  const bt=$("#btnAmpliar");
+  if(bt){ bt.disabled = !(S.passo===2 && !eCabeamento); bt.textContent = S.ampliado?"VOLTAR":"AMPLIAR"; }
 }
-$("#btnVirar").onclick=()=>{ if(S.passo===3) S.passo=2; else if(tudoLigado()) S.passo=3; else S.passo=2; render(); };
-$("#btnReset").onclick=()=>location.reload();
+function assinaturaMesa(){ return "mesa|"+S.aio+"|"+S.d1+"|"+S.d2+"|"+S.mix; }
+function pintarComo(){ $("#como").innerHTML = textoComo(); if(S.popAberto==="mus") pintarMusicas(); }
+
+$("#btnReset").addEventListener("click",()=>location.reload());
+$("#btnAmpliar").addEventListener("click",()=>{
+  if(eCabeamento||S.passo!==2) return;
+  ampliar(S.ampliado || "m");        /* o mixer e o que mais pede tela */
+});
+
+/* titulo e subtitulo conforme o MODO */
+(function(){
+  const t = eCabeamento
+    ? ["Ligando a cabine","PRO • LIGANDO A CABINE"]
+    : ["Praticando: monte a sua cabine","PRO • PRATICANDO A CABINE"];
+  document.title = t[0]+" (SMU)";
+  const b=$("#sub"); if(b) b.textContent=t[1];
+})();
+
+/* ----------------------------------------------------------------------------
+   REDIMENSIONAR — nao dava para depender so do evento `resize` da janela.
+   MEDIDO: pondo a janela em 768x1024 (iPad em pe), a escala ficou congelada em
+   0,5802 no arranjo "linha" e 130 px dos aparelhos das pontas sairam da tela.
+   Chamando dimensionar() na mao no mesmo instante, o arranjo virou "coluna
+   rola", escala 1, os tres INTEIROS dentro da janela e sem rolagem lateral —
+   ou seja, a CONTA sempre esteve certa; quem faltou foi o GATILHO.
+   Tres motivos reais para o `resize` nao servir sozinho:
+     1. a aula roda dentro do iframe do player do curso — quando o player muda
+        o tamanho do iframe, a janela de dentro nem sempre recebe `resize`;
+     2. no iOS, girando o aparelho, o `resize` chega ANTES de innerWidth/
+        innerHeight assumirem o valor novo — medir nessa hora da o valor velho;
+     3. a barra de endereco do Safari entra e sai sem disparar nada confiavel.
+   Entao o gatilho passa a ser o ResizeObserver do proprio elemento (que mede o
+   que ELE tem, nao o que a janela diz) mais uma segunda passada atrasada.
+   ---------------------------------------------------------------------------- */
+/* Uma passada nao converge, e nao e teimosia: quando o arranjo sai de "rola"
+   some a BARRA DE ROLAGEM, e o palco fica ~15 px mais largo do que estava na
+   hora da conta. Medido: 1a passada k=0,571512 (palco 1009) · 2a k=0,580233
+   (palco 1024). Por isso mede-se de novo no quadro seguinte — mesmo truque que
+   o ampliar() ja usava. */
+function passada(){ if(eCabeamento) fios(); else { dimensionar(); requestAnimationFrame(dimensionar); } }
+let redim=null;
+function reposicionar(){
+  clearTimeout(redim);
+  redim=setTimeout(passada,80);
+  setTimeout(passada,420);   /* no iOS a 1a ainda pega innerWidth/Height velhos */
+}
+addEventListener("resize", reposicionar);
+addEventListener("orientationchange", reposicionar);
+if(window.ResizeObserver){
+  const ro=new ResizeObserver(()=>reposicionar());
+  const observar=()=>{ const p=$("#palco"); if(p) ro.observe(p); ro.observe(document.body); };
+  if(document.readyState==="loading") addEventListener("DOMContentLoaded",observar); else observar();
+}
 
 render();
-const fit=()=>{ const w=$(".wrap");
-  const s=Math.max(0.1,Math.min((window.innerWidth-6)/w.offsetWidth,(window.innerHeight-6)/w.offsetHeight,1));
-  $("#stage").style.transform="scale("+s+")"; };
-window.addEventListener("resize",()=>{fit(); if(S.passo===2)cabos();}); fit();
+/* o mixer manda o estado sozinho, mas na 1a vez pedimos — assim o painel
+   ja nasce dizendo qual elo esta cortando, sem esperar o aluno mexer. */
+setTimeout(()=>{ if(!eCabeamento&&S.passo===2){ manda("m",{smu:"estado?"}); pedirFaixas(); } },900);
 </script>
 </body>
 </html>
