@@ -70,7 +70,9 @@ for (const a of aulas) {
      batido (achado da sessao do Banco SMU). Entao o guard tambem procura o
      PADRAO, sem depender de ninguem lembrar de marcar: referencia a arquivo
      de audio por caminho relativo. */
-  const audioRelativo = /["'`](?!https?:\/\/|data:|blob:)[^"'`\s]*\.(mp3|wav|ogg|m4a|flac)["'`]/i.test(local);
+  /* exige BARRA de diretorio: "musicas/x.mp3" e caminho relativo (quebra),
+     mas "sotex-1.mp3" e so o nome no catalogo, juntado com a base em runtime. */
+  const audioRelativo = /["'`](?!https?:\/\/|data:|blob:|\/\/)[^"'`\s]*\/[^"'`\s]*\.(mp3|wav|ogg|m4a|flac)["'`]/i.test(local);
 
   const motivo = (temBanco && baseRelativa) ? "Banco SMU com caminho relativo"
                : audioRelativo               ? "referencia a arquivo de audio por caminho relativo"

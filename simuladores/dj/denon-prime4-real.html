@@ -577,7 +577,7 @@ async function renderTrack(seed){
 
 function makeDeck(buf,bpm,layer){
   const data=buf.getChannelData(0), len=data.length;
-  const D={ buffer:buf,data,len,pos:0,playing:false,rate:0,pitch:0,bend:0,range:8,baseBpm:bpm,dir:1,touching:false,targetPos:0,
+  const D={ buffer:buf,data,len,pos:0,playing:false,rate:0,pitch:0,bend:0,range:8,baseBpm:(window.__BANCO_BPM||bpm),dir:1,touching:false,targetPos:0,
       cuePoint:0,cuePreview:false,hotcues:{},padloops:{},loopOn:false,loopStart:0,loopEnd:0,loopIn:false,
       loopArm:-1,loopArmPos:0,loopPad:-1,peaks:null,padmode:"hotcue",vinyl:true,keylock:true,
       slip:false,layer:layer||1,slipT:null,slipFrom:0,sliceStart:0,heldPad:-1,bendJog:0,bendAt:0,revLatch:false };
@@ -1028,6 +1028,118 @@ function init(){ build(); frame(); animMeters();
   window.addEventListener("resize",fit); fit();
 }
 init();
+
+
+
+
+/*BANCO-SMU-INI*/
+/*BANCO-SMU-v2*/
+/* BANCO SMU — faixas liberadas da SMU tocando no motor completo deste aparelho.
+   ⛔ Em producao BASE tem de ser URL ABSOLUTA com CORS "*": o sim roda em
+   <iframe srcDoc sandbox> sem allow-same-origin e sem <base>, entao caminho
+   relativo resolve contra a URL da AULA (404) e o fetch vai com Origin: null. */
+(function(){
+  var BASE = "https://pshynylvvkhhohftouoe.supabase.co/storage/v1/object/public/musicas-dj/";
+  var FAIXAS = [
+    { arquivo:"sotex-1.mp3",  nome:"SOTEX 01", bpm:98.4  },
+    { arquivo:"sotex-2.mp3",  nome:"SOTEX 02", bpm:144.6 },
+    { arquivo:"sotex-3.mp3",  nome:"SOTEX 03", bpm:146.4 },
+    { arquivo:"sotex-4.mp3",  nome:"SOTEX 04", bpm:95.3  },
+    { arquivo:"sotex-5.mp3",  nome:"SOTEX 05", bpm:133.4 },
+    { arquivo:"sotex-6.mp3",  nome:"SOTEX 06", bpm:113.3 },
+    { arquivo:"sotex-7.mp3",  nome:"SOTEX 07", bpm:117.7 },
+    { arquivo:"sotex-8.mp3",  nome:"SOTEX 08", bpm:117.7 },
+    { arquivo:"sotex-9.mp3",  nome:"SOTEX 09", bpm:160.2 },
+    { arquivo:"sotex-10.mp3", nome:"SOTEX 10", bpm:160.2 },
+    { arquivo:"sotex-11.mp3", nome:"SOTEX 11", bpm:89.6  },
+    { arquivo:"sotex-12.mp3", nome:"SOTEX 12", bpm:139.6 },
+    { arquivo:"sotex-13.mp3", nome:"SOTEX 13", bpm:122.5 }
+  ];
+  window.BANCO_SMU = { base:BASE, faixas:FAIXAS, escolhida:null, cache:{} };
+
+  /* Envolve renderTrack: escolheu faixa -> MP3 real; senao -> faixa sintetizada.
+     O deck recebe um AudioBuffer nos dois casos e nao percebe diferenca. */
+  if (typeof renderTrack === "function") {
+    var _orig = renderTrack;
+    renderTrack = async function(){
+      var esc = window.BANCO_SMU.escolhida;
+      if (!esc) return await _orig.apply(this, arguments);
+      try {
+        if (window.BANCO_SMU.cache[esc.arquivo]) {
+          window.__BANCO_BPM = esc.bpm;
+          return window.BANCO_SMU.cache[esc.arquivo];
+        }
+        var r = await fetch(window.BANCO_SMU.base + esc.arquivo);
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        var buf = await AC.decodeAudioData(await r.arrayBuffer());
+        window.BANCO_SMU.cache[esc.arquivo] = buf;
+        window.__BANCO_BPM = esc.bpm;
+        return buf;
+      } catch(e) {
+        console.warn("Banco SMU falhou, usando faixa de treino:", e);
+        window.__BANCO_BPM = null;
+        return await _orig.apply(this, arguments);
+      }
+    };
+  }
+
+  /* A barra e position:fixed, entao ela se prende a viewport do IFRAME em que
+     o sim roda. Em uso normal isso e a tela do simulador (ok). Mas quando o sim
+     e EMBUTIDO dentro de outra aula (iframe dentro de iframe), a viewport vira
+     do tamanho do aparelho na bancada e a barra cobriria o painel.
+
+     ⛔ NAO usar "window.self !== window.top" p/ detectar isso: em uso NORMAL o
+     sim JA roda dentro de um iframe (srcDoc do animation-player), entao essa
+     condicao e sempre verdadeira e some com a barra em todo lugar.
+     O que distingue e a PROFUNDIDADE: aninhado 2+ niveis -> parent != top. */
+  function embutido(){
+    if (window.__SMU_EMBUTIDO) return true;              // bandeira explicita
+    try { return window.parent !== window.top; } catch(e) { return false; }
+  }
+  window.BANCO_SMU.mostrarBarra = function(v){           // controle manual
+    var b = document.getElementById("bancoSmuBar");
+    if (b) b.style.display = v ? "flex" : "none";
+  };
+
+  /* Barra flutuante: nao depende do layout do aparelho (cada sim tem o seu). */
+  function montar(){
+    if (embutido()) return;                              // quem embute controla a UI
+    if (document.getElementById("bancoSmuBar")) return;
+    var bar = document.createElement("div");
+    bar.id = "bancoSmuBar";
+    bar.style.cssText = "position:fixed;left:8px;bottom:8px;z-index:9999;display:flex;gap:6px;"+
+      "align-items:center;background:#0d1117ee;border:1px solid #1d5638;border-radius:9px;"+
+      "padding:6px 9px;font:11px/1.3 Inter,system-ui,sans-serif;color:#b7f5cf;"+
+      "box-shadow:0 6px 24px #000a;backdrop-filter:blur(4px)";
+    var lbl = document.createElement("span");
+    lbl.textContent = "🎵 BANCO SMU";
+    lbl.style.cssText = "font-weight:800;letter-spacing:.5px";
+    var sel = document.createElement("select");
+    sel.style.cssText = "font:inherit;background:#10241a;color:#dff7e9;border:1px solid #1d5638;"+
+      "border-radius:6px;padding:3px 6px;max-width:190px";
+    var op0 = document.createElement("option");
+    op0.value = ""; op0.textContent = "faixa de treino (padrão)";
+    sel.appendChild(op0);
+    FAIXAS.forEach(function(f,i){
+      var o = document.createElement("option");
+      o.value = String(i); o.textContent = f.nome + " · " + f.bpm + " BPM";
+      sel.appendChild(o);
+    });
+    var msg = document.createElement("span");
+    msg.style.cssText = "color:#7fa08d";
+    sel.addEventListener("change", function(){
+      window.BANCO_SMU.escolhida = sel.value === "" ? null : FAIXAS[+sel.value];
+      msg.textContent = sel.value === ""
+        ? "recarregue p/ voltar à faixa de treino"
+        : "recarregue o áudio p/ tocar esta faixa";
+    });
+    bar.appendChild(lbl); bar.appendChild(sel); bar.appendChild(msg);
+    document.body.appendChild(bar);
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", montar);
+  else montar();
+})();
+
 </script>
 </body>
 </html>

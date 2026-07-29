@@ -349,7 +349,12 @@ const POS={
  abl2:       [6.15,8.28,4.34,3.84],           /* X2Y1  — AUTO BEAT LOOP 2 (cut 1/4)  */
  timemode:   [17.66,9.7,2.45,2.17],           /* X2Y2  — TIME MODE / AUTO CUE        */
  textmode:   [23.53,9.7,2.45,2.17],           /* X2Y2  — TEXT MODE                   */
- display:    [13.71,5.33,72.45,16.73],        /* X1Y2 → X3Y7 — bloco preto do visor  */
+ /* VISOR = a janela do FL, medida na foto (px 389..614 x 215..265).
+    NÃO é o bloco preto inteiro: aquele é plástico do chassi e nele MORAM
+    botões físicos de verdade (TIME/TEXT MODE, DELETE/MEMORY, CALL, LOOP
+    IN/OUT, RELOOP, FOLDER SEARCH, QUICK RETURN). O bloco preto é decoração,
+    desenhado por boxpx("dblk",...) — fora do POS. */
+ display:    [34.69,8.43,31.47,6.2],          /* X1Y3 → X2Y6 — janela do visor (FL) */
  call:       [75.8,13.69,2.38,2.11],          /* X2Y7  — CUE/LOOP CALL ◄             */
  call2:      [81.33,13.69,2.38,2.11],         /* X2Y7  — CUE/LOOP CALL ►             */
  abl4:       [6.15,14.06,4.34,3.84],          /* X2Y1  — AUTO BEAT LOOP 4 (cut 1/2)  */
@@ -382,8 +387,9 @@ const ROUND=new Set(["abl1","abl2","abl4","abl8","timemode","textmode","deletebt
 
 /* helpers de pixel-da-foto → % do painel (mesma régua do POS) */
 const PX=px=>(px-141)/715*100, PY=py=>(py-147)/807*100, PW=w=>w/715*100, PH=h=>h/807*100;
-/* região do LCD dentro do bloco preto (px da foto: 388..752 x 203..268) */
-const LCD=[PX(388),PY(203),PW(364),PH(65)];
+/* O canvas do visor é EXATAMENTE o retângulo do POS.display — uma fonte de
+   verdade só. (janela do FL na foto: px 389..614 x 215..265) */
+const LCD=POS.display;
 
 /* setas em SVG (sem depender de emoji/fonte do sistema) */
 const _sv=(inner,fill)=>'<svg viewBox="0 0 34 12" preserveAspectRatio="xMidYMid meet" fill="'+fill+'">'+inner+'</svg>';
@@ -397,7 +403,8 @@ const SVG_L=_sm('<path d="M8.2 1.4v9.2L2.4 6z"/>');
 const SVG_R=_sm('<path d="M3.8 1.4v9.2L9.6 6z"/>');
 
 const CTRL=[
-  /* display PRIMEIRO: os botões que ficam SOBRE o bloco preto precisam receber o clique */
+  /* o visor é a janela do FL — nenhum botão fica em cima dele. Os botões que
+     parecem "no visor" estão, na verdade, no PLÁSTICO PRETO em volta (dblk). */
   {act:"display",kind:"disp",k:"DISPLAY (visor)", d:"Visor do CDJ-800MK2: nº da faixa, tempo (REMAIN/ELAPSED), quadros, TEMPO %, endereço de reprodução (barra pontilhada) e o BPM automático."},
   {act:"play", kind:"big",cls:"play",k:"PLAY / PAUSE", d:"Toca e pausa. Em modo VINYL o prato desacelera como um vinil ao pausar — a rampa é a que você regula no VINYL SPEED ADJUST."},
   {act:"cue",  kind:"big",cls:"cue",k:"CUE", d:"Marca e confirma o ponto de partida. Parado num ponto novo, define o cue ali; tocando, volta ao cue e pausa (back-cue)."},
@@ -536,49 +543,63 @@ function drawDisplay(){ if(!dispCtx)return; const ctx=dispCtx,W=dispW,H=dispH;
   ctx.textBaseline="alphabetic"; ctx.textAlign="left";
   const F=(w,s)=>{ctx.font=w+" "+Math.max(5,Math.round(H*s))+"px 'Arial Narrow',Arial,sans-serif";};
 
-  /* linha de indicadores (TRK · A.CUE · REMAIN · M · S · F · TEMPO) */
-  F("700",0.135);
-  ctx.fillStyle=DIM;             ctx.fillText("TRK",W*0.045,H*0.27);
-  ctx.fillStyle=autoCue?RED:DIM; ctx.fillText("A.CUE",W*0.095,H*0.27);
-  ctx.fillStyle=DIM;             ctx.fillText(timeRemain?"REMAIN":"ELAPSED",W*0.158,H*0.27);
-  ctx.fillStyle=DIM;             ctx.fillText("M",W*0.238,H*0.27);
-  ctx.fillStyle=DIM;             ctx.fillText("S",W*0.368,H*0.27);
-  ctx.fillStyle=DIM;             ctx.fillText("F",W*0.492,H*0.27);
-  ctx.fillStyle=DIM;             ctx.fillText("TEMPO",W*0.560,H*0.27);
+  /* ---------------------------------------------------------------------
+     Todas as frações abaixo saíram da MEDIDA da foto top-down.
+     Janela do FL = px 389..614 x 215..265  →  fx=(px-389)/225 · fy=(py-215)/50
+     --------------------------------------------------------------------- */
 
-  /* nº da faixa + tempo M:S + quadros */
+  /* linha de indicadores (TRK · A.CUE · REMAIN · M · S · F · TEMPO) — py 219..224 */
+  F("700",0.13);
+  ctx.fillStyle=DIM;             ctx.fillText("TRK",W*0.071,H*0.19);      /* px 405 */
+  ctx.fillStyle=autoCue?RED:DIM; ctx.fillText("A.CUE",W*0.151,H*0.19);    /* px 423 */
+  ctx.fillStyle=DIM;             ctx.fillText(timeRemain?"REMAIN":"ELAPSED",W*0.249,H*0.19); /* px 445 */
+  ctx.fillStyle=DIM;             ctx.fillText("M",W*0.382,H*0.19);        /* px 475 */
+  ctx.fillStyle=DIM;             ctx.fillText("S",W*0.578,H*0.19);        /* px 519 */
+  ctx.fillStyle=DIM;             ctx.fillText("F",W*0.738,H*0.19);        /* px 555 */
+  ctx.fillStyle=DIM;             ctx.fillText("TEMPO",W*0.813,H*0.19);    /* px 572 */
+
+  /* fileira de caracteres — py 224..240 (base 240) */
   const show=timeRemain?rem:cur;
   const mm=String(Math.floor(show/60)).padStart(2,"0"), ss=String(Math.floor(show%60)).padStart(2,"0"),
         ff=String(Math.floor((show*75)%75)).padStart(2,"0");
-  ctx.fillStyle=WHT; F("700",0.38);
-  ctx.fillText("01",W*0.038,H*0.63);
-  ctx.fillText(mm+":"+ss,W*0.157,H*0.63);
-  ctx.fillText(ff,W*0.404,H*0.63);
-  /* TEMPO % */
   const p=d?d.pitch:0;
-  ctx.fillStyle=WHT; F("700",0.34);
-  ctx.fillText((p>=0?"+":"−")+Math.abs(p).toFixed(2),W*0.566,H*0.63);
-  F("700",0.19); ctx.fillText("%",W*0.855,H*0.60);
+  if(textOn){
+    /* TEXT MODE: no aparelho real o texto do disco ocupa a MESMA fileira de
+       caracteres — não existe linha extra no visor. */
+    ctx.fillStyle=WHT; F("700",0.30);
+    ctx.fillText("SMU-PRO / DEMO 128",W*0.071,H*0.50);
+  } else {
+    ctx.fillStyle=WHT; F("700",0.38);
+    ctx.fillText("01",W*0.071,H*0.50);            /* px 405 */
+    ctx.fillText(mm+":"+ss,W*0.249,H*0.50);       /* px 445 */
+    ctx.fillText(ff,W*0.649,H*0.50);              /* px 535 */
+    F("700",0.32);
+    ctx.fillText((p>=0?"+":"−")+Math.abs(p).toFixed(2),W*0.773,H*0.50);  /* px 563 */
+    F("700",0.19); ctx.fillText("%",W*0.947,H*0.48);                     /* px 602 */
+  }
 
-  /* endereço de reprodução: barra pontilhada vermelha + colchete, como na foto */
-  const bx=W*0.012, bw=W*0.448, by=H*0.70, bh=H*0.20;
+  /* endereço de reprodução: colchete + régua + barra pontilhada
+     (px medidos: colchete 393 · régua 393..560 · segmentos vermelhos 414..557) */
+  const bx=W*0.018, by=H*0.58, bh=H*0.28, bw=W*0.742;
   ctx.strokeStyle="#8d8e8f"; ctx.lineWidth=1;
-  ctx.beginPath(); ctx.moveTo(bx+3,by-2); ctx.lineTo(bx,by-2); ctx.lineTo(bx,by+bh+2); ctx.lineTo(bx+3,by+bh+2); ctx.stroke();
-  const NSEG=46, sw=bw/NSEG;
-  for(let i=0;i<NSEG;i++){ const on=i/NSEG<=frac;
-    ctx.fillStyle=on?RED:"#3a1512"; ctx.fillRect(bx+6+i*sw,by,Math.max(1,sw*0.62),bh); }
+  ctx.beginPath(); ctx.moveTo(bx+W*0.013,by-H*0.03); ctx.lineTo(bx,by-H*0.03);
+  ctx.lineTo(bx,by+bh+H*0.03); ctx.lineTo(bx+W*0.013,by+bh+H*0.03); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(bx,by+bh+H*0.03); ctx.lineTo(bx+bw,by+bh+H*0.03);
+  ctx.lineTo(bx+bw,by-H*0.03); ctx.stroke();          /* régua até px 560 */
+  const segX=bx+W*0.0753, segW=W*0.636, NSEG=46, sw=segW/NSEG;
+  const lp0=(d&&d.loopOn)?d.loopStart/d.len:-1, lp1=(d&&d.loopOn)?d.loopEnd/d.len:-1;
+  for(let i=0;i<NSEG;i++){ const f0=i/NSEG, on=f0<=frac;
+    const emLoop=lp0>=0&&f0>=lp0&&f0<=lp1;        /* o trecho em loop fica marcado na barra */
+    ctx.fillStyle=on?(emLoop?"#ff8a4a":RED):(emLoop?"#5a3016":"#3a1512");
+    ctx.fillRect(segX+i*sw,by,Math.max(1,sw*0.62),bh); }
 
-  /* caixa de BPM (contador automático) */
+  /* caixa de BPM + MT — px 565..600 x 244..258 */
   const bpm=(d?d.baseBpm*(1+d.pitch/100):128).toFixed(0);
   ctx.strokeStyle="#8d8e8f"; ctx.lineWidth=1;
-  ctx.strokeRect(W*0.478+.5,H*0.625+.5,W*0.126,H*0.335);
-  ctx.fillStyle=WHT; F("700",0.30); ctx.fillText(bpm,W*0.487,H*0.93);
-  ctx.fillStyle=RED; F("700",0.11); ctx.fillText("BPM",W*0.553,H*0.945);
-  /* faixa do tempo + MT + linha de texto */
-  ctx.fillStyle=DIM; F("700",0.13); ctx.fillText(rangeTxt(),W*0.625,H*0.94);
-  ctx.fillStyle=mt?RED:DIM; F("700",0.13); ctx.fillText("MT",W*0.705,H*0.94);
-  ctx.fillStyle=textOn?WHT:DIM; F("700",0.13);
-  ctx.fillText(textOn?"SMU-PRO / DEMO 128":(d&&d.loopOn?"LOOP":"TEXT"),W*0.762,H*0.94);
+  ctx.strokeRect(W*0.782+.5,by+.5,W*0.156,bh);
+  ctx.fillStyle=WHT; F("700",0.26); ctx.fillText(bpm,W*0.804,H*0.82);   /* px 570 */
+  ctx.fillStyle=mt?RED:DIM; F("700",0.18); ctx.fillText("MT",W*0.938,H*0.76);  /* px 600 */
+  ctx.fillStyle=RED;        F("700",0.14); ctx.fillText("BPM",W*0.938,H*0.92);
 }
 
 /* ===================== PRATO (jog do 800MK2: aro escuro com covinhas) ===================== */
@@ -835,7 +856,10 @@ function onControl(c,e){ teach(c);
   else if(a==="mastertempo"){ mt=!mt; setState("mastertempo",mt); }
   else if(a==="temporange"){ rangeIdx=(rangeIdx+1)%RANGES.length;
     setState("temporange",true); setTimeout(()=>setState("temporange",false),200);
-    d.pitch=(tempoPos-0.5)*2*rangeVal(); }   /* reaplica o pitch no novo alcance */
+    d.pitch=(tempoPos-0.5)*2*rangeVal();     /* reaplica o pitch no novo alcance */
+    /* o visor do 800MK2 NÃO mostra o alcance (conferido na foto) — quem avisa
+       o aluno é a linha de ensino, não um indicador inventado na tela */
+    teach({k:c.k,d:c.d+" <b>Agora: "+rangeTxt()+"</b>."}); }
   else if(a==="jogmode"){ vinylMode=!vinylMode; setState("jogmode",vinylMode); }
   else if(a==="power"){ els.power.classList.toggle("rev"); }
   else if(a==="eject"){ playDeck(false); d.pos=0; d.cuePoint=0; d.loopOn=false; d.baseLoop=0;

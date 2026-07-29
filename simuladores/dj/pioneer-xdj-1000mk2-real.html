@@ -213,6 +213,11 @@
   .hit{position:absolute;cursor:pointer;z-index:6;border-radius:4px}
   .hit.hidden{display:none}
   body.debug .hit{background:#00e5ff22;box-shadow:inset 0 0 0 1px #00e5ff}
+  /* camada de TOQUE do visor: cobre o canvas da tela; as zonas do TOUCH são
+     filhas dela (por isso ficam em % DA TELA, não do painel) */
+  .dzone{position:absolute;z-index:7;pointer-events:none}
+  .dzone .hit{pointer-events:auto}
+  body.debug .dzone .hit{background:#ffd21a22;box-shadow:inset 0 0 0 1px #ffd21a}
 
   .teach{display:flex;align-items:center;gap:8px;background:#0c0e12;border:1px solid #2a2f37;border-radius:9px;padding:7px 11px;min-height:38px}
   .teach .k{font-size:10px;font-weight:900;color:var(--blue);background:#0f1a28;border:1px solid #234;border-radius:5px;padding:3px 7px;white-space:nowrap}
@@ -264,6 +269,13 @@ function pct(el,x,y,w,h){ el.style.left=x+"%"; el.style.top=y+"%"; if(w!=null)el
            X = ALTURA X1..X10 (10%) · Y = LARGURA Y1..Y8 (12,5%) + refino por
            perfil de luminância / componentes conexos no pixel.
    [x, y, w, h] em % do painel.
+
+   ⛔ SÓ ENTRA AQUI O QUE É PEÇA FÍSICA DO PAINEL.
+   O XDJ-1000MK2 não tem faixa de botões físicos embaixo da tela: BROWSE /
+   TAG LIST / INFO / MENU / PERFORM, LINK / USB / SLIP, DELETE / MEMORY /
+   CALL ◀▶ / SYNC / MASTER, o NEEDLE COUNTDOWN e os 8 HOT CUE são
+   TOQUE NO VISOR de 7" (conferido na foto top-down, quadrantes X2–X6 /
+   Y3–Y6). Eles saíram do POS e viraram a tabela TOUCH, ancorada na tela.
    ========================================================================== */
 const POS={
  display:[25.4,6.1,49.8,22.4],
@@ -271,14 +283,6 @@ const POS={
  standby:[84.4,3.5,2.6,2], power:[87.6,2.2,4.8,2.4],
  back:[80,8.9,4.9,4.2], tagtrack:[85.1,8.9,4.6,4.2], rotary:[80.3,14,8.3,6.5],
  trackfilter:[79.6,21.3,4.9,4.2], shortcut:[84.8,21.3,4.8,4.2],
- browse:[30.5,6.7,8.5,2.7], taglist:[39.3,6.7,8.4,2.7], info:[48,6.7,8.4,2.7], menu:[56.6,6.7,8.4,2.7], perform:[65.3,6.7,10,2.7],
- link:[25.6,10.9,4.4,5], usbsrc:[25.6,16.1,4.4,5], slip:[25.6,24.6,4.4,3],
- deletebt:[65.3,13.76,4.4,2.6], memory:[70,13.76,4.4,2.6],
- callprev:[65.3,17.4,4.4,2.5], callnext:[70,17.4,4.4,2.5],
- sync:[65.3,21.5,4.4,2.6], master:[70,21.5,4.4,2.6],
- needle:[31.9,24.5,31.9,2.4],
- hcA:[32.1,13.6,7.4,4.6], hcB:[40.1,13.6,7.4,4.6], hcC:[48.1,13.6,7.4,4.6], hcD:[56.1,13.6,7.4,4.6],
- hcE:[32.1,19,7.4,4.6], hcF:[40.1,19,7.4,4.6], hcG:[48.1,19,7.4,4.6], hcH:[56.1,19,7.4,4.6],
  loopin:[5.1,35.4,4.6,3.6], loopout:[13.5,35.4,4.6,3.6], reloop:[23.6,35.6,3.9,3.1],
  vinyladj:[90.6,35.5,3.8,3], jogmode:[90.4,43.2,4.8,2.4], temporange:[91.2,50.3,3.2,2.5], mastertempo:[91.3,56.05,3.1,2.45],
  direction:[5,48.2,4.9,2.5],
@@ -390,6 +394,28 @@ function teach(c){ $("#tK").textContent=c.k; $("#tD").innerHTML=c.d; }
 let dispCtx,dispW,dispH;
 const SX=25.4,SY=6.1,SW=49.8,SH=22.4;                 /* tela em % do painel */
 const fx=p=>(p-SX)/SW, fy=p=>(p-SY)/SH;                /* painel% → fração da tela */
+
+/* ---------------------------------------------------------------------------
+   TOUCH — zonas de TOQUE NA TELA (não são botão físico; ver POS).
+   Escritas nas MESMAS coordenadas de painel que o desenho do canvas usa, e
+   convertidas por fx()/fy() para fração do visor: a área sensível fica DENTRO
+   do visor (filha de .dzone), então acompanha a tela e nunca invade o painel.
+   ------------------------------------------------------------------------- */
+const TOUCH={
+ /* barra de abas, no topo da tela */
+ browse:[30.5,6.7,8.5,2.7], taglist:[39.3,6.7,8.4,2.7], info:[48,6.7,8.4,2.7], menu:[56.6,6.7,8.4,2.7], perform:[65.3,6.7,9.9,2.7],
+ /* coluna de fontes, à esquerda da tela */
+ link:[25.6,10.9,4.4,5], usbsrc:[25.6,16.1,4.4,5], slip:[25.6,24.6,4.4,3],
+ /* coluna CUE/LOOP, à direita da tela */
+ deletebt:[65.3,13.76,4.4,2.6], memory:[70,13.76,4.4,2.6],
+ callprev:[65.3,17.4,4.4,2.5], callnext:[70,17.4,4.4,2.5],
+ sync:[65.3,21.5,4.4,2.6], master:[70,21.5,4.4,2.6],
+ /* onda geral (NEEDLE SEARCH) */
+ needle:[31.9,24.6,31.9,2.1],
+ /* 8 HOT CUE da tela PERFORM */
+ hcA:[32.1,13.6,7.4,4.6], hcB:[40.1,13.6,7.4,4.6], hcC:[48.1,13.6,7.4,4.6], hcD:[56.1,13.6,7.4,4.6],
+ hcE:[32.1,19,7.4,4.6], hcF:[40.1,19,7.4,4.6], hcG:[48.1,19,7.4,4.6], hcH:[56.1,19,7.4,4.6]
+};
 const HC=["A","B","C","D","E","F","G","H"];
 const HCCOL=["#e8433f","#3aa0ff","#3ecf6a","#c65cff","#2fd6c4","#ff8c2a","#4a6cff","#ffd21a"];
 
@@ -679,6 +705,20 @@ function frame(){ requestAnimationFrame(frame); drawJog(); drawScreen(); }
 function addLab(txt,x,y,cls){ const l=document.createElement("div"); l.className="lab "+(cls||""); l.innerHTML=txt;
   l.style.left=x+"%"; l.style.top=y+"%"; deck.appendChild(l); return l; }
 
+/* zona de toque DENTRO do visor: converte painel% → % da tela (fx/fy) e pendura
+   a área sensível na camada .dzone, que cobre exatamente o canvas do display. */
+let dzone=null;
+function touchHit(c){ const [x,y,w,h]=TOUCH[c.act];
+  const hit=document.createElement("div"); hit.className="hit";
+  hit.style.left=(fx(x)*100)+"%";  hit.style.width=(w/SW*100)+"%";
+  hit.style.top=(fy(y)*100)+"%";   hit.style.height=(h/SH*100)+"%";
+  hit.dataset.act=c.act; dzone.appendChild(hit);
+  if(c.kind==="pad")hit.classList.add("hidden");
+  hits[c.act]=hit;
+  hit.addEventListener("mouseenter",()=>teach(c));
+  hit.addEventListener("pointerdown",e=>onControl(c,e));
+}
+
 const CTRL=[
  {act:"display",kind:"disp",k:"TOUCH DISPLAY (7\")",d:"Tela sensível ao toque de 7 polegadas. Mostra a onda ampliada, tempo, BPM, ±RANGE e as teclas de toque. Toque na onda geral para o <b>NEEDLE SEARCH</b>."},
  {act:"usbslot",kind:"usbs",k:"USB DEVICE INSERTION SLOT",d:"Entrada do pen drive (USB). Alimenta até <b>5 V ⎓ 2,1 A</b>. É daqui que o XDJ toca sem computador — a música vai preparada pelo rekordbox."},
@@ -779,6 +819,10 @@ function build(){
   dc.width=760; dc.height=Math.round(760/((dp[2]/dp[3])*AR));
   pct(dc,dp[0],dp[1],dp[2],dp[3]); deck.appendChild(dc); dispCtx=dc.getContext("2d"); dispW=dc.width; dispH=dc.height;
 
+  /* --- camada de toque DA TELA (as zonas do TOUCH moram aqui dentro) --- */
+  dzone=document.createElement("div"); dzone.className="dzone";
+  pct(dzone,dp[0],dp[1],dp[2],dp[3]); deck.appendChild(dzone);
+
   /* --- controles --- */
   CTRL.forEach(c=>{
     let el;
@@ -800,6 +844,8 @@ function build(){
                    el.innerHTML='<div class="lad"></div><div class="slot"></div><div class="cap" id="tcap"></div>'; break;
       default:     el=null;   /* disp / tk / pad: sem elemento próprio (a tela desenha) */
     }
+    /* toque na tela: a área sensível é filha do visor, não do painel */
+    if(TOUCH[c.act]){ touchHit(c); return; }
     let [x,y,w,h]=POS[c.act];
     if(ROUND.has(c.act)){ const nh=w*AR; y=y+h/2-nh/2; h=nh; }
     if(el){ pct(el,x,y,w,h); deck.appendChild(el); els[c.act]=el; }

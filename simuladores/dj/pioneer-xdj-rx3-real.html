@@ -34,6 +34,32 @@
   ATENÇÃO (medido, não deduzido): o deck DIREITO **não é espelho** do esquerdo —
   é o MESMO layout deslocado +640,5 px (PAD1: 758-117,5 · REV: 680-39,5 · CUE: 689-48,5).
   Nos dois decks o CUE/PLAY fica à esquerda e o fader TEMPO à direita.
+
+  ===================================================================================
+  CORREÇÃO 29/07/2026 — BLOCO DA TELA (6 colisões "botão em cima do visor")
+  ===================================================================================
+  CAUSA (não era o botão): POS.screen valia [32,7 · 0 · 32,9 · 32,4], que é o MÓDULO
+  inteiro da tela (bisel + logo Pioneer DJ), não o vidro — e o drawScreen pintava o
+  bisel DENTRO do canvas. A fileira SOURCE..MENU fica no bisel, ou seja, JÁ ESTAVA no
+  lugar certo (x conferido: erro < 0,2 %); quem estava errado era o retângulo do visor.
+  CORREÇÃO: POS.screen passou a ser SÓ O VIDRO; o bisel virou o div .scrmod (MODULO).
+
+  Fonte: FOTO TOP-DOWN oficial do XDJ-RX3 (1792x1316, ortográfica).
+    chassi ............. x 81..1710 (1630 px)   ->  x% = (px-81)/1630*100
+    conjunto da tela ... y 132..540 (408 px)    ->  y% = (py-132)/408*32,4
+  Medidas lidas pixel a pixel (nada estimado):
+    módulo (bisel) ..... x 615..1176 · y 132..540
+    VIDRO do LCD 10,1" . x 653..1136 · y 206..505  (483x299 = 16:10)  -> POS.screen
+    fileira ACIMA ...... SOURCE / BROWSE / TAG LIST / PLAYLIST / SEARCH / MENU
+                         y 176..201 (25 px) · x 662/743/824/905/985/1066 · 63 px
+                         passo 80,75 px · centrada no vidro · folga p/ o vidro = 5 px
+  No RX3 NÃO existe coluna de botões à esquerda do vidro (isso é do RX2): os 6 botões
+  são uma fileira única acima do visor — foi assim que a foto mostrou.
+
+  ⚠️ DIFERENÇA QUE FICOU: o bloco do seletor (BACK/TAG TRACK/rotary/TRACK FILTER/
+     SHORT CUT/LOAD) começa em 66,6 % nesta réplica; o bisel real termina em 67,18 %
+     e o cortaria ao meio, então o .scrmod foi fechado em 66,40 %. Na foto esse bloco
+     é uma peça separada, encostada à direita do módulo.
 -->
 <style>
   :root{ --ink:#e9eef7; --green:#31d15e; --orange:#f7a01c; --blue:#2f7bff; --red:#ff3b30; --cyan:#22d3ee; }
@@ -104,6 +130,17 @@
   /* poço preto onde moram os 3 medidores */
   .mwell{position:absolute;pointer-events:none;z-index:1;border-radius:1.5px;background:#050607;
     box-shadow:inset 0 0 0 1px #ffffff14, inset 0 2px 5px #000}
+
+  /* ===== MÓDULO DA TELA (bisel preto inclinado) =====
+     z-index 0: fica ATRÁS do vidro (.scrc z:1) e dos botões (.btn z:3). Antes o bisel
+     era pintado DENTRO do canvas e o canvas cobria o módulo inteiro — por isso a
+     fileira BROWSE/TAG LIST/… caía em cima do POS.screen e o checar-pos acusava
+     botão sobre o visor. Agora POS.screen é SÓ o vidro; o bisel é este elemento. */
+  .scrmod{position:absolute;pointer-events:none;z-index:0;border-radius:6px 6px 4px 4px;
+    background:linear-gradient(180deg,#2a2d33 0%,#1a1d22 8%,#0f1115 20%,#0a0b0e 100%);
+    box-shadow:inset 0 1px 0 #ffffff28, inset 0 0 0 1px #ffffff0e, 0 8px 22px #000c, 0 0 0 1px #000}
+  .scrlogo{position:absolute;left:0;right:0;top:2%;text-align:center;pointer-events:none;
+    font:italic 900 13px Inter,Arial;color:#cfd6de;letter-spacing:.4px;text-shadow:0 1px 1px #000}
 
   /* ===== botões retangulares retroiluminados =====
      z-index 3 = mesma camada dos knobs/pads. SEM ele o botão (z auto) fica ATRÁS
@@ -292,13 +329,15 @@ const DX=641.0;
    Medido na FOTO TOP-DOWN oficial (ver cabeçalho). Itens do ROUND são circularizados
    no build (h = w*AR), preservando o centro. 'jog'/'platter'/'screen' são CONTAINERS. */
 const POS={
- screen:[32.7,0,32.9,32.4],
- navsource:[35.81,3.65,3.91,1.49],
- navbrowse:[40.72,3.65,3.81,1.49],
- navtag:[45.64,3.65,3.71,1.49],
- navplaylist:[50.45,3.65,3.91,1.49],
- navsearch:[55.37,3.65,3.91,1.49],
- navmenu:[60.38,3.65,3.81,1.49],
+ /* VIDRO do LCD 10,1" (só o vidro — o bisel é o .scrmod). x 653..1136 · y 206..505 */
+ screen:[35.09,5.88,29.63,23.74],
+ /* fileira ACIMA do vidro: 6 botões, larg. 63 px, passo 80,75 px — medidos um a um */
+ navsource:[35.64,3.49,3.87,1.99],
+ navbrowse:[40.61,3.49,3.87,1.99],
+ navtag:[45.58,3.49,3.87,1.99],
+ navplaylist:[50.55,3.49,3.87,1.99],
+ navsearch:[55.46,3.49,3.87,1.99],
+ navmenu:[60.43,3.49,3.87,1.99],
  back:[66.6,9.85,2.01,2.16],
  tagtrack:[69.11,9.85,2.31,2.16],
  rotary:[67.35,13.63,4.81,6.48],
@@ -452,6 +491,13 @@ const ROUND=new Set(["rotary","miclow","michi","mic1lvl","mic2lvl","usb1stop","u
  "loopin_R","loopout_R","reloop_R","callprev_R","callnext_R","deletebt_R","memory_R","slip_R","quantize_R",
  "trkprev_R","trknext_R","srchback_R","srchfwd_R","cue_R","play_R","jogadj_R","vinylspeed_R","temporange_R","mastertempo_R",
  "jog","platter"]);
+
+/* MÓDULO da tela (bisel preto inclinado) — NÃO é controle, por isso fica fora do POS.
+   Medido: x 615..1176 (32,76 %..67,18 %) · y 132..540 (0..32,4 %).
+   ⚠️ Borda direita encurtada para 66,40 %: nesta réplica o bloco do seletor rotativo
+   (BACK/TAG TRACK/rotary/LOAD) começa em 66,6 % e o bisel real (67,18 %) o cortaria
+   ao meio. Na foto esse bloco é uma peça separada, à direita do módulo. */
+const MODULO=[32.76, 0, 33.64, 32.40];
 
 /* ===================== META — o que cada controle é e o que ensina =====================
    Textos baseados no "XDJ-RX3 Manual de instruções" (Nomes e funções das peças). */
@@ -752,15 +798,11 @@ const NAV=["SOURCE","BROWSE","TAG LIST","PLAYLIST","SEARCH","MENU"];
 function fmt(t){ const m=Math.floor(t/60),s=Math.floor(t%60),ms=Math.floor((t*1000)%1000);
   return [String(m).padStart(2,"0")+":"+String(s).padStart(2,"0"), String(ms).padStart(3,"0")]; }
 function drawScreen(){ if(!scrCtx)return; const ctx=scrCtx,W=scrW,H=scrH;
-  /* moldura do conjunto (bisel preto do RX3) */
-  ctx.fillStyle="#0b0d10"; ctx.fillRect(0,0,W,H);
-  const g=ctx.createLinearGradient(0,0,0,H*0.2); g.addColorStop(0,"#24272c"); g.addColorStop(1,"#101216");
-  ctx.fillStyle=g; ctx.fillRect(0,0,W,H*0.2);
-  ctx.fillStyle="#cfd6de"; ctx.font="italic 900 "+Math.round(H*0.055)+"px Inter,Arial";
-  ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText("Pioneer DJ",W*0.5,H*0.055);
-  /* LCD */
-  const lx=W*0.0793, ly=H*0.2167, lw=W*0.8994, lh=H*0.7375;
-  ctx.fillStyle="#04060a"; ctx.fillRect(lx-2,ly-2,lw+4,lh+4);
+  /* O canvas é SÓ O VIDRO: POS.screen = área ativa do LCD medida na foto oficial.
+     O bisel do módulo e o logo "Pioneer DJ" saíram daqui para o .scrmod (div atrás).
+     Enquanto o canvas cobria o módulo inteiro ele passava por baixo da fileira
+     BROWSE/TAG LIST/… e o checar-pos (com razão) acusava botão em cima do visor. */
+  const lx=0, ly=0, lw=W, lh=H;
   ctx.fillStyle="#070a10"; ctx.fillRect(lx,ly,lw,lh);
   ctx.textBaseline="middle";
   /* barra de status */
@@ -969,6 +1011,12 @@ function makeEl(act){ const c=M[act]||{act,kind:"btn"}; let el;
 function build(){
   /* faixa traseira (pegada da tela inclinada) */
   const lip=document.createElement("div"); lip.className="rearlip"; deck.appendChild(lip);
+
+  /* módulo da tela: bisel + logo. MEDIDO na foto oficial (ver MODULO). */
+  const mod=document.createElement("div"); mod.className="scrmod";
+  pct(mod,MODULO[0],MODULO[1],MODULO[2],MODULO[3]); deck.appendChild(mod);
+  const mlg=document.createElement("div"); mlg.className="scrlogo"; mlg.textContent="Pioneer DJ";
+  mod.appendChild(mlg);
 
   /* chapas pretas brilhantes — cantos medidos na foto (px do painel 997 x 573,82) */
   const chapa=(cls,x1,y1,x2,y2)=>{ const p=document.createElement("div"); p.className=cls;
