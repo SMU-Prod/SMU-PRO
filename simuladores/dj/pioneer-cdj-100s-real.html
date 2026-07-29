@@ -319,7 +319,9 @@ async function startAudio(){ if(started)return; started=true;
   const sp=AC.createScriptProcessor(512,0,1); d.sp=sp;
   sp.onaudioprocess=e=>{ const out=e.outputBuffer.getChannelData(0);
     for(let i=0;i<out.length;i++){
-      const tgt=d.playing?d.dir*(1+(d.pitch+d.bend)/100):0; d.rate+=(tgt-d.rate)*0.0022; d.pos+=d.rate;
+      /* ZIP (manual p.22): muda o PITCH conforme o giro; no extremo soa como frear um vinil */
+      const zip=(d.djb==="zip")?(1-clamp(d.fxAmt,0,1)):1;
+      const tgt=d.playing?d.dir*(1+(d.pitch+d.bend)/100)*zip:0; d.rate+=(tgt-d.rate)*0.0022; d.pos+=d.rate;
       if(d.pos>=len)d.pos-=len; else if(d.pos<0)d.pos+=len;   // LOOP CONTÍNUO
       let i0=Math.floor(d.pos); const fr=d.pos-i0; i0=((i0%len)+len)%len; const i1=(i0+1)%len;
       out[i]=data[i0]*(1-fr)+data[i1]*fr; } };
@@ -384,7 +386,9 @@ function selectDJB(fx){ if(!ready||!powerOn)return;
 function applyFx(){ if(!ready)return; const a=clamp(d.fxAmt,0,1);
   d.wetJet.gain.value=0; d.fb.gain.value=0; d.filt.type="allpass"; d.filt.frequency.value=1000; d.filt.Q.value=0.7;
   if(d.djb==="jet"){ d.delay.delayTime.value=0.0006+a*0.018; d.fb.gain.value=0.5; d.wetJet.gain.value=0.6; }
-  else if(d.djb==="zip"){ d.filt.type="highpass"; d.filt.Q.value=7; d.filt.frequency.value=180+a*a*6500; }
+  /* ZIP não é filtro: o pitch cai com o giro (ver rate no ScriptProcessor).
+     Só acompanha um leve abafamento, como o vinil perdendo rotação. */
+  else if(d.djb==="zip"){ d.filt.type="lowpass"; d.filt.Q.value=0.7; d.filt.frequency.value=18000-a*15000; }
   else if(d.djb==="wah"){ d.filt.type="bandpass"; d.filt.Q.value=6; d.filt.frequency.value=280+a*3600; }
 }
 
