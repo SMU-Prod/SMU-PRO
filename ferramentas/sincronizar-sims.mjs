@@ -43,7 +43,7 @@ const aplicar = process.argv.includes("--aplicar");
 const mods = (await req("GET", `/modules?course_id=eq.${CURSO}&select=id`)).map(m => m.id).join(",");
 const aulas = await req("GET", `/lessons?module_id=in.(${mods})&select=id,titulo&order=titulo`);
 
-let iguais = 0, difs = 0, semArquivo = 0, republicadas = 0;
+let iguais = 0, difs = 0, semArquivo = 0, republicadas = 0, bloqueados = 0;
 for (const a of aulas) {
   const an = await req("GET", `/ai_animations?lesson_id=eq.${a.id}&select=id,urls`);
   if (!an.length) continue;
@@ -54,6 +54,25 @@ for (const a of aulas) {
   if (!arq) { semArquivo++; continue; }
   const local = fs.readFileSync(path.join(SIMS, arq), "utf8");
   if (md5(local) === md5(noAr)) { iguais++; continue; }
+
+  /* ⛔ GUARD: nao publicar simulador com Banco SMU apontando para caminho
+     RELATIVO. O player monta o sim em <iframe srcDoc sandbox> sem
+     allow-same-origin e sem <base>: a origem fica opaca (Origin: null) e o
+     caminho relativo resolve contra a URL da AULA -> 404 em producao, e o
+     aluno ve a barra de musicas sem nenhuma faixa funcionando.
+     Libera sozinho quando o base virar URL absoluta — ninguem precisa lembrar
+     de tirar filtro. (guard sugerido pela sessao do Banco SMU) */
+  const temBanco = /\/\*\s*BANCO-SMU-/.test(local);
+  const baseRelativa = /\bbase\s*:\s*["'](?!https?:\/\/)/.test(local)
+                    || /\bBASE\s*=\s*["'](?!https?:\/\/)/.test(local);
+  if (temBanco && baseRelativa) {
+    bloqueados++;
+    console.log(`BLOQUEADO      ${arq}`);
+    console.log(`   Banco SMU com caminho relativo — daria 404 publicado (iframe srcDoc, Origin: null).`);
+    console.log(`   Libera sozinho quando o base virar URL absoluta com CORS *.`);
+    continue;
+  }
+
   difs++;
   const dif = local.length - noAr.length;
   console.log(`DESATUALIZADO  ${arq}`);
@@ -66,5 +85,6 @@ for (const a of aulas) {
     republicadas++;
   }
 }
-console.log(`\niguais: ${iguais} | desatualizados: ${difs} | sem arquivo local: ${semArquivo}` +
+console.log(`\niguais: ${iguais} | desatualizados: ${difs} | BLOQUEADOS pelo guard: ${bloqueados} | sem arquivo local: ${semArquivo}` +
   (aplicar ? ` | republicados: ${republicadas}` : `\n(rode com --aplicar para republicar)`));
+if (bloqueados) console.log(`\n${bloqueados} simulador(es) com Banco SMU nao foram publicados de proposito.\nO guard libera sozinho quando CATALOGO_SMU.base virar URL absoluta com CORS *.`);
