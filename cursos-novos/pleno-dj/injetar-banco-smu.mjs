@@ -97,21 +97,32 @@ ${MARCA}
 
   /* Envolve renderTrack: escolheu faixa -> MP3 real; senao -> faixa sintetizada.
      O deck recebe um AudioBuffer nos dois casos e nao percebe diferenca. */
+  async function baixar(f){
+    if (window.BANCO_SMU.cache[f.arquivo]) return window.BANCO_SMU.cache[f.arquivo];
+    var r = await fetch(window.BANCO_SMU.base + f.arquivo);
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    var buf = await AC.decodeAudioData(await r.arrayBuffer());
+    window.BANCO_SMU.cache[f.arquivo] = buf;
+    return buf;
+  }
+
   if (typeof renderTrack === "function") {
     var _orig = renderTrack;
-    renderTrack = async function(){
+    renderTrack = async function(kind){
       var esc = window.BANCO_SMU.escolhida;
       if (!esc) return await _orig.apply(this, arguments);
       try {
-        if (window.BANCO_SMU.cache[esc.arquivo]) {
-          window.__BANCO_BPM = esc.bpm;
-          return window.BANCO_SMU.cache[esc.arquivo];
-        }
-        var r = await fetch(window.BANCO_SMU.base + esc.arquivo);
-        if (!r.ok) throw new Error("HTTP " + r.status);
-        var buf = await AC.decodeAudioData(await r.arrayBuffer());
-        window.BANCO_SMU.cache[esc.arquivo] = buf;
-        window.__BANCO_BPM = esc.bpm;
+        /* Mixer chama renderTrack("A") e renderTrack("B") p/ ter material
+           DIFERENTE em cada par de canais — mesma faixa nos dois viraria
+           exercicio pobre (o aluno nao ouve a mixagem, ouve eco). Entao "B"
+           (e "C"/"D" nos de 4 decks) pega a proxima faixa da lista.
+           Player de 1 deck chama sem argumento e cai no caso normal. */
+        var lista = window.BANCO_SMU.faixas;
+        var i = lista.indexOf(esc);
+        var passo = { A:0, B:1, C:2, D:3 }[String(kind || "A").toUpperCase()] || 0;
+        var alvo = lista[(i + passo) % lista.length];
+        var buf = await baixar(alvo);
+        if (passo === 0) window.__BANCO_BPM = alvo.bpm;   // BPM do deck principal
         return buf;
       } catch(e) {
         console.warn("Banco SMU falhou, usando faixa de treino:", e);
@@ -237,7 +248,10 @@ for (const p of alvos) {
      Se so procurar a virgem, reaplicar reprova arquivo que esta correto. */
   const bpmHits = [...html.matchAll(
     /baseBpm:\s*(?:\(window\.__BANCO_BPM\|\|)?([A-Za-z_$][\w$]*|\d+(?:\.\d+)?)/g)];
-  if (!bpmHits.length) { rel.semPadrao.push(f + " (sem baseBpm)"); continue; }
+  /* `baseBpm` NAO e obrigatorio. Eu exigia, e com isso pulava todos os MIXERS
+     (DJM, X1850) — que nao mostram BPM de faixa, mas CONSOMEM renderTrack nos
+     canais e ganham muito com musica real (o aluno equaliza som de verdade em
+     vez de loop sintetico). O requisito real e so `renderTrack`. */
 
   /* 1) baseBpm respeita a faixa escolhida. NAO remendar o que ja foi remendado
         (senao vira baseBpm:(window.__BANCO_BPM||(window.__BANCO_BPM||128))). */
