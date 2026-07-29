@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dose de ruído — NR-15 × NIOSH (SMU)</title>
+<style>
+:root{--bg:#0d1117;--pan:#161b22;--bd:#26303c;--ink:#e6edf5;--dim:#8b97a8;
+      --amb:#e0a03a;--grn:#3fb950;--red:#e0483f;--cy:#4aa8e0;--rox:#9b6ede}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+  font:13px/1.45 Inter,Segoe UI,system-ui,sans-serif}
+html.smu-fs .wrap{max-width:1500px}
+html.smu-fs .grid{grid-template-columns:1.25fr .75fr}
+.wrap{max-width:1060px;margin:0 auto;padding:12px}
+.top{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:10px}
+.marca{font-weight:800;letter-spacing:1px}.marca b{color:var(--amb)}
+.pill{font-size:11px;background:#101722;border:1px solid var(--bd);border-radius:20px;padding:4px 10px;color:var(--dim)}
+.pill b{color:var(--ink)}.sp{flex:1}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--bd);
+  background:#1b2330;color:var(--ink);padding:6px 11px;font-weight:700}
+button:hover{background:#222d3d}
+button.pri{background:#1d3a5c;border-color:#2b6cb0;color:#dbeafe}
+button.mini{padding:3px 8px;font-size:11px}
+.grid{display:grid;grid-template-columns:1.3fr .7fr;gap:12px}
+.pan{background:var(--pan);border:1px solid var(--bd);border-radius:12px;padding:12px}
+.pan h3{margin:0 0 3px;font-size:11.5px;letter-spacing:1.2px;color:var(--amb);text-transform:uppercase}
+.pan p.sub{margin:0 0 10px;font-size:11px;color:var(--dim);line-height:1.45}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;font-size:10px;letter-spacing:.6px;color:var(--dim);
+   text-transform:uppercase;padding:5px 6px;border-bottom:1px solid var(--bd)}
+td{padding:5px 6px;border-bottom:1px solid #1b2330}
+td input[type=number]{width:66px;background:#0a1018;border:1px solid var(--bd);
+  border-radius:6px;color:var(--ink);font:inherit;padding:4px 6px}
+td.nm{color:#c7d0de}
+.tot{font-weight:800}
+.barra{height:26px;background:#07090c;border:1px solid #000;border-radius:6px;
+  position:relative;overflow:hidden;margin-top:5px}
+.barra i{position:absolute;left:0;top:0;bottom:0;width:0%;
+  background:linear-gradient(90deg,var(--grn) 0 55%,#f4d03a 55% 78%,var(--red) 78% 100%)}
+.barra span{position:absolute;left:9px;top:4px;font-size:12px;font-weight:800;
+  text-shadow:0 1px 3px #000;z-index:2}
+.marca100{position:absolute;top:0;bottom:0;width:2px;background:#fff;opacity:.85;z-index:1}
+.res{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:9px}
+.card{background:#0c1017;border:1px solid #1b2330;border-radius:9px;padding:9px}
+.card .rot{font-size:10px;letter-spacing:.8px;color:var(--dim);text-transform:uppercase}
+.card .big{font-size:24px;font-weight:800;margin:2px 0}
+.card .obs{font-size:10.5px;color:var(--dim);line-height:1.35}
+.ok{color:var(--grn)}.alerta{color:#f4d03a}.ruim{color:var(--red)}
+canvas{width:100%;height:180px;background:#07090c;border:1px solid #000;border-radius:8px;display:block;margin-top:9px}
+.miss{margin-top:11px;background:#0c0e12;border:1px solid #223;border-radius:10px;padding:10px 12px}
+.miss h4{margin:0 0 6px;font-size:11.5px;color:var(--amb);letter-spacing:1px}
+.miss li{font-size:11.5px;margin:5px 0;color:#c7d0de;list-style:none;padding-left:20px;position:relative}
+.miss li::before{content:"○";position:absolute;left:3px;color:var(--dim)}
+.miss li.ok{color:var(--grn)}.miss li.ok::before{content:"●";color:var(--grn)}
+.nota{margin-top:9px;font-size:10.8px;color:#a9b7cc;line-height:1.5;border-top:1px solid #1e2733;padding-top:8px}
+.nota b{color:#fff}
+.cen{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <span class="marca">SMU <b>· DOSE DE RUÍDO</b></span>
+    <span class="pill">Sua jornada: <b id="pHoras">0,0 h</b></span>
+    <span class="pill">Nível equivalente: <b id="pLeq">—</b></span>
+    <span class="sp"></span>
+    <button class="pri" id="bAdd">+ trecho</button>
+    <button id="bLimpar">Limpar</button>
+  </div>
+
+  <div class="grid">
+    <div class="pan">
+      <h3>A sua jornada, trecho a trecho</h3>
+      <p class="sub">Monte o dia real: montagem, passagem, abertura, show. <b>Tudo soma</b> — a dose não começa quando o público entra.</p>
+
+      <div class="cen">
+        <button class="mini" data-cen="clube">Show de clube</button>
+        <button class="mini" data-cen="festival">Festival (dia inteiro)</button>
+        <button class="mini" data-cen="igreja">Culto + ensaio</button>
+        <button class="mini" data-cen="corp">Evento corporativo</button>
+      </div>
+
+      <table>
+        <thead><tr><th>Trecho</th><th>dB(A)</th><th>Horas</th><th>NR-15</th><th>NIOSH</th><th></th></tr></thead>
+        <tbody id="tb"></tbody>
+        <tfoot><tr class="tot">
+          <td class="nm">TOTAL</td><td id="tLeq">—</td><td id="tH">0,0</td>
+          <td id="tNr">0%</td><td id="tNi">0%</td><td></td></tr></tfoot>
+      </table>
+
+      <div class="barra" id="barNr"><i></i><span>NR-15: 0%</span><div class="marca100"></div></div>
+      <div class="barra" id="barNi"><i></i><span>NIOSH: 0%</span><div class="marca100"></div></div>
+
+      <canvas id="cv"></canvas>
+      <div class="nota">
+        <b>A conta.</b> Para cada trecho, o tempo máximo é
+        <b>T = 8 ÷ 2^((L−85)/q)</b> horas, com <b>q = 5</b> na NR-15 e <b>q = 3</b> no critério NIOSH.
+        A dose do dia é a soma de <b>C₁/T₁ + C₂/T₂ + …</b> (tempo gasto ÷ tempo permitido).
+        <b>100% é o limite</b> — não é meta.
+      </div>
+    </div>
+
+    <div class="pan">
+      <h3>O veredito</h3>
+      <div class="res">
+        <div class="card"><div class="rot">NR-15 (lei BR)</div>
+          <div class="big" id="cNr">0%</div>
+          <div class="obs" id="oNr">q = 5 dB · piso legal</div></div>
+        <div class="card"><div class="rot">NIOSH (saúde)</div>
+          <div class="big" id="cNi">0%</div>
+          <div class="obs" id="oNi">q = 3 dB · mais rigoroso</div></div>
+      </div>
+      <div class="card" style="margin-top:9px">
+        <div class="rot">Quanto tempo ainda cabe hoje</div>
+        <div class="big" id="cSobra">—</div>
+        <div class="obs" id="oSobra">no nível do último trecho</div>
+      </div>
+      <div class="card" style="margin-top:9px">
+        <div class="rot">Com protetor de atenuação plana</div>
+        <div class="big" id="cProt">—</div>
+        <div class="obs">com filtro de <b id="oFiltro">15</b> dB
+          <input type="range" id="filtro" min="0" max="25" step="1" value="15" style="width:100%;accent-color:var(--cy);margin-top:6px"></div>
+      </div>
+
+      <div class="miss">
+        <h4>MISSÕES</h4>
+        <ul>
+          <li data-m="estoura">Monte um dia que <b>estoura</b> a dose da NR-15</li>
+          <li data-m="difere">Veja um caso onde a NR-15 aprova e o <b>NIOSH reprova</b></li>
+          <li data-m="protege">Use o protetor e traga a dose para <b>menos de 100%</b></li>
+          <li data-m="soma">Prove que <b>montagem + passagem</b> sozinhas já pesam</li>
+        </ul>
+      </div>
+      <div class="nota">
+        ⚠️ Ferramenta <b>didática</b>. Laudo ocupacional se faz com dosímetro calibrado
+        e sobre o <b>texto vigente</b> da NR-15 — confira no site do Ministério do Trabalho.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* Tudo que o init usa fica declarado ANTES de qualquer chamada — a ordem aqui
+   não é estética: chamada antes da declaração `let/const` estoura por zona
+   morta temporal e mata o resto do script em silêncio. */
+const $ = s => document.querySelector(s);
+const cv = $("#cv"), cx = cv.getContext("2d");
+const feito = {};
+let filtroDb = 15;
+let trechos = [];
+
+/* ⚠ A NR-15 Anexo 1 NÃO é uma fórmula — é uma TABELA tabelada, e em alguns
+   degraus ela é mais conservadora que a curva teórica q=5. O caso que denuncia:
+     115 dB(A) → fórmula 8/2^((115-85)/5) = 0,125 h = 7,5 min
+                 TABELA OFICIAL ................. = 7 min
+   Num laudo quem manda é a tabela. Então a NR-15 aqui interpola a tabela real;
+   a curva q=5 só é usada fora dela. O NIOSH, esse sim, é fórmula (q=3).
+   Fonte: NR-15, Anexo n.º 1 — conferir sempre o texto vigente no gov.br.       */
+const NR15 = [[85,480],[86,420],[87,360],[88,300],[89,270],[90,240],[91,210],
+              [92,180],[93,160],[94,135],[95,120],[96,105],[98,75],[100,60],
+              [102,45],[104,35],[105,30],[106,25],[108,20],[110,15],[112,10],
+              [114,8],[115,7]];               // dB(A) -> minutos permitidos
+function tNr15(L){
+  /* A tabela do Anexo 1 COMEÇA em 85 dB(A). Abaixo disso a norma não impõe
+     limite de tempo — então o trecho não soma na dose LEGAL. Devolver 8 h aqui
+     (como eu fazia) inventava uma dose que a norma não cobra: um dia inteiro a
+     82 dB(A) aparecia como 88%, sugerindo risco legal onde não há.
+     O NIOSH, esse sim, conta abaixo de 85 — e é isso que a tela contrasta. */
+  if(L < NR15[0][0]) return Infinity;                            // não soma na dose da NR-15
+  if(L >= 115) return 7/60;                                      // 115 é o TETO da norma
+  for(let i=0;i<NR15.length-1;i++){
+    const [a,ta]=NR15[i], [b,tb]=NR15[i+1];
+    if(L>=a && L<=b){                                            // interpola em log do tempo
+      const f=(b===a)?0:(L-a)/(b-a);
+      return (ta*Math.pow(tb/ta,f))/60;
+    }
+  }
+  return 7/60;
+}
+/* NR-15 pela tabela; NIOSH pela fórmula com q=3 e referência 85 dB(A). */
+const tMax = (L, q) => q===5 ? tNr15(L) : 8/Math.pow(2,(L-85)/q);
+const CEN = {
+  clube:   [["Montagem / line check",88,2],["Passagem de som",96,1.5],["Show",101,2.5]],
+  festival:[["Montagem",90,3],["Passagens",97,3],["Shows no FOH",102,5]],
+  igreja:  [["Ensaio",92,1.5],["Culto",95,2]],
+  corp:    [["Montagem",82,3],["Evento (fala)",84,4]],
+};
+
+function marcar(k){ if(feito[k])return; feito[k]=true;
+  const li=document.querySelector('[data-m="'+k+'"]'); if(li) li.classList.add("ok"); }
+
+function calcular(){
+  let horas=0, dNr=0, dNi=0, energia=0;
+  for(const t of trechos){
+    if(!(t.h>0)) continue;
+    horas += t.h;
+    const L = Math.max(0, t.db - filtroDb*0);        // dose "nua" (sem protetor)
+    dNr += t.h / tMax(L,5);
+    dNi += t.h / tMax(L,3);
+    energia += t.h * Math.pow(10, t.db/10);
+  }
+  const leq = horas>0 ? 10*Math.log10(energia/horas) : null;
+  /* com protetor: aplica a atenuação em cada trecho */
+  let pNr=0;
+  for(const t of trechos){ if(!(t.h>0))continue;
+    pNr += t.h / tMax(Math.max(0,t.db-filtroDb),5); }
+  return { horas, dNr:dNr*100, dNi:dNi*100, leq, protegido:pNr*100 };
+}
+
+function classe(p){ return p<=100?"ok":(p<=200?"alerta":"ruim"); }
+
+function pintar(){
+  const r = calcular();
+  $("#pHoras").textContent = r.horas.toFixed(1).replace(".",",")+" h";
+  $("#pLeq").textContent = r.leq==null?"—":r.leq.toFixed(1)+" dB(A)";
+  $("#tH").textContent  = r.horas.toFixed(1).replace(".",",");
+  $("#tLeq").textContent= r.leq==null?"—":r.leq.toFixed(1);
+  $("#tNr").textContent = Math.round(r.dNr)+"%";
+  $("#tNi").textContent = Math.round(r.dNi)+"%";
+
+  const põe=(id,barId,val,rot)=>{
+    const el=$(id); el.textContent=Math.round(val)+"%";
+    el.className="big "+classe(val);
+    const b=$(barId); b.querySelector("i").style.width=Math.min(100,val/3)+"%";
+    b.querySelector("span").textContent=rot+": "+Math.round(val)+"%";
+    b.querySelector(".marca100").style.left=(100/3)+"%";
+  };
+  põe("#cNr","#barNr",r.dNr,"NR-15");
+  põe("#cNi","#barNi",r.dNi,"NIOSH");
+
+  $("#oNr").textContent = r.dNr<=100 ? "q = 5 dB · dentro do limite legal" : "q = 5 dB · LIMITE LEGAL ESTOURADO";
+  $("#oNi").textContent = r.dNi<=100 ? "q = 3 dB · dentro do critério de saúde" : "q = 3 dB · acima do critério de saúde";
+
+  const ult = trechos.filter(t=>t.h>0).slice(-1)[0];
+  if(ult){
+    const cabe = tMax(ult.db,5)*(1 - Math.min(1,r.dNr/100));
+    $("#cSobra").textContent = cabe<=0 ? "0 min" :
+      (cabe<1 ? Math.round(cabe*60)+" min" : cabe.toFixed(1).replace(".",",")+" h");
+    $("#cSobra").className = "big "+(cabe<=0?"ruim":(cabe<1?"alerta":"ok"));
+    $("#oSobra").textContent = "a "+ult.db+" dB(A), o nível do último trecho";
+  } else { $("#cSobra").textContent="—"; $("#cSobra").className="big"; }
+
+  $("#cProt").textContent = Math.round(r.protegido)+"%";
+  $("#cProt").className = "big "+classe(r.protegido);
+
+  if(r.dNr>100) marcar("estoura");
+  if(r.dNr<=100 && r.dNi>100) marcar("difere");
+  if(r.dNr>100 && r.protegido<=100) marcar("protege");
+  const so2 = trechos.filter(t=>t.h>0).slice(0,2);
+  if(so2.length===2 && trechos.length>2){
+    let d=0; for(const t of so2) d+=t.h/tMax(t.db,5);
+    if(d>=0.6) marcar("soma");
+  }
+  desenhar(r);
+}
+
+function desenhar(r){
+  const w=cv.width=cv.clientWidth*2, h=cv.height=cv.clientHeight*2;
+  cx.clearRect(0,0,w,h);
+  const m=52, x0=m, y0=22, gw=w-m*1.4, gh=h-70;
+  const px=L=>x0+gw*(L-75)/45, py=t=>y0+gh*(1-Math.log10(Math.max(t,0.05)/0.05)/Math.log10(8/0.05));
+  cx.strokeStyle="#1b2530"; cx.lineWidth=2; cx.fillStyle="#63708a"; cx.font="17px Inter,sans-serif";
+  for(let L=75;L<=120;L+=5){ cx.beginPath(); cx.moveTo(px(L),y0); cx.lineTo(px(L),y0+gh); cx.stroke();
+    cx.fillText(L, px(L)-13, y0+gh+22); }
+  [8,4,2,1,0.5,0.25,0.117].forEach(t=>{ cx.beginPath(); cx.moveTo(x0,py(t)); cx.lineTo(x0+gw,py(t)); cx.stroke();
+    cx.fillText(t>=1?t+"h":Math.round(t*60)+"m", 6, py(t)+6); });
+  const curva=(q,cor)=>{ cx.strokeStyle=cor; cx.lineWidth=4; cx.beginPath();
+    for(let i=0;i<=200;i++){ const L=75+45*i/200; const t=tMax(L,q);
+      i?cx.lineTo(px(L),py(t)):cx.moveTo(px(L),py(t)); } cx.stroke(); };
+  curva(5,"#e0a03a"); curva(3,"#9b6ede");
+  cx.fillStyle="#e0a03a"; cx.font="bold 18px Inter,sans-serif"; cx.fillText("NR-15 (q=5)", px(103), py(1.6));
+  cx.fillStyle="#9b6ede"; cx.fillText("NIOSH (q=3)", px(90), py(0.5));
+  for(const t of trechos){ if(!(t.h>0))continue;
+    cx.fillStyle="#4aa8e0"; cx.beginPath(); cx.arc(px(t.db), py(Math.min(t.h,8)), 9, 0, 7); cx.fill(); }
+  cx.fillStyle="#63708a"; cx.font="17px Inter,sans-serif";
+  cx.fillText("nível dB(A) — bolinha azul = os seus trechos", x0+gw/2-190, h-8);
+}
+
+function linha(t,i){
+  const tr=document.createElement("tr");
+  tr.innerHTML =
+    '<td class="nm"><input value="'+t.nome+'" style="width:96%;background:#0a1018;border:1px solid #26303c;border-radius:6px;color:#e6edf5;font:inherit;padding:4px 6px" data-c="nome"></td>'+
+    '<td><input type="number" value="'+t.db+'" min="60" max="125" step="1" data-c="db"></td>'+
+    '<td><input type="number" value="'+t.h+'" min="0" max="16" step="0.25" data-c="h"></td>'+
+    '<td id="nr'+i+'">—</td><td id="ni'+i+'">—</td>'+
+    '<td><button class="mini" data-x="'+i+'">✕</button></td>';
+  tr.querySelectorAll("[data-c]").forEach(el=>el.addEventListener("input",()=>{
+    const c=el.dataset.c; t[c] = c==="nome" ? el.value : parseFloat(el.value)||0; render(); }));
+  tr.querySelector("[data-x]").addEventListener("click",()=>{ trechos.splice(i,1); render(); });
+  return tr;
+}
+
+function render(){
+  const tb=$("#tb"); tb.innerHTML="";
+  trechos.forEach((t,i)=>tb.appendChild(linha(t,i)));
+  trechos.forEach((t,i)=>{
+    if(!(t.h>0)) return;
+    const a=$("#nr"+i), b=$("#ni"+i);
+    if(a){ const p=t.h/tMax(t.db,5)*100; a.textContent=Math.round(p)+"%"; a.className=classe(p); }
+    if(b){ const p=t.h/tMax(t.db,3)*100; b.textContent=Math.round(p)+"%"; b.className=classe(p); }
+  });
+  pintar();
+}
+
+$("#bAdd").addEventListener("click",()=>{ trechos.push({nome:"Novo trecho",db:95,h:1}); render(); });
+$("#bLimpar").addEventListener("click",()=>{ trechos=[]; render(); });
+document.querySelectorAll("[data-cen]").forEach(b=>b.addEventListener("click",()=>{
+  trechos = CEN[b.dataset.cen].map(([nome,db,h])=>({nome,db,h})); render(); }));
+$("#filtro").addEventListener("input",e=>{ filtroDb=parseFloat(e.target.value);
+  $("#oFiltro").textContent=filtroDb; pintar(); });
+addEventListener("resize",()=>pintar());
+
+trechos = CEN.clube.map(([nome,db,h])=>({nome,db,h}));
+render();
+</script>
+</body>
+</html>
