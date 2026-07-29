@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>Praticando: monte a sua cabine (SMU)</title>
+<style>
+  :root{ --ink:#e9eef7; --amber:#ffae1a; --green:#39d271; --blue:#37a2ff; --red:#ff4636;
+         --line:#2a2f37; --painel:#0c0e12; }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{ background:radial-gradient(1100px 640px at 50% -10%,#26292e,#0a0b0d 62%),#08090b; color:var(--ink);
+    font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;
+    user-select:none;overflow:hidden;display:flex;align-items:flex-start;justify-content:center}
+  #stage{transform-origin:top center;flex:0 0 auto}
+  .wrap{width:1240px;display:flex;flex-direction:column;gap:8px;padding:10px}
+
+  .util{display:flex;align-items:center;gap:9px;flex-wrap:wrap;background:linear-gradient(180deg,#202329,#15171b);
+    border:1px solid #0c0d0f;border-radius:11px;padding:8px 12px}
+  .brand b{font-size:15px;letter-spacing:1px}
+  .brand .m{font-size:9px;letter-spacing:2px;color:#8a94a4;text-transform:uppercase;margin-left:6px}
+  .pill{font-size:10px;color:#8b97a9;background:var(--painel);border:1px solid var(--line);border-radius:16px;
+    padding:4px 10px;display:flex;align-items:center;gap:6px}
+  .pill b{color:#fff}
+  .spacer{flex:1}
+  .btnp{font:inherit;font-size:11px;font-weight:700;border:0;border-radius:8px;padding:7px 12px;cursor:pointer;
+    color:#07120b;background:linear-gradient(180deg,#5be59a,#27b566)}
+  .btnp.ghost{background:transparent;color:#8b97a9;border:1px solid var(--line)}
+
+  .grid{display:grid;grid-template-columns:1fr 268px;gap:8px}
+  .card{background:var(--painel);border:1px solid var(--line);border-radius:10px;padding:9px}
+  .card h3{margin:0 0 8px;font-size:10px;letter-spacing:1.4px;color:#8b97a9;text-transform:uppercase;font-weight:800}
+
+  /* ---------- bancada com os simuladores REAIS ---------- */
+  .banc{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .apar{position:relative;border:1px solid #1b2027;border-radius:9px;overflow:hidden;background:#08090b}
+  .apar.mixer{grid-column:1 / -1}
+  .apar .cap{display:flex;align-items:center;gap:7px;padding:5px 8px;background:#12161b;border-bottom:1px solid #1b2027}
+  .apar .cap .nm{font-size:10px;font-weight:800;letter-spacing:.4px}
+  .apar .cap .sa{font-size:8.5px;font-weight:800;padding:2px 6px;border-radius:4px}
+  .sa.line{background:#123a5c;color:#8fd0ff}
+  .sa.phono{background:#4a2a12;color:#ffc98a}
+  .apar iframe{display:block;width:100%;border:0;background:#08090b}
+  .apar .jack{position:absolute;right:9px;bottom:7px;width:17px;height:17px;border-radius:50%;cursor:pointer;z-index:6;
+    background:radial-gradient(circle at 50% 34%,#4a5058,#191c20 70%);border:2px solid #2f6ea5;
+    box-shadow:inset 0 1px 1px #ffffff22,0 1px 3px #0009}
+  .apar .jack.phono{border-color:#a56a2f}
+  .apar .jack.sel{box-shadow:0 0 0 3px var(--amber),0 0 14px var(--amber)}
+  .apar .jack.ok{border-color:var(--green)}
+  .apar .jl{position:absolute;right:30px;bottom:9px;font-size:8px;font-weight:800;color:#8a94a4;z-index:6}
+
+  /* entradas do mixer, desenhadas por cima do simulador do mixer */
+  .entradas{position:absolute;left:8px;bottom:7px;display:flex;gap:14px;z-index:6}
+  .ent{display:flex;flex-direction:column;align-items:center;gap:3px;background:#0c0f13cc;border:1px solid #232a32;
+    border-radius:7px;padding:4px 7px;backdrop-filter:blur(2px)}
+  .ent .cn{font-size:8px;font-weight:800;color:#9aa4b1;letter-spacing:.4px}
+  .ent .sw{display:flex;border:1px solid #000;border-radius:4px;overflow:hidden;cursor:pointer}
+  .ent .sw span{font-size:7.5px;font-weight:800;padding:2px 5px;background:#15181c;color:#7f8b9c}
+  .ent .sw span.on{background:#2f6ea5;color:#fff}
+  .ent .sw span.on.ph{background:#a56a2f}
+  .ent .jack2{width:15px;height:15px;border-radius:50%;cursor:pointer;
+    background:radial-gradient(circle at 50% 34%,#4a5058,#191c20 70%);border:2px solid #2f6ea5}
+  .ent .jack2.phono{border-color:#a56a2f}
+  .ent .jack2.ok{border-color:var(--green)}
+
+  svg.cabos{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5}
+
+  /* ---------- painel de pendências ---------- */
+  .chk{display:flex;gap:7px;align-items:flex-start;padding:6px 7px;border-radius:7px;margin-bottom:5px;
+    background:#11151a;border:1px solid #1c2229}
+  .chk.ok{background:#0f2418;border-color:#1e5c38}
+  .chk .b{width:14px;height:14px;border-radius:50%;flex:0 0 auto;margin-top:1px;background:#2a3038;border:1px solid #000;
+    display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:#6b7684}
+  .chk.ok .b{background:var(--green);color:#062a13}
+  .chk .tx{font-size:10px;line-height:1.3;color:#c2cbd6}
+  .chk.ok .tx{color:#9fe3bb}
+  .chk .tx b{color:#fff}
+  .som{margin-top:8px;padding:9px;border-radius:8px;text-align:center;font-size:11px;font-weight:800;
+    background:#2a1414;border:1px solid #52201c;color:#ff9c90}
+  .som.on{background:#0f2a18;border-color:#1e6b3c;color:#7df0a8}
+  .ctrl{margin-top:9px;padding-top:8px;border-top:1px dashed #232a32}
+  .ctrl .lin{display:flex;align-items:center;gap:7px;margin-bottom:7px}
+  .ctrl .lb{font-size:9px;font-weight:800;color:#8b97a9;width:52px;letter-spacing:.4px}
+  .fad{flex:1;height:16px;border-radius:4px;position:relative;cursor:ew-resize;touch-action:none;
+    background:linear-gradient(180deg,#07090b,#1b1f24 50%,#07090b);border:1px solid #000}
+  .fad .cap2{position:absolute;top:50%;width:13px;height:22px;transform:translate(-50%,-50%);border-radius:2px;
+    background:linear-gradient(180deg,#eef1f4,#a9afb7);border:1px solid #000;box-shadow:0 2px 4px #000a}
+  .dica{margin-top:8px;font-size:9.5px;line-height:1.4;color:#8b97a9;border-top:1px dashed #232a32;padding-top:7px}
+  .dica b{color:#cdd5e0}
+</style>
+</head>
+<body>
+<div id="stage">
+<div class="wrap">
+
+  <div class="util">
+    <div class="brand"><b>SMU</b><span class="m">PRO • PRATICANDO — MONTE A SUA CABINE</span></div>
+    <span class="pill">Sinal <b id="sinal">interrompido</b></span>
+    <span class="spacer"></span>
+    <button class="btnp ghost" id="btnReset">Recomeçar</button>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Ligue os cabos RCA e abra o som — os aparelhos são os simuladores de verdade</h3>
+      <div class="banc" id="banc">
+        <svg class="cabos" id="svg"></svg>
+
+        <div class="apar" id="ap1">
+          <div class="cap"><span class="nm">__D1_TITULO__</span><span class="sa line" id="sa1">SAÍDA LINE</span></div>
+          <iframe id="if1" sandbox="allow-scripts" srcdoc="__D1_HTML__" height="330"></iframe>
+          <div class="jl">OUT</div><div class="jack" id="j1"></div>
+        </div>
+
+        <div class="apar" id="ap2">
+          <div class="cap"><span class="nm">__D2_TITULO__</span><span class="sa line" id="sa2">SAÍDA LINE</span></div>
+          <iframe id="if2" sandbox="allow-scripts" srcdoc="__D2_HTML__" height="330"></iframe>
+          <div class="jl">OUT</div><div class="jack" id="j2"></div>
+        </div>
+
+        <div class="apar mixer" id="apm">
+          <div class="cap"><span class="nm">__MX_TITULO__</span><span class="sa" style="background:#1b2027;color:#9aa4b1">MIXER</span></div>
+          <iframe id="ifm" sandbox="allow-scripts" srcdoc="__MX_HTML__" height="300"></iframe>
+          <div class="entradas" id="entradas"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>O que falta para sair som</h3>
+      <div id="lista"></div>
+      <div class="som" id="som">SEM SOM</div>
+
+      <div class="ctrl">
+        <div class="lin"><span class="lb">CANAL 1</span><div class="fad" id="f1"><div class="cap2"></div></div></div>
+        <div class="lin"><span class="lb">CANAL 2</span><div class="fad" id="f2"><div class="cap2"></div></div></div>
+        <div class="lin"><span class="lb">MASTER</span><div class="fad" id="fm"><div class="cap2"></div></div></div>
+      </div>
+
+      <div class="dica">
+        <b>PHONO</b> é só para <b>pickup</b>: o sinal é fraco e precisa do pré-amplificador.<br>
+        <b>LINE</b> é para fonte digital (<b>CDJ/XDJ</b>), que já sai forte.<br>
+        Trocar os dois <b>não</b> funciona: CDJ no PHONO satura; pickup no LINE quase não se ouve.<br><br>
+        Os faders começam no <b>mínimo</b> e o <b>MASTER fechado</b> — é a ordem certa de subir numa cabine de verdade.
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+
+/* saída de cada aparelho: LINE (digital) ou PHONO (pickup) — lido do título */
+const ehVinil = t => /technics|plx|sl-1200|toca-disco|turntable/i.test(t);
+const T1=$("#ap1 .nm").textContent, T2=$("#ap2 .nm").textContent;
+const SAIDA={1: ehVinil(T1)?"PHONO":"LINE", 2: ehVinil(T2)?"PHONO":"LINE"};
+$("#sa1").textContent="SAÍDA "+SAIDA[1]; $("#sa1").className="sa "+SAIDA[1].toLowerCase();
+$("#sa2").textContent="SAÍDA "+SAIDA[2]; $("#sa2").className="sa "+SAIDA[2].toLowerCase();
+$("#j1").className="jack "+SAIDA[1].toLowerCase();
+$("#j2").className="jack "+SAIDA[2].toLowerCase();
+
+const S={ cabo:{1:null,2:null}, entrada:{1:"LINE",2:"LINE"},
+          fader:{1:0,2:0}, master:0, ligando:null };
+
+/* ---------- entradas do mixer ---------- */
+function montarEntradas(){
+  const c=$("#entradas"); c.innerHTML="";
+  for(let n=1;n<=2;n++){
+    const d=document.createElement("div"); d.className="ent";
+    const usado=Object.values(S.cabo).includes(n);
+    d.innerHTML=`<span class="cn">CH ${n}</span>
+      <div class="sw"><span class="${S.entrada[n]==="LINE"?"on":""}">LINE</span><span class="${S.entrada[n]==="PHONO"?"on ph":""}">PHONO</span></div>
+      <div class="jack2 ${S.entrada[n].toLowerCase()}${usado?" ok":""}"></div>`;
+    d.querySelector(".sw").onclick=()=>{ S.entrada[n]= S.entrada[n]==="LINE"?"PHONO":"LINE"; montarEntradas(); aplicar(); };
+    d.querySelector(".jack2").onclick=()=>{ if(S.ligando){
+      Object.keys(S.cabo).forEach(k=>{ if(S.cabo[k]===n) S.cabo[k]=null; });
+      S.cabo[S.ligando]=n; S.ligando=null; montarEntradas(); aplicar(); } };
+    c.appendChild(d);
+  }
+  $("#j1").classList.toggle("ok",!!S.cabo[1]); $("#j2").classList.toggle("ok",!!S.cabo[2]);
+  $("#j1").classList.toggle("sel",S.ligando===1); $("#j2").classList.toggle("sel",S.ligando===2);
+  cabos();
+}
+$("#j1").onclick=()=>{ S.ligando=S.ligando===1?null:1; montarEntradas(); };
+$("#j2").onclick=()=>{ S.ligando=S.ligando===2?null:2; montarEntradas(); };
+
+/* ---------- cabos desenhados ---------- */
+function cabos(){
+  const svg=$("#svg"), b=$("#banc").getBoundingClientRect(); svg.innerHTML="";
+  [1,2].forEach(n=>{
+    const c=S.cabo[n]; if(!c) return;
+    const de=$("#j"+n), para=$$("#entradas .jack2")[c-1]; if(!de||!para) return;
+    const r1=de.getBoundingClientRect(), r2=para.getBoundingClientRect();
+    const x1=r1.left+r1.width/2-b.left, y1=r1.top+r1.height/2-b.top;
+    const x2=r2.left+r2.width/2-b.left, y2=r2.top+r2.height/2-b.top;
+    const cor = SAIDA[n]===S.entrada[c] ? "#39d271" : "#ff4636";
+    const p=document.createElementNS("http://www.w3.org/2000/svg","path");
+    p.setAttribute("d",`M${x1},${y1} C${x1+40},${y1+50} ${x2-40},${y2-50} ${x2},${y2}`);
+    p.setAttribute("stroke",cor); p.setAttribute("stroke-width","3.5");
+    p.setAttribute("fill","none"); p.setAttribute("opacity",".92"); svg.appendChild(p);
+  });
+}
+
+/* ---------- faders da aula ---------- */
+function fader(el,ini,cb){
+  const cap=el.querySelector(".cap2"); let v=ini;
+  const põe=()=>{ cap.style.left=(6+v*88)+"%"; };
+  põe();
+  let drag=false;
+  const mv=e=>{ if(!drag)return; const r=el.getBoundingClientRect();
+    v=clamp((e.clientX-r.left)/r.width,0,1); põe(); cb(v); };
+  el.addEventListener("pointerdown",e=>{drag=true;el.setPointerCapture(e.pointerId);mv(e);});
+  el.addEventListener("pointermove",mv);
+  const up=()=>drag=false; el.addEventListener("pointerup",up); el.addEventListener("pointercancel",up);
+}
+
+/* ---------- pendências ---------- */
+function checklist(){
+  const casa=n=> S.cabo[n] ? SAIDA[n]===S.entrada[S.cabo[n]] : false;
+  const it=[
+    [!!S.cabo[1] && !!S.cabo[2], "Ligar o <b>cabo RCA</b> de cada aparelho num canal",
+      "Clique no conector <b>OUT</b> do aparelho e depois na entrada do canal, embaixo do mixer."],
+    [casa(1) && casa(2), "Pôr a chave do canal na <b>entrada certa</b>",
+      "CDJ/XDJ = <b>LINE</b> · pickup = <b>PHONO</b>. Errado, o som não passa."],
+    [S.fader[1]>0.05 || S.fader[2]>0.05, "Subir o <b>fader do canal</b>",
+      "Ele começa no mínimo, como numa cabine de verdade."],
+    [S.master>0.05, "Abrir o <b>MASTER</b>",
+      "O master começa fechado: é o último a subir e o primeiro a baixar."],
+    [tocando(), "Dar <b>PLAY</b> em algum deck",
+      "Aperte PLAY no simulador do aparelho — ele é o de verdade, funciona igual."],
+  ];
+  const L=$("#lista"); L.innerHTML="";
+  it.forEach(([ok,t,ajuda])=>{
+    const d=document.createElement("div"); d.className="chk"+(ok?" ok":"");
+    d.innerHTML=`<div class="b">${ok?"✓":"!"}</div><div class="tx">${t}${ok?"":"<br><span style='color:#7f8b9c'>"+ajuda+"</span>"}</div>`;
+    L.appendChild(d);
+  });
+  const tudo=it.every(([o])=>o);
+  const s=$("#som"); s.className="som"+(tudo?" on":"");
+  s.textContent= tudo ? "SOM NO AR ♪" : "SEM SOM";
+  $("#sinal").textContent = tudo ? "passando" : "interrompido";
+  return tudo;
+}
+let tocandoA=false, tocandoB=false;
+const tocando=()=>tocandoA||tocandoB;
+
+/* ---------- volume real de cada simulador (ponte) ---------- */
+function aplicar(){
+  const casa=n=> S.cabo[n] ? SAIDA[n]===S.entrada[S.cabo[n]] : false;
+  const ok=checklist();
+  [1,2].forEach(n=>{
+    const c=S.cabo[n];
+    const v = (c && casa(n)) ? S.fader[c]*S.master : 0;
+    const f=$("#if"+n); if(f&&f.contentWindow) f.contentWindow.postMessage({smu:"vol", v:v}, "*");
+  });
+}
+
+/* o mixer embutido fica só como painel: seu áudio interno entra mudo */
+window.addEventListener("load",()=>{
+  const m=$("#ifm"); if(m&&m.contentWindow) m.contentWindow.postMessage({smu:"vol", v:0}, "*");
+});
+
+/* detecta play nos decks (o simulador avisa por titulo/estado; aqui usamos
+   uma sondagem leve por postMessage de resposta) */
+setInterval(()=>{ [1,2].forEach(n=>{
+  const f=$("#if"+n); if(f&&f.contentWindow) f.contentWindow.postMessage({smu:"tocando?"}, "*"); }); }, 600);
+window.addEventListener("message",e=>{
+  const d=e.data; if(!d||d.smu!=="tocando") return;
+  if(e.source===$("#if1").contentWindow) tocandoA=d.v; else if(e.source===$("#if2").contentWindow) tocandoB=d.v;
+  checklist();
+});
+
+/* ---------- boot ---------- */
+montarEntradas();
+fader($("#f1"),0,v=>{S.fader[1]=v; aplicar();});
+fader($("#f2"),0,v=>{S.fader[2]=v; aplicar();});
+fader($("#fm"),0,v=>{S.master=v; aplicar();});
+checklist();
+$("#btnReset").addEventListener("pointerdown",()=>location.reload());
+const fit=()=>{ const w=$(".wrap");
+  const s=Math.max(0.1,Math.min((window.innerWidth-6)/w.offsetWidth,(window.innerHeight-6)/w.offsetHeight,1));
+  $("#stage").style.transform="scale("+s+")"; };
+window.addEventListener("resize",()=>{fit();cabos();}); fit();
+</script>
+</body>
+</html>
