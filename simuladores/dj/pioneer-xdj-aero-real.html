@@ -136,7 +136,10 @@
   .sq{position:absolute;z-index:3;cursor:pointer;border-radius:5px;min-width:0;overflow:hidden;
     background:linear-gradient(180deg,#2a2c30 0%,#1a1b1e 48%,#0f1012 100%);border:1px solid #000;
     box-shadow:inset 0 1px 0 #ffffff22, 0 1px 2px #000a;
-    display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:8%}
+    /* ⚠️ ARMADILHA: padding em % num elemento ABSOLUTO resolve contra a LARGURA
+       do .deck (1080 px), não contra o botão (32 px). Com box-sizing:border-box
+       o 8% virava 86 px e engolia a legenda "USB STOP"/"MASTER REC". Use px. */
+    display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:2px}
   .sq .led{position:absolute;left:50%;top:17%;width:15%;height:31%;transform:translateX(-50%);border-radius:50%;
     background:#4a3a10;box-shadow:inset 0 0 2px #000}
   .sq.amb .led.on{background:radial-gradient(circle at 50% 35%,#ffe9a8,#ffbe1a 60%,#c07d05);box-shadow:0 0 6px #ffbe1a}
@@ -381,12 +384,13 @@ const POS={
  temporangeA:[33.83,40.15,1.15,2.47],    /* X5Y3  — TEMPO RANGE               */
  sampleA:[10.10,42.10,3.70,6.10],        /* X5Y1  — SAMPLE LAUNCH (inclinado) */
  jogdrumA:[7.65,47.10,3.00,6.60],        /* X5Y1  — JOG DRUM (inclinado)      */
- jog:[8.88,45.86,22.20,47.77],           /* X5Y1 → X10Y3 — prato do deck A    */
+ ablA:[4.08,41.54,3.04,6.54],            /* X5Y1  — AUTO BEAT LOOP (knob)     */
+ jog:[9.01,44.98,21.96,47.26],           /* X5Y1 → X10Y3 — prato do deck A    */
  shiftA:[4.01,56.99,3.02,6.50],          /* X6Y1  — SHIFT                     */
- cueA:[3.10,69.31,3.98,8.56],            /* X8Y1  — CUE                       */
- playA:[4.02,83.07,5.29,11.38],          /* X9Y1  — PLAY / PAUSE              */
+ cueA:[3.12,68.07,4.70,10.11],           /* X8Y1  — CUE   (c281,1736 · Ø240)  */
+ playA:[4.51,82.71,5.29,11.38],          /* X9Y1  — PLAY  (c367,2098 · Ø270)  */
  mastertempoA:[33.78,48.33,1.71,3.68],   /* X5Y3  — MASTER TEMPO              */
- tempoA:[32.17,56.28,3.96,22.30],        /* X6Y3 → X8Y3 — fader TEMPO         */
+ tempoA:[32.75,56.84,3.33,21.05],        /* X6Y3 → X8Y3 — fader TEMPO         */
  syncA:[33.60,86.90,1.92,2.65],          /* X9Y3  — SYNC                      */
 
  /* ===================== MIXER (centro) ===================== */
@@ -418,7 +422,7 @@ const POS={
  fader1:[43.20,61.20,4.00,18.40],        /* X7Y4 → X8Y4 — fader do canal 1    */
  fader2:[52.00,61.20,4.00,18.40],        /* X7Y5 → X8Y5 — fader do canal 2    */
  xfcurve:[48.25,80.25,2.91,3.91],        /* X9Y4  — CROSS F. CURVE            */
- crossfader:[45.60,86.40,8.30,9.80],     /* X9Y4/Y5 — CROSSFADER              */
+ crossfader:[45.99,86.45,7.35,9.20],     /* X9Y4/Y5 — CROSSFADER (px2350..2725)*/
 
  /* ================= DECK B (direita) — Deck A + 59,60 ================= */
  srcrbB:[64.05,12.50,2.42,5.21],
@@ -436,20 +440,21 @@ const POS={
  fx4B:[84.19,34.83,1.97,2.64],
  leveldepthB:[88.45,33.00,2.97,6.39],
  temporangeB:[93.43,40.15,1.15,2.47],
+ ablB:[63.68,41.54,3.04,6.54],
  sampleB:[69.70,42.10,3.70,6.10],
  jogdrumB:[67.25,47.10,3.00,6.60],
- platter:[68.48,45.86,22.20,47.77],      /* X5Y6 → X10Y8 — prato do deck B    */
+ platter:[68.61,44.98,21.96,47.26],      /* X5Y6 → X10Y8 — prato do deck B    */
  shiftB:[63.61,56.99,3.02,6.50],
- cueB:[62.70,69.31,3.98,8.56],
- playB:[63.62,83.07,5.29,11.38],
+ cueB:[62.72,68.07,4.70,10.11],
+ playB:[64.11,82.71,5.29,11.38],
  mastertempoB:[93.38,48.33,1.71,3.68],
- tempoB:[91.77,56.28,3.96,22.30],
+ tempoB:[92.35,56.84,3.33,21.05],
  syncB:[93.20,86.90,1.92,2.65]
 };
 /* proporção física real (spec oficial + foto oficial): 623 x 289,5 mm */
 const AR=623/289.5;
 /* elementos CIRCULARES: no build, h = w*AR mantendo o centro */
-const ROUND=new Set(["rotaryA","rotaryB","beatA","beatB","leveldepthA","leveldepthB",
+const ROUND=new Set(["rotaryA","rotaryB","beatA","beatB","ablA","ablB","leveldepthA","leveldepthB",
  "temporangeA","temporangeB","mastertempoA","mastertempoB","shiftA","shiftB","cueA","cueB",
  "playA","playB","jog","platter","trim1","hi1","mid1","low1","filter1","trim2","hi2","mid2",
  "low2","filter2","masterlevel","mixing","phoneslevel","miclevel","miceq"]);
@@ -473,7 +478,8 @@ const T={
  disp:["VISOR do deck","Visor azul do deck: tempo (REMAIN/ELAPSED), variação de TEMPO em %, BPM, faixa de pitch (±6/±10/±16/WIDE), endereço de reprodução, LOOP em batidas e o FX ativo."],
  back:["BACK / TOP","Volta um nível na navegação de pastas. Segurando, salta direto para o topo da biblioteca."],
  rotary:["SELETOR ROTATIVO (PUSH)","Gire para percorrer faixas e pastas; aperte para entrar/carregar. É por aqui que a música chega ao deck."],
- beat:["BEAT — AUTO BEAT LOOP","Gire para escolher o tamanho do loop em batidas (1, 2, 4, 8, 16) e <b>aperte</b> para ligar/desligar. O loop cai certinho na grade de batidas do rekordbox."],
+ beat:["BEAT (tempo do BEAT FX)","Escolhe em quantas batidas o efeito trabalha: <b>1/8, 1/4, 1/2, 1 ou 2</b> tempos. É ele que faz o ECHO repetir curto ou longo e o ROLL picotar mais fino."],
+ abl:["AUTO BEAT LOOP","O knob que deu nome ao XDJ-AERO. <b>Gire</b> para escolher o tamanho do loop em batidas (1, 2, 4, 8, 16) e <b>aperte</b> para ligar/desligar — o fim do loop é calculado pelo BPM, então ele nunca sai do tempo. O LED amarelo acima acende com o loop ligado."],
  fx1:["BEAT FX — TRANS","Corta o som em fatias no tempo da música (efeito porta/gate). A intensidade é o knob LEVEL/DEPTH."],
  fx2:["BEAT FX — FLANGER","Varredura metálica clássica: um atraso curtinho que vai e volta, criando aquele 'avião'."],
  fx3:["BEAT FX — ECHO","Eco no tempo da música. Ótimo para terminar uma faixa deixando a cauda repetir."],
@@ -525,6 +531,7 @@ for(const S of ["A","B"]){
   C("back"+S,"ov",T.back);
   C("rotary"+S,"knob",T.rotary,{knurl:1});
   C("beat"+S,"knob",T.beat,{knurl:1,big:1});
+  C("abl"+S,"knob",T.abl,{knurl:1,big:1});
   C("fx1"+S,"fxb",T.fx1); C("fx2"+S,"fxb",T.fx2); C("fx3"+S,"fxb",T.fx3); C("fx4"+S,"fxb",T.fx4);
   C("leveldepth"+S,"knob",T.leveldepth,{big:1});
   C("temporange"+S,"rdk",T.temporange);
@@ -593,7 +600,7 @@ async function startAudio(){ if(started)return; started=true;
     const buf=await renderTrack(S), data=buf.getChannelData(0), len=buf.length;
     const d={ S,buffer:buf,data,len,pos:0,playing:false,rate:0,pitch:0,baseBpm:126,dir:1,
               touching:false,targetPos:0,cuePoint:0,rangeIdx:1,mt:false,
-              loopOn:false,loopBeats:4,loopStart:0,loopEnd:0,
+              loopOn:false,loopBeats:4,fxBeats:0.5,loopStart:0,loopEnd:0,
               src:"usb",shift:false,fx:-1,fxLevel:0.5,jogDrum:false,sync:false,timeRemain:true,
               autoCue:true,peaks:null,masterDeck:S==="A" };
     d.trim=AC.createGain(); d.trim.gain.value=0.9;
@@ -668,7 +675,9 @@ function setFx(S,i){ const d=D[S]; if(!d)return;
   d.fx=(d.fx===i)?-1:i;
   for(let j=0;j<4;j++) setState("fx"+(j+1)+S, d.fx===j);
   applyFx(S); if(d.fx>=0)markMission("fx"); }
-function applyFx(S){ const d=D[S]; if(!d)return; const L=d.fxLevel, bl=beatLen(d)/d.buffer.sampleRate;
+function applyFx(S){ const d=D[S]; if(!d)return; const L=d.fxLevel;
+  /* o knob BEAT define em quantas batidas o efeito trabalha (1/8 .. 2) */
+  const bl=beatLen(d)/d.buffer.sampleRate*((d.fxBeats||0.5)/0.5);
   if(d.lfo){ try{d.lfo.stop();}catch(e){} try{d.lfo.disconnect();}catch(e){} d.lfo=null; }
   if(d.fx<0){ d.trem.gain.value=1; d.wet.gain.value=0; d.fb.gain.value=0; d.dry.gain.value=1; return; }
   if(d.fx===0){                                   /* TRANS — gate no tempo */
@@ -710,7 +719,7 @@ const MISSIONS=[
   {id:"playA",t:"Toque o deck 1",h:"Aperte PLAY/PAUSE do deck da ESQUERDA."},
   {id:"playB",t:"Toque o deck 2",h:"Aperte PLAY/PAUSE do deck da DIREITA."},
   {id:"xfader",t:"Use o CROSSFADER",h:"Deslize o crossfader entre o lado A e o lado B."},
-  {id:"loop",t:"Faça um AUTO BEAT LOOP",h:"Aperte o knob BEAT de um deck: ele repete 4 batidas."},
+  {id:"loop",t:"Faça um AUTO BEAT LOOP",h:"Aperte o knob AUTO BEAT LOOP (embaixo do LED amarelo): ele repete 4 batidas."},
   {id:"fx",t:"Ligue um BEAT FX",h:"Aperte TRANS, FLANGER, ECHO ou ROLL e gire o LEVEL/DEPTH."},
   {id:"sync",t:"Use o SYNC",h:"Aperte SYNC no outro deck para casar o BPM."},
 ];
@@ -866,7 +875,7 @@ function silk(){
   /* poço dos faders de canal e do crossfader */
   panel("well",42.60,60.30,5.20,20.20);
   panel("well",51.40,60.30,5.20,20.20);
-  panel("well",44.90,85.40,9.70,11.30);
+  panel("well",45.29,85.45,8.75,10.90);
 
   /* ---------- borda traseira ---------- */
   lab("Pioneer",7.30,2.35,"pio");
@@ -1136,6 +1145,7 @@ function knobDefault(act){
   if(/^miceq/.test(act))return 0.5;
   if(/^leveldepth/.test(act))return 0.5;
   if(/^beat/.test(act))return 0.5;
+  if(/^abl/.test(act))return 0.5;
   return 0.5;
 }
 function paintKnob(act){ const el=els[act]; if(!el)return; const v=knobVal[act];
@@ -1153,9 +1163,11 @@ function applyKnob(act,v){ knobVal[act]=v; paintKnob(act); if(!ready)return;
     return; }
   if(act==="masterlevel"){ master.gain.value=v*1.25; return; }
   if(/^leveldepth/.test(act)){ const S=act.slice(-1); D[S].fxLevel=v; applyFx(S); return; }
-  if(/^beat/.test(act)){ const S=act.slice(-1); const steps=[1,2,4,8,16];
+  if(/^abl/.test(act)){ const S=act.slice(-1); const steps=[1,2,4,8,16];
     D[S].loopBeats=steps[clamp(Math.round(v*4),0,4)];
     if(D[S].loopOn){ D[S].loopEnd=D[S].loopStart+beatLen(D[S])*D[S].loopBeats; } return; }
+  if(/^beat/.test(act)){ const S=act.slice(-1); const steps=[0.125,0.25,0.5,1,2];
+    D[S].fxBeats=steps[clamp(Math.round(v*4),0,4)]; applyFx(S); return; }
 }
 function bindKnob(hit,c){ const act=c.act; knobVal[act]=knobDefault(act); paintKnob(act);
   let drag=false,y0=0,v0=0,moved=0;
@@ -1166,7 +1178,8 @@ function bindKnob(hit,c){ const act=c.act; knobVal[act]=knobDefault(act); paintK
   hit.addEventListener("pointermove",e=>{ if(!drag)return; const dy=y0-e.clientY;
     moved=Math.max(moved,Math.abs(dy)); applyKnob(act,clamp(v0+dy/140,0,1)); });
   const up=()=>{ if(drag&&moved<4){ /* clique curto = pressionar o knob */
-      if(/^beat/.test(act)){ toggleLoop(act.slice(-1)); }
+      if(/^abl/.test(act)){ toggleLoop(act.slice(-1)); }
+      else if(/^beat/.test(act)){ flash(els[act]); }
       else if(/^rotary/.test(act)){ const S=act.slice(-1); if(ready){ D[S].pos=0; D[S].cuePoint=0; } flash(els[act]); } }
     drag=false; };
   hit.addEventListener("pointerup",up); hit.addEventListener("pointercancel",up);
