@@ -65,11 +65,21 @@ for (const a of aulas) {
   const temBanco = /\/\*\s*BANCO-SMU-/.test(local);
   const baseRelativa = /\bbase\s*:\s*["'](?!https?:\/\/)/.test(local)
                     || /\bBASE\s*=\s*["'](?!https?:\/\/)/.test(local);
-  if (temBanco && baseRelativa) {
+
+  /* O marcador pode faltar: o studio tinha o Banco escrito a mao e passou
+     batido (achado da sessao do Banco SMU). Entao o guard tambem procura o
+     PADRAO, sem depender de ninguem lembrar de marcar: referencia a arquivo
+     de audio por caminho relativo. */
+  const audioRelativo = /["'`](?!https?:\/\/|data:|blob:)[^"'`\s]*\.(mp3|wav|ogg|m4a|flac)["'`]/i.test(local);
+
+  const motivo = (temBanco && baseRelativa) ? "Banco SMU com caminho relativo"
+               : audioRelativo               ? "referencia a arquivo de audio por caminho relativo"
+               : null;
+  if (motivo) {
     bloqueados++;
     console.log(`BLOQUEADO      ${arq}`);
-    console.log(`   Banco SMU com caminho relativo — daria 404 publicado (iframe srcDoc, Origin: null).`);
-    console.log(`   Libera sozinho quando o base virar URL absoluta com CORS *.`);
+    console.log(`   ${motivo} — daria 404 publicado (iframe srcDoc, Origin: null).`);
+    console.log(`   Libera sozinho quando o caminho virar URL absoluta com CORS *.`);
     continue;
   }
 
