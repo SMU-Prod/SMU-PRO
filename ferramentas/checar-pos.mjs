@@ -54,7 +54,8 @@ const guards = {
   bars16: /bars=16/.test(s),
   fader: /gain\.value=0\.9/.test(s),
   semFoto: !/data:image\/(jpeg|png);base64/.test(s),
-  desenhaAntesDoAudio: /function init\(\)\{[^\n]*frame\(\)/.test(s),
+  // frame() em qualquer ponto do corpo do init() (nao so na mesma linha)
+  desenhaAntesDoAudio: /function init\(\)\s*\{[\s\S]{0,600}?\bframe\(\)/.test(s),
 };
 const ok = !vaz.length && !col.length && Object.values(guards).every(Boolean);
 console.log(JSON.stringify({ arquivo: file.split(/[\\/]/).pop(), ok, AR: +AR.toFixed(3), controles: keys.length, guards, vazamentos: vaz, colisoes: col }, null, 1));

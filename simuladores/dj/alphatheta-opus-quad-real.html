@@ -967,6 +967,168 @@ function frame(){ requestAnimationFrame(frame);
   if((fc&3)===0){ drawDisp(A,"A"); drawDisp(B,"B"); drawScreen(); updateMeters(); }
   fc++;
 }
+
+/* ===================== CONSTRUCAO DO PAINEL =====================
+   Esta secao faltava: o arquivo tinha POS/CTRL/audio/desenho, mas nenhum
+   createElement — por isso o aparelho nao aparecia e nada era clicavel. */
+const deckEl=document.querySelector(".deck");
+function place(el,act){
+  const p=POS[act]; if(!p) return false;
+  let x=p[0],y=p[1],w=p[2],h=p[3];
+  if(ROUND.has(act)){ const nh=w*AR; y=y+h/2-nh/2; h=nh; }
+  pct(el,x,y,w,h); return true;
+}
+function mkEl(c){
+  const k=c.kind, cls=c.cls?(" "+c.cls):"", t=c.t||c.txt||"";
+  let e=document.createElement("div");
+  if(k==="knob"||k==="knobc"){ e.className="knob"+(k==="knobc"?" cop":"")+cls;
+    e.innerHTML='<div class="cap"></div><div class="ptr"></div>'; }
+  else if(k==="sel"){ e.className="knob sel"+cls;
+    e.innerHTML='<div class="knurl"></div><div class="cap"></div>'; }
+  else if(k==="btn"){ e.className="btn"+cls; e.innerHTML=t; }
+  else if(k==="obtn"){ e.className="obtn"+cls; e.innerHTML=t; }
+  else if(k==="wbtn"){ e.className="wbtn"+cls; e.innerHTML=t||"CUE"; }
+  else if(k==="pad"){ e.className="pad"+cls; e.innerHTML='<i></i><b>'+t+'</b>'; }
+  else if(k==="circ"){ e.className="circ"+cls; e.innerHTML='<span>'+t+'</span>'; }
+  else if(k==="orb"){ e.className="orb"+cls; e.innerHTML='<span>'+t+'</span>'; }
+  else if(k==="rled"){ e.className="rled"+cls; e.innerHTML='<i></i>'; }
+  else if(k==="sw"){ e.className="sw"+cls; e.innerHTML='<i></i>'; }
+  else if(k==="usbp"){ e.className="usbp"+cls; }
+  else if(k==="fader"){ e.className="fader"+cls; e.innerHTML='<div class="slot"></div><div class="cap"></div>'; }
+  else if(k==="xfader"){ e.className="xfad"+cls; e.innerHTML='<div class="slot"></div><div class="cap"></div>'; }
+  else if(k==="meter"){ e.className="meter"+cls;
+    for(var i=0;i<16;i++){ var b=document.createElement("i"); b.className=(i>13?"r":(i>10?"w":"a")); e.appendChild(b); } }
+  else if(k==="screen"){ e=document.createElement("canvas"); e.className="dispc"; e.width=980; e.height=552; }
+  else if(k==="disp"){ e=document.createElement("canvas"); e.className="dispc"; e.width=460; e.height=460; }
+  else { e.className="btn"+cls; e.innerHTML=t; }
+  return e;
+}
+function build(){
+  var bg=["cenblock","mixplate"]; bg.forEach(function(c){
+    var d=document.createElement("div"); d.className=c; deckEl.appendChild(d); });
+  ["jog","platter"].forEach(function(act){
+    var w=document.createElement("div"); w.className="jogwell";
+    if(place(w,act)) deckEl.appendChild(w); });
+
+  CTRL.forEach(function(c){
+    var el=mkEl(c);
+    if(!place(el,c.act)) return;
+    deckEl.appendChild(el); els[c.act]=el;
+    if(c.kind==="screen"){ sCtx=el.getContext("2d"); sW=el.width; sH=el.height; }
+    if(c.kind==="disp"){ var id=c.act.slice(-1); dCtx[id]=el.getContext("2d"); dW[id]=el.width; dH[id]=el.height; }
+    if(c.kind==="meter"&&c.act==="mastermeter") els.mmL=el;
+    var hit=document.createElement("div"); hit.className="hit";
+    place(hit,c.act); hit.dataset.act=c.act; deckEl.appendChild(hit); hits[c.act]=hit;
+    hit.addEventListener("mouseenter",function(){ teach(c); });
+    hit.addEventListener("pointerdown",function(e){ onCtrl(c,e); });
+    if(c.kind==="knob"||c.kind==="knobc"||c.kind==="sel") bindKnob(el,hit,c.act);
+    if(c.kind==="fader")  bindFader(el,hit,c.act,false);
+    if(c.kind==="xfader") bindFader(el,hit,c.act,true);
+  });
+  if(els.mmL&&POS.mastermeter){ var mp=POS.mastermeter;
+    var r=mkEl({kind:"meter"}); pct(r,mp[0]+mp[2]*1.15,mp[1],mp[2],mp[3]);
+    deckEl.appendChild(r); els.mmR=r; }
+
+  [["jog","A"],["platter","B"]].forEach(function(pair){
+    var act=pair[0], id=pair[1];
+    var cv=document.createElement("canvas"); cv.className="dispc"; cv.width=420; cv.height=420;
+    cv.style.pointerEvents="none"; if(!place(cv,act)) return; deckEl.appendChild(cv);
+    jogCtx[id]=cv.getContext("2d"); jogS[id]=cv.width;
+    var jh=document.createElement("div"); jh.className="joghit"; place(jh,act); deckEl.appendChild(jh);
+    jh.addEventListener("mouseenter",function(){ teach({k:"PRATO (JOG)",
+      d:"Toque no topo para segurar/scratch (modo VINYL) e use a borda para pitch bend (nudge), casando a batida."}); });
+    bindJog(jh,id);
+  });
+  renderMission();
+}
+
+function onCtrl(c,e){ teach(c);
+  if(!started){ startAudio(); return; }
+  if(!ready) return;
+  var a=c.act; flash(els[a]);
+  if(/^play[AB]$/.test(a))            playDeck(deckOf(a.slice(-1)),a.slice(-1));
+  else if(/^cue[AB]$/.test(a))        cueDeck(deckOf(a.slice(-1)),a.slice(-1));
+  else if(/^hc[AB][0-9]$/.test(a))    hotcue(a.slice(2,3),+a.slice(-1));
+  else if(/^loopin[AB]$/.test(a))     loopAct(a.slice(-1),"in");
+  else if(/^loopout[AB]$/.test(a))    loopAct(a.slice(-1),"out");
+  else if(/^shift[AB]$/.test(a))      shiftOn(a.slice(-1),!els[a].classList.contains("on"));
+  else if(/^sync[AB]$/.test(a))       syncTo(a.slice(-1));
+  else if(/^reset[AB]$/.test(a)){ var d=deckOf(a.slice(-1)); if(d) d.pitch=0; }
+  else if(els[a]) els[a].classList.toggle("on");
+  markMission(a);
+}
+function bindKnob(el,hit,act){
+  var drag=false,y0=0,v0=0;
+  if(KV[act]===undefined) KV[act]=0.5;
+  function draw(){ el.style.transform="rotate("+(-140+(KV[act])*280)+"deg)"; }
+  draw();
+  hit.addEventListener("pointerdown",function(e){ drag=true;y0=e.clientY;v0=KV[act];
+    hit.setPointerCapture(e.pointerId); });
+  hit.addEventListener("pointermove",function(e){ if(!drag)return;
+    KV[act]=clamp(v0+(y0-e.clientY)/160,0,1); draw(); applyKV(act); });
+  function up(){ drag=false; }
+  hit.addEventListener("pointerup",up); hit.addEventListener("pointercancel",up);
+}
+function bindFader(el,hit,act,horiz){
+  var cap=el.querySelector(".cap");
+  if(KV[act]===undefined) KV[act]=horiz?0.5:0.85;
+  function put(){ if(horiz) cap.style.left=(2+KV[act]*96)+"%";
+                  else cap.style.top=(4+(1-KV[act])*92)+"%"; }
+  put();
+  var drag=false;
+  function mv(e){ if(!drag)return; var r=hit.getBoundingClientRect();
+    KV[act]=horiz?clamp((e.clientX-r.left)/r.width,0,1):clamp(1-(e.clientY-r.top)/r.height,0,1);
+    put(); applyKV(act); }
+  hit.addEventListener("pointerdown",function(e){ if(!started){startAudio();return;}
+    drag=true; hit.setPointerCapture(e.pointerId); mv(e); });
+  hit.addEventListener("pointermove",mv);
+  function up(){ drag=false; }
+  hit.addEventListener("pointerup",up); hit.addEventListener("pointercancel",up);
+}
+function applyKV(act){
+  if(!ready) return;
+  if(act==="crossfader"){ xf=KV[act]; applyXf(); }
+  else if(/^fader[1-4]$/.test(act)) applyFader(act.slice(-1));
+  else if(/^trim[1-4]$/.test(act)) applyTrim(act.slice(-1));
+  else if(/^(hi|mid|low)[1-4]$/.test(act)) applyEq(act.slice(-1));
+  else if(/^color[1-4]$/.test(act)) applyColor(act.slice(-1));
+  else if(act==="master"&&master) master.gain.value=KV[act]*1.2;
+  else if(/^tempo[AB]$/.test(act)){ var d=deckOf(act.slice(-1));
+    if(d) d.pitch=-(KV[act]-0.5)*2*rangeVal(act.slice(-1)); }
+}
+function bindJog(el,id){
+  var active=false,last=0;
+  function ang(e){ var r=el.getBoundingClientRect();
+    return Math.atan2(e.clientY-(r.top+r.height/2),e.clientX-(r.left+r.width/2)); }
+  function dist(e){ var r=el.getBoundingClientRect();
+    return Math.hypot(e.clientX-(r.left+r.width/2),e.clientY-(r.top+r.height/2))/(r.width/2); }
+  el.addEventListener("pointerdown",function(e){ if(!started){startAudio();return;} if(!ready)return;
+    var d=deckOf(id); if(!d)return; active=true; last=ang(e);
+    if(dist(e)<0.62){ d.touching=true; d.targetPos=d.pos; }
+    el.setPointerCapture(e.pointerId); e.preventDefault(); });
+  el.addEventListener("pointermove",function(e){ if(!active||!ready)return;
+    var d=deckOf(id); if(!d)return;
+    var a=ang(e), da=a-last; if(da>Math.PI)da-=2*Math.PI; if(da<-Math.PI)da+=2*Math.PI; last=a;
+    if(d.touching) d.targetPos=clamp(d.targetPos+da/(2*Math.PI)*d.buffer.sampleRate*0.5,0,d.len-1);
+    else d.pos=(d.pos+da/(2*Math.PI)*d.buffer.sampleRate*0.06+d.len)%d.len; });
+  function up(){ active=false; var d=deckOf(id); if(d) d.touching=false; }
+  el.addEventListener("pointerup",up); el.addEventListener("pointercancel",up);
+}
+
+/* ===================== BOOT ===================== */
+function init(){
+  build();
+  frame();
+  var bs=document.querySelector("#btnStart"), br=document.querySelector("#btnReset");
+  if(bs) bs.addEventListener("pointerdown",function(){ startAudio(); });
+  if(br) br.addEventListener("pointerdown",function(){ location.reload(); });
+  function fit(){ var w=document.querySelector(".wrap"); if(!w)return;
+    var s=Math.max(0.1,Math.min((window.innerWidth-6)/w.offsetWidth,(window.innerHeight-6)/w.offsetHeight,1));
+    var st=document.querySelector("#stage"); if(st) st.style.transform="scale("+s+")"; }
+  window.addEventListener("resize",fit); fit();
+}
+init();
+
 </script>
 </body>
 </html>
