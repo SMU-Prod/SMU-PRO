@@ -43,8 +43,10 @@
   .mission .idx{font-size:10px;color:var(--amber);font-weight:800;white-space:nowrap}
   .mission .txt{font-size:11px;line-height:1.2}.mission .txt b{color:#fff}.mission .txt small{color:#8b97a9}
 
-  /* ===== CORPO — 925,7 x 499,7 mm reais; proporção de desenho 880 x 476 ===== */
-  .deck{position:relative;width:100%;aspect-ratio:880/476;font-family:"Arial Narrow",Arial,Helvetica,sans-serif}
+  /* ===== CORPO — 925,7 x 499,7 x 142 mm (manual OPUS-QUAD, "Specifications").
+     ⛔ a razao do ATRIBUTO do canvas e derivada deste mesmo AR (razao=(w/h)*AR):
+        se as duas nao baterem, o visor sai borrado. Mudou aqui, mude o const AR. */
+  .deck{position:relative;width:100%;aspect-ratio:9257/4997;font-family:"Arial Narrow",Arial,Helvetica,sans-serif}
   .body{position:absolute;inset:0;z-index:0;
     clip-path:polygon(3.4% 14.6%, 30.9% 12.5%, 30.9% .6%, 69.1% .6%, 69.1% 12.5%, 96.6% 14.6%,
                       99.5% 90.0%, 92% 94.6%, 80% 97.3%, 65% 98.9%, 50% 99.5%, 35% 98.9%,
@@ -437,7 +439,9 @@ const POS = {
  resetB:[91.35,77.67,0.96,1.77],
  tempoB:[93.20,65.93,2.68,25.44]
 };
-const AR=880/476;   /* proporcao de desenho pedida pelo dono (deitado) */
+/* PROPORCAO REAL do chassi: 925,7 mm (L) x 499,7 mm (P) — manual, pag. 137.
+   TEM de ser igual ao aspect-ratio do .deck no CSS (9257/4997). */
+const AR=925.7/499.7;
 /* elementos CIRCULARES: no build, h = w*AR mantendo o centro */
 const ROUND=new Set(["smoothecho","rotary","miclevel","michi","micmid","miclow",
  "trim3","trim1","trim2","trim4","hi3","hi1","hi2","hi4","mid3","mid1","mid2","mid4",
@@ -458,7 +462,7 @@ const CTRL=[];
 const add=(act,kind,o)=>{ CTRL.push(Object.assign({act,kind},o)); };
 
 /* --- console central --- */
-add("screen","screen",{k:"TELA TOUCH 10,1\"",d:"Visor sensível ao toque do OPUS-QUAD. Mostra a <b>forma de onda dos 4 decks</b>, biblioteca, BPM, tom, e a linha de <b>atribuição de canal</b> (MIC, LINE, DECK 1 CF.A, DECK 2 CF.B, Bluetooth, MASTER). É por aqui que se navega no rekordbox/serato."});
+add("screen","screen",{k:"TELA TOUCH 10,1\"",d:"Visor sensível ao toque do OPUS-QUAD — e aqui ele <b>responde ao toque de verdade</b>. Toque na <b>visão geral da faixa</b> para tocar a partir daquele ponto; na <b>linha de baixo</b> para trocar a atribuição do canal no crossfader (CF.A / THRU / CF.B) e ligar o microfone; na tela de BEAT FX para ligar o efeito e puxar o LEVEL; na lista para escolher e carregar a música."});
 add("waveform","btn",{t:"WAVEFORM",k:"WAVEFORM",d:"Coloca a tela no modo <b>forma de onda</b> (a visão de tocar): waveform ampliada dos decks + informações de mix."});
 add("beatfx","btn",{t:"BEAT FX",k:"BEAT FX (tela)",d:"Abre na tela o painel do <b>Beat FX</b>: efeito escolhido, canal de destino, tempo em batidas e nível."});
 add("shortcut","btn",{t:"SHORTCUT",k:"SHORTCUT / UTILITY",d:"Atalhos da tela. Segurando, entra em <b>UTILITY</b> (ajustes gerais do aparelho: LAN, MIDI, brilho, curva do fader...)."});
@@ -479,16 +483,16 @@ add("miclevel","knob",{k:"MIC 1 LEVEL",d:"Volume do microfone 1. O OPUS-QUAD tem
 add("michi","knob",{k:"MIC — HI",d:"Agudo do microfone (±12 dB). Corte um pouco se estiver sibilante."});
 add("micmid","knob",{k:"MIC — MID",d:"Médio do microfone (±12 dB). É onde mora a inteligibilidade da voz."});
 add("miclow","knob",{k:"MIC — LOW",d:"Grave do microfone (±12 dB). Cortar ajuda contra o 'ploc' do sopro e a microfonia."});
-add("micsw","sw",{k:"MIC — OFF / ON / TALKOVER",d:"OFF: microfone mudo. ON: microfone aberto. <b>TALKOVER</b>: abaixa a música automaticamente quando alguém fala."});
+add("micsw","sw",{k:"MIC — OFF / ON / TALKOVER",d:"OFF: microfone mudo. ON: microfone aberto. <b>TALKOVER</b>: atenua tudo que não é microfone em <b>−24 dB</b> (valor do manual) para a fala passar por cima. Aqui o simulador não captura microfone, mas a atenuação do TALKOVER você ouve."});
 add("master","knob",{k:"MASTER LEVEL",d:"Volume geral da saída MASTER (XLR/RCA). Trabalhe com o medidor batendo em torno de 0 dB, sem acender o CLIP."});
 add("mastermeter","meter",{k:"MASTER LEVEL METER",d:"Medidor da saída master (L/R). O <b>CLIP</b> vermelho no topo significa distorção — abaixe o master ou os canais."});
 add("parameter","knob",{k:"PARAMETER",d:"Parâmetro do Sound Color FX selecionado (ex.: profundidade do CRUSH, tamanho do DUB ECHO)."});
-add("hpmix","knob",{k:"HEADPHONES MIX (CUE / MASTER)",d:"Equilíbrio do fone entre o canal em <b>CUE</b> e o <b>MASTER</b>. É assim que você escuta a próxima faixa sem soltar no PA."});
+add("hpmix","knob",{k:"HEADPHONES MIX (CUE / MASTER)",d:"Equilíbrio do fone entre o canal em <b>CUE</b> e o <b>MASTER</b>. É assim que você escuta a próxima faixa sem soltar no PA. <b>No simulador o fone sai pelo mesmo alto-falante</b> — por isso ele só abre quando existe algum canal em CUE."});
 add("hplevel","knob",{k:"HEADPHONES LEVEL",d:"Volume do fone de ouvido."});
-add("fxselect","knob",{k:"BEAT FX — FX SELECT",d:"Escolhe o efeito de tempo: ECHO, REVERB, DELAY, FLANGER, PHASER, ROLL, TRANS, SPIRAL..."});
-add("tap","btn",{t:"TAP",k:"TAP / AUTO",d:"Bate o BPM na mão para o efeito. Segurando, volta ao modo <b>AUTO</b> (BPM lido da faixa)."});
-add("beatprev","btn",{t:"&#9664;",k:"BEAT &#9664;",d:"Divide o tempo do efeito (1/2, 1/4, 1/8 de batida...)."});
-add("beatnext","btn",{t:"&#9654;",k:"BEAT &#9654;",d:"Multiplica o tempo do efeito (1, 2, 4, 8, 16 batidas...)."});
+add("fxselect","knob",{k:"BEAT FX — FX SELECT",d:"Escolhe o efeito de tempo. O OPUS-QUAD traz 14, nesta ordem (manual): DELAY, ECHO, PING PONG, SPIRAL, REVERB, TRANS, FILTER, FLANGER, PHASER, PITCH, SLIP ROLL, ROLL, VINYL BRAKE e HELIX."});
+add("tap","btn",{t:"TAP",k:"TAP / AUTO",d:"Bate o BPM na mão para o efeito (duas batidas já valem). <b>Segure</b> o botão para voltar ao modo <b>AUTO</b>, que lê o BPM da faixa — é o modo em que o aparelho liga."});
+add("beatprev","btn",{t:"&#9664;",k:"BEAT &#9664;",d:"Divide o tempo do efeito. A escala do OPUS-QUAD vai de <b>1/16 até 16 batidas</b> (manual)."});
+add("beatnext","btn",{t:"&#9654;",k:"BEAT &#9654;",d:"Multiplica o tempo do efeito, até <b>16 batidas</b>. O tempo em ms sai da conta com o BPM e aparece na tela."});
 add("fxtime","knob",{k:"BEAT FX — TIME",d:"Ajuste fino do tempo do efeito em milissegundos, por cima da divisão de batidas."});
 add("fxlevel","knob",{k:"BEAT FX — LEVEL / DEPTH",d:"Quanto do efeito entra na mistura. No zero você não ouve o efeito."});
 add("fxonoff","orb",{k:"BEAT FX — ON / OFF",d:"Liga e desliga o efeito de tempo no canal escolhido. Acende laranja quando está ativo."});
@@ -501,12 +505,12 @@ add("crossfader","xfader",{k:"CROSSFADER",d:"Mistura o lado <b>A</b> com o lado 
  ["filter","FILTER","Filtro clássico: para a esquerda corta o agudo (low-pass), para a direita corta o grave (high-pass)."]]
  .forEach(([a,t,d])=>add(a,"btn",{t,k:"SOUND COLOR FX — "+t.replace("<br>"," "),d:"Escolhe o Sound Color FX aplicado pelos 4 knobs de canal. "+d}));
 for(let i=0;i<4;i++){ const n=CH[i];
-  add("trim"+n,"knob",{k:"CH "+n+" — TRIM",d:"Ganho de entrada do canal "+n+". Ajuste até o medidor bater perto de 0 dB <b>antes</b> de subir o fader."});
+  add("trim"+n,"knob",{k:"CH "+n+" — TRIM",d:"Ganho de entrada do canal "+n+". Ajuste até o medidor bater perto de 0 dB <b>antes</b> de subir o fader. Em repouso ele aponta para cima (12 h), como no aparelho. ⚠️ ESTIMADO: o manual do OPUS-QUAD não publica a faixa em dB do TRIM — aqui 12 h = 0 dB e o fim do curso = +9 dB (padrão da linha DJM)."});
   add("hi"+n,"knob",{k:"CH "+n+" — HI",d:"Agudo do canal "+n+" (−26 dB a +6 dB). No mínimo ele <b>mata</b> a banda (isolador)."});
   add("mid"+n,"knob",{k:"CH "+n+" — MID",d:"Médio do canal "+n+" (−26 dB a +6 dB). Onde ficam voz e caixa."});
   add("low"+n,"knob",{k:"CH "+n+" — LOW",d:"Grave do canal "+n+" (−26 dB a +6 dB). Cortar o LOW de um deck é a forma mais limpa de emendar dois bumbos."});
   add("color"+n,"knobc",{k:"CH "+n+" — SOUND COLOR FX",d:"Knob de cor do canal "+n+". No centro está neutro; girando aplica o efeito escolhido (FILTER, SWEEP, NOISE...)."});
-  add("chcue"+n,"wbtn",{k:"CH "+n+" — CUE (fone)",d:"Manda o canal "+n+" para o fone de ouvido sem soltar no PA. Acende branco quando ativo."});
+  add("chcue"+n,"wbtn",{k:"CH "+n+" — CUE (fone)",d:"Manda o canal "+n+" para o fone <b>antes do fader</b> — dá para escutar com o fader embaixo. Acende branco quando ativo. Como o simulador tem uma saída só, o fone entra no mesmo alto-falante; dose com HEADPHONES MIX e LEVEL."});
   add("fader"+n,"fader",{k:"CH "+n+" — CHANNEL FADER",d:"Volume do canal "+n+". Na tira física do OPUS-QUAD a ordem é <b>3 - 1 - 2 - 4</b>."});
   add("meter"+n,"meter",{k:"CH "+n+" — LEVEL METER",d:"Medidor do canal "+n+", lido depois do TRIM. É por ele que se acerta o ganho."});
 }
@@ -521,20 +525,20 @@ for(let i=0;i<4;i++){ const n=CH[i];
   add("deck"+N2,"obtn",{t:N2,cls:"wh",k:"DECK "+N2,d:"Passa esta metade para o deck "+N2+". O deck que sai continua tocando — só sai do controle do prato."});
   add("quantize"+S,"rled",{cls:"red",k:"QUANTIZE / WAKE UP",d:"Trava cue, loop e hot cue na <b>grade de batidas</b> — nada sai do tempo. Segurando acorda o aparelho do modo de espera (WAKE UP)."});
   for(let i=1;i<=8;i++) add("hc"+S+i,"pad",{t:"ABCDEFGH"[i-1],k:"HOT CUE "+"ABCDEFGH"[i-1],d:"Grava um ponto na música (acende cobre) e salta para ele a qualquer momento. Com SHIFT apaga o ponto."});
-  add("vinylspeed"+S,"knob",{k:"VINYL SPEED ADJUST — TOUCH / BRAKE",d:"Regula quanto tempo o som leva para <b>parar e voltar</b> quando você toca no prato (efeito de vinil freando)."});
+  add("vinylspeed"+S,"knob",{k:"VINYL SPEED ADJUST — TOUCH / BRAKE",d:"Regula quanto tempo o som leva para <b>parar e voltar</b> no modo VINYL (efeito de vinil freando). Dê PLAY/PAUSE depois de girar para ouvir a diferença."});
   add("beatloop"+S,"knobc",{k:"BEAT LOOP / RELOOP",d:"Gire para escolher o tamanho do loop em batidas e <b>pressione</b> para entrar no loop automático. Pressionando de novo sai; com SHIFT refaz o último loop (RELOOP)."});
-  add("shift"+S,"btn",{t:"SHIFT",cls:"dk",k:"SHIFT",d:"Segure para acessar a <b>segunda função</b> serigrafada embaixo de cada botão (RELOOP, CALL, VALUE, SLIP REV...)."});
+  add("shift"+S,"btn",{t:"SHIFT",cls:"dk",k:"SHIFT",d:"Dá acesso à <b>segunda função</b> serigrafada embaixo de cada botão (loop de 4 tempos no IN, VALUE no BEAT JUMP, apagar hot cue...). No aparelho é <b>segurar</b>; aqui ele fica <b>travado</b> — aperte para ligar e aperte de novo para soltar, senão não dá para usar com um dedo só."});
   add("vinyl"+S,"btn",{t:"VINYL",k:"JOG MODE — VINYL / CDJ",d:"<b>VINYL</b>: tocar o topo do prato para a música (scratch). <b>CDJ</b>: o prato só faz pitch bend (empurra o andamento)."});
   add("sync"+S,"btn",{t:"BEAT<br>SYNC",k:"BEAT SYNC",d:"Casa o BPM e a grade deste deck com o deck que está como MASTER."});
   add("master"+S,"obtn",{t:"MASTER",k:"BEAT SYNC — MASTER",d:"Define este deck como <b>referência</b> de tempo para o sync dos outros."});
   add("loopin"+S,"orb",{t:"IN",k:"LOOP IN / 4 BEAT",d:"Marca o começo do loop ao vivo. Segurando, cria um loop de 4 tempos automático."});
   add("loopout"+S,"orb",{t:"OUT",k:"LOOP OUT",d:"Marca o fim do loop: a música passa a repetir entre IN e OUT. Aperte de novo para sair."});
-  add("jogfeel"+S,"knob",{k:"JOG FEEL — LIGHT / HEAVY",d:"Regula a <b>resistência do prato</b>: leve para scratch rápido, pesado para ajuste fino."});
-  add("keysync"+S,"btn",{t:"KEY<br>SYNC",k:"KEY SYNC",d:"Ajusta o <b>tom</b> desta faixa para casar harmonicamente com o outro deck."});
+  add("jogfeel"+S,"knob",{k:"JOG FEEL — LIGHT / HEAVY",d:"Regula o <b>peso do prato</b> (manual: horário aumenta o peso, anti-horário diminui). Leve = o mesmo gesto desloca mais, bom para scratch; pesado = desloca menos, bom para ajuste fino."});
+  add("keysync"+S,"btn",{t:"KEY<br>SYNC",k:"KEY SYNC",d:"Casa o <b>tom</b> desta faixa com o do outro deck (aperte de novo para desfazer). Sem time-stretch, mudar o tom muda a velocidade junto — é o que acontece no aparelho com o MASTER TEMPO desligado. As duas faixas de treino têm tom conhecido (vem da própria síntese: raiz 110 Hz = A e 82,4 Hz = E). As faixas do BANCO SMU não têm o tom levantado, então mostram <b>--</b> e o visor responde <b>KEY ?</b> — igual ao aparelho com faixa sem análise."});
   add("bjprev"+S,"btn",{t:"&#9664;",k:"BEAT JUMP &#9664;",d:"Pula para trás um número exato de batidas, sem sair do tempo. Com SHIFT o par vira <b>VALUE</b> (muda o tamanho do salto)."});
   add("bjnext"+S,"btn",{t:"&#9654;",k:"BEAT JUMP &#9654;",d:"Pula para a frente o mesmo número de batidas."});
   add("temporange"+S,"rled",{k:"TEMPO RANGE (±6 / ±10 / ±16 / WIDE)",d:"Alcance do fader de tempo. ±6 dá precisão; WIDE serve para mudanças grandes de andamento."});
-  add("mastertempo"+S,"rled",{k:"MASTER TEMPO (key lock)",d:"Trava o tom: muda a velocidade sem alterar a afinação. Acende laranja quando ativo."});
+  add("mastertempo"+S,"rled",{k:"MASTER TEMPO (key lock)",d:"Trava o tom: no aparelho a velocidade muda sem alterar a afinação. Acende laranja quando ativo e mostra <b>MT</b> no visor do deck. ⚠️ O simulador não faz time-stretch: aqui ele guarda e mostra o estado, mas a afinação ainda acompanha o TEMPO."});
   add("sliprev"+S,"btn",{t:"SLIP REV",cls:"dk",k:"SLIP REVERSE",d:"Toca de trás para frente enquanto segurado; ao soltar, a música volta para onde <b>estaria</b> se nada tivesse acontecido (slip)."});
   add("cue"+S,"circ",{t:"CUE",k:"CUE",d:"Marca e volta ao ponto de partida. Tocando, joga de volta ao cue e pausa (back-cue); parado, segurar toca de prévia a partir do cue."});
   add("play"+S,"circ",{t:"&#9654;/&#10073;&#10073;",cls:"play",k:"PLAY / PAUSE",d:"Toca e pausa. Em modo VINYL, a pausa freia como um vinil, no tempo do VINYL SPEED ADJUST."});
@@ -548,20 +552,56 @@ add("usb2","usbp",{k:"USB 2",d:"Entrada USB 2 (5 V / 1 A). Duas portas permitem 
 
 /* ===================== ESTADO ===================== */
 let AC=null, started=false, ready=false;
-let A=null, B=null;                                  /* os dois decks de audio */
-let master,xfA,xfB,thru,masterAn;
-let xf=0.5;                                          /* crossfader 0..1 */
-let colorIdx=5;                                      /* SOUND COLOR FX ativo (5 = FILTER) */
+/* 4 DECKS DE VERDADE — o OPUS-QUAD toca 4 decks com 2 pratos (manual, pag. 55).
+   Os decks 3 e 4 nascem SOB DEMANDA (ao apertar DECK 3 / DECK 4), para nao
+   pagar 2 ScriptProcessor a mais em quem so usa dois. */
+const DK={};                       /* decks de audio, por numero: "1".."4" */
+const SIDE={A:"1",B:"2"};          /* qual deck cada prato controla (1/3 esq . 2/4 dir) */
+const BUFS=[];                     /* buffers renderizados (variante 0 e 1) */
+let mixBus,duck,master,masterAn,xfA,xfB,thru,booth,zone,phones,phCue,phMaster;
+let smDly,smFb,smWet;                        /* SMOOTH ECHO — eco de SAIDA */
+let fxSend,fxDly,fxFb,fxFilt,fxWet,fxGate;   /* BEAT FX no master */
+let micLvl,micHi,micMid,micLow;              /* caminho do microfone */
+let xf=0.5;                                  /* crossfader 0..1 */
+let colorIdx=5, colorOn=true;                /* SOUND COLOR FX ativo (5 = FILTER) */
 const COLORS=["space","dubecho","crush","sweep","noise","filter"];
-const FXNAMES=["ECHO","REVERB","DELAY","FLANGER","PHASER","ROLL","TRANS","SPIRAL"];
-const RANGES=[6,10,16,"WIDE"];
+const COLORLAB={space:"SPACE",dubecho:"DUB ECHO",crush:"CRUSH",sweep:"SWEEP",noise:"NOISE",filter:"FILTER"};
+/* Beat FX na ORDEM DO MANUAL (OPUS-QUAD, pag. 111 a 115) */
+const FXNAMES=["DELAY","ECHO","PING PONG","SPIRAL","REVERB","TRANS","FILTER","FLANGER",
+               "PHASER","PITCH","SLIP ROLL","ROLL","VINYL BRAKE","HELIX"];
+/* BEAT ◀ ▶ : fracao de batida de 1/16 a 16 (manual) */
+const BEATFRAC=[1/16,1/8,1/4,1/2,1,2,4,8,16];
+const BEATLAB=["1/16","1/8","1/4","1/2","1","2","4","8","16"];
+let fxIdx=1, fxBeat=4, fxOn=false, fxAuto=true, fxBpm=128, fxCh=1;  /* fxCh 0=MIC 1..4=CH 5=MASTER */
+let smoothOn=false, micMode=0;               /* micMode 0 OFF . 1 ON . 2 TALKOVER */
+let tapT=[];
+const RANGES=[6,10,16,"WIDE"];               /* TEMPO: ±6 ±10 ±16 WIDE (manual, pag. 66) */
 const els={}, hits={};
+/* biblioteca navegavel (BROWSE / PLAYLIST / TAG LIST).
+   As 2 primeiras sao as faixas SINTETIZADAS aqui dentro — o tom vem da propria
+   sintese (variante 0 = raiz 110 Hz = A . variante 1 = raiz 82,4 Hz = E).
+   As demais vem do BANCO SMU (BPM medido); o TOM delas nao e conhecido -> "--". */
+let _lib=null;
+function LIB(){
+  if(_lib) return _lib;
+  _lib=[{nome:"Above The Cloud (Original Mix)",art:"SANSNAME",bpm:128,key:"A",v:0,tag:false},
+        {nome:"Rainy Season (Original Mix)",   art:"SANSNAME",bpm:128,key:"E",v:1,tag:false}];
+  try{ const b=window.BANCO_SMU;
+    if(b&&b.faixas) b.faixas.forEach((f,i)=>_lib.push({nome:f.nome,art:"SMU",bpm:f.bpm,key:"--",v:i%2,tag:false}));
+  }catch(e){}
+  return _lib;
+}
+let libSel=0, libScroll=0, tagOnly=false;
+const NOTAS=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
 /* valores 0..1 dos knobs e faders */
 const KV={};
+/* TRIM em .5 = ponteiro para CIMA (12 h), como no aparelho real.
+   ⚠️ ESTIMADO: o manual do OPUS-QUAD nao publica a faixa em dB do TRIM;
+   adotado 12 h = 0 dB e fundo de escala +9 dB (padrao da linha DJM). */
 const DEF={master:0.82,miclevel:0,michi:.5,micmid:.5,miclow:.5,hpmix:.5,hplevel:.55,parameter:.5,
-  zone:.5,booth:.5,smoothecho:.5,fxselect:0,fxtime:.35,fxlevel:.5,rotary:0,
+  zone:.5,booth:.5,smoothecho:.5,fxselect:.1,fxtime:.35,fxlevel:.5,rotary:0,
   jogfeelA:.5,jogfeelB:.5,vinylspeedA:.35,vinylspeedB:.35};
-CH.forEach(n=>{ DEF["trim"+n]=.72; DEF["hi"+n]=.5; DEF["mid"+n]=.5; DEF["low"+n]=.5;
+CH.forEach(n=>{ DEF["trim"+n]=.5; DEF["hi"+n]=.5; DEF["mid"+n]=.5; DEF["low"+n]=.5;
   DEF["color"+n]=.5; DEF["fader"+n]=(n==="1"||n==="2")?.85:0; });
 Object.keys(POS).forEach(k=>{ KV[k]=DEF[k]!==undefined?DEF[k]:.5; });
 KV.tempoA=.5; KV.tempoB=.5;
@@ -588,14 +628,32 @@ async function renderTrack(variant){
 }
 
 /* ===================== GRAFO DE AUDIO ===================== */
-function mkDeck(buf,id,chn){
-  const data=buf.getChannelData(0), len=data.length;
-  const d={ id,chn,buffer:buf,data,len,pos:0,playing:false,rate:0,pitch:0,baseBpm:(window.__BANCO_BPM||128),dir:1,
-            touching:false,targetPos:0,cuePoint:0,vinyl:true,mt:false,rangeIdx:1,
-            loopOn:false,loopStart:0,loopEnd:0,loopIn:false,beats:4,hot:{},peaks:null,lvl:0,deckNo:id==="A"?1:2 };
-  const N=280,peaks=new Float32Array(N),blk=Math.floor(len/N);
-  for(let i=0;i<N;i++){ let mx=0; for(let j=0;j<blk;j+=32){ const v=Math.abs(data[i*blk+j]||0); if(v>mx)mx=v; } peaks[i]=mx; }
+function calcPeaks(d){
+  const N=280,peaks=new Float32Array(N),blk=Math.max(1,Math.floor(d.len/N));
+  for(let i=0;i<N;i++){ let mx=0; for(let j=0;j<blk;j+=32){ const v=Math.abs(d.data[i*blk+j]||0); if(v>mx)mx=v; } peaks[i]=mx; }
   d.peaks=peaks;
+}
+/* TOM: so o que esta CATALOGADO na faixa.
+   ⛔ Nao estimamos o tom pelo audio. Tentei (autocorrelacao na faixa do baixo)
+   e a conta travava no BUMBO, nao no baixo: os dois buffers de treino, que tem
+   raiz diferente (110 Hz = A e 82,4 Hz = E), devolviam o MESMO tom. Numero
+   errado no visor e pior que numero nenhum — as faixas do BANCO SMU nao tem o
+   tom levantado, entao mostram "--" e o KEY SYNC responde "KEY ?", que e o que
+   o aparelho real faz com faixa sem analise. */
+function tomDe(d){ if(!d)return null; const t=LIB()[d.track];
+  return (t&&t.key&&t.key!=="--") ? t.key : null; }
+/* recado curto no visor do deck (o aparelho tambem avisa quando nao da) */
+function avisar(d,txt){ if(!d)return; d.aviso=txt; d.avisoAte=Date.now()+1800; sujar(); }
+function mkDeck(buf,n){
+  const data=buf.getChannelData(0), len=data.length;
+  const L=LIB(), ti=(+n-1)%L.length, tk=L[ti];
+  const d={ n:n, chn:n, deckNo:+n, id:n, track:ti,
+            buffer:buf,data,len,pos:0,playing:false,rate:0,pitch:0,
+            baseBpm:(window.__BANCO_BPM||tk.bpm||128),dir:1,keyShift:0,
+            touching:false,targetPos:0,cuePoint:0,vinyl:true,mt:false,rangeIdx:1,quant:false,
+            loopOn:false,loopStart:0,loopEnd:0,loopIn:false,beats:4,jump:4,hot:{},peaks:null,lvl:0,
+            cue:false, assign:(n==="1"?"A":n==="2"?"B":"T"), fxBrake:1, previewing:false };
+  calcPeaks(d);
   d.trim=AC.createGain();  d.trim.gain.value=0.9;
   d.eqLow=AC.createBiquadFilter(); d.eqLow.type="lowshelf";  d.eqLow.frequency.value=180;
   d.eqMid=AC.createBiquadFilter(); d.eqMid.type="peaking";   d.eqMid.frequency.value=1200; d.eqMid.Q.value=0.9;
@@ -606,33 +664,59 @@ function mkDeck(buf,id,chn){
   d.nz=AC.createGain(); d.nz.gain.value=0;
   d.dly=AC.createDelay(1.2); d.dly.delayTime.value=0.28;
   d.fb=AC.createGain(); d.fb.gain.value=0; d.wet=AC.createGain(); d.wet.gain.value=0;
+  d.chOut=AC.createGain();  d.chOut.gain.value=1;      /* PRE-fader: e daqui que sai o CUE */
   d.fader=AC.createGain(); d.fader.gain.value=0.85;
   d.an=AC.createAnalyser(); d.an.fftSize=256;
   const sp=AC.createScriptProcessor(512,0,1); d.sp=sp;
   sp.onaudioprocess=e=>{ const out=e.outputBuffer.getChannelData(0);
+    const data=d.data, len=d.len, kr=Math.pow(2,d.keyShift/12);
     for(let i=0;i<out.length;i++){
       if(d.touching){ const np=d.pos+(d.targetPos-d.pos)*0.0025; d.rate=np-d.pos; d.pos=np;
         if(d.pos<0){d.pos=0;d.rate=0;} else if(d.pos>len-1){d.pos=len-1;d.rate=0;} }
-      else { const tgt=d.playing?d.dir*(1+d.pitch/100):0; d.rate+=(tgt-d.rate)*d.brake; d.pos+=d.rate;
+      else { const tgt=d.playing?d.dir*(1+d.pitch/100)*kr*d.fxBrake:0; d.rate+=(tgt-d.rate)*d.brake; d.pos+=d.rate;
         if(d.loopOn&&d.rate>0&&d.pos>=d.loopEnd)d.pos=d.loopStart+(d.pos-d.loopEnd);
+        if(d.loopOn&&d.rate<0&&d.pos<=d.loopStart)d.pos=d.loopEnd-(d.loopStart-d.pos);
         if(d.pos>=len)d.pos-=len; else if(d.pos<0)d.pos+=len; }
       let i0=Math.floor(d.pos); const fr=d.pos-i0; i0=((i0%len)+len)%len; const i1=(i0+1)%len;
       out[i]=data[i0]*(1-fr)+data[i1]*fr; } };
   d.brake=0.0022;
-  /* cadeia: sp -> trim -> LOW -> MID -> HI -> COLOR -> (crush|limpo) -> fader -> crossfader */
+  /* cadeia: sp -> trim -> LOW -> MID -> HI -> COLOR -> (crush|limpo) -> chOut -> fader -> assign */
   sp.connect(d.trim); d.trim.connect(d.eqLow); d.eqLow.connect(d.eqMid); d.eqMid.connect(d.eqHi);
   d.eqHi.connect(d.col);
-  d.col.connect(d.clean); d.clean.connect(d.fader);
-  d.col.connect(d.shaper); d.shaper.connect(d.shaperOn); d.shaperOn.connect(d.fader);
-  d.col.connect(d.dly); d.dly.connect(d.fb); d.fb.connect(d.dly); d.dly.connect(d.wet); d.wet.connect(d.fader);
+  d.col.connect(d.clean); d.clean.connect(d.chOut);
+  d.col.connect(d.shaper); d.shaper.connect(d.shaperOn); d.shaperOn.connect(d.chOut);
+  d.col.connect(d.dly); d.dly.connect(d.fb); d.fb.connect(d.dly); d.dly.connect(d.wet); d.wet.connect(d.chOut);
   const nsrc=AC.createBufferSource(); const nb=AC.createBuffer(1,AC.sampleRate,AC.sampleRate);
   const ndd=nb.getChannelData(0); for(let i=0;i<ndd.length;i++)ndd[i]=(Math.random()*2-1)*0.35;
   nsrc.buffer=nb; nsrc.loop=true; const nf=AC.createBiquadFilter(); nf.type="bandpass"; nf.frequency.value=1400; nf.Q.value=0.6;
-  nsrc.connect(nf); nf.connect(d.nz); d.nz.connect(d.fader); nsrc.start(); d.nzf=nf;
+  nsrc.connect(nf); nf.connect(d.nz); d.nz.connect(d.chOut); nsrc.start(); d.nzf=nf;
+  d.chOut.connect(d.fader);
   d.fader.connect(d.an);
-  d.fader.connect(id==="A"?xfA:xfB);
+  /* CROSSFADER ASSIGN A / THRU / B (manual, secao do canal) */
+  d.aA=AC.createGain(); d.aB=AC.createGain(); d.aT=AC.createGain();
+  d.fader.connect(d.aA); d.fader.connect(d.aB); d.fader.connect(d.aT);
+  d.aA.connect(xfA); d.aB.connect(xfB); d.aT.connect(thru);
+  applyAssign(d);
+  /* CUE do fone: PRE-fader (da para escutar com o fader embaixo) */
+  d.cueSend=AC.createGain(); d.cueSend.gain.value=0;
+  d.chOut.connect(d.cueSend); d.cueSend.connect(phCue);
   return d;
 }
+/* cria o deck 3 ou 4 na hora em que o aluno pede (DECK 3 / DECK 4 / LOAD) */
+function ensureDeck(n){
+  if(DK[n]) return DK[n];
+  if(!ready||!BUFS.length) return null;
+  const d=mkDeck(BUFS[(+n-1)%BUFS.length],n);
+  DK[n]=d;
+  applyTrim(n); applyEq(n); applyFader(n); applyColor();
+  return d;
+}
+function sideOf(d){ return !d?null:(SIDE.A===d.n?"A":SIDE.B===d.n?"B":null); }
+function sideDeck(S){ return DK[SIDE[S]]||null; }
+function applyAssign(d){ if(!d||!d.aA)return;
+  d.aA.gain.value=d.assign==="A"?1:0;
+  d.aB.gain.value=d.assign==="B"?1:0;
+  d.aT.gain.value=d.assign==="T"?1:0; }
 function crushCurve(amt){
   const n=1024,c=new Float32Array(n), steps=Math.max(2,Math.round(64-amt*60));
   for(let i=0;i<n;i++){ const x=i/(n-1)*2-1; c[i]=Math.round(x*steps)/steps; }
@@ -641,28 +725,129 @@ function crushCurve(amt){
 async function startAudio(){ if(started)return; started=true;
   $("#acState").textContent="carregando as faixas…";
   AC=new (window.AudioContext||window.webkitAudioContext)();
+  /* --- saida: mixBus -> TALKOVER duck -> BEAT FX gate -> master -> alto-falante --- */
   master=AC.createGain(); master.gain.value=0.9; master.connect(AC.destination);
   masterAn=AC.createAnalyser(); masterAn.fftSize=256; master.connect(masterAn);
+  mixBus=AC.createGain(); duck=AC.createGain(); duck.gain.value=1;
+  fxGate=AC.createGain(); fxGate.gain.value=1;
+  mixBus.connect(duck); duck.connect(fxGate); fxGate.connect(master);
   xfA=AC.createGain(); xfB=AC.createGain(); thru=AC.createGain(); thru.gain.value=1;
-  xfA.connect(master); xfB.connect(master); thru.connect(master);
+  xfA.connect(mixBus); xfB.connect(mixBus); thru.connect(mixBus);
+  /* SMOOTH ECHO — eco de SAIDA, exclusivo do OPUS-QUAD (manual, pag. 117) */
+  smDly=AC.createDelay(2.0); smDly.delayTime.value=0.35;
+  smFb=AC.createGain(); smFb.gain.value=0; smWet=AC.createGain(); smWet.gain.value=0;
+  duck.connect(smDly); smDly.connect(smFb); smFb.connect(smDly); smDly.connect(smWet); smWet.connect(master);
+  /* BEAT FX — envio no master (manual, pag. 107) */
+  fxSend=AC.createGain(); fxSend.gain.value=0; duck.connect(fxSend);
+  fxDly=AC.createDelay(4.2); fxDly.delayTime.value=0.5;
+  fxFb=AC.createGain(); fxFb.gain.value=0;
+  fxFilt=AC.createBiquadFilter(); fxFilt.type="allpass"; fxFilt.frequency.value=800; fxFilt.Q.value=1.1;
+  fxWet=AC.createGain(); fxWet.gain.value=0;
+  fxSend.connect(fxDly); fxDly.connect(fxFb); fxFb.connect(fxDly);
+  fxDly.connect(fxFilt); fxFilt.connect(fxWet); fxWet.connect(master);
+  /* saidas independentes: BOOTH e ZONE saem por conector proprio (nao pelo master) */
+  booth=AC.createGain(); zone=AC.createGain(); master.connect(booth); master.connect(zone);
+  /* FONE: soma dos canais em CUE + MASTER, dosados por HEADPHONES MIX/LEVEL */
+  phCue=AC.createGain(); phMaster=AC.createGain(); phones=AC.createGain(); phones.gain.value=0;
+  phCue.connect(phones); phMaster.connect(phones); phones.connect(AC.destination);
+  master.connect(phMaster);
+  /* caminho do microfone (o simulador nao captura microfone; o EQ e o nivel
+     existem de verdade e o TALKOVER abaixa a musica em -24 dB, como no manual) */
+  micLvl=AC.createGain(); micLvl.gain.value=0;
+  micHi=AC.createBiquadFilter();  micHi.type="highshelf"; micHi.frequency.value=10000;
+  micMid=AC.createBiquadFilter(); micMid.type="peaking";  micMid.frequency.value=2500; micMid.Q.value=0.9;
+  micLow=AC.createBiquadFilter(); micLow.type="lowshelf"; micLow.frequency.value=100;
+  micLow.connect(micMid); micMid.connect(micHi); micHi.connect(micLvl); micLvl.connect(mixBus);
   const [b1,b2]=await Promise.all([renderTrack(0),renderTrack(1)]);
-  A=mkDeck(b1,"A","1"); B=mkDeck(b2,"B","2");
+  BUFS.length=0; BUFS.push(b1,b2);
+  DK["1"]=mkDeck(b1,"1"); DK["2"]=mkDeck(b2,"2");
   ready=true;
-  applyXf(); applyColor(); ["1","2"].forEach(n=>{ applyTrim(n); applyEq(n); applyFader(n); });
+  applyXf(); applyColor(); applyPhones(); applyMic(); applyOuts(); applySmooth(); applyBeatFx();
+  ["1","2"].forEach(n=>{ applyTrim(n); applyEq(n); applyFader(n); });
   master.gain.value=KV.master;
   $("#acDot").classList.add("on"); $("#acState").textContent="ligado";
   $("#btnStart").textContent="● Áudio ligado";
   if(AC.resume)AC.resume();
 }
-function deckOf(n){ return n==="1"?A:n==="2"?B:null; }
+function deckOf(n){ return DK[n]||null; }
 function applyXf(){ if(!ready)return; xfA.gain.value=Math.cos(xf*Math.PI/2); xfB.gain.value=Math.cos((1-xf)*Math.PI/2); }
-function applyTrim(n){ const d=deckOf(n); if(d)d.trim.gain.value=KV["trim"+n]*1.6; }
+/* ⚠️ ESTIMADO: o manual nao publica a faixa do TRIM. 12 h = 0 dB, topo = +9 dB. */
+function trimGain(v){ return v<=0.5 ? v/0.5 : 1+(v-0.5)*2*(Math.pow(10,9/20)-1); }
+function applyTrim(n){ const d=deckOf(n); if(d)d.trim.gain.value=trimGain(KV["trim"+n]); }
 function applyFader(n){ const d=deckOf(n); if(d)d.fader.gain.value=KV["fader"+n]*KV["fader"+n]; }
+/* EQ do canal: -26 dB a +6 dB (manual, "Channel equalizer characteristic") */
 function eqDb(v){ return v<=0.5 ? (v/0.5)*26-26 : (v-0.5)/0.5*6; }
 function applyEq(n){ const d=deckOf(n); if(!d)return;
   d.eqLow.gain.value=eqDb(KV["low"+n]); d.eqMid.gain.value=eqDb(KV["mid"+n]); d.eqHi.gain.value=eqDb(KV["hi"+n]); }
-function applyColor(){ if(!ready)return; ["1","2"].forEach(n=>{ const d=deckOf(n); if(!d)return;
-  const v=KV["color"+n], p=KV.parameter, off=Math.abs(v-0.5)<0.04, name=COLORS[colorIdx];
+function applyPhones(){ if(!ready)return;
+  let algum=false;
+  Object.keys(DK).forEach(n=>{ const d=DK[n]; d.cueSend.gain.value=d.cue?1:0; if(d.cue)algum=true; });
+  /* no aparelho real isto sai no FONE. Aqui sai no mesmo alto-falante, entao so
+     abre quando ha canal em CUE — senao o master tocaria duas vezes. */
+  phones.gain.value = algum ? KV.hplevel*0.9 : 0;
+  phCue.gain.value    = Math.cos(KV.hpmix*Math.PI/2);
+  phMaster.gain.value = Math.cos((1-KV.hpmix)*Math.PI/2);
+}
+function applyOuts(){ if(!ready)return;
+  booth.gain.value=KV.booth; zone.gain.value=KV.zone; }
+function applyMic(){ if(!ready)return;
+  micLvl.gain.value = micMode?KV.miclevel*2:0;
+  micHi.gain.value  = (KV.michi-0.5)*24;      /* MIC EQ: -12 a +12 dB (manual) */
+  micMid.gain.value = (KV.micmid-0.5)*24;
+  micLow.gain.value = (KV.miclow-0.5)*24;
+  /* TALKOVER: atenua o resto em -24 dB (manual, secao do microfone) */
+  duck.gain.value = micMode===2 ? Math.pow(10,-24/20) : 1;
+}
+function applySmooth(){ if(!ready)return;
+  const v=KV.smoothecho;
+  smDly.delayTime.value=0.08+v*0.72;
+  smFb.gain.value = smoothOn ? 0.25+v*0.55 : 0;
+  smWet.gain.value= smoothOn ? 0.30+v*0.55 : 0;
+}
+function fxTimeSec(){
+  /* TIME segue a fracao de batida do BPM; o knob TIME faz o ajuste fino em ms */
+  const bpm=fxAuto?(sideDeck("A")?sideDeck("A").baseBpm*(1+sideDeck("A").pitch/100):fxBpm):fxBpm;
+  const base=60/Math.max(40,bpm)*BEATFRAC[fxBeat];
+  return clamp(base*(0.5+KV.fxtime),0.001,4);
+}
+function applyBeatFx(){ if(!ready)return;
+  const name=FXNAMES[fxIdx], lvl=KV.fxlevel, t=fxTimeSec();
+  fxSend.gain.value = fxOn?1:0;
+  fxWet.gain.value  = fxOn?lvl:0;
+  fxDly.delayTime.value = t;
+  let fb=0, tipo="allpass", f=800;
+  if(name==="DELAY") fb=0;
+  else if(name==="ECHO"||name==="PING PONG") fb=0.55;
+  else if(name==="SPIRAL"||name==="REVERB"){ fb=0.74; tipo="highpass"; f=140+lvl*700; }
+  else if(name==="ROLL"||name==="SLIP ROLL"||name==="HELIX") fb=0.92;
+  else if(name==="FLANGER"){ fb=0.72; tipo="notch"; }
+  else if(name==="PHASER"){ fb=0.66; tipo="allpass"; }
+  else if(name==="FILTER"){ fb=0; tipo="lowpass"; }
+  else if(name==="PITCH"){ fb=0; tipo="allpass"; }
+  fxFb.gain.value = fxOn?fb:0;
+  fxFilt.type=tipo; if(tipo!=="lowpass"&&tipo!=="notch") fxFilt.frequency.value=f;
+  if(!fxOn){ fxGate.gain.value=1; Object.keys(DK).forEach(n=>DK[n].fxBrake=1); }
+  if(name!=="VINYL BRAKE"||!fxOn) Object.keys(DK).forEach(n=>DK[n].fxBrake=1);
+  if(name!=="PITCH"||!fxOn) Object.keys(DK).forEach(n=>{ if(DK[n].fxPitch){ DK[n].fxPitch=0; } });
+}
+/* modulacao dos Beat FX ciclicos: escrita DIRETA no .value a cada quadro.
+   ⛔ nada de setTargetAtTime/oscilador ligado no AudioParam — isso torna o
+   parametro a-rate para sempre e o biquad passa a recalcular por amostra. */
+function tickFx(){
+  if(!ready) return;
+  const name=FXNAMES[fxIdx];
+  if(!fxOn){ if(fxGate.gain.value!==1) fxGate.gain.value=1; return; }
+  const t=Math.max(0.03,fxTimeSec()), ph=(AC.currentTime%t)/t, lvl=KV.fxlevel;
+  if(name==="TRANS") fxGate.gain.value = ph<0.5?1:Math.max(0.02,1-lvl);
+  else if(fxGate.gain.value!==1) fxGate.gain.value=1;
+  if(name==="FILTER") fxFilt.frequency.value = 180*Math.pow(70,(Math.sin(ph*6.2832)*0.5+0.5));
+  else if(name==="FLANGER") fxFilt.frequency.value = 180+(Math.sin(ph*6.2832)*0.5+0.5)*2600;
+  else if(name==="PHASER")  fxFilt.frequency.value = 300+(Math.sin(ph*6.2832)*0.5+0.5)*1800;
+  else if(name==="VINYL BRAKE"){ const k=Math.max(0.02,1-ph*(0.4+lvl*0.6));
+    Object.keys(DK).forEach(n=>{ DK[n].fxBrake=k; }); }
+}
+function applyColor(){ if(!ready)return; Object.keys(DK).forEach(n=>{ const d=DK[n]; if(!d)return;
+  const v=KV["color"+n], p=KV.parameter, off=(!colorOn)||Math.abs(v-0.5)<0.04, name=COLORS[colorIdx];
   d.shaperOn.gain.value=0; d.clean.gain.value=1; d.wet.gain.value=0; d.fb.gain.value=0; d.nz.gain.value=0;
   d.col.type="lowpass"; d.col.frequency.value=20000; d.col.Q.value=0.7;
   if(off)return;
@@ -684,34 +869,122 @@ function beatLen(d){ return 60/(d.baseBpm*(1+d.pitch/100))*d.buffer.sampleRate; 
 function rangeVal(d){ const r=RANGES[d.rangeIdx]; return r==="WIDE"?100:r; }
 
 /* ===================== TRANSPORTE ===================== */
+/* Toda funcao recebe o OBJETO do deck. O LED de painel pertence ao LADO (A/B),
+   nao ao deck: o mesmo prato mostra o deck 1 ou o 3 conforme o botao DECK. */
 function setState(name,on){ const e=els[name]; if(!e)return; e.classList.toggle("on",!!on); }
 function flash(el){ if(!el)return; el.style.filter="brightness(1.7)"; setTimeout(()=>{el.style.filter="";},150); }
-function playDeck(d,on){ if(!ready)return; d.playing=on!==undefined?on:!d.playing;
-  d.brake=d.vinyl?(0.0009+(1-KV["vinylspeed"+d.id])*0.0035):0.0022;
-  setState("play"+d.id,d.playing); if(d.playing)markMission("play"+d.id); }
-function cueDeck(d){ if(!ready)return;
+/* SHIFT: no aparelho e SEGURAR. Com mouse/dedo unico isso trava o gesto, entao
+   aqui ele fica TRAVADO: aperta liga, aperta de novo solta (avisado na aula). */
+const SHIFT={A:false,B:false};
+function shiftOn(S){ return !!SHIFT[S]; }
+function shiftAny(){ return SHIFT.A||SHIFT.B; }
+/* QUANTIZE: prende cue/hot cue/loop/beat jump na grade de batidas */
+function snap(d,p){ if(!d.quant)return p; const bl=beatLen(d); return Math.round(p/bl)*bl; }
+function playDeck(d,on){ if(!ready||!d)return; const S=sideOf(d);
+  d.playing = on!==undefined ? !!on : !d.playing;
+  d.brake = d.vinyl ? (0.0009+(1-KV["vinylspeed"+(S||"A")])*0.0035) : 0.0022;
+  if(S){ setState("play"+S,d.playing); if(d.playing)markMission("play"+S); }
+  pintarDeck(); }
+/* CUE (manual, pag. 72): tocando -> back-cue (volta ao ponto e pausa).
+   Parado fora do ponto -> grava o ponto. Parado NO ponto -> PREVIA enquanto
+   segurado; ao soltar volta ao cue e pausa. */
+function cueDeck(d){ if(!ready||!d)return; const S=sideOf(d);
   if(d.playing){ playDeck(d,false); d.pos=d.cuePoint; }
-  else { if(Math.abs(d.pos-d.cuePoint)>200)d.cuePoint=d.pos; else d.pos=d.cuePoint; }
-  setState("cue"+d.id,true); setTimeout(()=>setState("cue"+d.id,false),220); markMission("cue"); }
-function hotcue(d,i){ if(!ready)return; const key="hc"+d.id+i, p=d.hot[i];
-  if(shiftOn(d)){ if(p!==undefined){ delete d.hot[i]; setState(key,false); } return; }
-  if(p===undefined){ d.hot[i]=d.pos; setState(key,true); }
+  else if(Math.abs(d.pos-d.cuePoint)>200){ d.cuePoint=snap(d,d.pos); }
+  else { d.previewing=true; playDeck(d,true); }
+  if(S) setState("cue"+S,true);
+  markMission("cue"); }
+function soltarCue(){ ["A","B"].forEach(S=>{ const d=sideDeck(S);
+  if(d&&d.previewing){ d.previewing=false; playDeck(d,false); d.pos=d.cuePoint; }
+  setState("cue"+S,false); }); }
+function hotcue(d,i){ if(!ready||!d)return; const S=sideOf(d), key=S?("hc"+S+i):null, p=d.hot[i];
+  if(shiftAny()){ if(p!==undefined){ delete d.hot[i]; if(key)setState(key,false); } return; }
+  if(p===undefined){ d.hot[i]=snap(d,d.pos); if(key)setState(key,true); }
   else { d.pos=p; if(!d.playing)playDeck(d,true); }
   markMission("hotcue"); }
-function loopAct(d,a){ if(!ready)return;
-  if(a==="loopin"){ if(d.loopOn){ d.loopOn=false; setState("loopin"+d.id,false); setState("loopout"+d.id,false); return; }
-    d.loopStart=d.pos; d.loopIn=true; setState("loopin"+d.id,true); }
-  else if(a==="loopout"){ if(d.loopIn&&d.pos>d.loopStart){ d.loopEnd=d.pos; d.loopOn=true; d.loopIn=false;
-      setState("loopout"+d.id,true); markMission("loop"); }
-    else if(d.loopOn){ d.loopOn=false; setState("loopin"+d.id,false); setState("loopout"+d.id,false); } }
-  else if(a==="beatloop"){ if(d.loopOn){ d.loopOn=false; setState("loopin"+d.id,false); setState("loopout"+d.id,false); }
-    else { d.loopStart=d.pos; d.loopEnd=d.pos+beatLen(d)*d.beats; d.loopOn=true;
-           setState("loopin"+d.id,true); setState("loopout"+d.id,true); markMission("beatloop"); } } }
-function beatJump(d,dir){ if(!ready)return; d.pos=(d.pos+dir*beatLen(d)*d.beats+d.len)%d.len; markMission("beatjump"); }
-function shiftOn(d){ return !!(els["shift"+d.id]&&els["shift"+d.id].classList.contains("on")); }
-function syncTo(d){ if(!ready)return; const o=d.id==="A"?B:A; if(!o)return;
+function pintarLoop(d){ const S=sideOf(d); if(!S)return;
+  setState("loopin"+S,d.loopOn||d.loopIn); setState("loopout"+S,d.loopOn); }
+function loopAct(d,a){ if(!ready||!d)return;
+  if(a==="loopin"){
+    if(d.loopOn){ d.loopOn=false; d.loopIn=false; pintarLoop(d); return; }
+    if(shiftAny()){ d.loopStart=snap(d,d.pos); d.loopEnd=d.loopStart+beatLen(d)*4; d.loopOn=true; d.loopIn=false; }
+    else { d.loopStart=snap(d,d.pos); d.loopIn=true; }
+    pintarLoop(d); }
+  else if(a==="loopout"){
+    if(d.loopIn){ /* loop tem comprimento MINIMO: com o deck parado o IN e o OUT
+                     caem no mesmo ponto e sem isto o loop nunca fechava */
+      d.loopEnd=Math.max(snap(d,d.pos),d.loopStart+beatLen(d)*0.25);
+      d.loopOn=true; d.loopIn=false; markMission("loop"); }
+    else if(d.loopOn){ d.loopOn=false; d.loopIn=false; }
+    pintarLoop(d); }
+  else if(a==="beatloop"){
+    if(d.loopOn){ d.loopOn=false; d.loopIn=false; }
+    else { d.loopStart=snap(d,d.pos); d.loopEnd=d.loopStart+beatLen(d)*d.beats; d.loopOn=true; markMission("beatloop"); }
+    pintarLoop(d); } }
+function beatJump(d,dir){ if(!ready||!d)return;
+  d.pos=(d.pos+dir*beatLen(d)*d.jump+d.len)%d.len; markMission("beatjump"); }
+function outroDeck(d){ const S=sideOf(d); const o=S==="A"?sideDeck("B"):sideDeck("A"); return o&&o!==d?o:null; }
+function syncTo(d){ if(!ready||!d)return; const o=outroDeck(d); const S=sideOf(d);
+  if(!o){ if(S){setState("sync"+S,true); setTimeout(()=>setState("sync"+S,false),400);} return; }
   d.pitch=(o.baseBpm*(1+o.pitch/100))/d.baseBpm*100-100;
-  d.pos=o.pos%d.len; setState("sync"+d.id,true); setTimeout(()=>setState("sync"+d.id,false),400); markMission("sync"); }
+  d.pos=o.pos%d.len;
+  KV["tempo"+S]=clamp(0.5-d.pitch/(2*rangeVal(d)),0,1); posFader("tempo"+S);
+  if(S){ setState("sync"+S,true); setTimeout(()=>setState("sync"+S,false),400); }
+  markMission("sync"); }
+/* KEY SYNC: casa o TOM com o outro deck. Sem time-stretch, casar tom muda o
+   andamento junto — e exatamente o que acontece no aparelho com MASTER TEMPO
+   desligado. Com MASTER TEMPO ligado o aparelho corrige; aqui isso e avisado. */
+function notaIdx(k){ if(!k)return -1; const m=/^([A-G]#?)/.exec(String(k)); return m?NOTAS.indexOf(m[1]):-1; }
+function keySync(d){ if(!ready||!d)return false; const o=outroDeck(d); if(!o)return false;
+  const a=notaIdx(tomDe(d)), b=notaIdx(tomDe(o));
+  if(a<0||b<0) return false;
+  let st=((b-a+18)%12)-6;                 /* menor caminho, -6..+5 semitons */
+  const novo=st+o.keyShift;
+  if(novo===d.keyShift){ d.keyShift=0; return true; }   /* apertar de novo desfaz */
+  d.keyShift=novo; return true; }
+function tempoRange(d){ if(!d)return; d.rangeIdx=(d.rangeIdx+1)%RANGES.length;
+  const S=sideOf(d); if(S){ d.pitch=-(KV["tempo"+S]-0.5)*2*rangeVal(d); } }
+function trocarDeck(S,n){
+  if(SIDE[S]===n) return false;
+  const d=ensureDeck(n); if(!ready) return false; if(!d) return false;
+  SIDE[S]=n; pintarDeck(); return true; }
+/* ⚠️ declarado ANTES de quem usa: `let` em TDZ derruba o build() inteiro em silencio */
+let MASTERDECK="A";
+const PUT={};                 /* reposicionadores dos faders, por acao */
+function posFader(act){ if(PUT[act]) PUT[act](); }
+/* redesenha TODO o estado de LED dos dois lados (depois de trocar de deck) */
+function pintarDeck(){
+  ["A","B"].forEach(S=>{
+    const N=S==="A"?["1","3"]:["2","4"];
+    N.forEach(x=>setState("deck"+x,SIDE[S]===x));
+    const d=sideDeck(S); if(!d) return;
+    setState("play"+S,d.playing);
+    setState("loopin"+S,d.loopOn||d.loopIn); setState("loopout"+S,d.loopOn);
+    setState("quantize"+S,d.quant); setState("mastertempo"+S,d.mt);
+    setState("vinyl"+S,d.vinyl); setState("reset"+S,Math.abs(d.pitch)<0.001);
+    setState("temporange"+S,d.rangeIdx===3);        /* acende no WIDE */
+    setState("sliprev"+S,d.dir<0);
+    for(let i=1;i<=8;i++) setState("hc"+S+i,d.hot[i]!==undefined);
+  });
+  setState("masterA",MASTERDECK==="A"); setState("masterB",MASTERDECK==="B");
+}
+/* ===================== BIBLIOTECA / CARREGAR ===================== */
+function trocarFaixa(d,idx){
+  if(!ready||!d)return; const L=LIB(); idx=((idx%L.length)+L.length)%L.length;
+  const t=L[idx], b=BUFS[t.v%BUFS.length]||BUFS[0];
+  d.track=idx; d.baseBpm=t.bpm||128; d.keyShift=0;
+  if(b&&b!==d.buffer){ d.buffer=b; d.data=b.getChannelData(0); d.len=d.data.length; calcPeaks(d); }
+  d.pos=0; d.cuePoint=0; d.loopOn=false; d.loopIn=false; d.hot={};
+  pintarDeck(); }
+function carregar(n){                    /* LOAD 1/3 e LOAD 2/4 */
+  if(!ready)return false;
+  const d=deckOf(n)||ensureDeck(n); if(!d)return false;
+  trocarFaixa(d,libSel); markMission("load"); return true; }
+function instantDoubles(alvo){           /* duplo toque no LOAD (manual, pag. 87) */
+  if(!ready)return false; const d=deckOf(alvo)||ensureDeck(alvo); if(!d)return false;
+  const par=alvo==="1"?"3":alvo==="3"?"1":alvo==="2"?"4":"2";
+  const o=deckOf(par); if(!o)return false;
+  trocarFaixa(d,o.track); d.pos=o.pos; d.pitch=o.pitch; playDeck(d,o.playing); return true; }
 
 const MISSIONS=[
   {id:"playA",t:"Dê play no DECK 1",h:"Aperte PLAY/PAUSE do jog da ESQUERDA."},
@@ -780,6 +1053,10 @@ function drawJog(d,id){ const ctx=jogCtx[id]; if(!ctx)return; const S=jogS[id],c
 const dCtx={},dW={},dH={};
 function fmt(t){ const m=Math.floor(t/60),s=Math.floor(t%60),ms=Math.floor((t*1000)%1000);
   return [m+":"+String(s).padStart(2,"0"),String(ms).padStart(3,"0")]; }
+/* tom mostrado no visor: o da faixa + o deslocamento do KEY SYNC / KEY SHIFT */
+function keyTxt(d){ if(!d)return "--"; const k=tomDe(d); if(!k)return "--";
+  const i=notaIdx(k); if(i<0)return k;
+  return NOTAS[((i+Math.round(d.keyShift))%12+12)%12]; }
 function drawDisp(d,id){ const ctx=dCtx[id]; if(!ctx)return; const W=dW[id],H=dH[id];
   ctx.clearRect(0,0,W,H); ctx.fillStyle="#050506"; ctx.fillRect(0,0,W,H);
   const WHT="#eef3f8", DIM="#6f7680", ORG="#ff9a2a", CY="#39d271";
@@ -791,13 +1068,16 @@ function drawDisp(d,id){ const ctx=dCtx[id]; if(!ctx)return; const W=dW[id],H=dH
   ctx.fillStyle=DIM; F("700",0.075); ctx.fillText("BEAT LOOP",W*0.022,H*0.075);
   ctx.fillStyle=WHT; F("700",0.20);  ctx.fillText(d?String(d.beats):"4",W*0.055,H*0.16);
   ctx.fillStyle=DIM; F("700",0.075); ctx.fillText("BEAT JUMP",W*0.022,H*0.40);
-  ctx.fillStyle=WHT; F("700",0.20);  ctx.fillText(d?String(d.beats*4):"16",W*0.045,H*0.485);
-  ctx.fillStyle=ORG; F("700",0.085); ctx.fillText("Q 1/4",W*0.022,H*0.755);
+  ctx.fillStyle=WHT; F("700",0.20);  ctx.fillText(d?String(d.jump):"4",W*0.045,H*0.485);
+  /* Q em laranja quando o QUANTIZE do deck esta ligado (manual, pag. 85) */
+  ctx.fillStyle=(d&&d.quant)?ORG:"#3a3d42"; F("700",0.085); ctx.fillText("Q 1/1",W*0.022,H*0.755);
   ctx.strokeStyle="#232529"; ctx.lineWidth=1;
   ctx.beginPath(); ctx.moveTo(W*0.20,H*0.05); ctx.lineTo(W*0.20,H*0.72); ctx.stroke();
+  /* numero do DECK: canto de cima, na coluna 1 (nao pode invadir a capa) */
+  ctx.fillStyle=ORG; F("800",0.062); ctx.fillText("DECK "+(d?d.n:"1"),W*0.022,H*0.006);
   /* coluna 2 — TRACK / A.CUE */
   ctx.fillStyle=DIM; F("700",0.075); ctx.fillText("TRACK",W*0.225,H*0.155);
-  ctx.fillStyle=WHT; F("700",0.155); ctx.fillText(d&&d.id==="B"?"05":"02",W*0.235,H*0.235);
+  ctx.fillStyle=WHT; F("700",0.155); ctx.fillText(d?String(d.track+1).padStart(2,"0"):"01",W*0.235,H*0.235);
   ctx.fillStyle=DIM; F("700",0.072); ctx.fillText("A.CUE",W*0.225,H*0.435);
   ctx.fillText("CONTINUE",W*0.225,H*0.525);
   /* capa (desenhada, sem imagem externa) */
@@ -807,18 +1087,25 @@ function drawDisp(d,id){ const ctx=dCtx[id]; if(!ctx)return; const W=dW[id],H=dH
   ctx.fillStyle=g; ctx.fillRect(ax,ay,as,as);
   ctx.fillStyle="rgba(0,0,0,.35)"; ctx.beginPath();
   ctx.ellipse(ax+as*0.35,ay+as*0.42,as*0.26,as*0.20,-0.5,0,7); ctx.fill();
-  ctx.fillStyle="#ffffff"; F("800",0.055); ctx.fillText("ABOVE THE CLOUD E.P.",ax+as*0.06,ay+as*0.60);
+  const _t=d?LIB()[d.track]:null;
+  ctx.fillStyle="#ffffff"; F("800",0.050);
+  /* o nome tem de CABER na capa: encolhe ate entrar, senao vaza pelo visor */
+  let _n=((_t&&_t.nome)||"—").toUpperCase(), _lim=as*0.88;
+  while(_n.length>3&&ctx.measureText(_n).width>_lim) _n=_n.slice(0,-1);
+  ctx.fillText(_n,ax+as*0.06,ay+as*0.62);
   /* coluna 4 — KEY / TEMPO / BPM */
   const kx=W*0.60;
   ctx.fillStyle=DIM; F("700",0.072); ctx.fillText("KEY",kx,H*0.085);
   ctx.fillStyle=d&&d.mt?ORG:"#3a3d42"; ctx.textAlign="right"; ctx.fillText("MT",W*0.965,H*0.085); ctx.textAlign="left";
-  ctx.fillStyle=WHT; F("700",0.185); ctx.fillText(d&&d.id==="B"?"Ebm":"Bb",kx,H*0.175);
+  ctx.fillStyle=(d&&d.keyShift)?ORG:WHT; F("700",0.185); ctx.fillText(keyTxt(d),kx,H*0.175);
   ctx.fillStyle=DIM; F("700",0.072); ctx.fillText("TEMPO",kx,H*0.415);
   ctx.fillStyle=WHT; F("700",0.095); ctx.textAlign="right";
   ctx.fillText(d?(RANGES[d.rangeIdx]==="WIDE"?"WIDE":"±"+RANGES[d.rangeIdx]):"±10",W*0.965,H*0.415); ctx.textAlign="left";
   ctx.fillStyle=WHT; F("700",0.145);
-  ctx.fillText((d&&d.pitch>=0?"":"-")+Math.abs(d?d.pitch:0).toFixed(2),kx,H*0.505);
-  ctx.fillStyle=DIM; F("700",0.075); ctx.fillText("%",kx+W*0.135,H*0.545);
+  const _p=(d&&d.pitch>=0?"":"-")+Math.abs(d?d.pitch:0).toFixed(2);
+  ctx.fillText(_p,kx,H*0.505);
+  const _pw=ctx.measureText(_p).width;      /* o "%" vai DEPOIS do numero medido */
+  ctx.fillStyle=DIM; F("700",0.075); ctx.fillText("%",kx+_pw+W*0.012,H*0.560);
   /* BPM em caixa */
   const bx=W*0.60,by=H*0.685,bw=W*0.235,bh=H*0.235;
   ctx.strokeStyle="#4a4d52"; ctx.strokeRect(bx,by,bw,bh);
@@ -827,8 +1114,9 @@ function drawDisp(d,id){ const ctx=dCtx[id]; if(!ctx)return; const W=dW[id],H=dH
   ctx.fillText((d?d.baseBpm*(1+d.pitch/100):128).toFixed(1),bx+W*0.04,by+H*0.045);
   /* tempo grande */
   const [t1,t2]=fmt(rem);
-  ctx.fillStyle=WHT; F("800",0.245); ctx.fillText(t1,W*0.245,H*0.665);
-  F("700",0.135); ctx.fillText(t2,W*0.245+ctx.measureText("  ").width+W*0.135,H*0.755);
+  ctx.fillStyle=WHT; F("800",0.230); ctx.fillText(t1,W*0.215,H*0.680);
+  const _tw=ctx.measureText(t1).width;      /* os milesimos entram DEPOIS do relogio */
+  ctx.fillStyle=DIM; F("700",0.105); ctx.fillText(t2,W*0.215+_tw+W*0.010,H*0.790);
   /* forma de onda de endereco */
   const wx=W*0.215, wy=H*0.905, ww=W*0.77, wh=H*0.085;
   ctx.fillStyle="#0b0c0e"; ctx.fillRect(0,H*0.885,W,H*0.115);
@@ -839,30 +1127,45 @@ function drawDisp(d,id){ const ctx=dCtx[id]; if(!ctx)return; const W=dW[id],H=dH
   ctx.fillStyle=ORG; ctx.beginPath();
   ctx.moveTo(wx+ww*(d?d.cuePoint/d.len:0)-3,H*0.995); ctx.lineTo(wx+ww*(d?d.cuePoint/d.len:0)+3,H*0.995);
   ctx.lineTo(wx+ww*(d?d.cuePoint/d.len:0),H*0.955); ctx.fill();
+  /* recado curto (KEY SYNC sem analise, etc.) */
+  if(d&&d.aviso&&Date.now()<d.avisoAte){
+    ctx.fillStyle="rgba(0,0,0,.78)"; ctx.fillRect(W*0.22,H*0.33,W*0.56,H*0.24);
+    ctx.strokeStyle=ORG; ctx.strokeRect(W*0.22,H*0.33,W*0.56,H*0.24);
+    ctx.fillStyle=ORG; F("800",0.15); ctx.textAlign="center";
+    ctx.fillText(d.aviso,W*0.50,H*0.385); ctx.textAlign="left"; }
 }
 
 /* ===================== DESENHO — TELA TOUCH 10,1" ===================== */
-let sCtx,sW,sH,scrMode=0;   /* 0 = WAVEFORM . 1 = BEAT FX */
+/* modos da tela, na ordem dos botoes fisicos (manual: cada botao "displays the
+   ... screen"): 0 WAVEFORM . 1 BEAT FX . 2 SOURCE . 3 BROWSE . 4 PLAYLIST
+   5 TAG LIST . 6 SHORTCUT/UTILITY */
+let sCtx,sW,sH,scrMode=0;
+const SCRNOME=["WAVEFORM","BEAT FX","SOURCE","BROWSE","PLAYLIST","TAG LIST","SHORTCUT"];
+let scrSujo=true;                        /* dirty-flag: so redesenha quando muda */
+function sujar(){ scrSujo=true; }
 function drawScreen(){ if(!sCtx)return; const ctx=sCtx,W=sW,H=sH;
   ctx.clearRect(0,0,W,H); ctx.fillStyle="#08090b"; ctx.fillRect(0,0,W,H);
   const WHT="#eef3f8", DIM="#79808a", ORG="#ff9a2a", BLU="#4f9be0", GRN="#39d271";
   const F=(w,s)=>{ctx.font=w+" "+Math.max(6,Math.round(H*s))+"px 'Arial Narrow',Arial,sans-serif";};
   ctx.textBaseline="top"; ctx.textAlign="left";
   /* barra de status */
-  ctx.fillStyle=DIM; F("700",0.030); ctx.fillText(scrMode?"BEAT FX":"WAVEFORM",W*0.018,H*0.022);
-  ctx.textAlign="right"; ctx.fillText("00:00:00",W*0.965,H*0.022); ctx.textAlign="left";
-  for(let i=0;i<3;i++){ ctx.fillStyle="#5b6views".length?DIM:DIM;
+  ctx.fillStyle=DIM; F("700",0.030); ctx.fillText(SCRNOME[scrMode]||"WAVEFORM",W*0.018,H*0.022);
+  ctx.textAlign="right"; ctx.fillText(SRC[srcIdx],W*0.965,H*0.022); ctx.textAlign="left";
+  for(let i=0;i<3;i++){ ctx.fillStyle=DIM;
     ctx.fillRect(W*(0.80+i*0.026),H*0.026,H*0.018,H*0.018); }
   if(scrMode===1){ drawScreenFx(ctx,W,H,F,WHT,DIM,ORG); return; }
-  /* --- painel esquerdo: 2 decks --- */
-  const rows=[A,B];
+  if(scrMode===2){ drawScreenSrc(ctx,W,H,F,WHT,DIM,ORG); return; }
+  if(scrMode>=3&&scrMode<=5){ drawScreenLista(ctx,W,H,F,WHT,DIM,ORG,GRN); return; }
+  if(scrMode===6){ drawScreenUtil(ctx,W,H,F,WHT,DIM,ORG,GRN); return; }
+  /* --- painel esquerdo: os decks dos DOIS pratos --- */
+  const rows=[sideDeck("A"),sideDeck("B")];
   for(let r=0;r<2;r++){ const d=rows[r], y0=H*(0.075+r*0.245);
     ctx.fillStyle=r?"#c22a5e":"#c2452a"; ctx.fillRect(W*0.018,y0,W*0.075,H*0.030);
-    ctx.fillStyle="#fff"; F("800",0.026); ctx.fillText("DECK "+(r+1),W*0.024,y0+H*0.005);
-    ctx.fillStyle=DIM; F("700",0.026); ctx.fillText("USB1",W*0.030,y0+H*0.048);
-    ctx.fillStyle=WHT; F("700",0.038); ctx.fillText((d?d.baseBpm*(1+d.pitch/100):128).toFixed(1),W*0.018,y0+H*0.090);
-    ctx.fillStyle=DIM; F("700",0.024); ctx.fillText("BPM",W*0.018,y0+H*0.078);
-    ctx.fillStyle=WHT; F("700",0.036); ctx.fillText(r?"Ebm":"Bb",W*0.030,y0+H*0.140);
+    ctx.fillStyle="#fff"; F("800",0.026); ctx.fillText("DECK "+(d?d.n:(r+1)),W*0.024,y0+H*0.005);
+    ctx.fillStyle=DIM; F("700",0.026); ctx.fillText(SRC[srcIdx],W*0.030,y0+H*0.048);
+    ctx.fillStyle=DIM; F("700",0.024); ctx.fillText("BPM",W*0.018,y0+H*0.080);
+    ctx.fillStyle=WHT; F("700",0.038); ctx.fillText((d?d.baseBpm*(1+d.pitch/100):128).toFixed(1),W*0.018,y0+H*0.106);
+    ctx.fillStyle=WHT; F("700",0.036); ctx.fillText(keyTxt(d),W*0.030,y0+H*0.140);
     /* waveform ampliada */
     const wx=W*0.115, ww=W*0.865, wy=y0, wh=H*0.185;
     ctx.fillStyle="#0b0d10"; ctx.fillRect(wx,wy,ww,wh);
@@ -883,15 +1186,17 @@ function drawScreen(){ if(!sCtx)return; const ctx=sCtx,W=sW,H=sH;
   /* --- faixa de informacao das 2 musicas --- */
   const iy=H*0.575;
   ctx.strokeStyle="#1c1e22"; ctx.beginPath(); ctx.moveTo(0,iy-H*0.012); ctx.lineTo(W,iy-H*0.012); ctx.stroke();
-  const names=[["Above The Cloud (Original Mix)","SANSNAME","01:49"],["Rainy Season (Original Mix)","SANSNAME","02:21"]];
   for(let r=0;r<2;r++){ const x0=W*(0.018+r*0.492), d=rows[r];
+    const t=d?LIB()[d.track]:null;
+    const dur=d?fmt(d.len/d.buffer.sampleRate)[0]:"0:00";
     ctx.fillStyle=r?"#c22a5e":"#c2452a"; ctx.fillRect(x0-W*0.012,iy,W*0.007,H*0.075);
-    ctx.fillStyle=WHT; F("700",0.032); ctx.fillText("♪ "+names[r][0],x0,iy);
-    ctx.fillStyle=DIM; F("700",0.030); ctx.fillText("👤 "+names[r][1],x0,iy+H*0.040);
+    ctx.fillStyle=WHT; F("700",0.032); ctx.fillText("♪ "+((t&&t.nome)||"—"),x0,iy);
+    ctx.fillStyle=DIM; F("700",0.030); ctx.fillText("👤 "+((t&&t.art)||"—"),x0,iy+H*0.040);
     ctx.textAlign="right"; ctx.fillStyle=WHT; F("700",0.032);
-    ctx.fillText(names[r][2],x0+W*0.455,iy); ctx.textAlign="left";
-    if(r===1){ ctx.fillStyle=ORG; F("700",0.024); ctx.textAlign="right";
+    ctx.fillText(dur,x0+W*0.455,iy); ctx.textAlign="left";
+    if(MASTERDECK===(r?"B":"A")){ ctx.fillStyle=ORG; F("700",0.024); ctx.textAlign="right";
       ctx.fillText("MASTER",x0+W*0.455,iy+H*0.045); ctx.textAlign="left"; }
+    if(d&&d.cue){ ctx.fillStyle=GRN; F("800",0.024); ctx.fillText("CUE",x0+W*0.30,iy+H*0.045); }
     /* overview + faixas coloridas de estrutura */
     const ox=x0, ow=W*0.44, oy=iy+H*0.095, oh=H*0.115;
     ctx.fillStyle="#0b0d10"; ctx.fillRect(ox,oy,ow,oh);
@@ -904,47 +1209,107 @@ function drawScreen(){ if(!sCtx)return; const ctx=sCtx,W=sW,H=sH;
     ctx.fillStyle=ORG; ctx.beginPath(); ctx.moveTo(ox+ow*0.18-4,oy+oh);
     ctx.lineTo(ox+ow*0.18+4,oy+oh); ctx.lineTo(ox+ow*0.18,oy+oh-6); ctx.fill();
   }
-  /* --- linha de atribuicao de canal (a base da tela do OPUS-QUAD) --- */
-  const by=H*0.845, bh=H*0.100, cells=[["MIC 1","MIC 2",""],["LINE","","THRU"],["DECK 1","","CF.A"],
-        ["DECK 2","","CF.B"],["Bluetooth","","THRU"]];
-  for(let i=0;i<5;i++){ const x0=W*(0.015+i*0.163), w=W*0.156;
-    ctx.fillStyle="#15171a"; ctx.fillRect(x0,by,w,bh);
-    ctx.strokeStyle="#26292e"; ctx.strokeRect(x0,by,w,bh);
-    ctx.textAlign="center"; ctx.fillStyle=WHT; F("700",0.036);
-    ctx.fillText(cells[i][0],x0+w/2,by+H*0.014);
-    if(cells[i][1]){ ctx.fillText(cells[i][1],x0+w/2,by+H*0.052); }
-    if(cells[i][2]){ ctx.fillStyle=DIM; F("700",0.026); ctx.fillText(cells[i][2],x0+w/2,by+H*0.058); }
-    ctx.fillStyle=DIM; F("700",0.020); ctx.fillText("^",x0+w/2,by-H*0.026); ctx.textAlign="left";
-    if(i===0){ ctx.fillStyle=GRN; ctx.beginPath(); ctx.arc(x0+w*0.82,by+H*0.022,H*0.010,0,7); ctx.fill(); } }
-  /* celula do REVERB / master */
-  const rx=W*0.830, rw=W*0.156;
-  ctx.fillStyle="#15171a"; ctx.fillRect(rx,by,rw,bh); ctx.strokeStyle="#3a2a16"; ctx.strokeRect(rx,by,rw,bh);
-  ctx.fillStyle=ORG; F("700",0.030); ctx.textAlign="center"; ctx.fillText("REVERB",rx+rw/2,by+H*0.008);
-  ctx.fillStyle=GRN; F("700",0.032); ctx.fillText((A?A.baseBpm*(1+A.pitch/100):128).toFixed(1),rx+rw*0.42,by+H*0.042);
-  ctx.fillStyle=WHT; F("800",0.048); ctx.fillText(Math.round(KV.fxlevel*100)+"%",rx+rw/2,by+H*0.070); ctx.textAlign="left";
-  /* rodape: CH das tiras (3 1 2 4) */
-  const foot=["FX MIC 1","CH 3","CH 1","CH 2","CH 4","FX MASTER"];
-  ctx.fillStyle="#101215"; ctx.fillRect(0,H*0.955,W,H*0.045);
-  for(let i=0;i<6;i++){ const x0=W*(0.015+i*0.163), w=W*0.156;
-    const act=(i===3);
-    ctx.fillStyle=act?"#2b2f35":"#181a1e"; ctx.fillRect(x0,H*0.958,w,H*0.038);
-    ctx.textAlign="center"; ctx.fillStyle=act?WHT:DIM; F("700",0.028);
-    ctx.fillText(foot[i],x0+w/2,H*0.964); ctx.textAlign="left"; }
+  /* --- linha de atribuicao de canal (a base da tela do OPUS-QUAD) ---
+     Toque nela para trocar a atribuicao do canal no crossfader (A/THRU/B). */
+  desenhaAssign(ctx,W,H,F,WHT,DIM,ORG,GRN);
 }
+/* faixa inferior: 6 celulas (MIC, CH3, CH1, CH2, CH4, MASTER) + rodape do BEAT FX */
+const ASSIGN=["A","T","B"], ASSIGNLAB={A:"CF.A",T:"THRU",B:"CF.B"};
+const CELL=["MIC","3","1","2","4","MASTER"];
+function desenhaAssign(ctx,W,H,F,WHT,DIM,ORG,GRN){
+  const by=H*0.845, bh=H*0.100;
+  for(let i=0;i<6;i++){ const x0=W*(0.015+i*0.163), w=W*0.156, c=CELL[i], d=(c!=="MIC"&&c!=="MASTER")?DK[c]:null;
+    ctx.fillStyle="#15171a"; ctx.fillRect(x0,by,w,bh);
+    ctx.strokeStyle=(fxCh===(c==="MIC"?0:c==="MASTER"?5:+c))?"#6a4413":"#26292e"; ctx.strokeRect(x0,by,w,bh);
+    ctx.textAlign="center"; ctx.fillStyle=WHT; F("700",0.036);
+    ctx.fillText(c==="MIC"?"MIC 1/2":c==="MASTER"?"MASTER":("DECK "+c),x0+w/2,by+H*0.014);
+    ctx.fillStyle=DIM; F("700",0.028);
+    if(c==="MIC"){ ctx.fillStyle=micMode?GRN:DIM;
+      ctx.fillText(["OFF","ON","TALKOVER"][micMode],x0+w/2,by+H*0.055); }
+    else if(c==="MASTER"){ ctx.fillStyle=smoothOn?ORG:DIM;
+      ctx.fillText(smoothOn?"S.ECHO ON":"S.ECHO",x0+w/2,by+H*0.055); }
+    /* deck ainda nao aberto (3 e 4 nascem sob demanda) mostra o traco */
+    else ctx.fillText(d?ASSIGNLAB[d.assign]:"—",x0+w/2,by+H*0.055);
+    ctx.fillStyle=DIM; F("700",0.020); ctx.fillText("^",x0+w/2,by-H*0.026); ctx.textAlign="left";
+    if(d&&d.cue){ ctx.fillStyle=GRN; ctx.beginPath(); ctx.arc(x0+w*0.88,by+H*0.022,H*0.010,0,7); ctx.fill(); } }
+  /* rodape: o BEAT FX escolhido, o canal de destino e o nivel */
+  ctx.fillStyle="#101215"; ctx.fillRect(0,H*0.955,W,H*0.045);
+  ctx.textAlign="left"; ctx.fillStyle=fxOn?ORG:DIM; F("800",0.030);
+  ctx.fillText("BEAT FX "+FXNAMES[fxIdx]+"  ·  "+BEATLAB[fxBeat]+" BEAT  ·  "+
+    (fxCh===0?"MIC":fxCh===5?"MASTER":"CH "+fxCh)+"  ·  "+Math.round(KV.fxlevel*100)+"%",W*0.015,H*0.962);
+  ctx.textAlign="right"; ctx.fillStyle=DIM;
+  ctx.fillText((fxAuto?"AUTO ":"TAP ")+fxBpmAtual().toFixed(1)+" BPM",W*0.985,H*0.962); ctx.textAlign="left";
+}
+function fxBpmAtual(){ const d=sideDeck("A");
+  return fxAuto ? (d?d.baseBpm*(1+d.pitch/100):128) : fxBpm; }
 function drawScreenFx(ctx,W,H,F,WHT,DIM,ORG){
   ctx.fillStyle=DIM; F("700",0.040); ctx.fillText("BEAT FX",W*0.030,H*0.100);
-  ctx.fillStyle=ORG; F("800",0.140); ctx.fillText(FXNAMES[Math.min(7,Math.floor(KV.fxselect*8))],W*0.030,H*0.160);
+  ctx.fillStyle=fxOn?ORG:WHT; F("800",0.140); ctx.fillText(FXNAMES[fxIdx],W*0.030,H*0.160);
   ctx.fillStyle=DIM; F("700",0.036); ctx.fillText("CH SELECT",W*0.030,H*0.360);
-  ctx.fillStyle=WHT; F("700",0.070); ctx.fillText("CH 1",W*0.030,H*0.410);
+  ctx.fillStyle=WHT; F("700",0.070); ctx.fillText(fxCh===0?"MIC":fxCh===5?"MASTER":"CH "+fxCh,W*0.030,H*0.410);
   ctx.fillStyle=DIM; F("700",0.036); ctx.fillText("BEAT",W*0.400,H*0.360);
-  ctx.fillStyle=WHT; F("700",0.070); ctx.fillText("1/2",W*0.400,H*0.410);
+  ctx.fillStyle=WHT; F("700",0.070); ctx.fillText(BEATLAB[fxBeat],W*0.400,H*0.410);
   ctx.fillStyle=DIM; F("700",0.036); ctx.fillText("TIME",W*0.640,H*0.360);
-  ctx.fillStyle=WHT; F("700",0.070); ctx.fillText(Math.round(60+KV.fxtime*900)+" ms",W*0.640,H*0.410);
+  ctx.fillStyle=WHT; F("700",0.070); ctx.fillText(Math.round(fxTimeSec()*1000)+" ms",W*0.640,H*0.410);
   const bx=W*0.030,bw=W*0.940,by=H*0.620,bh=H*0.070;
   ctx.fillStyle="#15171a"; ctx.fillRect(bx,by,bw,bh);
   ctx.fillStyle=ORG; ctx.fillRect(bx,by,bw*KV.fxlevel,bh);
   ctx.fillStyle=DIM; F("700",0.036); ctx.fillText("LEVEL / DEPTH",bx,by-H*0.055);
-  ctx.fillStyle=WHT; F("700",0.040); ctx.fillText("BPM  "+(A?(A.baseBpm*(1+A.pitch/100)).toFixed(1):"128.0"),bx,H*0.790);
+  ctx.fillStyle=WHT; F("700",0.040);
+  ctx.fillText((fxAuto?"AUTO":"TAP")+"   BPM  "+fxBpmAtual().toFixed(1),bx,H*0.790);
+  ctx.fillStyle=fxOn?"#39d271":"#3a3d42"; F("800",0.048);
+  ctx.textAlign="right"; ctx.fillText(fxOn?"ON":"OFF",W*0.970,H*0.100); ctx.textAlign="left";
+}
+/* SOURCE — de onde vem a musica (manual: USB 1/2, rekordbox, LAN, Bluetooth) */
+const SRC=["USB 1","USB 2","rekordbox","LINK LAN","Bluetooth"];
+let srcIdx=0, usbIn={1:true,2:false};
+function drawScreenSrc(ctx,W,H,F,WHT,DIM,ORG){
+  ctx.fillStyle=DIM; F("700",0.040); ctx.fillText("SOURCE",W*0.030,H*0.090);
+  for(let i=0;i<SRC.length;i++){ const y=H*(0.180+i*0.140), sel=i===srcIdx;
+    const on=(i===0?usbIn[1]:i===1?usbIn[2]:true);
+    ctx.fillStyle=sel?"#22262c":"#14161a"; ctx.fillRect(W*0.030,y,W*0.940,H*0.115);
+    ctx.strokeStyle=sel?ORG:"#26292e"; ctx.strokeRect(W*0.030,y,W*0.940,H*0.115);
+    ctx.fillStyle=on?WHT:"#4a4d52"; F("700",0.060); ctx.fillText(SRC[i],W*0.055,y+H*0.028);
+    ctx.textAlign="right"; ctx.fillStyle=on?"#39d271":"#4a4d52"; F("700",0.040);
+    ctx.fillText(on?"conectado":"vazio",W*0.950,y+H*0.038); ctx.textAlign="left"; }
+}
+/* BROWSE / PLAYLIST / TAG LIST — a mesma lista, filtrada */
+function listaAtual(){ const L=LIB(); return (scrMode===5)?L.filter(t=>t.tag):L; }
+function drawScreenLista(ctx,W,H,F,WHT,DIM,ORG,GRN){
+  const L=LIB(), lin=8, alt=H*0.098;
+  ctx.fillStyle=DIM; F("700",0.036);
+  ctx.fillText(SCRNOME[scrMode]+"   ·   "+SRC[srcIdx]+"   ·   "+L.length+" faixas",W*0.030,H*0.055);
+  if(libSel<libScroll) libScroll=libSel;
+  if(libSel>libScroll+lin-1) libScroll=libSel-lin+1;
+  for(let i=0;i<lin;i++){ const k=libScroll+i; if(k>=L.length)break;
+    const t=L[k], y=H*0.115+i*alt, sel=(k===libSel), mostra=(scrMode!==5)||t.tag;
+    ctx.globalAlpha=mostra?1:0.35;
+    ctx.fillStyle=sel?"#2a2117":"#131518"; ctx.fillRect(W*0.020,y,W*0.960,alt-2);
+    if(sel){ ctx.strokeStyle=ORG; ctx.strokeRect(W*0.020,y,W*0.960,alt-2); }
+    ctx.fillStyle=t.tag?GRN:"#3a3d42"; F("800",0.036); ctx.fillText("✓",W*0.032,y+alt*0.30);
+    ctx.fillStyle=sel?"#ffd9b4":WHT; F("700",0.042); ctx.fillText(t.nome,W*0.060,y+alt*0.12);
+    ctx.fillStyle=DIM; F("700",0.032); ctx.fillText(t.art,W*0.060,y+alt*0.55);
+    ctx.textAlign="right"; ctx.fillStyle=WHT; F("700",0.040);
+    ctx.fillText(t.bpm.toFixed(1),W*0.870,y+alt*0.25);
+    ctx.fillStyle=DIM; F("700",0.034); ctx.fillText(t.key,W*0.965,y+alt*0.28); ctx.textAlign="left";
+    ctx.globalAlpha=1; }
+  ctx.fillStyle=DIM; F("700",0.030);
+  ctx.fillText("gire o SMART ROTARY para escolher · pressione ou LOAD 1/3 · 2/4 para carregar",W*0.030,H*0.955);
+}
+function drawScreenUtil(ctx,W,H,F,WHT,DIM,ORG,GRN){
+  ctx.fillStyle=DIM; F("700",0.040); ctx.fillText("SHORTCUT / UTILITY",W*0.030,H*0.070);
+  const A1=sideDeck("A"), B1=sideDeck("B");
+  const it=[["Channel Fader Curve","padrão"],["Crossfader Curve","lei do cosseno"],
+    ["Talkover Mode","Normal (−24 dB)"],["Quantize Beat Value",(A1&&A1.quant)||(B1&&B1.quant)?"1/1 batida":"desligado"],
+    ["Master Tempo",(A1&&A1.mt)?"DECK "+A1.n+" ligado":"desligado"],
+    ["Jog Feel","A "+Math.round(KV.jogfeelA*100)+"%  ·  B "+Math.round(KV.jogfeelB*100)+"%"],
+    ["Vinyl Speed Adjust","A "+Math.round(KV.vinylspeedA*100)+"%  ·  B "+Math.round(KV.vinylspeedB*100)+"%"],
+    ["Smooth Echo",smoothOn?("ligado  ·  "+Math.round(KV.smoothecho*100)+"%"):"desligado"]];
+  for(let i=0;i<it.length;i++){ const y=H*(0.150+i*0.100);
+    ctx.fillStyle=i%2?"#101216":"#14161a"; ctx.fillRect(W*0.030,y,W*0.940,H*0.090);
+    ctx.fillStyle=WHT; F("700",0.042); ctx.fillText(it[i][0],W*0.055,y+H*0.022);
+    ctx.textAlign="right"; ctx.fillStyle=ORG; F("700",0.040);
+    ctx.fillText(it[i][1],W*0.950,y+H*0.024); ctx.textAlign="left"; }
 }
 
 /* ===================== MEDIDORES ===================== */
@@ -953,18 +1318,23 @@ function rms(an){ if(!an)return 0; const b=new Uint8Array(an.frequencyBinCount);
 function setMeter(el,v){ if(!el)return; const n=el.children.length, lit=Math.round(clamp(v,0,1)*n);
   for(let i=0;i<n;i++) el.children[i].classList.toggle("on",i<lit); }
 function updateMeters(){
-  const va=ready?rms(A.an)*3.1:0, vb=ready?rms(B.an)*3.1:0;
-  setMeter(els.meter1,va); setMeter(els.meter2,vb);
-  setMeter(els.meter3,0); setMeter(els.meter4,0);
+  /* o medidor de canal le ANTES do fader (manual: "volume level before the
+     sound passes through the channel fader") — por isso o analisador do deck. */
+  for(let n=1;n<=4;n++){ const d=DK[String(n)];
+    setMeter(els["meter"+n], (ready&&d)?rms(d.an)*3.1:0); }
   const vm=ready?rms(masterAn)*3.1:0;
   setMeter(els.mmL,vm); setMeter(els.mmR,vm*0.96);
 }
 
 /* ===================== LOOP DE QUADRO ===================== */
+/* repaint COALESCIDO por quadro (rAF), nunca por pointermove:
+   redesenho sincrono no arrasto travava o iPad. */
 let fc=0;
 function frame(){ requestAnimationFrame(frame);
-  drawJog(A,"A"); drawJog(B,"B");
-  if((fc&3)===0){ drawDisp(A,"A"); drawDisp(B,"B"); drawScreen(); updateMeters(); }
+  tickFx();
+  const dA=sideDeck("A"), dB=sideDeck("B");
+  drawJog(dA,"A"); drawJog(dB,"B");
+  if((fc&3)===0){ drawDisp(dA,"A"); drawDisp(dB,"B"); drawScreen(); updateMeters(); scrSujo=false; }
   fc++;
 }
 
@@ -1011,6 +1381,85 @@ function mkEl(c){
   else { e.className="btn"+cls; e.innerHTML=t; }
   return e;
 }
+/* ===================== SERIGRAFIA =====================
+   O que estava escrito no chassi FALTAVA por inteiro: o CSS ja tinha .lab e
+   .rule, mas o build() nunca criava nenhum — o painel nascia sem uma palavra
+   impressa. Os NOMES vem do manual (secoes do canal, do deck, Beat FX,
+   Smooth Echo). As POSICOES sao DERIVADAS da posicao ja medida de cada peca
+   (rotulo colado acima / abaixo / ao lado dela); o manual nao traz cota de
+   serigrafia, entao nada aqui e chutado a esmo — tudo pendura num controle. */
+function caixaDe(act){
+  const p=POS[act]; if(!p) return null;
+  let x=p[0],y=p[1],w=p[2],h=p[3];
+  if(ROUND.has(act)){ const nh=w*AR; y=y+h/2-nh/2; h=nh; }
+  return {x,y,w,h,cx:x+w/2,cy:y+h/2,x2:x+w,y2:y+h};
+}
+function silk(act,txt,onde,cls,dx,dy){
+  const c=caixaDe(act); if(!c) return null;
+  const e=document.createElement("div");
+  e.className="lab"+(cls?(" "+cls):"");
+  e.innerHTML=txt;
+  let x=c.cx, y=c.cy;
+  if(onde==="cima")  y=c.y-1.15;
+  if(onde==="baixo") y=c.y2+1.35;
+  if(onde==="esq")   x=c.x-1.15;
+  if(onde==="dir")   x=c.x2+1.15;
+  e.style.left=(x+(dx||0))+"%"; e.style.top=(y+(dy||0))+"%";
+  deckEl.appendChild(e);
+  return e;
+}
+function serigrafia(){
+  /* --- coluna do microfone --- */
+  silk("miclevel","MIC 1/2","cima","sm");
+  silk("miclevel","LEVEL","esq","xs");
+  silk("michi","HI","esq","xs");
+  silk("micmid","MID","esq","xs");
+  silk("miclow","LOW","esq","xs");
+  silk("micsw","OFF · ON · TLK","cima","xs");   /* em cima: embaixo bate no SOUND COLOR FX */
+  /* --- tiras de canal: numero em cima, funcao da linha a esquerda --- */
+  CH.forEach(function(n){ silk("trim"+n,"CH "+n,"cima","sm"); });
+  /* a linha do CUE nao entra: nessa altura o x=40,85 cai em cima do botao
+     FILTER — e o proprio botao ja tem "CUE" escrito na face. */
+  [["trim3","TRIM"],["hi3","HI"],["mid3","MID"],["low3","LOW"],
+   ["color3","COLOR"]].forEach(function(par){
+    const c=caixaDe(par[0]); if(!c) return;
+    const e=document.createElement("div"); e.className="lab xs"; e.innerHTML=par[1];
+    e.style.left="40.85%"; e.style.top=c.cy+"%"; deckEl.appendChild(e); });
+  /* --- master, color fx, fone --- */
+  silk("master","MASTER<br>LEVEL","cima","sm");
+  silk("space","SOUND COLOR FX","cima","sm",1.04,-0.2);
+  silk("parameter","PARAMETER","cima","xs");
+  silk("hpmix","HEADPHONES<br>MIX","cima","xs");
+  silk("hplevel","LEVEL","cima","xs");
+  /* --- BEAT FX --- */
+  silk("fxselect","BEAT FX","cima","cop sm",0,-1.2);
+  silk("fxselect","FX SELECT","cima","xs");
+  silk("beatprev","BEAT","cima","xs",1.20,0.2);
+  silk("fxtime","TIME","cima","xs");
+  silk("fxlevel","LEVEL / DEPTH","cima","xs");
+  silk("fxonoff","ON / OFF","baixo","xs amb");
+  /* --- crossfader: lado A e lado B --- */
+  silk("crossfader","A","esq","sm");
+  silk("crossfader","B","dir","sm");
+  /* --- console central --- */
+  silk("smoothecho","SMOOTH ECHO","cima","cop sm");
+  silk("rotary","PUSH","baixo","xs");
+  silk("load13","LOAD","cima","amb xs",1.05,0);
+  /* --- os dois decks (mesma botoeira, deslocada +60 %) --- */
+  ["A","B"].forEach(function(S){
+    const N=(S==="A")?"1":"2";
+    silk("trkprev"+S,"TRACK SEARCH","cima","xs",1.02,0);
+    silk("deck"+N,"DECK","cima","amb xs");
+    silk("hc"+S+"4","HOT CUE","cima","sm",1.48,0);
+    silk("vinylspeed"+S,"VINYL SPEED","cima","xs");
+    silk("beatloop"+S,"BEAT LOOP","cima","cop xs");
+    silk("loopin"+S,"LOOP","cima","xs",1.14,0);
+    silk("bjprev"+S,"BEAT JUMP","cima","xs",1.07,0);
+    silk("jogfeel"+S,"JOG FEEL","cima","xs");
+    silk("reset"+S,"RESET","cima","xs");
+    silk("tempo"+S,"TEMPO","cima","xs");
+  });
+}
 function build(){
   var bg=["cenblock","mixplate"]; bg.forEach(function(c){
     var d=document.createElement("div"); d.className=c; deckEl.appendChild(d); });
@@ -1047,32 +1496,155 @@ function build(){
       d:"Toque no topo para segurar/scratch (modo VINYL) e use a borda para pitch bend (nudge), casando a batida."}); });
     bindJog(jh,id);
   });
+  serigrafia();
+  /* estado inicial visivel: FX de cor escolhido, chave do mic, portas USB e decks */
+  COLORS.forEach(function(x,j){ setState(x,colorOn&&j===colorIdx); });
+  posMic();
+  setState("usb1",usbIn[1]); setState("usb2",usbIn[2]);
+  pintarDeck();
   renderMission();
 }
 
+/* --------------------------------------------------------------------------
+   DESPACHO DOS CONTROLES
+   Antes daqui cada ramo chamava a funcao com o argumento ERRADO (mandava a
+   letra do lado onde a funcao esperava o OBJETO do deck), entao 80 controles
+   nao faziam nada alem de acender a propria pele. Agora cada acao resolve o
+   deck do lado e chama a funcao de verdade.
+   -------------------------------------------------------------------------- */
+var loadT={}, tapHold=null;
+const PELE=["btn","obtn","pad","circ","orb","rled","wbtn","usbp"];
+function tapTempo(){
+  var t=Date.now();
+  if(tapT.length&&t-tapT[tapT.length-1]>2000) tapT=[];
+  tapT.push(t); if(tapT.length>5) tapT.shift();
+  if(tapT.length>=2){ var dt=(tapT[tapT.length-1]-tapT[0])/(tapT.length-1);
+    fxBpm=clamp(60000/dt,40,300); fxAuto=false; }
+  applyBeatFx();
+}
+function posMic(){ var e=els.micsw; if(!e)return; var i=e.querySelector("i");
+  if(i) i.style.left=(micMode===0?4:micMode===1?37:70)+"%";
+  e.classList.toggle("on",micMode>0); }
+function entrarLista(){ if(scrMode<3||scrMode>5){ scrMode=3; return; } carregar(SIDE.A); }
+/* a TELA e sensivel ao toque de verdade: cada regiao faz o que faz no aparelho */
+function tocarTela(e){
+  var h=hits.screen; if(!h)return; var r=h.getBoundingClientRect();
+  if(!r.width||!r.height) return;
+  var x=(e.clientX-r.left)/r.width, y=(e.clientY-r.top)/r.height;
+  if(y>0.955){ scrMode=1; return; }
+  if(y>0.845){                                   /* linha de atribuicao de canal */
+    var i=Math.floor((x-0.015)/0.163); if(i<0||i>5) return;
+    var c=CELL[i];
+    if(c==="MIC"){ micMode=(micMode+1)%3; posMic(); applyMic(); return; }
+    if(c==="MASTER"){ smoothOn=!smoothOn; setState("echoon",smoothOn); applySmooth(); return; }
+    var d=DK[c]||ensureDeck(c); if(!d) return;
+    d.assign=ASSIGN[(ASSIGN.indexOf(d.assign)+1)%3]; applyAssign(d); fxCh=+c; return; }
+  if(scrMode>=3&&scrMode<=5){                    /* lista: escolher / carregar */
+    var lin=Math.floor((y-0.115)/0.098);
+    if(lin>=0&&lin<8){ var k=libScroll+lin;
+      if(k<LIB().length){ if(k===libSel) carregar(SIDE.A); else libSel=k; } }
+    return; }
+  if(scrMode===2){ var s=Math.floor((y-0.180)/0.140); if(s>=0&&s<SRC.length) srcIdx=s; return; }
+  if(scrMode===1){
+    if(y>0.60){ KV.fxlevel=clamp((x-0.03)/0.94,0,1); applyBeatFx(); }
+    else { fxOn=!fxOn; setState("fxonoff",fxOn); applyBeatFx(); }
+    return; }
+  /* WAVEFORM: tocar na visao geral toca a partir do ponto tocado (manual, pag. 65) */
+  if(y>0.66&&y<0.83){ var lado=x<0.5?"A":"B", dd=sideDeck(lado);
+    var x0=0.018+(x<0.5?0:0.492), fr=clamp((x-x0)/0.44,0,1);
+    if(dd) dd.pos=fr*dd.len;
+    return; }
+  if(y<0.56){ MASTERDECK=(y<0.32)?"A":"B"; pintarDeck(); }
+}
 function onCtrl(c,e){ teach(c);
   if(!started){ startAudio(); return; }
   if(!ready) return;
-  var a=c.act; flash(els[a]);
-  if(/^play[AB]$/.test(a))            playDeck(deckOf(a.slice(-1)),a.slice(-1));
-  else if(/^cue[AB]$/.test(a))        cueDeck(deckOf(a.slice(-1)),a.slice(-1));
-  else if(/^hc[AB][0-9]$/.test(a))    hotcue(a.slice(2,3),+a.slice(-1));
-  else if(/^loopin[AB]$/.test(a))     loopAct(a.slice(-1),"in");
-  else if(/^loopout[AB]$/.test(a))    loopAct(a.slice(-1),"out");
-  else if(/^shift[AB]$/.test(a))      shiftOn(a.slice(-1),!els[a].classList.contains("on"));
-  else if(/^sync[AB]$/.test(a))       syncTo(a.slice(-1));
-  else if(/^reset[AB]$/.test(a)){ var d=deckOf(a.slice(-1)); if(d) d.pitch=0; }
-  else if(els[a]) els[a].classList.toggle("on");
+  /* ⚠️ o lado NAO e sempre o ultimo caractere: "hcA3" termina em digito.
+     Era por isso que os 16 hot cues ficavam sem deck e nao faziam nada. */
+  var a=c.act, mS=/^hc([AB])[1-8]$/.exec(a);
+  var S=mS?mS[1]:(/[AB]$/.test(a)?a.slice(-1):null);
+  var d=S?sideDeck(S):null, n;
+  flash(els[a]);
+  /* ---------- console central: tela, navegacao e carregamento ---------- */
+  if(a==="screen")                     tocarTela(e);
+  else if(a==="waveform")              scrMode=0;
+  else if(a==="beatfx")                scrMode=1;
+  else if(a==="source")                scrMode=2;
+  else if(a==="browse")                scrMode=3;
+  else if(a==="playlist")              scrMode=4;
+  else if(a==="taglist")               scrMode=5;
+  else if(a==="shortcut")              scrMode=(scrMode===6?0:6);
+  else if(a==="navback")               scrMode=(scrMode===0?3:0);
+  else if(a==="tagtrack"){ var t=LIB()[libSel]; if(t){ t.tag=!t.tag; setState(a,t.tag); } }
+  else if(a==="rotary")                entrarLista();
+  else if(a==="load13"||a==="load24"){
+    var Sl=(a==="load13")?"A":"B", now=Date.now();
+    if(now-(loadT[Sl]||0)<420) instantDoubles(SIDE[Sl]); else carregar(SIDE[Sl]);
+    loadT[Sl]=now; }
+  else if(a==="usb1"||a==="usb2"){ var k=(a==="usb1")?1:2; usbIn[k]=!usbIn[k];
+    if(usbIn[k]) srcIdx=k-1; else if(srcIdx===k-1) srcIdx=usbIn[1]?0:(usbIn[2]?1:2);
+    setState(a,usbIn[k]); scrMode=2; }
+  /* ---------- mixer ---------- */
+  else if(a==="micsw"){ micMode=(micMode+1)%3; posMic(); applyMic(); }
+  else if(a==="echoon"){ smoothOn=!smoothOn; setState(a,smoothOn); applySmooth(); }
+  else if(COLORS.indexOf(a)>=0){ var ci=COLORS.indexOf(a);
+    if(colorOn&&colorIdx===ci) colorOn=false; else { colorIdx=ci; colorOn=true; }
+    COLORS.forEach(function(x,j){ setState(x,colorOn&&j===colorIdx); });
+    applyColor(); markMission("color"); }
+  else if(/^chcue[1-4]$/.test(a)){ n=a.slice(-1); var dc=deckOf(n)||ensureDeck(n);
+    if(dc){ dc.cue=!dc.cue; setState(a,dc.cue); applyPhones(); markMission("cue"); } }
+  else if(a==="fxonoff"){ fxOn=!fxOn; setState(a,fxOn); applyBeatFx(); }
+  else if(a==="tap"){ tapHold=setTimeout(function(){ fxAuto=true; applyBeatFx(); sujar(); },700);
+    tapTempo(); scrMode=1; }
+  else if(a==="beatprev"){ fxBeat=Math.max(0,fxBeat-1); applyBeatFx(); scrMode=1; }
+  else if(a==="beatnext"){ fxBeat=Math.min(BEATFRAC.length-1,fxBeat+1); applyBeatFx(); scrMode=1; }
+  /* ---------- decks ---------- */
+  else if(/^play[AB]$/.test(a))        playDeck(d);
+  else if(/^cue[AB]$/.test(a))         cueDeck(d);
+  else if(/^hc[AB][1-8]$/.test(a))     hotcue(d,+a.slice(-1));
+  else if(/^loopin[AB]$/.test(a))      loopAct(d,"loopin");
+  else if(/^loopout[AB]$/.test(a))     loopAct(d,"loopout");
+  else if(/^beatloop[AB]$/.test(a))    loopAct(d,"beatloop");
+  else if(/^shift[AB]$/.test(a)){ SHIFT[S]=!SHIFT[S]; setState(a,SHIFT[S]); }
+  else if(/^sync[AB]$/.test(a))        syncTo(d);
+  else if(/^master[AB]$/.test(a)){ MASTERDECK=S; pintarDeck(); }
+  else if(/^reset[AB]$/.test(a)){ if(d){ d.pitch=0; d.keyShift=0; KV["tempo"+S]=0.5; posFader("tempo"+S); } pintarDeck(); }
+  else if(/^quantize[AB]$/.test(a)){ if(d){ d.quant=!d.quant; setState(a,d.quant); } }
+  else if(/^mastertempo[AB]$/.test(a)){ if(d){ d.mt=!d.mt; setState(a,d.mt); } }
+  else if(/^temporange[AB]$/.test(a)){ tempoRange(d); pintarDeck(); }
+  else if(/^vinyl[AB]$/.test(a)){ if(d){ d.vinyl=!d.vinyl; setState(a,d.vinyl);
+      d.brake=d.vinyl?(0.0009+(1-KV["vinylspeed"+S])*0.0035):0.0022; } }
+  else if(/^keysync[AB]$/.test(a)){
+    if(keySync(d)){ avisar(d,"KEY "+keyTxt(d)); setState(a,!!d.keyShift); }
+    /* sem analise de tom (faixa nao catalogada e audio sem nota clara) o
+       aparelho tambem nao casa nada — aqui ele DIZ isso no visor do deck. */
+    else { avisar(d,"KEY ?"); setState(a,false); } }
+  else if(/^bjprev[AB]$/.test(a)){ if(shiftAny()&&d) d.jump=Math.max(1,d.jump/2); else beatJump(d,-1); }
+  else if(/^bjnext[AB]$/.test(a)){ if(shiftAny()&&d) d.jump=Math.min(64,d.jump*2); else beatJump(d,1); }
+  else if(/^sliprev[AB]$/.test(a)){ if(d){ d.dir=(d.dir<0)?1:-1; setState(a,d.dir<0); } }
+  else if(/^deck[1-4]$/.test(a)){ n=a.slice(-1); trocarDeck((n==="1"||n==="3")?"A":"B",n); }
+  else if(/^trkprev[AB]$/.test(a)){ if(d){ if(d.pos>d.buffer.sampleRate*2) d.pos=0; else trocarFaixa(d,d.track-1); } }
+  else if(/^trknext[AB]$/.test(a)){ if(d) trocarFaixa(d,d.track+1); }
+  else if(PELE.indexOf(c.kind)>=0&&els[a]) els[a].classList.toggle("on");
+  sujar();
   markMission(a);
 }
 function bindKnob(el,hit,act){
-  var drag=false,y0=0,v0=0;
+  var drag=false,y0=0,v0=0,acc=0;
   if(KV[act]===undefined) KV[act]=0.5;
   function draw(){ el.style.transform="rotate("+(-140+(KV[act])*280)+"deg)"; }
   draw();
-  hit.addEventListener("pointerdown",function(e){ drag=true;y0=e.clientY;v0=KV[act];
-    hit.setPointerCapture(e.pointerId); });
+  hit.addEventListener("pointerdown",function(e){ drag=true;y0=e.clientY;v0=KV[act];acc=0;
+    try{ hit.setPointerCapture(e.pointerId); }catch(_){} });
   hit.addEventListener("pointermove",function(e){ if(!drag)return;
+    if(act==="rotary"){                       /* SMART ROTARY: seletor sem fim */
+      acc+=(y0-e.clientY); y0=e.clientY;
+      var L=LIB().length, mudou=false;
+      while(Math.abs(acc)>=13){ var s=acc>0?-1:1; acc-=(acc>0?13:-13);
+        libSel=((libSel+s)%L+L)%L; mudou=true; }
+      if(mudou){ if(scrMode<3||scrMode>5) scrMode=3;
+        el.style.transform="rotate("+(libSel*24)+"deg)"; sujar(); }
+      return; }
     KV[act]=clamp(v0+(y0-e.clientY)/160,0,1); draw(); applyKV(act); });
   function up(){ drag=false; }
   hit.addEventListener("pointerup",up); hit.addEventListener("pointercancel",up);
@@ -1082,44 +1654,75 @@ function bindFader(el,hit,act,horiz){
   if(KV[act]===undefined) KV[act]=horiz?0.5:0.85;
   function put(){ if(horiz) cap.style.left=(2+KV[act]*96)+"%";
                   else cap.style.top=(4+(1-KV[act])*92)+"%"; }
-  put();
+  put(); PUT[act]=put;
   var drag=false;
   function mv(e){ if(!drag)return; var r=hit.getBoundingClientRect();
+    if(!r.width||!r.height) return;
     KV[act]=horiz?clamp((e.clientX-r.left)/r.width,0,1):clamp(1-(e.clientY-r.top)/r.height,0,1);
     put(); applyKV(act); }
   hit.addEventListener("pointerdown",function(e){ if(!started){startAudio();return;}
-    drag=true; hit.setPointerCapture(e.pointerId); mv(e); });
+    drag=true; try{ hit.setPointerCapture(e.pointerId); }catch(_){} mv(e); });
   hit.addEventListener("pointermove",mv);
   function up(){ drag=false; }
   hit.addEventListener("pointerup",up); hit.addEventListener("pointercancel",up);
 }
+/* BEAT LOOP: tamanho do loop em batidas (1/4 a 32), pelo giro do knob cobre */
+const LOOPBEATS=[0.25,0.5,1,2,4,8,16,32];
 function applyKV(act){
+  sujar();
+  if(act==="rotary") return;
+  if(/^beatloop[AB]$/.test(act)){ var Sb=act.slice(-1), db=sideDeck(Sb);
+    if(db){ db.beats=LOOPBEATS[clamp(Math.floor(KV[act]*8),0,7)];
+      if(db.loopOn) db.loopEnd=db.loopStart+beatLen(db)*db.beats; }
+    return; }
+  /* JOG FEEL — peso do prato. Guardado NO DECK (e dele que e a propriedade),
+     nao so no KV: girar o knob muda de verdade a resposta do prato. */
+  if(/^jogfeel[AB]$/.test(act)){ var Sj=act.slice(-1), dj=sideDeck(Sj);
+    if(dj) dj.jogPeso=0.55+KV[act]*0.90;    /* horario = mais pesado (manual) */
+    return; }
   if(!ready) return;
-  if(act==="crossfader"){ xf=KV[act]; applyXf(); }
+  if(act==="crossfader"){ xf=KV[act]; applyXf(); markMission("xfader"); }
   else if(/^fader[1-4]$/.test(act)) applyFader(act.slice(-1));
   else if(/^trim[1-4]$/.test(act)) applyTrim(act.slice(-1));
-  else if(/^(hi|mid|low)[1-4]$/.test(act)) applyEq(act.slice(-1));
-  else if(/^color[1-4]$/.test(act)) applyColor(act.slice(-1));
+  else if(/^(hi|mid|low)[1-4]$/.test(act)){ applyEq(act.slice(-1));
+    if(act.indexOf("low")===0&&KV[act]<0.08) markMission("eq"); }
+  else if(/^color[1-4]$/.test(act)){ applyColor(); if(Math.abs(KV[act]-0.5)>0.2) markMission("color"); }
+  else if(act==="parameter") applyColor();
   else if(act==="master"&&master) master.gain.value=KV[act]*1.2;
-  else if(/^tempo[AB]$/.test(act)){ var d=deckOf(act.slice(-1));
-    if(d) d.pitch=-(KV[act]-0.5)*2*rangeVal(act.slice(-1)); }
+  else if(act==="booth"||act==="zone") applyOuts();
+  else if(act==="hpmix"||act==="hplevel") applyPhones();
+  else if(act==="miclevel"||act==="michi"||act==="micmid"||act==="miclow") applyMic();
+  else if(act==="smoothecho") applySmooth();
+  else if(act==="fxselect"){ fxIdx=clamp(Math.floor(KV[act]*FXNAMES.length),0,FXNAMES.length-1);
+    applyBeatFx(); scrMode=1; }
+  else if(act==="fxtime"||act==="fxlevel") applyBeatFx();
+  else if(/^vinylspeed[AB]$/.test(act)){ var Sv=act.slice(-1), dv=sideDeck(Sv);
+    if(dv&&dv.vinyl) dv.brake=0.0009+(1-KV[act])*0.0035; }
+  else if(/^tempo[AB]$/.test(act)){ var St=act.slice(-1), dt=sideDeck(St);
+    if(dt){ dt.pitch=-(KV[act]-0.5)*2*rangeVal(dt); setState("reset"+St,Math.abs(dt.pitch)<0.001); } }
 }
 function bindJog(el,id){
   var active=false,last=0;
   function ang(e){ var r=el.getBoundingClientRect();
     return Math.atan2(e.clientY-(r.top+r.height/2),e.clientX-(r.left+r.width/2)); }
   function dist(e){ var r=el.getBoundingClientRect();
+    if(!r.width) return 1;
     return Math.hypot(e.clientX-(r.left+r.width/2),e.clientY-(r.top+r.height/2))/(r.width/2); }
   el.addEventListener("pointerdown",function(e){ if(!started){startAudio();return;} if(!ready)return;
-    var d=deckOf(id); if(!d)return; active=true; last=ang(e);
-    if(dist(e)<0.62){ d.touching=true; d.targetPos=d.pos; }
-    el.setPointerCapture(e.pointerId); e.preventDefault(); });
+    var d=sideDeck(id); if(!d)return; active=true; last=ang(e);
+    /* topo do prato = segurar/scratch (so no modo VINYL). Borda = pitch bend. */
+    if(dist(e)<0.62&&d.vinyl){ d.touching=true; d.targetPos=d.pos; }
+    try{ el.setPointerCapture(e.pointerId); }catch(_){}
+    e.preventDefault(); sujar(); });
   el.addEventListener("pointermove",function(e){ if(!active||!ready)return;
-    var d=deckOf(id); if(!d)return;
+    var d=sideDeck(id); if(!d)return;
     var a=ang(e), da=a-last; if(da>Math.PI)da-=2*Math.PI; if(da<-Math.PI)da+=2*Math.PI; last=a;
-    if(d.touching) d.targetPos=clamp(d.targetPos+da/(2*Math.PI)*d.buffer.sampleRate*0.5,0,d.len-1);
-    else d.pos=(d.pos+da/(2*Math.PI)*d.buffer.sampleRate*0.06+d.len)%d.len; });
-  function up(){ active=false; var d=deckOf(id); if(d) d.touching=false; }
+    /* JOG FEEL: prato leve responde mais ao gesto, prato pesado responde menos */
+    var peso=d.jogPeso||(0.55+KV["jogfeel"+id]*0.90);
+    if(d.touching) d.targetPos=clamp(d.targetPos+da/(2*Math.PI)*d.buffer.sampleRate*0.5/peso,0,d.len-1);
+    else d.pos=(d.pos+da/(2*Math.PI)*d.buffer.sampleRate*0.06/peso+d.len)%d.len;
+    sujar(); });
+  function up(){ active=false; var d=sideDeck(id); if(d) d.touching=false; }
   el.addEventListener("pointerup",up); el.addEventListener("pointercancel",up);
 }
 
@@ -1130,6 +1733,9 @@ function init(){
   var bs=document.querySelector("#btnStart"), br=document.querySelector("#btnReset");
   if(bs) bs.addEventListener("pointerdown",function(){ startAudio(); });
   if(br) br.addEventListener("pointerdown",function(){ location.reload(); });
+  /* TAP segurado volta para AUTO (manual: "It's automatically set to AUTO mode") */
+  document.addEventListener("pointerup",function(){ if(tapHold){ clearTimeout(tapHold); tapHold=null; } soltarCue(); });
+  document.addEventListener("pointercancel",function(){ soltarCue(); });
   function fit(){ var w=document.querySelector(".wrap"); if(!w)return;
     var s=Math.max(0.1,Math.min((window.innerWidth-6)/w.offsetWidth,(window.innerHeight-6)/w.offsetHeight,1));
     var st=document.querySelector("#stage"); if(st) st.style.transform="scale("+s+")"; }

@@ -38,6 +38,13 @@ const REF = path.join(AQUI, "_ref-traseiras");
 const AULAS = [
   { modo: "cabeamento", arq: "ligando-a-cabine.html" },
   { modo: "praticando", arq: "praticando-montagem-cabine.html" },
+  /* Aula de scratch: em vez do simulador generico de 37KB que estava no ar
+     (sem POS, sem AR, nada a ver com um SL-1200), esta aula EMBUTE O MK7 DE
+     VERDADE duas vezes, com um mixer de 2 canais no meio. O dono foi claro:
+     "e para pegar os simuladores que fizemos e colocar para aparecer nesta
+     janela quando selecionado, e deve continuar funcionando". */
+  { modo: "praticando", arq: "battle-2x-sl1200mk7.html",
+    preset: { d1:"sl1200", mix:"djm450", d2:"sl1200" } },
 ];
 
 /* --------------------------------------------------------------------------
@@ -698,8 +705,9 @@ for (const a of AULAS) {
   const out = modelo
     .replace("__SIMS__", () => jsonSims)
     .replace("__TRAS__", () => jsonTras)
-    .replace("__MODO__", () => a.modo);
-  for (const marca of ["__SIMS__", "__TRAS__", "__MODO__"])
+    .replace("__MODO__", () => a.modo)
+    .replace("__PRESET__", () => JSON.stringify(a.preset || null));
+  for (const marca of ["__SIMS__", "__TRAS__", "__MODO__", "__PRESET__"])
     if (out.includes(marca)) throw new Error(`o modelo nao tem o marcador ${marca}: ${a.arq}`);
   const nomeSaida = a.arq.replace(/\.html$/, SUFIXO + ".html");
   fs.writeFileSync(path.join(DIR_AULAS, nomeSaida), out, "utf8");

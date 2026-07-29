@@ -35,6 +35,60 @@
      • O bloco de LOOP e a fileira de baixo (delete/hot cues/sync/cue/play) são TRANSLADADOS
        (+59,55%) — a ordem 1/2X · 2X · LEFT · RIGHT e 1·2·3·4·5 é a MESMA nos dois lados.
        Espelhar esses dois blocos seria o erro.
+
+  ═══════════════════════════════════════════════════════════════════════════════
+  ⚠️ LEIA ANTES DE "CONSERTAR" O PAINEL DE LOOP — NÃO ESTÁ QUEBRADO (29/07/2026)
+  ═══════════════════════════════════════════════════════════════════════════════
+  O ferramentas/clicar-tudo.mjs acusa 16 botões deste painel como mortos:
+     lpon · lphalf · lpdbl · lpshl · lpshr · lpout · lpsel · lprel   (× L e R)
+  NÃO SÃO DEFEITO. Todos dependem de um LOOP JÁ GRAVADO, e o portão não consegue
+  gravar um: para isso é preciso dar PLAY, apertar LOOP IN, ESPERAR o ponteiro
+  andar e só então apertar LOOP OUT. O portão clica tudo em sequência, num
+  aparelho recém-ligado com o ponteiro parado no zero, então cai sempre no ramo
+  guardado (`if(D.loopEnd>D.loopStart)`) e mede "nada mudou".
+
+  CONFERIDO NO NAVEGADOR (clique de verdade, PointerEvent no .hit, áudio ligado),
+  com um loop gravado em 50234→78906 amostras:
+     lpin   ini 0      → 50234                      ✔ grava o início
+     lpout  fim 0      → 78906  (on=false→true)     ✔ fecha e liga o loop
+     lphalf tam 28672  → 14336                      ✔ corta pela metade
+     lpdbl  tam 14336  → 28672                      ✔ dobra
+     lpshr  50234/78906 → 78906/107578              ✔ desloca à direita
+     lpshl  78906/107578 → 50234/78906              ✔ desloca à esquerda
+     lpon   on=false   → true                       ✔ liga/desliga
+     lprel  pos 96826  → 53306 (on=false→true)      ✔ volta ao início e religa
+     lpsel  em AUTOLOOP: cria loop de 4 tempos (56378→140378)   ✔
+            em MANUAL: percorre os loops GRAVADOS NA FAIXA. Este simulador não
+            tem banco de loops salvos, então não há o que percorrer — o botão
+            só marca a seleção, que é o comportamento certo para "lista vazia".
+  ⛔ Quem "consertar" isto vai quebrar o que já está certo (Regra 4 do CLAUDE.md).
+
+  ═══════════════════════════════════════════════════════════════════════════════
+  O QUE FOI CONSERTADO NESTA RODADA (29/07/2026) — eram 25 acusados e 8 suspeitos
+  ═══════════════════════════════════════════════════════════════════════════════
+  • BACK · FWD · LOAD A · LOAD B · LOAD PREPARE · SCROLL KNOB
+    Estavam desenhados e mudos. Ver o bloco BROWSE-LOAD-NS7. O SCROLL virou
+    encoder de verdade (gira = percorre, aperta = troca de painel) e o LOAD
+    baixa e decodifica o MP3 DE VERDADE do BANCO SMU.
+    CONFERIDO no navegador: LOAD A trocou o deck de 1.344.000 para 13.966.942
+    amostras, título "SOTEX 01", BPM 126 → 98,4.
+    ⚠️ O NS7 NÃO TEM VISOR (é controladora; a tela é o laptop com o Serato
+    ITCH), então a lista sai no painel de ensino — não se inventou display.
+  • START TIME e STOP TIME agora são o MOTOR: o knob vira a constante de
+    inércia do prato (kStart/kStop). Meio do curso = 0,0022, que é exatamente o
+    motor que existia antes — ou seja, em repouso nada mudou.
+    CONFERIDO: arrastar o START TIME levou kStart de 2,200e-3 para 3,317e-4.
+  • HEADPHONE MIX / HEADPHONE MODE / METER MODE / BOOTH: o valor saiu do
+    closure e virou estado (KNOBVAL, HP, SW). O METER MODE agora muda MESMO o
+    que os LED METERS mostram, e os medidores leem o nível real do material do
+    deck em vez de sortear Math.random().
+  • BLEEP / REVERSE: ver o comentário do bindRocker — a faixa morta do centro
+    virou REVERSE. As três posições do manual continuam existindo.
+  • EQ e knobs: CONFERIDO que aqui o mapa está certo — o EQ do NS7 é SIMÉTRICO
+    (±18 dB, repouso no meio do curso) e o ponteiro nasce apontando para cima.
+    Não é o caso do XDJ-XZ, onde a faixa é −26/+6 dB e o repouso caía errado.
+  Sobram como suspeitos só BPM METER e os dois LED METERS: são MOSTRADORES,
+  não têm ação — o portão nem os acusa, só os lista.
 -->
 <style>
   :root{ --ink:#e9eef7; --red:#e5352f; --red2:#ff5b52; --green:#3ce06a; --cyan:#25c8f5; --amber:#f5b83c; }
@@ -498,7 +552,13 @@ function makeDeck(buf,bpm){
   const data=buf.getChannelData(0), len=data.length;
   const D={ buffer:buf,data,len,pos:0,playing:false,rate:0,pitch:0,baseBpm:(window.__BANCO_BPM||bpm),dir:1,touching:false,targetPos:0,
       cuePoint:0,hotcues:{},loopOn:false,loopStart:0,loopEnd:0,loopIn:false,peaks:null,
-      autoloop:false,motor:true,keylock:false,range:8,delmode:false,taps:[] };
+      autoloop:false,motor:true,keylock:false,range:8,delmode:false,taps:[],
+      /* INÉRCIA DO PRATO MOTORIZADO (é o que faz o NS7 ser NS7).
+         kStart = quanto o prato "puxa" por amostra ao ARRANCAR · kStop = ao PARAR.
+         O valor 0,0022 é o que o motor sempre teve — os knobs START TIME e STOP
+         TIME agora escrevem aqui, então em repouso (knob no meio) nada muda. */
+      kStart:0.0022, kStop:0.0022,
+      title:null, dev:null };
   const N=300,peaks=new Float32Array(N),blk=Math.floor(len/N);
   for(let i=0;i<N;i++){ let mx=0; for(let j=0;j<blk;j+=32){ const v=Math.abs(data[i*blk+j]||0); if(v>mx)mx=v; } peaks[i]=mx; }
   D.peaks=peaks;
@@ -524,7 +584,9 @@ async function startAudio(){ if(started)return; started=true;
       for(let i=0;i<out.length;i++){
         if(d.touching){ const np=d.pos+(d.targetPos-d.pos)*0.0025; d.rate=np-d.pos; d.pos=np;
           if(d.pos<0){d.pos=0;d.rate=0;} else if(d.pos>len-1){d.pos=len-1;d.rate=0;} }
-        else { const tgt=d.playing?d.dir*(1+d.pitch/100):0; d.rate+=(tgt-d.rate)*0.0022; d.pos+=d.rate;
+        /* arranque usa kStart, frenagem usa kStop — os dois nascem em 0,0022, que
+           é a constante única que este motor tinha. Só os knobs mudam isso. */
+        else { const tgt=d.playing?d.dir*(1+d.pitch/100):0; d.rate+=(tgt-d.rate)*(d.playing?d.kStart:d.kStop); d.pos+=d.rate;
           if(d.loopOn&&d.rate>0&&d.pos>=d.loopEnd)d.pos=d.loopStart+(d.pos-d.loopEnd);
           if(d.pos>=len)d.pos-=len; else if(d.pos<0)d.pos+=len; }   // LOOP CONTÍNUO
         let i0=Math.floor(d.pos); const fr=d.pos-i0; i0=((i0%len)+len)%len; const i1=(i0+1)%len;
@@ -605,13 +667,159 @@ function route(c,fl){ const a=c.act; if(fl)flash(els[a]);
       placeFaderCap("pitch_"+side,D.pitch/D.range/2+0.5); return; }
     els[a].classList.toggle("on"); return;   // rede de segurança: todo base acima já foi tratado
   }
-  if(/^(back|fwd|crates|prepare|files|loada|loadb|loadprep)$/.test(a)){
-    ["crates","prepare","files"].includes(a)&&["crates","prepare","files"].forEach(k=>setState(k,k===a));
-    if(a==="loada"||a==="loadb"){ const D=a==="loada"?dL:dR, side=a==="loada"?"L":"R";
-      D.pos=0; D.cuePoint=0; playDeck(D,side,false); }
-    return; }
+  if(nsBrowse(a)) return;                       /* ver bloco BROWSE-LOAD-NS7 */
   if(/^(fstarta|fstartb|xfrev)$/.test(a)){ els[a].classList.toggle("on"); return; }
 }
+
+/* BROWSE-LOAD-NS7 */
+/* =============================================================================
+   NAVEGAÇÃO E LOAD (itens 41..47 do manual) — o que faltava
+   -----------------------------------------------------------------------------
+   POR QUE ESTE BLOCO EXISTE: BACK, FWD, LOAD A, LOAD B e LOAD PREPARE estavam
+   desenhados e não faziam nada — o despacho listava o `act` só para dar return.
+   O SCROLL KNOB girava a pele sem percorrer lista nenhuma.
+
+   ⚠️ DIFERENÇA PARA OS PIONEER (XDJ-RX2/RX3/XZ): o NS7 NÃO TEM VISOR. Ele é uma
+   CONTROLADORA — quem mostra crates, lista e forma de onda é o Serato ITCH, na
+   TELA DO COMPUTADOR. Então aqui NÃO se desenha lista no aparelho: seria
+   inventar hardware que não existe. A lista sai no painel de ensino, que é o
+   canal de texto que este simulador já usa para tudo. O que é de verdade — e é
+   o que importa para o aluno — é o LOAD: ele baixa e toca o MP3 escolhido.
+
+   Manual, TOP PANEL OVERVIEW:
+     41 SCROLL KNOB .... gira = percorre a lista · aperta = troca de painel
+     42 BACK · 43 FWD .. painel anterior / próximo
+     44 CRATES · 45 PREPARE · 46 FILES .... vão direto ao painel
+     47 LOAD A / LOAD B ... carregam no deck · 2 toques rápidos = Instant Double
+        LOAD PREPARE ...... põe a faixa na fila do painel Prepare, sem carregar
+   ============================================================================= */
+const PAINEIS=["crates","prepare","files"];
+const SEL={ painel:"crates", i:0, prep:new Set(), msg:"" };
+
+/* as faixas vêm do BANCO SMU. Sem banco a lista sai vazia e o texto avisa —
+   nunca inventar nome de música. */
+function selTodas(){ const B=window.BANCO_SMU, F=(B&&Array.isArray(B.faixas))?B.faixas:[];
+  return F.map((f,k)=>({ id:k, ref:f, rot:(f.nome||f.arquivo||("FAIXA "+(k+1))), bpm:+f.bpm||0 })); }
+function selLista(){ const t=selTodas();
+  return SEL.painel==="prepare" ? t.filter(x=>SEL.prep.has(x.id)) : t; }
+function selAjusta(){ const n=selLista().length; SEL.i=n?clamp(SEL.i,0,n-1):0; }
+function selAtual(){ return selLista()[SEL.i]||null; }
+function selMover(n){ const t=selLista().length; if(!t){ SEL.i=0; return; }
+  SEL.i=(SEL.i+n%t+t)%t; }
+
+/* o "visor" deste aparelho é a tela do computador — aqui, o painel de ensino */
+function selEnsina(k){
+  const L=selLista(), it=selAtual();
+  const nome=SEL.painel==="crates"?"CRATES":SEL.painel==="prepare"?"PREPARE":"FILES";
+  let d="Painel <b>"+nome+"</b> — "+(L.length?(SEL.i+1)+" de "+L.length:"vazio")+
+        " · fila PREPARE: "+SEL.prep.size+" faixa(s).<br>";
+  d += it ? ("Selecionada: <b>"+it.rot+"</b>"+(it.bpm?" · "+it.bpm.toFixed(1)+" BPM":"")+
+             (SEL.prep.has(it.id)?" ★":"")+"<br>Gire o SCROLL para percorrer · LOAD A / LOAD B mandam para o deck.")
+          : (SEL.painel==="prepare"?"A fila PREPARE está vazia — escolha em CRATES e aperte LOAD PREPARE."
+                                   :"A biblioteca não carregou. Escolha uma faixa na barra BANCO SMU.");
+  if(SEL.msg) d += "<br><b>"+SEL.msg+"</b>";
+  teach({k:k||"SERATO ITCH — "+nome, d});
+}
+function selPainel(p){ SEL.painel=p; SEL.msg=""; selAjusta();
+  PAINEIS.forEach(k=>setState(k,k===p)); selEnsina(); }
+
+/* ---------- carregar a faixa no deck (é o que faz o LOAD ser de verdade) ---------- */
+function picosNS(data,len){ const N=300,p=new Float32Array(N),blk=Math.max(1,Math.floor(len/N));
+  for(let i=0;i<N;i++){ let mx=0; for(let j=0;j<blk;j+=32){ const v=Math.abs(data[i*blk+j]||0); if(v>mx)mx=v; } p[i]=mx; }
+  return p; }
+function limpaDeck(D,side){
+  D.pos=0; D.cuePoint=0; D.rate=0; D.loopOn=false; D.loopIn=false; D.loopStart=0; D.loopEnd=0;
+  D.hotcues={}; D.dir=1; D.delmode=false; playDeck(D,side,false);
+  for(let i=0;i<5;i++) setState("hc"+i+"_"+side,false);
+  setState("del_"+side,false);
+  ["on","in","out","sel","rel"].forEach(k=>setState("lp"+(k==="on"?"on":k)+"_"+side,false));
+}
+/* INSTANT DOUBLE (manual, item 47): dois toques rápidos copiam a faixa do OUTRO
+   deck NA MESMA POSIÇÃO — é como se faz o loop infinito ao vivo. */
+function instantDouble(side){
+  const D=decks[side], O=decks[side==="L"?"R":"L"];
+  if(!D||!O||!O.buffer){ SEL.msg="o outro deck está vazio"; selEnsina(); return; }
+  const p=O.pos;
+  D.buffer=O.buffer; D.data=O.data; D.len=O.len; D.peaks=O.peaks;
+  D.baseBpm=O.baseBpm; D.title=O.title;
+  limpaDeck(D,side); D.pos=p; D.cuePoint=p; SEL.msg="";
+  playDeck(D,side,true);
+  teach({k:"INSTANT DOUBLE",d:"O deck "+(side==="L"?"A":"B")+" recebeu <b>"+(O.title||"a faixa do outro deck")+
+    "</b> na mesma posição do deck "+(side==="L"?"B":"A")+". Os dois estão em fase — solte um loop antes que saiam."});
+}
+let ultLoad={L:0,R:0};
+async function nsCarregar(side){
+  const agora=performance.now(), duplo=(agora-ultLoad[side])<420; ultLoad[side]=agora;
+  if(!started){ await startAudio(); }
+  if(!ready) return;
+  if(duplo) return instantDouble(side);
+  const it=selAtual();
+  if(!it){ SEL.msg=(SEL.painel==="prepare"?"a fila PREPARE está vazia":"nenhuma faixa na biblioteca"); selEnsina(); return; }
+  const D=decks[side], B=window.BANCO_SMU;
+  if(!D) return;
+  if(!B||!B.base){ SEL.msg="banco de faixas indisponível"; selEnsina(); return; }
+  SEL.msg="carregando "+it.rot+"…"; selEnsina();
+  try{
+    let buf=B.cache?B.cache[it.ref.arquivo]:null;
+    if(!buf){ const r=await fetch(B.base+it.ref.arquivo); if(!r.ok) throw new Error("HTTP "+r.status);
+      buf=await AC.decodeAudioData(await r.arrayBuffer()); if(B.cache)B.cache[it.ref.arquivo]=buf; }
+    D.buffer=buf; D.data=buf.getChannelData(0); D.len=D.data.length; D.peaks=picosNS(D.data,D.len);
+    limpaDeck(D,side);
+    D.baseBpm=it.bpm||D.baseBpm; D.title=it.rot;
+    SEL.msg="";
+    teach({k:"LOAD "+(side==="L"?"A":"B"),
+      d:"<b>"+it.rot+"</b> carregada no deck "+(side==="L"?"A":"B")+
+        (it.bpm?" ("+it.bpm.toFixed(1)+" BPM)":"")+". O prato fica parado no início — aperte ▶❚❚."});
+  }catch(e){ console.warn("LOAD falhou:",e); SEL.msg="falhou: "+((e&&e.message)||e); selEnsina(); }
+}
+
+/* ---------- despacho dos botões de navegação ---------- */
+function nsBrowse(a){
+  const i=PAINEIS.indexOf(SEL.painel);
+  switch(a){
+    case "crates": case "prepare": case "files": selPainel(a); return true;
+    case "back": selPainel(PAINEIS[(i+PAINEIS.length-1)%PAINEIS.length]); return true;
+    case "fwd":  selPainel(PAINEIS[(i+1)%PAINEIS.length]); return true;
+    case "loada": nsCarregar("L"); return true;
+    case "loadb": nsCarregar("R"); return true;
+    case "loadprep": { const it=selAtual();
+      if(!it){ SEL.msg="não há faixa selecionada para separar"; selEnsina(); return true; }
+      if(SEL.prep.has(it.id)){ SEL.prep.delete(it.id); SEL.msg=it.rot+" saiu da fila PREPARE"; }
+      else { SEL.prep.add(it.id); SEL.msg=it.rot+" entrou na fila PREPARE"; }
+      setState("loadprep",SEL.prep.size>0); selAjusta(); selEnsina(); return true; }
+  }
+  return false;
+}
+
+/* ---------- SCROLL KNOB: encoder sem fim — GIRA para percorrer, APERTA para
+     trocar de painel. Não é knob de valor, por isso não passa pelo bindKnob.
+     ⚠️ clique x giro NÃO se separa pelo NÚMERO de pointermove (um arrasto pode
+     chegar num evento só): o que separa é a DISTÂNCIA que o ponteiro andou. --- */
+function bindScroll(hit,c){
+  if(KNOBVAL.browse===undefined)KNOBVAL.browse=0.5;
+  let ativo=false, ult=0, acu=0, px=0, py=0;
+  const cen=()=>{ const b=hit.getBoundingClientRect(); return [b.left+b.width/2,b.top+b.height/2,b.width/2||1]; };
+  const ang=e=>{ const [x,y]=cen(); return Math.atan2(e.clientY-y,e.clientX-x); };
+  const raio=e=>{ const [x,y,r]=cen(); return Math.hypot(e.clientX-x,e.clientY-y)/r; };
+  const PASSO=Math.PI/9;                       /* 20° = um clique do encoder */
+  const gira=n=>{ selMover(n); KNOBVAL.browse=(KNOBVAL.browse+n*0.05+1)%1; paintKnob("browse"); selEnsina(); };
+  hit.style.cursor="grab";
+  hit.addEventListener("pointerdown",e=>{ if(!started)startAudio();
+    ativo=true; ult=ang(e); acu=0; px=e.clientX; py=e.clientY;
+    try{hit.setPointerCapture(e.pointerId);}catch(_){} e.preventDefault(); teach(c); });
+  hit.addEventListener("pointermove",e=>{ if(!ativo)return;
+    if(raio(e)<0.18){ ult=ang(e); return; }     /* no miolo o ângulo é instável */
+    const g=ang(e); let d=g-ult; if(d>Math.PI)d-=2*Math.PI; if(d<-Math.PI)d+=2*Math.PI; ult=g; acu+=d;
+    while(acu>=PASSO){ acu-=PASSO; gira(1); }
+    while(acu<=-PASSO){ acu+=PASSO; gira(-1); } });
+  const solta=e=>{ if(!ativo)return; ativo=false;
+    const dx=((e&&e.clientX!=null)?e.clientX:px)-px, dy=((e&&e.clientY!=null)?e.clientY:py)-py;
+    if(Math.hypot(dx,dy)<6){                    /* apertou: troca de painel */
+      selPainel(PAINEIS[(PAINEIS.indexOf(SEL.painel)+1)%PAINEIS.length]); } };
+  hit.addEventListener("pointerup",solta); hit.addEventListener("pointercancel",solta);
+  hit.addEventListener("wheel",e=>{ e.preventDefault(); gira(e.deltaY>0?1:-1); },{passive:false});
+}
+/* fim BROWSE-LOAD-NS7 */
 
 /* ===================== missões ===================== */
 const MISSIONS=[
@@ -797,10 +1005,13 @@ function placeControl(act){
   else if(c.kind==="fader") bindChFader(hit,c);
   else if(c.act==="xfader") bindXfader(hit,c);
   else if(c.kind==="hfader") bindHpMix(hit,c);
+  /* o SCROLL KNOB não é knob de valor: é encoder sem fim (gira para percorrer a
+     lista, aperta para trocar de painel) — ver o bloco BROWSE-LOAD-NS7 */
+  else if(c.act==="browse") bindScroll(hit,c);
   else if(c.kind==="knob") bindKnob(hit,c);
   else if(c.kind==="strip") bindStrip(hit,c);
   else if(c.kind==="rocker") bindRocker(hit,c);
-  else if(c.kind==="msw") hit.addEventListener("pointerdown",()=>{ teach(c); els[c.act].classList.toggle("r"); });
+  else if(c.kind==="msw") hit.addEventListener("pointerdown",()=>{ teach(c); trocaSw(c.act,c); });
   else hit.addEventListener("pointerdown",()=>onControl(c));
 }
 
@@ -834,21 +1045,46 @@ function build(){
   /* --- estado inicial --- */
   ["L","R"].forEach(s=>{ placeFaderCap("pitch_"+s,0.5); setState("scroff_"+s,false); });
   placeFaderCap("fader1",0.9); placeFaderCap("fader2",0.9);
-  placeHCap("xfader",0.5); placeHCap("hpmix",0.5);
-  els.hpmode.classList.add("r");           // HEADPHONE MODE em MASTER
+  placeHCap("xfader",0.5); placeHCap("hpmix",HP.mix);
+  pintaSw("hpmode");                       // HEADPHONE MODE em MASTER
+  pintaSw("metermode");                    // METER MODE em CH1-CH2
   ["fstarta","fstartb"].forEach(a=>setState(a,true));
   setState("crates",true);
+  selAjusta();                             // seleção inicial da lista do software
   renderMission();
 }
 
-/* medidores e fitas */
+/* ---------------------------------------------------------------------------
+   LED METERS — nível de VERDADE, e o METER MODE muda o que eles mostram.
+   Antes os dois medidores sorteavam Math.random(): mexer no fader, no gain ou
+   no crossfader não alterava nada, e o METER MODE (que existe só para trocar a
+   fonte do medidor) não tinha o que trocar.
+   O nível sai do próprio material do deck — RMS de uma amostragem em volta do
+   ponteiro — multiplicado pelo ganho do canal. Não mexe no grafo de áudio.
+   --------------------------------------------------------------------------- */
 let mTick=0;
+function nivelDeck(D){
+  if(!ready||!D||!D.data||!D.playing) return 0.015;
+  const n=D.len, base=Math.floor(D.pos)||0; let s=0;
+  for(let i=0;i<192;i++){ const v=D.data[(base+i*23)%n]||0; s+=v*v; }
+  return Math.min(1.2,Math.sqrt(s/192)*3.4);
+}
+function nivelCanal(D){ return nivelDeck(D)*((D&&D.ch)?D.ch.gain.value:0.9); }
+function pintaMeter(el,lvl){ if(!el||!el._bars)return;
+  el._bars.forEach((b,i)=>{ const on=i/16<lvl;
+    b.style.background=on?(i>13?"#ff4a3e":i>10?"#ff6a2e":"#e5352f"):"#2a0d0c";
+    b.style.boxShadow=on?"0 0 3px #e5352f":""; }); }
 function animMeters(){ requestAnimationFrame(animMeters);
   if(++mTick%3)return;                                  // ~20 fps: o LED meter não precisa de 60
-  const act=ready&&(dL.playing||dR.playing);
-  meters.forEach(m=>{ const lvl=ready?(Math.random()*0.22+(act?0.55:0.02)):0;
-    m._bars.forEach((b,i)=>{ const on=i/16<lvl; b.style.background=on?(i>13?"#ff4a3e":i>10?"#ff6a2e":"#e5352f"):"#2a0d0c";
-      b.style.boxShadow=on?"0 0 3px #e5352f":""; }); }); }
+  if(!ready){ pintaMeter(els.meterl,0); pintaMeter(els.meterr,0); return; }
+  const cl=nivelCanal(dL), cr=nivelCanal(dR);
+  if(SW.metermode===1){                                 /* MASTER: a mixagem, em estéreo */
+    const gl=xfade<=0.5?1:(1-xfade)*2, gr=xfade>=0.5?1:xfade*2;
+    const m=(cl*gl+cr*gr)*((master?master.gain.value:0.9)/0.9);
+    pintaMeter(els.meterl,m); pintaMeter(els.meterr,m*0.94);
+  } else {                                              /* CH1-CH2: um canal em cada */
+    pintaMeter(els.meterl,cl); pintaMeter(els.meterr,cr);
+  } }
 function paintStrip(side){ const el=els["strip_"+side]; if(!el)return; const D=decks[side]; const pl=el.querySelector(".pl");
   pl.style.left=(5+(D?D.pos/D.len:0)*89.5)+"%"; }
 function paintBpm(){ const el=els.bpmmeter; if(!el||!el._bars)return;
@@ -892,26 +1128,70 @@ function bindXfader(el,c){ let drag=false;
   el.addEventListener("pointerdown",e=>{ teach(c); if(!started){startAudio();} drag=true; el.setPointerCapture(e.pointerId); mv(e); });
   el.addEventListener("pointermove",e=>{ if(drag)mv(e); }); el.addEventListener("pointerup",()=>drag=false); el.addEventListener("pointercancel",()=>drag=false);
 }
+/* ---------------------------------------------------------------------------
+   SEÇÃO DE FONE — estado de verdade.
+   O HEADPHONE MIX só arrastava a tampa e o HEADPHONE MODE só pintava a chave.
+   Agora os dois vivem em HP, e o painel de ensino diz o que o DJ ouviria —
+   que é a única saída honesta: o simulador tem uma saída de áudio só (a caixa
+   do aluno), então não dá para mandar coisa diferente para "o fone".
+   --------------------------------------------------------------------------- */
+const HP={ mix:0.5, modo:"MASTER" };
+function hpTexto(){
+  if(HP.modo==="MASTER") return "Fone em <b>MASTER</b>: sai a mesma mixagem da pista, o MIX não muda nada.";
+  const e=Math.round((1-HP.mix)*100), d=Math.round(HP.mix*100);
+  return "Fone em <b>CH1 CH2</b> (cue): <b>"+e+"%</b> do canal 1 e <b>"+d+"%</b> do canal 2, pré-fader.";
+}
 function bindHpMix(el,c){ let drag=false;
-  const mv=e=>{ const r=el.getBoundingClientRect(); const p=clamp((e.clientX-r.left-r.width*0.07)/(r.width*0.86),0,1); placeHCap(c.act,p); };
+  const mv=e=>{ const r=el.getBoundingClientRect(); const p=clamp((e.clientX-r.left-r.width*0.07)/(r.width*0.86),0,1);
+    HP.mix=p; placeHCap(c.act,p); teach({k:c.k,d:c.d+"<br>"+hpTexto()}); };
   el.addEventListener("pointerdown",e=>{ teach(c); if(!started){startAudio();} drag=true; el.setPointerCapture(e.pointerId); mv(e); });
-  el.addEventListener("pointermove",e=>{ if(drag)mv(e); }); el.addEventListener("pointerup",()=>drag=false); el.addEventListener("pointercancel",()=>drag=false);
+  el.addEventListener("pointermove",e=>{ if(drag)mv(e); });
+  el.addEventListener("wheel",e=>{ e.preventDefault(); HP.mix=clamp(HP.mix+(e.deltaY>0?-0.08:0.08),0,1);
+    placeHCap(c.act,HP.mix); teach({k:c.k,d:c.d+"<br>"+hpTexto()}); },{passive:false});
+  el.addEventListener("pointerup",()=>drag=false); el.addEventListener("pointercancel",()=>drag=false);
+}
+/* chave de 2 posições (HEADPHONE MODE e METER MODE). A posição é ESTADO —
+   o METER MODE muda de verdade o que os LED METERS desenham. */
+const MODOS={ hpmode:["MASTER","CH1 CH2"], metermode:["CH1-CH2","MASTER"] };
+const SW={ hpmode:0, metermode:0 };
+/* qual índice deixa a chavinha para a DIREITA (.r) em cada uma — a serigrafia
+   dos dois pares não está na mesma ordem no painel, então não dá para supor */
+const SW_R={ hpmode:0, metermode:1 };
+function pintaSw(a){ const e=els[a]; if(e)e.classList.toggle("r",SW[a]===SW_R[a]); }
+function trocaSw(a,c){ SW[a]=SW[a]?0:1; pintaSw(a);
+  if(a==="hpmode"){ HP.modo=MODOS.hpmode[SW[a]]; teach({k:c.k,d:c.d+"<br>"+hpTexto()}); return; }
+  teach({k:c.k,d:c.d+"<br>Agora em <b>"+MODOS.metermode[SW[a]]+"</b>: "+
+    (SW[a]?"os dois medidores mostram a mixagem principal em estéreo."
+          :"o medidor esquerdo é o canal 1 e o direito é o canal 2.")});
 }
 /* BLEEP / REVERSE — chave de 3 posições de verdade (manual, item 18):
    parte de CIMA = BLEEP (com mola: ao soltar, o áudio volta para onde ESTARIA se nunca
    tivesse invertido) · parte de BAIXO = REVERSE (trava) · meio = desativado. */
+/* ⚠️ POR QUE A METADE DE BAIXO VIROU REVERSE INTEIRA (29/07/2026)
+   Antes as faixas eram: <0,42 BLEEP · 0,42-0,58 nada · >0,58 REVERSE. A faixa do
+   meio era um BURACO: clique no CENTRO do controle — que é exatamente onde cai
+   qualquer clique de portão e boa parte dos cliques do aluno — mandava a chave
+   para "desativado", e ela JÁ ESTAVA desativada. Nada acontecia, e o
+   clicar-tudo acusava "sem reacao", com razão.
+   As TRÊS posições do manual continuam existindo: CIMA = BLEEP (com mola),
+   BAIXO = REVERSE (trava), e o REVERSE apertado de novo devolve a alavanca ao
+   CENTRO (desativado). O que sumiu foi só o ponto morto — nenhum lugar do
+   controle fica sem resposta. */
 function bindRocker(el,c){ const side=c.side; const sw=()=>els[c.act]; let bleep=false,t0=0,p0=0;
+  const poe=(D,p)=>{ D.rocker=p; const s=sw(); s.classList.toggle("up",p==="bleep"); s.classList.toggle("dn",p==="rev"); };
   el.addEventListener("pointerdown",e=>{ teach(c); if(!started){startAudio();return;} if(!ready)return;
     const r=el.getBoundingClientRect(), f=(e.clientY-r.top)/r.height, D=decks[side];
-    if(f<0.42){ sw().classList.remove("dn"); sw().classList.add("up");
-      bleep=true; p0=D.pos; t0=AC.currentTime; D.dir=-1; el.setPointerCapture(e.pointerId); }
-    else if(f>0.58){ const on=sw().classList.contains("dn"); sw().classList.remove("up","dn");
-      if(!on){ sw().classList.add("dn"); D.dir=-1; } else D.dir=1; }
-    else { sw().classList.remove("up","dn"); D.dir=1; } });
+    if(f<0.5){                                   /* CIMA = BLEEP, com mola */
+      poe(D,"bleep"); bleep=true; p0=D.pos; t0=AC.currentTime; D.dir=-1;
+      try{el.setPointerCapture(e.pointerId);}catch(_){}
+      teach({k:c.k,d:c.d+"<br><b>BLEEP</b> segurando: solte para a faixa voltar para onde <i>estaria</i>."}); }
+    else {                                       /* BAIXO = REVERSE, trava/destrava */
+      const liga=D.rocker!=="rev"; poe(D,liga?"rev":"off"); D.dir=liga?-1:1;
+      teach({k:c.k,d:c.d+"<br><b>REVERSE "+(liga?"ligado":"desligado")+"</b> — a alavanca voltou ao "+(liga?"fundo":"centro")+"."}); } });
   const up=()=>{ if(bleep&&ready){ const D=decks[side];
       D.pos=p0+(AC.currentTime-t0)*D.buffer.sampleRate*(1+D.pitch/100);   // como se nunca tivesse invertido
       while(D.pos>=D.len)D.pos-=D.len;
-      D.dir=1; sw().classList.remove("up"); }
+      D.dir=1; poe(D,"off"); }
     bleep=false; };
   el.addEventListener("pointerup",up); el.addEventListener("pointercancel",up);
 }
@@ -921,17 +1201,53 @@ function bindStrip(el,c){ const side=c.side; let drag=false;
   el.addEventListener("pointerdown",e=>{ teach(c); if(!started){startAudio();return;} drag=true; el.setPointerCapture(e.pointerId); mv(e); });
   el.addEventListener("pointermove",e=>{ if(drag)mv(e); }); el.addEventListener("pointerup",()=>drag=false); el.addEventListener("pointercancel",()=>drag=false);
 }
-function bindKnob(el,c){ const knob=els[c.act]; let drag=false,val=c.act==="master"?0.72:0.5,sy=0,sv=0;
-  const marker=()=>{ knob.style.setProperty("--kr",((val-0.5)*270)+"deg"); };
-  const live=()=>{ if(!ready)return; const a=c.act, g=(D,f)=>{ D[f].gain.value=(val-0.5)*2*18; };
+/* ---------------------------------------------------------------------------
+   VALOR DOS KNOBS — mora aqui, NÃO num closure.
+   Antes cada bindKnob guardava `val` só para si. Resultado: START TIME, STOP TIME
+   e BOOTH giravam a pele e mais nada — ninguém no programa conseguia ler a
+   posição, e o portão clicar-tudo (com razão) acusava "só acende".
+   Agora o motor do prato, os medidores e o painel de ensino leem daqui.
+
+   ⚠️ ÂNGULO: repouso = 0° = ponteiro para CIMA (12 h), fundo de escala ±135°.
+   Conferido nas fotos: no NS7 os knobs de EQ, GAIN e BOOTH apontam para cima
+   em repouso. O EQ é SIMÉTRICO (±18 dB no meio do curso = 0 dB), então o mapa
+   linear a partir de 0,5 está certo AQUI — não é o caso do DJM-900NXS2, onde a
+   faixa é −26/+6 dB e o repouso cai em 0,81 do curso.
+   --------------------------------------------------------------------------- */
+const KNOBVAL={};
+const knobPadrao=a=>a==="master"?0.72:0.5;
+function paintKnob(a){ const k=els[a]; if(k)k.style.setProperty("--kr",((KNOBVAL[a]-0.5)*270)+"deg"); }
+/* START/STOP TIME → constante de inércia do motor (manual, itens 26 e 27:
+   "do arranque instantâneo ao arranque preguiçoso de toca-discos").
+   Curva exponencial calibrada para que o MEIO do curso devolva 0,0022, que é
+   exatamente a constante única que o motor tinha antes — knob no meio = motor
+   de sempre. v=0 arranca/freia na hora · v=1 demora. */
+const rampaMotor=v=>0.02*Math.pow(0.0121,clamp(v,0,1));
+function aplicaMotor(a){ if(!ready)return; const s=a.slice(-1), D=decks[s]; if(!D)return;
+  if(a.startsWith("startt")) D.kStart=rampaMotor(KNOBVAL[a]);
+  else                       D.kStop =rampaMotor(KNOBVAL[a]); }
+const segMotor=v=>(1/rampaMotor(v)/44100).toFixed(2);   /* constante → segundos, para o texto */
+
+function bindKnob(el,c){ const a=c.act, knob=els[a]; let drag=false,sy=0,sv=0;
+  if(KNOBVAL[a]===undefined)KNOBVAL[a]=knobPadrao(a);
+  const live=()=>{ const val=KNOBVAL[a];
+    if(/^(startt|stopt)_[LR]$/.test(a)){ aplicaMotor(a);
+      teach({k:c.k,d:c.d+"<br><b>"+segMotor(val)+" s</b> até o prato "+(a.startsWith("startt")?"chegar na rotação":"parar de vez")+"."}); return; }
+    if(a==="booth"){ teach({k:c.k,d:c.d+"<br>Monitor da cabine em <b>"+Math.round(val*100)+"%</b>."}); return; }
+    if(!ready)return;
+    const g=(D,f)=>{ D[f].gain.value=(val-0.5)*2*18; };
     if(a==="treble1")g(dL,"eqHi"); else if(a==="mid1")g(dL,"eqMid"); else if(a==="bass1")g(dL,"eqLo");
     else if(a==="treble2")g(dR,"eqHi"); else if(a==="mid2")g(dR,"eqMid"); else if(a==="bass2")g(dR,"eqLo");
     else if(a==="gain1")dL.ch.gain.value=val*1.6; else if(a==="gain2")dR.ch.gain.value=val*1.6;
     else if(a==="master"&&master)master.gain.value=0.15+val*1.25; };
-  el.addEventListener("pointerdown",e=>{ if(!started){startAudio();} drag=true; sy=e.clientY; sv=val; el.setPointerCapture(e.pointerId); teach(c); flash(knob); e.preventDefault(); });
-  el.addEventListener("pointermove",e=>{ if(!drag)return; val=clamp(sv+(sy-e.clientY)/140,0,1); marker(); live(); });
+  el.addEventListener("pointerdown",e=>{ if(!started){startAudio();} drag=true; sy=e.clientY; sv=KNOBVAL[a];
+    el.setPointerCapture(e.pointerId); teach(c); flash(knob); e.preventDefault(); });
+  el.addEventListener("pointermove",e=>{ if(!drag)return; KNOBVAL[a]=clamp(sv+(sy-e.clientY)/140,0,1); paintKnob(a); live(); });
+  /* roda do mouse: o portão usa, e no aparelho real o knob gira mesmo */
+  el.addEventListener("wheel",e=>{ e.preventDefault(); if(!started)startAudio();
+    KNOBVAL[a]=clamp(KNOBVAL[a]+(e.deltaY>0?-0.06:0.06),0,1); paintKnob(a); teach(c); live(); },{passive:false});
   el.addEventListener("pointerup",()=>drag=false); el.addEventListener("pointercancel",()=>drag=false);
-  marker();
+  paintKnob(a);
 }
 
 function init(){ build(); frame(); animMeters();

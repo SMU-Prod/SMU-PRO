@@ -957,8 +957,13 @@ function resumir(v, prof = 0, visto = new Set()) {
     if (prof > 3) return "…";
     if (visto.has(v)) return "@";
     visto.add(v);
-    if (Array.isArray(v)) return "[" + v.slice(0, 40).map(x => resumir(x, prof + 1, visto)).join(",") + (v.length > 40 ? "+" + v.length : "") + "]";
-    const ks = Object.keys(v).slice(0, 120);
+    if (Array.isArray(v)) return "[" + v.slice(0, 400).map(x => resumir(x, prof + 1, visto)).join(",") + (v.length > 400 ? "+" + v.length : "") + "]";
+    /* ⚠️ PONTO CEGO CORRIGIDO — o corte era em 120 chaves. O KV do OPUS-QUAD
+       tem 143: tudo do deck B ficava INVISIVEL ao diff de estado, e controle
+       que so mexia numa chave depois da 120a era julgado morto sem ser.
+       Foi um agente que achou, medindo. O corte existe so para nao explodir
+       em objeto gigante; 4000 cobre qualquer mesa da frota com folga. */
+    const ks = Object.keys(v).slice(0, 4000);
     return "{" + ks.map(k => k + ":" + resumir(v[k], prof + 1, visto)).join(",") + "}";
   }
   return String(v);

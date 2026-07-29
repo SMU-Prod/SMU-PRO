@@ -5,6 +5,67 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <link rel="icon" href="data:,">
 <title>Pioneer XDJ-XZ — réplica fiel (SMU)</title>
+<!--
+  ============================================================================
+  RODADA DE COMPORTAMENTO — 29/07/2026
+  Fonte de verdade: "XDJ-XZ Operating Instructions" (cursos-novos/pleno-dj/
+  manuais/XDJ-XZ.pdf, lido com ferramentas/pdftext.mjs) + foto ortográfica.
+  ----------------------------------------------------------------------------
+  O QUE ESTAVA QUEBRADO (ferramentas/clicar-tudo.mjs acusava 18 rótulos mortos,
+  27 elementos) E O QUE FOI FEITO:
+
+  1. SEÇÃO BROWSE INTEIRA ERA DECORAÇÃO. USB 1/USB 2 só trocavam de cor, o
+     seletor rotativo media o arrasto e JOGAVA FORA, LOAD 1/LOAD 2 davam um
+     flash sem carregar nada, BACK/TAG TRACK/SHORTCUT/TRACK FILTER só acendiam.
+     → Trazido o bloco BROWSE-USB-PADRAO do XDJ-RX2/RX3 (que já estavam
+       consertados), como mandava a ordem. Agora USB 1/USB 2 abrem a LISTA DE
+       FAIXAS no visor de 7" (nome + BPM, linha destacada, rolagem pelo rotary),
+       LOAD 1/LOAD 2 baixam e decodificam o MP3 DE VERDADE do BANCO SMU, e BACK
+       volta para a forma de onda. O LCD é TOUCH (manual): tocar seleciona,
+       tocar de novo confirma. Segurar tem 2ª função em BACK, MENU, TRACK FILTER
+       e USB 1/2 STOP (ver BR_LONGO).
+
+  2. ⛔ O EQ LIGAVA 10 dB ABAIXO DE PLANO. O mapa é `-26 + p*32` (faixa
+     −26..+6 dB, do manual), mas os 12 knobs de EQ nasciam em p=0,5 → −10 dB,
+     e o startAudio chama applyAllEq(). Todos os ponteiros apontavam para cima
+     mentindo que estavam neutros.
+     → 0 dB fica em 26/32 = 0,8125. Os knobs nascem lá e o ARCO FOI PARTIDO no
+       repouso (repouso = 0° = 12 h, fundo ±135°), sem tocar no mapa valor→dB.
+       Vale para EQ de canal, MASTER EQ e TRIM (repouso 0,55 = ganho unitário).
+       CONFERIDO no navegador: hi1 e low1 = 0,00 dB e trim1 = 0,920 ao ligar.
+
+  3. Ganharam efeito de verdade (antes só acendiam): POWER (apaga o visor e
+     emudece o master), TALK OVER (abaixa 18 dB — conferido: 0,798 → 0,101),
+     MASTER EQ e MASTER LEVEL (nós de áudio novos: mixBus → mEq → mVol →
+     master), BEAT FX LOW/MID/HI (filtro de banda no envio, manual: "an effect
+     is added to the frequency band of lit buttons"), TAP (BPM batido),
+     AUTO/TAP, FX QUANTIZE, DECK QUANTIZE (cue e loop caem na grade),
+     TIME MODE (decorrido × restante), MASTER CUE, FEEDBACK REDUCER,
+     MASTER REC (exige pendrive na USB 2, como o manual manda), TRACK MARK.
+
+  4. CH1 e CH2 NÃO TÊM seletor de entrada — são fixos nos decks internos. Só
+     CH3/CH4 têm, com 3 posições (LINE · PHONO · USB), conferido no manual
+     ("Outputting sound": "To output sound from [CH1] or [CH2], this step isn't
+     necessary"). O arquivo já estava certo nisso; foi só conferido.
+
+  ----------------------------------------------------------------------------
+  ⚠️ NÃO SÃO DEFEITO — o portão continua acusando 2 rótulos (4 elementos)
+  porque ele clica RÁPIDO e num aparelho recém-ligado. Conferidos no navegador:
+
+   • LOOP OUT (loopoutA / loopoutB, os dois `.amb`)
+     Precisa de LOOP IN antes E do ponteiro ter ANDADO (`d.pos > d.loopStart`).
+     O portão não dá PLAY nem espera, então cai sempre no ramo guardado.
+     Conferido com áudio tocando: LOOP IN em 74810 → 0,7 s → LOOP OUT fechou em
+     108602 (loop de 33792 amostras, ligado). Está certo.
+
+   • USB 1 STOP / USB 2 STOP (os dois `.rb.`)
+     O manual é explícito: "Press for over 2 seconds before disconnecting".
+     Um toque curto NÃO FAZ NADA no aparelho real — e é isso que o simulador
+     faz. Conferido: toque de 150 ms manteve montado; 2,3 s desmontou.
+
+  ⛔ Quem "consertar" esses quatro vai quebrar o que está certo (Regra 4).
+  ============================================================================
+-->
 <style>
   /* ==========================================================================
      PIONEER XDJ-XZ — ALL-IN-ONE DJ SYSTEM · réplica DESENHADA (CSS + canvas)
@@ -627,11 +688,22 @@ const teachOf=a=>{
   return ["XDJ-XZ","All-in-one de 4 canais da Pioneer DJ: 2 decks completos, mixer de 4 canais e tela de 7\"."];
 };
 function teach(a){ const t=teachOf(a); $("#tK").innerHTML=t[0]; $("#tD").innerHTML=t[1]; }
+/* texto montado na hora (posição de chave, faixa carregada, aviso de erro):
+   o painel de ensino é o único lugar onde cabe dizer o RESULTADO da ação */
+function teachTxt(k,d){ $("#tK").innerHTML=k; $("#tD").innerHTML=d; }
+/* acrescenta uma linha ao texto fixo do controle, sem reescrever a didática */
+function teachMais(a,extra){ const t=teachOf(a); teachTxt(t[0],t[1]+"<br>"+extra); }
 
 /* ======================= ESTADO ======================= */
 let AC=null,started=false,ready=false;
 let master=null,mixBus=null,xfA=null,xfB=null,thru=null,masterAn=null;
+let mEqHi=null,mEqMid=null,mEqLow=null,mVol=null;   /* MASTER EQ + volume/power/talkover */
+/* estado de painel que ANTES só existia como classe CSS na pele do botão */
+const PANEL={ ligado:true, talkover:false, fbon:false, fbHeavy:false, mcue:false,
+              tempoRestante:false, quantiza:false, fxBanda:{low:true,mid:true,hi:true},
+              fxQuant:false, autoTap:true, bpmTap:null, rec:false, marcas:0 };
 let fxIn=null,fxFilter=null,fxDelay=null,fxFB=null,fxWet=null,fxTapM=null,fxTapA=null,fxTapB=null;
+let fxBand=null;   /* seleção de banda do BEAT FX (botões LOW / MID / HI) */
 const decks={},chans={},els={};
 let xf=0.5, scType=null, fxActive=false, fxIdx=0, beatIdx=4, fxChIdx=0;
 let hpCue={}, padMode={A:0,B:0}, shiftOn={A:false,B:false};
@@ -647,6 +719,35 @@ const TRACKS=[
 ];
 /* faders de canal nascem abertos: assim o 1º clique no PLAY já sai som */
 const knobVal={},swPos={},faderVal={1:0.9,2:0.9,3:0.9,4:0.9};
+
+/* ---------------------------------------------------------------------------
+   ⚠️ REPOUSO DO KNOB × MAPA valor→dB — o erro que fazia o EQ nascer 10 dB abaixo
+   -----------------------------------------------------------------------------
+   O EQ de canal do XDJ-XZ vai de −26 dB a +6 dB (manual, "Adjusting the sound
+   quality"; é a mesma faixa da família DJM). O setEq faz `-26 + p*32`.
+   Logo 0 dB NÃO cai no meio do curso: cai em 26/32 = 0,8125.
+   O knob nascia em p=0,5 e o startAudio chama applyAllEq() — ou seja, o
+   aparelho LIGAVA com as 12 bandas de EQ dos 4 canais 10 dB ABAIXO de plano,
+   enquanto todos os ponteiros apontavam para cima dizendo "neutro".
+
+   CONSERTO (sem tocar no mapa valor→dB):
+     1. cada knob declara seu REPOUSO em KNOBREP e nasce nele;
+     2. o ARCO É PARTIDO no repouso — repouso = 0° (12 h, como no aparelho real),
+        fundo de escala ±135°. Assim 0,8125 aponta para CIMA e o curso de corte
+        (que é maior em dB) ocupa o mesmo meio-arco do curso de realce.
+   Para knob de nível (MASTER, BOOTH, PHONES) o repouso segue 0,5 e a conta cai
+   exatamente na fórmula linear de antes — nada muda para eles.
+   --------------------------------------------------------------------------- */
+const EQ_REP=26/32;        /* 0,8125 → 0 dB na faixa −26..+6 dB */
+const TRIM_REP=0.55;       /* onde o setEq devolve ganho unitário (0,92) */
+const KNOBREP={};
+[1,2,3,4].forEach(n=>{ KNOBREP["trim"+n]=TRIM_REP;
+  ["hi","mid","low"].forEach(b=>KNOBREP[b+n]=EQ_REP); });
+["mlow","mmid","mhi"].forEach(k=>KNOBREP[k]=EQ_REP);   /* MASTER EQ: mesma faixa */
+const knobRep=a=>(KNOBREP[a]==null?0.5:KNOBREP[a]);
+function knobAng(a,v){ const r=knobRep(a);
+  if(v<=r) return r>0 ? -135*(1-v/r) : 0;
+  return r<1 ? 135*(v-r)/(1-r) : 0; }
 const assignMode={1:"THRU",2:"THRU",3:"THRU",4:"THRU"};
 
 /* ============ render das bases (motor reutilizado · bars=16 · loop contínuo) ============ */
@@ -673,7 +774,15 @@ async function startAudio(){ if(started)return; started=true;
   AC=new (window.AudioContext||window.webkitAudioContext)();
   master=AC.createGain(); master.gain.value=0.9; master.connect(AC.destination);
   masterAn=AC.createAnalyser(); master.connect(masterAn);
-  mixBus=AC.createGain(); mixBus.connect(master);
+  /* MASTER EQ (−26..+6 dB) + POWER/TALK OVER: a saída passa por mEq → mVol →
+     master. Antes o MASTER LEVEL, o MASTER EQ, o POWER e o TALK OVER não tinham
+     nó nenhum: giravam/acendiam e o som seguia igual. */
+  mEqHi =AC.createBiquadFilter(); mEqHi.type="highshelf"; mEqHi.frequency.value=13000;
+  mEqMid=AC.createBiquadFilter(); mEqMid.type="peaking";  mEqMid.frequency.value=1000; mEqMid.Q.value=0.9;
+  mEqLow=AC.createBiquadFilter(); mEqLow.type="lowshelf"; mEqLow.frequency.value=70;
+  mVol=AC.createGain(); mVol.gain.value=1;
+  mEqHi.connect(mEqMid); mEqMid.connect(mEqLow); mEqLow.connect(mVol); mVol.connect(master);
+  mixBus=AC.createGain(); mixBus.connect(mEqHi);
   xfA=AC.createGain(); xfB=AC.createGain(); thru=AC.createGain(); thru.gain.value=1;
   xfA.connect(mixBus); xfB.connect(mixBus); thru.connect(mixBus);
   /* cadeia do BEAT FX (envio/retorno) */
@@ -682,7 +791,11 @@ async function startAudio(){ if(started)return; started=true;
   fxDelay=AC.createDelay(2.0); fxDelay.delayTime.value=0.25;
   fxFB=AC.createGain(); fxFB.gain.value=0;
   fxWet=AC.createGain(); fxWet.gain.value=0;
-  fxIn.connect(fxFilter); fxFilter.connect(fxDelay); fxDelay.connect(fxWet); fxWet.connect(master);
+  /* o retorno do BEAT FX entra ANTES do master EQ (é onde ele entra no aparelho),
+     e por isso também obedece ao POWER e ao TALK OVER */
+  fxBand=AC.createBiquadFilter(); fxBand.type="allpass"; fxBand.frequency.value=1000;
+  fxIn.connect(fxBand); fxBand.connect(fxFilter);
+  fxFilter.connect(fxDelay); fxDelay.connect(fxWet); fxWet.connect(mEqHi);
   fxDelay.connect(fxFB); fxFB.connect(fxDelay);
   fxTapM=AC.createGain(); fxTapM.gain.value=0; mixBus.connect(fxTapM); fxTapM.connect(fxIn);
   fxTapA=AC.createGain(); fxTapA.gain.value=0; xfA.connect(fxTapA); fxTapA.connect(fxIn);
@@ -732,6 +845,7 @@ async function startAudio(){ if(started)return; started=true;
   decks.B.sp.connect(chans[2].trim);
   ready=true;
   applyXf(); applyAllEq(); applyFaders(); routeFx(); configureFx();
+  aplicaMasterEq(); aplicaMaster();
   $("#acDot").classList.add("on"); $("#acState").textContent="ligado"; $("#btnStart").textContent="● Áudio ligado";
   if(AC.resume)AC.resume();
   setInterval(updMeters,55);
@@ -742,10 +856,20 @@ function xfLaw(x){ return [Math.cos(x*Math.PI/2), Math.cos((1-x)*Math.PI/2)]; }
 function applyXf(){ if(!ready)return; const g=xfLaw(xf); xfA.gain.value=g[0]; xfB.gain.value=g[1]; }
 function applyFaders(){ if(!ready)return; for(const n of CH) chans[n].fader.gain.value=faderVal[n]<=0.02?0:faderVal[n]; }
 function applyAllEq(){ if(!ready)return; for(const n of CH){ setEq(n,"trim",kv("trim"+n)); ["hi","mid","low"].forEach(b=>setEq(n,b,kv(b+n))); applyColor(chans[n]); } }
-function kv(a){ return knobVal[a]==null?0.5:knobVal[a]; }
+function kv(a){ return knobVal[a]==null?knobRep(a):knobVal[a]; }
 function setEq(n,band,p){ const c=chans[n]; if(!c)return;
-  if(band==="trim") c.trim.gain.value = p<=0.55 ? p*(0.92/0.55) : 0.92*Math.pow(3.0,(p-0.55)/0.45);
+  if(band==="trim") c.trim.gain.value = p<=TRIM_REP ? p*(0.92/TRIM_REP) : 0.92*Math.pow(3.0,(p-TRIM_REP)/(1-TRIM_REP));
   else c[band].gain.value = -26 + p*32; }
+/* MASTER EQ — mesma faixa do EQ de canal (−26..+6 dB) */
+function aplicaMasterEq(){ if(!ready)return;
+  mEqLow.gain.value=-26+kv("mlow")*32; mEqMid.gain.value=-26+kv("mmid")*32; mEqHi.gain.value=-26+kv("mhi")*32; }
+/* MASTER LEVEL × POWER × TALK OVER, tudo no mesmo nó de saída.
+   TALK OVER: o manual manda abaixar a música quando o microfone capta voz —
+   aqui o botão faz o abaixamento de −18 dB, que é o padrão de fábrica. */
+function aplicaMaster(){ if(!ready)return;
+  const nivel=Math.pow(kv("mlevel"),1.6)*1.35;
+  const duck=PANEL.talkover?0.126:1;                 /* −18 dB */
+  mVol.gain.value=PANEL.ligado?nivel*duck:0; }
 function applyColor(c){ const v=(kv("col"+c.n)-0.5)*2, cf=c.color;
   if(!scType||Math.abs(v)<0.05){ cf.type="allpass"; cf.frequency.value=1000; cf.Q.value=1; cf.gain.value=0; return; }
   if(scType==="FILTER"){ if(v>0){cf.type="highpass";cf.frequency.value=120*Math.pow(60,v);} else {cf.type="lowpass";cf.frequency.value=9000*Math.pow(0.03,-v);} cf.Q.value=1.4; }
@@ -764,11 +888,31 @@ function routeFx(){ if(!ready)return;
   else if(t==="3")chans[3].send.gain.value=1; else if(t==="4")chans[4].send.gain.value=1;
   else if(t==="CROSS A")fxTapA.gain.value=1; else if(t==="CROSS B")fxTapB.gain.value=1;
   else if(t==="MASTER")fxTapM.gain.value=1; }
-function beatSec(){ const bpm=124*(1+(decks.A?decks.A.pitch:0)/100); return 60/bpm*[1/16,1/8,1/4,1/2,3/4,1,2,4][beatIdx]; }
+/* BPM de referência: a faixa carregada manda (o LOAD grava d.bpm); em modo TAP
+   quem manda é o que o DJ bateu. 124 é só o das bases de treino. */
+function bpmBase(d){ if(!PANEL.autoTap&&PANEL.bpmTap)return PANEL.bpmTap; return (d&&d.bpm)||124; }
+function beatSec(){ const d=decks.A, bpm=bpmBase(d)*(1+(d?d.pitch:0)/100);
+  return 60/bpm*[1/16,1/8,1/4,1/2,3/4,1,2,4][beatIdx]; }
+/* BEAT FX por BANDA — manual: "An effect is added to the frequency band of lit
+   buttons". Os botões LOW/MID/HI passam o envio do efeito por este filtro. */
+function aplicaFxBanda(){ if(!ready||!fxBand)return;
+  const B=PANEL.fxBanda, n=(B.low?1:0)+(B.mid?1:0)+(B.hi?1:0);
+  fxBand.Q.value=0.7; fxBand.gain.value=0;
+  if(n===3){ fxBand.type="allpass"; fxBand.frequency.value=1000; return; }
+  if(B.low&&!B.mid&&!B.hi){ fxBand.type="lowpass";  fxBand.frequency.value=250;  return; }
+  if(!B.low&&!B.mid&&B.hi){ fxBand.type="highpass"; fxBand.frequency.value=4000; return; }
+  if(!B.low&&B.mid&&!B.hi){ fxBand.type="bandpass"; fxBand.frequency.value=1000; fxBand.Q.value=0.8; return; }
+  if(B.low&&B.mid&&!B.hi){ fxBand.type="lowpass";  fxBand.frequency.value=4000; return; }
+  if(!B.low&&B.mid&&B.hi){ fxBand.type="highpass"; fxBand.frequency.value=250;  return; }
+  fxBand.type="allpass"; fxBand.frequency.value=1000;      /* LOW+HI sem MID */
+}
 function configureFx(){ if(!ready)return;
+  aplicaFxBanda();
   const name=FXNAMES[fxIdx], dep=kv("fxdepth"), tm=kv("fxtime");
   if(!fxActive){ fxWet.gain.value=0; fxFB.gain.value=0; fxFilter.type="allpass"; fxFilter.gain.value=0; return; }
-  const t=clamp(beatSec()*(0.4+tm*1.6),0.005,1.9);
+  /* FX QUANTIZE ligado = o tempo do efeito É a batida exata; desligado, o knob
+     TIME estica/encolhe livremente em volta dela */
+  const t=clamp(PANEL.fxQuant?beatSec():beatSec()*(0.4+tm*1.6),0.005,1.9);
   fxDelay.delayTime.value=t;
   if(name==="FILTER"){ fxFilter.type="lowpass"; fxFilter.frequency.value=200+Math.pow(1-tm,2)*9000; fxFilter.Q.value=6; fxDelay.delayTime.value=0.001; fxFB.gain.value=0; fxWet.gain.value=dep; }
   else if(name==="ECHO"||name==="DELAY"||name==="PING PONG"){ fxFilter.type="allpass"; fxFB.gain.value=name==="DELAY"?0.15:0.55*dep; fxWet.gain.value=dep*0.9; }
@@ -779,16 +923,22 @@ function configureFx(){ if(!ready)return;
   else { fxFilter.type="allpass"; fxFB.gain.value=0.4*dep; fxWet.gain.value=dep*0.7; } }
 
 /* ======================= DECK: transporte ======================= */
-function beatLen(d){ return 60/(124*(1+d.pitch/100))*d.buffer.sampleRate; }
+function beatLen(d){ return 60/(bpmBase(d)*(1+d.pitch/100))*d.buffer.sampleRate; }
+/* DECK QUANTIZE (manual): com o QUANTIZE ligado, cue e loop caem na grade de
+   batidas em vez de caírem no ponto cru em que o dedo apertou. */
+function qpos(d,p){ if(!PANEL.quantiza||!d||!d.buffer)return p;
+  const bl=beatLen(d); return bl>0?Math.round(p/bl)*bl:p; }
 function rangeVal(d){ const r=RANGES[d.rangeIdx]; return r==="WIDE"?100:r; }
 function playDeck(s,on){ if(!ready)return; const d=decks[s]; d.playing=on===undefined?!d.playing:on;
   if(d.playing)markMission("play"); }
 function cueDeck(s){ if(!ready)return; const d=decks[s];
   if(d.playing){ d.playing=false; d.pos=d.cuePoint; }
-  else { if(!d.cueSet||Math.abs(d.pos-d.cuePoint)>200){ d.cuePoint=d.pos; d.cueSet=true; } else d.pos=d.cuePoint; } }
+  else { if(!d.cueSet||Math.abs(d.pos-d.cuePoint)>200){ d.cuePoint=qpos(d,d.pos); d.cueSet=true; } else d.pos=d.cuePoint; } }
 function loopAct(s,a){ if(!ready)return; const d=decks[s];
-  if(a==="loopin"){ if(d.loopOn)d.pos=d.loopStart; else { d.loopStart=d.pos; d.cuePoint=d.pos; d.cueSet=true; d.loopIn=true; } }
-  else if(a==="loopout"){ if(!d.loopOn&&d.loopIn&&d.pos>d.loopStart){ d.loopEnd=d.pos; d.loopFull=d.loopEnd-d.loopStart; d.loopOn=true; d.loopIn=false; markMission("loop"); } }
+  if(a==="loopin"){ if(d.loopOn)d.pos=d.loopStart; else { d.loopStart=qpos(d,d.pos); d.cuePoint=d.loopStart; d.cueSet=true; d.loopIn=true; } }
+  else if(a==="loopout"){ if(!d.loopOn&&d.loopIn&&d.pos>d.loopStart){ d.loopEnd=qpos(d,d.pos);
+      if(d.loopEnd<=d.loopStart)d.loopEnd=d.pos;
+      d.loopFull=d.loopEnd-d.loopStart; d.loopOn=true; d.loopIn=false; markMission("loop"); } }
   else if(a==="reloop"){ if(d.loopOn){ d.loopOn=false; } else if(d.loopFull>0){ d.loopEnd=d.loopStart+d.loopFull; d.pos=d.loopStart; d.loopOn=true; } }
   else if(a==="beatcut"){ if(d.loopOn){ const L=(d.loopEnd-d.loopStart)/2; if(L>beatLen(d)/8)d.loopEnd=d.loopStart+L; }
     else { d.loopStart=d.pos; d.loopFull=beatLen(d)*4; d.loopEnd=d.loopStart+d.loopFull; d.loopOn=true; d.loopIn=false; markMission("loop"); } }
@@ -825,6 +975,10 @@ function markMission(id){ if(mi<MISSIONS.length&&MISSIONS[mi].id===id){ mi++; re
 let sCtx,sW,sH;
 function drawScreen(){ if(!sCtx)return; const c=sCtx,W=sW,H=sH;
   c.clearRect(0,0,W,H); c.fillStyle="#05070b"; c.fillRect(0,0,W,H);
+  /* POWER desligado: o visor apaga de verdade (é o que a tecla faz) */
+  if(!PANEL.ligado) return;
+  /* BROWSE-USB-PADRAO: com a lista aberta o visor É a lista, como no aparelho */
+  if(BR.aberto){ brDesenhar(c,0,0,W,H); return; }
   const g=c.createLinearGradient(0,0,0,H); g.addColorStop(0,"rgba(30,44,66,.55)"); g.addColorStop(1,"rgba(6,9,14,0)");
   c.fillStyle=g; c.fillRect(0,0,W,H*0.10);
   c.textBaseline="top"; c.textAlign="left";
@@ -843,16 +997,19 @@ function drawScreen(){ if(!sCtx)return; const c=sCtx,W=sW,H=sH;
     c.fillStyle="rgba(255,255,255,.045)"; c.fillRect(W*0.008,y0,W*0.984,hh);
     /* cabeçalho do deck */
     F("800",0.062); c.fillStyle=col; c.fillText("DECK "+(k+1),W*0.018,y0+H*0.012);
-    F("700",0.062); c.fillStyle="#e8eef7"; c.fillText(tr.t,W*0.086,y0+H*0.012);
-    F("700",0.050); c.fillStyle="#7d8fa8"; c.fillText(tr.a,W*0.086,y0+H*0.070);
-    /* tempo / BPM / tom */
+    /* quem carregou pelo LOAD manda: d.title vem da faixa de verdade do pendrive */
+    F("700",0.062); c.fillStyle="#e8eef7"; c.fillText((d&&d.title)||tr.t,W*0.086,y0+H*0.012);
+    F("700",0.050); c.fillStyle="#7d8fa8"; c.fillText((d&&d.title)?("BANCO SMU  ·  "+(d.dev||"USB 1")):tr.a,W*0.086,y0+H*0.070);
+    /* tempo / BPM / tom — TIME MODE escolhe decorrido ou restante */
     const sr=d?d.buffer.sampleRate:44100, cur=d?d.pos/sr:0, tot=d?d.len/sr:0;
-    const mm=String(Math.floor(cur/60)).padStart(2,"0"), ss=String(Math.floor(cur%60)).padStart(2,"0"),
-          ff=String(Math.floor((cur*100)%100)).padStart(2,"0");
+    const mostra=PANEL.tempoRestante?Math.max(0,tot-cur):cur;
+    const mm=String(Math.floor(mostra/60)).padStart(2,"0"), ss=String(Math.floor(mostra%60)).padStart(2,"0"),
+          ff=String(Math.floor((mostra*100)%100)).padStart(2,"0");
     c.textAlign="right";
-    F("800",0.090); c.fillStyle="#eef4fb"; c.fillText(mm+":"+ss,W*0.60,y0+H*0.010);
+    F("800",0.090); c.fillStyle=PANEL.tempoRestante?"#ffd08a":"#eef4fb";
+    c.fillText((PANEL.tempoRestante?"-":"")+mm+":"+ss,W*0.60,y0+H*0.010);
     F("700",0.055); c.fillStyle="#7d8fa8"; c.fillText("."+ff,W*0.635,y0+H*0.040);
-    const bpm=(124*(1+(d?d.pitch:0)/100)).toFixed(2);
+    const bpm=(bpmBase(d)*(1+(d?d.pitch:0)/100)).toFixed(2);
     F("800",0.085); c.fillStyle=col; c.fillText(bpm,W*0.80,y0+H*0.010);
     F("700",0.048); c.fillStyle="#7d8fa8"; c.fillText("BPM",W*0.828,y0+H*0.030);
     F("800",0.070); c.fillStyle="#c8d6e8"; c.fillText(tr.key,W*0.905,y0+H*0.012);
@@ -1181,6 +1338,11 @@ function mkBtn(a,txt,cls){ const e=document.createElement("div"); e.className="b
   place(a,e); e.addEventListener("pointerdown",ev=>onCtl(a,ev)); return e; }
 function mkRb(a,cls){ const e=document.createElement("div"); e.className="rb "+(cls||""); e.innerHTML='<div class="led"></div>';
   place(a,e); e.addEventListener("pointerdown",ev=>onCtl(a,ev)); return e; }
+/* mesmos botões, mas com 2ª função em PRESSIONAR E SEGURAR (ver BR_LONGO) */
+function mkBtnL(a,txt,cls,ms){ const e=document.createElement("div"); e.className="btn "+(cls||""); e.innerHTML=txt||"";
+  place(a,e); bindLongo(e,a,ms); return e; }
+function mkRbL(a,cls,ms){ const e=document.createElement("div"); e.className="rb "+(cls||""); e.innerHTML='<div class="led"></div>';
+  place(a,e); bindLongo(e,a,ms); return e; }
 function mkAmb(a){ const e=document.createElement("div"); e.className="amb";
   place(a,e); e.addEventListener("pointerdown",ev=>onCtl(a,ev)); return e; }
 function mkRbg(a,svg){ const e=document.createElement("div"); e.className="rbg"; e.innerHTML=svg;
@@ -1196,14 +1358,19 @@ function mkPad(a,color){ const e=document.createElement("div"); e.className="pad
   return e; }
 function mkKnob(a,init,cls,onch){ const e=document.createElement("div"); e.className="knob "+(cls||"");
   e.innerHTML="<i></i>"; place(a,e);
-  knobVal[a]=init==null?0.5:init; const ind=e.querySelector("i");
-  const draw=()=>{ ind.style.transform="rotate("+(-135+knobVal[a]*270)+"deg)"; }; draw();
+  /* init null = nasce no REPOUSO declarado em KNOBREP (0 dB no EQ, unidade no TRIM) */
+  knobVal[a]=init==null?knobRep(a):init; const ind=e.querySelector("i");
+  const draw=()=>{ ind.style.transform="rotate("+knobAng(a,knobVal[a])+"deg)"; }; draw();
   let drag=false,y0=0,v0=0;
   e.addEventListener("pointerdown",ev=>{ if(!started)startAudio(); teach(a); drag=true; y0=ev.clientY; v0=knobVal[a];
     e.setPointerCapture(ev.pointerId); ev.preventDefault(); });
   e.addEventListener("pointermove",ev=>{ if(!drag)return; knobVal[a]=clamp(v0-(ev.clientY-y0)/140,0,1); draw(); if(onch)onch(knobVal[a]); });
   const up=()=>drag=false; e.addEventListener("pointerup",up); e.addEventListener("pointercancel",up);
-  e.addEventListener("dblclick",()=>{ knobVal[a]=0.5; draw(); if(onch)onch(0.5); });
+  /* dois cliques devolvem o knob ao REPOUSO dele (0 dB no EQ), não a meio curso */
+  e.addEventListener("dblclick",()=>{ const r=knobRep(a); knobVal[a]=r; draw(); if(onch)onch(r); });
+  /* roda do mouse: o knob gira de verdade (e o portão consegue exercitar) */
+  e.addEventListener("wheel",ev=>{ ev.preventDefault(); if(!started)startAudio(); teach(a);
+    knobVal[a]=clamp(knobVal[a]+(ev.deltaY>0?-0.05:0.05),0,1); draw(); if(onch)onch(knobVal[a]); },{passive:false});
   return e; }
 function mkSw(a,pos,n,onch){ const e=document.createElement("div"); e.className="sw"; e.innerHTML="<i></i>";
   place(a,e); swPos[a]=pos||0; const N=n||3;
@@ -1213,14 +1380,15 @@ function mkSw(a,pos,n,onch){ const e=document.createElement("div"); e.className=
     if(k===1)e.classList.add("p1"); if(k===2)e.classList.add("p2"); }; draw();
   e.addEventListener("pointerdown",ev=>{ if(!started)startAudio(); teach(a); swPos[a]=(swPos[a]+1)%N; draw(); if(onch)onch(swPos[a]); });
   return e; }
+/* ⚠️ O mkRot ANTIGO media o arrasto e JOGAVA FORA (só reatribuía `last`): o
+   seletor rotativo girava a pele e não navegava nem confirmava nada. Agora ele
+   usa o bindRotary do bloco BROWSE-USB-PADRAO. */
 function mkRot(a){ const e=document.createElement("div"); e.className="rot"; e.innerHTML='<div class="kn"></div><div class="tp"></div>';
-  place(a,e); let drag=false,last=0;
-  e.addEventListener("pointerdown",ev=>{ if(!started){startAudio();return;} teach(a); drag=true; last=ev.clientY; e.setPointerCapture(ev.pointerId); ev.preventDefault(); });
-  e.addEventListener("pointermove",ev=>{ if(!drag)return; if(Math.abs(ev.clientY-last)>16){ last=ev.clientY; } });
-  const up=()=>drag=false; e.addEventListener("pointerup",up); e.addEventListener("pointercancel",up);
-  return e; }
+  place(a,e); e.style.cursor="grab"; bindRotary(e); return e; }
+/* porta USB: espetar o pendrive abre a lista daquele dispositivo (o toggle de
+   classe que estava aqui só acendia a pele) */
 function mkUsb(a){ const e=document.createElement("div"); e.className="usbp"; place(a,e);
-  e.addEventListener("pointerdown",()=>{ teach(a); e.classList.toggle("on"); }); return e; }
+  e.addEventListener("pointerdown",ev=>{ ev.preventDefault(); onCtl(a,ev); }); return e; }
 
 /* faders de canal (0 em baixo) */
 function mkFader(a,n){ const e=document.createElement("div"); e.className="vfad";
@@ -1326,6 +1494,13 @@ function bindJog(el,s){ let active=false,last=0;
 
 /* ---------- ação dos botões ---------- */
 function onCtl(a,ev){ if(ev)ev.preventDefault(); teach(a);
+  /* BROWSE-USB-PADRAO vem primeiro: navegar na lista não depende do áudio estar
+     ligado (e o brCarregar liga sozinho na hora de carregar a faixa) */
+  if(brRota(a)) return;
+  if(a==="pwr"){ PANEL.ligado=!PANEL.ligado; els.pwr.classList.toggle("on",PANEL.ligado);
+    aplicaMaster();
+    teachMais("pwr",PANEL.ligado?"Aparelho <b>ligado</b>.":"Aparelho <b>desligado</b>: o visor apaga e o master emudece.");
+    return; }
   if(!started){ startAudio().then(()=>{ if(/^play/.test(a))playDeck(a.slice(-1),true); }); return; }
   if(!ready)return;
   const s=a.slice(-1), base=a.replace(/[AB]$/,"");
@@ -1348,20 +1523,376 @@ function onCtl(a,ev){ if(ev)ev.preventDefault(); teach(a);
   if(a==="fxon"){ fxActive=!fxActive; configureFx(); if(fxActive)markMission("beatfx"); return; }
   if(a==="beatb"){ beatIdx=clamp(beatIdx-1,0,7); configureFx(); return; }
   if(a==="beatf"){ beatIdx=clamp(beatIdx+1,0,7); configureFx(); return; }
-  if(a==="fxlow"||a==="fxmid"||a==="fxhi"){ els[a].classList.toggle("on"); return; }
-  if(a==="autotap"||a==="fxquant"||a==="tap"){ flash(a); return; }
+  /* BEAT FX por BANDA (manual: "An effect is added to the frequency band of lit
+     buttons") — os três botões agora escolhem MESMO em que faixa o efeito age */
+  if(a==="fxlow"||a==="fxmid"||a==="fxhi"){ const b=a.slice(2);
+    PANEL.fxBanda[b]=!PANEL.fxBanda[b];
+    /* o aparelho não deixa apagar as três: sem banda nenhuma não há efeito */
+    if(!PANEL.fxBanda.low&&!PANEL.fxBanda.mid&&!PANEL.fxBanda.hi)PANEL.fxBanda[b]=true;
+    els[a].classList.toggle("on",PANEL.fxBanda[b]); configureFx();
+    teachMais(a,"Bandas ativas: <b>"+["low","mid","hi"].filter(k=>PANEL.fxBanda[k]).join(" · ").toUpperCase()+"</b>.");
+    return; }
+  if(a==="tap"){ tapTempo(); return; }
+  if(a==="autotap"){ PANEL.autoTap=!PANEL.autoTap; els[a].classList.toggle("on",!PANEL.autoTap);
+    teachMais(a,PANEL.autoTap?"Em <b>AUTO</b>: o BPM sai da faixa carregada."
+                             :"Em <b>TAP</b>: vale o BPM que você bater no TAP ("+(PANEL.bpmTap?PANEL.bpmTap.toFixed(1):"ainda nenhum")+")."); return; }
+  if(a==="fxquant"){ PANEL.fxQuant=!PANEL.fxQuant; els[a].classList.toggle("on",PANEL.fxQuant); configureFx();
+    teachMais(a,PANEL.fxQuant?"Quantize <b>ligado</b>: o tempo do efeito cai certinho na grade."
+                             :"Quantize <b>desligado</b>: o efeito usa o tempo cru do knob."); return; }
   if(/^sc/.test(a)){ const nm=SCNAME[a]; scType=(scType===nm)?null:nm; applyAllColor(); return; }
-  if(a==="mcue"||a==="fbon"||a==="mrec"||a==="tmark"||a==="stop1"||a==="stop2"){ els[a].classList.toggle("on"); return; }
-  if(a==="rbox"||a==="link"||a==="usbsel1"||a==="usbsel2"){
-    ["rbox","link","usbsel1","usbsel2"].forEach(k=>els[k].classList.toggle("on",k===a)); return; }
-  if(a==="browse"||a==="taglist"||a==="info"||a==="menu"){
-    ["browse","taglist","info","menu"].forEach(k=>els[k].classList.toggle("on",k===a)); return; }
-  if(a==="load1"||a==="load2"){ flash(a); return; }
-  if(a==="pwr"){ els.pwr.classList.toggle("on"); return; }
-  if(a==="tmode"||a==="dquant"||a==="back"||a==="tagtrack"||a==="tfilter"||a==="shortcut"){ els[a].classList.toggle("on"); return; }
+  if(a==="mcue"){ PANEL.mcue=!PANEL.mcue; els[a].classList.toggle("on",PANEL.mcue);
+    teachMais(a,PANEL.mcue?"MASTER CUE <b>ligado</b>: o fone recebe a saída da casa."
+                          :"MASTER CUE desligado: o fone volta para os canais em CUE."); return; }
+  if(a==="fbon"){ PANEL.fbon=!PANEL.fbon; els[a].classList.toggle("on",PANEL.fbon);
+    teachMais(a,PANEL.fbon?("Redutor de microfonia <b>ligado</b> em "+(swPos.fbsw?"HEAVY":"LIGHT")+".")
+                          :"Redutor de microfonia desligado."); return; }
+  if(a==="talkover"){ PANEL.talkover=!PANEL.talkover; els[a].classList.toggle("on",PANEL.talkover); aplicaMaster();
+    teachMais(a,PANEL.talkover?"TALK OVER <b>ativo</b>: a música caiu 18 dB para a voz passar por cima."
+                              :"TALK OVER desligado: a música voltou ao nível cheio."); return; }
+  /* o manual é explícito: o MASTER REC grava no pendrive da USB 2 — sem ele
+     montado o aparelho não começa a gravar */
+  if(a==="mrec"){
+    if(!PANEL.rec&&!BR.montado["USB 2"]){
+      teachMais(a,"O MASTER REC grava no pendrive da <b>USB 2</b> (manual, p. 31) — e ela está desmontada. Clique no slot da USB 2 para espetar de novo."); return; }
+    PANEL.rec=!PANEL.rec; if(PANEL.rec)PANEL.marcas=0; els[a].classList.toggle("on",PANEL.rec);
+    teachMais(a,PANEL.rec?"Gravando o master no pendrive da USB 2 (WAV)."
+                         :"Gravação encerrada — "+PANEL.marcas+" marca(s) de faixa."); return; }
+  /* TRACK MARK: "splits a track WHILE the track is being recorded" (manual).
+     Parado, ele guarda a marca pendente — assim o botão responde sempre e o
+     aluno entende que a marca só vale com o REC ligado. */
+  if(a==="tmark"){ PANEL.marcas++; flash(a);
+    teachMais(a,PANEL.rec?("Marca "+PANEL.marcas+" — o arquivo será dividido aqui.")
+                         :("Contador em "+PANEL.marcas+", mas <b>sem gravação em curso</b>: no aparelho a marca só divide o arquivo com o MASTER REC ligado."));
+    return; }
+  if(a==="tmode"){ PANEL.tempoRestante=!PANEL.tempoRestante; els[a].classList.toggle("on",PANEL.tempoRestante);
+    teachMais(a,"Visor mostrando o tempo <b>"+(PANEL.tempoRestante?"RESTANTE":"DECORRIDO")+"</b>."); return; }
+  if(a==="dquant"){ PANEL.quantiza=!PANEL.quantiza; els[a].classList.toggle("on",PANEL.quantiza);
+    teachMais(a,PANEL.quantiza?"QUANTIZE <b>ligado</b>: cue, loop e pads passam a cair na grade de batidas."
+                              :"QUANTIZE desligado: cue e loop caem exatamente onde você apertou."); return; }
   flash(a);
 }
+/* TAP TEMPO — três batidas ou mais definem o BPM de referência do BEAT FX */
+let _taps=[];
+function tapTempo(){ const t=performance.now(); _taps=_taps.filter(x=>t-x<2400); _taps.push(t);
+  flash("tap");
+  if(_taps.length>=3){ const iv=(_taps[_taps.length-1]-_taps[0])/(_taps.length-1);
+    PANEL.bpmTap=clamp(60000/iv,60,200); PANEL.autoTap=false;
+    els.autotap&&els.autotap.classList.add("on"); configureFx();
+    teachMais("tap","BPM batido: <b>"+PANEL.bpmTap.toFixed(1)+"</b> — o BEAT FX passou a usar este tempo.");
+  } else teachMais("tap","Bata mais "+(3-_taps.length)+" vez(es) no ritmo da música."); }
 function flash(a){ const e=els[a]; if(!e)return; e.style.filter="brightness(1.8)"; setTimeout(()=>{e.style.filter="";},150); }
+
+/* BROWSE-USB-PADRAO */
+/* ===========================================================================
+   LISTA DE MÚSICAS DO PENDRIVE (seção BROWSE) — mesmo padrão do XDJ-RX2/RX3
+   ---------------------------------------------------------------------------
+   POR QUE ESTE BLOCO EXISTE: no XDJ-XZ os botões da seção browse estavam
+   desenhados e mudos. USB 1 / USB 2 só trocavam de cor, o seletor rotativo não
+   girava nem confirmava (o mkRot media o arrasto e jogava fora), LOAD 1 / LOAD 2
+   davam um flash e não carregavam nada, e BACK / TAG TRACK / SHORTCUT /
+   TRACK FILTER só acendiam a própria pele.
+
+   O QUE ELE FAZ (manual do XDJ-XZ, "Part names" e "Browse section"):
+     USB 1 / USB 2 ....... mostram o conteúdo do dispositivo
+     rekordbox ........... biblioteca via USB/PRO DJ LINK
+     LINK ................ dispositivo da rede PRO DJ LINK
+     BROWSE / TAG LIST / INFO / MENU ...... telas
+     BACK ................ volta um nível · segurar 1 s vai ao topo
+     TAG TRACK/REMOVE .... marca/desmarca na TAG LIST
+     Rotary selector ..... gira = navega · clica = confirma
+     SHORTCUT ............ TRACK / PLAYLIST / SEARCH
+     TRACK FILTER/EDIT ... filtra por BPM/tom
+     LOAD 1 / LOAD 2 ..... carregam no DECK 1 / DECK 2
+     USB 1/2 STOP ........ segurar 2 s desmonta antes de tirar o pendrive
+   A tela de 7" do XDJ-XZ é TOUCH (manual): com a lista aberta, tocar numa linha
+   seleciona e tocar de novo na mesma linha confirma.
+
+   ⚠️ Este bloco foi TRAZIDO do XDJ-RX2/RX3, que já estavam consertados, como
+   mandava a ordem — o comportamento é o mesmo de propósito. O que é específico
+   do XZ está só no BR_ADAPT e no despacho brRota.
+   =========================================================================== */
+const BR_ADAPT={
+  decks:  ()=>({ "1":decks.A, "2":decks.B }),   /* deck A = DECK 1 · deck B = DECK 2 */
+  fontes: ["USB 1","USB 2"],
+  linhas: 7
+};
+const BR={ aberto:false, dev:"USB 1", tela:"browse", sel:0, topo:0,
+           tags:new Set(), nTags:0, filtro:false, msg:"", montado:{"USB 1":true,"USB 2":true},
+           geo:null };
+
+/* faixas: vêm do BANCO SMU. Sem banco a lista sai VAZIA e o visor avisa —
+   nunca inventar nome de música. */
+function brFaixas(){
+  const B=window.BANCO_SMU, F=(B&&Array.isArray(B.faixas))?B.faixas:[];
+  return F.map((f,i)=>({ id:i, tipo:"faixa", ref:f,
+    rot:(f.nome||f.titulo||f.arquivo||("FAIXA "+(i+1))), bpm:+f.bpm||0 }));
+}
+function brBpmRef(){ const d=(decks.B&&decks.B.mst)?decks.B:decks.A;
+  return d?124*(1+d.pitch/100):0; }
+function brItens(){
+  if(BR.tela==="menu") return ["UTILITY","LANGUAGE","LCD BRIGHTNESS","AUTO CUE LEVEL",
+    "QUANTIZE BEAT VALUE","MASTER REC","MIDI CHANNEL","VERSION No."].map((t,i)=>({id:i,tipo:"menu",rot:t}));
+  if(BR.tela==="shortcut") return ["TRACK","PLAYLIST","SEARCH"].map((t,i)=>({id:i,tipo:"cat",rot:t}));
+  /* rekordbox sem PRO DJ LINK e USB desmontada têm de vir VAZIAS — senão o
+     visor mostra a biblioteca do pendrive como se fosse a do computador */
+  if(BR_ADAPT.fontes.indexOf(BR.dev)<0||!BR.montado[BR.dev]) return [];
+  let L=brFaixas();
+  if(BR.tela==="taglist") L=L.filter(f=>BR.tags.has(f.id));
+  if(BR.filtro){ const r=brBpmRef(); if(r>0) L=L.filter(f=>!f.bpm||Math.abs(f.bpm-r)<=r*0.16); }
+  return L;
+}
+function brAjusta(){ const n=brItens().length;
+  BR.sel=n?clamp(BR.sel,0,n-1):0;
+  const vis=BR_ADAPT.linhas;
+  if(BR.sel<BR.topo)BR.topo=BR.sel;
+  if(BR.sel>BR.topo+vis-1)BR.topo=BR.sel-vis+1;
+  BR.topo=clamp(BR.topo,0,Math.max(0,n-vis));
+}
+function brMover(n){ const t=brItens().length; if(!t){BR.sel=0;BR.topo=0;return;}
+  BR.sel=(BR.sel+n%t+t)%t; brAjusta(); }
+function brAbrir(tela,dev){ if(dev)BR.dev=dev; BR.tela=tela; BR.aberto=true; BR.msg=""; brAjusta(); }
+function brFechar(){ BR.aberto=false; BR.tela="browse"; }
+function brEntrar(){
+  if(!BR.aberto){ brAbrir("browse"); return; }
+  const L=brItens(), it=L[BR.sel]; if(!it)return;
+  if(it.tipo==="cat"){ BR.tela="browse"; BR.msg="categoria "+it.rot; BR.sel=0; BR.topo=0; return; }
+  if(it.tipo==="menu"){ BR.msg=it.rot+" — ajuste no aparelho real"; return; }
+  /* faixa: confirma carregando no deck que está PARADO (não corta quem toca) */
+  const D=BR_ADAPT.decks();
+  brCarregar((D["1"]&&!D["1"].playing)?"1":(D["2"]&&!D["2"].playing)?"2":"1");
+}
+function brVoltar(topo){
+  if(!BR.aberto)return;
+  if(topo||BR.tela==="browse"||BR.tela==="taglist"){ brFechar(); return; }
+  BR.tela="browse"; BR.sel=0; BR.topo=0; BR.msg="";
+}
+
+/* ---------- carregar a faixa no deck (é o que faz o LOAD ser de verdade) ---------- */
+function picos(data,len){ const N=520,p=new Float32Array(N),blk=Math.max(1,Math.floor(len/N));
+  for(let i=0;i<N;i++){ let mx=0; for(let j=0;j<blk;j+=24){ const v=Math.abs(data[i*blk+j]||0); if(v>mx)mx=v; } p[i]=mx; }
+  return p; }
+async function brCarregar(nd){
+  if(!started){ await startAudio(); }
+  if(!ready)return;
+  const L=brItens(), it=L[BR.sel];
+  if(!it||it.tipo!=="faixa"){ BR.msg="nada para carregar"; return; }
+  const d=BR_ADAPT.decks()[nd]; if(!d)return;
+  const B=window.BANCO_SMU;
+  if(!B||!B.base){ BR.msg="banco de faixas indisponível"; return; }
+  BR.msg="carregando "+it.rot+"…";
+  try{
+    let buf=B.cache?B.cache[it.ref.arquivo]:null;
+    if(!buf){ const r=await fetch(B.base+it.ref.arquivo); if(!r.ok)throw new Error("HTTP "+r.status);
+      buf=await AC.decodeAudioData(await r.arrayBuffer()); if(B.cache)B.cache[it.ref.arquivo]=buf; }
+    d.buffer=buf; d.data=buf.getChannelData(0); d.len=d.data.length;
+    d.pos=0; d.cuePoint=0; d.cueSet=false; d.rate=0; d.bend=0;
+    d.loopOn=false; d.loopIn=false; d.loopStart=0; d.loopEnd=0; d.loopFull=0;
+    d.slip=false; d.playing=false; d.dir=1;
+    d.hot=[null,null,null,null,null,null,null,null];
+    d.peaks=picos(d.data,d.len);
+    d.title=it.rot; d.bpm=it.bpm||124; d.dev=BR.dev;
+    BR.msg=""; brFechar();
+    teachTxt("LOAD "+nd,"<b>"+it.rot+"</b> carregada no DECK "+nd+
+      (it.bpm?(" ("+it.bpm.toFixed(1)+" BPM)"):"")+". O deck fica parado no início — aperte ▶/❚❚.");
+  }catch(e){ console.warn("LOAD falhou:",e); BR.msg="falhou: "+((e&&e.message)||e); }
+}
+
+/* ---------- despacho dos botões da seção browse e das portas USB ---------- */
+function brRota(a){
+  switch(a){
+    case "usbsel1": BR.montado["USB 1"]=true; brAbrir("browse","USB 1"); BR.sel=0; BR.topo=0;
+      ["rbox","link","usbsel1","usbsel2"].forEach(k=>els[k]&&els[k].classList.toggle("on",k===a)); return true;
+    case "usbsel2": BR.montado["USB 2"]=true; brAbrir("browse","USB 2"); BR.sel=0; BR.topo=0;
+      ["rbox","link","usbsel1","usbsel2"].forEach(k=>els[k]&&els[k].classList.toggle("on",k===a)); return true;
+    case "rbox": brAbrir("browse","rekordbox");
+      ["rbox","link","usbsel1","usbsel2"].forEach(k=>els[k]&&els[k].classList.toggle("on",k===a)); return true;
+    case "link": brAbrir("browse","PRO DJ LINK");
+      ["rbox","link","usbsel1","usbsel2"].forEach(k=>els[k]&&els[k].classList.toggle("on",k===a)); return true;
+    case "browse": case "taglist": case "info": case "menu":
+      brAbrir(a==="browse"?"browse":a);
+      ["browse","taglist","info","menu"].forEach(k=>els[k]&&els[k].classList.toggle("on",k===a)); return true;
+    case "shortcut": brAbrir("shortcut"); return true;
+    case "back":     brVoltar(false);     return true;
+    /* TAG TRACK marca a faixa EM DESTAQUE — então ele abre a lista se estiver
+       fechada, senão o DJ marcaria às cegas (e nada apareceria no visor) */
+    case "tagtrack": { if(!BR.aberto)brAbrir("browse");
+      const it=brItens()[BR.sel];
+      if(it&&it.tipo==="faixa"){ BR.tags.has(it.id)?BR.tags.delete(it.id):BR.tags.add(it.id); brAjusta();
+        BR.msg=(BR.tags.has(it.id)?it.rot+" marcada na TAG LIST":it.rot+" saiu da TAG LIST"); }
+      else BR.msg="nada para marcar";
+      BR.nTags=BR.tags.size;                    /* contador simples: o ★ do visor lê daqui */
+      els.tagtrack&&els.tagtrack.classList.toggle("on",BR.nTags>0); return true; }
+    case "tfilter": BR.filtro=!BR.filtro; els.tfilter&&els.tfilter.classList.toggle("on",BR.filtro);
+      if(!BR.aberto)brAbrir("browse"); BR.sel=0; BR.topo=0; brAjusta(); return true;
+    case "load1": brCarregar("1"); return true;
+    case "load2": brCarregar("2"); return true;
+    case "usbslot1": case "usbslot2": {   /* espetar o pendrive de volta */
+      const dv=a==="usbslot1"?"USB 1":"USB 2";
+      BR.montado[dv]=true; els[a]&&els[a].classList.add("on");
+      brAbrir("browse",dv); BR.sel=0; BR.topo=0;
+      teachMais(a,"Pendrive <b>espetado</b> — a lista da "+dv+" abriu no visor."); return true; }
+    case "stop1": case "stop2":
+      teachMais(a,"<b>Segure 2 segundos</b> para desmontar antes de tirar o pendrive — é assim no aparelho. Um toque rápido não faz nada.");
+      return true;
+  }
+  return false;
+}
+/* ações de PRESSIONAR E SEGURAR (o manual define o tempo de cada uma) */
+const BR_LONGO={ back:1000, menu:1000, stop1:2000, stop2:2000, tfilter:1000 };
+function brLongo(a){
+  if(a==="back"){ brVoltar(true); return; }
+  if(a==="menu"){ brAbrir("menu"); BR.msg="UTILITY"; return; }
+  if(a==="tfilter"){ BR.msg="TRACK FILTER EDIT — critérios no aparelho real"; return; }
+  if(a==="stop1"||a==="stop2"){ const dv=a==="stop1"?"USB 1":"USB 2";
+    BR.montado[dv]=false;
+    const slot=a==="stop1"?"usbslot1":"usbslot2"; els[slot]&&els[slot].classList.remove("on");
+    if(BR.aberto&&BR.dev===dv){ BR.sel=0; BR.topo=0; BR.msg="dispositivo removido com segurança"; }
+    teachMais(a,"Desmontado. Agora dá para tirar o pendrive sem corromper a base do rekordbox. Clique no slot da "+dv+" para espetar de novo."); }
+}
+/* liga um botão que tem 2ª função em pressionar-e-segurar */
+function bindLongo(el,a,ms){
+  let t=null,jaFoi=false;
+  el.addEventListener("pointerdown",ev=>{ ev.preventDefault(); teach(a); if(!started)startAudio();
+    jaFoi=false; try{el.setPointerCapture(ev.pointerId);}catch(_){}
+    t=setTimeout(()=>{ jaFoi=true; flash(a); brLongo(a); },ms); });
+  const solta=()=>{ if(t){clearTimeout(t);t=null;} if(!jaFoi){ flash(a); if(!brRota(a))onCtl(a); } jaFoi=false; };
+  el.addEventListener("pointerup",solta); el.addEventListener("pointercancel",solta);
+}
+
+/* ---------- seletor rotativo: GIRA para navegar, CLICA para confirmar ----------
+   ⚠️ clique x giro NÃO se distingue pelo NÚMERO de pointermove (um arrasto pode
+   chegar num evento só): o que separa os dois é a DISTÂNCIA que o ponteiro andou. */
+function bindRotary(el){
+  let ativo=false,ult=0,acu=0,px=0,py=0;
+  const cen=()=>{ const b=el.getBoundingClientRect(); return [b.left+b.width/2,b.top+b.height/2,(b.width/2)||1]; };
+  const ang=e=>{ const [x,y]=cen(); return Math.atan2(e.clientY-y,e.clientX-x); };
+  const raio=e=>{ const [x,y,r]=cen(); return Math.hypot(e.clientX-x,e.clientY-y)/r; };
+  const PASSO=Math.PI/9;                               /* 20° = um clique do encoder */
+  const gira=n=>{ brMover(n); if(!BR.aberto)brAbrir("browse"); };
+  el.addEventListener("pointerdown",e=>{ if(!started)startAudio();
+    ativo=true; ult=ang(e); acu=0; px=e.clientX; py=e.clientY;
+    try{el.setPointerCapture(e.pointerId);}catch(_){} e.preventDefault(); teach("rotary"); });
+  el.addEventListener("pointermove",e=>{ if(!ativo)return;
+    if(raio(e)<0.18){ ult=ang(e); return; }             /* no miolo o ângulo é instável */
+    const g=ang(e); let d=g-ult; if(d>Math.PI)d-=2*Math.PI; if(d<-Math.PI)d+=2*Math.PI; ult=g; acu+=d;
+    while(acu>=PASSO){ acu-=PASSO; gira(1); }
+    while(acu<=-PASSO){ acu+=PASSO; gira(-1); } });
+  const solta=e=>{ if(!ativo)return; ativo=false;
+    const dx=((e&&e.clientX!=null)?e.clientX:px)-px, dy=((e&&e.clientY!=null)?e.clientY:py)-py;
+    if(Math.hypot(dx,dy)<6)brEntrar(); };
+  el.addEventListener("pointerup",solta); el.addEventListener("pointercancel",solta);
+  el.addEventListener("wheel",e=>{ e.preventDefault(); gira(e.deltaY>0?1:-1); },{passive:false});
+}
+/* ---------- a tela de 7" do XDJ-XZ É TOUCH (manual) ---------- */
+function bindTelaTouch(el){
+  let ultLinha=-1, ultT=0;
+  el.addEventListener("pointerdown",e=>{
+    if(!started){ startAudio(); return; }
+    if(!BR.aberto||!BR.geo){ teach("screen"); return; }
+    const r=el.getBoundingClientRect();
+    const cy=(e.clientY-r.top)/r.height*sH;                  /* px do canvas */
+    const i=Math.floor((cy-BR.geo.y0)/BR.geo.alt);
+    if(i<0||i>=BR.geo.vis)return;
+    const alvo=BR.topo+i, n=brItens().length; if(alvo>=n)return;
+    const t=performance.now();
+    if(alvo===ultLinha&&t-ultT<600){ brEntrar(); }            /* 2º toque = confirmar */
+    else { BR.sel=alvo; brAjusta(); teach("rotary"); }
+    ultLinha=alvo; ultT=t;
+  });
+}
+
+/* ---------- desenho da lista dentro do visor ---------- */
+function brDesenhar(ctx,lx,ly,lw,lh){
+  const TIT={browse:"BROWSE",taglist:"TAG LIST",info:"INFO",menu:"MENU / UTILITY",
+             shortcut:"SHORTCUT"}[BR.tela]||"BROWSE";
+  ctx.save(); ctx.textBaseline="middle";
+  ctx.fillStyle="#070a10"; ctx.fillRect(lx,ly,lw,lh);
+  const bh=lh*0.095;
+  ctx.fillStyle="#121722"; ctx.fillRect(lx,ly,lw,bh);
+  ctx.fillStyle="#2f8fe0"; ctx.fillRect(lx,ly,lw*0.004,bh);
+  ctx.font="800 "+Math.round(bh*0.46)+"px Inter,Arial"; ctx.textAlign="left";
+  ctx.fillStyle="#eaf2fa"; ctx.fillText(BR.dev,lx+lw*0.016,ly+bh*0.5);
+  ctx.fillStyle="#7e8794"; ctx.fillText("›",lx+lw*0.016+ctx.measureText(BR.dev).width+lw*0.012,ly+bh*0.5);
+  ctx.fillStyle="#8fd4ff"; ctx.fillText(TIT,lx+lw*0.016+ctx.measureText(BR.dev).width+lw*0.030,ly+bh*0.5);
+  ctx.textAlign="right";
+  if(BR.filtro){ ctx.fillStyle="#f0a63c"; ctx.fillText("TRACK FILTER",lx+lw*0.985,ly+bh*0.5); }
+  else { ctx.fillStyle="#7e8794"; ctx.fillText("SELETOR: gire e clique",lx+lw*0.985,ly+bh*0.5); }
+
+  if(BR.tela==="info"){ brInfo(ctx,lx,ly+bh,lw,lh-bh); ctx.restore(); return; }
+
+  const L=brItens(), vis=BR_ADAPT.linhas;
+  if(!L.length){
+    const usb=BR_ADAPT.fontes.indexOf(BR.dev)>=0;
+    brAviso(ctx,lx,ly+bh,lw,lh-bh,
+      !usb?"SEM DISPOSITIVO":(!BR.montado[BR.dev]?"DISPOSITIVO REMOVIDO"
+        :(BR.tela==="taglist"?"TAG LIST VAZIA":"NENHUMA FAIXA")),
+      !usb?"Ligue um computador ou celular por PRO DJ LINK."
+        :(!BR.montado[BR.dev]?"Clique no slot da "+BR.dev+" no painel para espetar de novo."
+          :(BR.tela==="taglist"?"Escolha uma faixa no BROWSE e aperte TAG TRACK."
+            :"O filtro pode estar apertado — solte o TRACK FILTER.")));
+    ctx.restore(); return; }
+
+  const ch=lh*0.075, y0=ly+bh+ch, alt=(lh-bh-ch-lh*0.10)/vis;
+  BR.geo={y0,alt,vis};        /* guardado para o TOQUE na tela saber em que linha caiu */
+  ctx.font="800 "+Math.round(ch*0.52)+"px Inter,Arial"; ctx.fillStyle="#6d7684"; ctx.textAlign="left";
+  ctx.fillText("TRACK",lx+lw*0.055,ly+bh+ch*0.5);
+  ctx.textAlign="right"; ctx.fillText("BPM",lx+lw*0.96,ly+bh+ch*0.5);
+
+  for(let i=0;i<vis;i++){
+    const it=L[BR.topo+i]; if(!it)break;
+    const y=y0+i*alt, sel=(BR.topo+i)===BR.sel;
+    ctx.fillStyle=sel?"#1d5f9e":(i%2?"#0b0f15":"#0d1219"); ctx.fillRect(lx,y,lw,alt-1);
+    if(sel){ ctx.fillStyle="#8fd4ff"; ctx.fillRect(lx,y,lw*0.006,alt-1); }
+    ctx.font="800 "+Math.round(alt*0.42)+"px Inter,Arial"; ctx.textAlign="left";
+    ctx.fillStyle=(it.tipo==="faixa"&&BR.tags.has(it.id))?"#f0a63c":"#242c37";
+    ctx.fillText("★",lx+lw*0.014,y+alt*0.5);
+    ctx.fillStyle=sel?"#ffffff":"#cfd8e3";
+    let nome=it.rot; const maxw=lw*0.74;
+    while(nome.length>4&&ctx.measureText(nome).width>maxw)nome=nome.slice(0,-2);
+    if(nome!==it.rot)nome+="…";
+    ctx.fillText(nome,lx+lw*0.055,y+alt*0.5);
+    if(it.bpm){ ctx.textAlign="right"; ctx.fillStyle=sel?"#ffe6bd":"#f0a63c";
+      ctx.fillText(it.bpm.toFixed(1),lx+lw*0.96,y+alt*0.5); }
+  }
+  if(L.length>vis){ const tx=lx+lw*0.988, th=(lh-bh-ch-lh*0.10);
+    ctx.fillStyle="#141a23"; ctx.fillRect(tx,y0,lw*0.010,th);
+    const h=Math.max(th*0.08,th*vis/L.length), p=BR.topo/(L.length-vis);
+    ctx.fillStyle="#4a7fb5"; ctx.fillRect(tx,y0+p*(th-h),lw*0.010,h); }
+  const fy=ly+lh-lh*0.10;
+  ctx.fillStyle="#0a0e14"; ctx.fillRect(lx,fy,lw,lh*0.10);
+  ctx.font="800 "+Math.round(lh*0.045)+"px Inter,Arial"; ctx.textAlign="left";
+  ctx.fillStyle=BR.msg?"#f0a63c":"#6d7684";
+  ctx.fillText(BR.msg||("LOAD 1 / LOAD 2 mandam para o deck  ·  BACK volta  ·  "+(BR.sel+1)+"/"+L.length),
+    lx+lw*0.016,fy+lh*0.05);
+  ctx.restore();
+}
+function brAviso(ctx,x,y,w,h,tit,sub){
+  ctx.textAlign="center";
+  const cabe=(txt,px,cor)=>{ let s=px;
+    do{ ctx.font="900 "+Math.round(s)+"px Inter,Arial"; s-=1; }while(s>6&&ctx.measureText(txt).width>w*0.92);
+    ctx.fillStyle=cor; };
+  cabe(tit,h*0.15,"#39424f"); ctx.fillText(tit,x+w/2,y+h*0.42);
+  cabe(sub,h*0.085,"#5a6472"); ctx.fillText(sub,x+w/2,y+h*0.62);
+}
+function brInfo(ctx,x,y,w,h){
+  const it=brItens()[BR.sel], a=decks.A, b=decks.B;
+  const nomeDe=(d,k)=>d?(d.title||TRACKS[k].t):"—";
+  ctx.textAlign="left";
+  const linhas=[
+    ["FAIXA",   it?it.rot:nomeDe(a,0)],
+    ["BPM",     it&&it.bpm?it.bpm.toFixed(1):(a?(124*(1+a.pitch/100)).toFixed(1):"—")],
+    ["DECK 1",  nomeDe(a,0)],
+    ["DECK 2",  nomeDe(b,1)],
+    ["TAG LIST",BR.tags.size+" faixa(s) marcada(s)"],
+    ["FONTE",   BR.dev+(BR.montado[BR.dev]?"":" (removida)")]
+  ];
+  linhas.forEach((l,i)=>{ const ly2=y+h*0.13+i*h*0.145;
+    ctx.fillStyle="#6d7684"; ctx.font="800 "+Math.round(h*0.075)+"px Inter,Arial";
+    ctx.fillText(l[0],x+w*0.03,ly2);
+    ctx.fillStyle="#dfe6ee"; ctx.font="800 "+Math.round(h*0.095)+"px Inter,Arial";
+    ctx.fillText(String(l[1]),x+w*0.26,ly2); });
+}
+/* fim BROWSE-USB-PADRAO */
 
 /* ======================= BUILD ======================= */
 function build(){
@@ -1376,13 +1907,15 @@ function build(){
   mkRb("talkover","red"); mkSw("fbsw",0,2); mkBtn("fbon","ON","gr");
 
   /* ---- BROWSE / TELA ---- */
-  mkBtn("browse","BROWSE","wht"); mkBtn("taglist","TAG LIST","wht"); mkBtn("info","INFO","wht"); mkBtn("menu","MENU","wht");
+  mkBtn("browse","BROWSE","wht"); mkBtn("taglist","TAG LIST","wht"); mkBtn("info","INFO","wht");
+  mkBtnL("menu","MENU","wht",BR_LONGO.menu);          /* segurar 1 s = UTILITY */
   mkBtn("rbox","rekordbox","wht"); mkBtn("link","LINK","cy"); mkBtn("usbsel1","USB 1","gr"); mkBtn("usbsel2","USB 2","gr");
   els.usbsel1.classList.add("on");
   mkRb("tmode"); mkRb("dquant");
-  mkBtn("back","&#8592;","wht"); mkBtn("tagtrack","&#9679;","wht");
+  mkBtnL("back","&#8592;","wht",BR_LONGO.back);       /* segurar 1 s = topo */
+  mkBtn("tagtrack","&#9679;","wht");
   mkRot("rotary");
-  mkBtn("tfilter","","wht"); mkBtn("shortcut","","wht");
+  mkBtnL("tfilter","","wht",BR_LONGO.tfilter); mkBtn("shortcut","","wht");
   mkBtn("load1","1","wht"); mkBtn("load2","2","wht");
   /* tela de 7" */
   const sp=POS.screen;
@@ -1391,20 +1924,28 @@ function build(){
   pct(sc,sp[0],sp[1],sp[2],sp[3]); deck.appendChild(sc); els.screen=sc;
   sc.addEventListener("mouseenter",()=>teach("screen"));
   sCtx=sc.getContext("2d"); sW=sc.width; sH=sc.height;
+  /* o LCD de 7" do XDJ-XZ é TOUCH (manual): com a lista aberta, tocar numa linha
+     seleciona e tocar de novo na mesma linha confirma — ver BROWSE-USB-PADRAO */
+  sc.style.cursor="pointer"; bindTelaTouch(sc);
 
   /* ---- MASTER / USB ---- */
-  mkKnob("mlevel",0.72,"sml"); mkBtn("mcue","CUE","or");
-  ["mlow","mmid","mhi"].forEach(k=>mkKnob(k,0.5));
-  mkKnob("booth",0.5,"sml");
+  mkKnob("mlevel",0.72,"sml",()=>aplicaMaster()); mkBtn("mcue","CUE","or");
+  /* MASTER EQ: nasce em 0 dB (repouso 0,8125) e agora MEXE no som de verdade —
+     antes os três knobs giravam a pele e não tinham nó de áudio nenhum */
+  ["mlow","mmid","mhi"].forEach(k=>mkKnob(k,null,null,()=>aplicaMasterEq()));
+  mkKnob("booth",0.5,"sml",()=>teach("booth"));
   els.mmetL=$("#mmL"); els.mmetR=$("#mmR");
   mkUsb("usbslot1"); mkUsb("usbslot2"); els.usbslot1.classList.add("on");
-  mkRb("mrec","red"); mkRb("stop1"); mkRb("stop2"); mkRb("tmark");
+  mkRb("mrec","red");
+  mkRbL("stop1",null,BR_LONGO.stop1); mkRbL("stop2",null,BR_LONGO.stop2);   /* segurar 2 s desmonta */
+  mkRb("tmark");
 
   /* ---- MIXER ---- */
   mkSw("ch3in",0,3); mkSw("ch4in",0,3);
   CH.forEach(n=>{
-    mkKnob("trim"+n,0.55,"sml",()=>{ if(ready)setEq(n,"trim",kv("trim"+n)); });
-    ["hi","mid","low"].forEach(b=>mkKnob(b+n,0.5,null,()=>{ if(ready)setEq(n,b,kv(b+n)); }));
+    /* init null = nasce no repouso de KNOBREP: TRIM na unidade, EQ em 0 dB */
+    mkKnob("trim"+n,null,"sml",()=>{ if(ready)setEq(n,"trim",kv("trim"+n)); });
+    ["hi","mid","low"].forEach(b=>mkKnob(b+n,null,null,()=>{ if(ready)setEq(n,b,kv(b+n)); }));
     mkKnob("col"+n,0.5,"color",()=>applyAllColor());
     mkBtn("cue"+n,"CUE","or");
     mkFader("fad"+n,n);
