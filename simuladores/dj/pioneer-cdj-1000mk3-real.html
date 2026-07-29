@@ -412,7 +412,12 @@ async function startAudio(){ if(started)return; started=true;
     for(let i=0;i<out.length;i++){
       if(d.touching){ const np=d.pos+(d.targetPos-d.pos)*0.0025; d.rate=np-d.pos; d.pos=np;
         if(d.pos<0){d.pos=0;d.rate=0;} else if(d.pos>len-1){d.pos=len-1;d.rate=0;} }
-      else { const tgt=d.playing?d.dir*(1+d.pitch/100):0; d.rate+=(tgt-d.rate)*0.0022; d.pos+=d.rate;
+      else { const tgt=d.playing?d.dir*(1+d.pitch/100):0;
+        /* VINYL SPEED ADJUST (manual): TOUCH/BRAKE = desaceleração até parar;
+           RELEASE/START = aceleração até a velocidade cheia. Anti-horário = mais rápido. */
+        const freando=Math.abs(tgt)<Math.abs(d.rate);
+        const k=freando ? (0.0006+KNOB.vinyladj*0.010) : (0.0006+KNOB.brake*0.010);
+        d.rate+=(tgt-d.rate)*k; d.pos+=d.rate;
         if(d.loopOn&&d.rate>0&&d.pos>=d.loopEnd)d.pos=d.loopStart+(d.pos-d.loopEnd);
         if(d.pos>=len)d.pos-=len; else if(d.pos<0)d.pos+=len; }   // LOOP CONTÍNUO
       let i0=Math.floor(d.pos); const fr=d.pos-i0; i0=((i0%len)+len)%len; const i1=(i0+1)%len;
@@ -480,9 +485,11 @@ function drawDisplay(){ if(!dispCtx)return; const ctx=dispCtx,W=dispW,H=dispH;
   ctx.fillStyle=(d&&d.memPoint!=null)?WHT:DIM; ctx.fillText("MEMORY",W*0.70,H*0.135);
   ctx.fillStyle=(d&&d.loopOn)?WHT:DIM; ctx.fillText("RELOOP",W*0.845,H*0.135);
 
-  /* nº da faixa */
-  ctx.fillStyle=WHT; F("800",0.30); ctx.fillText("01",W*0.014,H*0.44);
+  /* nº da faixa + pasta (MP3 FOLDER SEARCH) */
+  ctx.fillStyle=WHT; F("800",0.30); ctx.fillText(String(d&&d.track||1).padStart(2,"0"),W*0.014,H*0.44);
   ctx.fillStyle=DIM; F("700",0.15); ctx.fillText("/05",W*0.088,H*0.43);
+  if(d&&d.folder>1){ ctx.fillStyle=DIM; F("700",0.085);
+    ctx.fillText("FOLDER "+d.folder,W*0.016,H*0.60); }
 
   /* tempo M:S.CS */
   const show=timeRemain?rem:cur;
@@ -746,6 +753,10 @@ function onControl(c,e){ teach(c);
   else if(a==="temporeset"){ d.pitch=0; placeTempoCap(0.5);
     setState("temporeset",true); setTimeout(()=>setState("temporeset",false),200); }
   else if(a==="memory"){ d.memPoint=d.cuePoint; setState("memory",true); setTimeout(()=>setState("memory",false),260); }
+  /* MP3 FOLDER SEARCH: navega entre as pastas do CD-ROM e cai na 1ª faixa da pasta */
+  else if(a==="folder"||a==="folder2"){
+    d.folder=clamp((d.folder||1)+(a==="folder2"?1:-1),1,8);
+    d.track=1; d.pos=0; d.cuePoint=0; }
   else if(a==="call"||a==="call2"){ if(d.memPoint!=null){ d.pos=d.cuePoint=d.memPoint; }
     setState(a,true); setTimeout(()=>setState(a,false),260); }
   else if(a==="deletebt"){ d.memPoint=null; setState("deletebt",true); setTimeout(()=>setState("deletebt",false),260); }
@@ -759,13 +770,19 @@ function bindJog(el){ let active=false,last=0;
   el.addEventListener("pointerdown",e=>{ if(!started){startAudio();return;} if(!ready)return; active=true; last=ang(e);
     if(vinylMode && dist(e)<0.66){ d.touching=true; d.targetPos=d.pos; } el.setPointerCapture(e.pointerId); e.preventDefault(); });
   el.addEventListener("pointermove",e=>{ if(!active||!ready)return; const a=ang(e); let da=a-last; if(da>Math.PI)da-=2*Math.PI; if(da<-Math.PI)da+=2*Math.PI; last=a;
-    if(d.touching){ d.targetPos=clamp(d.targetPos+da/(2*Math.PI)*d.buffer.sampleRate*0.5,0,d.len-1); markMission("scratch"); }
-    else { d.pos=clamp(d.pos+da/(2*Math.PI)*d.buffer.sampleRate*0.05,0,d.len-1); } });
+    /* JOG ADJUST (manual): regula a resistência sentida ao girar o prato.
+       LIGHT = o prato responde mais; HEAVY = exige mais giro para o mesmo efeito. */
+    const sens=0.45+(1-KNOB.jogadj)*1.10;
+    if(d.touching){ d.targetPos=clamp(d.targetPos+da/(2*Math.PI)*d.buffer.sampleRate*0.5*sens,0,d.len-1); markMission("scratch"); }
+    else { d.pos=clamp(d.pos+da/(2*Math.PI)*d.buffer.sampleRate*0.05*sens,0,d.len-1); } });
   const up=()=>{ active=false; if(d&&d.touching)d.touching=false; };
   el.addEventListener("pointerup",up); el.addEventListener("pointercancel",up);
 }
-function bindKnob(el,c){ let drag=false,last=0,val=0.5;
-  const apply=()=>{ const k=els[c.act].querySelector(".cap"); if(k)k.style.transform="rotate("+((val-0.5)*260)+"deg)"; };
+/* valores 0..1 dos knobs — cada um liga numa função REAL do manual */
+const KNOB={ vinyladj:0.5, brake:0.5, jogadj:0.5 };
+function bindKnob(el,c){ let drag=false,last=0,val=(KNOB[c.act]!==undefined?KNOB[c.act]:0.5);
+  const apply=()=>{ const k=els[c.act].querySelector(".cap"); if(k)k.style.transform="rotate("+((val-0.5)*260)+"deg)";
+    if(KNOB[c.act]!==undefined) KNOB[c.act]=val; };
   el.addEventListener("pointerdown",e=>{ if(!started){startAudio();} drag=true; last=e.clientY; el.setPointerCapture(e.pointerId); e.preventDefault(); });
   el.addEventListener("pointermove",e=>{ if(!drag)return; val=clamp(val+(last-e.clientY)/160,0,1); last=e.clientY; apply(); });
   const up=()=>drag=false; el.addEventListener("pointerup",up); el.addEventListener("pointercancel",up);
