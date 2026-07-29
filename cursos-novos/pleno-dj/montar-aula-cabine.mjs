@@ -66,14 +66,13 @@ const PONTE = `<script>/* PONTE SMU — nao faz parte do aparelho */
     if (d.smu === "vol") (window.__smuGanhos||[]).forEach(function(g){ try{ g.gain.value = d.v; }catch(_){} });
     else if (d.smu === "tocando?" && e.source) e.source.postMessage({ smu:"tocando", v: estaTocando() }, "*");
   });
-  /* a barra do Banco SMU e position:fixed — dentro do iframe pequeno ela
-     cobriria o painel. Marca que estamos embutidos e esconde. */
-  window.__SMU_EMBUTIDO = true;
-  document.addEventListener("DOMContentLoaded", function(){
-    var st = document.createElement("style");
-    st.textContent = "[class*=banco],[id*=banco],[class*=bancosmu]{display:none!important}";
-    document.head.appendChild(st);
-  });
+  /* Bandeira para o Banco SMU nao montar a barra aqui dentro: na viewport
+     pequena do aparelho embutido ela cobriria o painel.
+     NAO usar CSS nem "self !== top": em uso normal o simulador JA roda dentro
+     de um iframe (srcDoc do player), entao "self !== top" e sempre verdadeiro
+     e sumiria com a barra na frota inteira. O Banco v2 decide por
+     "parent !== top" (2 niveis) e respeita esta bandeira. */
+  window.__SMU_EMBUTIDO = 1;
 })();
 <\/script>`;
 
