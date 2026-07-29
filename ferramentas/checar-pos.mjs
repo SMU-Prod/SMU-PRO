@@ -40,13 +40,45 @@ for (const [k, b] of Object.entries(box)) {
   if (f.length) vaz.push(`${k} vaza pela ${f.join("+")} (x ${b.x.toFixed(1)}→${b.x2.toFixed(1)}, y ${b.y.toFixed(1)}→${b.y2.toFixed(1)})`);
 }
 const keys = Object.keys(box);
-const CONTAINER = new Set(["jog", "display", "screen", "platter"]); // podem conter outros por cima
-for (let i = 0; i < keys.length; i++) for (let j = i + 1; j < keys.length; j++) {
-  const a = box[keys[i]], b = box[keys[j]];
-  if (CONTAINER.has(keys[i]) || CONTAINER.has(keys[j])) continue;
-  const ox = Math.min(a.x2, b.x2) - Math.max(a.x, b.x);
+
+/* ⛔ NADA pode ficar sobre o prato nem sobre o visor — no aparelho real nao
+   existe botao em cima do jog nem em cima da tela (ordem do dono).
+   Mas o teste tem de respeitar a FORMA: o jog e um CIRCULO. Um botao no canto
+   da caixa dele nao encosta no disco — testar retangulo x retangulo daria
+   falso positivo em quase toda a frota. */
+
+// o eixo central do prato fica dentro dele; nao e sobreposicao
+const NUCLEO = /^(spindle|hub|centro|jogdisp|jogscreen)/i;
+
+function sobrepoe(ka, kb) {
+  const a = box[ka], b = box[kb];
+  const ra = ROUND.has(ka), rb = ROUND.has(kb);
+  // converte % para uma escala isotropica (px relativos) antes de medir distancia
+  const X = v => v, Y = v => v / AR;
+  const cx = o => X(o.x + o.w / 2), cy = o => Y(o.y + o.h / 2), rad = o => X(o.w) / 2;
+
+  if (ra && rb) {                              // circulo x circulo
+    const d = Math.hypot(cx(a) - cx(b), cy(a) - cy(b));
+    const s = rad(a) + rad(b) - d;
+    return s > 0.6 ? { ox: s, oy: s } : null;
+  }
+  if (ra || rb) {                              // circulo x retangulo
+    const c = ra ? a : b, r = ra ? b : a;
+    const px = Math.max(X(r.x), Math.min(cx(c), X(r.x2)));
+    const py = Math.max(Y(r.y), Math.min(cy(c), Y(r.y2)));
+    const d = Math.hypot(cx(c) - px, cy(c) - py);
+    const s = rad(c) - d;
+    return s > 0.6 ? { ox: s, oy: s } : null;
+  }
+  const ox = Math.min(a.x2, b.x2) - Math.max(a.x, b.x);   // retangulo x retangulo
   const oy = Math.min(a.y2, b.y2) - Math.max(a.y, b.y);
-  if (ox > 0.6 && oy > 0.6) col.push(`${keys[i]} × ${keys[j]} (sobrepõe ${ox.toFixed(1)}% x ${oy.toFixed(1)}%)`);
+  return (ox > 0.6 && oy > 0.6) ? { ox, oy } : null;
+}
+
+for (let i = 0; i < keys.length; i++) for (let j = i + 1; j < keys.length; j++) {
+  if (NUCLEO.test(keys[i]) || NUCLEO.test(keys[j])) continue;
+  const s = sobrepoe(keys[i], keys[j]);
+  if (s) col.push(`${keys[i]} × ${keys[j]} (sobrepõe ${s.ox.toFixed(1)}% x ${s.oy.toFixed(1)}%)`);
 }
 
 const guards = {

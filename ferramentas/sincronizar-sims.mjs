@@ -1,0 +1,70 @@
+#!/usr/bin/env node
+/**
+ * sincronizar-sims.mjs [--aplicar]
+ *
+ * Compara o HTML de cada simulador publicado (ai_animations) com o arquivo
+ * local e mostra o que esta DESATUALIZADO no ar. Com --aplicar, republica.
+ *
+ * Motivo: publiquei varios sims e DEPOIS os agentes os refinaram — o banco
+ * ficou com versao velha (foi o caso do CDJ-400, que o dono viu errado no ar).
+ */
+import fs from "node:fs";
+import path from "node:path";
+import crypto from "node:crypto";
+import { fileURLToPath } from "node:url";
+
+const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const SIMS = path.join(RAIZ, "simuladores", "dj");
+const REST = "https://pshynylvvkhhohftouoe.supabase.co/rest/v1";
+const CURSO = "8febe92b-ca5e-48ce-ab73-0e672fadd3c0";
+
+const K = process.env.SUPABASE_SERVICE_KEY?.trim()
+  || fs.readFileSync(path.join(RAIZ, ".local", "svckey"), "utf8").trim();
+const H = { apikey: K, Authorization: `Bearer ${K}`, "Content-Type": "application/json" };
+const req = async (m, p, b, x = {}) => {
+  const r = await fetch(REST + p, { method: m, headers: { ...H, ...x }, body: b ? JSON.stringify(b) : undefined });
+  const t = await r.text();
+  if (!r.ok) throw new Error(`${m} ${p} -> ${r.status} ${t.slice(0, 140)}`);
+  return t && t[0] === "[" ? JSON.parse(t) : t;
+};
+const md5 = s => crypto.createHash("md5").update(s).digest("hex").slice(0, 8);
+
+/* casa a aula com o arquivo pelo <title> do HTML publicado */
+function acharLocal(tituloHtml) {
+  for (const f of fs.readdirSync(SIMS).filter(f => f.endsWith(".html"))) {
+    const s = fs.readFileSync(path.join(SIMS, f), "utf8");
+    const m = s.match(/<title>([^<]*)<\/title>/);
+    if (m && m[1].trim() === tituloHtml.trim()) return f;
+  }
+  return null;
+}
+
+const aplicar = process.argv.includes("--aplicar");
+const mods = (await req("GET", `/modules?course_id=eq.${CURSO}&select=id`)).map(m => m.id).join(",");
+const aulas = await req("GET", `/lessons?module_id=in.(${mods})&select=id,titulo&order=titulo`);
+
+let iguais = 0, difs = 0, semArquivo = 0, republicadas = 0;
+for (const a of aulas) {
+  const an = await req("GET", `/ai_animations?lesson_id=eq.${a.id}&select=id,urls`);
+  if (!an.length) continue;
+  const noAr = an[0].urls?.[0]?.html;
+  if (!noAr) continue;
+  const t = (noAr.match(/<title>([^<]*)<\/title>/) || [])[1];
+  const arq = t ? acharLocal(t) : null;
+  if (!arq) { semArquivo++; continue; }
+  const local = fs.readFileSync(path.join(SIMS, arq), "utf8");
+  if (md5(local) === md5(noAr)) { iguais++; continue; }
+  difs++;
+  const dif = local.length - noAr.length;
+  console.log(`DESATUALIZADO  ${arq}`);
+  console.log(`   aula: ${a.titulo}`);
+  console.log(`   no ar ${(noAr.length / 1024).toFixed(0)}KB  ->  local ${(local.length / 1024).toFixed(0)}KB  (${dif > 0 ? "+" : ""}${(dif / 1024).toFixed(0)}KB)`);
+  if (aplicar) {
+    await req("PATCH", `/ai_animations?id=eq.${an[0].id}`,
+      { urls: [{ html: local }], status: "ready", custo_usd: 0 }, { Prefer: "return=minimal" });
+    console.log("   -> republicado");
+    republicadas++;
+  }
+}
+console.log(`\niguais: ${iguais} | desatualizados: ${difs} | sem arquivo local: ${semArquivo}` +
+  (aplicar ? ` | republicados: ${republicadas}` : `\n(rode com --aplicar para republicar)`));
