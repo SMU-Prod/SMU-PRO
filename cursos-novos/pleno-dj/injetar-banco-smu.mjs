@@ -39,21 +39,11 @@ const INI = "/*BANCO-SMU-INI*/", FIM = "/*BANCO-SMU-FIM*/";
 
 /* Arquivos que a OUTRA SESSAO esta editando agora — nao encostar.
    Atualizar conforme ela responder. */
-/* Lista confirmada pela sessao "DJ booth simulator reference library" em
-   29/07/2026: 4 agentes dela estao corrigindo colisao de layout nestes.
-   NAO ENCOSTAR ate ela avisar que terminou. */
+/* A outra sessao LIBEROU os 10 dela em 29/07/2026 (layout concluido).
+   Sobra so o studio, que tem o Banco escrito a mao (com pen drive e UI propria)
+   e NAO deve receber o modulo injetado. */
 const EXCLUIR = new Set([
-  "pioneer-xdj-1000mk2-real.html",
-  "pioneer-cdj-800mk2-real.html",
-  "pioneer-xdj-rx2-real.html",
-  "pioneer-xdj-rx3-real.html",
-  "pioneer-cdj-900nxs-real.html",
-  "pioneer-cdj-3000-real.html",
-  "pioneer-cdj-2000nxs2-real.html",
-  "pioneer-plx-1000-real.html",
-  "technics-sl1200mk2-real.html",
-  "technics-sl1200mk7-real.html",    // ela lista como EDITANDO e como LENDO -> trato como editando
-  "smu-dj-studio-real.html",         // ja tem o Banco (feito a mao, com pen drive)
+  "smu-dj-studio-real.html",
 ]);
 
 /* Ela vai LER (nao escrever) estes p/ embutir copia na aula de montagem.
@@ -83,7 +73,11 @@ ${MARCA}
    <iframe srcDoc sandbox> sem allow-same-origin e sem <base>, entao caminho
    relativo resolve contra a URL da AULA (404) e o fetch vai com Origin: null. */
 (function(){
-  var BASE = "musicas/";
+  /* URL ABSOLUTA com CORS "*" — obrigatorio. O sim roda em iframe srcDoc de
+     origem opaca: caminho relativo dava 404 e o fetch sai com Origin: null.
+     Conferido em 29/07/2026: devolve 206 + audio/mpeg + Access-Control-Allow-Origin: *
+     mesmo com Origin: null, nas 13 faixas. NAO voltar para caminho relativo. */
+  var BASE = "https://pshynylvvkhhohftouoe.supabase.co/storage/v1/object/public/musicas-dj/";
   var FAIXAS = [
     { arquivo:"sotex-1.mp3",  nome:"SOTEX 01", bpm:98.4  },
     { arquivo:"sotex-2.mp3",  nome:"SOTEX 02", bpm:144.6 },
@@ -189,15 +183,32 @@ ${MARCA}
 /* -------------------------------------------------------------------------- */
 const escRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-const alvos = fs.readdirSync(DIR)
-  .filter(f => f.endsWith("-real.html"))
-  .filter(f => !SO || f === SO);
+/* Em 29/07/2026 a outra sessao reorganizou por fabricante (git mv):
+   simuladores/dj/{pioneer,technics,denon,alphatheta,akai,numark,roland,_aulas}/
+   Entao a varredura tem de ser RECURSIVA — readdir raso passou a achar zero. */
+function varrer(dir, saida = []) {
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const q = path.join(dir, e.name);
+    if (e.isDirectory()) { if (e.name !== "musicas") varrer(q, saida); }
+    else if (e.name.endsWith("-real.html")) saida.push(q);
+  }
+  return saida;
+}
+const alvos = varrer(DIR)
+  .filter(p => !SO || path.basename(p) === SO);
 
 const rel = { aplicado: [], jaTinha: [], excluido: [], naoTocador: [], semPadrao: [] };
 
-for (const f of alvos) {
-  const p = path.join(DIR, f);
+for (const p of alvos) {
+  const f = path.basename(p);
   let html = fs.readFileSync(p, "utf8");
+
+  /* ⛔ Se o arquivo JA tem base absoluta (trocada a mao pela outra sessao),
+     nao reinjetar: o modulo daqui reescreveria por cima e poderia regredir
+     algo que ja esta publicado e funcionando. Só relata. */
+  if (/BASE\s*=\s*["']https?:\/\//.test(html) || /base\s*:\s*["']https?:\/\//.test(html)) {
+    rel.jaTinha.push(f + " (base absoluta — publicado, não mexo)"); continue;
+  }
 
   if (EXCLUIR.has(f))        { rel.excluido.push(f);    continue; }
   if (NAO_E_TOCADOR.has(f))  { rel.naoTocador.push(f);  continue; }

@@ -29,7 +29,7 @@ const req = async (m, p, b, x = {}) => {
   return t && t[0] === "[" ? JSON.parse(t) : t;
 };
 
-const html = fs.readFileSync(path.join(SIMS, "praticando-montagem-cabine.html"), "utf8");
+const html = fs.readFileSync(path.join(SIMS, "_aulas", "praticando-montagem-cabine.html"), "utf8");
 if (!/srcdoc=/.test(html)) throw new Error("guard: a aula nao tem simulador embutido");
 if ((html.match(/PONTE SMU/g) || []).length < 3) throw new Error("guard: falta a ponte de audio em algum embutido");
 if (AULA.split("-").pop().length !== 12) throw new Error("guard: uuid malformado");

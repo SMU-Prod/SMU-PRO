@@ -24,7 +24,7 @@ import { fileURLToPath } from "node:url";
 
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const SIMS = path.join(RAIZ, "simuladores", "dj");
-const SAIDA = path.join(SIMS, "praticando-montagem-cabine.html");
+const SAIDA = path.join(SIMS, "_aulas", "praticando-montagem-cabine.html");
 
 const [, , a1, a2, am] = process.argv;
 const D1 = a1 || "pioneer-cdj-1000mk3-real.html";
