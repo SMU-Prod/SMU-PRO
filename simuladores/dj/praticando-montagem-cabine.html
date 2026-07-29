@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>Praticando: monte a sua cabine (SMU)</title>
+<style>
+  :root{ --ink:#e9eef7; --amber:#ffae1a; --green:#39d271; --blue:#37a2ff; --red:#ff4636;
+         --line:#2a2f37; --painel:#0c0e12; }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{ background:radial-gradient(1100px 640px at 50% -10%,#26292e,#0a0b0d 62%),#08090b; color:var(--ink);
+    font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;
+    user-select:none;overflow:hidden;display:flex;align-items:flex-start;justify-content:center}
+  #stage{transform-origin:top center;flex:0 0 auto}
+  .wrap{width:1080px;display:flex;flex-direction:column;gap:9px;padding:10px}
+
+  .util{display:flex;align-items:center;gap:9px;flex-wrap:wrap;background:linear-gradient(180deg,#202329,#15171b);
+    border:1px solid #0c0d0f;border-radius:11px;padding:8px 12px}
+  .brand b{font-size:15px;letter-spacing:1px}
+  .brand .m{font-size:9px;letter-spacing:2px;color:#8a94a4;text-transform:uppercase;margin-left:6px}
+  .pill{font-size:10px;color:#8b97a9;background:var(--painel);border:1px solid var(--line);border-radius:16px;
+    padding:4px 10px;display:flex;align-items:center;gap:6px}
+  .pill b{color:#fff}
+  .dot{width:8px;height:8px;border-radius:50%;background:#444}
+  .dot.on{background:var(--green);box-shadow:0 0 8px var(--green)}
+  .spacer{flex:1}
+  .btnp{font:inherit;font-size:11px;font-weight:700;border:0;border-radius:8px;padding:7px 12px;cursor:pointer;
+    color:#07120b;background:linear-gradient(180deg,#5be59a,#27b566)}
+  .btnp.ghost{background:transparent;color:#8b97a9;border:1px solid var(--line)}
+
+  .grid{display:grid;grid-template-columns:206px 1fr 250px;gap:9px}
+  .card{background:var(--painel);border:1px solid var(--line);border-radius:10px;padding:9px}
+  .card h3{margin:0 0 7px;font-size:10px;letter-spacing:1.4px;color:#8b97a9;text-transform:uppercase;font-weight:800}
+
+  /* ---- prateleira de equipamentos ---- */
+  .slot{margin-bottom:9px}
+  .slot .lab{font-size:9px;color:#7f8b9c;margin-bottom:3px;letter-spacing:.6px}
+  .opt{display:flex;align-items:center;gap:6px;padding:6px 7px;border:1px solid #23282f;border-radius:7px;
+    background:linear-gradient(180deg,#171a1f,#101317);cursor:pointer;margin-bottom:4px}
+  .opt:hover{border-color:#3a4插}
+  .opt.on{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue) inset,0 0 10px #37a2ff33}
+  .opt .ic{width:26px;height:18px;border-radius:3px;flex:0 0 auto;
+    background:linear-gradient(180deg,#3b4148,#191c20);border:1px solid #000}
+  .opt.vinil .ic{background:radial-gradient(circle at 50% 50%,#5a6068 18%,#111 20%,#1a1d21 70%)}
+  .opt .nm{font-size:10.5px;font-weight:700;line-height:1.15}
+  .opt .tp{font-size:8.5px;color:#7f8b9c}
+  .opt .tag{margin-left:auto;font-size:8px;font-weight:800;padding:2px 5px;border-radius:4px}
+  .tag.line{background:#123a5c;color:#8fd0ff}
+  .tag.phono{background:#4a2a12;color:#ffc98a}
+
+  /* ---- bancada ---- */
+  .bancada{position:relative;height:430px;background:
+      linear-gradient(180deg,#101317,#0a0c0f);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .apar{position:absolute;border-radius:7px;border:1px solid #000;
+    background:linear-gradient(180deg,#33383f,#1b1e23 55%,#101317);
+    box-shadow:0 6px 16px #000a, inset 0 1px 0 #ffffff18;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:3px}
+  .apar .t{font-size:10px;font-weight:800;letter-spacing:.5px;color:#dfe5ec}
+  .apar .s{font-size:8px;color:#8a94a4}
+  .apar.vazio{background:repeating-linear-gradient(45deg,#15181c 0 7px,#111418 7px 14px);border-style:dashed;
+    border-color:#2c323a;color:#5d6773}
+  .apar.vazio .t{color:#6b7684}
+
+  /* saidas/entradas */
+  .jack{position:absolute;width:15px;height:15px;border-radius:50%;cursor:pointer;
+    background:radial-gradient(circle at 50% 34%,#4a5058,#191c20 70%);border:1.5px solid #05070a;
+    box-shadow:inset 0 1px 1px #ffffff22, 0 1px 2px #0008;z-index:4}
+  .jack:hover{box-shadow:0 0 0 2px #ffffff44, 0 0 8px #fff3}
+  .jack.line{border-color:#2f6ea5}
+  .jack.phono{border-color:#a56a2f}
+  .jack.sel{box-shadow:0 0 0 2px var(--amber), 0 0 12px var(--amber)}
+  .jack.ok{border-color:var(--green)}
+  .jlab{position:absolute;font-size:7.5px;color:#8a94a4;font-weight:700;letter-spacing:.4px;pointer-events:none;z-index:4}
+
+  svg.cabos{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:3}
+
+  /* ---- canal do mixer ---- */
+  .mix{position:absolute;left:50%;transform:translateX(-50%);bottom:8px;width:330px;height:210px;
+    background:linear-gradient(180deg,#2b3037,#15181c 60%,#0d0f12);border:1px solid #000;border-radius:8px;
+    box-shadow:0 8px 20px #000b, inset 0 1px 0 #ffffff16;z-index:2}
+  .mixtit{position:absolute;top:5px;left:0;right:0;text-align:center;font-size:9px;font-weight:800;
+    letter-spacing:1px;color:#aeb6c1}
+  .ch{position:absolute;top:20px;width:64px;display:flex;flex-direction:column;align-items:center;gap:5px}
+  .ch .cn{font-size:8.5px;font-weight:800;color:#9aa4b1}
+  .sel2{display:flex;border:1px solid #000;border-radius:4px;overflow:hidden;cursor:pointer}
+  .sel2 span{font-size:7.5px;font-weight:800;padding:2px 5px;background:#15181c;color:#7f8b9c}
+  .sel2 span.on{background:#2f6ea5;color:#fff}
+  .sel2 span.on.ph{background:#a56a2f}
+  .knob{width:30px;height:30px;border-radius:50%;cursor:ns-resize;position:relative;touch-action:none;
+    background:radial-gradient(circle at 50% 30%,#454b53,#1a1d21 72%);border:1px solid #05070a;
+    box-shadow:0 2px 4px #0008, inset 0 1px 0 #ffffff20}
+  .knob i{position:absolute;left:50%;top:8%;width:2px;height:36%;margin-left:-1px;border-radius:1px;background:#dfe5ec}
+  .kl{font-size:7px;color:#7f8b9c;font-weight:700;letter-spacing:.4px}
+  .fad{width:22px;height:74px;border-radius:4px;position:relative;cursor:ns-resize;touch-action:none;
+    background:linear-gradient(90deg,#07090b,#1b1f24 50%,#07090b);border:1px solid #000;
+    box-shadow:inset 0 2px 7px #000c}
+  .fad .cap{position:absolute;left:50%;width:30px;height:11px;transform:translate(-50%,-50%);border-radius:2px;
+    background:linear-gradient(180deg,#eef1f4,#a9afb7);border:1px solid #000;box-shadow:0 2px 4px #000a}
+  .fad .cap::after{content:"";position:absolute;left:3px;right:3px;top:50%;height:2px;background:#e2453f;transform:translateY(-50%)}
+  .master{position:absolute;right:12px;top:20px;display:flex;flex-direction:column;align-items:center;gap:5px}
+  .meter{width:9px;height:74px;border-radius:2px;background:#0a0d10;border:1px solid #000;overflow:hidden;
+    display:flex;flex-direction:column-reverse}
+  .meter i{display:block;width:100%;height:7.1%;background:#16202a}
+  .meter i.on{background:var(--green)}
+  .meter i.on.hi{background:var(--amber)}
+  .meter i.on.pk{background:var(--red)}
+
+  /* ---- painel de pendencias ---- */
+  .chk{display:flex;gap:7px;align-items:flex-start;padding:6px 7px;border-radius:7px;margin-bottom:5px;
+    background:#11151a;border:1px solid #1c2229}
+  .chk.ok{background:#0f2418;border-color:#1e5c38}
+  .chk .b{width:14px;height:14px;border-radius:50%;flex:0 0 auto;margin-top:1px;
+    background:#2a3038;border:1px solid #000;display:flex;align-items:center;justify-content:center;
+    font-size:9px;font-weight:900;color:#6b7684}
+  .chk.ok .b{background:var(--green);color:#062a13}
+  .chk .tx{font-size:10px;line-height:1.3;color:#c2cbd6}
+  .chk.ok .tx{color:#9fe3bb}
+  .chk .tx b{color:#fff}
+  .som{margin-top:8px;padding:9px;border-radius:8px;text-align:center;font-size:11px;font-weight:800;
+    background:#2a1414;border:1px solid #52201c;color:#ff9c90}
+  .som.on{background:#0f2a18;border-color:#1e6b3c;color:#7df0a8}
+  .dica{margin-top:8px;font-size:9.5px;line-height:1.4;color:#8b97a9;border-top:1px dashed #232a32;padding-top:7px}
+  .dica b{color:#cdd5e0}
+</style>
+</head>
+<body>
+<div id="stage">
+<div class="wrap">
+
+  <div class="util">
+    <div class="brand"><b>SMU</b><span class="m">PRO • PRATICANDO — MONTE A SUA CABINE</span></div>
+    <span class="pill"><span class="dot" id="acDot"></span> Áudio <b id="acState">clique em Ligar</b></span>
+    <span class="pill">Sinal <b id="sinal">—</b></span>
+    <span class="spacer"></span>
+    <button class="btnp ghost" id="btnReset">Recomeçar</button>
+    <button class="btnp" id="btnStart">▶ Ligar áudio</button>
+  </div>
+
+  <div class="grid">
+    <!-- 1. escolha dos aparelhos -->
+    <div class="card">
+      <h3>1 · Escolha o equipamento</h3>
+      <div class="slot">
+        <div class="lab">DECK 1</div>
+        <div id="op1"></div>
+      </div>
+      <div class="slot">
+        <div class="lab">DECK 2</div>
+        <div id="op2"></div>
+      </div>
+      <div class="slot">
+        <div class="lab">MIXER</div>
+        <div id="opm"></div>
+      </div>
+    </div>
+
+    <!-- 2. bancada + cabos -->
+    <div class="card">
+      <h3>2 · Ligue os cabos RCA e abra o som</h3>
+      <div class="bancada" id="banc">
+        <svg class="cabos" id="svg"></svg>
+        <div class="apar vazio" id="ap1" style="left:14px;top:12px;width:190px;height:120px"><div class="t">DECK 1</div><div class="s">escolha ao lado</div></div>
+        <div class="apar vazio" id="ap2" style="right:14px;top:12px;width:190px;height:120px"><div class="t">DECK 2</div><div class="s">escolha ao lado</div></div>
+        <div class="mix" id="mix">
+          <div class="mixtit" id="mixtit">MIXER — escolha ao lado</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. pendencias -->
+    <div class="card">
+      <h3>3 · O que falta para sair som</h3>
+      <div id="lista"></div>
+      <div class="som" id="som">SEM SOM</div>
+      <div class="dica">
+        <b>PHONO</b> é só para <b>pickup</b> (toca-discos): o sinal dele é fraco e precisa do pré-amplificador.<br>
+        <b>LINE</b> é para fonte digital (<b>CDJ/XDJ</b>), que já sai com nível forte.<br>
+        Trocar os dois <b>não</b> funciona: CDJ no PHONO satura e distorce; pickup no LINE quase não se ouve.
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+
+/* ---------- catálogo: o que o aluno pode escolher ---------- */
+const DECKS=[
+  {id:"cdj1000", nome:"Pioneer CDJ-1000MK3", tipo:"CD player",   saida:"LINE",  vinil:false},
+  {id:"cdj400",  nome:"Pioneer CDJ-400",     tipo:"CD/USB",       saida:"LINE",  vinil:false},
+  {id:"xdj1000", nome:"Pioneer XDJ-1000MK2", tipo:"player USB",   saida:"LINE",  vinil:false},
+  {id:"plx1000", nome:"Pioneer PLX-1000",    tipo:"toca-discos",  saida:"PHONO", vinil:true},
+  {id:"sl1200",  nome:"Technics SL-1200MK7", tipo:"toca-discos",  saida:"PHONO", vinil:true},
+];
+const MIXERS=[
+  {id:"djm600",   nome:"Pioneer DJM-600",    canais:4},
+  {id:"djm800",   nome:"Pioneer DJM-800",    canais:4},
+  {id:"djm900",   nome:"Pioneer DJM-900NXS2",canais:4},
+];
+
+/* ---------- estado ---------- */
+const S={ d1:null, d2:null, mix:null,
+  cabo:{1:null,2:null},            /* cabo[deck] = nº do canal do mixer */
+  entrada:{1:"LINE",2:"LINE"},     /* chave do canal: LINE ou PHONO */
+  trim:{1:.5,2:.5}, fader:{1:0,2:0}, master:0,
+  ligando:null };
+
+let AC=null, started=false, ready=false, MIXOUT=null, masterGain=null, an=null;
+const src={};                       /* fontes de áudio por deck */
+
+/* ---------- montagem das listas ---------- */
+function opcao(o, sel, onclick){
+  const d=document.createElement("div");
+  d.className="opt"+(o.vinil?" vinil":"")+(sel?" on":"");
+  d.innerHTML=`<div class="ic"></div><div><div class="nm">${o.nome}</div><div class="tp">${o.tipo||o.canais+" canais"}</div></div>`+
+    (o.saida?`<span class="tag ${o.saida.toLowerCase()}">${o.saida}</span>`:"");
+  d.onclick=onclick; return d;
+}
+function pintarOpcoes(){
+  const c1=$("#op1"), c2=$("#op2"), cm=$("#opm");
+  c1.innerHTML=""; c2.innerHTML=""; cm.innerHTML="";
+  DECKS.forEach(o=>{
+    c1.appendChild(opcao(o,S.d1?.id===o.id,()=>{ S.d1=o; S.cabo[1]=null; montar(); }));
+    c2.appendChild(opcao(o,S.d2?.id===o.id,()=>{ S.d2=o; S.cabo[2]=null; montar(); }));
+  });
+  MIXERS.forEach(o=> cm.appendChild(opcao(o,S.mix?.id===o.id,()=>{ S.mix=o; S.cabo[1]=S.cabo[2]=null; montar(); })));
+}
+
+/* ---------- bancada ---------- */
+function montar(){
+  // aparelhos
+  [[1,"#ap1",S.d1],[2,"#ap2",S.d2]].forEach(([n,sel,d])=>{
+    const el=$(sel);
+    el.className="apar"+(d?"":" vazio");
+    el.innerHTML = d ? `<div class="t">${d.nome}</div><div class="s">saída ${d.saida}</div>`
+                     : `<div class="t">DECK ${n}</div><div class="s">escolha ao lado</div>`;
+    // saída do aparelho (um jack por deck)
+    if(d){
+      const j=document.createElement("div");
+      j.className="jack "+d.saida.toLowerCase()+(S.cabo[n]?" ok":"");
+      j.style.left="50%"; j.style.bottom="-8px"; j.style.marginLeft="-7px";
+      j.title="Saída "+d.saida;
+      j.onclick=e=>{ e.stopPropagation(); S.ligando={deck:n}; pintar(); };
+      if(S.ligando?.deck===n) j.classList.add("sel");
+      el.appendChild(j);
+      const t=document.createElement("div"); t.className="jlab";
+      t.style.left="50%"; t.style.bottom="-19px"; t.style.transform="translateX(-50%)";
+      t.textContent="OUT "+d.saida; el.appendChild(t);
+    }
+  });
+  // mixer
+  const mx=$("#mix");
+  mx.querySelectorAll(".ch,.master,.chjack,.jlab").forEach(e=>e.remove());
+  $("#mixtit").textContent = S.mix ? S.mix.nome.toUpperCase() : "MIXER — escolha ao lado";
+  if(S.mix){
+    const nC=2;                                  /* usamos 2 canais na prática */
+    for(let c=1;c<=nC;c++){
+      const ch=document.createElement("div"); ch.className="ch";
+      ch.style.left=(18+(c-1)*76)+"px";
+      ch.innerHTML=`<div class="cn">CH ${c}</div>`;
+      // chave LINE/PHONO
+      const sw=document.createElement("div"); sw.className="sel2";
+      sw.innerHTML=`<span class="${S.entrada[c]==="LINE"?"on":""}">LINE</span><span class="${S.entrada[c]==="PHONO"?"on ph":""}">PHONO</span>`;
+      sw.onclick=()=>{ S.entrada[c]= S.entrada[c]==="LINE"?"PHONO":"LINE"; montar(); };
+      ch.appendChild(sw);
+      // entrada RCA do canal
+      const j=document.createElement("div"); j.className="jack chjack "+S.entrada[c].toLowerCase();
+      j.style.position="relative"; j.style.margin="2px 0";
+      const usado=Object.entries(S.cabo).find(([,v])=>v===c);
+      if(usado) j.classList.add("ok");
+      j.title="Entrada do canal "+c;
+      j.onclick=()=>{ if(S.ligando){ // liga o cabo
+          Object.keys(S.cabo).forEach(k=>{ if(S.cabo[k]===c) S.cabo[k]=null; });
+          S.cabo[S.ligando.deck]=c; S.ligando=null; montar(); } };
+      ch.appendChild(j);
+      // trim
+      const kb=knob(v=>{S.trim[c]=v; aplicar();}, S.trim[c]); ch.appendChild(kb);
+      const kl=document.createElement("div"); kl.className="kl"; kl.textContent="TRIM"; ch.appendChild(kl);
+      // fader
+      const fd=fader(v=>{S.fader[c]=v; aplicar();}, S.fader[c]); ch.appendChild(fd);
+      mx.appendChild(ch);
+    }
+    // master
+    const ms=document.createElement("div"); ms.className="master";
+    ms.innerHTML=`<div class="cn">MASTER</div>`;
+    const mk=knob(v=>{S.master=v; aplicar();}, S.master); ms.appendChild(mk);
+    const ml=document.createElement("div"); ml.className="kl"; ml.textContent="LEVEL"; ms.appendChild(ml);
+    const mt=document.createElement("div"); mt.className="meter"; mt.id="mtr";
+    for(let i=0;i<14;i++){ const b=document.createElement("i"); b.className=i>11?"pk":i>8?"hi":""; mt.appendChild(b); }
+    ms.appendChild(mt); mx.appendChild(ms);
+  }
+  pintar(); aplicar();
+}
+
+function knob(cb, val){
+  const k=document.createElement("div"); k.className="knob"; k.innerHTML="<i></i>";
+  const põe=()=>{ k.style.transform="rotate("+(-140+val*280)+"deg)"; };
+  põe();
+  let drag=false,y0=0,v0=0;
+  k.addEventListener("pointerdown",e=>{drag=true;y0=e.clientY;v0=val;k.setPointerCapture(e.pointerId);});
+  k.addEventListener("pointermove",e=>{ if(!drag)return; val=clamp(v0+(y0-e.clientY)/150,0,1); põe(); cb(val); });
+  const up=()=>drag=false; k.addEventListener("pointerup",up); k.addEventListener("pointercancel",up);
+  return k;
+}
+function fader(cb, val){
+  const f=document.createElement("div"); f.className="fad";
+  const cap=document.createElement("div"); cap.className="cap"; f.appendChild(cap);
+  const põe=()=>{ cap.style.top=(6+(1-val)*88)+"%"; };
+  põe();
+  let drag=false;
+  const mv=e=>{ if(!drag)return; const r=f.getBoundingClientRect();
+    val=clamp(1-(e.clientY-r.top)/r.height,0,1); põe(); cb(val); };
+  f.addEventListener("pointerdown",e=>{drag=true;f.setPointerCapture(e.pointerId);mv(e);});
+  f.addEventListener("pointermove",mv);
+  const up=()=>drag=false; f.addEventListener("pointerup",up); f.addEventListener("pointercancel",up);
+  return f;
+}
+
+/* ---------- cabos desenhados ---------- */
+function pintar(){
+  const svg=$("#svg"), b=$("#banc").getBoundingClientRect();
+  svg.innerHTML="";
+  [1,2].forEach(n=>{
+    const c=S.cabo[n]; if(!c) return;
+    const de=$(n===1?"#ap1":"#ap2")?.querySelector(".jack");
+    const chs=$$("#mix .ch")[c-1]; const para=chs?.querySelector(".chjack");
+    if(!de||!para) return;
+    const r1=de.getBoundingClientRect(), r2=para.getBoundingClientRect();
+    const x1=r1.left+r1.width/2-b.left, y1=r1.top+r1.height/2-b.top;
+    const x2=r2.left+r2.width/2-b.left, y2=r2.top+r2.height/2-b.top;
+    const certo = S.d1&&S.d2 ? (n===1?S.d1:S.d2).saida===S.entrada[c] : true;
+    const cor = certo? "#39d271" : "#ff4636";
+    const p=document.createElementNS("http://www.w3.org/2000/svg","path");
+    p.setAttribute("d",`M${x1},${y1} C${x1},${y1+60} ${x2},${y2-60} ${x2},${y2}`);
+    p.setAttribute("stroke",cor); p.setAttribute("stroke-width","3"); p.setAttribute("fill","none");
+    p.setAttribute("opacity",".9"); svg.appendChild(p);
+  });
+  checklist();
+}
+
+/* ---------- pendências ---------- */
+function checklist(){
+  const d1=S.d1, d2=S.d2, mx=S.mix;
+  const cabo1=S.cabo[1], cabo2=S.cabo[2];
+  const casa=(d,c)=> d&&c ? d.saida===S.entrada[c] : false;
+  const it=[
+    [!!d1 && !!d2, "Escolher os <b>dois decks</b>", "Sem fonte não há música: o mixer <b>não toca sozinho</b>."],
+    [!!mx, "Escolher o <b>mixer</b>", "O CDJ/pickup não vai direto na caixa — precisa passar pelo mixer."],
+    [!!cabo1 && !!cabo2, "Ligar o <b>cabo RCA</b> de cada deck num canal", "Clique na saída do aparelho e depois na entrada do canal."],
+    [casa(d1,cabo1) && casa(d2,cabo2), "Pôr a chave do canal na <b>entrada certa</b>",
+      "CDJ/XDJ = <b>LINE</b> · pickup = <b>PHONO</b>. Errado, o som não passa."],
+    [S.fader[1]>0.05 || S.fader[2]>0.05, "Subir o <b>fader do canal</b>", "Ele começa no mínimo, como numa cabine de verdade."],
+    [S.master>0.05, "Abrir o <b>MASTER</b>", "O master começa fechado: é o último a subir e o primeiro a baixar."],
+  ];
+  const L=$("#lista"); L.innerHTML="";
+  it.forEach(([ok,t,ajuda])=>{
+    const d=document.createElement("div"); d.className="chk"+(ok?" ok":"");
+    d.innerHTML=`<div class="b">${ok?"✓":"!"}</div><div class="tx">${t}${ok?"":"<br><span style='color:#7f8b9c'>"+ajuda+"</span>"}</div>`;
+    L.appendChild(d);
+  });
+  const tudo=it.every(([o])=>o);
+  const s=$("#som"); s.className="som"+(tudo?" on":"");
+  s.textContent = tudo ? "SOM NO AR ♪" : "SEM SOM";
+  $("#sinal").textContent = tudo ? "passando" : "interrompido";
+  return tudo;
+}
+
+/* ---------- áudio ---------- */
+async function renderTrack(seed){
+  const sr=44100,bpm=126,spb=60/bpm,bars=16,dur=spb*4*bars;
+  const off=new OfflineAudioContext(2,Math.ceil(dur*sr),sr),dst=off.destination;
+  const noise=off.createBuffer(1,sr*0.4,sr),nd=noise.getChannelData(0);
+  for(let i=0;i<nd.length;i++)nd[i]=Math.random()*2-1;
+  const step=spb/4;
+  const K=[1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0],S2=[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
+        H=[0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0],B=seed?[1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0]:[1,0,1,0,0,1,0,0,1,0,0,1,0,1,0,0];
+  const kick=t=>{const o=off.createOscillator(),a=off.createGain();o.frequency.setValueAtTime(150,t);
+    o.frequency.exponentialRampToValueAtTime(48,t+0.12);a.gain.setValueAtTime(0.85,t);
+    a.gain.exponentialRampToValueAtTime(0.001,t+0.3);o.connect(a);a.connect(dst);o.start(t);o.stop(t+0.32);};
+  const clap=t=>{const s=off.createBufferSource();s.buffer=noise;const bp=off.createBiquadFilter();
+    bp.type="bandpass";bp.frequency.value=1800;const a=off.createGain();a.gain.setValueAtTime(0.5,t);
+    a.gain.exponentialRampToValueAtTime(0.001,t+0.15);s.connect(bp);bp.connect(a);a.connect(dst);s.start(t);s.stop(t+0.17);};
+  const hat=t=>{const s=off.createBufferSource();s.buffer=noise;const hp=off.createBiquadFilter();
+    hp.type="highpass";hp.frequency.value=8200;const a=off.createGain();a.gain.setValueAtTime(0.22,t);
+    a.gain.exponentialRampToValueAtTime(0.001,t+0.05);s.connect(hp);hp.connect(a);a.connect(dst);s.start(t);s.stop(t+0.08);};
+  const bass=t=>{const o=off.createOscillator();o.type="sawtooth";o.frequency.value=seed?110:98;
+    const lp=off.createBiquadFilter();lp.type="lowpass";lp.frequency.setValueAtTime(460,t);
+    lp.frequency.exponentialRampToValueAtTime(120,t+0.15);lp.Q.value=5;const a=off.createGain();
+    a.gain.setValueAtTime(0.0001,t);a.gain.linearRampToValueAtTime(0.38,t+0.01);
+    a.gain.exponentialRampToValueAtTime(0.001,t+0.2);o.connect(lp);lp.connect(a);a.connect(dst);o.start(t);o.stop(t+0.22);};
+  for(let bar=0;bar<bars;bar++)for(let st=0;st<16;st++){const t=(bar*16+st)*step;
+    if(K[st])kick(t);if(S2[st])clap(t);if(H[st])hat(t);if(B[st])bass(t);}
+  return await off.startRendering();
+}
+
+async function startAudio(){ if(started)return; started=true;
+  $("#acState").textContent="carregando…";
+  AC=new (window.AudioContext||window.webkitAudioContext)();
+  masterGain=AC.createGain(); masterGain.gain.value=0;
+  an=AC.createAnalyser(); masterGain.connect(an); masterGain.connect(AC.destination);
+  for(const n of [1,2]){
+    const buf=await renderTrack(n===1);
+    const g=AC.createGain(); g.gain.value=0; g.connect(masterGain);
+    const s=AC.createBufferSource(); s.buffer=buf; s.loop=true; s.connect(g); s.start();
+    src[n]={src:s,gain:g};
+  }
+  ready=true;
+  $("#acDot").classList.add("on"); $("#acState").textContent="ligado"; $("#btnStart").textContent="● Áudio ligado";
+  if(AC.resume)AC.resume();
+  aplicar(); medir();
+}
+
+function aplicar(){
+  const tudo=checklist();
+  if(!ready) return;
+  [1,2].forEach(n=>{
+    const c=S.cabo[n]; const d=n===1?S.d1:S.d2;
+    let g=0;
+    if(tudo && c && d && d.saida===S.entrada[c]) g=S.fader[c]*(0.4+S.trim[c]*0.9)*0.8;
+    src[n].gain.gain.value=g;
+  });
+  masterGain.gain.value = tudo ? S.master*1.1 : 0;
+}
+function medir(){ requestAnimationFrame(medir);
+  const m=$("#mtr"); if(!m||!ready) return;
+  const b=new Uint8Array(an.fftSize); an.getByteTimeDomainData(b);
+  let pk=0; for(const v of b){const x=Math.abs(v-128)/128; if(x>pk)pk=x;}
+  const n=m.children.length, lit=Math.round(clamp(pk*1.6,0,1)*n);
+  for(let i=0;i<n;i++) m.children[i].classList.toggle("on", i<lit);
+}
+
+/* ---------- boot ---------- */
+function init(){
+  pintarOpcoes(); montar();
+  $("#btnStart").addEventListener("pointerdown",()=>startAudio());
+  $("#btnReset").addEventListener("pointerdown",()=>location.reload());
+  const fit=()=>{ const w=$(".wrap");
+    const s=Math.max(0.1,Math.min((window.innerWidth-6)/w.offsetWidth,(window.innerHeight-6)/w.offsetHeight,1));
+    $("#stage").style.transform="scale("+s+")"; };
+  window.addEventListener("resize",fit); fit();
+  window.addEventListener("resize",pintar);
+}
+init();
+</script>
+</body>
+</html>
