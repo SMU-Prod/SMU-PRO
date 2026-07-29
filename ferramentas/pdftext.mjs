@@ -196,6 +196,30 @@ for (const [, o] of [...objs]) {
 
 const resolve = ref => { const r = /^\s*(\d+)\s+\d+\s+R/.exec(ref); return r ? objs.get(+r[1]) : null; };
 
+/* ---------- --dump-images <pasta>: extrai os Image XObject (para usar o diagrama do manual) ---------- */
+const dumpIdx = process.argv.indexOf("--dump-images");
+if (dumpIdx > 0) {
+  const out = process.argv[dumpIdx + 1] || ".";
+  fs.mkdirSync(out, { recursive: true });
+  let n = 0;
+  for (const [num, o] of objs) {
+    if (!/\/Subtype\s*\/Image/.test(o.head) || !o.data) continue;
+    const w = +(/\/Width\s+(\d+)/.exec(o.head)?.[1] || 0);
+    const h = +(/\/Height\s+(\d+)/.exec(o.head)?.[1] || 0);
+    let ext = "bin";
+    if (/DCTDecode/.test(o.head)) ext = "jpg";           // JPEG: o stream JÁ é um .jpg válido
+    else if (/JPXDecode/.test(o.head)) ext = "jp2";       // JPEG2000 (não visualizável aqui)
+    else if (/CCITTFax/.test(o.head)) ext = "fax";
+    else if (/FlateDecode/.test(o.head)) ext = "raw";     // bitmap cru inflado (precisa montar PNG)
+    const nome = `${out}/img_${String(num).padStart(4, "0")}_${w}x${h}.${ext}`;
+    fs.writeFileSync(nome, o.data);
+    if (w * h > 20000 || ext === "jpg") console.log(`  ${ext.toUpperCase().padEnd(4)} ${String(w).padStart(4)}x${String(h).padStart(4)}  ${nome.split("/").pop()}`);
+    n++;
+  }
+  console.error(`[imgs] ${n} imagem(ns) extraída(s) em ${out}`);
+  process.exit(0);
+}
+
 /* ---------- CMaps: o que traduz glifo -> letra ----------
    Os manuais da Pioneer usam fontes CID (Identity-H): o literal do PDF guarda o ÍNDICE DO GLIFO,
    não o código da letra. Sem o /ToUnicode da fonte, "SPECIFICATIONS" sai como bytes sem sentido.

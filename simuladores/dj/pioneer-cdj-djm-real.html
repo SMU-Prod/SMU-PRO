@@ -436,7 +436,7 @@ const HCCOLORS={A:"#ff5c5c",B:"#ffb03a",C:"#ffe14d",D:"#7CFC5A",E:"#4de1c3",F:"#
 
 /* ---------- render das faixas (32 compassos, groove por deck) ---------- */
 async function renderTrack(kind){
-  const sr=44100, bpm=kind==="A"?124:128, root=kind==="A"?110:98, spb=60/bpm, bars=48, dur=spb*4*bars;
+  const sr=44100, bpm=kind==="A"?124:128, root=kind==="A"?110:98, spb=60/bpm, bars=16, dur=spb*4*bars;
   const off=new OfflineAudioContext(2,Math.ceil(dur*sr),sr), dst=off.destination;
   const noise=off.createBuffer(1,sr*0.4,sr); const nd=noise.getChannelData(0);
   for(let i=0;i<nd.length;i++)nd[i]=Math.random()*2-1;
@@ -541,7 +541,7 @@ function buildDeck(id,buffer){
   d.eqMid=AC.createBiquadFilter(); d.eqMid.type="peaking"; d.eqMid.frequency.value=1000; d.eqMid.Q.value=0.8;
   d.eqHi=AC.createBiquadFilter(); d.eqHi.type="highshelf"; d.eqHi.frequency.value=3500;
   d.color=AC.createBiquadFilter(); d.color.type="allpass"; d.color.frequency.value=1000;
-  d.fader=AC.createGain(); d.fader.gain.value=0;
+  d.fader=AC.createGain(); d.fader.gain.value=0.8;
   d.xf=AC.createGain(); d.xf.gain.value=1;
   d.pfl=AC.createGain(); d.pfl.gain.value=0;
   d.pre.connect(d.trim); d.trim.connect(d.eqLow); d.eqLow.connect(d.eqMid); d.eqMid.connect(d.eqHi); d.eqHi.connect(d.color);
@@ -556,8 +556,14 @@ function buildDeck(id,buffer){
       else { const tgt=d.playing? (1+d.pitch/100):0; d.rate+=(tgt-d.rate)*0.0022; d.pos+=d.rate; }
       if(d.loopOn&&d.rate>0&&d.pos>=d.loopEnd)d.pos=d.loopStart+(d.pos-d.loopEnd);
       // faixa (não é anel): trava no início e no fim
-      if(d.pos<0){ d.pos=0; if(d.targetPos<0)d.targetPos=0; d.rate=0; }
-      else if(d.pos>=len-1){ d.pos=len-1; if(d.targetPos>len-1)d.targetPos=len-1; d.rate=0; }
+      if(d.touching){
+        if(d.pos<0){ d.pos=0; if(d.targetPos<0)d.targetPos=0; d.rate=0; }
+        else if(d.pos>len-1){ d.pos=len-1; if(d.targetPos>len-1)d.targetPos=len-1; d.rate=0; }
+      } else {
+        // LOOP CONTÍNUO: passou do fim volta ao começo (antes travava em len-1 e não dava play de novo)
+        if(d.pos>=len) d.pos-=len;
+        else if(d.pos<0) d.pos+=len;
+      }
       let i0=Math.floor(d.pos); const fr=d.pos-i0; i0=((i0%len)+len)%len; const i1=(i0+1)%len;
       out[i]=data[i0]*(1-fr)+data[i1]*fr;
     } };
@@ -810,7 +816,7 @@ function init(){
       else if(act==="master"){ window._masterDeck=id; $$('.tled[data-act="master"]').forEach(x=>x.classList.remove("on")); b.classList.add("on"); syncFxTime(); } })); });
   $$('.knob[data-ck]').forEach(el=>bindKnob(el,val=>applyChannel(el.dataset.deck,el.dataset.ck,val)));
   $$('.knob[data-knob]').forEach(el=>bindKnob(el,val=>applyMaster(el.dataset.knob,val)));
-  $$('.fadc[data-ck="fader"]').forEach(el=>bindVFader(el,val=>{ const dk=el.dataset.deck; if(decks[dk])decks[dk].fader.gain.value=val; },0));
+  $$('.fadc[data-ck="fader"]').forEach(el=>bindVFader(el,val=>{ const dk=el.dataset.deck; if(decks[dk])decks[dk].fader.gain.value=val; },0.8));
   $$('.cue-pfl[data-ck="cue"]').forEach(el=>el.addEventListener("pointerdown",()=>{ const dk=el.dataset.deck; if(!dk||!ready)return;
     el.classList.toggle("on"); const on=el.classList.contains("on"); decks[dk].pfl.gain.value=on?1:0; if(on&&dk==="B")markMission("cueB"); }));
   bindXF();

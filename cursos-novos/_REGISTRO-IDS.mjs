@@ -80,6 +80,9 @@ export const REGISTRO = {
   "pleno-dj":         { curso: "dj",                  mod: "d15d0000", aula: "d15d0000",
                         dono: "cursos-novos/pleno-dj",
                         obs: "miolo 57d1-4d00; curso 127588cc; também aparece d1000000-*" },
+  "dj-catalogo":      { curso: "dj",                  mod: "d1a00000", aula: "d1a00000",
+                        dono: "cursos-novos/pleno-dj/apply-catalogo-*.mjs",
+                        obs: "catálogo por MARCA (Pioneer/Technics/Denon/Numark); cada modelo uma aula. Miolo 0000-4000-9000." },
 
   // ⚠️ FAIXA COMPARTILHADA POR 4 SCRIPTS — a que mais exige cuidado hoje.
   // `5504c000` (miolo 5011-4a00) é o espaço do curso PLENO — SOM. Escrevem nela:

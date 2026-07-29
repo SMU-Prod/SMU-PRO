@@ -1,0 +1,966 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>Pioneer XDJ-700 — réplica fiel (SMU)</title>
+<style>
+  /* ==========================================================================
+     PIONEER XDJ-700 — réplica DESENHADA (CSS + canvas), medida na FOTO
+     TOP-DOWN OFICIAL da Pioneer DJ (render CGI "Top", 1062x1277 px)
+     pelo método dos QUADRANTES do dono (X1..X10 altura / Y1..Y8 largura).
+
+     FONTE DE VERDADE / conferência de escala:
+       · painel útil na foto = 982 x 1229 px  (bbox x 44..1026, y 16..1245)
+       · display de 7" 16:9 (155 x 87 mm) mede 633 x 343 px na foto
+         -> 4,08 px/mm  =>  painel = 241 x 312 mm  (bate com a spec 238 x 308)
+       · jog, CUE, PLAY e TRACK SEARCH são CÍRCULOS em pixel => render ortográfico
+     PROPORÇÃO ADOTADA: 238 (L) x 308 (P) mm  — ver nota no relatório.
+
+     O XDJ-700 é um player de UM deck (não é all-in-one): não tem mixer nem
+     crossfader. Toda a área central de cima é a TELA TOUCH de 7" — os botões
+     BROWSE/TAG LIST/INFO/MENU/PERFORM, a coluna rekordbox/LINK/USB, SYNC,
+     MASTER, QUANTIZE, MEMORY, CALL e ZOOM são TOQUES NA TELA, e por isso são
+     desenhados DENTRO do canvas do visor (nada físico fica por cima da tela).
+     ========================================================================== */
+  :root{
+    --ink:#e9eef7; --amber:#ffae1a; --green:#39d271; --blue:#37a2ff;
+    --silk:#eef1f5;                    /* serigrafia branca do XDJ-700 */
+    --silk2:#b6bcc3;
+    --cyan:#28e0ff;                    /* LED do VINYL MODE */
+    --orange:#ff7a18;                  /* LED do MASTER TEMPO */
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{ background:radial-gradient(1100px 640px at 50% -10%,#26292e,#0a0b0d 62%),#08090b; color:var(--ink);
+    font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;
+    user-select:none;overflow:hidden;display:flex;align-items:flex-start;justify-content:center}
+  #stage{transform-origin:top center;flex:0 0 auto}
+  .wrap{width:452px;display:flex;flex-direction:column;gap:8px;padding:10px}
+  /* contrato html.smu-fs: em tela cheia o player avisa e o sim deixa o corpo crescer */
+  html.smu-fs .wrap{padding:4px}
+
+  .util{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:linear-gradient(180deg,#202329,#15171b);border:1px solid #0c0d0f;border-radius:11px;padding:7px 11px}
+  .brand b{font-size:15px;letter-spacing:1px;color:#eef2f8}
+  .brand .m{font-size:9px;letter-spacing:2px;color:#8a94a4;text-transform:uppercase;margin-left:6px}
+  .pill{font-size:10px;color:#8b97a9;background:#0c0e12;border:1px solid #2a2f37;border-radius:16px;padding:4px 9px;display:flex;align-items:center;gap:6px}
+  .pill b{color:#fff}.dot{width:8px;height:8px;border-radius:50%;background:#444}.dot.on{background:var(--green);box-shadow:0 0 8px var(--green)}
+  .spacer{flex:1}
+  .btnp{font:inherit;font-size:11px;font-weight:700;border:0;border-radius:8px;padding:6px 11px;cursor:pointer;color:#07120b;background:linear-gradient(180deg,#5be59a,#27b566)}
+  .btnp.ghost{background:transparent;color:#8b97a9;border:1px solid #2a2f37}
+  .mission{display:flex;align-items:center;gap:8px;background:#0c0e12;border:1px solid #2a2f37;border-radius:9px;padding:5px 10px;flex:1 1 220px;min-width:0}
+  .mission .idx{font-size:10px;color:var(--amber);font-weight:800;white-space:nowrap}
+  .mission .txt{font-size:11px;line-height:1.2}.mission .txt b{color:#fff}.mission .txt small{color:#8b97a9}
+
+  /* ===================== CORPO: preto, dois blocos ========================== */
+  .deck{position:relative;width:100%;aspect-ratio:238/308;border-radius:9px 9px 7px 7px;
+    background:linear-gradient(180deg,#141518 0%,#0e0f11 30%,#0b0c0e 100%);
+    box-shadow:0 26px 60px #000d, inset 0 1px 0 #ffffff1c, inset 0 -6px 16px #0008,
+               0 0 0 1px #000, 0 0 0 2px #34363a;
+    overflow:hidden;font-family:"Arial Narrow",Arial,Helvetica,sans-serif}
+
+  /* bloco de cima: painel do visor, preto PIANO (brilhante) */
+  .header{position:absolute;left:0;right:0;top:0.9%;height:35.1%;z-index:1;pointer-events:none;
+    background:linear-gradient(177deg,#17181b 0%,#0d0e10 22%,#08090a 62%,#101113 100%)}
+  .header::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(120% 80% at 74% -18%,rgba(255,255,255,.075),transparent 58%),
+               linear-gradient(112deg,transparent 30%,rgba(255,255,255,.035) 44%,rgba(255,255,255,.055) 47%,transparent 60%)}
+
+  /* frisos de chanfro do topo (traseira) */
+  .rearlip{position:absolute;left:0;right:0;top:0;height:1.0%;z-index:2;pointer-events:none;
+    background:linear-gradient(180deg,#3c3e42,#1c1d20 65%,#0a0b0c);border-bottom:1px solid #000}
+
+  /* faixa CROMADA que separa o painel do visor do painel de controles */
+  .divider{position:absolute;left:0;right:0;top:35.9%;height:1.85%;z-index:2;pointer-events:none;
+    background:linear-gradient(180deg,#0a0a0b 0%,#4a4d51 12%,#e6eaee 34%,#f6f8fa 46%,#9ea3a9 62%,#3c3f43 80%,#0b0c0d 100%);
+    box-shadow:0 1px 3px #000a}
+
+  /* bloco de baixo: alumínio ESCOVADO escuro (linhas horizontais finas) */
+  .lower{position:absolute;left:0;right:0;top:37.75%;bottom:1.2%;z-index:1;pointer-events:none;
+    background:
+      repeating-linear-gradient(0deg,rgba(255,255,255,.030) 0 1px,rgba(0,0,0,.05) 1px 2px),
+      linear-gradient(102deg,#1b1c1f 0%,#232427 16%,#1a1b1e 42%,#212225 66%,#171819 88%,#1e1f22 100%)}
+  .lower::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(90% 55% at 18% 8%,rgba(255,255,255,.07),transparent 60%),
+               radial-gradient(70% 45% at 86% 96%,rgba(255,255,255,.05),transparent 62%)}
+
+  /* chanfro frontal */
+  .frontlip{position:absolute;left:0;right:0;bottom:0;height:1.25%;z-index:2;pointer-events:none;
+    background:linear-gradient(180deg,#101113,#26282b 42%,#0a0b0c);border-top:1px solid #000}
+
+  /* vinheta suave por cima */
+  .deck::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:9;border-radius:9px;
+    background:radial-gradient(128% 104% at 50% 42%, transparent 70%, rgba(0,0,0,.26) 100%)}
+
+  /* ===================== SERIGRAFIA ======================================== */
+  .lab{position:absolute;font-size:8px;line-height:1.12;letter-spacing:.35px;color:var(--silk);font-weight:700;
+    text-transform:uppercase;text-shadow:0 1px 1px #000c;pointer-events:none;white-space:nowrap;z-index:4;
+    transform:translate(-50%,-50%);text-align:center}
+  .lab.sm{font-size:6.9px;letter-spacing:.28px;color:#dfe3e8}
+  .lab.xs{font-size:5.4px;letter-spacing:.22px;color:#c8ccd2}
+  .lab.badge{color:#111214;background:#e3e6ea;border-radius:2px;padding:.6px 2.6px;text-shadow:none;font-size:6.2px;letter-spacing:.3px}
+  .lab.model{font-size:13px;font-weight:400;letter-spacing:.2px;color:#f2f4f7;font-family:"Arial Narrow",Arial,sans-serif}
+  .lab.multi{font-size:6.4px;letter-spacing:.5px;color:#eaedf1}
+  .lab.rb{font-size:9.5px;font-weight:900;letter-spacing:-.2px;color:#f4f6f8;text-transform:none}
+  .lab.rb i{font-style:normal;font-weight:400}
+  .lab.fmt{font-size:6.2px;font-style:italic;font-weight:800;letter-spacing:.1px;color:#dfe3e8}
+  .lab.pio{font-size:16px;font-weight:900;font-style:italic;letter-spacing:.4px;color:#f4f6f9;
+    text-transform:none;text-shadow:0 1px 2px #000,0 0 1px #fff3}
+  .lab.pio i{font-style:normal;font-weight:800;font-size:13px;margin-left:2px}
+
+  .rule{position:absolute;z-index:4;background:var(--silk);pointer-events:none;box-shadow:0 1px 1px #000a}
+  .dash{position:absolute;z-index:4;pointer-events:none;
+    background:repeating-linear-gradient(180deg,#e6e9ed 0 1.6px,transparent 1.6px 5px);width:.9px}
+
+  /* ===================== BOTÕES ============================================ */
+  /* redondo AMARELO (LOOP IN / OUT) */
+  .yel{position:absolute;z-index:5;cursor:pointer;border-radius:50%;min-width:0;overflow:hidden;
+    background:radial-gradient(circle at 48% 30%,#fff6b8 0%,#ffe23a 26%,#ffc400 58%,#e08a00 88%,#a35f00 100%);
+    border:1px solid #4a3200;
+    box-shadow:0 0 0 3px #0b0b0c, 0 0 0 5px #2b2d30, 0 0 0 6px #0a0a0b,
+               0 3px 6px #000b, inset 0 2px 3px #fffa, inset 0 -4px 8px #00000055, 0 0 10px #ffb61a55}
+  .yel.dim{background:radial-gradient(circle at 48% 30%,#8d7a2e 0%,#7a6820 40%,#54470f 100%);
+    box-shadow:0 0 0 3px #0b0b0c,0 0 0 5px #2b2d30,0 0 0 6px #0a0a0b,0 3px 6px #000b,inset 0 2px 3px #ffffff35}
+  .yel.on{box-shadow:0 0 0 3px #0b0b0c, 0 0 0 5px #2b2d30, 0 0 0 6px #0a0a0b,
+          0 3px 6px #000b, inset 0 2px 3px #fffc, 0 0 16px #ffc42acc}
+  .yel:active{transform:translateY(.6px)}
+
+  /* redondo pequeno âmbar (RELOOP/EXIT) — cápsula dentro de poço */
+  .amb{position:absolute;z-index:5;cursor:pointer;border-radius:50%;min-width:0;overflow:hidden;
+    background:radial-gradient(circle at 50% 50%,#ffd76a 0%,#ffae12 34%,#171719 42%,#101012 100%);
+    border:1px solid #000;
+    box-shadow:0 0 0 2.4px #17181a, 0 0 0 4px #303236, 0 2px 4px #000a, inset 0 1px 1px #ffffff22}
+  .amb.dim{background:radial-gradient(circle at 50% 50%,#7d6524 0%,#5c4712 34%,#171719 42%,#101012 100%)}
+  .amb.on{box-shadow:0 0 0 2.4px #17181a,0 0 0 4px #303236,0 2px 4px #000a,0 0 12px #ffb42aaa}
+  .amb:active{transform:translateY(.5px)}
+
+  /* redondo PRETO com espelho (TRACK SEARCH / SEARCH / TAG TRACK) */
+  .rdk{position:absolute;z-index:5;cursor:pointer;border-radius:50%;min-width:0;overflow:hidden;
+    background:radial-gradient(circle at 50% 26%,#43464b 0%,#2a2c30 42%,#141518 76%,#0c0d0f 100%);
+    border:1px solid #000;
+    box-shadow:0 0 0 2.2px #0a0a0b, 0 0 0 3.6px #303236, 0 2px 4px #000a,
+               inset 0 1px 1px #ffffff2e, inset 0 -3px 6px #0007;
+    display:flex;align-items:center;justify-content:center}
+  .rdk svg{width:58%;height:auto;display:block;filter:drop-shadow(0 1px 1px rgba(0,0,0,.7))}
+  .rdk::after{content:"";position:absolute;left:8%;right:8%;top:4%;bottom:4%;border-radius:50%;pointer-events:none;
+    background:linear-gradient(112deg,transparent 34%,rgba(255,255,255,.30) 46%,rgba(255,255,255,.10) 52%,transparent 62%)}
+  .rdk:active{transform:translateY(.5px)}
+  .rdk.lit{box-shadow:0 0 0 2.2px #0a0a0b,0 0 0 3.6px #303236,0 2px 4px #000a,inset 0 1px 1px #ffffff44,0 0 10px #6fb6ff99}
+
+  /* BACK — redondo preto com ANEL CROMADO (como na foto) */
+  .rback{position:absolute;z-index:5;cursor:pointer;border-radius:50%;min-width:0;overflow:hidden;
+    background:radial-gradient(circle at 50% 28%,#3a3d42 0%,#232529 45%,#101113 80%,#0a0b0c 100%);
+    border:1px solid #000;
+    box-shadow:0 0 0 1.6px #0a0a0b, 0 0 0 3.6px #e2e6ea, 0 0 0 4.6px #0a0a0b, 0 2px 4px #000a,
+               inset 0 1px 1px #ffffff2a, inset 0 -3px 6px #0007}
+  .rback::after{content:"";position:absolute;left:14%;right:14%;top:10%;bottom:10%;border-radius:50%;pointer-events:none;
+    background:linear-gradient(118deg,transparent 36%,rgba(255,255,255,.26) 48%,transparent 60%)}
+  .rback:active{transform:translateY(.5px)}
+
+  /* botões com LED colorido no meio (VINYL MODE / MASTER TEMPO) */
+  .led{position:absolute;z-index:5;cursor:pointer;border-radius:50%;min-width:0;overflow:hidden;
+    background:radial-gradient(circle at 50% 28%,#3d4045 0%,#232529 46%,#101113 82%,#08090a 100%);
+    border:1px solid #000;
+    box-shadow:0 0 0 2.4px #0a0a0b, 0 0 0 4.2px #33353a, 0 2px 4px #000a,
+               inset 0 1px 1px #ffffff26, inset 0 -3px 7px #0008;
+    display:flex;align-items:center;justify-content:center}
+  .led i{display:block;width:34%;height:34%;border-radius:50%;background:#123038;box-shadow:inset 0 0 2px #000}
+  .led.cy.on i{background:radial-gradient(circle at 50% 34%,#d8fbff,#28e0ff 55%,#0aa6c8);box-shadow:0 0 7px #28e0ff,0 0 14px #28e0ff88}
+  .led.or i{background:#3a1d08}
+  .led.or.on i{background:radial-gradient(circle at 50% 34%,#ffd9ac,#ff7a18 55%,#c34a00);box-shadow:0 0 7px #ff7a18,0 0 14px #ff7a1888}
+  .led:active{transform:translateY(.5px)}
+
+  /* botão do TEMPO RANGE — tampa metálica em hélice */
+  .fan{position:absolute;z-index:5;cursor:pointer;border-radius:50%;min-width:0;overflow:hidden;
+    background:radial-gradient(circle at 50% 26%,#3a3d42 0%,#212327 48%,#0f1012 100%);
+    border:1px solid #000;
+    box-shadow:0 0 0 2.2px #0a0a0b, 0 0 0 3.8px #313337, 0 2px 4px #000a, inset 0 1px 1px #ffffff22}
+  .fan::before{content:"";position:absolute;inset:22%;border-radius:50%;
+    background:conic-gradient(#dfe3e8 0deg 26deg,#4a4d52 26deg 90deg,#c8ccd2 90deg 116deg,#3a3d42 116deg 180deg,
+                              #e6eaee 180deg 206deg,#4a4d52 206deg 270deg,#cfd3d8 270deg 296deg,#33363a 296deg 360deg);
+    box-shadow:inset 0 0 3px #000a}
+  .fan:active{transform:translateY(.5px)}
+
+  /* CUE / PLAY — cápsula prateada escovada dentro de poço preto */
+  .big{position:absolute;z-index:5;cursor:pointer;border-radius:50%;min-width:0;overflow:hidden;
+    display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(circle at 50% 26%,#fbfcfd 0%,#e2e5e9 22%,#b9bdc3 52%,#8f9399 78%,#6d7176 100%);
+    border:1px solid #16171a;
+    box-shadow:0 0 0 4px #0b0b0c, 0 0 0 6.5px #35373b, 0 0 0 8px #08090a,
+               0 4px 8px #000c, inset 0 2px 3px #ffffffee, inset 0 -5px 10px #00000044}
+  .big::before{content:"";position:absolute;inset:6%;border-radius:50%;pointer-events:none;
+    background:repeating-conic-gradient(rgba(255,255,255,.10) 0deg 3deg,rgba(0,0,0,.055) 3deg 6deg)}
+  .big::after{content:"";position:absolute;inset:0;border-radius:50%;pointer-events:none;
+    background:linear-gradient(118deg,transparent 30%,rgba(255,255,255,.55) 44%,rgba(255,255,255,.12) 52%,transparent 64%)}
+  .big .sym{position:relative;z-index:2;font-weight:900;line-height:1;letter-spacing:.4px;
+    text-shadow:0 1px 0 #ffffffcc, 0 -1px 1px #00000055}
+  .big.cue .sym{font-size:11px;color:#f2a512;-webkit-text-stroke:.4px #7a4a00}
+  .big.play .sym{font-size:12.5px;color:#c9d418;letter-spacing:0;-webkit-text-stroke:.4px #5f6a00}
+  .big:active{transform:translateY(.7px)}
+  .big.on{box-shadow:0 0 0 4px #0b0b0c, 0 0 0 6.5px #35373b, 0 0 0 8px #08090a,
+          0 4px 8px #000c, inset 0 2px 3px #fff, inset 0 -5px 10px #00000044, 0 0 16px #ffb43a99}
+  .big.play.on{box-shadow:0 0 0 4px #0b0b0c, 0 0 0 6.5px #35373b, 0 0 0 8px #08090a,
+          0 4px 8px #000c, inset 0 2px 3px #fff, inset 0 -5px 10px #00000044, 0 0 16px #b9e02f99}
+
+  /* rotary SELECT PUSH grande */
+  .rotary{position:absolute;z-index:5;border-radius:50%;cursor:ns-resize;touch-action:none;min-width:0;overflow:hidden;
+    background:radial-gradient(circle at 50% 24%,#2b2d31,#141517 58%,#08090a 100%);
+    border:1px solid #000;
+    box-shadow:0 0 0 2.4px #0a0a0b, 0 0 0 4.6px #2c2e32, 0 3px 6px #000b, inset 0 1px 1px #ffffff20}
+  .rotary .knurl{position:absolute;inset:9%;border-radius:50%;
+    background:repeating-conic-gradient(#3c3f44 0deg 5deg,#101113 5deg 10deg);
+    box-shadow:inset 0 0 7px #000, 0 1px 2px #000a}
+  .rotary .top{position:absolute;inset:26%;border-radius:50%;
+    background:conic-gradient(#dfe3e8 0deg 22deg,#4b4e53 22deg 84deg,#b9bdc3 84deg 112deg,#33363a 112deg 178deg,
+                              #e6eaee 178deg 200deg,#4b4e53 200deg 262deg,#c3c7cd 262deg 292deg,#2c2f33 292deg 360deg);
+    border:1px solid #08090a;box-shadow:inset 0 1px 1px #ffffff33, 0 1px 3px #000a}
+  .rotary .top::after{content:"";position:absolute;left:50%;top:50%;width:11%;height:11%;transform:translate(-50%,-50%);
+    border-radius:50%;background:#cdd2d8;box-shadow:0 0 2px #000a}
+
+  /* porta USB (tampa emborrachada) */
+  .usbdoor{position:absolute;z-index:5;cursor:pointer;border-radius:7px;min-width:0;overflow:hidden;
+    background:linear-gradient(180deg,#2e3136 0%,#3a3d42 26%,#26282c 55%,#141517 100%);
+    border:1px solid #000;
+    box-shadow:0 0 0 1.6px #0b0b0c, 0 0 0 3px #232528, 0 2px 5px #000b, inset 0 1px 1px #ffffff33}
+  .usbdoor::after{content:"";position:absolute;left:16%;right:16%;bottom:6%;height:44%;border-radius:50% 50% 6px 6px;
+    background:linear-gradient(180deg,#5a5e64,#2a2c30 60%,#17181b);box-shadow:inset 0 1px 2px #ffffff2a}
+  .usbdoor:active{transform:translateY(.5px)}
+
+  /* LED indicador branco da USB */
+  .ind{position:absolute;z-index:5;border-radius:1.5px;pointer-events:none;
+    background:linear-gradient(180deg,#f2f5f8,#aab0b6);box-shadow:0 0 4px #ffffff66}
+  .ind.off{background:#2a2c30;box-shadow:none}
+
+  /* ===================== FADER TEMPO ======================================= */
+  .tempo{position:absolute;z-index:7;cursor:ns-resize;touch-action:none;border-radius:5px;
+    background:linear-gradient(180deg,#0d0e10,#17181b 40%,#0b0c0d);
+    border:1px solid #000;box-shadow:inset 0 2px 8px #000d, 0 0 0 1.4px #2a2c2f, 0 1px 3px #000a}
+  .tempo .slotb{position:absolute;left:46.5%;width:7%;top:3.2%;bottom:3.2%;border-radius:3px;
+    background:linear-gradient(90deg,#000,#26282b 46%,#000);box-shadow:inset 0 2px 6px #000e}
+  .tempo .tk{position:absolute;top:3.6%;height:92.8%;
+    background:repeating-linear-gradient(180deg,#e9ecef 0 1.5px,transparent 1.5px 3.05%)}
+  .tempo .tk.l{left:13%;width:26%}
+  .tempo .tk.r{left:61%;width:26%}
+  .tempo .cap{position:absolute;left:50%;width:88%;height:8.4%;transform:translate(-50%,-50%);border-radius:2.5px;
+    background:linear-gradient(180deg,#eceef1 0%,#c2c5ca 22%,#8e9297 40%,#d4d7db 56%,#9b9ea3 76%,#6e7176 100%);
+    border:1px solid #232528;box-shadow:0 2px 5px #000b, inset 0 1px 0 #ffffffdd}
+  .tempo .cap::after{content:"";position:absolute;left:5%;right:5%;top:50%;height:10%;transform:translateY(-50%);
+    background:linear-gradient(180deg,#3c3f43,#0d0e10);border-radius:1px}
+
+  /* ===================== VISOR / TELA TOUCH ================================ */
+  .screenbox{position:absolute;z-index:3;border-radius:3px;overflow:hidden;
+    background:#05080d;border:1px solid #000;
+    box-shadow:0 0 0 1.6px #1d1f22, 0 0 0 3px #000, inset 0 0 10px #000e, 0 2px 6px #0009}
+  .screenbox canvas{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+  .screenbox .glass{position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(122deg,transparent 26%,rgba(255,255,255,.055) 40%,rgba(255,255,255,.085) 44%,transparent 58%)}
+  .thit{position:absolute;cursor:pointer;border-radius:2px;z-index:4}
+  body.debug .thit{background:#00e5ff26;box-shadow:inset 0 0 0 1px #00e5ff}
+
+  /* ===================== JOG =============================================== */
+  .jogc{position:absolute;pointer-events:none;z-index:2}
+  .joghit{position:absolute;cursor:grab;border-radius:50%;touch-action:none;z-index:6}
+  .joghit:active{cursor:grabbing}
+  .arc{position:absolute;z-index:4;pointer-events:none}
+
+  .hit{position:absolute;cursor:pointer;z-index:8;border-radius:5px}
+  body.debug .hit{background:#00e5ff22;box-shadow:inset 0 0 0 1px #00e5ff}
+
+  .teach{display:flex;align-items:center;gap:8px;background:#0c0e12;border:1px solid #2a2f37;border-radius:9px;padding:7px 11px;min-height:38px}
+  .teach .k{font-size:10px;font-weight:900;color:var(--blue);background:#0f1a28;border:1px solid #234;border-radius:5px;padding:3px 7px;white-space:nowrap}
+  .teach .d{font-size:11.5px;color:#cdd5e0;line-height:1.25}.teach .d b{color:#fff}
+</style>
+</head>
+<body>
+<div id="stage">
+<div class="wrap">
+
+  <div class="util">
+    <div class="brand"><b>SMU</b><span class="m">PRO • PIONEER XDJ-700</span></div>
+    <span class="pill"><span class="dot" id="acDot"></span> Áudio <b id="acState">clique em Ligar</b></span>
+    <div class="mission">
+      <span class="idx" id="mIdx">MISSÃO 1/6</span>
+      <div class="txt"><b id="mTitle">Dê play</b><br><small id="mHint">Aperte PLAY/PAUSE (redondo prateado, embaixo à esquerda).</small></div>
+    </div>
+    <span class="spacer"></span>
+    <button class="btnp ghost" id="btnReset">Reiniciar</button>
+    <button class="btnp" id="btnStart">▶ Ligar áudio</button>
+  </div>
+
+  <div class="deck" id="deck">
+    <div class="header"></div>
+    <div class="lower"></div>
+    <div class="rearlip"></div>
+    <div class="divider"></div>
+    <div class="frontlip"></div>
+  </div>
+
+  <div class="teach" id="teach">
+    <span class="k" id="tK">XDJ-700</span>
+    <span class="d" id="tD">Passe o mouse ou toque num controle para aprender o que ele faz. Aperte <b>Ligar áudio</b> e comece pelo <b>PLAY/PAUSE</b>. A tela de 7" é <b>touch</b>: os botões BROWSE, PERFORM, SYNC, MASTER, QUANTIZE e CALL ficam nela.</span>
+  </div>
+</div>
+</div>
+
+<script>
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+if(location.hash.includes("debug"))document.body.classList.add("debug");
+const deck=$("#deck");
+function pct(el,x,y,w,h){ el.style.left=x+"%"; el.style.top=y+"%"; if(w!=null)el.style.width=w+"%"; if(h!=null)el.style.height=h+"%"; }
+
+/* ============================================================================
+   POSIÇÕES MEDIDAS NA FOTO TOP-DOWN OFICIAL (método dos QUADRANTES do dono).
+   X = altura (X1 topo → X10 base) · Y = largura (Y1 esq → Y8 dir).
+   x = (Y-1)*12,5   ·   y = (X-1)*10   + ajuste fino dentro da célula.
+   [x, y, w, h] em % do painel (238 x 308 mm).
+   Só controles FÍSICOS entram aqui — o que é toque na tela mora dentro de
+   'display' (o XDJ-700 não tem botão físico por cima do visor).
+   ============================================================================ */
+const POS={
+ power:[83.7,1.0,4.9,2.0],           /* X1Y7/Y8 — símbolo STANDBY/ON            */
+ sleep:[90.2,1.6,1.3,1.0],           /* X1Y8    — indicador SLEEP               */
+ usbport:[4.3,7.7,8.9,6.3],          /* X1Y1    — porta USB (tampa)             */
+ display:[17.4,6.3,64.5,27.9],       /* X1Y2 → X4Y7 — TELA TOUCH 7"             */
+ back:[85.4,8.5,4.6,3.6],            /* X1Y8    — BACK                          */
+ tagtrack:[93.5,9.2,3.1,2.4],        /* X1Y8    — TAG TRACK / REMOVE            */
+ rotary:[84.7,15.4,12.2,9.4],        /* X2Y8 → X3Y8 — rotary SELECT PUSH        */
+ usbstop:[6.3,18.7,4.9,3.8],         /* X2Y1    — USB STOP                      */
+ loopin:[3.6,40.3,6.3,4.9],          /* X5Y1    — IN / 4BEAT                    */
+ loopout:[14.0,40.3,6.3,4.9],        /* X5Y2    — OUT                           */
+ reloop:[27.8,41.7,4.3,3.3],         /* X5Y3    — RELOOP / EXIT                 */
+ vinylmode:[77.7,41.3,5.5,4.3],      /* X5Y7    — VINYL MODE                    */
+ temporange:[89.1,41.6,4.5,3.5],     /* X5Y8    — TEMPO ±6/±10/±16/WIDE         */
+ mastertempo:[89.1,47.0,4.5,3.5],    /* X5Y8    — MASTER TEMPO                  */
+ trkprev:[3.9,51.8,5.1,3.9],         /* X6Y1    — TRACK SEARCH |◄◄              */
+ trknext:[11.2,51.8,5.1,3.9],        /* X6Y2    — TRACK SEARCH ►►|              */
+ jog:[18.9,44.7,64.2,49.6],          /* X5Y2 → X10Y7 — prato                    */
+ tempo:[86.8,54.8,8.7,41.7],         /* X6Y8 → X10Y8 — fader TEMPO              */
+ srchback:[3.9,60.5,5.1,3.9],        /* X7Y1    — SEARCH ◄◄                     */
+ srchfwd:[11.2,60.5,5.1,3.9],        /* X7Y2    — SEARCH ►►                     */
+ cue:[3.7,73.4,11.0,8.5],            /* X8Y1    — CUE                           */
+ play:[3.7,86.7,11.0,8.5]            /* X10Y1   — PLAY / PAUSE                  */
+};
+const AR=238/308;   /* proporção física real do XDJ-700: 238 (L) x 308 (P) mm */
+/* elementos CIRCULARES: no build, h = w*AR mantendo o centro */
+const ROUND=new Set(["usbstop","back","tagtrack","rotary","loopin","loopout","reloop","trkprev","trknext",
+                     "srchback","srchfwd","cue","play","vinylmode","temporange","mastertempo","jog"]);
+
+/* ---- ZONAS DE TOQUE DA TELA (x,y,w,h em % da própria tela) ---------------- */
+const SCR={
+ browse:[12.09,1.46,16.51,11.22], taglist:[28.83,1.46,16.59,11.22],
+ tinfo:[45.58,1.46,16.59,11.22],  menu:[62.40,1.46,16.59,11.22],
+ perform:[80.57,1.46,18.17,11.22],
+ srcrb:[1.97,15.16,8.45,17.93],   srclink:[1.97,33.82,8.45,17.49],
+ srcusb:[1.97,52.04,8.45,17.49],  loopmode:[1.97,70.55,8.45,11.37],
+ slip:[1.97,84.11,8.45,10.20],
+ callprev:[80.96,32.07,7.50,9.77],callnext:[90.05,32.07,8.29,9.77],
+ quantize:[80.41,47.67,8.06,10.93],memory:[89.26,47.67,9.32,10.93],
+ zoom:[82.31,62.24,14.06,3.64],
+ sync:[80.41,70.99,8.06,10.93],   master:[89.42,70.99,9.16,10.93]
+};
+
+/* setas de transporte em SVG (não dependem de emoji/fonte do sistema) */
+const _sv=i=>'<svg viewBox="0 0 34 12" preserveAspectRatio="xMidYMid meet" fill="#f4f6f9">'+i+'</svg>';
+const _T=(x,dir)=>dir<0?`<path d="M${x+11} 0.6v10.8L${x} 6z"/>`:`<path d="M${x} 0.6v10.8L${x+11} 6z"/>`;
+const SVG_PREV=_sv('<rect x="0" y="0.6" width="2.6" height="10.8"/>'+_T(4.6,-1)+_T(17.6,-1));
+const SVG_NEXT=_sv(_T(5.8,1)+_T(18.8,1)+'<rect x="31.4" y="0.6" width="2.6" height="10.8"/>');
+const SVG_RW  =_sv(_T(2.6,-1)+_T(15.6,-1));
+const SVG_FF  =_sv(_T(6.4,1)+_T(19.4,1));
+
+const CTRL=[
+ {act:"play",kind:"big",cls:"play",sym:"&#9654;/&#10073;&#10073;",k:"PLAY / PAUSE",
+  d:"Toca e pausa. Em <b>VINYL MODE</b> a pausa freia o prato como um disco; em CDJ para seco."},
+ {act:"cue",kind:"big",cls:"cue",sym:"CUE",k:"CUE",
+  d:"Marca e volta ao ponto de partida. Parado num ponto novo, define o cue ali; tocando, volta ao cue e pausa (back-cue)."},
+ {act:"loopin",kind:"yel",k:"LOOP IN / 4 BEAT (IN ADJUST)",
+  d:"Marca o <b>início</b> do loop ao vivo. Segurando, cria um <b>loop automático de 4 tempos</b> pelo BPM. Depois do loop feito, entra no ajuste fino do ponto IN."},
+ {act:"loopout",kind:"yel",k:"LOOP OUT (OUT ADJUST)",
+  d:"Marca o <b>fim</b> do loop: a faixa passa a repetir entre IN e OUT. Com o loop tocando, entra no ajuste fino do ponto OUT."},
+ {act:"reloop",kind:"amb",k:"RELOOP / EXIT",
+  d:"Sai do loop (volta a tocar normal) ou refaz o último loop gravado, quantas vezes quiser."},
+ {act:"trkprev",kind:"rdk",txt:SVG_PREV,k:"TRACK SEARCH |&#9668;&#9668;",d:"Faixa anterior da lista."},
+ {act:"trknext",kind:"rdk",txt:SVG_NEXT,k:"TRACK SEARCH &#9658;&#9658;|",d:"Próxima faixa da lista."},
+ {act:"srchback",kind:"rdk",txt:SVG_RW,k:"SEARCH &#9668;&#9668;",d:"Busca rápida para trás dentro da faixa (com som)."},
+ {act:"srchfwd",kind:"rdk",txt:SVG_FF,k:"SEARCH &#9658;&#9658;",d:"Busca rápida para frente dentro da faixa (com som)."},
+ {act:"vinylmode",kind:"led",cls:"cy",k:"VINYL MODE",
+  d:"Liga o toque no topo do prato: <b>aceso</b> = tocar no centro PARA a música (scratch). Apagado = o prato só faz pitch bend."},
+ {act:"temporange",kind:"fan",k:"TEMPO &plusmn;6 / &plusmn;10 / &plusmn;16 / WIDE",
+  d:"Muda o alcance do fader TEMPO. No WIDE o XDJ-700 chega a &plusmn;100&nbsp;% — dá para parar a faixa com o fader."},
+ {act:"mastertempo",kind:"led",cls:"or",k:"MASTER TEMPO",
+  d:"Trava o tom (key lock): muda a velocidade <b>sem</b> alterar a afinação. Aceso = ativo (aparece MT no visor)."},
+ {act:"back",kind:"rback",k:"BACK",
+  d:"Volta um nível na navegação de pastas/biblioteca. Segurando, salta direto para o topo da lista."},
+ {act:"tagtrack",kind:"rdk",k:"TAG TRACK / REMOVE",
+  d:"Põe (ou tira) a faixa da <b>Tag List</b> — a lista rápida de músicas separadas para o set."},
+ {act:"rotary",kind:"rotary",k:"ROTARY SELECTOR (gira / PUSH)",
+  d:"Gira para percorrer a biblioteca e aperta para entrar/confirmar. É o comando principal de busca do XDJ-700."},
+ {act:"usbport",kind:"usbdoor",k:"PORTA USB",
+  d:"Entrada do pendrive com a biblioteca exportada do <b>rekordbox</b>. Toca MP3, AAC, WAV e AIFF."},
+ {act:"usbstop",kind:"rdk",k:"USB STOP",
+  d:"<b>Sempre segure antes de tirar o pendrive.</b> Desmonta o dispositivo com segurança — puxar direto corrompe a biblioteca."},
+ {act:"power",kind:"pwr",k:"STANDBY / ON",
+  d:"Serigrafia do liga/desliga: no XDJ-700 real a chave <b>POWER</b> fica no painel traseiro. Aqui fica o indicador de standby."},
+ {act:"sleep",kind:"sleep",k:"SLEEP",
+  d:"Acende quando o player entra em economia de energia (auto standby depois de 4 h sem uso)."},
+ {act:"display",kind:"disp",k:"TELA TOUCH 7\"",
+  d:"Visor colorido <b>sensível ao toque</b> de 7&quot;: forma de onda, grade de batidas, tempo, BPM, ±range e os botões BROWSE / TAG LIST / INFO / MENU / PERFORM, SYNC, MASTER, QUANTIZE, MEMORY e CUE/LOOP CALL."}
+];
+
+/* rótulo/ajuda das zonas de toque da tela */
+const TOUCH={
+ browse:{k:"BROWSE (toque) — SEARCH",d:"Abre a biblioteca do pendrive/rekordbox. Segurando, entra na busca por texto."},
+ taglist:{k:"TAG LIST (toque)",d:"Mostra a lista rápida de faixas marcadas com o TAG TRACK."},
+ tinfo:{k:"INFO (toque) — LINK INFO",d:"Detalhes da faixa: BPM, tom, comentário, artwork. Segurando, mostra o que está tocando nos outros players do LINK."},
+ menu:{k:"MENU (toque) — UTILITY",d:"Menu da faixa. Segurando, abre o UTILITY (ajustes do aparelho: LAN, auto cue, brilho...)."},
+ perform:{k:"PERFORM (toque)",d:"Vai para a tela de performance: forma de onda grande, hot cues, loops e grade de batidas."},
+ srcrb:{k:"rekordbox (fonte)",d:"Toca a biblioteca de um PC/celular rodando rekordbox, por USB ou pela rede (PRO DJ LINK)."},
+ srclink:{k:"LINK (fonte)",d:"Puxa pela rede o pendrive espetado em outro player — 1 pendrive alimenta até 4 aparelhos."},
+ srcusb:{k:"USB (fonte)",d:"Toca direto do pendrive espetado neste player. A barra verde acende quando há mídia montada."},
+ loopmode:{k:"LOOP MODE (toque)",d:"Alterna o comportamento dos botões de loop entre manual (IN/OUT) e automático (4 BEAT)."},
+ slip:{k:"SLIP (toque)",d:"Modo SLIP: durante scratch, loop ou pausa a faixa continua correndo por baixo e volta no lugar certo quando você solta."},
+ callprev:{k:"CUE/LOOP CALL &#9668;",d:"Chama o ponto de cue/loop salvo <b>anterior</b> na memória do pendrive."},
+ callnext:{k:"CUE/LOOP CALL &#9658;",d:"Chama o próximo ponto de cue/loop salvo."},
+ quantize:{k:"QUANTIZE (toque)",d:"Cola cue, loop e hot cue na grade de batidas — o ponto nunca sai do tempo, mesmo se você errar o toque."},
+ memory:{k:"MEMORY / DELETE (toque)",d:"Grava o cue/loop atual na memória do pendrive. Segurando, apaga o ponto salvo."},
+ zoom:{k:"ZOOM / GRID (toque)",d:"Amplia ou afasta a forma de onda. Com GRID, ajusta a grade de batidas da faixa."},
+ sync:{k:"SYNC (toque)",d:"Sincroniza o BPM e a fase com o player mestre do PRO DJ LINK."},
+ master:{k:"MASTER (toque)",d:"Define este player como <b>mestre</b> do beat sync — os outros passam a seguir o BPM dele."}
+};
+
+let AC=null, started=false, ready=false, d=null;
+let mt=false, rangeIdx=1, vinylMode=true, timeRemain=true, slipOn=false, quantOn=true, autoCue=true;
+let srcIdx=2, page="PERFORM", zoomIdx=1, isMaster=true, syncOn=false, loopModeAuto=false;
+const RANGES=[6,10,16,"WIDE"];
+function rangeVal(){ const r=RANGES[rangeIdx]; return r==="WIDE"?100:r; }
+
+/* ============================== ÁUDIO ====================================== */
+async function renderTrack(){
+  const sr=44100,bpm=128,root=110,spb=60/bpm,bars=16,dur=spb*4*bars;
+  const off=new OfflineAudioContext(2,Math.ceil(dur*sr),sr),dst=off.destination;
+  const noise=off.createBuffer(1,sr*0.4,sr),nd=noise.getChannelData(0);
+  for(let i=0;i<nd.length;i++)nd[i]=Math.random()*2-1;
+  const step=spb/4;
+  const K=[1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0],S=[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
+        H=[0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0],B=[1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0],O=[0,1,0,0,0,1,0,0,0,1,0,0,0,1,0,0];
+  const kick=t=>{const o=off.createOscillator(),a=off.createGain();o.frequency.setValueAtTime(150,t);o.frequency.exponentialRampToValueAtTime(48,t+0.12);a.gain.setValueAtTime(0.85,t);a.gain.exponentialRampToValueAtTime(0.001,t+0.3);o.connect(a);a.connect(dst);o.start(t);o.stop(t+0.32);};
+  const clap=t=>{const s=off.createBufferSource();s.buffer=noise;const bp=off.createBiquadFilter();bp.type="bandpass";bp.frequency.value=1800;const a=off.createGain();a.gain.setValueAtTime(0.5,t);a.gain.exponentialRampToValueAtTime(0.001,t+0.15);s.connect(bp);bp.connect(a);a.connect(dst);s.start(t);s.stop(t+0.17);};
+  const hat=(t,op)=>{const s=off.createBufferSource();s.buffer=noise;const hp=off.createBiquadFilter();hp.type="highpass";hp.frequency.value=8200;const a=off.createGain();const dd=op?0.13:0.05;a.gain.setValueAtTime(op?0.26:0.22,t);a.gain.exponentialRampToValueAtTime(0.001,t+dd);s.connect(hp);hp.connect(a);a.connect(dst);s.start(t);s.stop(t+dd+0.03);};
+  const bass=t=>{const o=off.createOscillator();o.type="sawtooth";o.frequency.value=root;const lp=off.createBiquadFilter();lp.type="lowpass";lp.frequency.setValueAtTime(460,t);lp.frequency.exponentialRampToValueAtTime(120,t+0.15);lp.Q.value=5;const a=off.createGain();a.gain.setValueAtTime(0.0001,t);a.gain.linearRampToValueAtTime(0.38,t+0.01);a.gain.exponentialRampToValueAtTime(0.001,t+0.2);o.connect(lp);lp.connect(a);a.connect(dst);o.start(t);o.stop(t+0.22);};
+  for(let bar=0;bar<bars;bar++)for(let st=0;st<16;st++){const t=(bar*16+st)*step;
+    if(K[st])kick(t);if(S[st])clap(t);if(H[st])hat(t,false);if(O[st])hat(t,true);if(B[st])bass(t);}
+  return await off.startRendering();
+}
+
+async function startAudio(){ if(started)return; started=true;
+  $("#acState").textContent="carregando a faixa…";
+  AC=new (window.AudioContext||window.webkitAudioContext)();
+  const buf=await renderTrack();
+  const data=buf.getChannelData(0), len=data.length;
+  d={ buffer:buf,data,len,pos:0,playing:false,rate:0,pitch:0,baseBpm:128,dir:1,touching:false,targetPos:0,cuePoint:0,
+      loopOn:false,loopStart:0,loopEnd:0,loopIn:false,peaks:null,memPoint:null,hotcues:{} };
+  d.fader=AC.createGain(); d.fader.gain.value=0.9; d.fader.connect(AC.destination);
+  d.analyser=AC.createAnalyser(); d.fader.connect(d.analyser);
+  const N=300,peaks=new Float32Array(N),blk=Math.floor(len/N);
+  for(let i=0;i<N;i++){ let mx=0; for(let j=0;j<blk;j+=32){ const v=Math.abs(data[i*blk+j]||0); if(v>mx)mx=v; } peaks[i]=mx; }
+  d.peaks=peaks;
+  const sp=AC.createScriptProcessor(512,0,1); d.sp=sp;
+  sp.onaudioprocess=e=>{ const out=e.outputBuffer.getChannelData(0);
+    for(let i=0;i<out.length;i++){
+      if(d.touching){ const np=d.pos+(d.targetPos-d.pos)*0.0025; d.rate=np-d.pos; d.pos=np;
+        if(d.pos<0){d.pos=0;d.rate=0;} else if(d.pos>len-1){d.pos=len-1;d.rate=0;} }
+      else { const tgt=d.playing?d.dir*(1+d.pitch/100):0; d.rate+=(tgt-d.rate)*0.0022; d.pos+=d.rate;
+        if(d.loopOn&&d.rate>0&&d.pos>=d.loopEnd)d.pos=d.loopStart+(d.pos-d.loopEnd);
+        if(d.pos>=len)d.pos-=len; else if(d.pos<0)d.pos+=len; }   /* LOOP CONTÍNUO */
+      let i0=Math.floor(d.pos); const fr=d.pos-i0; i0=((i0%len)+len)%len; const i1=(i0+1)%len;
+      out[i]=data[i0]*(1-fr)+data[i1]*fr; } };
+  sp.connect(d.fader);
+  ready=true;
+  $("#acDot").classList.add("on"); $("#acState").textContent="ligado"; $("#btnStart").textContent="● Áudio ligado";
+  if(AC.resume)AC.resume();
+  frame();
+}
+function beatLen(){ return 60/(d.baseBpm*(1+d.pitch/100))*d.buffer.sampleRate; }
+
+function playDeck(on){ if(!ready)return; d.playing=on!==undefined?on:!d.playing; setState("play",d.playing); if(d.playing)markMission("play"); }
+function cueDeck(){ if(!ready)return;
+  if(d.playing){ playDeck(false); d.pos=d.cuePoint; } else { if(Math.abs(d.pos-d.cuePoint)>200)d.cuePoint=d.pos; else d.pos=d.cuePoint; }
+  setState("cue",true); setTimeout(()=>setState("cue",false),220); markMission("cue"); }
+
+function loopAct(a){ if(!ready)return;
+  if(a==="loopin"){
+    if(loopModeAuto){ d.loopStart=d.pos; d.loopEnd=d.pos+beatLen()*4; d.loopOn=true; d.loopIn=false;
+      setState("loopin",true); setState("loopout",true); markMission("loop"); }
+    else { d.loopStart=d.pos; d.loopIn=true; d.loopOn=false; setState("loopin",true); }
+  }
+  else if(a==="loopout"){ if(d.loopIn&&d.pos>d.loopStart){ d.loopEnd=d.pos; d.loopOn=true; d.loopIn=false;
+      setState("loopout",true); markMission("loop"); } }
+  else if(a==="reloop"){ if(d.loopEnd>d.loopStart){ d.loopOn=!d.loopOn; setState("reloop",d.loopOn);
+      if(!d.loopOn){ setState("loopin",false); setState("loopout",false); } } }
+}
+const els={};
+function setState(name,on){ const e=els[name]; if(!e)return; e.classList.toggle("on",!!on);
+  if(e.classList.contains("yel"))e.classList.toggle("dim",!on);
+  if(e.classList.contains("amb"))e.classList.toggle("dim",!on); }
+function flash(el){ if(!el)return; el.style.filter="brightness(1.7)"; setTimeout(()=>{el.style.filter="";},150); }
+
+const MISSIONS=[
+  {id:"play",t:"Dê play",h:"Aperte PLAY/PAUSE (redondo prateado, embaixo à esquerda)."},
+  {id:"cue",t:"Use o CUE",h:"Aperte CUE: marca e volta ao ponto de partida."},
+  {id:"loop",t:"Faça um LOOP",h:"IN (amarelo) → OUT (amarelo): a faixa repete o trecho."},
+  {id:"touch",t:"Use a TELA TOUCH",h:"Toque em PERFORM, SYNC ou QUANTIZE no visor de 7\"."},
+  {id:"scratch",t:"Scratch no prato",h:"Com VINYL MODE aceso, segure o CENTRO do jog e vá-e-volte."},
+  {id:"tempo",t:"Ajuste o TEMPO",h:"Arraste o fader TEMPO (direita)."},
+];
+let mi=0;
+function renderMission(){ $("#mIdx").textContent=`MISSÃO ${Math.min(mi+1,MISSIONS.length)}/${MISSIONS.length}`;
+  if(mi>=MISSIONS.length){ $("#mTitle").textContent="Tudo pronto! 🎉"; $("#mHint").textContent="Você operou o XDJ-700."; return; }
+  const m=MISSIONS[mi]; $("#mTitle").textContent=m.t; $("#mHint").textContent=m.h; }
+function markMission(id){ if(mi<MISSIONS.length&&MISSIONS[mi].id===id){ mi++; renderMission(); } }
+function teach(c){ $("#tK").innerHTML=c.k; $("#tD").innerHTML=c.d; }
+
+/* ====================== TELA TOUCH DE 7" (canvas) ========================== */
+let scCtx,scW,scH;
+const C_BG="#070b12", C_BOX="#16263c", C_BOXH="#28405f", C_EDGE="#33506f",
+      C_TXT="#dfe9f5", C_DIM="#7e93ad", C_BLUE="#2f7fd6", C_WAVE="#3aa0ff",
+      C_RED="#e02a1c", C_ORG="#ff9b1a", C_GRN="#3ee06a";
+function rr(ctx,x,y,w,h,r){ ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath(); }
+function boxFill(ctx,b,W,H,hi,r){ const x=b[0]/100*W,y=b[1]/100*H,w=b[2]/100*W,h=b[3]/100*H;
+  const g=ctx.createLinearGradient(0,y,0,y+h);
+  g.addColorStop(0,hi?"#3f5f88":"#1b2d46"); g.addColorStop(1,hi?"#24405f":"#101d2e");
+  rr(ctx,x,y,w,h,r==null?H*0.012:r); ctx.fillStyle=g; ctx.fill();
+  ctx.strokeStyle=hi?"#6f95c4":C_EDGE; ctx.lineWidth=Math.max(1,H*0.004); ctx.stroke();
+  return {x,y,w,h}; }
+function ctext(ctx,t,cx,cy,size,col,wt){ ctx.font=(wt||"700")+" "+Math.round(size)+"px 'Arial Narrow',Arial,sans-serif";
+  ctx.fillStyle=col; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(t,cx,cy); ctx.textAlign="left"; }
+function drawScreen(){ if(!scCtx)return; const ctx=scCtx,W=scW,H=scH;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle=C_BG; ctx.fillRect(0,0,W,H);
+  const sr=d?d.buffer.sampleRate:44100, cur=d?d.pos/sr:0, total=d?d.len/sr:225.9,
+        rem=Math.max(0,total-cur), frac=total?cur/total:0;
+
+  /* --- PLAYER 1 --- */
+  const pb=boxFill(ctx,[1.97,1.46,8.45,11.22],W,H,false);
+  ctext(ctx,"PLAYER",pb.x+pb.w/2,pb.y+pb.h*0.30,H*0.036,C_DIM);
+  ctext(ctx,"1",pb.x+pb.w/2,pb.y+pb.h*0.70,H*0.070,C_TXT,"800");
+
+  /* --- barra de páginas --- */
+  const pages=[["browse","BROWSE","– SEARCH"],["taglist","TAG LIST",""],["tinfo","INFO","– LINK INFO"],
+               ["menu","MENU","– UTILITY"],["perform","PERFORM",""]];
+  pages.forEach(([id,t,s])=>{ const hi=(page===t); const b=boxFill(ctx,SCR[id],W,H,hi);
+    ctext(ctx,t,b.x+b.w/2,b.y+b.h*(s?0.38:0.50),H*0.052,hi?"#ffffff":C_TXT);
+    if(s)ctext(ctx,s,b.x+b.w/2,b.y+b.h*0.76,H*0.034,C_DIM);
+    if(id==="perform"){ ctx.strokeStyle=hi?"#cfe2ff":C_DIM; ctx.lineWidth=Math.max(1,H*0.005);
+      const ax=b.x+b.w*0.88, ay=b.y+b.h*0.24, s2=H*0.026;
+      ctx.beginPath(); ctx.moveTo(ax-s2,ay+s2); ctx.lineTo(ax+s2,ay-s2);
+      ctx.moveTo(ax+s2,ay-s2); ctx.lineTo(ax+s2*0.1,ay-s2); ctx.moveTo(ax+s2,ay-s2); ctx.lineTo(ax+s2,ay+s2*0.1);
+      ctx.moveTo(ax-s2,ay+s2); ctx.lineTo(ax-s2*0.1,ay+s2); ctx.moveTo(ax-s2,ay+s2); ctx.lineTo(ax-s2,ay-s2*0.1); ctx.stroke(); } });
+
+  /* --- barra de título da faixa --- */
+  const tb={x:12.09/100*W,y:14.58/100*H,w:86.65/100*W,h:6.41/100*H};
+  const tg=ctx.createLinearGradient(0,tb.y,0,tb.y+tb.h);
+  tg.addColorStop(0,"#2f6fae"); tg.addColorStop(1,"#1d4a7c");
+  ctx.fillStyle=tg; ctx.fillRect(tb.x,tb.y,tb.w,tb.h);
+  ctx.font="700 "+Math.round(H*0.055)+"px 'Arial Narrow',Arial,sans-serif"; ctx.fillStyle="#eaf3ff";
+  ctx.textBaseline="middle"; ctx.fillText("♪  SMU DEMO — Cryin' Through The Rain",tb.x+W*0.012,tb.y+tb.h*0.54);
+  ctext(ctx,"A",tb.x+tb.w-W*0.018,tb.y+tb.h*0.52,H*0.052,"#eaf3ff");
+  ctext(ctx,"5A",tb.x+tb.w-W*0.048,tb.y+tb.h*0.52,H*0.044,"#bcd6f2");
+
+  /* --- coluna de fontes --- */
+  const srcs=[["srcrb","rekordbox",0],["srclink","LINK",1],["srcusb","USB",2],
+              ["loopmode",loopModeAuto?"4 BEAT":"LOOP\nMODE",-1],["slip","SLIP",-1]];
+  srcs.forEach(([id,t,idx])=>{ const on=(idx>=0&&idx===srcIdx)||(id==="slip"&&slipOn);
+    const b=boxFill(ctx,SCR[id],W,H,on);
+    if(id==="srcrb"){ const cx=b.x+b.w/2, cy=b.y+b.h*0.36, r=Math.min(b.w,b.h)*0.26;
+      ctx.strokeStyle=on?"#eaf3ff":C_TXT; ctx.lineWidth=Math.max(1,H*0.006); ctx.beginPath();
+      for(let i=0;i<6;i++){ const a=i/6*Math.PI*2-Math.PI/2; const px=cx+Math.cos(a)*r, py=cy+Math.sin(a)*r;
+        i?ctx.lineTo(px,py):ctx.moveTo(px,py); } ctx.closePath(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx,cy-r); ctx.lineTo(cx,cy); ctx.lineTo(cx+r*0.87,cy+r*0.5); ctx.stroke();
+      ctext(ctx,"rekordbox",cx,b.y+b.h*0.80,H*0.036,C_DIM); }
+    else { const lines=t.split("\n");
+      lines.forEach((L,i)=>ctext(ctx,L,b.x+b.w/2,b.y+b.h*(lines.length>1?(0.34+i*0.36):0.5),H*0.050,on?"#ffffff":C_TXT)); }
+    if(id==="srcusb"){ ctx.fillStyle=C_GRN; ctx.fillRect(b.x+b.w*0.03,b.y+b.h*0.10,W*0.006,b.h*0.80); } });
+
+  /* --- medidor de compassos (MASTER / PLAYER) --- */
+  const mb={x:31.91/100*W,y:23.62/100*H,w:28.12/100*W,h:8.75/100*H};
+  ctx.textBaseline="middle";
+  ctx.font="800 "+Math.round(H*0.036)+"px 'Arial Narrow',Arial,sans-serif";
+  ctx.fillStyle=C_ORG; ctx.fillText("MASTER",mb.x-W*0.075,mb.y+mb.h*0.30);
+  ctx.fillStyle=C_BLUE; ctx.fillText("PLAYER",mb.x-W*0.075,mb.y+mb.h*0.74);
+  const bt=d?(d.pos/beatLen()):0, ph=((bt/4)%4+4)%4;
+  for(let i=0;i<4;i++){ const w2=mb.w/4-W*0.006, x=mb.x+i*(mb.w/4);
+    ctx.strokeStyle=C_ORG; ctx.lineWidth=Math.max(1,H*0.006);
+    ctx.strokeRect(x,mb.y+mb.h*0.02,w2,mb.h*0.40);
+    if(i<Math.floor(ph)+1){ ctx.fillStyle=i===Math.floor(ph)?C_ORG:"rgba(255,155,26,.35)"; ctx.fillRect(x,mb.y+mb.h*0.02,w2,mb.h*0.40); }
+    ctx.strokeStyle=C_BLUE; ctx.strokeRect(x,mb.y+mb.h*0.52,w2,mb.h*0.40);
+    if(i===Math.floor(ph)){ ctx.fillStyle=C_RED; ctx.fillRect(x,mb.y+mb.h*0.52,w2,mb.h*0.40); } }
+  ctx.font="700 "+Math.round(H*0.052)+"px 'Arial Narrow',Arial,sans-serif";
+  ctx.fillStyle=C_ORG; ctx.fillText((16-Math.floor(bt/4)%16).toFixed(1),mb.x+mb.w+W*0.012,mb.y+mb.h*0.28);
+  ctx.fillStyle="#7fc0ff"; ctx.fillText((Math.floor(bt/4)%16+0.4).toFixed(1),mb.x+mb.w+W*0.012,mb.y+mb.h*0.76);
+  ctx.font="700 "+Math.round(H*0.030)+"px 'Arial Narrow',Arial,sans-serif"; ctx.fillStyle=C_DIM;
+  ctx.fillText("Bars",mb.x+mb.w+W*0.055,mb.y+mb.h*0.34); ctx.fillText("Bars",mb.x+mb.w+W*0.055,mb.y+mb.h*0.82);
+
+  /* --- forma de onda ampliada --- */
+  const wv={x:12.64/100*W,y:33.82/100*H,w:66.35/100*W,h:30.61/100*H};
+  ctx.fillStyle="#040810"; ctx.fillRect(wv.x,wv.y,wv.w,wv.h);
+  if(d&&d.peaks){ const P=d.peaks,N=P.length, cy=wv.y+wv.h*0.55, zm=[0.5,1,2][zoomIdx]||1;
+    const span=N/ (2.2*zm), c0=frac*N;
+    for(let px=0;px<wv.w;px++){ const idx=Math.round(c0+(px/wv.w-0.5)*span);
+      const v=(idx>=0&&idx<N)?P[idx]:0, hh=Math.max(1,v*wv.h*0.46);
+      const t=Math.abs(px/wv.w-0.5);
+      ctx.fillStyle=idx<0||idx>=N?"#0a1420":(v>0.55?"#8fd0ff":C_WAVE);
+      ctx.globalAlpha=1-t*0.25; ctx.fillRect(wv.x+px,cy-hh,1,hh*1.9); }
+    ctx.globalAlpha=1;
+    /* grade de batidas: risco fino a cada compasso, alto a cada 4 compassos */
+    const pxPerBeat=wv.w/(span/(N/(16*4)));
+    if(pxPerBeat>3){ const b0=Math.floor((frac*N)/(N/(16*4)));
+      for(let k=-40;k<=40;k++){ const bi=b0+k, px=wv.w/2+(k-((frac*N)/(N/(16*4))-b0))*pxPerBeat;
+        if(px<0||px>wv.w||bi<0||bi%4!==0)continue;
+        const forte=bi%16===0;
+        ctx.fillStyle=forte?"rgba(255,90,70,.85)":"rgba(255,255,255,.42)";
+        ctx.fillRect(wv.x+px,wv.y+wv.h*(forte?0.03:0.06),1.2,wv.h*(forte?0.17:0.11));
+        ctx.fillRect(wv.x+px,wv.y+wv.h*(forte?0.80:0.83),1.2,wv.h*(forte?0.17:0.11)); } }
+    /* playhead branco */
+    ctx.fillStyle="#ffffff"; ctx.fillRect(wv.x+wv.w/2-1,wv.y+wv.h*0.06,2,wv.h*0.88); }
+  ctx.strokeStyle="rgba(80,120,170,.35)"; ctx.lineWidth=1; ctx.strokeRect(wv.x,wv.y,wv.w,wv.h);
+
+  /* --- linha de informações --- */
+  const ib={y:70.55/100*H,h:11.37/100*H};
+  const F=(w2,s)=>{ctx.font=w2+" "+Math.max(6,Math.round(H*s))+"px 'Arial Narrow',Arial,sans-serif";};
+  ctx.textBaseline="alphabetic";
+  F("700",0.036); ctx.fillStyle=C_DIM; ctx.fillText("TRACK",W*0.128,ib.y+ib.h*0.30);
+  F("400",0.098); ctx.fillStyle=C_TXT; ctx.fillText("02",W*0.128,ib.y+ib.h*0.96);
+  const tmb=boxFill(ctx,[23.85,70.55,7.58,11.37],W,H,false);
+  ctext(ctx,"TIME",tmb.x+tmb.w/2,tmb.y+tmb.h*0.32,H*0.038,C_TXT);
+  ctext(ctx,"– A.CUE",tmb.x+tmb.w/2,tmb.y+tmb.h*0.72,H*0.033,autoCue?C_TXT:C_DIM);
+  F("700",0.036); ctx.fillStyle=C_DIM; ctx.fillText(timeRemain?"REMAIN":"ELAPSED",W*0.365,ib.y+ib.h*0.30);
+  F("700",0.036); ctx.fillStyle=autoCue?C_RED:"rgba(224,42,28,.28)"; ctx.fillText("A.CUE",W*0.455,ib.y+ib.h*0.30);
+  ctx.fillStyle=quantOn?C_RED:"rgba(224,42,28,.28)"; ctx.fillText("QUANTIZE",W*0.518,ib.y+ib.h*0.30);
+  const show=timeRemain?rem:cur;
+  const mm=String(Math.floor(show/60)).padStart(2,"0"), ss=String(Math.floor(show%60)).padStart(2,"0"),
+        ms=String(Math.floor((show*1000)%1000)).padStart(3,"0");
+  F("400",0.108); ctx.fillStyle=C_TXT; ctx.fillText(mm+":"+ss+"."+ms,W*0.362,ib.y+ib.h*0.99);
+  F("700",0.036); ctx.fillStyle=C_DIM; ctx.fillText("TEMPO",W*0.640,ib.y+ib.h*0.30);
+  ctx.fillStyle=mt?C_RED:"rgba(224,42,28,.28)"; ctx.strokeStyle=ctx.fillStyle;
+  ctx.strokeRect(W*0.695,ib.y+ib.h*0.06,W*0.030,ib.h*0.30); ctext(ctx,"MT",W*0.710,ib.y+ib.h*0.22,H*0.032,ctx.fillStyle);
+  ctx.textBaseline="alphabetic";
+  const p=d?d.pitch:0;
+  F("400",0.098); ctx.fillStyle=C_TXT;
+  ctx.fillText((p<0?"−":p>0?"+":"")+Math.abs(p).toFixed(2),W*0.638,ib.y+ib.h*0.96);
+  F("400",0.052); ctx.fillText("%",W*0.752,ib.y+ib.h*0.96);
+
+  /* --- forma de onda geral + marcadores --- */
+  const zb={x:13.43/100*W,y:84.84/100*H,w:63.59/100*W,h:9.48/100*H};
+  ctx.fillStyle="#0a1424"; ctx.fillRect(zb.x,zb.y,zb.w,zb.h);
+  if(d&&d.peaks){ const P=d.peaks,N=P.length;
+    for(let px=0;px<zb.w;px++){ const v=P[Math.floor(px/zb.w*N)]||0, hh=Math.max(1,v*zb.h*0.80);
+      ctx.fillStyle=(px/zb.w<=frac)?"#9fc6f5":"#4d76a8"; ctx.fillRect(zb.x+px,zb.y+zb.h-hh,1,hh); } }
+  ctx.fillStyle="#ffffff"; ctx.fillRect(zb.x+zb.w*frac-1,zb.y-zb.h*0.10,2,zb.h*1.20);
+  if(d&&d.loopOn){ const a=d.loopStart/d.len, b2=d.loopEnd/d.len;
+    ctx.fillStyle="rgba(255,155,26,.35)"; ctx.fillRect(zb.x+zb.w*a,zb.y,zb.w*(b2-a),zb.h); }
+  ["A","B","C"].forEach((L,i)=>{ const fx=[0.10,0.42,0.72][i];
+    ctx.fillStyle=C_GRN; ctx.beginPath();
+    ctx.moveTo(zb.x+zb.w*fx-H*0.010,zb.y-H*0.014); ctx.lineTo(zb.x+zb.w*fx+H*0.010,zb.y-H*0.014);
+    ctx.lineTo(zb.x+zb.w*fx,zb.y-H*0.002); ctx.closePath(); ctx.fill();
+    ctext(ctx,L,zb.x+zb.w*fx+H*0.020,zb.y-H*0.012,H*0.032,C_GRN); });
+  ctx.fillStyle=C_RED; ctx.fillRect(zb.x+zb.w*(d?d.cuePoint/d.len:0)-1,zb.y-zb.h*0.10,2,zb.h*0.30);
+
+  /* --- coluna direita --- */
+  ctext(ctx,"CUE/LOOP",W*0.895,H*0.235,H*0.038,C_DIM);
+  ctext(ctx,"CALL",W*0.895,H*0.285,H*0.036,C_DIM);
+  ctx.strokeStyle=C_DIM; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(W*0.812,H*0.300); ctx.lineTo(W*0.812,H*0.282); ctx.lineTo(W*0.855,H*0.282);
+  ctx.moveTo(W*0.935,H*0.282); ctx.lineTo(W*0.982,H*0.282); ctx.lineTo(W*0.982,H*0.300); ctx.stroke();
+  [["callprev",-1],["callnext",1]].forEach(([id,dir])=>{ const b=boxFill(ctx,SCR[id],W,H,false);
+    const cx=b.x+b.w/2, cy=b.y+b.h/2, s2=Math.min(b.w,b.h)*0.28;
+    ctx.fillStyle=C_TXT; ctx.beginPath();
+    ctx.moveTo(cx+dir*s2,cy); ctx.lineTo(cx-dir*s2,cy-s2); ctx.lineTo(cx-dir*s2,cy+s2); ctx.closePath(); ctx.fill(); });
+  const qb=boxFill(ctx,SCR.quantize,W,H,false);
+  if(quantOn){ rr(ctx,qb.x,qb.y,qb.w,qb.h,H*0.012); ctx.fillStyle=C_RED; ctx.fill(); }
+  ctext(ctx,"QUANTIZE",qb.x+qb.w/2,qb.y+qb.h/2,H*0.040,quantOn?"#fff":C_DIM);
+  const mb2=boxFill(ctx,SCR.memory,W,H,false);
+  ctext(ctx,"MEMORY",mb2.x+mb2.w/2,mb2.y+mb2.h*0.34,H*0.044,C_TXT);
+  ctext(ctx,"– DELETE",mb2.x+mb2.w/2,mb2.y+mb2.h*0.72,H*0.038,C_DIM);
+  const zx=SCR.zoom[0]/100*W, zy=SCR.zoom[1]/100*H, zw=SCR.zoom[2]/100*W, zh=SCR.zoom[3]/100*H;
+  rr(ctx,zx,zy,zw*0.50,zh,H*0.006); ctx.fillStyle="#c3ccd6"; ctx.fill();
+  rr(ctx,zx+zw*0.52,zy,zw*0.48,zh,H*0.006); ctx.fillStyle="#1a2a3e"; ctx.fill();
+  ctext(ctx,"ZOOM",zx+zw*0.25,zy+zh*0.54,H*0.032,"#0e1a28");
+  ctext(ctx,"– GRID",zx+zw*0.76,zy+zh*0.54,H*0.030,C_DIM);
+  const sb=boxFill(ctx,SCR.sync,W,H,syncOn);
+  ctext(ctx,"SYNC",sb.x+sb.w/2,sb.y+sb.h/2,H*0.048,syncOn?"#fff":C_TXT);
+  const mb3=boxFill(ctx,SCR.master,W,H,isMaster);
+  ctext(ctx,"MASTER",mb3.x+mb3.w/2,mb3.y+mb3.h/2,H*0.046,isMaster?"#fff":C_TXT);
+
+  /* --- ±range + BPM --- */
+  const rb={x:80.17/100*W,y:84.11/100*H,w:6.32/100*W,h:5.10/100*H};
+  ctx.fillStyle=C_RED; ctx.fillRect(rb.x,rb.y,rb.w,rb.h);
+  ctext(ctx,RANGES[rangeIdx]==="WIDE"?"WIDE":"±"+RANGES[rangeIdx],rb.x+rb.w/2,rb.y+rb.h*0.52,H*0.042,"#fff","800");
+  const bb={x:87.44/100*W,y:83.38/100*H,w:11.14/100*W,h:10.93/100*H};
+  ctx.strokeStyle="rgba(150,175,205,.65)"; ctx.lineWidth=Math.max(1,H*0.004); ctx.strokeRect(bb.x,bb.y,bb.w,bb.h);
+  const bpm=(d?d.baseBpm*(1+d.pitch/100):128).toFixed(1);
+  ctx.font="400 "+Math.round(H*0.090)+"px 'Arial Narrow',Arial,sans-serif";
+  ctx.fillStyle=C_TXT; ctx.textAlign="right"; ctx.textBaseline="alphabetic";
+  ctx.fillText(bpm,bb.x+bb.w*0.94,bb.y+bb.h*0.68);
+  ctx.font="700 "+Math.round(H*0.038)+"px 'Arial Narrow',Arial,sans-serif"; ctx.fillStyle=C_DIM;
+  ctx.fillText("BPM",bb.x+bb.w*0.94,bb.y+bb.h*0.96); ctx.textAlign="left";
+}
+
+/* ============================== PRATO (jog) ================================ */
+let jogCtx,jogS;
+function drawJog(){ if(!jogCtx)return; const ctx=jogCtx,S=jogS,c=S/2; ctx.clearRect(0,0,S,S);
+  const lit=d?(d.playing||d.touching):false;
+  /* aro externo com as "conchas" (dimples ovais) do XDJ-700 */
+  let og=ctx.createRadialGradient(c,c*0.78,c*0.55,c,c,c);
+  og.addColorStop(0,"#2c2e32"); og.addColorStop(0.70,"#191a1d"); og.addColorStop(1,"#08090a");
+  ctx.beginPath(); ctx.arc(c,c,c*0.999,0,7); ctx.fillStyle=og; ctx.fill();
+  ctx.save(); ctx.translate(c,c);
+  for(let i=0;i<24;i++){ const a=i/24*Math.PI*2; ctx.save(); ctx.rotate(a);
+    ctx.beginPath(); ctx.ellipse(0,-c*0.905,S*0.036,S*0.026,0,0,7);
+    let dg=ctx.createRadialGradient(0,-c*0.918,S*0.004,0,-c*0.905,S*0.036);
+    dg.addColorStop(0,"#54585e"); dg.addColorStop(0.45,"#2a2c30"); dg.addColorStop(0.85,"#111214"); dg.addColorStop(1,"#3a3d42");
+    ctx.fillStyle=dg; ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0,-c*0.912,S*0.026,S*0.016,0,Math.PI*1.05,Math.PI*1.95);
+    ctx.strokeStyle="rgba(255,255,255,0.13)"; ctx.lineWidth=1; ctx.stroke(); ctx.restore(); }
+  ctx.restore();
+  /* poço escuro */
+  ctx.beginPath(); ctx.arc(c,c,c*0.845,0,7); ctx.fillStyle="#0a0b0c"; ctx.fill();
+  /* ANEL CROMADO que contorna o prato */
+  const spin=(d?d.pos/beatLen():0)*0.9;
+  ctx.save();
+  ctx.beginPath(); ctx.arc(c,c,c*0.815,0,7);
+  let cg=ctx.createLinearGradient(c*0.3,c*0.2,c*1.7,c*1.8);
+  cg.addColorStop(0,"#f2f5f8"); cg.addColorStop(0.28,"#7d8288"); cg.addColorStop(0.5,"#dfe3e8");
+  cg.addColorStop(0.74,"#61666c"); cg.addColorStop(1,"#c9ced4");
+  ctx.strokeStyle=cg; ctx.lineWidth=S*0.032; ctx.stroke();
+  /* halo azul do sensor de toque (o XDJ-700 acende discreto quando toca/toca) */
+  ctx.beginPath(); ctx.arc(c,c,c*0.786,0,7);
+  ctx.strokeStyle="rgba(60,150,235,"+(lit?0.55:0.16)+")"; ctx.lineWidth=S*0.014;
+  ctx.shadowColor="rgba(60,150,235,"+(lit?0.85:0.25)+")"; ctx.shadowBlur=S*(lit?0.045:0.018); ctx.stroke();
+  ctx.restore();
+  /* prato: metal escuro com micro-textura concêntrica */
+  ctx.beginPath(); ctx.arc(c,c,c*0.762,0,7);
+  let pg=ctx.createRadialGradient(c*0.80,c*0.70,S*0.02,c,c,c*0.762);
+  pg.addColorStop(0,"#54575c"); pg.addColorStop(0.42,"#45484d"); pg.addColorStop(0.80,"#35383c"); pg.addColorStop(1,"#26282b");
+  ctx.fillStyle=pg; ctx.fill();
+  ctx.save(); ctx.beginPath(); ctx.arc(c,c,c*0.762,0,7); ctx.clip();
+  for(let r=c*0.02;r<c*0.76;r+=Math.max(2,S*0.0075)){ ctx.beginPath(); ctx.arc(c,c,r,0,7);
+    ctx.strokeStyle="rgba(255,255,255,0.030)"; ctx.lineWidth=1; ctx.stroke(); }
+  let sg=ctx.createRadialGradient(c*0.84,c*0.72,S*0.01,c,c,c*0.762);
+  sg.addColorStop(0,"rgba(255,255,255,0.13)"); sg.addColorStop(0.55,"rgba(255,255,255,0)");
+  sg.addColorStop(1,"rgba(0,0,0,0.34)"); ctx.fillStyle=sg; ctx.fillRect(0,0,S,S);
+  ctx.restore();
+  /* aro interno de sombra */
+  ctx.beginPath(); ctx.arc(c,c,c*0.757,0,7); ctx.strokeStyle="rgba(0,0,0,0.5)"; ctx.lineWidth=S*0.012; ctx.stroke();
+  /* marcador de posição do prato (gira com a faixa) */
+  ctx.save(); ctx.translate(c,c); ctx.rotate(spin);
+  ctx.fillStyle=lit?"rgba(235,242,250,0.85)":"rgba(160,170,182,0.45)";
+  ctx.fillRect(-S*0.004,-c*0.735,S*0.008,S*0.052); ctx.restore();
+}
+
+function frame(){ requestAnimationFrame(frame); drawJog(); drawScreen(); }
+
+/* ============================== CONSTRUÇÃO ================================= */
+function lab(txt,cx,cy,cls){ const l=document.createElement("div"); l.className="lab "+(cls||"");
+  l.innerHTML=txt; l.style.left=cx+"%"; l.style.top=cy+"%"; deck.appendChild(l); return l; }
+function rule(x,y,w,h){ const r=document.createElement("div"); r.className="rule"; pct(r,x,y,w,h); deck.appendChild(r); return r; }
+const CTRL_JOG={act:"jog",k:"JOG DIAL (&minus;REV / +FWD)",
+  d:"O prato. <b>Centro</b> = scratch (com VINYL MODE aceso). <b>Borda</b> = pitch bend, para empurrar/segurar a batida e casar com o outro deck."};
+
+function silk(){
+  /* -------- painel do visor (bloco preto de cima) -------- */
+  lab('<svg width="15" height="7" viewBox="0 0 30 14"><g fill="none" stroke="#eef1f5" stroke-width="1.7" stroke-linecap="round"><path d="M4 7h20"/><path d="M11 7l3.4-3.4L17.8 7"/><path d="M15.5 7l3.4 3.4L22.3 7"/></g><circle cx="4" cy="7" r="2.1" fill="#eef1f5"/><rect x="20.4" y="1.6" width="3.9" height="3.9" fill="#eef1f5"/><circle cx="22.4" cy="10.6" r="2.1" fill="#eef1f5"/></svg>',8.5,6.1,"sm");
+  lab("Pioneer<i>DJ</i>",50.5,3.3,"pio");
+  lab("SLEEP",94.3,2.1,"sm");
+  lab('<svg width="9" height="9" viewBox="0 0 18 18" fill="none" stroke="#eef1f5" stroke-width="1.9" stroke-linecap="round"><path d="M9 2v7"/><path d="M4.2 4.4a6.6 6.6 0 1 0 9.6 0"/></svg>',86.2,2.0,"sm");
+  lab("&minus;&nbsp;USB STOP",8.8,17.0,"sm");
+  lab('<svg width="12" height="7" viewBox="0 0 24 14" fill="none" stroke="#eef1f5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 7H6"/><path d="M11 2L6 7l5 5"/></svg>',85.4,7.5,"sm");
+  lab("BACK",88.7,7.5,"sm");
+  lab("TAG TRACK",95.1,7.2,"sm");
+  lab("/ REMOVE",95.1,8.6,"sm");
+  lab("MULTI PLAYER",90.6,29.9,"multi");
+  lab("XDJ-700",90.6,31.9,"model");
+  lab('<svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="#f4f6f8" stroke-width="1.6"><path d="M10 2.2 17.2 6.1v7.8L10 17.8 2.8 13.9V6.1z"/><path d="M10 2.2V10l7.2 3.9M10 10 2.8 13.9"/></svg>',4.9,29.2,"rb");
+  lab("<i>rekord</i>box",11.0,29.2,"rb");
+  lab("MP3/AAC/WAV/AIFF",9.3,32.0,"fmt");
+
+  /* -------- painel de controles (bloco escovado de baixo) -------- */
+  lab("&bull; IN / &minus; 4BEAT",7.2,39.1,"sm");
+  lab("OUT",17.6,39.1,"sm");
+  lab("RELOOP/EXIT",30.0,39.1,"sm");
+  lab("LOOP",24.2,42.0,"sm");
+  rule(21.8,43.1,4.7,0.28);                 /* traço do colchete LOOP  */
+  rule(11.2,43.2,2.2,0.28);                 /* traço entre IN e OUT    */
+  lab("IN ADJUST",6.9,47.5,"badge");
+  lab("OUT ADJUST",17.6,47.5,"badge");
+  lab("TRACK SEARCH",10.0,50.4,"sm");
+  lab("SEARCH",10.5,58.9,"sm");
+  lab("PLAY / PAUSE",10.0,85.1,"sm");
+  lab("VINYL MODE",80.4,39.6,"sm");
+  lab("TEMPO",91.2,39.5,"sm");
+  lab("&plusmn;6 / &plusmn;10 / &plusmn;16 / WIDE",91.1,40.9,"xs");
+  lab("MASTER TEMPO",91.2,46.5,"sm");
+  lab("TEMPO",91.0,94.6,"sm");
+  lab("&minus;",27.1,90.8,"sm"); lab("REV",27.1,92.3,"sm");
+  lab("+",71.7,90.8,"sm");       lab("FWD",72.6,92.4,"sm");
+
+  /* escala pontilhada do fader + marcas − 0 + */
+  const td=document.createElement("div"); td.className="dash"; pct(td,85.4,59.2,null,33.5); deck.appendChild(td);
+  lab("&minus;",85.1,59.2,"sm"); lab("0",85.2,75.7,"sm"); lab("+",85.1,92.6,"sm");
+
+  /* arcos brancos de sentido em volta do prato (serigrafia REV/FWD) */
+  const a1=document.createElement("div"); a1.className="arc";
+  a1.style.cssText="position:absolute;z-index:4;pointer-events:none;border-left:1px solid #eef1f5;"+
+    "border-radius:70% 0 0 0;left:23.0%;top:80.5%;width:7.0%;height:8.0%;transform:rotate(-16deg)";
+  deck.appendChild(a1);
+  const a2=document.createElement("div"); a2.className="arc";
+  a2.style.cssText="position:absolute;z-index:4;pointer-events:none;border-right:1px solid #eef1f5;"+
+    "border-radius:0 70% 0 0;left:69.5%;top:80.5%;width:7.0%;height:8.0%;transform:rotate(16deg)";
+  deck.appendChild(a2);
+}
+
+function build(){
+  silk();
+
+  /* ---------------- TELA TOUCH ---------------- */
+  const dp=POS.display;
+  const box=document.createElement("div"); box.className="screenbox";
+  pct(box,dp[0],dp[1],dp[2],dp[3]); deck.appendChild(box); els.display=box;
+  const cv=document.createElement("canvas");
+  cv.width=1280; cv.height=Math.round(1280/((dp[2]/dp[3])*AR));
+  box.appendChild(cv); scCtx=cv.getContext("2d"); scW=cv.width; scH=cv.height;
+  const gl=document.createElement("div"); gl.className="glass"; box.appendChild(gl);
+  Object.keys(SCR).forEach(id=>{ const b=SCR[id];
+    const t=document.createElement("div"); t.className="thit";
+    t.style.left=b[0]+"%"; t.style.top=b[1]+"%"; t.style.width=b[2]+"%"; t.style.height=b[3]+"%";
+    box.appendChild(t);
+    t.addEventListener("mouseenter",()=>teach(TOUCH[id]));
+    t.addEventListener("pointerdown",e=>{ e.stopPropagation(); onTouch(id); });
+  });
+  box.addEventListener("mouseenter",()=>teach(CTRL.find(c=>c.act==="display")));
+
+  /* ---------------- controles físicos ---------------- */
+  CTRL.forEach(c=>{
+    if(c.kind==="disp")return;
+    let el;
+    if(c.kind==="big"){ el=document.createElement("div"); el.className="big "+c.cls; el.innerHTML=`<div class="sym">${c.sym}</div>`; }
+    else if(c.kind==="yel"){ el=document.createElement("div"); el.className="yel dim"; }
+    else if(c.kind==="amb"){ el=document.createElement("div"); el.className="amb dim"; }
+    else if(c.kind==="rdk"){ el=document.createElement("div"); el.className="rdk"; el.innerHTML=c.txt||""; }
+    else if(c.kind==="rback"){ el=document.createElement("div"); el.className="rback"; }
+    else if(c.kind==="led"){ el=document.createElement("div"); el.className="led "+c.cls; el.innerHTML="<i></i>"; }
+    else if(c.kind==="fan"){ el=document.createElement("div"); el.className="fan"; }
+    else if(c.kind==="rotary"){ el=document.createElement("div"); el.className="rotary"; el.innerHTML=`<div class="knurl"></div><div class="top"></div>`; }
+    else if(c.kind==="usbdoor"){ el=document.createElement("div"); el.className="usbdoor"; }
+    else if(c.kind==="sleep"){ el=document.createElement("div"); el.className="ind off"; }
+    else if(c.kind==="pwr"){ el=document.createElement("div"); el.style.cssText="position:absolute;z-index:5;cursor:pointer;background:transparent"; }
+    else { el=document.createElement("div"); el.className="rdk"; el.innerHTML=c.txt||""; }
+    let [x,y,w,h]=POS[c.act];
+    if(ROUND.has(c.act)){ const nh=w*AR; y=y+h/2-nh/2; h=nh; }
+    pct(el,x,y,w,h); deck.appendChild(el); els[c.act]=el;
+    const hit=document.createElement("div"); hit.className="hit"; pct(hit,x,y,w,h); hit.dataset.act=c.act; deck.appendChild(hit);
+    hit.addEventListener("mouseenter",()=>teach(c));
+    if(c.kind==="rotary"){ bindRotary(hit); } else { hit.addEventListener("pointerdown",e=>onControl(c,e)); }
+  });
+
+  /* ---------------- prato ---------------- */
+  let [jx,jy,jw,jh]=POS.jog; { const nh=jw*AR; jy=jy+jh/2-nh/2; jh=nh; }
+  const jcv=document.createElement("canvas"); jcv.className="jogc"; jcv.width=460; jcv.height=460;
+  pct(jcv,jx,jy,jw,jh); deck.appendChild(jcv); jogCtx=jcv.getContext("2d"); jogS=jcv.width;
+  const jhit=document.createElement("div"); jhit.className="joghit"; pct(jhit,jx,jy,jw,jh); deck.appendChild(jhit);
+  jhit.addEventListener("mouseenter",()=>teach(CTRL_JOG)); bindJog(jhit);
+
+  /* ---------------- fader TEMPO ---------------- */
+  const tp=POS.tempo;
+  const t=document.createElement("div"); t.className="tempo";
+  t.innerHTML=`<div class="slotb"></div><div class="tk l"></div><div class="tk r"></div><div class="cap" id="tcap"></div>`;
+  pct(t,tp[0],tp[1],tp[2],tp[3]); deck.appendChild(t); els.tempo=t; placeTempoCap(0.5); bindTempo(t);
+  t.addEventListener("mouseenter",()=>teach({k:"TEMPO — fader de velocidade (100 mm)",
+    d:"Arraste para variar a velocidade dentro do alcance escolhido (&plusmn;6/&plusmn;10/&plusmn;16/WIDE). Para cima = mais lento (&minus;), para baixo = mais rápido (+), igual ao aparelho real."}));
+
+  setState("vinylmode",true); els.vinylmode.classList.add("on");
+  els.sleep.classList.remove("off");
+  renderMission();
+}
+
+/* ============================== INTERAÇÃO ================================== */
+function onControl(c,e){ teach(c);
+  if(!started){ startAudio().then(()=>{ if(c.act==="play")playDeck(); }); return; }
+  if(!ready)return; const a=c.act; flash(els[a]);
+  if(a==="play")playDeck();
+  else if(a==="cue")cueDeck();
+  else if(a==="loopin"||a==="loopout"||a==="reloop")loopAct(a);
+  else if(a==="trkprev"||a==="trknext"){ d.pos=0; d.cuePoint=0; d.loopOn=false; setState("loopin",false); setState("loopout",false); }
+  else if(a==="srchback"||a==="srchfwd"){ d.pos=clamp(d.pos+(a==="srchfwd"?1:-1)*beatLen()*2,0,d.len-1); }
+  else if(a==="vinylmode"){ vinylMode=!vinylMode; setState("vinylmode",vinylMode); }
+  else if(a==="mastertempo"){ mt=!mt; setState("mastertempo",mt); }
+  else if(a==="temporange"){ rangeIdx=(rangeIdx+1)%RANGES.length; d.pitch=-(tempoPos-0.5)*2*rangeVal(); }
+  else if(a==="back"){ page="BROWSE"; }
+  else if(a==="tagtrack"){ setState("tagtrack",true); setTimeout(()=>setState("tagtrack",false),240); }
+  else if(a==="usbstop"){ srcIdx=(srcIdx===2)?0:2; setState("usbstop",true); setTimeout(()=>setState("usbstop",false),260); }
+  else if(a==="power"){ els.sleep.classList.toggle("off"); }
+  /* usbport / sleep: informativos — o flash + a barra de ensino já respondem */
+}
+function onTouch(id){
+  if(!started){ startAudio(); return; }
+  markMission("touch");
+  teach(TOUCH[id]);
+  if(id==="browse")page="BROWSE"; else if(id==="taglist")page="TAG LIST";
+  else if(id==="tinfo")page="INFO"; else if(id==="menu")page="MENU"; else if(id==="perform")page="PERFORM";
+  else if(id==="srcrb")srcIdx=0; else if(id==="srclink")srcIdx=1; else if(id==="srcusb")srcIdx=2;
+  else if(id==="slip")slipOn=!slipOn;
+  else if(id==="loopmode")loopModeAuto=!loopModeAuto;
+  else if(id==="quantize")quantOn=!quantOn;
+  else if(id==="sync"){ syncOn=!syncOn; if(syncOn&&ready){ d.pitch=0; placeTempoCap(0.5); } }
+  else if(id==="master")isMaster=!isMaster;
+  else if(id==="zoom")zoomIdx=(zoomIdx+1)%3;
+  else if(id==="memory"&&ready){ d.memPoint=d.cuePoint; }
+  else if((id==="callprev"||id==="callnext")&&ready){ if(d.memPoint!=null){ d.pos=d.cuePoint=d.memPoint; } }
+}
+
+function bindJog(el){ let active=false,last=0;
+  const rect=()=>el.getBoundingClientRect();
+  const ang=e=>{ const r=rect(); return Math.atan2(e.clientY-(r.top+r.height/2),e.clientX-(r.left+r.width/2)); };
+  const dist=e=>{ const r=rect(); return Math.hypot(e.clientX-(r.left+r.width/2),e.clientY-(r.top+r.height/2))/(r.width/2); };
+  el.addEventListener("pointerdown",e=>{ if(!started){startAudio();return;} if(!ready)return; active=true; last=ang(e);
+    if(vinylMode && dist(e)<0.74){ d.touching=true; d.targetPos=d.pos; } el.setPointerCapture(e.pointerId); e.preventDefault(); });
+  el.addEventListener("pointermove",e=>{ if(!active||!ready)return; const a=ang(e); let da=a-last; if(da>Math.PI)da-=2*Math.PI; if(da<-Math.PI)da+=2*Math.PI; last=a;
+    if(d.touching){ d.targetPos=clamp(d.targetPos+da/(2*Math.PI)*d.buffer.sampleRate*0.5,0,d.len-1); markMission("scratch"); }
+    else { d.pos=clamp(d.pos+da/(2*Math.PI)*d.buffer.sampleRate*0.05,0,d.len-1); } });
+  const up=()=>{ active=false; if(d&&d.touching)d.touching=false; };
+  el.addEventListener("pointerup",up); el.addEventListener("pointercancel",up);
+}
+function bindRotary(el){ let drag=false,last=0;
+  el.addEventListener("pointerdown",e=>{ if(!started){startAudio();return;} drag=true; last=e.clientY;
+    el.setPointerCapture(e.pointerId); e.preventDefault(); flash(els.rotary); });
+  el.addEventListener("pointermove",e=>{ if(!drag)return; const dy=e.clientY-last;
+    if(Math.abs(dy)>16){ last=e.clientY; if(ready){ d.pos=0; d.cuePoint=0; } } });
+  el.addEventListener("pointerup",()=>drag=false); el.addEventListener("pointercancel",()=>drag=false);
+}
+let tempoPos=0.5;
+function placeTempoCap(p){ tempoPos=p; const cap=$("#tcap"); if(cap)cap.style.top=(7.6+p*84.8)+"%"; }
+function bindTempo(el){ let drag=false;
+  const mv=e=>{ if(!drag||!ready)return; const r=el.getBoundingClientRect();
+    const p=clamp((e.clientY-r.top-r.height*0.076)/(r.height*0.848),0,1); placeTempoCap(p);
+    d.pitch=-(p-0.5)*2*rangeVal(); markMission("tempo"); };
+  el.addEventListener("pointerdown",e=>{ if(!started){startAudio();return;} drag=true; el.setPointerCapture(e.pointerId); mv(e); });
+  el.addEventListener("pointermove",mv); el.addEventListener("pointerup",()=>drag=false); el.addEventListener("pointercancel",()=>drag=false);
+}
+
+function init(){ build(); frame();   /* desenha o aparelho ANTES de ligar o áudio */
+  $("#btnStart").addEventListener("pointerdown",()=>startAudio());
+  $("#btnReset").addEventListener("pointerdown",()=>location.reload());
+  const fit=()=>{ const w=$(".wrap"); const cap=document.documentElement.classList.contains("smu-fs")?2.6:1;
+    const s=Math.max(0.1,Math.min((window.innerWidth-6)/w.offsetWidth,(window.innerHeight-6)/w.offsetHeight,cap));
+    $("#stage").style.transform="scale("+s+")"; };
+  window.addEventListener("resize",fit);
+  window.addEventListener("message",e=>{ if(e&&e.data&&e.data.smu==="fullscreen")setTimeout(fit,60); });
+  fit();
+}
+init();
+</script>
+</body>
+</html>

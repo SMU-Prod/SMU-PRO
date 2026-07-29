@@ -1,0 +1,951 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>Numark NS7 — réplica fiel (SMU)</title>
+<!--
+  FONTE DE VERDADE (Regra 2):
+   • FOTO TOP-DOWN real do NS7 (1200x750) — medida pixel a pixel com o layout-tracer (quadrantes).
+     Painel na foto: x 52..1147 (1095 px) · y 89..648 (559 px).
+     Conversão foto→painel:  x% = (px-52)/1095*100   ·   y% = (py-89)/559*100
+     Pratos: círculo perfeito de 309 px (esq. centro 271,5/377,5 · dir. centro 927,5/379).
+   • MANUAL OFICIAL "Numark NS7 User Guide v1.1" — TOP PANEL OVERVIEW (itens 1..47).
+     Todos os nomes e descrições saíram de lá, não de chute.
+   • ⚠️ MEDIDA — divergência reportada ao dono:
+       o briefing desta tarefa mandou usar 711 x 394 mm (é o que está no código, linha do AR).
+       O manual (p. 31, TECHNICAL SPECIFICATIONS) diz 30" x 15 7/8" x 3 7/8" = 762 x 403,2 x 98,4 mm
+       (AR 1,890) e a própria foto mede AR 1,959. Trocar = 1 linha (const AR).
+
+  QUADRANTES CONFERIDOS no _quad.png (X = ALTURA X1..X10 · Y = LARGURA Y1..Y8):
+     prato esq.        X3Y1–X8Y3   ·  prato dir.        X3Y6–X8Y8
+     strip search esq. X1Y1–X1Y2   ·  strip search dir. X1Y7–X1Y8
+     loop/autoloop esq.X1Y1–X2Y3   ·  loop/autoloop dir.X1Y6–X2Y8
+     pitch fader esq.  X6Y1–X9Y1   ·  pitch fader dir.  X6Y8–X9Y8
+     browse/scroll     X1Y4–X1Y5   ·  BPM meter         X3Y4–X3Y5
+     EQ do mixer       X3Y4–X6Y5   ·  faders de canal   X7Y4–X9Y5
+     crossfader        X9Y4–X10Y5  ·  LED meters        X7Y4–X9Y5
+     hot cues esq.     X9Y2–X9Y3   ·  hot cues dir.     X9Y6–X9Y8
+     SYNC/CUE/PLAY esq.X9Y2–X10Y3  ·  dir.              X9Y6–X10Y8
+
+  GEOMETRIA DOS DOIS DECKS (medida, não suposta):
+     • O bloco EXTERNO de cada deck é ESPELHADO (strip search, track, tap, scratch off,
+       start/stop time, bleep/reverse, keylock, range, pitch fader, pitch bend).
+     • O bloco de LOOP e a fileira de baixo (delete/hot cues/sync/cue/play) são TRANSLADADOS
+       (+59,55%) — a ordem 1/2X · 2X · LEFT · RIGHT e 1·2·3·4·5 é a MESMA nos dois lados.
+       Espelhar esses dois blocos seria o erro.
+-->
+<style>
+  :root{ --ink:#e9eef7; --red:#e5352f; --red2:#ff5b52; --green:#3ce06a; --cyan:#25c8f5; --amber:#f5b83c; }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{ background:radial-gradient(1300px 720px at 50% -12%,#23262c,#0a0b0d 62%),#08090b; color:var(--ink);
+    font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;
+    user-select:none;overflow:hidden;display:flex;align-items:flex-start;justify-content:center}
+  #stage{transform-origin:top center;flex:0 0 auto}
+  .wrap{width:1120px;display:flex;flex-direction:column;gap:8px;padding:10px}
+  /* contrato html.smu-fs — o player avisa que entrou em tela cheia; aqui só reagimos */
+  html.smu-fs body{align-items:center}
+
+  .util{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:linear-gradient(180deg,#202329,#15171b);border:1px solid #0c0d0f;border-radius:11px;padding:7px 11px}
+  .brand b{font-size:15px;letter-spacing:1px;color:#eef2f8}
+  .brand .m{font-size:9px;letter-spacing:2px;color:#8a94a4;text-transform:uppercase;margin-left:6px}
+  .pill{font-size:10px;color:#8b97a9;background:#0c0e12;border:1px solid #2a2f37;border-radius:16px;padding:4px 9px;display:flex;align-items:center;gap:6px}
+  .pill b{color:#fff}.dot{width:8px;height:8px;border-radius:50%;background:#444}.dot.on{background:var(--green);box-shadow:0 0 8px var(--green)}
+  .spacer{flex:1}
+  .btnp{font:inherit;font-size:11px;font-weight:700;border:0;border-radius:8px;padding:6px 11px;cursor:pointer;color:#07120b;background:linear-gradient(180deg,#5be59a,#27b566)}
+  .btnp.ghost{background:transparent;color:#8b97a9;border:1px solid #2a2f37}
+  .mission{display:flex;align-items:center;gap:8px;background:#0c0e12;border:1px solid #2a2f37;border-radius:9px;padding:5px 10px;flex:1 1 240px;min-width:0}
+  .mission .idx{font-size:10px;color:var(--amber);font-weight:800;white-space:nowrap}
+  .mission .txt{font-size:11px;line-height:1.2}.mission .txt b{color:#fff}.mission .txt small{color:#8b97a9}
+
+  /* ===== corpo do NS7 ===== */
+  .deck{position:relative;width:100%;aspect-ratio:711/394;border-radius:7px;
+    background:#0a0b0d;
+    box-shadow:0 28px 64px #000d, inset 0 1px 0 #ffffff10, 0 0 0 1px #000, 0 0 0 2px #24262a;
+    overflow:hidden}
+
+  /* placa escovada azul-acinzentada dos dois decks — degradê AMOSTRADO da foto
+     (#858d9a no topo → #25292c embaixo, escurecendo em direção à costura do mixer) */
+  .plate{position:absolute;top:0;bottom:0;pointer-events:none;z-index:0;
+    background:
+      repeating-linear-gradient(0deg,#ffffff0d 0 1px,#00000012 1px 2.5px),
+      linear-gradient(90deg,#00000000 0%,#00000014 40%,#00000038 72%,#00000078 100%),
+      linear-gradient(180deg,#8b939f 0%,#7c8391 15%,#6e7686 31%,#666d79 47%,#535a63 74%,#41454c 86%,#262a2e 100%)}
+  .plate.b{background:
+      repeating-linear-gradient(0deg,#ffffff0d 0 1px,#00000012 1px 2.5px),
+      linear-gradient(270deg,#00000000 0%,#00000014 40%,#00000038 72%,#00000078 100%),
+      linear-gradient(180deg,#8b939f 0%,#7c8391 15%,#6e7686 31%,#666d79 47%,#535a63 74%,#41454c 86%,#262a2e 100%)}
+  .plate::after{content:"";position:absolute;inset:0;
+    background:radial-gradient(120% 60% at 20% 4%,#ffffff16,transparent 58%)}
+  /* painel central do mixer — preto texturizado */
+  .mixp{position:absolute;top:0;bottom:0;pointer-events:none;z-index:0;
+    background:repeating-linear-gradient(0deg,#ffffff08 0 1px,#0000 1px 3px),
+      linear-gradient(180deg,#101216 0%,#0a0c0f 18%,#06080b 62%,#04060a 100%);
+    box-shadow:inset 3px 0 6px #000, inset -3px 0 6px #000}
+  /* costura metálica entre deck e mixer */
+  .seam{position:absolute;top:0;bottom:0;width:.28%;pointer-events:none;z-index:1;
+    background:linear-gradient(180deg,#aeb6be,#6e767f 40%,#41474e 100%);box-shadow:0 0 3px #000a}
+  /* lábio frontal do chassi (a borda que aparece na foto embaixo) */
+  .lip{position:absolute;pointer-events:none;z-index:4;
+    background:linear-gradient(180deg,#5c6167 0%,#43484e 40%,#292d32 100%);box-shadow:inset 0 1px 0 #ffffff22}
+
+  .sect{position:absolute;pointer-events:none;border:1px solid #ffffff18;border-radius:3px;z-index:0}
+  .rule{position:absolute;pointer-events:none;height:1px;background:linear-gradient(90deg,#ffffff06,#ffffff40,#ffffff06);z-index:0}
+  /* trilho metálico serigrafado acima da fileira de LOOP (existe na foto) */
+  .rail{position:absolute;pointer-events:none;z-index:1;border:1px solid #ffffff55;border-bottom:0;
+    border-radius:2px 2px 0 0;background:linear-gradient(180deg,#ffffff26,transparent)}
+  .screw{position:absolute;pointer-events:none;z-index:1;border-radius:50%;
+    background:radial-gradient(circle at 40% 34%,#8f979f,#3d4249 62%,#15181c 100%);
+    box-shadow:inset 0 0 0 1px #00000090, 0 1px 1px #ffffff18}
+
+  .lab{position:absolute;font-size:5px;letter-spacing:.5px;color:#dbe1e8;font-weight:800;text-transform:uppercase;
+    pointer-events:none;white-space:nowrap;text-align:center;transform:translate(-50%,-50%);z-index:2;text-shadow:0 1px 1px #000c}
+  .lab.xs{font-size:4.1px;color:#aab2bb;letter-spacing:.35px;font-weight:700}
+  .lab.red{color:#e5453c;text-shadow:0 0 3px #e5352f55}
+  .lab.num{font-size:5.4px;color:#e7ecf3}
+  .lab.dim{color:#8e97a1}
+  .lab.logo{font-size:12px;font-weight:900;letter-spacing:.5px;color:#f2f5f8;font-style:italic;text-transform:none}
+  .lab.rot{transform:translate(-50%,-50%) rotate(-90deg)}
+  .lab.itch{font-size:13px;font-weight:900;letter-spacing:2px;color:#eef2f7;text-transform:none}
+
+  /* ===== botão retangular de borracha preta (padrão NS7) ===== */
+  .btn{position:absolute;cursor:pointer;border-radius:2.5px;min-width:0;box-sizing:border-box;overflow:hidden;
+    background:linear-gradient(180deg,#2b2f35,#14171b 55%,#0b0d10);border:1px solid #05060899;
+    box-shadow:inset 0 1px 0 #ffffff1c, inset 0 -2px 4px #000a, 0 1px 2px #000b;
+    display:flex;align-items:center;justify-content:center;color:#c6ced7;font-size:4.2px;font-weight:800;
+    text-align:center;line-height:1.02;letter-spacing:.3px;text-shadow:0 1px 1px #000;white-space:pre-line;padding:0 .5px}
+  .btn:active{transform:translateY(.5px)}
+  .btn.red{color:#e5453c}
+  .btn.red.on{color:#fff;border-color:#ff6a60;box-shadow:0 0 7px #e5352faa, inset 0 0 8px #e5352f55}
+  .btn.wht.on{color:#fff;border-color:#e9f1fb;box-shadow:0 0 7px #cfe1f7, inset 0 0 8px #7fb4ff33}
+  .btn.on{color:#fff}
+  .btn.glyph{font-size:6.5px;letter-spacing:0}
+  .btn.num{font-size:6px;color:#e7edf4}
+  /* barra de LED vermelha dentro dos botões de loop (a foto mostra um traço aceso) */
+  .btn.bar::after{content:"";position:absolute;left:26%;right:26%;top:50%;height:9%;transform:translateY(-50%);
+    border-radius:1px;background:#8d2320;box-shadow:inset 0 0 2px #000}
+  .btn.bar.on::after{background:#ff4a3e;box-shadow:0 0 5px #ff4a3e}
+  /* SYNC / CUE / PLAY — botões grandes de borracha */
+  .bigbtn{position:absolute;cursor:pointer;border-radius:3px;min-width:0;box-sizing:border-box;overflow:hidden;
+    background:linear-gradient(180deg,#2a2e34,#15181c 52%,#0a0c0f);border:1px solid #05060899;
+    box-shadow:inset 0 1px 0 #ffffff1e, inset 0 -3px 6px #000b, 0 1px 3px #000c;
+    display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:1px;
+    color:#eef3f9;text-shadow:0 1px 2px #000}
+  .bigbtn:active{transform:translateY(.5px)}
+  .bigbtn.red{color:#e5352f;text-shadow:0 0 4px #e5352f77}
+  .bigbtn.on{box-shadow:0 0 10px #ffffff55, inset 0 0 12px #ffffff22, inset 0 1px 0 #ffffff2e}
+  .bigbtn.red.on{color:#ff6a60;box-shadow:0 0 12px #e5352faa, inset 0 0 12px #e5352f44}
+
+  /* botão redondo com LED (SCRATCH OFF / KEYLOCK / RANGE / TAP) */
+  .rbtn{position:absolute;cursor:pointer;border-radius:50%;box-sizing:border-box;overflow:hidden;
+    background:radial-gradient(circle at 50% 32%,#2b2f35,#15181c 58%,#08090b 100%);
+    border:1px solid #05060899;box-shadow:0 1px 3px #000b, inset 0 1px 1px #ffffff18;
+    display:flex;align-items:center;justify-content:center;color:#b9c1ca;font-size:3.6px;font-weight:900}
+  .rbtn:active{transform:translateY(.5px)}
+  .rbtn .led{position:relative;z-index:auto;width:44%;height:44%;border-radius:50%;
+    background:radial-gradient(circle at 40% 34%,#8e2b26,#5a1714);box-shadow:inset 0 0 2px #000}
+  .rbtn.on .led{background:radial-gradient(circle at 40% 34%,#ff8a80,#e5352f 60%,#a4211c);box-shadow:0 0 6px #ff4a3e,0 0 12px #e5352f88}
+  .rbtn.tap{background:radial-gradient(circle at 50% 30%,#22262b,#0f1216 62%,#06070a 100%);
+    box-shadow:0 1px 3px #000c, inset 0 0 0 1.6px #33383f, inset 0 2px 3px #ffffff12;color:#e5453c;font-size:4px}
+  .rbtn.tap.on{color:#ff6a60;box-shadow:0 0 8px #e5352faa, inset 0 0 0 1.6px #6b3330}
+
+  /* knobs pretos com risco branco (START/STOP TIME e todo o mixer) */
+  .knob{position:absolute;border-radius:50%;cursor:ns-resize;box-sizing:border-box;
+    background:radial-gradient(circle at 50% 26%,#3a3f46,#1c2025 52%,#0b0d10 100%);border:1px solid #06070a;
+    box-shadow:0 2px 4px #000b, inset 0 1px 0 #ffffff1c}
+  .knob::after{content:"";position:absolute;left:50%;top:6%;width:8%;height:40%;background:#eef2f7;border-radius:2px;
+    transform:translateX(-50%) rotate(var(--kr,0deg));transform-origin:50% 138%;box-shadow:0 0 2px #000c}
+  /* SCROLL KNOB — encoder liso, sem risco indicador (é o que a foto mostra) */
+  .knob.enc{background:radial-gradient(circle at 50% 30%,#4b5158,#262b31 54%,#0c0e11 100%);
+    box-shadow:0 2px 5px #000c, inset 0 1px 0 #ffffff22, inset 0 0 0 1.6px #2e343b}
+  .knob.enc::after{display:none}
+
+  /* STRIP SEARCH — moldura prateada com sensor escuro embutido */
+  .strip{position:absolute;cursor:pointer;border-radius:2px;box-sizing:border-box;overflow:hidden;
+    background:linear-gradient(180deg,#cfd4d8,#8d949b 40%,#5e656c);border:1px solid #23272c;
+    box-shadow:0 1px 3px #000b, inset 0 1px 0 #ffffff66}
+  .strip .in{position:absolute;inset:16% 5%;border-radius:1px;
+    background:linear-gradient(180deg,#22262a,#3a3f44 45%,#1a1d21);box-shadow:inset 0 1px 4px #000e}
+  .strip .pl{position:absolute;top:16%;bottom:16%;width:1.4%;background:#ff5b52;box-shadow:0 0 5px #ff4a3e;left:5%}
+
+  /* chave BLEEP / REVERSE (3 posições, vertical) */
+  .rocker{position:absolute;cursor:pointer;border-radius:2px;box-sizing:border-box;overflow:hidden;
+    background:linear-gradient(180deg,#0c0e11,#06080a);border:1.2px solid #2b3037;
+    box-shadow:inset 0 0 6px #000e, 0 1px 2px #000a;display:flex;align-items:center;justify-content:center}
+  .rocker .lev{width:78%;height:34%;border-radius:2px;transition:transform .09s;
+    background:linear-gradient(180deg,#4a5057,#22262b 55%,#111417);box-shadow:0 1px 2px #000b, inset 0 1px 0 #ffffff20}
+  .rocker.up .lev{transform:translateY(-92%)} .rocker.dn .lev{transform:translateY(92%)}
+
+  /* mini chave deslizante (HEADPHONE MODE / METER MODE) */
+  .msw{position:absolute;cursor:pointer;border-radius:2px;box-sizing:border-box;overflow:hidden;
+    background:linear-gradient(180deg,#0c0e11,#05070a);border:1px solid #2a2f36;display:flex;align-items:center}
+  .msw .kn{width:48%;height:86%;margin-left:2%;border-radius:50%;transition:margin-left .09s;
+    background:radial-gradient(circle at 40% 30%,#e6ebf0,#9aa1a9 60%,#5d646b);box-shadow:0 1px 2px #000c}
+  .msw.r .kn{margin-left:50%}
+
+  /* faders */
+  .fader{position:absolute;cursor:ns-resize;touch-action:none;box-sizing:border-box}
+  .fader .slot{position:absolute;left:50%;top:2%;bottom:2%;width:9%;transform:translateX(-50%);
+    background:linear-gradient(90deg,#05060700,#000 35%,#000 65%,#05060700);border-radius:2px;box-shadow:inset 0 0 3px #000}
+  .fader .ticks{position:absolute;left:2%;top:6%;bottom:6%;width:26%;
+    background:repeating-linear-gradient(180deg,#e8edf2aa 0 1.2px,transparent 1.2px 9.2%)}
+  .fader .ticks.r{left:auto;right:2%}
+  .fader .cap{position:absolute;left:50%;width:82%;height:10.5%;transform:translate(-50%,-50%);border-radius:2px;
+    background:linear-gradient(180deg,#33383f,#1a1d22 46%,#0d1014);border:1px solid #05060899;
+    box-shadow:0 2px 4px #000c, inset 0 1px 0 #ffffff22}
+  .fader .cap::after{content:"";position:absolute;left:8%;right:8%;top:50%;height:9%;transform:translateY(-50%);
+    background:#e9eef4;border-radius:1px;box-shadow:0 0 2px #000a}
+  .fader.ch .cap{width:96%;height:9%;background:linear-gradient(180deg,#2a2e34,#15181c 46%,#0b0d10)}
+  .fader.ch .ticks{background:repeating-linear-gradient(180deg,#dfe6edcc 0 1.2px,transparent 1.2px 7.6%)}
+
+  .hfader{position:absolute;cursor:ew-resize;touch-action:none;box-sizing:border-box}
+  .hfader .slot{position:absolute;top:50%;left:3%;right:3%;height:11%;transform:translateY(-50%);
+    background:linear-gradient(180deg,#000,#0d1013);border-radius:2px;box-shadow:inset 0 1px 3px #000}
+  .hfader .ticks{position:absolute;top:6%;bottom:6%;left:3%;right:3%;
+    background:repeating-linear-gradient(90deg,#e8edf2b0 0 1.2px,transparent 1.2px 33.3%)}
+  .hfader .cap{position:absolute;top:50%;height:96%;width:10%;transform:translate(-50%,-50%);border-radius:2px;
+    background:linear-gradient(180deg,#e9eef4,#a8afb7 48%,#6b7178);border:1px solid #05060899;box-shadow:0 2px 4px #000c}
+
+  /* medidores de LED */
+  .meter{position:absolute;pointer-events:none;z-index:2;display:flex;flex-direction:column-reverse;gap:9%;
+    background:#05070a;border-radius:1px;box-shadow:inset 0 0 0 1px #ffffff0d;padding:2% 0}
+  .meter i{flex:1;background:#2a0d0c;border-radius:.5px}
+  /* BPM METER — barra horizontal de LEDs com o LED branco no centro */
+  .bpm{position:absolute;pointer-events:none;z-index:2;display:flex;align-items:center;gap:5%;
+    background:linear-gradient(180deg,#111417,#05070a);border-radius:2px;box-shadow:inset 0 0 0 1px #ffffff12;padding:0 2%}
+  .bpm i{flex:1;height:62%;background:#33100f;border-radius:.5px}
+  .bpm i.c{background:#3a3a3a}
+  /* LEDs indicadores (fader start / xfader reverse / power / usb) */
+  .led{position:absolute;border-radius:50%;pointer-events:none;z-index:2;
+    background:radial-gradient(circle at 40% 34%,#8e2b26,#4a1210);box-shadow:inset 0 0 2px #000}
+  .led.on{background:radial-gradient(circle at 40% 34%,#ff8a80,#e5352f 60%,#a4211c);box-shadow:0 0 5px #ff4a3e,0 0 10px #e5352f77}
+  .led.grn{background:radial-gradient(circle at 40% 34%,#bff7d1,#3ce06a 60%,#1c8b40);box-shadow:0 0 6px #3ce06a}
+
+  .jogc{position:absolute;pointer-events:none;z-index:1}
+  .btn,.rbtn,.knob,.bigbtn,.fader,.hfader,.rocker,.msw,.strip{z-index:3}
+  .joghit{position:absolute;cursor:grab;border-radius:50%;touch-action:none;z-index:5}
+  .joghit:active{cursor:grabbing}
+  .hit{position:absolute;cursor:pointer;z-index:6;border-radius:3px}
+  body.debug .hit{background:#00e5ff22;box-shadow:inset 0 0 0 1px #00e5ff}
+
+  .teach{display:flex;align-items:center;gap:8px;background:#0c0e12;border:1px solid #2a2f37;border-radius:9px;padding:7px 11px;min-height:38px}
+  .teach .k{font-size:10px;font-weight:900;color:var(--red2);background:#1e0f0e;border:1px solid #4a2320;border-radius:5px;padding:3px 7px;white-space:nowrap}
+  .teach .d{font-size:11.5px;color:#cdd5e0;line-height:1.25}.teach .d b{color:#fff}
+</style>
+</head>
+<body>
+<div id="stage">
+<div class="wrap">
+
+  <div class="util">
+    <div class="brand"><b>SMU</b><span class="m">PRO • NUMARK NS7</span></div>
+    <span class="pill"><span class="dot" id="acDot"></span> Áudio <b id="acState">clique em Ligar</b></span>
+    <div class="mission">
+      <span class="idx" id="mIdx">MISSÃO 1/6</span>
+      <div class="txt"><b id="mTitle">Dê play</b><br><small id="mHint">Aperte ▶❚❚ do deck esquerdo.</small></div>
+    </div>
+    <span class="spacer"></span>
+    <button class="btnp ghost" id="btnReset">Reiniciar</button>
+    <button class="btnp" id="btnStart">▶ Ligar áudio</button>
+  </div>
+
+  <div class="deck" id="deck"></div>
+
+  <div class="teach" id="teach">
+    <span class="k" id="tK">NUMARK NS7</span>
+    <span class="d" id="tD">Controladora com <b>dois pratos motorizados de vinil de verdade</b> e mixer de 3 canais no centro. Passe o mouse (ou toque) em qualquer controle para aprender o que ele faz. Aperte <b>Ligar áudio</b> e comece pelo <b>▶❚❚</b> do deck esquerdo.</span>
+  </div>
+</div>
+</div>
+
+<script>
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+if(location.hash.includes("debug"))document.body.classList.add("debug");
+const deck=$("#deck");
+
+/* proporção física do painel — briefing do dono: 711 x 394 mm (deitado).
+   ⚠️ manual p.31 diz 762 x 403,2 mm (AR 1,890) e a foto mede 1,959 — trocar aqui é 1 linha. */
+const AR=711/394;
+
+/* geometria medida na foto: deck A 0..39,4% · mixer 39,4..60,6% · deck B 60,6..100% */
+const MIXL=39.4, MIXR=60.6;
+const TR=59.55;                 // translação deck A → deck B (blocos de loop e da fileira de baixo)
+const MI=x=>+(100-x).toFixed(2); // espelho de um PONTO (centro de serigrafia)
+
+/* ===================== POS — mapa único (x, y, largura, altura em % do painel) =====================
+   Medido na FOTO TOP-DOWN real. Os itens do conjunto ROUND são circularizados no build (h = w*AR).
+   'jog' = prato ESQUERDO e 'platter' = prato DIREITO — nomes que o checar-pos trata como
+   CONTAINER (a bbox quadrada de um círculo encosta nos vizinhos sem sobrepor de fato). */
+const POS={
+ /* ---------- DECK A (esquerdo) ---------- */
+ strip_L:[1.85,4.2,12.95,4.2],
+ trkb_L:[0.6,11.2,2.7,3.0],
+ trkf_L:[3.6,11.2,2.7,3.0],
+ lpon_L:[18.9,6.0,2.6,2.9],
+ lphalf_L:[12.0,11.2,2.7,3.0],
+ lpdbl_L:[15.45,11.2,2.7,3.0],
+ lpshl_L:[22.35,11.2,2.7,3.0],
+ lpshr_L:[25.85,11.2,2.7,3.0],
+ lpmode_L:[12.0,16.6,2.7,3.0],
+ lpin_L:[15.45,16.6,2.7,3.0],
+ lpout_L:[18.9,16.6,2.7,3.0],
+ lpsel_L:[22.35,16.6,2.7,3.0],
+ lprel_L:[25.85,16.6,2.7,3.0],
+ tap_L:[2.35,19.1,2.05,3.7],
+ scroff_L:[6.85,24.37,1.5,2.71],
+ startt_L:[9.4,25.02,2.05,3.7],
+ stopt_L:[7.25,29.62,2.05,3.7],
+ bleep_L:[2.0,27.9,2.75,8.3],
+ keylock_L:[2.6,41.38,1.5,2.71],
+ range_L:[2.75,46.54,1.45,2.62],
+ jog:[5.94,26.15,28.22,50.93],
+ pitch_L:[1.5,51.8,3.8,30.8],
+ del_L:[9.67,81.7,2.4,2.3],
+ hc0_L:[14.3,81.7,2.35,2.3],
+ hc1_L:[17.8,81.7,2.35,2.3],
+ hc2_L:[21.3,81.7,2.35,2.3],
+ hc3_L:[24.8,81.7,2.35,2.3],
+ hc4_L:[28.3,81.7,2.35,2.3],
+ pbdn_L:[0.5,87.2,2.7,2.5],
+ pbup_L:[3.55,87.2,2.75,2.5],
+ sync_L:[12.55,87.2,4.6,6.6],
+ cue_L:[17.7,87.2,4.6,6.6],
+ play_L:[23.1,87.2,4.65,6.6],
+
+ /* ---------- MIXER (centro) ---------- */
+ back:[43.25,5.8,2.75,2.7],
+ browse:[48.45,2.91,3.1,5.59],
+ fwd:[54.0,5.8,2.75,2.7],
+ crates:[43.25,11.2,2.75,2.7],
+ prepare:[48.6,11.2,2.8,2.7],
+ files:[54.0,11.2,2.75,2.7],
+ loada:[43.25,16.55,2.75,2.7],
+ loadprep:[48.6,16.55,2.8,2.7],
+ loadb:[54.0,16.55,2.75,2.7],
+ bpmmeter:[45.2,23.9,9.6,1.5],
+ gain1:[42.25,29.37,2.05,3.7],
+ master:[48.95,29.37,2.05,3.7],
+ gain2:[55.7,29.37,2.05,3.7],
+ treble1:[42.25,38.17,2.05,3.7],
+ booth:[48.95,38.17,2.05,3.7],
+ treble2:[55.7,38.17,2.05,3.7],
+ mid1:[42.25,46.24,2.05,3.7],
+ hpmix:[46.85,46.6,6.3,5.2],
+ mid2:[55.7,46.24,2.05,3.7],
+ bass1:[42.25,54.19,2.05,3.7],
+ hpmode:[49.3,55.95,1.4,1.5],
+ bass2:[55.7,54.19,2.05,3.7],
+ metermode:[49.3,62.8,1.4,1.5],
+ fader1:[41.6,66.2,3.4,13.9],
+ meterl:[48.15,68.0,0.9,12.9],
+ meterr:[50.95,68.0,0.9,12.9],
+ fader2:[55.0,66.2,3.4,13.9],
+ fstarta:[48.0,82.36,0.85,1.53],
+ xfrev:[49.52,82.36,0.85,1.53],
+ fstartb:[51.2,82.36,0.85,1.53],
+ xfader:[46.2,86.6,7.4,6.1],
+
+ /* ---------- DECK B (direito) — externo ESPELHADO, loop/fileira TRANSLADADOS ---------- */
+ strip_R:[85.2,4.2,12.95,4.2],
+ trkb_R:[93.7,11.2,2.7,3.0],
+ trkf_R:[96.7,11.2,2.7,3.0],
+ lpon_R:[78.45,6.0,2.6,2.9],
+ lphalf_R:[71.55,11.2,2.7,3.0],
+ lpdbl_R:[75.0,11.2,2.7,3.0],
+ lpshl_R:[81.9,11.2,2.7,3.0],
+ lpshr_R:[85.4,11.2,2.7,3.0],
+ lpmode_R:[71.55,16.6,2.7,3.0],
+ lpin_R:[75.0,16.6,2.7,3.0],
+ lpout_R:[78.45,16.6,2.7,3.0],
+ lpsel_R:[81.9,16.6,2.7,3.0],
+ lprel_R:[85.4,16.6,2.7,3.0],
+ tap_R:[95.65,19.1,2.05,3.7],
+ scroff_R:[91.65,24.37,1.5,2.71],
+ startt_R:[88.55,25.02,2.05,3.7],
+ stopt_R:[90.65,29.62,2.05,3.7],
+ bleep_R:[95.25,27.9,2.75,8.3],
+ keylock_R:[95.9,41.38,1.5,2.71],
+ range_R:[95.8,46.54,1.45,2.62],
+ platter:[65.84,26.15,28.22,50.93],
+ pitch_R:[94.7,51.8,3.8,30.8],
+ del_R:[69.35,81.7,2.4,2.3],
+ hc0_R:[73.85,81.7,2.35,2.3],
+ hc1_R:[77.35,81.7,2.35,2.3],
+ hc2_R:[80.85,81.7,2.35,2.3],
+ hc3_R:[84.35,81.7,2.35,2.3],
+ hc4_R:[87.85,81.7,2.35,2.3],
+ pbdn_R:[93.7,87.2,2.7,2.5],
+ pbup_R:[96.75,87.2,2.75,2.5],
+ sync_R:[72.15,87.2,4.6,6.6],
+ cue_R:[77.3,87.2,4.6,6.6],
+ play_R:[82.75,87.2,4.65,6.6]
+};
+const ROUND=new Set(["tap_L","scroff_L","startt_L","stopt_L","keylock_L","range_L","jog",
+ "tap_R","scroff_R","startt_R","stopt_R","keylock_R","range_R","platter",
+ "browse","gain1","master","gain2","treble1","booth","treble2","mid1","mid2","bass1","bass2",
+ "fstarta","xfrev","fstartb"]);
+
+/* ===================== META — o que cada controle é e o que ensina =====================
+   Textos traduzidos do "Numark NS7 User Guide v1.1" — TOP PANEL OVERVIEW, itens 1..47. */
+const M={};
+function meta(act,kind,o){ M[act]=Object.assign({act,kind},o||{}); }
+const KN=(a,k,d,cls)=>meta(a,"knob",{k,d,cls});
+const RB=(a,k,d,cls,txt)=>meta(a,"rbtn",{k,d,cls,txt});
+const BT=(a,txt,k,d,cls)=>meta(a,"btn",{txt,k,d,cls});
+
+/* ---- MIXER (itens 1..12 do manual) ---- */
+KN("gain1","CANAL 1 — GAIN TRIM","Ajusta o nível pré-fader e pré-EQ do canal 1 no software. É aqui que se acerta o gain staging: suba até o pico bater no âmbar, nunca no vermelho.");
+KN("gain2","CANAL 2 — GAIN TRIM","Ajusta o nível pré-fader e pré-EQ do canal 2 no software.");
+KN("treble1","CANAL 1 — TREBLE","Realça ou corta os agudos do canal 1.");
+KN("treble2","CANAL 2 — TREBLE","Realça ou corta os agudos do canal 2.");
+KN("mid1","CANAL 1 — MID","Realça ou corta os médios do canal 1. Onde mora a voz.");
+KN("mid2","CANAL 2 — MID","Realça ou corta os médios do canal 2.");
+KN("bass1","CANAL 1 — BASS","Realça ou corta os graves do canal 1. Na virada, quem sai é o grave do que está saindo.");
+KN("bass2","CANAL 2 — BASS","Realça ou corta os graves do canal 2.");
+KN("master","MASTER VOLUME","Volume da saída principal (Program Mix) — XLR balanceado e RCA.");
+KN("booth","BOOTH VOLUME","Volume da saída BOOTH, o monitor da cabine. É independente do master: você ouve alto sem estourar a pista.");
+meta("fader1","fader",{cls:"ch",k:"CANAL 1 — CHANNEL FADER",d:"Volume do canal 1 na mixagem."});
+meta("fader2","fader",{cls:"ch",k:"CANAL 2 — CHANNEL FADER",d:"Volume do canal 2 na mixagem."});
+meta("xfader","hfader",{k:"CROSSFADER",d:"Mistura o áudio entre os canais da esquerda e da direita. No NS7 ele é <b>substituível pelo usuário</b> (é peça de desgaste — quem arranha troca)."});
+meta("hpmix","hfader",{k:"HEADPHONE MIX",d:"Mistura no fone o áudio pré-fader dos canais 1 e 2. Puxe para a esquerda = só o canal 1; para a direita = só o canal 2."});
+meta("hpmode","msw",{k:"HEADPHONE MODE",d:"Escolhe o que vai para o fone: em <b>MASTER</b> você ouve a mixagem que está tocando; em <b>CH1 CH2</b> ouve o canal de cue para preparar a próxima faixa."});
+meta("metermode","msw",{k:"METER MODE",d:"Define o que os LED METERS mostram: em <b>CH1-CH2</b>, o canal 1 aparece no medidor esquerdo e o 2 no direito; em <b>MASTER</b>, a mixagem principal em estéreo."});
+meta("meterl","meter",{k:"LED METER (esquerdo)",d:"Nível do canal 1 (ou do lado esquerdo do master, conforme o METER MODE)."});
+meta("meterr","meter",{k:"LED METER (direito)",d:"Nível do canal 2 (ou do lado direito do master)."});
+meta("bpmmeter","bpm",{k:"BPM METER",d:"Ajuda a casar o andamento dos dois decks. Com o LED branco central aceso, os BPMs estão iguais; fora do centro, o medidor pende para o deck mais rápido."});
+meta("fstarta","led",{k:"FADER START A (LED)",d:"Acende quando o Fader Start do lado A está ligado (a chave fica no painel frontal): jogar o crossfader para esse lado dá play no deck."});
+meta("fstartb","led",{k:"FADER START B (LED)",d:"Acende quando o Fader Start do lado B está ligado."});
+meta("xfrev","led",{k:"XFADER REVERSE (LED)",d:"Acende quando o crossfader está invertido (a chave fica no painel frontal): o canal 1 troca de lado com o canal 2."});
+
+/* ---- NAVEGAÇÃO (itens 41..47) ---- */
+KN("browse","SCROLL KNOB","Gire para percorrer faixas, crates e listas no Serato ITCH; pressione para trocar de painel na tela do computador.","enc");
+BT("back","BACK","BACK","Move o seletor para o painel anterior do software.","red");
+BT("fwd","FWD","FORWARD (FWD)","Move o seletor para o próximo painel do software.","red");
+BT("crates","CRATES","CRATES","Leva o seletor para o painel de Crates (as caixas/pastas da sua biblioteca).","red");
+BT("prepare","PREPARE","PREPARE","Leva o seletor para o painel Prepare — a fila do que você já separou para tocar.","red");
+BT("files","FILES","FILES","Leva o seletor para o painel Files, o navegador de arquivos do computador.","red");
+BT("loada","LOAD A","LOAD A","Carrega a faixa selecionada no Deck A. Apertar duas vezes rápido faz Instant Double: copia a faixa do outro deck na mesma posição.","red");
+BT("loadb","LOAD B","LOAD B","Carrega a faixa selecionada no Deck B. Dois toques rápidos = Instant Double.","red");
+BT("loadprep","LOAD\nPREPARE","LOAD PREPARE","Adiciona a faixa selecionada à lista do painel Prepare, sem carregar em deck nenhum.","red");
+
+/* ---- DECK (itens 13..40) — mesmo conjunto nos dois lados ---- */
+function deckMeta(s,lado,letra){
+  meta(s==="L"?"jog":"platter","jog",{side:s,k:"PLATTER (prato "+lado+")",
+    d:"Prato <b>motorizado</b> de 7\" com feltro e vinil de verdade — ele gira sozinho como um toca-discos. Segure o vinil e vá-e-volte para dar scratch; toque só na borda para dar pitch bend e encaixar a batida."});
+  meta("strip_"+s,"strip",{side:s,k:"STRIP SEARCH",
+    d:"O comprimento da fita representa a faixa inteira. Encoste o dedo num ponto e o áudio pula direto para lá. Para varrer a música devagar, use o computador — a fita é para salto."});
+  BT("trkb_"+s,"◄◄","TRACK BACK (◄◄)","Volta ao começo da faixa. Se você já estiver nos primeiros segundos, pula para a faixa anterior.","red glyph");
+  BT("trkf_"+s,"►►","TRACK FORWARD (►►)","Pula para a próxima faixa da lista.","red glyph");
+  BT("lpon_"+s,"ON/OFF","LOOP ON / OFF","Liga ou desliga o loop. Se já estiver em loop, sai dele; se não estiver, ativa o loop selecionado assim que o ponteiro entrar na região.","wht");
+  BT("lphalf_"+s,"1/2 X","1/2 X","Corta o loop selecionado pela metade — de 4 tempos vai para 2.","wht");
+  BT("lpdbl_"+s,"2 X","2 X","Dobra o comprimento do loop selecionado — de 4 tempos vai para 8.","wht");
+  BT("lpshl_"+s,"LEFT","SHIFT LEFT (◄)","Desloca o loop para a esquerda a mesma distância do próprio comprimento do loop.","wht");
+  BT("lpshr_"+s,"RIGHT","SHIFT RIGHT (►)","Desloca o loop para a direita a mesma distância do próprio comprimento do loop.","wht");
+  BT("lpmode_"+s,"MODE","AUTOLOOP MODE (MANUAL)","Alterna os quatro botões de baixo entre <b>Manual</b> (IN · OUT · SELECT · RELOOP) e <b>Autoloop</b> (loops prontos de 1, 2, 4 e 8 tempos).","red");
+  BT("lpin_"+s,"","LOOP IN (autoloop 1)","Em Manual: marca o início do loop. Em Autoloop: cria um loop de 1 tempo. Com o loop rodando, dá para afinar o ponto girando o prato (com o SCRATCH OFF aceso).","red bar");
+  BT("lpout_"+s,"","LOOP OUT (autoloop 2)","Em Manual: marca o fim do loop e ele começa a repetir. Em Autoloop: loop de 2 tempos.","red bar");
+  BT("lpsel_"+s,"","SELECT (autoloop 4)","Em Manual: percorre os loops gravados na faixa para editar, reativar ou cancelar. Em Autoloop: loop de 4 tempos.","red bar");
+  BT("lprel_"+s,"","RELOOP (autoloop 8)","Em Manual: pula para o início do loop e o liga de novo. Em Autoloop: loop de 8 tempos.","red bar");
+  RB("tap_"+s,"TAP","Bata no ritmo da música para o software achar o BPM certo quando a leitura automática erra.","tap","TAP");
+  RB("scroff_"+s,"SCRATCH OFF","Desliga o motor do prato e o faz parar. É o que você usa para afinar Loop In/Out com o prato sem que o motor puxe de volta.","","");
+  KN("startt_"+s,"START TIME","Tempo que o prato leva para chegar na rotação certa quando você dá play — do arranque instantâneo ao arranque preguiçoso de toca-discos.");
+  KN("stopt_"+s,"STOP TIME","Tempo que o prato leva para parar quando você pausa. É o clássico efeito de \"desligar a vitrola\".");
+  meta("bleep_"+s,"rocker",{side:s,k:"BLEEP / REVERSE",
+    d:"Chave de 3 posições. Em <b>REVERSE</b> a faixa toca de trás para frente e, ao voltar ao centro, segue de onde parou. Em <b>BLEEP</b> (com mola) ela também inverte, mas ao soltar volta para onde <i>estaria</i> se nunca tivesse invertido — é o censurador de palavrão."});
+  RB("keylock_"+s,"KEYLOCK","Trava o tom original da música mesmo com o pitch mexido: você muda o andamento sem deixar a voz de esquilo.","","");
+  RB("range_"+s,"PITCH RANGE","Troca o alcance do pitch fader entre ±8%, ±16% e ±50%.","","");
+  meta("pitch_"+s,"fader",{side:s,cls:"pitch",k:"PITCH FADER",d:"Velocidade da faixa. Um LED ao lado acende quando ele está exatamente em 0%."});
+  BT("pbdn_"+s,"−","PITCH BEND (−)","Segure para atrasar a faixa por um instante e encaixar a batida. Ao soltar, volta à velocidade do pitch fader.","red glyph");
+  BT("pbup_"+s,"+","PITCH BEND (+)","Segure para adiantar a faixa por um instante. Ao soltar, volta à velocidade do pitch fader.","red glyph");
+  BT("del_"+s,"DELETE","DELETE CUE","Aperte (ou segure) para entrar no modo de apagar cue: aceso em vermelho forte, o próximo hot cue que você tocar é apagado. Cue point não se sobrescreve — apaga primeiro.","red");
+  for(let i=0;i<5;i++) meta("hc"+i+"_"+s,"btn",{txt:String(i+1),k:"HOT CUE "+(i+1),cls:"wht num",
+    d:"Apagado: grava um cue point no ponto atual e acende branco. Aceso: pula para aquele ponto. Com o deck pausado, segurar toca a partir dali e soltar volta e pausa."});
+  meta("sync_"+s,"big",{side:s,txt:"SYNC",k:"SYNC",d:"Casa automaticamente o andamento deste deck com o do outro deck."});
+  meta("cue_"+s,"big",{side:s,txt:"CUE",cls:"red",k:"CUE",
+    d:"Sem cue temporário (ou pausado): marca o ponto de partida aqui. Tocando: volta ao ponto e pausa. Segurando: toca a partir dele e, ao soltar, volta e pausa."});
+  meta("play_"+s,"big",{side:s,txt:"▶ ❚❚",k:"PLAY / PAUSE",
+    d:"Toca ou pausa. A rapidez com que o prato arranca e para é definida pelos knobs START TIME e STOP TIME."});
+}
+deckMeta("L","esquerdo","A");
+deckMeta("R","direito","B");
+
+/* ===================== ÁUDIO — motor de dois decks (NÃO MEXER) ===================== */
+let AC=null, started=false, ready=false, master=null;
+let dL=null, dR=null, xfade=0.5;
+const decks={};
+
+async function renderTrack(seed){
+  const sr=44100,bpm=seed?124:126,root=seed?98:110,spb=60/bpm,bars=16,dur=spb*4*bars;
+  const off=new OfflineAudioContext(2,Math.ceil(dur*sr),sr),dst=off.destination;
+  const noise=off.createBuffer(1,sr*0.4,sr),nd=noise.getChannelData(0);
+  for(let i=0;i<nd.length;i++)nd[i]=Math.random()*2-1;
+  const step=spb/4;
+  const K=[1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0],S=[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
+        H=[0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0],B=seed?[1,0,1,0,0,0,1,0,1,0,0,1,0,1,0,0]:[1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0],O=[0,1,0,0,0,1,0,0,0,1,0,0,0,1,0,0];
+  const kick=t=>{const o=off.createOscillator(),a=off.createGain();o.frequency.setValueAtTime(150,t);o.frequency.exponentialRampToValueAtTime(48,t+0.12);a.gain.setValueAtTime(0.85,t);a.gain.exponentialRampToValueAtTime(0.001,t+0.3);o.connect(a);a.connect(dst);o.start(t);o.stop(t+0.32);};
+  const clap=t=>{const s=off.createBufferSource();s.buffer=noise;const bp=off.createBiquadFilter();bp.type="bandpass";bp.frequency.value=1800;const a=off.createGain();a.gain.setValueAtTime(0.5,t);a.gain.exponentialRampToValueAtTime(0.001,t+0.15);s.connect(bp);bp.connect(a);a.connect(dst);s.start(t);s.stop(t+0.17);};
+  const hat=(t,op)=>{const s=off.createBufferSource();s.buffer=noise;const hp=off.createBiquadFilter();hp.type="highpass";hp.frequency.value=8200;const a=off.createGain();const dd=op?0.13:0.05;a.gain.setValueAtTime(op?0.26:0.22,t);a.gain.exponentialRampToValueAtTime(0.001,t+dd);s.connect(hp);hp.connect(a);a.connect(dst);s.start(t);s.stop(t+dd+0.03);};
+  const bass=t=>{const o=off.createOscillator();o.type="sawtooth";o.frequency.value=root;const lp=off.createBiquadFilter();lp.type="lowpass";lp.frequency.setValueAtTime(460,t);lp.frequency.exponentialRampToValueAtTime(120,t+0.15);lp.Q.value=5;const a=off.createGain();a.gain.setValueAtTime(0.0001,t);a.gain.linearRampToValueAtTime(0.38,t+0.01);a.gain.exponentialRampToValueAtTime(0.001,t+0.2);o.connect(lp);lp.connect(a);a.connect(dst);o.start(t);o.stop(t+0.22);};
+  for(let bar=0;bar<bars;bar++)for(let st=0;st<16;st++){const t=(bar*16+st)*step;
+    if(K[st])kick(t);if(S[st])clap(t);if(H[st])hat(t,false);if(O[st])hat(t,true);if(B[st])bass(t);}
+  return await off.startRendering();
+}
+
+function makeDeck(buf,bpm){
+  const data=buf.getChannelData(0), len=data.length;
+  const D={ buffer:buf,data,len,pos:0,playing:false,rate:0,pitch:0,baseBpm:bpm,dir:1,touching:false,targetPos:0,
+      cuePoint:0,hotcues:{},loopOn:false,loopStart:0,loopEnd:0,loopIn:false,peaks:null,
+      autoloop:false,motor:true,keylock:false,range:8,delmode:false,taps:[] };
+  const N=300,peaks=new Float32Array(N),blk=Math.floor(len/N);
+  for(let i=0;i<N;i++){ let mx=0; for(let j=0;j<blk;j+=32){ const v=Math.abs(data[i*blk+j]||0); if(v>mx)mx=v; } peaks[i]=mx; }
+  D.peaks=peaks;
+  return D;
+}
+
+async function startAudio(){ if(started)return; started=true;
+  $("#acState").textContent="carregando as faixas…";
+  AC=new (window.AudioContext||window.webkitAudioContext)();
+  const bufL=await renderTrack(0), bufR=await renderTrack(1);
+  dL=makeDeck(bufL,126); dR=makeDeck(bufR,124); decks.L=dL; decks.R=dR;
+
+  master=AC.createGain(); master.gain.value=0.9; master.connect(AC.destination);   // MASTER VOLUME = 0.9
+
+  [["L",dL],["R",dR]].forEach(([side,D])=>{
+    D.eqLo=AC.createBiquadFilter(); D.eqLo.type="lowshelf";  D.eqLo.frequency.value=120;
+    D.eqMid=AC.createBiquadFilter();D.eqMid.type="peaking";  D.eqMid.frequency.value=1000; D.eqMid.Q.value=0.9;
+    D.eqHi=AC.createBiquadFilter(); D.eqHi.type="highshelf"; D.eqHi.frequency.value=3500;
+    D.ch=AC.createGain(); D.ch.gain.value=0.9;            // CHANNEL FADER = 0.9
+    D.xf=AC.createGain(); D.xf.gain.value=1;
+    const sp=AC.createScriptProcessor(512,0,1); D.sp=sp;
+    sp.onaudioprocess=e=>{ const out=e.outputBuffer.getChannelData(0); const d=D, data=D.data, len=D.len;
+      for(let i=0;i<out.length;i++){
+        if(d.touching){ const np=d.pos+(d.targetPos-d.pos)*0.0025; d.rate=np-d.pos; d.pos=np;
+          if(d.pos<0){d.pos=0;d.rate=0;} else if(d.pos>len-1){d.pos=len-1;d.rate=0;} }
+        else { const tgt=d.playing?d.dir*(1+d.pitch/100):0; d.rate+=(tgt-d.rate)*0.0022; d.pos+=d.rate;
+          if(d.loopOn&&d.rate>0&&d.pos>=d.loopEnd)d.pos=d.loopStart+(d.pos-d.loopEnd);
+          if(d.pos>=len)d.pos-=len; else if(d.pos<0)d.pos+=len; }   // LOOP CONTÍNUO
+        let i0=Math.floor(d.pos); const fr=d.pos-i0; i0=((i0%len)+len)%len; const i1=(i0+1)%len;
+        out[i]=data[i0]*(1-fr)+data[i1]*fr; } };
+    sp.connect(D.eqHi); D.eqHi.connect(D.eqMid); D.eqMid.connect(D.eqLo);
+    D.eqLo.connect(D.ch); D.ch.connect(D.xf); D.xf.connect(master);
+  });
+  applyXfade();
+  ready=true;
+  $("#acDot").classList.add("on"); $("#acState").textContent="ligado"; $("#btnStart").textContent="● Áudio ligado";
+  if(AC.resume)AC.resume();
+}
+function beatLen(D){ return 60/(D.baseBpm*(1+D.pitch/100))*D.buffer.sampleRate; }
+function applyXfade(){ if(!ready)return;
+  const gl=xfade<=0.5?1:(1-xfade)*2, gr=xfade>=0.5?1:xfade*2;
+  dL.xf.gain.value=gl; dR.xf.gain.value=gr; }
+
+/* ===================== controle ===================== */
+const els={};
+function setState(name,on){ const e=els[name]; if(!e)return; e.classList.toggle("on",!!on); }
+function flash(el){ if(!el)return; el.style.filter="brightness(1.7)"; setTimeout(()=>{el.style.filter="";},150); }
+function teach(c){ $("#tK").textContent=c.k||""; $("#tD").innerHTML=c.d||""; }
+
+function playDeck(D,side,on){ if(!ready)return; D.playing=on!==undefined?on:!D.playing; setState("play_"+side,D.playing); if(D.playing)markMission("play"); }
+function cueDeck(D,side){ if(!ready)return;
+  if(D.playing){ playDeck(D,side,false); D.pos=D.cuePoint; } else { if(Math.abs(D.pos-D.cuePoint)>200)D.cuePoint=D.pos; else D.pos=D.cuePoint; }
+  markMission("cue"); }
+function hotcue(D,side,i){ if(!ready)return; const el=els["hc"+i+"_"+side];
+  if(D.delmode){ delete D.hotcues[i]; el.classList.remove("on"); D.delmode=false; setState("del_"+side,false); return; }
+  const p=D.hotcues[i];
+  if(p===undefined){ D.hotcues[i]=D.pos; el.classList.add("on"); markMission("hotcue"); }
+  else { D.pos=p; if(!D.playing)playDeck(D,side,true); markMission("hotcue"); }
+}
+function loopBtn(D,side,which){ if(!ready)return;
+  if(D.autoloop){ const sz={in:1,out:2,sel:4,rel:8}[which]; const bl=beatLen(D)*sz;
+    D.loopStart=D.pos; D.loopEnd=D.pos+bl; D.loopOn=true; setState("lpon_"+side,true);
+    ["in","out","sel","rel"].forEach(k=>setState("lp"+k+"_"+side,k===which)); markMission("loop"); return; }
+  if(which==="in"){ D.loopStart=D.pos; D.loopIn=true; D.loopOn=false; setState("lpin_"+side,true); setState("lpout_"+side,false); setState("lpon_"+side,false); }
+  else if(which==="out"){ if(D.loopIn&&D.pos>D.loopStart){ D.loopEnd=D.pos; D.loopOn=true; D.loopIn=false; setState("lpout_"+side,true); setState("lpon_"+side,true); markMission("loop"); } }
+  else if(which==="rel"){ if(D.loopEnd>D.loopStart){ D.pos=D.loopStart; D.loopOn=true; setState("lpon_"+side,true); markMission("loop"); } }
+  else { setState("lpsel_"+side,!els["lpsel_"+side].classList.contains("on")); }
+}
+function deckOf(act){ return act.endsWith("_R")?{D:dR,side:"R"}:{D:dL,side:"L"}; }
+
+function onControl(c){ teach(c);
+  if(!started){ startAudio().then(()=>route(c,false)); return; }
+  if(!ready)return; route(c,true);
+}
+function route(c,fl){ const a=c.act; if(fl)flash(els[a]);
+  if(/_(L|R)$/.test(a)){ const {D,side}=deckOf(a); const base=a.replace(/_(L|R)$/,"");
+    if(base==="play")return playDeck(D,side);
+    if(base==="cue")return cueDeck(D,side);
+    if(base==="sync"){ const O=side==="L"?dR:dL; D.pitch=clamp((O.baseBpm*(1+O.pitch/100)/D.baseBpm-1)*100,-D.range,D.range);
+      placeFaderCap("pitch_"+side,D.pitch/D.range/2+0.5); setState("sync_"+side,true); setTimeout(()=>setState("sync_"+side,false),450); return; }
+    if(base==="lpon"){ D.loopOn=!D.loopOn&&D.loopEnd>D.loopStart; setState("lpon_"+side,D.loopOn); return; }
+    if(base==="lpin")return loopBtn(D,side,"in");
+    if(base==="lpout")return loopBtn(D,side,"out");
+    if(base==="lpsel")return loopBtn(D,side,"sel");
+    if(base==="lprel")return loopBtn(D,side,"rel");
+    if(base==="lpmode"){ D.autoloop=!D.autoloop; setState("lpmode_"+side,D.autoloop);
+      ["in","out","sel","rel"].forEach(k=>setState("lp"+k+"_"+side,false)); return; }
+    if(base==="lphalf"||base==="lpdbl"){ if(D.loopEnd>D.loopStart){ const l=D.loopEnd-D.loopStart;
+      D.loopEnd=D.loopStart+(base==="lpdbl"?l*2:l/2); } return; }
+    if(base==="lpshl"||base==="lpshr"){ if(D.loopEnd>D.loopStart){ const l=D.loopEnd-D.loopStart, dd=base==="lpshr"?l:-l;
+      D.loopStart+=dd; D.loopEnd+=dd; } return; }
+    if(base==="del"){ D.delmode=!D.delmode; setState("del_"+side,D.delmode); return; }
+    if(/^hc[0-4]$/.test(base)) return hotcue(D,side,+base.slice(2));
+    if(base==="trkb"){ D.pos=0; D.cuePoint=0; return; }
+    if(base==="trkf"){ D.pos=0; D.cuePoint=0; D.hotcues={}; for(let i=0;i<5;i++)setState("hc"+i+"_"+side,false); return; }
+    if(base==="tap"){ const t=performance.now(); D.taps=D.taps.filter(x=>t-x<2400); D.taps.push(t);
+      if(D.taps.length>=3){ const iv=(D.taps[D.taps.length-1]-D.taps[0])/(D.taps.length-1); D.baseBpm=clamp(60000/iv,60,200); }
+      setState("tap_"+side,true); setTimeout(()=>setState("tap_"+side,false),140); return; }
+    if(base==="scroff"){ D.motor=!D.motor; setState("scroff_"+side,!D.motor); return; }
+    if(base==="keylock"){ D.keylock=!D.keylock; setState("keylock_"+side,D.keylock); return; }
+    if(base==="range"){ D.range=D.range===8?16:D.range===16?50:8; setState("range_"+side,D.range!==8);
+      teach({k:"PITCH RANGE",d:"Alcance do pitch fader agora em <b>±"+D.range+"%</b>."}); return; }
+    if(base==="pbdn"||base==="pbup"){ D.pitch=clamp(D.pitch+(base==="pbup"?0.6:-0.6),-D.range,D.range);
+      placeFaderCap("pitch_"+side,D.pitch/D.range/2+0.5); return; }
+    els[a].classList.toggle("on"); return;   // rede de segurança: todo base acima já foi tratado
+  }
+  if(/^(back|fwd|crates|prepare|files|loada|loadb|loadprep)$/.test(a)){
+    ["crates","prepare","files"].includes(a)&&["crates","prepare","files"].forEach(k=>setState(k,k===a));
+    if(a==="loada"||a==="loadb"){ const D=a==="loada"?dL:dR, side=a==="loada"?"L":"R";
+      D.pos=0; D.cuePoint=0; playDeck(D,side,false); }
+    return; }
+  if(/^(fstarta|fstartb|xfrev)$/.test(a)){ els[a].classList.toggle("on"); return; }
+}
+
+/* ===================== missões ===================== */
+const MISSIONS=[
+  {id:"play",t:"Dê play",h:"Aperte ▶❚❚ do deck esquerdo — o prato arranca sozinho."},
+  {id:"cue",t:"Use o CUE",h:"Aperte CUE: marca / volta ao ponto de partida."},
+  {id:"hotcue",t:"Grave um HOT CUE",h:"Aperte um pad 1-5 para gravar; aperte de novo para saltar."},
+  {id:"loop",t:"Faça um LOOP",h:"LOOP IN → LOOP OUT (ou aperte MODE e use os autoloops 1/2/4/8)."},
+  {id:"scratch",t:"Scratch no prato",h:"Segure o CENTRO do vinil e vá-e-volte."},
+  {id:"xfade",t:"Abra o CROSSFADER",h:"Arraste o crossfader para o outro lado."},
+];
+let mi=0;
+function renderMission(){ $("#mIdx").textContent=`MISSÃO ${Math.min(mi+1,MISSIONS.length)}/${MISSIONS.length}`;
+  if(mi>=MISSIONS.length){ $("#mTitle").textContent="Tudo pronto! 🎉"; $("#mHint").textContent="Você operou o NS7."; return; }
+  const m=MISSIONS[mi]; $("#mTitle").textContent=m.t; $("#mHint").textContent=m.h; }
+function markMission(id){ if(mi<MISSIONS.length&&MISSIONS[mi].id===id){ mi++; renderMission(); } }
+
+/* ===================== desenho: o prato de vinil ===================== */
+const jogs={};
+function drawJog(side){ const J=jogs[side]; if(!J)return; const ctx=J.ctx,S=J.s,c=S/2,D=decks[side];
+  ctx.clearRect(0,0,S,S);
+  /* 33 1/3 rpm ≈ 0,556 volta/s. Com SCRATCH OFF o motor para: a rotação congela onde estava. */
+  let rot=0;
+  if(D){ if(D.motor){ rot=(D.pos/D.buffer.sampleRate)*3.49; D.rotFrozen=rot; } else rot=D.rotFrozen||0; }
+
+  /* aro de alumínio escovado */
+  let rim=ctx.createLinearGradient(0,S*0.05,0,S*0.98);
+  rim.addColorStop(0,"#e2e6ea"); rim.addColorStop(0.18,"#9aa1a8"); rim.addColorStop(0.45,"#6a7076");
+  rim.addColorStop(0.72,"#8d949b"); rim.addColorStop(1,"#3d4247");
+  ctx.beginPath(); ctx.arc(c,c,c*0.995,0,7); ctx.fillStyle=rim; ctx.fill();
+  ctx.beginPath(); ctx.arc(c,c,c*0.995,0,7); ctx.strokeStyle="#1b1e21"; ctx.lineWidth=S*0.006; ctx.stroke();
+
+  /* traços estroboscópicos do aro (giram com o prato) */
+  const dashes=48;
+  for(let i=0;i<dashes;i++){ const a=i/dashes*Math.PI*2+rot;
+    ctx.save(); ctx.translate(c,c); ctx.rotate(a);
+    ctx.beginPath(); ctx.moveTo(c*0.845,-S*0.0075); ctx.lineTo(c*0.945,-S*0.0075);
+    ctx.lineTo(c*0.945,S*0.0075); ctx.lineTo(c*0.845,S*0.0075); ctx.closePath();
+    ctx.fillStyle="#40454b"; ctx.fill(); ctx.restore(); }
+  /* degrau escuro entre aro e vinil */
+  ctx.beginPath(); ctx.arc(c,c,c*0.815,0,7); ctx.strokeStyle="#1a1d20"; ctx.lineWidth=S*0.028; ctx.stroke();
+
+  /* disco de vinil */
+  let vg=ctx.createRadialGradient(c*0.78,c*0.72,S*0.02,c,c,c*0.80);
+  vg.addColorStop(0,"#241a18"); vg.addColorStop(0.35,"#150d0b"); vg.addColorStop(1,"#080505");
+  ctx.beginPath(); ctx.arc(c,c,c*0.80,0,7); ctx.fillStyle=vg; ctx.fill();
+  for(let r=c*0.40;r<c*0.79;r+=c*0.018){ ctx.beginPath(); ctx.arc(c,c,r,0,7);
+    ctx.strokeStyle="rgba(255,255,255,0.035)"; ctx.lineWidth=1; ctx.stroke(); }
+  /* brilho do vinil */
+  ctx.save(); ctx.beginPath(); ctx.arc(c,c,c*0.80,0,7); ctx.clip();
+  let sh=ctx.createLinearGradient(c*0.25,c*0.15,c*1.2,c*1.35);
+  sh.addColorStop(0,"rgba(255,255,255,0.11)"); sh.addColorStop(0.35,"rgba(255,255,255,0)");
+  sh.addColorStop(0.75,"rgba(255,255,255,0)"); sh.addColorStop(1,"rgba(255,255,255,0.06)");
+  ctx.fillStyle=sh; ctx.fillRect(0,0,S,S); ctx.restore();
+
+  /* etiqueta central (gira junto) */
+  ctx.save(); ctx.translate(c,c); ctx.rotate(rot);
+  const R=c*0.375;
+  ctx.beginPath(); ctx.arc(0,0,R,0,7); ctx.strokeStyle="#e5352f"; ctx.lineWidth=S*0.014; ctx.stroke();
+  ctx.save(); ctx.beginPath(); ctx.arc(0,0,R,0,7); ctx.clip();
+  /* faixa diagonal vermelha da arte da etiqueta */
+  ctx.fillStyle="#e5352f"; ctx.beginPath();
+  ctx.moveTo(-R*0.95,R*0.02); ctx.lineTo(R*0.95,-R*0.24); ctx.lineTo(R*0.95,R*0.16); ctx.lineTo(-R*0.95,R*0.30);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle="#0d0808"; ctx.beginPath();
+  ctx.moveTo(-R*0.3,R*0.02); ctx.lineTo(R*0.6,-R*0.16); ctx.lineTo(R*0.62,R*0.02); ctx.lineTo(-R*0.28,R*0.14);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle="#f2f5f8"; ctx.font="900 "+Math.round(R*0.30)+"px Inter,Arial"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.save(); ctx.rotate(-0.16); ctx.fillText("Numark",0,-R*0.44); ctx.restore();
+  ctx.fillStyle="#e5352f"; ctx.font="900 "+Math.round(R*0.52)+"px Inter,Arial";
+  ctx.save(); ctx.rotate(-0.16); ctx.fillText("NS7",-R*0.05,R*0.52); ctx.restore();
+  ctx.restore();
+  /* adaptador metálico no centro */
+  let mg=ctx.createRadialGradient(-R*0.05,-R*0.06,R*0.02,0,0,R*0.34);
+  mg.addColorStop(0,"#e9edf1"); mg.addColorStop(0.45,"#a8afb6"); mg.addColorStop(1,"#5a6067");
+  ctx.beginPath(); ctx.arc(0,0,R*0.34,0,7); ctx.fillStyle=mg; ctx.fill();
+  ctx.beginPath(); ctx.arc(0,0,R*0.075,0,7); ctx.fillStyle="#26292d"; ctx.fill();
+  ctx.restore();
+
+  /* marca do ponteiro de áudio na borda do vinil */
+  if(D){ const f=D.pos/D.len; ctx.save(); ctx.translate(c,c); ctx.rotate(-Math.PI/2+f*Math.PI*2);
+    ctx.fillStyle="#ff5b52"; ctx.shadowColor="#ff4a3e"; ctx.shadowBlur=S*0.02;
+    ctx.beginPath(); ctx.arc(c*0.70,0,S*0.010,0,7); ctx.fill(); ctx.restore(); ctx.shadowBlur=0; }
+}
+function frame(){ requestAnimationFrame(frame); drawJog("L"); drawJog("R"); paintStrip("L"); paintStrip("R"); paintBpm(); }
+
+/* ===================== serigrafia ===================== */
+const LAB=[];
+const lab=(t,x,y,c)=>LAB.push([t,x,y,c||""]);
+/* labD: serigrafia do deck. mode "m" = espelhada (bloco externo) · "t" = transladada (loop/fileira) */
+const labD=(t,x,y,c,mode)=>{ lab(t,x,y,c); lab(t, mode==="t" ? +(x+TR).toFixed(2) : MI(x), y, c); };
+
+/* --- deck: bloco externo (ESPELHADO) --- */
+labD("◄ STRIP SEARCH ►",8.3,2.9,"xs","m");
+labD("TRACK",3.4,10.3,"xs","m");
+labD("SCRATCH OFF",7.6,23.3,"xs","m");
+labD("START TIME",10.45,23.9,"xs","m");
+labD("STOP TIME",8.3,28.5,"xs","m");
+labD("BLEEP",3.35,26.9,"xs","m");
+labD("REVERSE",3.35,37.1,"xs","m");
+labD("KEYLOCK",3.35,40.4,"xs","m");
+labD("RANGE",3.4,45.5,"xs","m");
+labD("−%",1.0,54.9,"xs dim","m");
+labD("0%",5.9,67.9,"xs dim","m");
+labD("+%",1.0,80.3,"xs dim","m");
+labD("PITCH BEND",3.5,86.1,"xs","m");
+/* --- deck: bloco de loop + fileira de baixo (TRANSLADADO) --- */
+labD("LOOP CONTROL",20.2,4.7,"xs","t");
+labD("SHIFT",24.1,10.3,"xs","t");
+labD("AUTOLOOP",13.35,15.7,"xs","t");
+["1","2","4","8"].forEach((n,i)=>labD(n,16.8+i*3.45,15.7,"num","t"));
+labD("MANUAL",13.35,20.3,"xs red","t");
+["IN","OUT","SELECT","RELOOP"].forEach((n,i)=>labD(n,16.8+i*3.45,20.3,"xs red","t"));
+
+/* --- mixer --- */
+lab("GAIN",43.28,34.5,"xs"); lab("MASTER",49.98,34.5,"xs"); lab("GAIN",56.73,34.5,"xs");
+lab("TREBLE",43.28,43.5,"xs"); lab("BOOTH",49.98,43.5,"xs"); lab("TREBLE",56.73,43.5,"xs");
+lab("MID",43.28,51.4,"xs"); lab("MID",56.73,51.4,"xs");
+lab("BASS",43.28,59.3,"xs"); lab("BASS",56.73,59.3,"xs");
+["MIN","MAX"].forEach((t,i)=>{ [43.28,49.98,56.73].forEach(x=>lab(t,x+(i?1.55:-1.55),33.0,"xs dim")); });
+["CUT","BOOST"].forEach((t,i)=>{ [43.28,56.73].forEach(x=>{ lab(t,x+(i?1.7:-1.7),41.6,"xs dim");
+  lab(t,x+(i?1.7:-1.7),49.6,"xs dim"); lab(t,x+(i?1.7:-1.7),57.5,"xs dim"); }); });
+lab("0dB",43.28,36.6,"xs dim"); lab("0dB",56.73,36.6,"xs dim");
+lab("0dB",43.28,44.6,"xs dim"); lab("0dB",56.73,44.6,"xs dim");
+lab("0dB",43.28,52.5,"xs dim"); lab("0dB",56.73,52.5,"xs dim");
+lab("CH1",46.0,49.2,"xs"); lab("CH2",54.0,49.2,"xs");
+lab("HEADPHONE MIX",50.0,44.6,"xs");
+lab("HEADPHONE MODE",50.0,54.8,"xs");
+lab("CH1 CH2",47.6,56.7,"xs dim"); lab("MASTER",52.5,56.7,"xs dim");
+lab("POWER",48.4,60.9,"xs dim"); lab("USB",51.7,60.9,"xs dim");
+lab("METER MODE",50.0,61.9,"xs");
+lab("CH1-CH2",47.4,63.6,"xs dim"); lab("MASTER",52.6,63.6,"xs dim");
+lab("XFADER",50.0,81.5,"xs");
+lab("FSTART A",48.4,84.7,"xs red"); lab("REVERSE",50.0,84.7,"xs red"); lab("FSTART B",51.7,84.7,"xs red");
+lab("ITCH",42.1,95.2,"itch");
+
+/* ===================== build ===================== */
+function pct(el,x,y,w,h){ el.style.left=x+"%"; el.style.top=y+"%"; if(w!=null)el.style.width=w+"%"; if(h!=null)el.style.height=h+"%"; }
+function addLab(t,x,y,cls){ const l=document.createElement("div"); l.className="lab "+(cls||""); l.textContent=t;
+  l.style.left=x+"%"; l.style.top=y+"%"; deck.appendChild(l); return l; }
+function addDeco(cls,x,y,w,h,st){ const d=document.createElement("div"); d.className=cls;
+  pct(d,x,y,w,h); if(st)Object.assign(d.style,st); deck.appendChild(d); return d; }
+
+function makeEl(c){ let el;
+  if(c.kind==="jog"){ el=document.createElement("canvas"); el.className="jogc"; el.width=el.height=420; }
+  else if(c.kind==="rbtn"){ el=document.createElement("div"); el.className="rbtn"+(c.cls?" "+c.cls:"");
+    if(c.txt){ el.textContent=c.txt; }
+    else { const d=document.createElement("div"); d.className="led"; el.appendChild(d); } }
+  else if(c.kind==="knob"){ el=document.createElement("div"); el.className="knob"+(c.cls?" "+c.cls:""); }
+  else if(c.kind==="big"){ el=document.createElement("div"); el.className="bigbtn"+(c.cls?" "+c.cls:""); el.textContent=c.txt||""; }
+  else if(c.kind==="strip"){ el=document.createElement("div"); el.className="strip";
+    el.innerHTML=`<div class="in"></div><div class="pl"></div>`; }
+  else if(c.kind==="rocker"){ el=document.createElement("div"); el.className="rocker"; el.innerHTML=`<div class="lev"></div>`; }
+  else if(c.kind==="msw"){ el=document.createElement("div"); el.className="msw"; el.innerHTML=`<div class="kn"></div>`; }
+  else if(c.kind==="fader"){ el=document.createElement("div"); el.className="fader"+(c.cls?" "+c.cls:"");
+    el.innerHTML=`<div class="ticks"></div><div class="ticks r"></div><div class="slot"></div><div class="cap"></div>`; }
+  else if(c.kind==="hfader"){ el=document.createElement("div"); el.className="hfader";
+    el.innerHTML=`<div class="ticks"></div><div class="slot"></div><div class="cap"></div>`; }
+  else if(c.kind==="meter"){ el=document.createElement("div"); el.className="meter";
+    for(let i=0;i<16;i++)el.appendChild(document.createElement("i")); }
+  else if(c.kind==="bpm"){ el=document.createElement("div"); el.className="bpm";
+    for(let i=0;i<21;i++){ const b=document.createElement("i"); if(i===10)b.className="c"; el.appendChild(b); } }
+  else if(c.kind==="led"){ el=document.createElement("div"); el.className="led"; }
+  else { el=document.createElement("div"); el.className="btn"+(c.cls?" "+c.cls:""); el.textContent=c.txt||""; }
+  return el;
+}
+
+const meters=[];
+function placeControl(act){
+  const c=M[act]; if(!c) return;
+  const p=POS[act]; if(!p) return;
+  let [x,y,w,h]=p;
+  if(ROUND.has(act)){ const nh=w*AR; y=y+(h-nh)/2; h=nh; }     // círculos: altura derivada da largura
+  const el=makeEl(c); pct(el,x,y,w,h); deck.appendChild(el); els[act]=el;
+  if(c.kind==="meter"){ el._bars=[...el.children]; meters.push(el); }
+  if(c.kind==="bpm"){ el._bars=[...el.children]; }
+  if(c.kind==="jog"){ jogs[c.side]={ctx:el.getContext("2d"),s:420}; }
+  const hit=document.createElement("div"); hit.className="hit"; pct(hit,x,y,w,h); hit.dataset.act=act; deck.appendChild(hit);
+  hit.addEventListener("mouseenter",()=>teach(c));
+  /* medidores só ensinam — não têm ação */
+  if(c.kind==="meter"||c.kind==="bpm"){ hit.style.cursor="default"; return; }
+  if(c.kind==="jog"){ hit.className="joghit"; bindJog(hit,c); }
+  else if(c.kind==="fader"&&c.cls==="pitch") bindPitch(hit,c);
+  else if(c.kind==="fader") bindChFader(hit,c);
+  else if(c.act==="xfader") bindXfader(hit,c);
+  else if(c.kind==="hfader") bindHpMix(hit,c);
+  else if(c.kind==="knob") bindKnob(hit,c);
+  else if(c.kind==="strip") bindStrip(hit,c);
+  else if(c.kind==="rocker") bindRocker(hit,c);
+  else if(c.kind==="msw") hit.addEventListener("pointerdown",()=>{ teach(c); els[c.act].classList.toggle("r"); });
+  else hit.addEventListener("pointerdown",()=>onControl(c));
+}
+
+function build(){
+  /* --- chassi: placa dos decks + painel do mixer + costuras + lábio frontal --- */
+  addDeco("plate",0,0,MIXL,100);
+  addDeco("plate b",MIXR,0,100-MIXR,100);   /* deck B: o escurecimento vai para o outro lado */
+  addDeco("mixp",MIXL,0,MIXR-MIXL,100);
+  addDeco("seam",MIXL-0.28,0,null,100);
+  addDeco("seam",MIXR,0,null,100);
+  addDeco("lip",0,97.6,100,2.4);
+  /* trilho metálico acima da fileira de LOOP (existe nos dois decks) */
+  [11.8,71.35].forEach(x=>addDeco("rail",x,9.4,17.0,1.0));
+  /* parafusos do chassi (decorativos, medidos na foto) */
+  [[1.0,25.3],[5.4,42.4],[1.0,72.2],[11.1,76.3],[35.0,10.6],[35.0,71.5],
+   [99.0-1.0,25.3],[99.0-5.4,42.4],[99.0-1.0,72.2],[89.0,76.3],[64.5,10.6],[64.5,71.5],
+   [40.3,26.5],[59.4,26.5],[40.3,70.3],[59.4,70.3]]
+   .forEach(([x,y])=>addDeco("screw",x,y,0.62,0.62*AR));
+  /* LEDs de POWER e USB do mixer */
+  const pw=addDeco("led",48.15,59.4,0.55,0.55*AR); pw.classList.add("grn","on");
+  addDeco("led",51.45,59.4,0.55,0.55*AR).classList.add("on");
+
+  /* --- controles --- */
+  Object.keys(POS).forEach(placeControl);
+
+  /* --- serigrafia --- */
+  LAB.forEach(([t,x,y,c])=>addLab(t,x,y,c));
+  addLab("Numark NS7",37.9,12.0,"logo rot");
+  addLab("Numark NS7",62.1,12.0,"logo rot");
+
+  /* --- estado inicial --- */
+  ["L","R"].forEach(s=>{ placeFaderCap("pitch_"+s,0.5); setState("scroff_"+s,false); });
+  placeFaderCap("fader1",0.9); placeFaderCap("fader2",0.9);
+  placeHCap("xfader",0.5); placeHCap("hpmix",0.5);
+  els.hpmode.classList.add("r");           // HEADPHONE MODE em MASTER
+  ["fstarta","fstartb"].forEach(a=>setState(a,true));
+  setState("crates",true);
+  renderMission();
+}
+
+/* medidores e fitas */
+let mTick=0;
+function animMeters(){ requestAnimationFrame(animMeters);
+  if(++mTick%3)return;                                  // ~20 fps: o LED meter não precisa de 60
+  const act=ready&&(dL.playing||dR.playing);
+  meters.forEach(m=>{ const lvl=ready?(Math.random()*0.22+(act?0.55:0.02)):0;
+    m._bars.forEach((b,i)=>{ const on=i/16<lvl; b.style.background=on?(i>13?"#ff4a3e":i>10?"#ff6a2e":"#e5352f"):"#2a0d0c";
+      b.style.boxShadow=on?"0 0 3px #e5352f":""; }); }); }
+function paintStrip(side){ const el=els["strip_"+side]; if(!el)return; const D=decks[side]; const pl=el.querySelector(".pl");
+  pl.style.left=(5+(D?D.pos/D.len:0)*89.5)+"%"; }
+function paintBpm(){ const el=els.bpmmeter; if(!el||!el._bars)return;
+  let k=10;
+  if(ready){ const a=dL.baseBpm*(1+dL.pitch/100), b=dR.baseBpm*(1+dR.pitch/100);
+    k=clamp(Math.round(10+(a-b)*1.6),0,20); }
+  el._bars.forEach((x,i)=>{ const on=i===k;
+    if(i===10){ x.style.background=on?"#ffffff":"#3a3a3a"; x.style.boxShadow=on?"0 0 6px #fff,0 0 12px #fff8":""; }
+    else { x.style.background=on?"#ff4a3e":"#33100f"; x.style.boxShadow=on?"0 0 5px #e5352f":""; } }); }
+
+/* ===================== binds ===================== */
+function bindJog(el,c){ const side=c.side; let active=false,last=0;
+  const rect=()=>el.getBoundingClientRect();
+  const ang=e=>{ const r=rect(); return Math.atan2(e.clientY-(r.top+r.height/2),e.clientX-(r.left+r.width/2)); };
+  const dist=e=>{ const r=rect(); return Math.hypot(e.clientX-(r.left+r.width/2),e.clientY-(r.top+r.height/2))/(r.width/2); };
+  el.addEventListener("pointerdown",e=>{ teach(c); if(!started){startAudio();return;} if(!ready)return; const D=decks[side]; active=true; last=ang(e);
+    if(dist(e)<0.72){ D.touching=true; D.targetPos=D.pos; } el.setPointerCapture(e.pointerId); e.preventDefault(); });
+  el.addEventListener("pointermove",e=>{ if(!active||!ready)return; const D=decks[side]; const a=ang(e); let da=a-last; if(da>Math.PI)da-=2*Math.PI; if(da<-Math.PI)da+=2*Math.PI; last=a;
+    if(D.touching){ D.targetPos=clamp(D.targetPos+da/(2*Math.PI)*D.buffer.sampleRate*0.5,0,D.len-1); markMission("scratch"); }
+    else { D.pos=clamp(D.pos+da/(2*Math.PI)*D.buffer.sampleRate*0.05,0,D.len-1); } });
+  const up=()=>{ active=false; const D=decks[side]; if(D&&D.touching)D.touching=false; };
+  el.addEventListener("pointerup",up); el.addEventListener("pointercancel",up);
+}
+function placeFaderCap(act,p){ const el=els[act]; if(!el)return; const cap=el.querySelector(".cap"); if(cap)cap.style.top=(6+(1-clamp(p,0,1))*88)+"%"; }
+function placeHCap(act,p){ const el=els[act]; if(!el)return; const cap=el.querySelector(".cap"); if(cap)cap.style.left=(7+clamp(p,0,1)*86)+"%"; }
+function bindPitch(el,c){ const side=c.side; let drag=false;
+  const mv=e=>{ if(!drag)return; const r=el.getBoundingClientRect(); const p=clamp(1-(e.clientY-r.top-r.height*0.06)/(r.height*0.88),0,1);
+    placeFaderCap("pitch_"+side,p); if(ready){ const D=decks[side]; D.pitch=(p-0.5)*2*D.range; } };
+  el.addEventListener("pointerdown",e=>{ teach(c); if(!started){startAudio();} drag=true; el.setPointerCapture(e.pointerId); mv(e); });
+  el.addEventListener("pointermove",mv); el.addEventListener("pointerup",()=>drag=false); el.addEventListener("pointercancel",()=>drag=false);
+}
+function bindChFader(el,c){ const id=c.act.replace("fader",""); const getD=id==="1"?()=>dL:()=>dR; let drag=false;
+  const mv=e=>{ const r=el.getBoundingClientRect(); const p=clamp(1-(e.clientY-r.top-r.height*0.06)/(r.height*0.88),0,1);
+    placeFaderCap("fader"+id,p); if(ready)getD().ch.gain.value=p; };
+  el.addEventListener("pointerdown",e=>{ teach(c); if(!started){startAudio();} drag=true; el.setPointerCapture(e.pointerId); mv(e); });
+  el.addEventListener("pointermove",e=>{ if(drag)mv(e); }); el.addEventListener("pointerup",()=>drag=false); el.addEventListener("pointercancel",()=>drag=false);
+}
+function bindXfader(el,c){ let drag=false;
+  const mv=e=>{ const r=el.getBoundingClientRect(); const p=clamp((e.clientX-r.left-r.width*0.07)/(r.width*0.86),0,1);
+    placeHCap("xfader",p); xfade=p; applyXfade(); markMission("xfade"); };
+  el.addEventListener("pointerdown",e=>{ teach(c); if(!started){startAudio();} drag=true; el.setPointerCapture(e.pointerId); mv(e); });
+  el.addEventListener("pointermove",e=>{ if(drag)mv(e); }); el.addEventListener("pointerup",()=>drag=false); el.addEventListener("pointercancel",()=>drag=false);
+}
+function bindHpMix(el,c){ let drag=false;
+  const mv=e=>{ const r=el.getBoundingClientRect(); const p=clamp((e.clientX-r.left-r.width*0.07)/(r.width*0.86),0,1); placeHCap(c.act,p); };
+  el.addEventListener("pointerdown",e=>{ teach(c); if(!started){startAudio();} drag=true; el.setPointerCapture(e.pointerId); mv(e); });
+  el.addEventListener("pointermove",e=>{ if(drag)mv(e); }); el.addEventListener("pointerup",()=>drag=false); el.addEventListener("pointercancel",()=>drag=false);
+}
+/* BLEEP / REVERSE — chave de 3 posições de verdade (manual, item 18):
+   parte de CIMA = BLEEP (com mola: ao soltar, o áudio volta para onde ESTARIA se nunca
+   tivesse invertido) · parte de BAIXO = REVERSE (trava) · meio = desativado. */
+function bindRocker(el,c){ const side=c.side; const sw=()=>els[c.act]; let bleep=false,t0=0,p0=0;
+  el.addEventListener("pointerdown",e=>{ teach(c); if(!started){startAudio();return;} if(!ready)return;
+    const r=el.getBoundingClientRect(), f=(e.clientY-r.top)/r.height, D=decks[side];
+    if(f<0.42){ sw().classList.remove("dn"); sw().classList.add("up");
+      bleep=true; p0=D.pos; t0=AC.currentTime; D.dir=-1; el.setPointerCapture(e.pointerId); }
+    else if(f>0.58){ const on=sw().classList.contains("dn"); sw().classList.remove("up","dn");
+      if(!on){ sw().classList.add("dn"); D.dir=-1; } else D.dir=1; }
+    else { sw().classList.remove("up","dn"); D.dir=1; } });
+  const up=()=>{ if(bleep&&ready){ const D=decks[side];
+      D.pos=p0+(AC.currentTime-t0)*D.buffer.sampleRate*(1+D.pitch/100);   // como se nunca tivesse invertido
+      while(D.pos>=D.len)D.pos-=D.len;
+      D.dir=1; sw().classList.remove("up"); }
+    bleep=false; };
+  el.addEventListener("pointerup",up); el.addEventListener("pointercancel",up);
+}
+function bindStrip(el,c){ const side=c.side; let drag=false;
+  const mv=e=>{ if(!ready)return; const r=el.getBoundingClientRect(); const p=clamp((e.clientX-r.left)/r.width,0,1);
+    const D=decks[side]; D.pos=p*(D.len-1); };
+  el.addEventListener("pointerdown",e=>{ teach(c); if(!started){startAudio();return;} drag=true; el.setPointerCapture(e.pointerId); mv(e); });
+  el.addEventListener("pointermove",e=>{ if(drag)mv(e); }); el.addEventListener("pointerup",()=>drag=false); el.addEventListener("pointercancel",()=>drag=false);
+}
+function bindKnob(el,c){ const knob=els[c.act]; let drag=false,val=c.act==="master"?0.72:0.5,sy=0,sv=0;
+  const marker=()=>{ knob.style.setProperty("--kr",((val-0.5)*270)+"deg"); };
+  const live=()=>{ if(!ready)return; const a=c.act, g=(D,f)=>{ D[f].gain.value=(val-0.5)*2*18; };
+    if(a==="treble1")g(dL,"eqHi"); else if(a==="mid1")g(dL,"eqMid"); else if(a==="bass1")g(dL,"eqLo");
+    else if(a==="treble2")g(dR,"eqHi"); else if(a==="mid2")g(dR,"eqMid"); else if(a==="bass2")g(dR,"eqLo");
+    else if(a==="gain1")dL.ch.gain.value=val*1.6; else if(a==="gain2")dR.ch.gain.value=val*1.6;
+    else if(a==="master"&&master)master.gain.value=0.15+val*1.25; };
+  el.addEventListener("pointerdown",e=>{ if(!started){startAudio();} drag=true; sy=e.clientY; sv=val; el.setPointerCapture(e.pointerId); teach(c); flash(knob); e.preventDefault(); });
+  el.addEventListener("pointermove",e=>{ if(!drag)return; val=clamp(sv+(sy-e.clientY)/140,0,1); marker(); live(); });
+  el.addEventListener("pointerup",()=>drag=false); el.addEventListener("pointercancel",()=>drag=false);
+  marker();
+}
+
+function init(){ build(); frame(); animMeters();
+  $("#btnStart").addEventListener("pointerdown",()=>startAudio());
+  $("#btnReset").addEventListener("pointerdown",()=>location.reload());
+  const fit=()=>{ const w=$(".wrap");
+    const cap=document.documentElement.classList.contains("smu-fs")?2.6:1;
+    const s=Math.max(0.1,Math.min((window.innerWidth-6)/w.offsetWidth,(window.innerHeight-6)/w.offsetHeight,cap));
+    $("#stage").style.transform="scale("+s+")"; };
+  window.addEventListener("resize",fit);
+  window.addEventListener("message",()=>setTimeout(fit,40));   // contrato html.smu-fs do player
+  fit();
+}
+init();
+</script>
+</body>
+</html>
