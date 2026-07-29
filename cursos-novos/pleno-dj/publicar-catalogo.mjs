@@ -70,6 +70,21 @@ const AULAS = [
   ["0401","0004",1,"numark-ns7-real.html","Numark NS7 (controlador com pratos motorizados)","O controlador que trouxe pratos <b>motorizados de vinil</b> de verdade: você sente o disco girando embaixo da mão, com mixer de 3 canais no corpo."],
 ];
 
+
+/* o arquivo pode estar em simuladores/dj/<fabricante>/ — procura recursiva */
+function acharSim(nome) {
+  const pilha = [SIMS];
+  while (pilha.length) {
+    const d = pilha.pop();
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) pilha.push(p);
+      else if (e.name === nome) return p;
+    }
+  }
+  return null;
+}
+
 const GUARDS = [
   [/pos>=len\)\s*\w\.pos-=len/, "loop continuo"],
   [/bars=16/, "render rapido"],
@@ -93,8 +108,8 @@ async function main() {
     /* o ultimo grupo do UUID tem 12 chars: 8 zeros + o sufixo de 4 */
     const lid = P + "00000000" + sufixo, mid = P + "00000000" + mod;
     if (lid.split("-").pop().length !== 12) throw new Error(`id malformado: ${lid}`);
-    const alvo = path.join(SIMS, arq);
-    if (!fs.existsSync(alvo)) { console.log(`! sem arquivo: ${arq}`); puladas++; continue; }
+    const alvo = acharSim(arq) || path.join(SIMS, arq);
+    if (!alvo || !fs.existsSync(alvo)) { console.log(`! sem arquivo: ${arq}`); puladas++; continue; }
     const html = fs.readFileSync(alvo, "utf8");
     let falhou = null;
     for (const [re, nome] of GUARDS) if (!re.test(html)) falhou = nome;

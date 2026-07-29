@@ -14,6 +14,19 @@ import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+/* os simuladores agora ficam em subpasta por fabricante (ordem do dono):
+   simuladores/dj/<fabricante>/<arquivo>.html  — busca recursiva */
+function listarSims(dir) {
+  const out = [];
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) out.push(...listarSims(p));
+    else if (e.name.endsWith(".html") && !e.name.startsWith("_")) out.push(p);
+  }
+  return out;
+}
+
 const SIMS = path.join(RAIZ, "simuladores", "dj");
 const REST = "https://pshynylvvkhhohftouoe.supabase.co/rest/v1";
 const CURSO = "8febe92b-ca5e-48ce-ab73-0e672fadd3c0";
@@ -31,8 +44,9 @@ const md5 = s => crypto.createHash("md5").update(s).digest("hex").slice(0, 8);
 
 /* casa a aula com o arquivo pelo <title> do HTML publicado */
 function acharLocal(tituloHtml) {
-  for (const f of fs.readdirSync(SIMS).filter(f => f.endsWith(".html"))) {
-    const s = fs.readFileSync(path.join(SIMS, f), "utf8");
+  for (const abs of listarSims(SIMS)) {
+    const f = path.relative(SIMS, abs).split(path.sep).join("/");
+    const s = fs.readFileSync(abs, "utf8");
     const m = s.match(/<title>([^<]*)<\/title>/);
     if (m && m[1].trim() === tituloHtml.trim()) return f;
   }
@@ -72,7 +86,12 @@ for (const a of aulas) {
      de audio por caminho relativo. */
   /* exige BARRA de diretorio: "musicas/x.mp3" e caminho relativo (quebra),
      mas "sotex-1.mp3" e so o nome no catalogo, juntado com a base em runtime. */
-  const audioRelativo = /["'`](?!https?:\/\/|data:|blob:|\/\/)[^"'`\s]*\/[^"'`\s]*\.(mp3|wav|ogg|m4a|flac)["'`]/i.test(local);
+  /* tira comentarios antes de procurar: o studio EXPLICA a armadilha num
+     comentario ("musicas/x.mp3") e o guard casava com o texto, nao com codigo */
+  const semComentario = local
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+  const audioRelativo = /["'`](?!https?:\/\/|data:|blob:|\/\/)[^"'`\s]*\/[^"'`\s]*\.(mp3|wav|ogg|m4a|flac)["'`]/i.test(semComentario);
 
   const motivo = (temBanco && baseRelativa) ? "Banco SMU com caminho relativo"
                : audioRelativo               ? "referencia a arquivo de audio por caminho relativo"

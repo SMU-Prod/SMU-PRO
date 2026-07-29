@@ -18,6 +18,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const SIMS = path.join(RAIZ, "simuladores", "dj");
 const REST = "https://pshynylvvkhhohftouoe.supabase.co/rest/v1";
 
 function chave() {
@@ -36,6 +37,21 @@ function chave() {
   );
 }
 
+
+/* o arquivo pode estar em simuladores/dj/<fabricante>/ — procura recursiva */
+function acharSim(nome) {
+  const pilha = [SIMS];
+  while (pilha.length) {
+    const d = pilha.pop();
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) pilha.push(p);
+      else if (e.name === nome) return p;
+    }
+  }
+  return null;
+}
+
 const GUARDS = [
   [/pos>=len\)\s*\w\.pos-=len/, "loop continuo (a base tem que voltar ao inicio sozinha)"],
   [/bars=16/,                   "render rapido (bars=16)"],
@@ -49,7 +65,7 @@ async function main() {
     console.error("uso: node publicar-sim.mjs <lesson_id> <arquivo.html>");
     process.exit(2);
   }
-  const alvo = path.isAbsolute(arquivo) ? arquivo : path.join(RAIZ, "simuladores", "dj", arquivo);
+  const alvo = path.isAbsolute(arquivo) ? arquivo : (acharSim(arquivo) || path.join(SIMS, arquivo));
   const html = fs.readFileSync(alvo, "utf8");
 
   for (const [re, nome] of GUARDS)

@@ -16,6 +16,19 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+
+/* os simuladores agora ficam em subpasta por fabricante (ordem do dono):
+   simuladores/dj/<fabricante>/<arquivo>.html  — busca recursiva */
+function listarSims(dir) {
+  const out = [];
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) out.push(...listarSims(p));
+    else if (e.name.endsWith(".html") && !e.name.startsWith("_")) out.push(p);
+  }
+  return out;
+}
+
 const SIMS = path.join(path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."), "simuladores", "dj");
 
 /* controles que não são botão: o visor, o prato e placas decorativas */
@@ -63,7 +76,7 @@ const arg = process.argv[2];
 if (!arg) { console.error("uso: node auditar-funcoes.mjs <arquivo.html>|--todos"); process.exit(2); }
 
 const lista = arg === "--todos"
-  ? fs.readdirSync(SIMS).filter(f => f.endsWith("-real.html")).map(f => path.join(SIMS, f))
+  ? listarSims(SIMS).filter(f => f.endsWith("-real.html"))
   : [path.isAbsolute(arg) ? arg : path.join(SIMS, arg)];
 
 let comMortos = 0, totalMortos = 0;

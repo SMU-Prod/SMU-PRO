@@ -76,8 +76,17 @@ const PONTE = `<script>/* PONTE SMU — nao faz parte do aparelho */
 })();
 <\/script>`;
 
+/* o simulador agora mora em simuladores/dj/<fabricante>/ */
+function acharSim(nome){
+  const pilha=[SIMS];
+  while(pilha.length){ const d=pilha.pop();
+    for(const e of fs.readdirSync(d,{withFileTypes:true})){
+      const q=path.join(d,e.name);
+      if(e.isDirectory()) pilha.push(q); else if(e.name===nome) return q; } }
+  return null;
+}
 function preparar(arq) {
-  const p = path.join(SIMS, arq);
+  const p = acharSim(arq) || path.join(SIMS, arq);
   if (!fs.existsSync(p)) throw new Error("simulador nao encontrado: " + arq);
   let h = fs.readFileSync(p, "utf8");
   const titulo = (h.match(/<title>([^<]*)<\/title>/) || [, arq])[1]
