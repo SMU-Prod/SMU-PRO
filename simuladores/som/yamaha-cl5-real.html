@@ -500,6 +500,34 @@
   state.insPatch=new Array(MAXCAP).fill(null);
   state.dirPatch=new Array(MAXCAP).fill(null);
   state.insOutPatch=new Array(OUTCH.length).fill(null);
+
+  /* ============ CHANNEL LINK (Reference Manual p.82-84) ================================
+     Liga canais para que mexer num mexa nos outros. O manual traz UMA regra facil de errar,
+     que so' aparece com a banda tocando:
+       "The HA analog gain setting and the fader operation will be linked and will maintain
+        the same RELATIVE level difference between the channels."
+     Fader e ganho propagam por DIFERENCA; o resto copia o valor. Copiar o fader absoluto
+     achataria a mistura que o operador montou entre os canais do grupo. */
+  const LINKPAR=[
+    ["HA",        ["gain","dgain","att","phantom","phase"], true ],   // true = por diferenca
+    ["FADER",     ["fader"], true ],
+    ["ON",        ["on"], false],
+    ["EQ",        ["eqOn","eq","eqType","hpfOn","hpf","lpfOn","lpf"], false],
+    ["DYNA1",     ["gateOn","gateThr","gateRange","gateAtk","gateHold","gateDecay"], false],
+    ["DYNA2",     ["compOn","compThr","compRatio","compAtk","compRel","compKnee","compGain"], false],
+    ["MIX ON",    ["sendOn"], false],
+    ["MIX SEND",  ["sends","sendPre"], false],
+    ["MTX ON",    ["mtxOn"], false],
+    ["MTX SEND",  ["mtxSends","mtxPre"], false],
+    ["INSERT",    ["insertOn","insertPoint"], false],
+    ["DIRECT OUT",["directOn","directLv","directPoint"], false],
+    ["PAN",       ["pan"], false],
+  ];
+  const LINKGRUPOS=["A","B","C","D","E","F","G","H"];
+  state.linkOf=new Array(MAXCAP).fill(null);         // canal -> letra do grupo
+  state.linkPar={};                                  // letra -> {NOME:true}
+  LINKGRUPOS.forEach(g=>state.linkPar[g]={FADER:true,ON:true});
+  state.linkSel="A";                                 // grupo em edicao na aba
   state.rsGlobal={};                               // nome -> true quando protegido
   state.rsSetBySel=false; state.rsSel=0;           // SET BY SEL / canal em edicao na aba
   state.fcSetBySel=false; state.fcSel=0;
@@ -973,7 +1001,60 @@
     w.regions=hitRegions; w.vt={k:VT.k,ox:VT.ox,oy:VT.oy};
     const t=w.el.querySelector('.wt'), nt=winTitle(w.id); if(t.textContent!==nt) t.textContent=nt;
   }
-  renderScreen=function(){ for(const k in WINS) renderWin(WINS[k]); };
+  /* Propaga o CHANNEL LINK. Roda uma vez por repintura, comparando cada canal linkado com a
+     foto anterior: quem mudou manda a mudanca para os companheiros de grupo.
+     POR QUE ASSIM, e nao interceptando a escrita: os parametros sao alterados em dezenas de
+     lugares espalhados (ch.gateOn=!ch.gateOn direto no callback do botao). Instrumentar tudo
+     seria frágil, e um Proxy em CH pagaria pedagio em TODA leitura — e a leitura acontece
+     72 canais x varios parametros x 60 quadros, exatamente o caminho quente que ja' custou
+     caro neste arquivo. Comparar so' os canais linkados nao custa quase nada. */
+  const _linkFoto={};
+  function propagarLinks(){
+    const grupos={};
+    for(let i=0;i<MAXCAP;i++){ const g=state.linkOf[i]; if(g){ (grupos[g]||(grupos[g]=[])).push(i); } }
+    for(const g in grupos){
+      const membros=grupos[g]; if(membros.length<2){ membros.forEach(i=>_linkFoto[i]=null); continue; }
+      const pars=state.linkPar[g]||{};
+      /* DUAS FASES, e a ordem importa.
+         Antes eu atualizava a foto de TODOS os membros ainda dentro do laco que examina cada
+         canal: ao terminar o CH1 a foto do CH2 ja' ia junto, entao uma alteracao feita NO CH2
+         era apagada antes de ser vista e o link so' funcionava num sentido. Agora: primeiro
+         descubro quem mudou, depois propago, e so' no fim tiro as fotos novas. */
+      const mudou=[];
+      for(const i of membros){
+        if(!_linkFoto[i]){ _linkFoto[i]=fotoLink(CH[i],pars); continue; }
+        const ant=_linkFoto[i], c=CH[i];
+        for(const [nome,chaves] of LINKPAR){ if(!pars[nome])continue;
+          if(chaves.some(k=>JSON.stringify(c[k])!==JSON.stringify(ant[k]))){ mudou.push(i); break; } }
+      }
+      for(const i of mudou){
+        const c=CH[i], ant=_linkFoto[i];
+        for(const [nome,chaves,porDiferenca] of LINKPAR){
+          if(!pars[nome])continue;
+          for(const k of chaves){
+            const agora=c[k], antes=ant[k];
+            if(JSON.stringify(agora)===JSON.stringify(antes))continue;
+            if(porDiferenca && typeof agora==="number" && typeof antes==="number"){
+              const dif=agora-antes;
+              membros.forEach(j=>{ if(j!==i && typeof CH[j][k]==="number"){
+                CH[j][k]=clamp(CH[j][k]+dif,-140,80); applyChanAudio(j); } });
+            } else {
+              membros.forEach(j=>{ if(j!==i){
+                CH[j][k]=(agora&&typeof agora==="object")?JSON.parse(JSON.stringify(agora)):agora;
+                applyChanAudio(j); } });
+            }
+          }
+        }
+      }
+      if(mudou.length) membros.forEach(j=>_linkFoto[j]=fotoLink(CH[j],pars));
+    }
+  }
+  function fotoLink(c,pars){ const f={};
+    LINKPAR.forEach(([nome,chaves])=>{ if(!pars[nome])return;
+      chaves.forEach(k=>{ f[k]=(c[k]&&typeof c[k]==="object")?JSON.parse(JSON.stringify(c[k])):c[k]; }); });
+    return f; }
+
+  renderScreen=function(){ propagarLinks(); for(const k in WINS) renderWin(WINS[k]); };
 
 
   /* ================= MAIN — the CL Editor "Main" panel = the NAVIGATOR =================
@@ -1859,6 +1940,50 @@
     }
     vend();
   }
+  /* ================= CH LINK MODE (Reference Manual p.82-84) =================
+     Aba CHANNEL LINK da janela Group/Link. Monta os grupos de link e escolhe QUAIS
+     parametros andam juntos. A propagacao em si esta em propagarLinks(). */
+  function paneChLink(saida){
+    const g=state.linkSel;
+    eTitle(20,46,saida?"OUTPUT CHANNEL LINK":"CH LINK MODE — grupo "+g,300,11);
+    if(saida){
+      ctx.fillStyle="#9a9a9a"; ctx.font="700 10px Arial"; ctx.textAlign="left";
+      ctx.fillText("O link de canais de SAÍDA (MIX/MATRIX) usa o mesmo grupo e os mesmos",20,90);
+      ctx.fillText("parâmetros da aba CHANNEL LINK. Os masters de saída deste simulador",20,108);
+      ctx.fillText("são controlados na janela Main; o link de entrada é o que muda a mistura.",20,126);
+      return;
+    }
+    /* seletor de grupo */
+    ctx.fillStyle="#9a9a9a"; ctx.font="700 9px Arial"; ctx.textAlign="left"; ctx.fillText("LINK GROUP",20,72);
+    LINKGRUPOS.forEach((L,li)=>eBtn(96+li*40,60,36,16,L,g===L,()=>{state.linkSel=L;},ED.yel,9));
+    eBtn(432,60,80,16,"CLEAR",false,()=>{ for(let i=0;i<MAXCAP;i++)if(state.linkOf[i]===g)state.linkOf[i]=null;
+      toast("Grupo "+g+" <b>desfeito</b>"); },null,8);
+    const n=state.linkOf.filter(x=>x===g).length;
+    ctx.fillStyle=n>1?"#e8c838":"#8a8a8a"; ctx.font="700 9px Arial";
+    ctx.fillText(n>1?(n+" canais linkados"):(n===1?"1 canal — o link precisa de 2":"grupo vazio"),528,72);
+
+    /* campo de canais: clicar poe/tira do grupo em edicao */
+    ctx.fillStyle="#9a9a9a"; ctx.font="700 9px Arial"; ctx.fillText("LINKED CHANNEL",20,96);
+    const yFim=campoCanais(20,104,
+      i=>state.linkOf[i]===g?2:(state.linkOf[i]?1:0),
+      i=>{ state.linkOf[i]=(state.linkOf[i]===g)?null:g; _linkFoto[i]=null; },
+      -1);
+    ctx.fillStyle="#7a7a7a"; ctx.font="700 8px Arial";
+    ctx.fillText("aceso = neste grupo · meio-tom = em OUTRO grupo (um canal só entra num link)",20,yFim+14);
+
+    /* LINK PARAMETER */
+    let y=yFim+30;
+    ctx.fillStyle="#9a9a9a"; ctx.font="700 9px Arial"; ctx.fillText("LINK PARAMETER",20,y+10);
+    const pars=state.linkPar[g]||(state.linkPar[g]={});
+    LINKPAR.forEach(([nome,,dif],pi)=>{ const bx=20+(pi%7)*106, by=y+16+Math.floor(pi/7)*24;
+      eBtn(bx,by,100,19,nome+(dif?" ≈":""),!!pars[nome],()=>{ pars[nome]=!pars[nome]; if(!pars[nome])delete pars[nome];
+        for(let i=0;i<MAXCAP;i++)if(state.linkOf[i]===g)_linkFoto[i]=null; },ED.yel,8);
+    });
+    ctx.fillStyle="#7a7a7a"; ctx.font="700 8px Arial"; ctx.textAlign="left";
+    ctx.fillText("≈ = anda por DIFERENÇA: o manual (p.84) manda o fader e o ganho manterem a distância entre os canais.",20,612);
+    ctx.fillText("Mexa num canal do grupo e os companheiros acompanham — é o que a mesa faz.",20,624);
+  }
+
   /* ================= GROUP/LINK — mirrors CL Editor "Group/Link" window (DCA/MUTE GROUP ASSIGN matrix) ================= */
   function drawDCA(){
     vbegin(910,646);
@@ -1869,9 +1994,10 @@
       ctx.fillStyle=on?"#1a1a1a":"#333333"; ctx.fillRect(tx,4,220,20); bevel(tx,4,220,20,!on);
       ctx.fillStyle=on?"#f0f0f0":"#9a9a9a"; ctx.font="700 9px 'Courier New',monospace"; ctx.textAlign="center"; ctx.textBaseline="middle";
       ctx.fillText(tl,tx+110,15); ctx.textBaseline="alphabetic";
-      vreg({x:tx,y:4,w:220,h:20,onDown:()=>{ if(ti<2)state.grpTab=ti; else toast("CHANNEL LINK: não incluído no simulador"); }});
+      vreg({x:tx,y:4,w:220,h:20,onDown:()=>{ state.grpTab=ti; }});
     });
     ctx.fillStyle="#2e2e2e"; ctx.fillRect(8,28,894,610); bevel(8,28,894,610,false);
+    if(state.grpTab>=2){ paneChLink(state.grpTab===3); vend(); return; }
     const hx0=126, cw2=26;
     // channel bank paging (banks of 24) — the assign matrix reaches every channel up to MAXCH,
     // like the console's own bank keys. CL5=72→3 banks, LS9=64→3, M7CL=48→2.
@@ -2842,7 +2968,10 @@
      teriam dado nenhum para proteger — seriam botao de enfeite, que e' o defeito que estamos
      tirando. hasAudio acompanha file: canal sem stem patchado e' canal mudo. */
   function snapCh(c){ return JSON.parse(JSON.stringify({name:c.name,color:c.color,file:c.file,hasAudio:c.hasAudio,gain:c.gain,dgain:c.dgain,att:c.att,phase:c.phase,phantom:c.phantom,hpfOn:c.hpfOn,hpf:c.hpf,lpfOn:c.lpfOn,lpf:c.lpf,eqOn:c.eqOn,eq:c.eq,eqType:c.eqType,gateOn:c.gateOn,gateThr:c.gateThr,gateRange:c.gateRange,gateAtk:c.gateAtk,gateHold:c.gateHold,gateDecay:c.gateDecay,compOn:c.compOn,compThr:c.compThr,compRatio:c.compRatio,compAtk:c.compAtk,compRel:c.compRel,compKnee:c.compKnee,compGain:c.compGain,key1Src:c.key1Src,key1F:c.key1F,key1Hpf:c.key1Hpf,key2Src:c.key2Src,pan:c.pan,stMode:c.stMode,stAssign:c.stAssign,monoAsn:c.monoAsn,fader:c.fader,on:c.on,muteSafe:c.muteSafe,recallSafe:c.recallSafe,insertOn:c.insertOn,insertPoint:c.insertPoint,directOn:c.directOn,directLv:c.directLv,directPoint:c.directPoint,delayOn:c.delayOn,delayMs:c.delayMs,sends:c.sends,sendOn:c.sendOn,sendPre:c.sendPre,mtxSends:c.mtxSends,mtxOn:c.mtxOn,mtxPre:c.mtxPre,dca:c.dca,mute:c.mute})); }
-  function storeScene(slot){ marcarUndoCena(slot); scenes[slot]={ model:state.model, ch:CH.map(snapCh), master:state.master, mono:state.mono, dcaGain:state.dcaGain.slice(), dcaOn:state.dcaOn.slice(), muteActive:state.muteActive.slice(), rack:JSON.parse(JSON.stringify(state.rack)), geq:JSON.parse(JSON.stringify(state.geq)), ts:Date.now() }; toast("Cena "+(slot+1)+" <b>armazenada</b> ✔"); }
+  function storeScene(slot){ marcarUndoCena(slot); scenes[slot]={ model:state.model, ch:CH.map(snapCh), master:state.master, mono:state.mono, dcaGain:state.dcaGain.slice(), dcaOn:state.dcaOn.slice(), muteActive:state.muteActive.slice(), rack:JSON.parse(JSON.stringify(state.rack)), geq:JSON.parse(JSON.stringify(state.geq)),
+    /* o CHANNEL LINK faz parte da cena (manual p.79) */
+    linkOf:state.linkOf.slice(), linkPar:JSON.parse(JSON.stringify(state.linkPar)),
+    ts:Date.now() }; toast("Cena "+(slot+1)+" <b>armazenada</b> ✔"); }
   /* Um grupo de parametro passa para o canal i? (manual p.79 e p.102)
      FOCUS decide o que ENTRA (por cena); RECALL SAFE decide o que fica de FORA (global).
      O manual manda os dois valerem juntos: barrado por qualquer um dos dois = nao recupera. */
@@ -2956,6 +3085,11 @@
     });
     state.master=s.master; if(s.mono!=null)state.mono=s.mono;
     state.dcaGain=s.dcaGain.slice(); state.dcaOn=s.dcaOn.slice(); state.muteActive=s.muteActive.slice();
+    /* O CHANNEL LINK volta SEMPRE — o manual (p.79) e' explicito: "Channel Link and bus
+       settings are not subject to Recall Safe; they will always be reproduced in the
+       recalled scene." Por isso fica FORA do filtro do grupoPassa(). */
+    if(s.linkOf){ state.linkOf=s.linkOf.slice(); for(const k in _linkFoto)delete _linkFoto[k]; }
+    if(s.linkPar) state.linkPar=JSON.parse(JSON.stringify(s.linkPar));
     if(s.rack && !rg["EFFECT RACK"] && !rg["PREMIUM RACK"]) state.rack=JSON.parse(JSON.stringify(s.rack));
     if(s.geq  && !rg["GEQ RACK"])    state.geq =JSON.parse(JSON.stringify(s.geq));
     for(let i=0;i<MAXCAP;i++)applyChanAudio(i); applyMasterAudio(); applyRackAll(); applyGeq();
@@ -3066,7 +3200,7 @@
             else if(d.rack==='effect'||d.rack==='virtual'){state.rackKind='fx';}
             else if(d.rack==='premium'){state.rackKind='fx';toast("PREMIUM RACK: usa os módulos REV-X do Virtual Rack");} }
           if(d.mt!=null) state.mtTab=+d.mt;
-          if(d.grp!=null){ if(+d.grp<2) state.grpTab=+d.grp; else toast((+d.grp===2?"CHANNEL LINK":"OUTPUT CHANNEL LINK")+": não incluído no simulador"); }
+          if(d.grp!=null){ state.grpTab=+d.grp; }
           if(d.sc!=null){ state.scnTab=+d.sc; }
           if(WINDEF[d.win]) setMode(d.win); else toast(it.textContent.replace(/Ctrl.*/,'')+": não incluído no simulador");
         }
@@ -3124,6 +3258,7 @@
       dcaGain:state.dcaGain, dcaOn:state.dcaOn, muteActive:state.muteActive,
       rack:state.rack, geq:state.geq,
       rsGlobal:state.rsGlobal, focus:state.focus, fade:state.fade,
+      linkOf:state.linkOf, linkPar:state.linkPar,
       rsPar:CH.map(c=>c.rsPar), recallSafe:CH.map(c=>c.recallSafe) };
     const blob=new Blob([JSON.stringify(dados,null,1)],{type:"application/json"});
     const a=document.createElement("a");
@@ -3156,6 +3291,8 @@
         if(d.rack)state.rack=d.rack; if(d.geq)state.geq=d.geq;
         if(d.rsGlobal)state.rsGlobal=d.rsGlobal;
         if(d.focus)state.focus=d.focus; if(d.fade)state.fade=d.fade;
+        if(d.linkOf){ state.linkOf=d.linkOf.slice(); for(const k in _linkFoto)delete _linkFoto[k]; }
+        if(d.linkPar) state.linkPar=d.linkPar;
         ligarPatch();
         for(let i=0;i<MAXCAP;i++)applyChanAudio(i); applyMasterAudio(); applyRackAll(); applyGeq();
         paintBay(); paintSelected(); paintRightRack(); drawScreen();
@@ -3176,6 +3313,9 @@
     state.focus=Array.from({length:N_SCENE},()=>({on:false,all:true,ch:{},par:{}}));
     state.fade =Array.from({length:N_SCENE},()=>{ const ch={}; for(let i=0;i<MAXCAP;i++)ch[i]=true; return {on:false,time:3.0,ch}; });
     for(let i=0;i<MAXCAP;i++){ CH[i].recallSafe=false; CH[i].rsPar={ALL:true}; }
+    state.linkOf=new Array(MAXCAP).fill(null);
+    LINKGRUPOS.forEach(g=>state.linkPar[g]={FADER:true,ON:true});
+    for(const k in _linkFoto)delete _linkFoto[k];
     loadSong(curSong);                       // devolve nome/patch/ganho de fabrica aos canais
     ligarPatch();
     for(let i=0;i<MAXCAP;i++)applyChanAudio(i); applyMasterAudio();
