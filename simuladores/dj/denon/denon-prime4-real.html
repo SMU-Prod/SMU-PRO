@@ -500,6 +500,7 @@ deckMeta("R","direita",2,4);
 let AC=null, started=false, ready=false, master=null, prog=null;
 let dL=null, dR=null, xfade=0.5;
 const decks={}, tiras={}, modFx={}, micBus={}, saidas={};
+let masterAn=null;
 
 async function renderTrack(seed){
   const sr=44100,bpm=seed?124:126,root=seed?98:110,spb=60/bpm,bars=16,dur=spb*4*bars;
@@ -547,9 +548,21 @@ function montarTira(n){
   t.sendA=AC.createGain(); t.sendA.gain.value=0;
   t.sendB=AC.createGain(); t.sendB.gain.value=0;
   t.gate.connect(t.trim); t.trim.connect(t.hi); t.hi.connect(t.mid); t.mid.connect(t.lo);
-  t.lo.connect(t.sweep);  t.sweep.connect(t.fader);
+  /* ===== PONTO PRÉ-FADER — de onde o medidor do canal lê o sinal =====
+     ⛔ 30/07/2026: o medidor deste aparelho NÃO media nada. Era animação:
+     `Math.random()*0.22+(ativo?0.5:0.03)`. Acendia sozinho, com o deck parado, e
+     nem olhava para o áudio. Sem sinal elétrico chegando não há elétron para medir.
+     ⚠️ O manual do Prime 4 não diz se o medidor do canal é pré ou pós fader. Diz,
+     no item 9, que o Channel Level é "the level of the pre-fader, pre-EQ audio
+     signal for the channel" — e o item 10 chama o medidor de "the audio signal
+     level of the channel". Adotado PRÉ-FADER, o mesmo padrão medido e aprovado no
+     DJM-450 (lá o manual é explícito: "BEFORE passing the channel fader"). */
+  t.pre=AC.createGain(); t.pre.gain.value=1;
+  t.an=AC.createAnalyser(); t.an.fftSize=2048;
+  t.lo.connect(t.sweep);  t.sweep.connect(t.pre);
   t.sweep.connect(t.sweepDly); t.sweepDly.connect(t.sweepFb); t.sweepFb.connect(t.sweepDly);
-  t.sweepDly.connect(t.sweepWet); t.sweepWet.connect(t.fader);
+  t.sweepDly.connect(t.sweepWet); t.sweepWet.connect(t.pre);
+  t.pre.connect(t.fader); t.pre.connect(t.an);
   t.fader.connect(t.xf);  t.xf.connect(prog);
   t.fader.connect(t.cue); t.cue.connect(saidas.cueSum);
   t.fader.connect(t.sendA); t.sendA.connect(modFx[1].ent);
@@ -578,6 +591,9 @@ async function startAudio(){ if(started)return; started=true;
   prog=AC.createGain(); prog.gain.value=1;                       /* soma do programa */
   master=AC.createGain(); master.gain.value=0.9; prog.connect(master); master.connect(AC.destination);
   window._man=AC.createAnalyser(); master.connect(window._man);  /* analisador p/ verificação de som */
+  /* medidor do MASTER — manual, item 17: "the audio signal level of the master mix
+     (sent out of the Master Outputs)". Por isso lê DEPOIS do master. */
+  masterAn=AC.createAnalyser(); masterAn.fftSize=2048; master.connect(masterAn);
 
   /* saídas de cabine e de zona: nós reais (params de verdade), sem ir ao alto-falante
      — no aparelho elas saem por XLR próprios, não pelo Master. */
@@ -618,7 +634,17 @@ async function startAudio(){ if(started)return; started=true;
           if(d.loopOn&&d.rate>0&&d.pos>=d.loopEnd)d.pos=d.loopStart+(d.pos-d.loopEnd);
           if(d.pos>=len)d.pos-=len; else if(d.pos<0)d.pos+=len; }   // LOOP CONTÍNUO
         let i0=Math.floor(d.pos); const fr=d.pos-i0; i0=((i0%len)+len)%len; const i1=(i0+1)%len;
-        out[i]=data[i0]*(1-fr)+data[i1]*fr; } };
+        /* ⛔ 30/07/2026 — PRATO PARADO TEM DE SAIR MUDO.
+           Esta linha entregava a amostra interpolada SEMPRE. Com o deck pausado a
+           posição congela, e o que saía era o MESMO valor repetido milhares de vezes:
+           isso é tensão contínua, não silêncio. O medidor do mixer media essa tensão
+           e ficava aceso com o aparelho parado — foi exatamente o que o dono viu.
+           Numa CDJ parada não sai sinal, e sem sinal não há o que medir.
+           O limiar vale para o prato SEGURADO também (mão no vinil = som parado), e
+           não corta a freada: enquanto o rate está caindo ainda existe áudio de
+           verdade, cada vez mais grave — é o brake, e ele continua soando. */
+        const parado=Math.abs(d.rate)<1e-3;
+        out[i]=parado?0:(data[i0]*(1-fr)+data[i1]*fr); } };
     sp.connect(D.out);
   });
 
@@ -1162,7 +1188,7 @@ function placeControl(act){
   let [x,y,w,h]=p;
   if(ROUND.has(act)){ const nh=w*AR; y=y+(h-nh)/2; h=nh; }     // círculos: altura derivada da largura
   const el=makeEl(c); pct(el,x,y,w,h); deck.appendChild(el); els[act]=el;
-  if(c.kind==="meter"){ el._bars=[...el.children]; meters.push(el); return; }
+  if(c.kind==="meter"){ el._bars=[...el.children]; el._id=act; meters.push(el); return; }
   if(c.kind==="jog"){ jogs[c.side]={ctx:el.getContext("2d"),s:420}; }
   if(c.kind==="screen"){ el.width=1000; el.height=Math.round(1000/((w/h)*AR)); scrCtx=el.getContext("2d"); scrW=el.width; scrH=el.height; return; }
   const hit=document.createElement("div"); hit.className="hit"; pct(hit,x,y,w,h); hit.dataset.act=act; deck.appendChild(hit);
@@ -1249,10 +1275,47 @@ function atualizarVisoresFx(){
                    "WET "+Math.round(f.wet*100)][i];
     d.style.color=f.on?"#8ef0ff":"#5a6b78"; });
 }
+/* ===================== MEDIDORES =====================
+   ⛔ 30/07/2026 — o VU deste aparelho era MENTIRA. A conta era
+       lvl = Math.random()*0.22 + (ativo ? 0.5 : 0.03)
+   ou seja: número sorteado, sem olhar uma única vez para o áudio. Com o deck
+   parado ele continuava tremendo em 0,03, e com o deck tocando marcava 0,5 a
+   0,72 fosse qual fosse o TRIM, o EQ ou o fader. O dono viu isso e está certo:
+   sem sinal elétrico chegando não há o que medir, e LED nenhum pode acender.
+
+   Agora cada medidor lê um AnalyserNode de verdade — os do canal no ponto
+   PRÉ-FADER da tira, o do master depois do master. Mesma lei do DJM-450:
+     • escala em dB, não número sem unidade;
+     • ataque instantâneo e queda controlada (balística de PPM), senão a janela
+       de ~46 ms cai entre um bumbo e outro e a leitura vira ruído;
+     • sem sinal, o pico é zero e NADA acende.
+   As 14 barras vão de baixo (índice 0) para cima — o CSS é column-reverse. Os
+   limiares abaixo casam com as cores que já existiam: 12-13 vermelho (o clipe,
+   ancorado em 0 dBFS), 10-11 âmbar, o resto verde. */
+const PM_DB=[-36,-33,-30,-27,-24,-21,-18,-15,-12,-9,-6,-4,-2,0];   // índice 0 = barra de baixo
+const PM_MUDO=-999, PM_QUEDA_DB_S=26;
+const pmNivel={};                       // último valor retido, por medidor
+let pmT=0;
+function pmPico(an){ if(!an) return PM_MUDO;
+  const b=new Uint8Array(an.fftSize); an.getByteTimeDomainData(b);
+  let pk=0; for(const v of b){ const x=Math.abs(v-128)/128; if(x>pk)pk=x; }
+  return pk>1e-5 ? 20*Math.log10(pk) : PM_MUDO; }
+function pmAnalisador(id){
+  const m=/^meter([1-4])$/.exec(id);
+  if(m) return tiras[m[1]] ? tiras[m[1]].an : null;
+  if(/^mmeter/.test(id)) return masterAn;
+  return null; }
 function animMeters(){ requestAnimationFrame(animMeters);
-  const ativo=ready&&(dL.playing||dR.playing);
-  meters.forEach(m=>{ const lvl=ready?(Math.random()*0.22+(ativo?0.5:0.03)):0;
-    m._bars.forEach((b,i)=>{ const on=i/14<lvl; b.style.background=on?(i>11?"#ff4d4d":i>9?"#f5b83c":"#3ce06a"):"#0e2416"; }); }); }
+  const agora=performance.now(), dt=pmT?Math.min((agora-pmT)/1000,0.25):0; pmT=agora;
+  meters.forEach(m=>{ const id=m._id;
+    let db=PM_MUDO;
+    if(ready){ const novo=pmPico(pmAnalisador(id));
+      const ant=pmNivel[id]===undefined?PM_MUDO:pmNivel[id];
+      const caindo=(ant<=PM_MUDO)?PM_MUDO:ant-PM_QUEDA_DB_S*dt;
+      db=Math.max(novo,caindo,PM_MUDO); }
+    pmNivel[id]=db;
+    m._bars.forEach((b,i)=>{ const on=db>=PM_DB[i];
+      b.style.background=on?(i>11?"#ff4d4d":i>9?"#f5b83c":"#3ce06a"):"#0e2416"; }); }); }
 
 /* ===================== binds ===================== */
 function bindJog(el,c){ const side=c.side; let active=false,last=0;
