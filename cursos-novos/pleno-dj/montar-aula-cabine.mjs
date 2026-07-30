@@ -45,6 +45,12 @@ const AULAS = [
      janela quando selecionado, e deve continuar funcionando". */
   { modo: "praticando", arq: "battle-2x-sl1200mk7.html",
     preset: { d1:"sl1200", mix:"djm450", d2:"sl1200" } },
+  /* CABINES de aula: as tres estavam servindo simulador generico sem POS.
+     Agora usam os aparelhos de verdade, travados pelo preset. */
+  { modo: "praticando", arq: "cabine-cdj2000-djm900.html",
+    preset: { d1:"cdj2000", mix:"djm900", d2:"cdj2000" } },
+  { modo: "praticando", arq: "cabine-cdj3000-djmv10.html",
+    preset: { d1:"cdj3000", mix:"djmv10", d2:"cdj3000" } },
 ];
 
 /* --------------------------------------------------------------------------
