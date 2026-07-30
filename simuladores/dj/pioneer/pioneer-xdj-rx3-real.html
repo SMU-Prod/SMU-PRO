@@ -6,6 +6,41 @@
 <link rel="icon" href="data:,">
 <title>Pioneer DJ XDJ-RX3 — réplica fiel (SMU)</title>
 <!--
+  ============================================================================
+  RODADA DE COMPORTAMENTO — 30/07/2026
+  Fonte de verdade: "XDJ-RX3 Instruction Manual"
+  (cursos-novos/pleno-dj/manuais/XDJ-RX3.pdf, lido com ferramentas/pdftext.mjs).
+  ----------------------------------------------------------------------------
+  O ferramentas/clicar-tudo.mjs acusava 28 controles mortos. Eram SEIS causas,
+  as MESMAS do XDJ-RX2 (os dois são irmãos). Detalhe no bloco MIXER-FIEL-PADRAO,
+  dentro do script. Em resumo:
+
+    1. A monitoração de FONE nunca foi escrita (4 botões + 2 knobs mudos)
+    2. O SOUND COLOR FX não era aplicado — o COLOR fazia sempre filtro (6 botões)
+    3. O BEAT FX não existia no áudio (1 botão + 2 knobs mudos)
+    4. micsw / auxsw / xfcurve andavam a pele e paravam aí (3 chaves)
+    5. SHIFT era serigrafia, não estado (2 botões + todas as 2ªs funções)
+    6. TRACK SEARCH era toco: os dois botões faziam `D.pos=0` (2 botões)
+    + MEMORY/DELETE/CALL confundiam ponto GRAVADO com HOT CUE do pad
+
+  ----------------------------------------------------------------------------
+  ⚠️ NÃO SÃO DEFEITO — o portão continua acusando 9 rótulos. Todos dependem de
+  um ESTADO que o portão não consegue montar: ele clica rápido, num aparelho
+  recém-ligado, e o motor de áudio não anda entre um clique e outro.
+
+   • LOOP OUT dos dois decks — precisa de LOOP IN antes E de o ponteiro ter
+     ANDADO (`d.pos > d.loopStart`).
+   • RELOOP/EXIT e LOOP (indicador 1/2X–2X) — manual: o RELOOP refaz ou cancela
+     um loop; sem NENHUM loop já gravado não há o que refazer. Agora ele lembra
+     o último comprimento (D.loopFull) mesmo depois de sair do loop.
+   • CUE/LOOP CALL ◄ ► — manual: chamam pontos GRAVADOS e, durante o loop,
+     cortam (1/2X) / dobram (2X). Sem ponto gravado e sem loop no ar não há o
+     que chamar. Grave um com MEMORY e o CALL passa a andar pelos pontos.
+
+  ⛔ Quem "consertar" esses nove vai quebrar o que está certo (Regra 4).
+  ============================================================================
+-->
+<!--
   FONTE DE VERDADE (Regra 2 do projeto)
   ------------------------------------
   • FOTO TOP-DOWN oficial do XDJ-RX3 (render "prm_top" da AlphaTheta/Pioneer DJ, 1000x700),
@@ -708,6 +743,9 @@ deckMeta("R","direita",2);
 let AC=null, started=false, ready=false, master=null;
 let dL=null, dR=null, xfade=0.5;
 const decks={};
+/* barramentos criados pelo bloco MIXER-FIEL-PADRAO (fone, booth, mic, aux, BEAT FX) */
+let prog=null, hpBus=null, hpMst=null, hpVol=null, hpPrev=null, boothG=null,
+    micG=null, micLow=null, micHi=null, auxSw=null, auxG=null, noiseSrc=null;
 
 async function renderTrack(seed){
   const sr=44100,bpm=seed?124:126,root=seed?98:110,spb=60/bpm,bars=16,dur=spb*4*bars;
@@ -729,7 +767,7 @@ async function renderTrack(seed){
 function makeDeck(buf,bpm,title,artist,key){
   const data=buf.getChannelData(0), len=data.length;
   const D={ buffer:buf,data,len,pos:0,playing:false,rate:0,pitch:0,baseBpm:(window.__BANCO_BPM||bpm),dir:1,touching:false,targetPos:0,
-    cuePoint:0,hotcues:{},loopOn:false,loopStart:0,loopEnd:0,loopIn:false,peaks:null,padmode:"hotcue",
+    cuePoint:0,hotcues:{},memCues:[],loopOn:false,loopStart:0,loopEnd:0,loopIn:false,loopFull:0,callIdx:0,peaks:null,padmode:"hotcue",
     vinyl:true,mt:true,range:6,slip:false,quantize:true,title,artist,key,lvl:0 };
   D.peaks=picos(data,len);          // mesma conta usada pelo LOAD (ver BROWSE-USB-PADRAO)
   return D;
@@ -745,6 +783,39 @@ async function startAudio(){ if(started)return; started=true;
 
   master=AC.createGain(); master.gain.value=0.9; master.connect(AC.destination);   // MASTER LEVEL = 0.9
 
+  /* ===== barramentos que NÃO EXISTIAM (bloco MIXER-FIEL-PADRAO, mais abaixo) =====
+     PROGRAMA: soma dos canais ANTES do master. É nele que o TALK OVER abaixa a
+     música — manual do XDJ-RX3, "MIC section": em TALK OVER, "when sound of -10 dB
+     or more is input to the microphone, the volume other than the microphone
+     channel is attenuated by -24 dB". O microfone entra DEPOIS do prog. */
+  prog=AC.createGain(); prog.gain.value=1; prog.connect(master);
+  /* FONE: barramento próprio. ⛔ NÃO vai ao destination — o navegador tem UMA saída
+     e o fone do aparelho é outra saída física; o que se mede aqui é o ganho.
+     Manual, "Monitoring with headphones": CUE de canal é PRÉ-FADER, o MIXING cruza
+     CUE × MASTER e o LEVEL dosa a saída. */
+  hpBus=AC.createGain(); hpBus.gain.value=1;
+  hpMst=AC.createGain(); hpMst.gain.value=0;
+  hpVol=AC.createGain(); hpVol.gain.value=0.5;
+  hpBus.connect(hpVol); hpMst.connect(hpVol); prog.connect(hpMst);
+  hpPrev=AC.createGain(); hpPrev.gain.value=0; hpPrev.connect(hpBus);   // CUE (LINK) = pré-escuta
+  /* BOOTH MONITOR: outra saída física — mesmo motivo, não vai ao destination. */
+  boothG=AC.createGain(); boothG.gain.value=0.6; prog.connect(boothG);
+  /* MIC: não há microfone de verdade nesta réplica. O que existe e É MEDIDO é o
+     estágio de ganho + EQ (HI/LOW −12 a +12 dB, manual) e o TALK OVER. */
+  micG=AC.createGain(); micG.gain.value=0;
+  micLow=AC.createBiquadFilter(); micLow.type="lowshelf";  micLow.frequency.value=100;
+  micHi =AC.createBiquadFilter(); micHi.type="highshelf"; micHi.frequency.value=10000;
+  micG.connect(micLow); micLow.connect(micHi); micHi.connect(master);
+  /* AUX do painel frontal — manual: chave (OFF, LINE, PORTABLE) + TRIM. */
+  auxSw=AC.createGain(); auxSw.gain.value=0;
+  auxG =AC.createGain(); auxG.gain.value=0.5;
+  auxSw.connect(auxG); auxG.connect(prog);
+  /* ruído branco compartilhado — matéria-prima do SOUND COLOR FX NOISE */
+  { const nb=AC.createBuffer(1,Math.floor(AC.sampleRate*2),AC.sampleRate), nd=nb.getChannelData(0);
+    for(let i=0;i<nd.length;i++)nd[i]=Math.random()*2-1;
+    noiseSrc=AC.createBufferSource(); noiseSrc.buffer=nb; noiseSrc.loop=true; noiseSrc.start(); }
+  montarBeatFX();
+
   [["L",dL],["R",dR]].forEach(([side,D])=>{
     D.trim=AC.createGain(); D.trim.gain.value=1;
     D.eqLo=AC.createBiquadFilter(); D.eqLo.type="lowshelf";  D.eqLo.frequency.value=120;
@@ -752,7 +823,18 @@ async function startAudio(){ if(started)return; started=true;
     D.eqHi=AC.createBiquadFilter(); D.eqHi.type="highshelf"; D.eqHi.frequency.value=3500;
     D.colLp=AC.createBiquadFilter();D.colLp.type="lowpass";  D.colLp.frequency.value=20000; D.colLp.Q.value=1;
     D.colHp=AC.createBiquadFilter();D.colHp.type="highpass"; D.colHp.frequency.value=20;    D.colHp.Q.value=1;
+    /* SOUND COLOR FX — nós por canal (as leis estão em aplicarColor()) */
+    D.crush=AC.createWaveShaper();
+    D.scDly=AC.createDelay(1.2); D.scDly.delayTime.value=0.19;
+    D.scWet=AC.createGain(); D.scWet.gain.value=0;
+    D.scFB =AC.createGain(); D.scFB.gain.value=0;
+    D.noiseF=AC.createBiquadFilter(); D.noiseF.type="bandpass"; D.noiseF.frequency.value=1000; D.noiseF.Q.value=1.1;
+    D.noiseG=AC.createGain(); D.noiseG.gain.value=0;
+    D.pre=AC.createGain(); D.pre.gain.value=1;            // ponto PRÉ-FADER (CUE sai daqui)
+    D.cue=AC.createGain(); D.cue.gain.value=0;
     D.ch=AC.createGain(); D.ch.gain.value=0.9;            // CHANNEL FADER = 0.9
+    D.fxs=AC.createGain(); D.fxs.gain.value=0;            // envio ao BEAT FX (insert)
+    D.dry=AC.createGain(); D.dry.gain.value=1;            // caminho direto ao programa
     D.xf=AC.createGain(); D.xf.gain.value=1;
     /* CHAVE DE ENTRADA DO CANAL: fica ANTES do TRIM, como no aparelho. Em LINE/PHONO
        o player interno simplesmente não chega ao canal — e aí não sai som mesmo. */
@@ -770,19 +852,47 @@ async function startAudio(){ if(started)return; started=true;
         out[i]=data[i0]*(1-fr)+data[i1]*fr; } };
     sp.connect(D.srcG); D.srcG.connect(D.trim);
     D.trim.connect(D.eqHi); D.eqHi.connect(D.eqMid); D.eqMid.connect(D.eqLo);
-    D.eqLo.connect(D.colLp); D.colLp.connect(D.colHp); D.colHp.connect(D.ch);
-    D.ch.connect(D.an); D.ch.connect(D.xf); D.xf.connect(master);
+    D.eqLo.connect(D.colLp); D.colLp.connect(D.colHp); D.colHp.connect(D.crush);
+    /* SOUND COLOR FX: seco + eco/reverb realimentado + ruído, somados no PRÉ-FADER */
+    D.crush.connect(D.pre);
+    D.crush.connect(D.scDly); D.scDly.connect(D.scWet); D.scWet.connect(D.pre);
+    D.scDly.connect(D.scFB);  D.scFB.connect(D.scDly);
+    noiseSrc.connect(D.noiseF); D.noiseF.connect(D.noiseG); D.noiseG.connect(D.pre);
+    D.pre.connect(D.ch);
+    D.pre.connect(D.cue); D.cue.connect(hpBus);           // CUE é PRÉ-FADER (manual)
+    D.ch.connect(D.an); D.ch.connect(D.xf);
+    /* BEAT FX é INSERT, não paralelo: com o efeito ligado no canal, o caminho direto
+       fecha e o som passa pelo efeito (por isso LEVEL/DEPTH no mínimo devolve o
+       som original, como o manual descreve). */
+    D.xf.connect(D.dry); D.dry.connect(prog);
+    D.xf.connect(D.fxs); D.fxs.connect(fxIn);
   });
   applyXfade();
   ready=true;
   aplicarFonteCanal(1); aplicarFonteCanal(2);                 // chave de entrada de cada canal
   Object.keys(KNOBVAL).forEach(a=>applyKnob(a,KNOBVAL[a]));   // knobs já desenhados = valores reais
+  /* estados de painel que agora TÊM consequência de áudio (antes só acendiam) */
+  aplicarMic(); aplicarAux(); aplicarHp(); aplicarColor(1); aplicarColor(2); aplicarBeatFX();
   $("#acDot").classList.add("on"); $("#acState").textContent="ligado"; $("#btnStart").textContent="● Áudio ligado";
   if(AC.resume)AC.resume();
 }
 function beatLen(D){ return 60/(D.baseBpm*(1+D.pitch/100))*D.buffer.sampleRate; }
+/* CROSSFADER CURVE (manual, "Channel section": item CROSSFADER CURVE switch) — a
+   chave tem TRÊS posições e até agora nenhuma delas mudava coisa alguma:
+     THRU ..... "Doesn't use the crossfader"
+     suave .... "Gradually raises the volume of the sound assigned to the other side"
+     seca ..... "Steeply raises the volume of the sound assigned to the other side"
+   Ordem do manual, e a chave nasce em .p1 = do meio = curva suave. */
+const XFCURVAS=["THRU","curva suave (mixagem)","corte seco (scratch)"];
+function xfCurva(){ const el=els.xfcurve; if(!el)return 1;
+  return el.classList.contains("p2")?2:el.classList.contains("p1")?1:0; }
 function applyXfade(){ if(!ready)return;
-  const gl=xfade<=0.5?1:(1-xfade)*2, gr=xfade>=0.5?1:xfade*2;
+  const c=xfCurva();
+  let gl,gr;
+  if(c===0){ gl=1; gr=1; }
+  else if(c===1){ gl=xfade<=0.5?1:(1-xfade)*2; gr=xfade>=0.5?1:xfade*2; }
+  else { gl=xfade<=0.06?1:xfade>=0.94?0:clamp((0.94-xfade)/0.20,0,1);
+         gr=xfade>=0.94?1:xfade<=0.06?0:clamp((xfade-0.06)/0.20,0,1); }
   dL.xf.gain.value=gl; dR.xf.gain.value=gr; }
 /* AudioParam sempre por .value (nada de setTargetAtTime: automação exponencial nunca termina
    e força o parâmetro a virar a-rate, recalculando o biquad amostra a amostra). */
@@ -819,12 +929,16 @@ function cueDeck(D,side){ if(!ready)return;
 
 const PADCOL=["#ff3b30","#22d3ee","#c9e021","#4a5bd8","#22c55e","#f97316","#2563eb","#eab308"];
 function padHit(D,side,i){ if(!ready)return; const el=els["pad"+i+"_"+side];
+  /* SHIFT + pad em HOT CUE apaga aquele ponto — manual: "Deleting hot cues: Press one
+     of the performance pads while pressing the [SHIFT] button." */
+  if(shiftOn[side]&&D.padmode==="hotcue"){ delete D.hotcues[i]; el.classList.remove("on");
+    teach({k:"HOT CUE "+(i+1)+" apagado",d:"SHIFT + pad apaga o hot cue gravado nele."}); return; }
   if(D.padmode==="hotcue"){ const p=D.hotcues[i];
     if(p===undefined){ D.hotcues[i]=D.pos; el.classList.add("on"); }
     else { D.pos=p; if(!D.playing)playDeck(D,side,true); }
     markMission("hotcue");
   } else if(D.padmode==="beatloop"||D.padmode==="sliploop"){ const sz=[1,2,4,8,16,32,1/2,1/4][i]; const bl=beatLen(D)*sz;
-    D.loopStart=D.pos; D.loopEnd=D.pos+bl; D.loopOn=true; D.slipLoop=(D.padmode==="sliploop");
+    D.loopStart=D.pos; D.loopEnd=D.pos+bl; D.loopFull=bl; D.loopOn=true; D.slipLoop=(D.padmode==="sliploop");
     $$(".pad").forEach(p=>{ if(p.dataset.side===side)p.classList.remove("on"); });
     el.classList.add("on"); setState("reloop_"+side,true); markMission("loop");
   } else { const j=[-16,-8,-4,-1,1,4,8,16][i]; D.pos=clamp(D.pos+j*beatLen(D),0,D.len-1);
@@ -832,11 +946,256 @@ function padHit(D,side,i){ if(!ready)return; const el=els["pad"+i+"_"+side];
 }
 function loopBtn(D,side,which){ if(!ready)return;
   if(which==="in"){ D.loopStart=D.pos; D.loopIn=true; D.loopOn=false; setState("loopin_"+side,true); setState("loopout_"+side,false); setState("reloop_"+side,false); }
-  else if(which==="out"){ if(D.loopIn&&D.pos>D.loopStart){ D.loopEnd=D.pos; D.loopOn=true; D.loopIn=false; setState("loopout_"+side,true); setState("reloop_"+side,true); markMission("loop"); } }
-  else { if(D.loopEnd>D.loopStart){ D.loopOn=!D.loopOn; setState("reloop_"+side,D.loopOn);
-      if(!D.loopOn){ setState("loopin_"+side,false); setState("loopout_"+side,false); } } }
+  else if(which==="out"){ if(D.loopIn&&D.pos>D.loopStart){ D.loopEnd=D.pos; D.loopFull=D.loopEnd-D.loopStart;
+      D.loopOn=true; D.loopIn=false; setState("loopout_"+side,true); setState("reloop_"+side,true); markMission("loop"); } }
+  /* RELOOP/EXIT (manual): tocando o loop, SAI dele; fora do loop, REFAZ o último loop
+     gravado. loopFull é a memória do último comprimento — sem ela o botão morria
+     assim que o loop era desligado. */
+  else { if(D.loopOn){ D.loopOn=false; setState("reloop_"+side,false);
+        setState("loopin_"+side,false); setState("loopout_"+side,false); }
+    else if(D.loopFull>0){ D.loopEnd=D.loopStart+D.loopFull; D.pos=D.loopStart; D.loopOn=true;
+        setState("reloop_"+side,true); setState("loopin_"+side,true); setState("loopout_"+side,true); }
+    else teach({k:"RELOOP / EXIT (deck "+(side==="L"?1:2)+")",
+      d:"Ainda <b>não há loop gravado</b> neste deck — é assim no aparelho: o RELOOP só refaz um loop que já existiu. Marque LOOP IN → LOOP OUT, ou use um pad em BEAT LOOP."}); }
 }
+/* loop automático de 4 tempos — manual: "Setting loops automatically (4-beat Loop)" */
+function loop4(D,side){ if(!ready)return; const bl=beatLen(D)*4;
+  D.loopStart=D.pos; D.loopEnd=D.pos+bl; D.loopFull=bl; D.loopOn=true; D.loopIn=false;
+  setState("loopin_"+side,true); setState("loopout_"+side,true); setState("reloop_"+side,true);
+  markMission("loop");
+  teach({k:"LOOP 4 BEAT (deck "+(side==="L"?1:2)+")",
+    d:"Loop automático de <b>4 tempos</b> no BPM da faixa ("+(bl/D.buffer.sampleRate).toFixed(2)+" s)."}); }
+/* CUE/LOOP CALL ◄ ► — manual: chamam os pontos gravados; DURANTE O LOOP viram
+   LOOP 1/2X e LOOP 2X. */
+function callCue(D,side,dir){ if(!ready)return;
+  if(D.loopOn){ const L=D.loopEnd-D.loopStart;
+    if(dir<0){ if(L/2>beatLen(D)/8){ D.loopEnd=D.loopStart+L/2; D.loopFull=L/2; } }
+    else { D.loopEnd=Math.min(D.loopStart+L*2,D.len-1); D.loopFull=D.loopEnd-D.loopStart; }
+    teach({k:dir<0?"LOOP 1/2X":"LOOP 2X",
+      d:"Loop agora com <b>"+((D.loopEnd-D.loopStart)/beatLen(D)).toFixed(2)+" tempos</b>."}); return; }
+  const n=D.memCues.length;
+  if(!n){ teach({k:"CUE/LOOP CALL "+(dir<0?"◄":"►")+" (deck "+(side==="L"?1:2)+")",
+    d:"Não há ponto de cue nem loop <b>gravado</b> nesta faixa — é assim no aparelho. Grave um com <b>MEMORY</b> e o CALL passa a chamá-lo."}); return; }
+  D.callIdx=clamp((D.callIdx==null?0:D.callIdx)+dir,0,n-1);
+  const p=D.memCues[D.callIdx];
+  D.pos=p.pos; D.cuePoint=p.pos;
+  if(p.fim>p.pos){ D.loopStart=p.pos; D.loopEnd=p.fim; D.loopFull=p.fim-p.pos; D.loopOn=true;
+    setState("reloop_"+side,true); }
+  teach({k:"CUE/LOOP CALL "+(dir<0?"◄":"►"),d:"Chamou o ponto <b>"+(D.callIdx+1)+" de "+n+"</b> gravado na faixa"+(p.fim>p.pos?" (com o loop)":"")+"."}); }
 function deckOf(act){ return act.endsWith("_R")?{D:dR,side:"R"}:{D:dL,side:"L"}; }
+
+/* MIXER-FIEL-PADRAO */
+/* ===========================================================================
+   O MIXER QUE SÓ ACENDIA — 30/07/2026   (mesmo bloco do XDJ-RX2)
+   ---------------------------------------------------------------------------
+   O ferramentas/clicar-tudo.mjs acusou 28 controles mortos aqui e 33 no RX2.
+   Não eram defeitos soltos: eram SEIS causas repetidas.
+
+     1. A MONITORAÇÃO DE FONE NUNCA FOI ESCRITA. cue1 / cue2 / cuemst / hpcue só
+        trocavam de classe CSS; não havia barramento de fone no grafo, e os knobs
+        MIXING e LEVEL não estavam no applyKnob.   → hpBus/hpMst/hpVol + aplicarHp()
+     2. O SOUND COLOR FX NÃO ERA APLICADO. Os 6 botões só acendiam e o COLOR fazia
+        SEMPRE filtro, qualquer que fosse o efeito.  → scType + aplicarColor()
+     3. O BEAT FX NÃO EXISTIA NO ÁUDIO. fxonoff só acendia; TIME e LEVEL/DEPTH nem
+        estavam no applyKnob.               → montarBeatFX() + aplicarBeatFX()
+     4. AS CHAVES DE 3 POSIÇÕES NÃO TINHAM CONSEQUÊNCIA: micsw, auxsw, xfcurve.
+                                → aplicarMic() / aplicarAux() / applyXfade()
+     5. O SHIFT ERA SÓ SERIGRAFIA: caía no toggle genérico do fim do despacho e
+        nenhuma 2ª função existia.                        → shiftOn{}
+     6. O TRACK SEARCH ERA TOCO: os dois botões faziam `D.pos=0`. O manual: ►► vai
+        ao INÍCIO DA PRÓXIMA faixa; ◄◄ volta ao início da atual e, de novo, vai
+        para a anterior.                                  → trackSearch()
+
+   FONTE DE VERDADE: cursos-novos/pleno-dj/manuais/XDJ-RX3.pdf (lido com
+   ferramentas/pdftext.mjs). Toda lei de efeito e todo dB citados vieram de lá.
+   =========================================================================== */
+
+/* ---------- SOUND COLOR FX (manual, "Sound Color FX types and settings") ----------
+     SPACE .... reverberação. COLOR ↺ médio+grave · ↻ médio+agudo · PARAM = feedback
+     DUB ECHO . eco realimentado. COLOR ↺ nos médios · ↻ nos agudos · PARAM = feedback
+     SWEEP .... COLOR ↺ efeito gate · ↻ estreita a banda do passa-faixa · PARAM = nível
+     NOISE .... ruído branco filtrado somado ao canal. COLOR = corte do filtro do
+                ruído (↺ desce · ↻ sobe) · PARAM = volume do ruído
+     CRUSH .... COLOR ↺ aumenta a distorção · ↻ passa o som esmagado por passa-altas
+     FILTER ... COLOR ↺ passa-baixas descendo · ↻ passa-altas subindo · PARAM = ressonância */
+const SCFX_NOMES={scfx1:"SPACE",scfx2:"DUB ECHO",scfx3:"SWEEP",scfx4:"NOISE",scfx5:"CRUSH",scfx6:"FILTER"};
+let scType=null;
+function crushCurve(passos){ const N=1024,c=new Float32Array(N),n=Math.max(2,passos);
+  for(let i=0;i<N;i++){ const x=i/(N-1)*2-1; c[i]=Math.round(x*n)/n; } return c; }
+function aplicarColor(n){ if(!ready)return; const D=(n===1||n==="1")?dL:dR; if(!D||!D.colLp)return;
+  const v=clamp(KNOBVAL["color"+n]==null?0.5:KNOBVAL["color"+n],0,1)*2-1;
+  const p=clamp(KNOBVAL.scfxparam==null?0.5:KNOBVAL.scfxparam,0,1), a=Math.abs(v);
+  D.colLp.type="lowpass";  P(D.colLp.frequency,20000); P(D.colLp.Q,1); P(D.colLp.gain,0);
+  D.colHp.type="highpass"; P(D.colHp.frequency,20);    P(D.colHp.Q,1); P(D.colHp.gain,0);
+  D.crush.curve=null; P(D.scWet.gain,0); P(D.scFB.gain,0); P(D.noiseG.gain,0);
+  if(a<0.04) return;
+  const t=scType||"FILTER";
+  if(t==="FILTER"){
+    if(v>0){ D.colHp.type="highpass"; P(D.colHp.frequency,120*Math.pow(60,v)); P(D.colHp.Q,0.7+p*8); }
+    else   { D.colLp.type="lowpass";  P(D.colLp.frequency,9000*Math.pow(0.028,a)); P(D.colLp.Q,0.7+p*8); }
+  } else if(t==="SWEEP"){
+    if(v>0){ D.colLp.type="bandpass"; P(D.colLp.frequency,200+p*4800); P(D.colLp.Q,0.8+a*8); }
+    else   { D.colHp.type="highpass"; P(D.colHp.frequency,150+a*2600); P(D.colHp.Q,0.7);
+             D.colLp.type="lowpass";  P(D.colLp.frequency,9000-a*4000); }
+  } else if(t==="NOISE"){
+    D.noiseF.type = v>0?"highpass":"lowpass";
+    P(D.noiseF.frequency, v>0 ? 300*Math.pow(30,v) : 9000*Math.pow(0.04,a));
+    P(D.noiseF.Q,0.8); P(D.noiseG.gain, a*0.16*(0.2+p));
+  } else if(t==="CRUSH"){
+    D.crush.curve=crushCurve(Math.max(2,Math.round(48*Math.pow(0.06,a)*(1-0.5*p)+2)));
+    if(v>0){ D.colHp.type="highpass"; P(D.colHp.frequency,200+v*3000); P(D.colHp.Q,1); }
+  } else if(t==="SPACE"){
+    P(D.scDly.delayTime,0.055); P(D.scWet.gain,a*0.9); P(D.scFB.gain,clamp(0.35+p*0.55,0,0.92));
+    D.colLp.type="peaking"; P(D.colLp.frequency, v>0?4200:180); P(D.colLp.gain,a*7); P(D.colLp.Q,0.9);
+  } else if(t==="DUB ECHO"){
+    P(D.scDly.delayTime,0.19); P(D.scWet.gain,a*0.95); P(D.scFB.gain,clamp(0.30+p*0.60,0,0.93));
+    D.colLp.type=v>0?"highshelf":"peaking"; P(D.colLp.frequency, v>0?4200:900);
+    P(D.colLp.gain,a*9); P(D.colLp.Q,0.9);
+  }
+}
+function aplicarColorTodos(){ aplicarColor(1); aplicarColor(2); }
+/* Manual: "Press the [SOUND COLOR FX] button. The selected button blinks. The effect
+   is applied to CH 1 and CH 2. ... Press the button of the effect you're using again
+   to turn the effect off." */
+function scfxClique(a){
+  const jaEra = els[a] && els[a].classList.contains("on");
+  scType = jaEra ? null : SCFX_NOMES[a];
+  [1,2,3,4,5,6].forEach(i=>setState("scfx"+i,("scfx"+i)===a && !jaEra));
+  aplicarColorTodos();
+  teach({k:"SOUND COLOR FX — "+(scType||"desligado"),
+    d: scType ? "Efeito <b>"+scType+"</b> armado nos dois canais. Gire o <b>COLOR</b> do canal para dosar e o <b>PARAMETER</b> para ajustar o parâmetro."
+              : "Efeito desligado. O knob COLOR volta a ser só filtro."});
+}
+
+/* ---------- BEAT FX (manual, "Using Beat FX") ----------
+   Insert no canal do CH SELECT. LEVEL/DEPTH todo à esquerda devolve o som original.
+   ⚠️ APROXIMADO: das 15 entradas da lista, este motor reproduz as famílias de ATRASO
+   (DELAY/ECHO/PING PONG/SPIRAL/REVERB/HELIX), de PORTA RITMADA (TRANS/ROLL/SLIP ROLL)
+   e de FILTRO (FILTER/FLANGER/PHASER). PITCH, VINYL BRAKE e MOBIUS caem na família
+   mais próxima. */
+let fxIn=null,fxFilt=null,fxDly=null,fxFB=null,fxDry=null,fxWet=null,
+    fxGate=null,fxGateDepth=null,fxGateOsc=null,fxLevel=null,fxCue=null;
+function montarBeatFX(){
+  fxIn=AC.createGain(); fxIn.gain.value=1;
+  fxFilt=AC.createBiquadFilter(); fxFilt.type="allpass"; fxFilt.frequency.value=1000; fxFilt.Q.value=0.8;
+  fxDly=AC.createDelay(4.0); fxDly.delayTime.value=0.25;
+  fxFB=AC.createGain(); fxFB.gain.value=0;
+  fxDry=AC.createGain(); fxDry.gain.value=1;
+  fxWet=AC.createGain(); fxWet.gain.value=0;
+  const som=AC.createGain();
+  fxGate=AC.createGain(); fxGate.gain.value=1;
+  fxGateDepth=AC.createGain(); fxGateDepth.gain.value=0;
+  fxGateOsc=AC.createOscillator(); fxGateOsc.type="square"; fxGateOsc.frequency.value=4; fxGateOsc.start();
+  fxGateOsc.connect(fxGateDepth); fxGateDepth.connect(fxGate.gain);
+  fxLevel=AC.createGain(); fxLevel.gain.value=1;
+  fxIn.connect(fxFilt);
+  fxFilt.connect(fxDry); fxDry.connect(som);
+  fxFilt.connect(fxDly); fxDly.connect(fxWet); fxWet.connect(som);
+  fxDly.connect(fxFB);   fxFB.connect(fxDly);
+  som.connect(fxGate); fxGate.connect(fxLevel); fxLevel.connect(prog);
+  fxCue=AC.createGain(); fxCue.gain.value=0; fxLevel.connect(fxCue); fxCue.connect(hpBus);
+}
+function fxLigado(){ return !!(els.fxonoff && els.fxonoff.classList.contains("on")); }
+function aplicarBeatFX(){ if(!ready||!fxIn)return;
+  const on=fxLigado(), ch=fxChIdx;                    /* 0=CH1 1=CH2 2=MIC 3=MASTER */
+  const noCanal=[ch===0||ch===3, ch===1||ch===3];
+  [dL,dR].forEach((D,i)=>{ if(!D||!D.fxs)return;
+    P(D.fxs.gain, on&&noCanal[i]?1:0); P(D.dry.gain, on&&noCanal[i]?0:1); });
+  const nome=FXNAMES[fxIdx]||"DELAY";
+  const dep=clamp(KNOBVAL.fxdepth==null?0.5:KNOBVAL.fxdepth,0,1);
+  const tk =clamp(KNOBVAL.fxtime ==null?0.5:KNOBVAL.fxtime ,0,1);
+  const seg=clamp(msDoBeat()*(0.25+tk*1.75)/1000,0.001,3.9);
+  const hz =clamp(1/Math.max(seg,0.02),0.2,40);
+  fxFilt.type="allpass"; P(fxFilt.frequency,1000); P(fxFilt.Q,0.8);
+  P(fxGateDepth.gain,0); P(fxGate.gain,1);
+  P(fxDly.delayTime,seg); P(fxFB.gain,0); P(fxDry.gain,1); P(fxWet.gain,0);
+  if(!on||dep<0.005) return;
+  if(/^(DELAY|ECHO|PING PONG|SPIRAL|REVERB|HELIX|MOBIUS)$/.test(nome)){
+    const fb={DELAY:0,ECHO:0.38,"PING PONG":0.45,SPIRAL:0.62,REVERB:0.68,HELIX:0.88,MOBIUS:0.74}[nome];
+    if(nome==="REVERB")P(fxDly.delayTime,clamp(seg*0.22,0.01,0.2));
+    P(fxWet.gain,dep); P(fxDry.gain,1-dep*0.35); P(fxFB.gain,fb*dep);
+    if(nome==="SPIRAL"){ fxFilt.type="highpass"; P(fxFilt.frequency,120+dep*900); }
+  } else if(/^(TRANS|ROLL|SLIP ROLL|VINYL BRAKE)$/.test(nome)){
+    P(fxGateOsc.frequency,hz); P(fxGateDepth.gain,dep*0.5); P(fxGate.gain,1-dep*0.5);
+    if(nome!=="TRANS"){ P(fxWet.gain,dep*0.8); P(fxFB.gain,0.75*dep); P(fxDly.delayTime,clamp(seg,0.01,2)); }
+  } else {
+    if(nome==="FILTER"){ fxFilt.type="lowpass"; P(fxFilt.frequency,12000*Math.pow(0.02,dep)); P(fxFilt.Q,1+dep*8); }
+    else { P(fxDly.delayTime,clamp(0.002+seg*0.01,0.0005,0.05));
+           P(fxWet.gain,dep); P(fxFB.gain,0.6*dep);
+           fxFilt.type=nome==="PHASER"?"allpass":"notch"; P(fxFilt.frequency,400+dep*2600); P(fxFilt.Q,1+dep*6); }
+  }
+}
+
+/* ---------- FONE (manual, "Monitoring with headphones") ---------- */
+function aplicarHp(){ if(!ready||!hpBus)return;
+  const on=a=>!!(els[a]&&els[a].classList.contains("on"));
+  if(dL&&dL.cue)P(dL.cue.gain,on("cue1")?1:0);
+  if(dR&&dR.cue)P(dR.cue.gain,on("cue2")?1:0);
+  const mix=clamp(KNOBVAL.hpmix==null?0.5:KNOBVAL.hpmix,0,1);   /* 0 = CUE · 1 = MASTER */
+  P(hpBus.gain,Math.cos(mix*Math.PI/2));
+  P(hpMst.gain,(on("cuemst")?1:0)*Math.cos((1-mix)*Math.PI/2));
+  P(hpVol.gain,Math.pow(clamp(KNOBVAL.hplevel==null?0.5:KNOBVAL.hplevel,0,1),1.6));
+  P(hpPrev.gain,on("hpcue")?0.8:0);
+  if(fxCue)P(fxCue.gain,fxLigado()&&on("cuemst")?0.6:0);
+}
+
+/* ---------- MIC e AUX ----------
+   TALK OVER: manual do XDJ-RX3 — "when sound of -10 dB or more is input to the
+   microphone, the volume other than the microphone channel is attenuated by -24 dB".
+   (No XDJ-RX2 o manual diz −20 dB; cada réplica usa o número do SEU manual.)
+   Como esta réplica não tem microfone de verdade, o abaixamento vale enquanto a
+   chave estiver em TALK OVER — é o que ensina o efeito. */
+const TALKOVER_DB=-24;
+function posDaChave(a){ const el=els[a]; if(!el)return 0;
+  return el.classList.contains("p2")?2:el.classList.contains("p1")?1:0; }
+function aplicarMic(){ if(!ready||!micG)return;
+  const p=posDaChave("micsw");                       /* 0=OFF 1=ON 2=TALK OVER */
+  const lvl=0.5*clamp(KNOBVAL.mic1lvl==null?0.5:KNOBVAL.mic1lvl,0,1)
+           +0.5*clamp(KNOBVAL.mic2lvl==null?0.5:KNOBVAL.mic2lvl,0,1);
+  P(micG.gain, p===0?0:Math.pow(lvl,1.7)*1.6);
+  P(micLow.gain,(clamp(KNOBVAL.miclow==null?0.5:KNOBVAL.miclow,0,1)-0.5)*24);   /* ±12 dB */
+  P(micHi.gain ,(clamp(KNOBVAL.michi ==null?0.5:KNOBVAL.michi ,0,1)-0.5)*24);   /* ±12 dB */
+  P(prog.gain, p===2?Math.pow(10,TALKOVER_DB/20):1);
+}
+/* AUX (RX3): OFF muda a entrada · LINE para aparelho de linha · PORTABLE para celular */
+const AUXNOMES=["OFF","LINE","PORTABLE"], AUXGANHO=[0,1,Math.pow(10,12/20)];
+function aplicarAux(){ if(!ready||!auxSw)return;
+  P(auxSw.gain,AUXGANHO[posDaChave("auxsw")]);
+  P(auxG.gain ,Math.pow(clamp(KNOBVAL.auxtrim==null?0.5:KNOBVAL.auxtrim,0,1),1.6)*1.6); }
+function aplicarBooth(){ if(!ready||!boothG)return;
+  P(boothG.gain,Math.pow(clamp(KNOBVAL.boothlvl==null?0.5:KNOBVAL.boothlvl,0,1),1.7)*1.55); }
+
+/* ---------- SHIFT (manual: botão 12 da seção do deck) ---------- */
+const shiftOn={L:false,R:false};
+function trocarShift(side){ shiftOn[side]=!shiftOn[side]; setState("shift_"+side,shiftOn[side]);
+  teach({k:"SHIFT (deck "+(side==="L"?1:2)+")",
+    d: shiftOn[side]
+      ? "SHIFT <b>ligado</b>: os botões passam para a 2ª função da serigrafia — <b>LOOP IN</b> vira loop automático de 4 tempos e o <b>pad</b> apaga o HOT CUE em vez de dispará-lo."
+      : "SHIFT desligado: os botões voltam à função principal."}); }
+
+/* ---------- TRACK SEARCH (manual) ----------
+   "Press the [TRACK SEARCH ►►] button to jump to the beginning of the next track.
+    Press the [TRACK SEARCH ◄◄] button to jump to the beginning of the track that's
+    playing. Press the button twice to jump to the beginning of the previous track." */
+function trackSearch(D,side,dir){ if(!ready)return;
+  const noComeco = D.pos < beatLen(D)*0.5;
+  if(dir<0 && !noComeco){ D.pos=0; D.cuePoint=0;
+    teach({k:"TRACK SEARCH ◄◄",d:"Voltou ao <b>início da faixa</b>. Aperte de novo para ir para a faixa anterior da lista."}); return; }
+  /* ⚠️ a ordem das faixas é a do DISPOSITIVO (bancoFaixas), não a da aba que está
+     no visor: no aparelho o TRACK SEARCH anda na mídia mesmo que a tela esteja em
+     SOURCE/MENU. Foi o que matava o botão quando a lista não estava em BROWSE. */
+  const L=bancoFaixas();
+  if(!L.length){ D.pos=0; D.cuePoint=0;
+    teach({k:"TRACK SEARCH",d:"Não há faixas no dispositivo: o botão só pôde voltar ao início."}); return; }
+  let i=L.findIndex(t=>t.nome===D.title); if(i<0)i=clamp(BROWSE.sel,0,L.length-1);
+  const j=i+(dir>0?1:-1);
+  if(j<0||j>=L.length){ D.pos=0; D.cuePoint=0;
+    teach({k:"TRACK SEARCH",d:"Fim da lista deste lado — o deck voltou ao início da faixa."}); return; }
+  BROWSE.fonte=BROWSE.fonte||"usb1"; BROWSE.aba="browse"; BROWSE.letra=""; BROWSE.playlist=0;
+  BROWSE.filtro=false; BROWSE.aberto=true; BROWSE.sel=j; BROWSE.topo=clamp(j-2,0,Math.max(0,L.length-1));
+  pintarFonte(); carregarNoDeck(side);
+}
+/* fim MIXER-FIEL-PADRAO */
 
 /* BROWSE-USB-PADRAO */
 /* =========================================================================================
@@ -1139,9 +1498,11 @@ function onControl(c){ teach(c);
 }
 function route(c,fl){ const a=c.act; if(fl)flash(els[a]);
   if(/_(L|R)$/.test(a)){ const {D,side}=deckOf(a); const base=a.replace(/_(L|R)$/,"");
+    if(base==="shift")return trocarShift(side);
     if(base==="play")return playDeck(D,side);
     if(base==="cue")return cueDeck(D,side);
-    if(base==="loopin")return loopBtn(D,side,"in");
+    /* LOOP IN com SHIFT = loop automático de 4 tempos (manual, 4-beat Loop). */
+    if(base==="loopin")return shiftOn[side]?loop4(D,side):loopBtn(D,side,"in");
     if(base==="loopout")return loopBtn(D,side,"out");
     if(base==="reloop"||base==="loopcut")return loopBtn(D,side,"re");
     if(base==="jogmode"){ D.vinyl=!D.vinyl; setState("jogmode_"+side,D.vinyl); els[a].textContent=D.vinyl?"VINYL":"CDJ"; return; }
@@ -1154,20 +1515,43 @@ function route(c,fl){ const a=c.act; if(fl)flash(els[a]);
     if(base==="sync"){ const O=side==="L"?dR:dL; D.pitch=clamp((O.baseBpm*(1+O.pitch/100)/D.baseBpm-1)*100,-D.range,D.range);
       placeFaderCap("tempo_"+side,0.5-D.pitch/(2*D.range)); setState(a,true); setTimeout(()=>setState(a,false),500); return; }
     if(base==="master"){ setState("master_L",side==="L"); setState("master_R",side==="R"); return; }
-    if(base==="trkprev"||base==="trknext"){ D.pos=0; D.cuePoint=0; return; }
+    if(base==="trkprev"||base==="trknext")return trackSearch(D,side,base==="trknext"?1:-1);
     if(base==="srchback"||base==="srchfwd"){ D.pos=clamp(D.pos+(base==="srchfwd"?1:-1)*beatLen(D)*4,0,D.len-1); return; }
-    if(base==="callprev"||base==="callnext"){ const ks=Object.keys(D.hotcues); if(!ks.length)return;
-      D.pos=D.hotcues[ks[base==="callnext"?ks.length-1:0]]; return; }
-    if(base==="memory"){ D.hotcues[0]=D.pos; setState("pad0_"+side,true); return; }
-    if(base==="deletebt"){ D.hotcues={}; $$(".pad").forEach(p=>{ if(p.dataset.side===side)p.classList.remove("on"); }); return; }
+    if(base==="callprev"||base==="callnext")return callCue(D,side,base==="callnext"?1:-1);
+    /* MEMORY / DELETE / CALL trabalham com os PONTOS GRAVADOS no dispositivo — que NÃO
+       são os hot cues dos pads. Antes o MEMORY escrevia em hotcues[0] e acendia o pad 1. */
+    if(base==="memory"){ const p={pos:D.pos,fim:D.loopOn?D.loopEnd:0};
+      D.memCues.push(p); D.callIdx=D.memCues.length-1;
+      if(D.loopOn)D.loopFull=D.loopEnd-D.loopStart;
+      setState("memory_"+side,true); setTimeout(()=>setState("memory_"+side,false),200);
+      teach({k:"MEMORY (deck "+(side==="L"?1:2)+")",
+        d:"Gravado o ponto <b>"+D.memCues.length+"</b>"+(p.fim?" (com o loop)":"")+" no dispositivo. O CUE/LOOP CALL ◄ ► agora chama esses pontos."}); return; }
+    if(base==="deletebt"){
+      if(D.memCues.length){ const i=clamp(D.callIdx,0,D.memCues.length-1); D.memCues.splice(i,1);
+        D.callIdx=clamp(i-1,0,Math.max(0,D.memCues.length-1));
+        teach({k:"DELETE (deck "+(side==="L"?1:2)+")",d:"Apagou o ponto chamado. Restam <b>"+D.memCues.length+"</b> gravado(s)."}); return; }
+      D.hotcues={}; $$(".pad").forEach(p=>{ if(p.dataset.side===side)p.classList.remove("on"); });
+      teach({k:"DELETE (deck "+(side==="L"?1:2)+")",d:"Não havia ponto gravado com MEMORY — os <b>hot cues</b> dos pads deste deck foram apagados."}); return; }
     if(/^padmode[1-4]$/.test(base)){ const m=["hotcue","beatloop","sliploop","beatjump"][+base.slice(7)-1]; D.padmode=m;
       [1,2,3,4].forEach(i=>setState("padmode"+i+"_"+side,i===+base.slice(7))); return; }
     if(/^pad[0-7]$/.test(base)) return padHit(D,side,+base.slice(3));
     els[a].classList.toggle("on"); return;
   }
-  if(/^(cue1|cue2|cuemst|hpcue|fxonoff|scfx[1-6])$/.test(a)){
-    if(/^scfx[1-6]$/.test(a)){ [1,2,3,4,5,6].forEach(i=>setState("scfx"+i,("scfx"+i)===a&&!els[a].classList.contains("on"))); return; }
-    els[a].classList.toggle("on"); if(a==="fxonoff")markMission("fx"); return; }
+  if(/^scfx[1-6]$/.test(a)) return scfxClique(a);
+  if(/^(cue1|cue2|cuemst|hpcue)$/.test(a)){ els[a].classList.toggle("on"); aplicarHp();
+    const lig=els[a].classList.contains("on");
+    if(a==="hpcue")teach({k:"CUE (LINK) — PRÉ-ESCUTA",d:lig
+      ?"Pré-escuta <b>ligada</b>: com a lista aberta, tocar numa faixa a manda para o fone <b>antes</b> de carregar no deck (manual: <i>Previewing a track</i>)."
+      :"Pré-escuta desligada."});
+    else teach({k:a==="cuemst"?"MASTER CUE":("CANAL "+a.slice(-1)+" — CUE"),d:lig
+      ?"No fone agora. O CUE do canal é <b>pré-fader</b>: você ouve mesmo com o fader fechado. Dose com MIXING (CUE ⟷ MASTER) e LEVEL."
+      :"Fora do fone."});
+    return; }
+  if(a==="fxonoff"){ els[a].classList.toggle("on"); aplicarBeatFX(); markMission("fx");
+    teach({k:"BEAT FX ON / OFF",d:(els[a].classList.contains("on")
+      ?"<b>"+(FXNAMES[fxIdx]||"DELAY")+"</b> no ar, em "+["CH 1","CH 2","MIC","MASTER"][fxChIdx]+
+       ", "+BEATDIV[fxBeat]+" de compasso ("+msDoBeat().toFixed(0)+" ms). LEVEL/DEPTH no mínimo devolve o som original."
+      :"Efeito desligado — o canal volta ao caminho direto.")}); return; }
   /* fileira ACIMA do visor + coluna do seletor + portas USB → bloco BROWSE-USB-PADRAO */
   if(/^(nav\w+|back|tagtrack|trackfilter|shortcut|load1|load2|usb1|usb2|usb1stop|usb2stop)$/.test(a)) return botaoBrowse(a);
   /* BEAT FX (divisor em batidas / TAP) e gravação no pendrive */
@@ -1634,12 +2018,19 @@ function applyKnob(act,v){
   else if(/^(hi|mid|low)([12])$/.test(act)){ const m=act.match(/^(hi|mid|low)([12])$/), D=m[2]==="1"?dL:dR;
     const g=(v-0.5)*2, val=g<0?g*26:g*6;
     P({hi:D.eqHi,mid:D.eqMid,low:D.eqLo}[m[1]].gain,val); }
-  else if(/^color([12])$/.test(act)){ const D=act==="color1"?dL:dR; const g=(v-0.5)*2;
-    if(g<0){ P(D.colLp.frequency,200+Math.pow(1+g,2)*19800); P(D.colHp.frequency,20); P(D.colLp.Q,1+(-g)*7); }
-    else { P(D.colHp.frequency,20+Math.pow(g,2)*7000); P(D.colLp.frequency,20000); P(D.colHp.Q,1+g*7); } }
+  /* COLOR e PARAMETER agora passam pelo SOUND COLOR FX escolhido (MIXER-FIEL-PADRAO):
+     antes o COLOR fazia SEMPRE filtro, qualquer que fosse o botão aceso. */
+  else if(/^color([12])$/.test(act)) aplicarColor(act==="color1"?1:2);
+  else if(act==="scfxparam") aplicarColorTodos();
   else if(act==="fxselect"){ fxIdx=clamp(Math.round(v*(FXNAMES.length-1)),0,FXNAMES.length-1);
+    aplicarBeatFX();
     teach({k:"BEAT FX — SELECT",d:"Efeito selecionado: <b>"+FXNAMES[fxIdx]+"</b>."}); }
-  else if(act==="fxch"){ fxChIdx=clamp(Math.round(v*3),0,3); }
+  else if(act==="fxch"){ fxChIdx=clamp(Math.round(v*3),0,3); aplicarBeatFX(); }
+  else if(act==="fxtime"||act==="fxdepth") aplicarBeatFX();
+  else if(act==="hpmix"||act==="hplevel") aplicarHp();
+  else if(act==="boothlvl") aplicarBooth();
+  else if(act==="auxtrim") aplicarAux();
+  else if(/^(mic1lvl|mic2lvl|miclow|michi)$/.test(act)) aplicarMic();
 }
 function bindKnob(hit,act){ let drag=false,sy=0,sv=0;
   hit.addEventListener("pointerdown",e=>{ if(!started){startAudio();} drag=true; sy=e.clientY; sv=KNOBVAL[act]; hit.setPointerCapture(e.pointerId); e.preventDefault(); teach(M[act]); });
@@ -1675,7 +2066,18 @@ function bindXFader(el,act){ let drag=false;
 function cycleToggle(act){ const el=els[act]; if(!started)startAudio();
   const p=el.classList.contains("p2")?0:el.classList.contains("p1")?2:1;
   el.classList.remove("p1","p2"); if(p===1)el.classList.add("p1"); if(p===2)el.classList.add("p2");
-  if(act==="micsw")teach({k:"MIC OFF / ON / TALK OVER",d:"Posição: <b>"+["OFF","ON","TALK OVER"][p]+"</b>. Em TALK OVER a música abaixa sozinha enquanto o mic está aberto."});
+  if(act==="micsw"){ aplicarMic();
+    teach({k:"MIC OFF / ON / TALK OVER",d:"Posição: <b>"+["OFF","ON","TALK OVER"][p]+"</b>. "+(p===2
+      ? "Em TALK OVER a música abaixa <b>"+TALKOVER_DB+" dB</b> (valor do manual do RX3) enquanto o mic está aberto."
+      : p===1 ? "Microfone aberto: o canal MIC entra depois do programa, por isso ele não se abaixa junto."
+              : "Microfone mudo.")}); }
+  if(act==="auxsw"){ aplicarAux();
+    teach({k:"AUX — OFF / LINE / PORTABLE",d:"Posição: <b>"+AUXNOMES[p]+"</b>. Manual: OFF muda a entrada, LINE para aparelho de linha e PORTABLE para celular no P2 frontal. O volume fino é no AUX TRIM."}); }
+  if(act==="xfcurve"){ applyXfade();
+    teach({k:"CROSSFADER CURVE",d:"Curva agora em <b>"+XFCURVAS[xfCurva()]+"</b>. "+(xfCurva()===0
+      ? "Em THRU o crossfader sai do caminho: os dois canais passam inteiros."
+      : xfCurva()===1 ? "Sobe devagar dos dois lados — é a curva de mixagem."
+                      : "Sobe de repente: saindo da ponta, o outro lado já entra inteiro — é a curva de scratch.")}); }
   const m=act.match(/^deck([12])sel$/); if(m) aplicarFonteCanal(+m[1],true);   // muda a fonte do canal
 }
 function bindJog(el,side){ let active=false,last=0;
