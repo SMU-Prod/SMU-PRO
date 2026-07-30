@@ -821,7 +821,14 @@ async function startAudio(){ if(started)return; started=true;
           if(d.pos>=len)d.pos-=len; else if(d.pos<0)d.pos+=len; }
         if(d.slip){ d.slipPos+=d.playing?d.dir*(1+d.pitch/100):0; if(d.slipPos>=len)d.slipPos-=len; }
         let i0=Math.floor(d.pos); const fr=d.pos-i0; i0=((i0%len)+len)%len; const i1=(i0+1)%len;
-        out[i]=data[i0]*(1-fr)+data[i1]*fr; } };
+        /* ⛔ 30/07/2026 — PRATO PARADO TEM DE SAIR MUDO. Esta linha entregava a amostra
+           interpolada SEMPRE. Com o deck pausado a posição congela e o que saía era o
+           MESMO valor repetido: isso é tensão contínua, não silêncio — e o medidor do
+           mixer media essa tensão, ficando aceso com o aparelho parado. O limiar vale
+           para o prato SEGURADO também e não corta a freada: enquanto o rate cai ainda
+           há áudio de verdade, cada vez mais grave. Medido primeiro no Denon Prime 4. */
+        const parado=Math.abs(d.rate)<1e-3;
+        out[i]=parado?0:(data[i0]*(1-fr)+data[i1]*fr); } };
     decks[s]=d;
   }
   /* --- 4 CANAIS do mixer --- */
