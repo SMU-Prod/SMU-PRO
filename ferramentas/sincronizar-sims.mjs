@@ -54,6 +54,14 @@ function acharLocal(tituloHtml) {
 }
 
 const aplicar = process.argv.includes("--aplicar");
+/* --so=<texto> republica so o que casar; --pular=<a,b> deixa de fora.
+   Serve para publicar sem atropelar arquivo que um agente esta editando. */
+const soArg   = (process.argv.find(a => a.startsWith("--so=")) || "").slice(5);
+const pularArg= (process.argv.find(a => a.startsWith("--pular=")) || "").slice(8);
+const soLista   = soArg ? soArg.split(",").map(x => x.trim()).filter(Boolean) : null;
+const pularLista= pularArg ? pularArg.split(",").map(x => x.trim()).filter(Boolean) : [];
+const podeMexer = rel => (!soLista || soLista.some(x => rel.includes(x)))
+                      && !pularLista.some(x => rel.includes(x));
 const mods = (await req("GET", `/modules?course_id=eq.${CURSO}&select=id`)).map(m => m.id).join(",");
 const aulas = await req("GET", `/lessons?module_id=in.(${mods})&select=id,titulo&order=titulo`);
 
@@ -109,6 +117,7 @@ for (const a of aulas) {
   console.log(`DESATUALIZADO  ${arq}`);
   console.log(`   aula: ${a.titulo}`);
   console.log(`   no ar ${(noAr.length / 1024).toFixed(0)}KB  ->  local ${(local.length / 1024).toFixed(0)}KB  (${dif > 0 ? "+" : ""}${(dif / 1024).toFixed(0)}KB)`);
+  if (aplicar && !podeMexer(arq)) { console.log("   -> PULADO (filtro)"); continue; }
   if (aplicar) {
     await req("PATCH", `/ai_animations?id=eq.${an[0].id}`,
       { urls: [{ html: local }], status: "ready", custo_usd: 0 }, { Prefer: "return=minimal" });
