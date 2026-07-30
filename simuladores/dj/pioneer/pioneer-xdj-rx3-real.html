@@ -38,6 +38,15 @@
      que chamar. Grave um com MEMORY e o CALL passa a andar pelos pontos.
 
   ⛔ Quem "consertar" esses nove vai quebrar o que está certo (Regra 4).
+
+  ----------------------------------------------------------------------------
+  ✅ CONSERTO 30/07/2026 — BEAT FX confundia BATIDA com COMPASSO.
+  `msDoBeat()` multiplicava a divisão por 4: com BEAT em 1/1 o efeito ficava em
+  2 143 ms a 112 BPM, quando uma batida a 112 BPM são 536 ms. O manual do RX3 é
+  explícito — a fração é de BATIDA ("Sets the beat fraction", "Number of beats:
+  1/16 to 16/1"), não de compasso. O ×4 saiu. Os botões BEAT ◄ ► só andam o
+  índice do BEATDIV: não compensavam o erro e não precisaram mudar.
+  Conta agora idêntica à do DJM-A9, que já estava medida e certa.
   ============================================================================
 -->
 <!--
@@ -1104,7 +1113,11 @@ function aplicarBeatFX(){ if(!ready||!fxIn)return;
   const nome=FXNAMES[fxIdx]||"DELAY";
   const dep=clamp(KNOBVAL.fxdepth==null?0.5:KNOBVAL.fxdepth,0,1);
   const tk =clamp(KNOBVAL.fxtime ==null?0.5:KNOBVAL.fxtime ,0,1);
-  const seg=clamp(msDoBeat()*(0.25+tk*1.75)/1000,0.001,3.9);
+  /* TIME no centro tem de devolver a batida CHEIA. A lei antiga (0,25+tk*1,75)
+     dava 1,125x no meio do curso, ou seja o delay saia 12,5% acima da batida
+     (a 112 BPM, 602,7 ms em vez de 535,7). Curva do DJM-A9, medida hoje: no
+     centro da exatamente 1,000x e cobre 1/4x..4x nas pontas. */
+  const seg=clamp(msDoBeat()*Math.pow(4,(tk-0.5)*2)/1000,0.001,3.9);
   const hz =clamp(1/Math.max(seg,0.02),0.2,40);
   fxFilt.type="allpass"; P(fxFilt.frequency,1000); P(fxFilt.Q,0.8);
   P(fxGateDepth.gain,0); P(fxGate.gain,1);
@@ -1550,7 +1563,7 @@ function route(c,fl){ const a=c.act; if(fl)flash(els[a]);
   if(a==="fxonoff"){ els[a].classList.toggle("on"); aplicarBeatFX(); markMission("fx");
     teach({k:"BEAT FX ON / OFF",d:(els[a].classList.contains("on")
       ?"<b>"+(FXNAMES[fxIdx]||"DELAY")+"</b> no ar, em "+["CH 1","CH 2","MIC","MASTER"][fxChIdx]+
-       ", "+BEATDIV[fxBeat]+" de compasso ("+msDoBeat().toFixed(0)+" ms). LEVEL/DEPTH no mínimo devolve o som original."
+       ", "+BEATDIV[fxBeat]+" de batida ("+msDoBeat().toFixed(0)+" ms). LEVEL/DEPTH no mínimo devolve o som original."
       :"Efeito desligado — o canal volta ao caminho direto.")}); return; }
   /* fileira ACIMA do visor + coluna do seletor + portas USB → bloco BROWSE-USB-PADRAO */
   if(/^(nav\w+|back|tagtrack|trackfilter|shortcut|load1|load2|usb1|usb2|usb1stop|usb2stop)$/.test(a)) return botaoBrowse(a);
@@ -1568,11 +1581,19 @@ function route(c,fl){ const a=c.act; if(fl)flash(els[a]);
 const BEATDIV=["1/16","1/8","1/4","1/2","3/4","1/1","2/1","4/1","8/1","16/1"];
 let fxBeat=5, bpmAuto=true, tapT=[], tapBpm=0, gravando=false, recIni=0, marcas=0;
 function beatDiv(n){ fxBeat=clamp(fxBeat+n,0,BEATDIV.length-1);
-  teach({k:"BEAT FX — BEAT "+(n>0?"►":"◄"),d:"Tempo do efeito agora em <b>"+BEATDIV[fxBeat]+"</b> de compasso ("+msDoBeat().toFixed(0)+" ms no BPM atual)."}); }
+  teach({k:"BEAT FX — BEAT "+(n>0?"►":"◄"),d:"Tempo do efeito agora em <b>"+BEATDIV[fxBeat]+"</b> de batida ("+msDoBeat().toFixed(0)+" ms no BPM atual)."}); }
 function bpmAtual(){ const D=(dL&&dL.playing)?dL:(dR&&dR.playing)?dR:dL;
   if(!bpmAuto&&tapBpm) return tapBpm;
   return D?D.baseBpm*(1+D.pitch/100):124; }
-function msDoBeat(){ const f=BEATDIV[fxBeat].split("/"); return 60000/bpmAtual()*(+f[0]/+f[1])*4; }
+/* ⛔ 30/07/2026 — CONSERTO. Esta função multiplicava por 4, tratando a divisão como
+   COMPASSO. No manual do RX3 (tabela "Beat FX types and settings" e o item BEAT ◄►:
+   "Sets the beat fraction for synchronizing the effect sound", com "Number of beats:
+   1/16 to 16/1") a fração é de TEMPO/BATIDA, não de compasso. Com o ×4 o 1/1 dava
+   2 143 ms a 112 BPM; o certo é 536 ms (uma batida). Mesma conta do DJM-A9, que já
+   estava medida e certa: beatSeg() = 60/BPM × BEATV[i], sem fator nenhum.
+   Os botões BEAT ◄ ► só andam o índice (beatDiv) — não compensavam nada, e por isso
+   não precisaram de mudança: o conserto aqui vale para os dois. */
+function msDoBeat(){ const f=BEATDIV[fxBeat].split("/"); return 60000/bpmAtual()*(+f[0]/+f[1]); }
 function modoBpm(auto){ bpmAuto=auto; setState("fxauto",!auto); els.fxauto&&(els.fxauto.textContent=auto?"AUTO":"TAP");
   teach({k:"BEAT FX — AUTO / TAP",d:auto?"Contagem de BPM <b>AUTO</b>: o aparelho mede sozinho.":"Contagem <b>TAP</b>: vale o BPM que você bateu ("+(tapBpm?tapBpm.toFixed(1):"—")+")."}); }
 function tapTempo(){ const t=Date.now();
