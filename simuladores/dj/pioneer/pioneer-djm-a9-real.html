@@ -479,7 +479,7 @@ def("fxfHI","btn","HI","FX FREQUENCY — HI","Escolhe se o BEAT FX pega os <b>ag
 def("fxsel","knobr","","BEAT FX (seletor)","Os 14 efeitos impressos em volta do seletor: DELAY, ECHO, PING PONG, SPIRAL, HELIX, REVERB, FLANGER, PHASER, FILTER, TRIPLET FILTER, TRANS, ROLL, TRIPLET ROLL e <b>MOBIUS</b> — este último é exclusivo do A9/V10.");
 CHSEL.forEach((n,i)=>def("chsel"+(i+1),"btn",n,"CH SELECT — "+n,
   "Em que sinal o BEAT FX age: canais <b>1..4</b>, <b>MIC</b>, os lados <b>CF.A</b>/<b>CF.B</b> do crossfader ou o <b>MST</b> (mistura inteira).","fx"));
-def("time","knobr","","TIME","Tempo/ciclo do efeito em ms (ou %, no REVERB). Junto com o BEAT define o tamanho do delay, do roll, da varredura.");
+def("time","knob","","TIME","Tempo/ciclo do efeito em ms (ou %, no REVERB). Junto com o BEAT define o tamanho do delay, do roll, da varredura.");
 def("leveldepth","knob","","LEVEL / DEPTH","Quantidade do efeito na mistura. Todo à esquerda sai só o som original (manual pág. 48).");
 def("fxon","bigb","","BEAT FX ON/OFF","Liga e desliga o efeito de compasso. Piscando/aceso = efeito na pista.");
 def("crossfader","xfader","","CROSSFADER (MAGVEL FADER)","Cruza entre o lado <b>A</b> e o lado <b>B</b>. Quem vai para cada lado é a chave CROSSFADER ASSIGN de cada canal — de fábrica aqui CH1 = A e CH2 = B. Fader magnético, sem contato; a curva vem da chave CROSSFADER.");
@@ -997,7 +997,18 @@ const REPOUSO={};
 for(const n of [1,2,3,4]){ REPOUSO["trim"+n]=TRIM_REST; REPOUSO["hi"+n]=EQ_REST; REPOUSO["mid"+n]=EQ_REST; REPOUSO["low"+n]=EQ_REST; }
 REPOUSO.miceqhi=0.5; REPOUSO.miceqlow=0.5; REPOUSO.bootheqhi=BOOTH_REST; REPOUSO.bootheqlow=BOOTH_REST;
 REPOUSO.color1=0.5; REPOUSO.color2=0.5; REPOUSO.color3=0.5; REPOUSO.color4=0.5;
-function knobDeg(a){ const v=clamp(V[a]==null?0.5:V[a],0,1), rep=REPOUSO[a];
+/* seletores de POSIÇÃO: o ângulo não é proporcional ao valor, é o da SERIGRAFIA.
+   Medido no diagrama do manual (pág. 9):
+   · entrada do canal — LINE fica em 12 h; 4 posições à esquerda (DIGITAL, 💻B,
+     💻A, ✻) e 3 à direita (PHONO, RETURN, ☐USB), de 35° em 35°.
+   · SEND CH — CF.A em 12 h, MIC/4/3/2/1 descendo à esquerda, CF.B e MASTER à direita.
+   · BEAT FX — 14 efeitos: FLANGER/PHASER no topo, DELAY/MOBIUS embaixo (±165°). */
+const PASSO={ sel:{n:8,zero:4,g:35}, sendch:{n:8,zero:5,g:35}, fxsel:{n:14,zero:6.5,g:330/13} };
+function passoDe(a){ return PASSO[a.replace(/[1-4]$/,"")]; }
+function knobDeg(a){ const v=clamp(V[a]==null?0.5:V[a],0,1);
+  const P=passoDe(a);
+  if(P) return (Math.round(v*(P.n-1))-P.zero)*P.g;
+  const rep=REPOUSO[a];
   if(rep==null) return (v-0.5)*2*ARCO_KNOB;
   if(v<=rep) return rep>0 ? -(1-v/rep)*ARCO_KNOB : 0;
   return rep<1 ? (v-rep)/(1-rep)*ARCO_KNOB : 0; }
@@ -1155,6 +1166,280 @@ function chrome(){
   addLab("MIN",86.30,88.10,"tiny"); addLab("MAX",91.50,88.10,"tiny");
   addLab("ON/OFF",88.89,89.40,"sm");
 }
+
+/* ===================== construção dos controles ===================== */
+const meterEls={}, meterLit={};
+let lcdCtx=null,lcdW=0,lcdH=0,lcdDirty=true;
+
+function makeCtrl(a){
+  const D=DEFS[a]||{kind:"btn"}; const K=D.kind; const p=POS[a]; if(!p)return; let el;
+  if(K==="knob"||K==="knobr"||K==="knobc"){
+    el=document.createElement("div"); el.className="knob"+(K==="knobc"?" color":""); el.innerHTML='<span class="kln"></span>'; }
+  else if(K==="btn"){ el=document.createElement("div"); el.className="btn "+(D.cls||""); el.innerHTML=D.txt||""; }
+  else if(K==="cue"){ el=document.createElement("div"); el.className="cue"; el.textContent=D.txt||"CUE"; }
+  else if(K==="rbtn"){ el=document.createElement("div"); el.className="rbtn "+(a==="tap"?"tap":a==="quantize"?"qz":""); el.textContent=D.txt||""; }
+  else if(K==="bigb"){ el=document.createElement("div"); el.className="bigb"; }
+  else if(K==="lamp"){ el=document.createElement("div"); el.className=(a==="clipM"?"clip":"bfx"); if(a==="clipM")el.textContent="CLIP"; }
+  else if(K==="sw"||K==="sw2"){ el=document.createElement("div"); el.className="sw"+(K==="sw2"?" sw2":""); el.innerHTML='<span class="sk"></span>'; }
+  else if(K==="swv"){ el=document.createElement("div"); el.className="swv"; el.innerHTML='<span class="sk"></span>'; }
+  else if(K==="fader"){ el=document.createElement("div"); el.className="fader"; el.innerHTML='<span class="well"></span><span class="slot"></span><span class="fc"></span>'; }
+  else if(K==="xfader"){ el=document.createElement("div"); el.className="xfader"; el.innerHTML='<span class="well"></span><span class="slot"></span><span class="xc"></span>'; }
+  else if(K==="jack"){ el=document.createElement("div"); el.className="jack"; }
+  else if(K==="usbs"){ el=document.createElement("div"); el.className="usbs"; el.innerHTML='<span class="pb"></span><span class="pc"></span><span class="led"></span>'; }
+  else if(K==="usba"){ el=document.createElement("div"); el.className="usba"; }
+  else if(K==="xpad"){ el=document.createElement("div"); el.className="xpad";
+    el.innerHTML='<span class="cur"></span><span class="dotrow"></span>'; }
+  else if(K==="meter"){ el=document.createElement("div"); el.className="meter"; const segs=[];
+    for(let k=0;k<15;k++){ const s=document.createElement("i"); s.className=k<2?"r":(k<5?"y":"g"); el.appendChild(s); segs.push(s); }
+    meterEls[a]=segs; }
+  else if(K==="lcd"){ el=document.createElement("canvas"); el.className="lcd";
+    el.width=380; el.height=Math.round(380/((p[2]/p[3])*AR)); }
+  else { el=document.createElement("div"); el.className="btn"; el.textContent=D.txt||""; }
+
+  let [x,y,w,h]=p;
+  if(ROUND.has(a)){ const nh=w*AR; y=y+h/2-nh/2; h=nh; }   // circular: h = w × AR, centro preservado
+  pct(el,x,y,w,h); deck.appendChild(el); els[a]=el;
+
+  if(K==="knob"||K==="knobr"||K==="knobc"){
+    const t=document.createElement("div"); t.className="ticks";
+    pct(t,x-w*0.30,y-h*0.30,w*1.60,h*1.60); deck.insertBefore(t,el); setKnob(a); }
+  if(K==="fader"){ V[a]=V[a]==null?0:V[a]; setFader(a); }
+  if(K==="xfader"){ setXfader(a); }
+  if(K==="sw"||K==="sw2"||K==="swv") setSwInit(a);
+  if(K==="meter"||K==="lamp") return;                      // sem área de clique
+
+  const hit=document.createElement("div"); hit.className="hit"; pct(hit,x,y,w,h); hit.dataset.act=a; deck.appendChild(hit);
+  hit.addEventListener("mouseenter",()=>teach(a));
+  bindControl(a,hit,el,K);
+}
+
+function teach(a){ const D=DEFS[a]; if(!D)return; $("#tK").textContent=D.k; $("#tD").innerHTML=D.d; }
+function flash(el){ if(!el)return; el.style.filter="brightness(1.7)"; setTimeout(()=>{el.style.filter="";},150); }
+function ensure(){ if(!started) startAudio(); }
+
+function bindControl(a,hit,el,K){
+  if(K==="knob"||K==="knobr"||K==="knobc"){
+    let drag=false,ly=0;
+    hit.addEventListener("pointerdown",e=>{ ensure(); drag=true; ly=e.clientY; teach(a);
+      try{hit.setPointerCapture(e.pointerId);}catch(_){}
+      if(K==="knobr"){ passoRotativo(a); drag=false; }   // seletor de POSIÇÃO: um passo por clique
+      e.preventDefault(); });
+    hit.addEventListener("pointermove",e=>{ if(!drag)return; const dy=ly-e.clientY; ly=e.clientY;
+      let nv=clamp((V[a]==null?0.5:V[a])+dy/170,0,1);
+      if(K==="knobc"&&SW.centerlock===1&&Math.abs(nv-0.5)<0.06) nv=0.5;   // CENTER LOCK
+      V[a]=nv; setKnob(a); onKnob(a); });
+    const up=()=>drag=false;
+    hit.addEventListener("pointerup",up); hit.addEventListener("pointercancel",up);
+    document.addEventListener("pointerup",up);
+    return; }
+  if(K==="fader"){ let drag=false;
+    const upd=e=>{ const r=el.getBoundingClientRect();
+      V[a]=clamp(1-(e.clientY-r.top-r.height*0.08)/(r.height*0.84),0,1); setFader(a);
+      applyFader(a.slice(-1)); markMission("fader"); };
+    hit.addEventListener("pointerdown",e=>{ ensure(); drag=true; teach(a);
+      try{hit.setPointerCapture(e.pointerId);}catch(_){} upd(e); e.preventDefault(); });
+    hit.addEventListener("pointermove",e=>{ if(drag)upd(e); });
+    hit.addEventListener("pointerup",()=>drag=false); hit.addEventListener("pointercancel",()=>drag=false);
+    document.addEventListener("pointerup",()=>drag=false);
+    return; }
+  if(K==="xfader"){ let drag=false;
+    const upd=e=>{ const r=el.getBoundingClientRect();
+      V[a]=clamp((e.clientX-r.left-r.width*0.06)/(r.width*0.88),0,1); setXfader(a); applyCross(); markMission("xfader"); };
+    hit.addEventListener("pointerdown",e=>{ ensure(); drag=true; teach(a);
+      try{hit.setPointerCapture(e.pointerId);}catch(_){} upd(e); e.preventDefault(); });
+    hit.addEventListener("pointermove",e=>{ if(drag)upd(e); });
+    hit.addEventListener("pointerup",()=>drag=false); hit.addEventListener("pointercancel",()=>drag=false);
+    document.addEventListener("pointerup",()=>drag=false);
+    return; }
+  if(K==="xpad"){ let drag=false;
+    const upd=e=>{ const r=el.getBoundingClientRect();
+      const f=clamp((e.clientX-r.left)/Math.max(r.width,1),0,1);
+      beatSel=clamp(Math.round(f*(BEATV.length-1)),0,BEATV.length-1);
+      el.querySelector(".cur").style.left=(f*97)+"%";
+      xpadOn=true; el.classList.add("on"); applyBeatFx(); lcdDirty=true; markMission("fx"); };
+    const solta=()=>{ if(!drag)return; drag=false; xpadOn=false; el.classList.remove("on"); applyBeatFx(); lcdDirty=true; };
+    hit.addEventListener("pointerdown",e=>{ ensure(); teach(a); drag=true;
+      try{hit.setPointerCapture(e.pointerId);}catch(_){} upd(e); e.preventDefault(); });
+    hit.addEventListener("pointermove",e=>{ if(drag)upd(e); });
+    hit.addEventListener("pointerup",solta); hit.addEventListener("pointercancel",solta);
+    document.addEventListener("pointerup",solta);
+    return; }
+  hit.addEventListener("pointerdown",e=>{ ensure(); teach(a); flash(el); onClick(a,K); e.preventDefault(); });
+}
+
+/* seletor rotativo de passo (entrada do canal · SEND CH · BEAT FX · TIME é contínuo) */
+function passoRotativo(a){
+  if(/^sel[1-4]$/.test(a)){ const n=a.slice(-1); const i=(Math.round(V[a]*7)+1)%8; V[a]=i/7; setKnob(a);
+    applySrc(n); return; }
+  if(a==="sendch"){ sendChSel=(sendChSel+1)%SENDCH.length; V[a]=sendChSel/(SENDCH.length-1); setKnob(a); applyMultiIO(); return; }
+  if(a==="fxsel"){ effSel=(effSel+1)%EFFSEL.length; V[a]=effSel/(EFFSEL.length-1); setKnob(a); applyBeatFx(); lcdDirty=true; return; }
+}
+
+function onKnob(a){
+  if(/^(hi|mid|low)[1-4]$/.test(a)){ applyEq(a.slice(-1)); markMission("eq"); return; }
+  if(/^trim[1-4]$/.test(a)){ applyTrim(a.slice(-1)); markMission("trim"); return; }
+  if(/^color[1-4]$/.test(a)){ applyColor(a.slice(-1)); markMission("color"); return; }
+  if(a==="masterlevel"){ applyMaster(); return; }
+  if(a==="boothlevel"||a==="bootheqhi"||a==="bootheqlow"){ applyBooth(); return; }
+  if(a==="mic1lvl"||a==="mic2lvl"||a==="miceqhi"||a==="miceqlow"||a==="micfxparam"||a==="micrevparam"){ applyMic(); return; }
+  if(a==="hpAmix"||a==="hpAlevel"||a==="hpBmix"||a==="hpBlevel"){ applyHp(); return; }
+  if(a==="scparam"){ applyAllColor(); return; }
+  if(a==="sendlevel"){ applyMultiIO(); return; }
+  if(a==="time"||a==="leveldepth"){ applyBeatFx(); lcdDirty=true; return; }
+  if(a==="sendch"){ applyMultiIO(); return; }
+  if(a==="fxsel"){ applyBeatFx(); lcdDirty=true; return; }
+}
+
+function onClick(a,K){
+  if(K==="sw"){ cycleSw(a,3);
+    if(/^assign[1-4]$/.test(a)) applyCross();
+    else if(a==="chfadercv") applyAllFaders();
+    else if(a==="xfadercv") applyCross();
+    return; }
+  if(K==="sw2"){ cycleSw(a,2); if(a==="eqcurve") applyAllEq(); return; }
+  if(K==="swv"){ cycleSw(a,2); applyMultiIO(); return; }
+  if(K==="cue"){ ON[a]=!ON[a]; els[a].classList.toggle("on",!!ON[a]); applyHp(); markMission("cue"); return; }
+  if(/^sc[A-Z]/.test(a)){ const nome=DEFS[a].k.split("— ")[1];
+    ["scSPACE","scDUB","scCRUSH","scSWEEP","scNOISE","scFILTER"].forEach(k=>{ if(els[k])els[k].classList.remove("on"); });
+    scType = (scType===nome) ? null : nome;
+    if(scType) els[a].classList.add("on");
+    applyAllColor(); if(scType) markMission("color"); return; }
+  if(a==="micecho"||a==="micpitch"||a==="micmega"){
+    const nome=a==="micecho"?"ECHO":a==="micpitch"?"PITCH":"MEGAPHONE";
+    ["micecho","micpitch","micmega"].forEach(k=>els[k].classList.remove("on"));
+    micFx = (micFx===nome)?null:nome; if(micFx)els[a].classList.add("on");
+    applyMic(); return; }
+  if(a==="micreverb"||a==="micon"||a==="talkover"){ ON[a]=!ON[a]; els[a].classList.toggle("on",!!ON[a]); applyMic(); markMission("mic"); return; }
+  if(a==="phantom"||a==="btpair"||a==="midionoff"||a==="midistart"||a==="usbA"||a==="usbB"||a==="usbport"){
+    ON[a]=!ON[a]; els[a].classList.toggle("on",!!ON[a]); return; }
+  if(a==="hpAsplit"||a==="hpBsplit"||a==="hpAlink"||a==="hpBlink"){ ON[a]=!ON[a]; els[a].classList.toggle("on",!!ON[a]); applyHp(); return; }
+  if(a==="insert"){ insertOn=!insertOn; els[a].classList.toggle("on",insertOn); applyMultiIO(); return; }
+  if(/^fxf/.test(a)){ const k=a.slice(3); fxFreq[k]=!fxFreq[k]; els[a].classList.toggle("on",fxFreq[k]); applyBeatFx(); return; }
+  if(/^chsel[1-8]$/.test(a)){ chSel=+a.slice(5)-1; pintarChSel(); applyFxSend(); lcdDirty=true; return; }
+  if(a==="beatL"||a==="beatR"){ beatSel=clamp(beatSel+(a==="beatR"?1:-1),0,BEATV.length-1); applyBeatFx(); lcdDirty=true; return; }
+  if(a==="autotap"){ autoBpm=!autoBpm; els[a].classList.toggle("on",!autoBpm); lcdDirty=true; return; }
+  if(a==="tap"){ tapTempo(); return; }
+  if(a==="quantize"){ quantizeOn=!quantizeOn; els[a].classList.toggle("on",quantizeOn); lcdDirty=true; return; }
+  if(a==="fxon"){ beatOn=!beatOn; els[a].classList.toggle("on",beatOn); applyBeatFx(); lcdDirty=true; markMission("fx"); return; }
+  if(a==="phonesmini"||a==="phonesbig"){ ON[a]=!ON[a]; els[a].style.boxShadow=ON[a]?"inset 0 2px 6px #000c, 0 0 8px #ffbe1a":""; return; }
+  ON[a]=!ON[a]; if(els[a])els[a].classList.toggle("on",!!ON[a]);
+}
+function pintarChSel(){ for(let i=1;i<=8;i++) if(els["chsel"+i]) els["chsel"+i].classList.toggle("on",chSel===i-1);
+  const alvo=CHSEL[chSel];
+  for(let n=1;n<=4;n++) if(els["bfx"+n]) els["bfx"+n].classList.toggle("on",alvo===String(n));
+  if(els.bfxM) els.bfxM.classList.toggle("on",alvo==="MST");
+  if(els.micbfx) els.micbfx.classList.toggle("on",alvo==="MIC"); }
+function tapTempo(){ const now=performance.now(); tapTimes.push(now); tapTimes=tapTimes.filter(t=>now-t<2200);
+  autoBpm=false; if(els.autotap)els.autotap.classList.add("on");
+  if(tapTimes.length>=2){ let s=0; for(let i=1;i<tapTimes.length;i++)s+=tapTimes[i]-tapTimes[i-1]; s/=(tapTimes.length-1);
+    bpmShow=clamp(60000/s,40,250); }
+  if(els.tap)els.tap.classList.add("on"); setTimeout(()=>{ if(els.tap)els.tap.classList.remove("on"); },140);
+  applyBeatFx(); lcdDirty=true; }
+
+/* ===================== visor do BEAT FX ===================== */
+function drawLCD(){ if(!lcdCtx)return; const ctx=lcdCtx,W=lcdW,H=lcdH;
+  ctx.fillStyle="#04060c"; ctx.fillRect(0,0,W,H);
+  const wht="#eef4fa", dim="#54636f";
+  const F=(w,s)=>ctx.font=w+" "+Math.round(H*s)+"px 'Arial Narrow',Arial,sans-serif";
+  ctx.textBaseline="alphabetic";
+  const selo=(txt,x,y,h,on)=>{ F("700",h*0.72); const w=ctx.measureText(txt).width+W*0.03;
+    ctx.fillStyle=on?"#e8eef4":"#17202a"; ctx.fillRect(x,y,w,H*h);
+    ctx.fillStyle=on?"#000":dim; ctx.fillText(txt,x+W*0.015,y+H*h*0.78); return w; };
+  selo("QUANTIZE",W*0.05,H*0.06,0.075,quantizeOn);
+  selo(autoBpm?"AUTO":"TAP",W*0.62,H*0.06,0.075,true);
+  /* BPM */
+  ctx.fillStyle=wht; F("700",0.20); ctx.textAlign="right"; ctx.fillText(bpmAtual().toFixed(1),W*0.72,H*0.28);
+  ctx.textAlign="start"; ctx.fillStyle=dim; F("700",0.075); ctx.fillText("BPM",W*0.745,H*0.275);
+  /* nome do efeito */
+  ctx.fillStyle=(beatOn||xpadOn)?"#7fd7ff":wht; F("800",0.155); ctx.textAlign="center";
+  ctx.fillText(EFFSEL[effSel],W*0.5,H*0.46);
+  /* alvo do CH SELECT */
+  ctx.fillStyle=dim; F("700",0.085); ctx.fillText("CH "+CHSEL[chSel],W*0.5,H*0.575);
+  /* fração de compasso: anterior · atual · próxima */
+  const by=H*0.63,bh=H*0.155,x0=W*0.10,cw=W*0.267;
+  ctx.strokeStyle="#33424e"; ctx.lineWidth=1; ctx.strokeRect(x0,by,cw*3,bh);
+  for(let k=0;k<3;k++){ const i=beatSel-1+k, on=(k===1), cx=x0+cw*k;
+    if(on){ ctx.fillStyle="#e8eef4"; ctx.fillRect(cx+1,by+1,cw-2,bh-2); }
+    ctx.fillStyle=on?"#000":(i<0||i>=BEATV.length?"#1e2830":wht);
+    F(on?"800":"600",0.115);
+    ctx.fillText(i<0||i>=BEATV.length?"":BEATLBL[i],cx+cw/2,by+bh*0.78); }
+  ctx.fillStyle=dim; F("700",0.065); ctx.fillText("BEAT",W*0.5,H*0.845);
+  ctx.textAlign="start";
+  /* barra do X-PAD / tempo do efeito */
+  const gx=W*0.08,gw=W*0.84,gy=H*0.885,gh=H*0.06;
+  ctx.strokeStyle="#243039"; ctx.strokeRect(gx,gy,gw,gh);
+  const ph=(beatOn||xpadOn)?((AC?AC.currentTime:0)%Math.max(beatSeg(),0.05))/Math.max(beatSeg(),0.05):0.05;
+  ctx.fillStyle="#e8eef4"; ctx.fillRect(gx+1,gy+1,Math.max(gw*ph-2,gw*0.05),gh-2);
+}
+
+/* ===================== medidores ===================== */
+function setMeter(id,frac){ const segs=meterEls[id]; if(!segs)return;
+  const n=segs.length, lit=Math.round(clamp(frac,0,1)*n);
+  if(meterLit[id]===lit)return; meterLit[id]=lit;      // repaint só quando muda de segmento
+  for(let i=0;i<n;i++) segs[i].classList.toggle("on",(n-i)<=lit); }
+function pico(an){ if(!an||!an.buf)return 0; an.getByteTimeDomainData(an.buf); let pk=0;
+  for(let i=0;i<an.buf.length;i++){ const x=Math.abs(an.buf[i]-128)/128; if(x>pk)pk=x; } return pk; }
+function updMeters(){ if(!ready)return;
+  for(const n of ["1","2","3","4"]){ const d=CH[n]; if(!d)continue; setMeter("met"+n,pico(d.an)*1.5); }
+  const mp=pico(masterAn);
+  setMeter("mmeterL",mp*1.5); setMeter("mmeterR",mp*1.5);
+  if(els.clipM) els.clipM.classList.toggle("on",mp>0.97); }
+
+/* ===================== missões ===================== */
+const MISSIONS=[
+  {id:"start", t:"Ligue o áudio",           h:"CH 1 (lado A) e CH 2 (lado B) já vêm com base tocando."},
+  {id:"trim",  t:"Ajuste o TRIM",           h:"Gire o TRIM do CH 1 e olhe o medidor do canal (ele é pré-fader)."},
+  {id:"fader", t:"Abra um CHANNEL FADER",   h:"Suba o fader MAGVEL do CH 1 ou do CH 2."},
+  {id:"eq",    t:"Mexa no EQ do canal",     h:"Gire HI, MID ou LOW — de −26 dB a +6 dB, com 0 dB apontando para cima."},
+  {id:"color", t:"Use o SOUND COLOR FX",    h:"Escolha SPACE/DUB ECHO/CRUSH/SWEEP/NOISE/FILTER e gire o COLOR do canal."},
+  {id:"xfader",t:"Use o CROSSFADER",        h:"Deslize entre A (CH 1) e B (CH 2)."},
+  {id:"fx",    t:"Ligue um BEAT FX",        h:"Escolha o efeito no seletor, ajuste o BEAT e aperte o ON/OFF (ou toque no X-PAD)."}
+];
+let mi=0;
+function renderMission(){ $("#mIdx").textContent="MISSÃO "+Math.min(mi+1,MISSIONS.length)+"/"+MISSIONS.length;
+  if(mi>=MISSIONS.length){ $("#mTitle").textContent="Tudo pronto! 🎉";
+    $("#mHint").textContent="Você operou o DJM-A9: trim, EQ/ISO, Sound Color FX, crossfader e Beat FX."; return; }
+  $("#mTitle").textContent=MISSIONS[mi].t; $("#mHint").textContent=MISSIONS[mi].h; }
+function markMission(id){ if(mi<MISSIONS.length&&MISSIONS[mi].id===id){ mi++; renderMission(); } }
+
+/* ===================== build ===================== */
+function build(){
+  chrome();
+  for(const a in POS){ const d=DEF_V[a]; if(d!=null)V[a]=d;
+    if(V[a]==null&&DEFS[a]&&/^knob/.test(DEFS[a].kind)) V[a]=0.5;
+    makeCtrl(a); }
+  const lc=els.display; if(lc&&lc.getContext){ lcdCtx=lc.getContext("2d"); lcdW=lc.width; lcdH=lc.height; }
+  /* estado de arranque, com guarda: se um id faltar o build() NÃO pode estourar */
+  const acender=id=>{ const e=els[id]; if(e&&e.classList)e.classList.add("on"); };
+  V.fxsel=effSel/(EFFSEL.length-1); setKnob("fxsel");
+  V.sendch=sendChSel/(SENDCH.length-1); setKnob("sendch");
+  ["fxfLOW","fxfMID","fxfHI"].forEach(acender);
+  acender("quantize");
+  pintarChSel();
+  renderMission();
+}
+
+/* ===================== laço de vídeo (repaint coalescido por frame) ===================== */
+let fcount=0;
+function frame(){ requestAnimationFrame(frame); fcount++;
+  if(ready){
+    if(fcount%2===0) updMeters();
+    varrerFx();
+    if(autoBpm) bpmShow=(window.__BANCO_BPM||126);
+  }
+  if(lcdDirty||beatOn||xpadOn||(fcount%15===0)){ drawLCD(); lcdDirty=false; }
+}
+
+function fit(){ const w=$(".wrap");
+  const s=Math.max(0.1,Math.min((window.innerWidth-6)/w.offsetWidth,(window.innerHeight-6)/w.offsetHeight,1));
+  $("#stage").style.transform="scale("+s+")"; }
+function wire(){
+  $("#btnStart").addEventListener("pointerdown",()=>startAudio());
+  $("#btnReset").addEventListener("pointerdown",()=>location.reload());
+  window.addEventListener("resize",fit); fit(); }
+
+function init(){ build(); frame(); wire(); }
+init();
 </script>
 </body>
 </html>
