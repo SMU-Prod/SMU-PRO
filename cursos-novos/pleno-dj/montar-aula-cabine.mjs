@@ -1029,10 +1029,49 @@ const VISOR_JS = `
     await window.startAudio();
   }
 
+  /* Cala o que estiver tocando NESTE lado, venha de onde vier. Chamada antes
+     de toda carga. O tipoNovo diz o que vai entrar, para nao derrubar a toa o
+     motor que a proxima faixa vai usar. */
+  async function silenciarLado(lado, tipoNovo){
+    var anterior = ST.carregada && ST.carregada[lado];
+    /* 1) se havia YouTube neste lado, para e desmonta o player da moldura —
+          ele NAO morre sozinho: vive fora do iframe e sobrevive ao reload. */
+    if(anterior && anterior.tipo === "yt"){
+      var slot = (ST.slot||"1")+"-"+lado;
+      env({smu:"yt", cmd:"stop",    slot:slot});
+      env({smu:"yt", cmd:"unmount", slot:slot});
+    }
+    /* 2) se havia MP3 tocando e o que entra e YouTube, o motor do deck tem de
+          calar — senao os dois tocam juntos. Pausa pelo proprio aparelho quando
+          ele expoe pausa; se nao expoe, fecha o contexto (o proximo LOAD de MP3
+          religa de qualquer jeito). */
+    if(tipoNovo === "yt"){
+      var parou = false;
+      ["pausar","pause","pausePlay","stopAudio"].forEach(function(n){
+        if(!parou && typeof window[n] === "function"){ try{ window[n](); parou = true; }catch(e){} }
+      });
+      if(!parou){
+        var ac = acAtual();
+        try{ if(ac && ac.state === "running" && ac.suspend) await ac.suspend(); }catch(e){}
+      }
+      /* zera o ponteiro dos decks para o visor nao mentir sobre o tempo */
+      try{ decksDo().forEach(function(D){ if(D && "pos" in D) D.pos = 0; }); }catch(e){}
+    }
+  }
+
   async function carregar(lado, faixa){
     if(ST.ocupado) return;
     ST.ocupado = true; ST.msg = "carregando " + faixa.nome + "…"; pintar();
     try{
+      /* ⛔ SILENCIAR O QUE JA TOCAVA NESTE LADO, SEMPRE.
+         Faixa do banco e faixa do YouTube tocam em MOTORES DIFERENTES: o MP3
+         no AudioContext do deck, o YouTube num player que vive na MOLDURA da
+         aula, fora do iframe. Nenhum dos dois desligava o outro, entao carregar
+         a segunda musica somava em cima da primeira — e atualizar a pagina nao
+         resolvia, porque o player do YouTube esta FORA do que recarrega.
+         Reclamacao do dono em 29/07/2026. */
+      await silenciarLado(lado, faixa.tipo);
+
       if(faixa.tipo === "yt"){
         /* streaming: o player mora na moldura da aula (sem allow-same-origin o
            onReady nunca chega — provado em teste A/B). A ESCOLHA e daqui. */
