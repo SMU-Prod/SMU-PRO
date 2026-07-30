@@ -5,6 +5,77 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <link rel="icon" href="data:,">
 <title>Pioneer DJM-450 — mixer 2 canais fiel (SMU)</title>
+<!--
+  ============================================================================
+  RODADA DE COMPORTAMENTO — 30/07/2026
+  Fonte de verdade: "DJM-450 Operating Instructions" <DRI1406-B>
+  (cursos-novos/pleno-dj/manuais/DJM-450.pdf, lido com ferramentas/pdftext.mjs).
+  Conferido item a item contra "Part names and functions" (p.5-6), "Basic
+  Operation" (p.9), "Advanced Operations" (p.10-11) e "Types of effects" (p.12-13).
+  ----------------------------------------------------------------------------
+  INVENTÁRIO — o manual lista 26 controles no painel (itens 1…z). Todos existem
+  aqui e na mesma ordem. Faltava UM, agora incluído:
+     • item u, WAKE UP indicator  → acrescentado (posição ⚠️ ESTIMADA, ver POS)
+  O item 1 (PHONES) fica no painel FRONTAL: não aparece na vista de cima.
+
+  ----------------------------------------------------------------------------
+  O clicar-tudo.mjs acusava 6 mortos. Eram 12 — o portão conta "mexeu no estado"
+  como vivo, e knob que gira grava knobState. Estes SEIS giravam no vazio porque
+  onKnob() não tinha ramo para eles:
+     auxlvl · miclvl · mictone · mixing · hplevel · srlevel
+
+  CAUSAS, todas escritas agora:
+
+    1. A monitoração de FONE nunca foi escrita (itens 1-4 e os 3 CUE).
+       Não havia barramento de fone nenhum: os CUE só acendiam. Agora existe
+       hpCue/hpMst/hpMix/hpVol + MONO SPLIT de verdade (CUE no ouvido esquerdo,
+       MASTER no direito, via ChannelMerger). O fone é OUTRA SAÍDA FÍSICA — o
+       barramento não vai ao destination, igual ao XDJ-RX3.
+       ⚠️ O CUE é PRÉ-FADER (sai depois do EQ/COLOR, antes do fader). É por isso
+       que o manual avisa, na nota 1 da tabela de BEAT FX, que com o effect
+       channel em [1] ou [2] o efeito NÃO aparece no CUE daquele canal.
+    2. MIC LEVEL / MIC TONE mudos (itens 7,8). Não há microfone nesta réplica —
+       o que existe e É MEDIDO é o estágio de ganho + o tone. E o tone estava
+       DESCRITO AO CONTRÁRIO: o manual é atenuação pura nos dois sentidos,
+       LOW corta o agudo (0 a −12 dB, 10 kHz), HI corta o grave (0 a −12 dB, 100 Hz).
+    3. AUX LEVEL mudo (item 9) + o seletor do AUX não fazia nada (item a).
+    4. SEND/RETURN inteiro era pele (itens n,o,p,q).
+    5. BEAT ◄ ► com a faixa CURTA: faltavam 1/16 e 1/8. O manual repete em todo
+       efeito "between 1/16 and 16 beats". Ver o comentário em BEATS.
+    6. EQ com frequência inventada na barra de ensino ("13 kHz" / "70 Hz").
+       Manual: HI −26/+6 dB (20 kHz) · MID (1 kHz) · LOW (20 Hz).
+    + o .hit por cima do visor era falso positivo: display não se clica.
+
+  ----------------------------------------------------------------------------
+  ⚠️ NÃO É DEFEITO — o portão continua acusando 1 rótulo: `sron`.
+  Ele depende de um ESTADO que o portão não consegue montar, e recusar é o
+  comportamento CERTO. O manual (p.11) diz que o SEND/RETURN apaga sozinho e
+  não religa em dois casos:
+     • "When a mobile device is not connected to this unit"
+     • "When the [RETURN TYPE] selector switch is set to [AUX], and the effect
+        channel is set to [AUX] or [MASTER]"
+  O portão varre na ordem do POS: clica `rettype` (INSERT → AUX) ANTES de chegar
+  no `sron`, e o CH SELECT de fábrica está em MASTER — cai exatamente na segunda
+  proibição. Na 2ª passada o `usbjack` já levou dois cliques e o celular voltou a
+  ficar desplugado — cai na primeira. Ou seja: o portão se enfia sozinho nas duas
+  proibições do fabricante.
+  Para ver o botão funcionando: toque na porta USB (plugar o celular), deixe o
+  RETURN TYPE em INSERT ou mude o CH SELECT para 1 / 2 / MIC / CF.A / CF.B.
+  ⛔ Quem "consertar" este vai quebrar o que está certo (Regra 4).
+  ============================================================================
+-->
+<!--
+  ⚠️ AINDA NÃO FEITO (fora do escopo desta rodada, medido e anotado):
+   • TIME não respeita a faixa por efeito que o manual tabela (DELAY/ECHO 1-4000 ms,
+     SPIRAL/ROLL 10-4000, TRANS 10-16000, FLANGER 10-32000, REVERB 1-100 %,
+     PITCH −50 a +100 %). Hoje é uma lei só para todos.
+   • FLANGER: o manual dá a ele 1/16 a 64 beats, não 1/16 a 16 como os outros.
+   • Tela UTILITY (p.22): SEND/RETURN ON/OFF + POWER abre o menu, BEAT ◄► navega,
+     TAP confirma. Não há botão POWER no tampo, então não foi montada.
+   • POWER MANAGEMENT: o modo Off de 20 min que acende o WAKE UP não foi
+     implementado — o LED existe e está documentado, mas nunca acende sozinho.
+-->
+
 <style>
   :root{ --ink:#e9eef7; --amber:#ff8a1a; --amb2:#ffb352; --green:#39d271; --red:#e0483f; --blue:#3f7dff; }
   *{box-sizing:border-box}
@@ -53,6 +124,8 @@
   .screw::after{transform:rotate(90deg)}
   .rled{position:absolute;z-index:3;pointer-events:none;border-radius:50%;
     background:radial-gradient(circle at 42% 34%,#ff8090,#e01e35 58%,#7c0f18);box-shadow:0 0 5px #e0483fbb}
+  /* WAKE UP apagado: o aparelho só acende esse LED quando entra em modo Off */
+  .rled.off{background:radial-gradient(circle at 42% 34%,#3a2024,#26161a 60%,#140c0e);box-shadow:inset 0 1px 1px #0009}
   .pin{position:absolute;z-index:2;pointer-events:none;border-radius:50%;background:#cfd6de;box-shadow:0 0 1px #000}
   .frame{position:absolute;z-index:1;pointer-events:none;border:1px solid #7d848c;border-radius:1.5px}
 
@@ -154,6 +227,9 @@
   .usbj{position:absolute;z-index:3;border-radius:3px;cursor:pointer;
     background:linear-gradient(180deg,#0c0e10,#17191d 55%,#0a0b0c);border:1px solid #000;
     box-shadow:inset 0 2px 6px #000d, inset 0 -6px 8px #ffffff0a, 0 1px 0 #ffffff10}
+  /* celular plugado: o conector ganha o plugue metálico e a porta acende (5 V ⎓ 1 A) */
+  .usbj.on{background:linear-gradient(180deg,#6d747c,#9aa1a9 45%,#484e55 100%);
+    box-shadow:inset 0 1px 0 #ffffff55, 0 0 6px #5b8bff66, 0 1px 2px #000a}
 
   /* ===== chaves deslizantes ===== */
   .sw{position:absolute;cursor:pointer;border-radius:3px;z-index:3;
@@ -260,6 +336,10 @@ const POS={
  srlevel:[77.73,13.36,6.55,5.15], sron:[90.01,13.77,6.05,4.76],
  display:[79.50,22.95,14.70,3.70],
  beatL:[78.63,30.70,5.99,2.20], beatR:[89.62,30.70,5.99,2.20], tap:[83.61,37.06,6.78,5.33],
+ /* ⚠️ ESTIMADO — item "u" do manual (WAKE UP indicator). Está no painel e faltava aqui;
+    a posição exata não saiu da foto que temos, só se sabe que fica colado ao TAP.
+    Corrigir custa esta linha. É indicador, não controle: não recebe clique. */
+ wakeup:[91.40,38.60,1.60,1.26],
  fxsel:[83.38,48.54,7.01,5.51], fxch:[83.40,58.05,6.90,5.43],
  time:[83.62,67.84,6.55,5.15], leveldepth:[83.62,79.06,6.55,5.15], fxon:[83.06,89.11,7.34,5.77]
 };
@@ -276,7 +356,7 @@ const T={
  auxsel:["AUX (seletor)","Escolhe a fonte do canal AUX: <b>USB</b> (placa de som interna), <b>LINE</b> (RCA traseiro) ou <b>RETURN (AUX)</b> — o retorno do SEND/RETURN entrando como AUX."],
  auxlvl:["AUX LEVEL","Volume do canal auxiliar (−∞ a 0 dB). O AUX entra direto no master, sem passar pelo channel fader."],
  miclvl:["MIC LEVEL","Volume da entrada de microfone (−∞ a 0 dB). O DJM-450 tem 1 entrada MIC combo XLR/P10 no painel traseiro."],
- mictone:["MIC TONE","Timbre do microfone num knob só: à esquerda (<b>LOW</b>) puxa o grave, à direita (<b>HI</b>) puxa o agudo. Centro = plano."],
+ mictone:["MIC TONE","Timbre do microfone num knob só, e ele <b>só corta</b> — nunca reforça. Manual: para <b>LOW</b> atenua o <b>agudo</b> (0 a −12 dB em 10 kHz); para <b>HI</b> atenua o <b>grave</b> (0 a −12 dB em 100 Hz). Centro = plano."],
  scDUBECHO:["SOUND COLOR FX — DUB ECHO","Eco com realimentação. Girando o <b>COLOR</b> à esquerda o eco pega os médios; à direita pega os agudos. O <b>PARAMETER</b> ajusta a quantidade."],
  scSWEEP:["SOUND COLOR FX — SWEEP","À esquerda abafa o som (passa-baixa com ressonância); à direita corta o grave e deixa só a parte de cima, tipo gate."],
  scNOISE:["SOUND COLOR FX — NOISE","Mistura ruído branco do gerador interno ao canal. O <b>COLOR</b> varre o filtro do ruído; o <b>PARAMETER</b> define o nível."],
@@ -285,13 +365,13 @@ const T={
  hpsplit:["MONO SPLIT / STEREO","<b>MONO SPLIT</b>: o CUE sai no ouvido esquerdo e o MASTER no direito. <b>STEREO</b>: você ouve a fonte do CUE em estéreo."],
  mixing:["HEADPHONES MIXING","Mistura no fone entre o que está no <b>CUE</b> e o <b>MASTER</b>."],
  hplevel:["HEADPHONES LEVEL","Volume da saída de fone (P10 estéreo, no painel frontal)."],
- sel:["SELETOR DE ENTRADA","Fonte do canal: <b>USB</b> (deck do software via placa interna), <b>LINE</b> (CD/media player) ou <b>PHONO</b> (toca-discos com pré de agulha)."],
+ sel:["SELETOR DE ENTRADA","Escolhe <b>qual conector traseiro</b> alimenta o canal: <b>USB</b> (computador, pela placa interna), <b>LINE</b> (CDJ / aparelho de nível de linha) ou <b>PHONO</b> (toca-discos com cápsula MM). Nesta cabine o cabo está no <b>LINE</b> — nas outras duas posições o canal <b>emudece</b>, porque o conector está vazio. Clique para andar entre as três e ver a diferença."],
  trim:["TRIM","Ganho de entrada do canal (−∞ a +9 dB). Suba até o medidor beirar o 0 sem acender o <b>CLIP</b>."],
- hi:["EQ HI","Agudos do canal (13 kHz). Com <b>EQ CURVE</b> em EQ vai de −26 a +6 dB; em <b>ISOLATOR</b> o mínimo é −∞ (a banda some por completo)."],
- mid:["EQ MID","Médios do canal (1 kHz), −26 dB a +6 dB (−∞ no modo ISOLATOR)."],
- low:["EQ LOW","Graves do canal (70 Hz), −26 dB a +6 dB (−∞ no modo ISOLATOR). É com ele que se troca o bumbo na mixagem."],
+ hi:["EQ HI","Agudos do canal. Manual: <b>−26 dB a +6 dB (20 kHz)</b>. Com <b>EQ CURVE</b> em ISOLATOR o mínimo vira −∞ e a banda some por completo."],
+ mid:["EQ MID","Médios do canal. Manual: <b>−26 dB a +6 dB (1 kHz)</b> (−∞ no modo ISOLATOR)."],
+ low:["EQ LOW","Graves do canal. Manual: <b>−26 dB a +6 dB (20 Hz)</b> (−∞ no modo ISOLATOR). É com ele que se troca o bumbo na mixagem."],
  color:["COLOR","Aplica ao canal o SOUND COLOR FX selecionado. No centro é neutro: à esquerda vai para o <b>LOW</b>, à direita para o <b>HI</b>."],
- cue:["CUE (fone)","Manda este canal para o headphone. Os dois CUE somam. Aceso = selecionado."],
+ cue:["CUE (fone)","Manda este canal para o headphone. Os CUE somam. É <b>pré-fader</b>: dá para escutar a próxima música com o channel fader ainda embaixo. ⚠️ Manual: com o <b>CH SELECT</b> apontando para este mesmo canal, o BEAT FX <b>não</b> aparece no CUE."],
  fader:["CHANNEL FADER","Volume do canal (−∞ a 0 dB), escala 0 a 10 na serigrafia."],
  meter:["CHANNEL LEVEL","Medidor de LED do canal: 12, 9, 6, 3, 0 e abaixo, em dB. Trabalhe em volta do 0 sem estourar."],
  mmeter:["MASTER LEVEL (medidor)","Nível da saída master, L e R. O <b>CLIP</b> vermelho no topo avisa que passou do limite."],
@@ -308,7 +388,8 @@ const T={
  display:["DISPLAY DO BEAT FX","Mostra <b>AUTO</b> ou <b>TAP</b>, o BPM lido e o valor de beat selecionado (o do meio, destacado)."],
  beatL:["BEAT ◀","Diminui o valor do beat do efeito (…4 → 2 → 1 → 1/2)."],
  beatR:["BEAT ▶","Aumenta o valor do beat do efeito (1/2 → 1 → 2 → 4…)."],
- tap:["TAP","Bata no ritmo (2 toques ou mais) para acertar o BPM na mão. Segurando, volta para <b>AUTO</b>."],
+ tap:["TAP","Bata no ritmo (2 toques ou mais) para acertar o BPM na mão. Segurando, volta para <b>AUTO</b>. Manual: este mesmo botão é o que <b>cancela o modo Off</b> do Power Management."],
+ wakeup:["WAKE UP (indicador)","Acende quando o aparelho entra em <b>modo Off</b>. Manual: com <b>POWER MANAGEMENT</b> ligado (padrão de fábrica), passados 20 minutos sem ninguém tocar em nada <b>e</b> sem sinal entrando em nenhum canal, o DJM-450 se recolhe sozinho. Aperte o <b>TAP</b> para acordar. É indicador — não se clica nele."],
  fxsel:["BEAT FX (seletor)","Escolhe o efeito: DELAY, ECHO, SPIRAL, REVERB, TRANS, FLANGER, PITCH e ROLL."],
  fxch:["CH SELECT","Em qual sinal o efeito age: <b>1</b>, <b>2</b>, <b>MIC</b>, <b>AUX</b>, <b>MASTER</b> ou os lados <b>A</b>/<b>B</b> do crossfader."],
  time:["TIME","Tempo do efeito. Junto com o BEAT, define o intervalo do delay/eco em milissegundos."],
@@ -319,12 +400,18 @@ const T={
 /* ===== estado ===== */
 let AC=null, started=false, ready=false;
 let master,masterAn,mixBus,fxIn,fxDry,fxFilter,fxDelay,fxWet,fxFB,xfA,xfB,thru,masterTap,xfaTap,xfbTap,noiseSrc;
+/* fone (itens 1–4 e h do manual) · MIC (7,8) · AUX (9) · SEND/RETURN (o,p,q) */
+let hpCue,hpMst,hpMix,hpVol,hpSplitL,hpSplitR,hpCueR,hpMerge,micG,micTone,auxG,srSend,srRet;
 const chans={};
 let xf=0.5, scType=null, fxOn=false, fxIdx=0, fxChIdx=4, beatIdx=5, autoMode=true, baseBpm=120;
+let srOn=false, celularPlugado=false, modoOff=false;   /* SEND/RETURN, aparelho no USB, Off mode */
 const EFFECTS=["DELAY","ECHO","SPIRAL","REVERB","TRANS","FLANGER","PITCH","ROLL"];
 const FXCH=["1","2","MIC","AUX","MASTER","CF.A","CF.B"];
-const BEATS=[0.25,0.5,0.75,1,2,4,8,16];
-const BEAT_LAB=["1/4","1/2","3/4","1","2","4","8","16"];
+/* ⛔ 30/07/2026 — a faixa do BEAT estava CURTA. O manual repete em TODO efeito
+   "Sets the delay time between 1/16 and 16 beats"; faltavam o 1/16 e o 1/8, que
+   são justamente as divisões de roll e de trans. Mesma lista do XDJ-RX3. */
+const BEATS=[0.0625,0.125,0.25,0.5,0.75,1,2,4,8,16];
+const BEAT_LAB=["1/16","1/8","1/4","1/2","3/4","1","2","4","8","16"];
 const delayFx={DELAY:0.26,ECHO:0.62,SPIRAL:0.74,REVERB:0.58,ROLL:0.82};
 const FADER_INIT=0.53;                          // cap onde a foto mostra (≈5,3 na escala 0–10)
 const lvl={meter1:0,meter2:0,mmeterL:0,mmeterR:0};
@@ -355,6 +442,47 @@ async function startAudio(){ if(started)return; started=true;
   master=AC.createGain(); master.gain.value=0.9;
   master.connect(AC.destination);
   masterAn=AC.createAnalyser(); master.connect(masterAn);
+
+  /* ================= MONITORAÇÃO DE FONE — itens 1,2,3,4 e h do manual =================
+     ⛔ 30/07/2026: esta seção inteira era serigrafia. Os 3 CUE só acendiam e os knobs
+     MIXING/LEVEL giravam no vazio — mesma causa nº 1 já consertada no XDJ-RX2/RX3.
+     O fone é OUTRA SAÍDA FÍSICA (jack PHONES do painel frontal): por isso o barramento
+     NÃO vai ao destination. O que se mede aqui é o que o manual descreve — a soma dos
+     CUE, o balanço MIXING contra o MASTER, o volume e o MONO SPLIT.                    */
+  hpCue=AC.createGain(); hpCue.gain.value=1;      // soma dos canais com CUE apertado
+  hpMst=AC.createGain(); hpMst.gain.value=0;      // CUE MASTER
+  hpMix=AC.createGain(); hpMix.gain.value=1;      // saída do lado CUE, dosada pelo MIXING
+  hpVol=AC.createGain(); hpVol.gain.value=0.5;    // HEADPHONES LEVEL
+  master.connect(hpMst);
+  /* MONO SPLIT (item 4): "the sound of the channels for which the CUE button is pressed
+     is output to the LEFT channel, and the MASTER channel sound is output to the RIGHT". */
+  hpSplitL=AC.createGain(); hpSplitR=AC.createGain(); hpCueR=AC.createGain();
+  hpMerge=AC.createChannelMerger(2);
+  hpCue.connect(hpMix); hpMix.connect(hpSplitL); hpMst.connect(hpSplitR);
+  hpMix.connect(hpCueR);                                  // CUE no ouvido direito (STEREO)
+  hpSplitL.connect(hpMerge,0,0);
+  hpSplitR.connect(hpMerge,0,1); hpCueR.connect(hpMerge,0,1);
+  hpMerge.connect(hpVol);
+
+  /* ===== MIC — itens 7 e 8 =====
+     Não há microfone de verdade nesta réplica (mesmo critério do XDJ-RX3). O que existe
+     e É MEDIDO é o estágio de ganho + o TONE. Manual: "When turning the control to the
+     [LOW] position, the HIGH frequency is attenuated. 0 to -12 dB (10 kHz) — When turning
+     the control to the [HI] position, the LOW frequency is attenuated. 0 to -12 dB (100 Hz)".
+     Repare: é ATENUAÇÃO nos dois lados, nunca reforço. Centro = plano.                  */
+  micG=AC.createGain(); micG.gain.value=0;
+  micTone=AC.createBiquadFilter(); micTone.type="highshelf"; micTone.frequency.value=10000;
+  micG.connect(micTone); micTone.connect(master);
+
+  /* ===== AUX — item 9 =====
+     O manual dá ao AUX um único controle, o [LEVEL]; ele não passa por channel fader
+     nem por EQ. Sem fonte de sinal na réplica, o que se mede é o estágio de ganho.     */
+  auxG=AC.createGain(); auxG.gain.value=0; auxG.connect(master);
+
+  /* ===== SEND/RETURN — itens o, p, q ===== */
+  srSend=AC.createGain(); srSend.gain.value=0;    // o que sai para o celular
+  srRet =AC.createGain(); srRet.gain.value=0;     // o que volta dele
+  srRet.connect(master);                          // o SEND é ligado ao fxIn mais abaixo
   // barramento de mixagem + envio de beat effect (CH SELECT escolhe a fonte)
   mixBus=AC.createGain();
   fxDry=AC.createGain(); fxDry.gain.value=1; mixBus.connect(fxDry); fxDry.connect(master);
@@ -364,6 +492,9 @@ async function startAudio(){ if(started)return; started=true;
   fxWet=AC.createGain(); fxWet.gain.value=0;
   fxFB=AC.createGain(); fxFB.gain.value=0;
   fxIn.connect(fxFilter); fxFilter.connect(fxDelay); fxDelay.connect(fxWet); fxWet.connect(master);
+  /* SEND/RETURN sai do MESMO ponto que o BEAT FX: o manual manda o canal escolhido no
+     "effect channel selector switch" para o celular (bloco SEND CH do diagrama). */
+  fxIn.connect(srSend);
   fxDelay.connect(fxFB); fxFB.connect(fxDelay);
   // crossfader (CH1 = lado A, CH2 = lado B — fixo no DJM-450)
   xfA=AC.createGain(); xfB=AC.createGain(); thru=AC.createGain(); thru.gain.value=1;
@@ -396,18 +527,35 @@ async function startAudio(){ if(started)return; started=true;
     const sp=AC.createScriptProcessor(512,0,1); c.sp=sp;
     sp.onaudioprocess=e=>{ const out=e.outputBuffer.getChannelData(0); const d=c;
       for(let i=0;i<out.length;i++){ d.pos+=d.rate; if(d.pos>=len)d.pos-=len; let i0=Math.floor(d.pos)%len; out[i]=data[i0]; } };
-    sp.connect(c.trim); c.trim.connect(c.hi); c.hi.connect(c.mid); c.mid.connect(c.low); c.low.connect(c.color); c.color.connect(c.fader);
+    /* ===== SELETOR DE ENTRADA (item a do manual) — o primeiro nó do canal =====
+       ⛔ 30/07/2026: a chave só andava a pele. No aparelho ela escolhe QUAL CONECTOR
+       TRASEIRO alimenta o canal, e fora da posição do cabo o canal EMUDECE — não há
+       o que amplificar. Manual, "Basic Operation" p.9:
+         [USB]   "Audio from a computer connected to the [USB] terminal"
+         [LINE]  "Audio from a device connected to the [LINE] input terminal"
+         [PHONO] "Audio from analog players connected to the [PHONO] input terminals"
+       Nesta cabine o que está plugado é um DJ player (CDJ), e CDJ é nível de LINHA:
+       por isso só a posição LINE toca. Ver ENTRADAS[] para o porquê elétrico. */
+    c.entrada=AC.createGain(); c.entrada.gain.value=0;
+    sp.connect(c.entrada); c.entrada.connect(c.trim);
+    c.trim.connect(c.hi); c.hi.connect(c.mid); c.mid.connect(c.low); c.low.connect(c.color); c.color.connect(c.fader);
     // eco do SOUND COLOR FX (DUB ECHO), em paralelo, antes do fader
     c.color.connect(c.echoBp); c.echoBp.connect(c.echo); c.echo.connect(c.echoWet); c.echoWet.connect(c.fader);
     c.echo.connect(c.echoFB); c.echoFB.connect(c.echo);
     // ruído do SOUND COLOR FX (NOISE)
     noiseSrc.connect(c.nzBp); c.nzBp.connect(c.nzGain); c.nzGain.connect(c.fader);
     c.fader.connect(c.analyser); c.fader.connect(c.send); c.send.connect(fxIn);
+    /* CUE do canal — PRÉ-FADER, como em todo DJM: é o que permite ouvir a próxima
+       música no fone com o channel fader ainda embaixo. Sai depois do EQ e do COLOR
+       (é por isso que o manual avisa, na nota 1 da tabela de BEAT FX, que com o
+       effect channel em [1] ou [2] o efeito NÃO aparece no CUE daquele canal). */
+    c.cue=AC.createGain(); c.cue.gain.value=0; c.color.connect(c.cue); c.cue.connect(hpCue);
     c.fader.connect(c.dry); c.dry.connect(n==="1"?xfA:xfB);
     chans[n]=c;
   }
   noiseSrc.start();
   ready=true; applyXf(); routeFx(); refreshEq(); applyAllColor(); configureFx();
+  aplicarEntradas(); aplicarFone(); aplicarMic(); aplicarAux(); aplicarSendReturn();
   $("#acDot").classList.add("on"); $("#acState").textContent="ligado"; $("#btnStart").textContent="● Áudio ligado";
   if(AC.resume)AC.resume(); setInterval(updMeters,55); markMission("start");
 }
@@ -455,6 +603,110 @@ function applyColor(c){ const v=c.colorVal, cf=c.color, p=knobVal("param");
   else { cf.type="allpass"; cf.frequency.value=1000; }
 }
 function applyAllColor(){ for(const n in chans) applyColor(chans[n]); }
+
+/* ===================== FONE / MIC / AUX / SEND-RETURN =====================
+   Tudo escrito em 30/07/2026 contra o manual do DJM-450 ("Part names and
+   functions", p.5-6, e "Basic Operation", p.9-10). Antes disto os controles
+   destas quatro seções mexiam na pele e paravam aí.                        */
+
+/* itens 2, 3, 4 e h: CUE dos canais, CUE MASTER, MIXING, LEVEL e MONO SPLIT */
+function aplicarFone(){ if(!ready)return;
+  for(const n in chans) chans[n].cue.gain.value = els["cue"+n].classList.contains("on") ? 1 : 0;
+  hpMst.gain.value = els.cuemaster.classList.contains("on") ? 1 : 0;
+  /* MIXING (item 3): "Adjust the monitor volume balance of the sound of channels for
+     which the [CUE] button is pressed and the sound of the [MASTER] channel."
+     Totalmente à esquerda = só CUE · totalmente à direita = só MASTER. */
+  const mx=knobVal("mixing");
+  hpMix.gain.value=1-mx;
+  hpMst.gain.value*=mx;
+  /* MONO SPLIT (item 4): CUE no ouvido esquerdo, MASTER no direito.
+     STEREO: os dois lados recebem a mesma mistura.
+     ⚠️ O caminho é FIXO no grafo e só o GANHO muda — connect() dentro de uma função
+     que roda a cada clique empilharia ligação em cima de ligação e o fone iria subindo
+     de volume sozinho a cada toque. */
+  const split=(swPos.hpsplit===0);
+  hpSplitL.gain.value=1;                                  // CUE → ouvido esquerdo, sempre
+  hpCueR.gain.value = split?0:1;                          // CUE → direito só no STEREO
+  hpSplitR.gain.value = 1;                                // MASTER → direito, sempre
+  hpVol.gain.value = Math.pow(knobVal("hplevel"),1.7)*1.6;   // item 2, HEADPHONES LEVEL
+}
+
+/* itens 7 e 8: MIC LEVEL e MIC TONE */
+function aplicarMic(){ if(!ready)return;
+  micG.gain.value = Math.pow(knobVal("miclvl"),1.7)*1.6;
+  /* Manual: LOW atenua o AGUDO (0 a −12 dB em 10 kHz); HI atenua o GRAVE (0 a −12 dB
+     em 100 Hz). Nunca reforça — os dois lados só cortam. Centro = plano.
+     Um highshelf em 10 kHz cobre a metade LOW; para a metade HI o mesmo nó vira
+     lowshelf em 100 Hz, que é exatamente o que a serigrafia promete. */
+  const t=knobVal("mictone");
+  if(t<=0.5){ micTone.type="highshelf"; micTone.frequency.value=10000; micTone.gain.value=-24*(0.5-t); }
+  else      { micTone.type="lowshelf";  micTone.frequency.value=100;   micTone.gain.value=-24*(t-0.5); }
+}
+
+/* ===== SELETOR DE ENTRADA — item a =====
+   O que está PLUGADO nesta cabine: um DJ player (CDJ) em cada canal, nas RCA de LINE.
+   Fora dessa posição o conector escolhido está vazio e o canal fica mudo — é assim no
+   aparelho, e é o primeiro item do "Troubleshooting" do manual ("There is no sound…
+   Is the input selector switch set to the proper position?").
+   ⚠️ Sem número de impedância aqui de propósito: o Operating Instructions do DJM-450
+   NÃO traz tabela de especificações. O que está escrito abaixo é o que o manual afirma
+   com todas as letras — não foi deduzido nem chutado. */
+const ENTRADAS=[
+  {id:"USB",  lab:"USB (⌐▭)", ligado:false,
+   d:"Áudio do <b>computador</b> ligado na porta USB, pela placa de som interna. Manual: “Audio from a computer connected to the [USB] terminal is selected.” Nesta cabine não há computador plugado — por isso o canal fica <b>mudo</b>."},
+  {id:"LINE", lab:"LINE", ligado:true,
+   d:"Áudio de um <b>DJ player</b> (CDJ) ou qualquer aparelho de <b>nível de linha</b>. Manual: “Connect to a DJ player or a line level output component.” É o que está plugado aqui — <b>é esta a posição que toca</b>."},
+  {id:"PHONO",lab:"PHONO", ligado:false,
+   d:"Entrada de <b>toca-discos</b> com cápsula <b>MM</b>. Manual, e é uma advertência dele: “Connect to a phono level (MM cartridge) output device. <b>Do not input line level signals.</b>”<br>Por que existem duas entradas separadas: a agulha entrega um sinal <b>muito</b> mais fraco que o de linha e com os graves rebaixados pela curva de gravação. A entrada PHONO tem um pré-amplificador que levanta esse sinal e desfaz a curva (equalização RIAA); a LINE não tem nada disso. Trocar as duas de lugar dá o defeito que o próprio manual cataloga: “Sound is distorted when an analog player is connected to this unit’s [PHONO] terminals… <b>Have you connected an analog player with a built-in phono equalizer?</b> Connect [it] to the [LINE] input terminals.” Aqui não há toca-discos ligado — canal <b>mudo</b>."}
+];
+function aplicarEntradas(){ if(!ready)return;
+  for(const n of ["1","2"]){ const c=chans[n]; if(!c||!c.entrada)continue;
+    const p=clamp(swPos["sel"+n]|0,0,2);
+    c.entrada.gain.value = ENTRADAS[p].ligado ? 1 : 0; }
+}
+
+/* item 9 + a: AUX LEVEL e o seletor de fonte do AUX */
+function aplicarAux(){ if(!ready)return;
+  auxG.gain.value = Math.pow(knobVal("auxlvl"),1.7)*1.6;
+  aplicarRetorno();
+}
+
+/* ⚠️ 30/07/2026 — o RETORNO tem UM dono só.
+   Na primeira escrita o aplicarAux() também mexia no srRet, e como o
+   aplicarSendReturn() chamava o aplicarAux() no fim, o modo INSERT era zerado
+   logo depois de ser ligado: medido com o SEND/RETURN LEVEL no máximo, o
+   retorno saía 0,000 em vez de 1,000. Dois donos para o mesmo nó. */
+function aplicarRetorno(){ if(!ready)return;
+  if(!srOn){ srRet.gain.value=0; return; }
+  /* INSERT (manual, p.11): "the output from the mobile device is input into the
+     channel selected in effect channel… To control RETURN LEVEL, turn the
+     [SEND/RETURN LEVEL] control." */
+  if(swPos.rettype===2){ srRet.gain.value=Math.pow(knobVal("srlevel"),1.5); return; }
+  /* AUX: "the output from the mobile device is input into the channel selected with
+     [RETURN AUX] using the input selector switch" — e quem dosa esse canal é o
+     [AUX LEVEL], não o SEND/RETURN LEVEL (esse vira SEND LEVEL no modo AUX).
+     auxsel: 0=USB · 1=LINE · 2=RETURN (AUX). Fora do 2 o retorno não reaparece. */
+  srRet.gain.value = (swPos.auxsel===2) ? Math.pow(knobVal("auxlvl"),1.7)*1.6 : 0;
+}
+
+/* itens n, o, p, q: RETURN TYPE, celular no USB, ON/OFF e LEVEL */
+function srPermitido(){
+  /* Manual, p.11 — o botão APAGA sozinho e não deixa religar em dois casos:
+     "When a mobile device is not connected to this unit" e "When the [RETURN TYPE]
+     selector switch is set to [AUX], and the effect channel is set to [AUX] or [MASTER]". */
+  if(!celularPlugado) return false;
+  const canal=FXCH[fxChIdx];
+  if(swPos.rettype===0 && (canal==="AUX"||canal==="MASTER")) return false;
+  return true;
+}
+function aplicarSendReturn(){ if(!ready)return;
+  if(srOn && !srPermitido()){ srOn=false; els.sron&&els.sron.classList.remove("on"); }
+  /* O [SEND/RETURN LEVEL] muda de papel conforme o RETURN TYPE — o manual é explícito:
+     em AUX ele é o SEND LEVEL ("volume to output to the mobile device"); em INSERT
+     ele é o RETURN LEVEL ("volume to input from the mobile device"). */
+  srSend.gain.value = srOn ? Math.pow(knobVal("srlevel"),1.5) : 0;
+  aplicarRetorno();
+}
 
 /* CH SELECT: escolhe QUEM entra no beat effect */
 function routeFx(){ if(!ready)return;
@@ -582,6 +834,13 @@ function onKnob(act,base,v){
   if(act==="masterlvl"){ if(ready)master.gain.value=v*1.8; return; }   // 12 h = 0,9 (contínuo com o valor de fábrica)
   if(act==="param"){ applyAllColor(); return; }
   if(act==="time"||act==="leveldepth"){ configureFx(); return; }
+  /* ⛔ 30/07/2026 — estes seis knobs giravam no vazio: onKnob() não tinha ramo para
+     eles. O portao clicar-tudo não pegava porque gravar knobState já conta como
+     "estado mudou"; o critério que vale é escrever em AudioParam. */
+  if(act==="mixing"||act==="hplevel"){ aplicarFone(); return; }
+  if(act==="miclvl"||act==="mictone"){ aplicarMic(); return; }
+  if(act==="auxlvl"){ aplicarAux(); return; }
+  if(act==="srlevel"){ aplicarSendReturn(); return; }
 }
 
 /* --------- serigrafia / molduras (tudo medido na foto oficial) --------- */
@@ -595,6 +854,7 @@ function chrome(){
   mk("dots",42.55,3.95,14.90,1.35);  addLab("MASTER",50.05,4.02,"sec");
   mk("dots",75.70,2.45,19.30,1.40);  addLab("SEND / RETURN",85.40,2.55,"sec");
   mk("dots",75.70,20.40,22.60,1.25); addLab("BEAT FX",87.00,20.45,"sec");
+  addLab("WAKE UP",92.20,40.35,"mini");            // serigrafia do item u
   addLab("SOUND COLOR FX",50.00,48.30,"big");
   // placa recuada do BEAT FX + moldura do LCD
   mk("plate",77.20,21.95,19.70,21.40);
@@ -718,6 +978,9 @@ function build(){
     else if(/^(auxsel|sel|rettype|hpsplit|eqcurve|xfcurve|xfrev)/.test(base)){ kind="sw"; el=document.createElement("div");
       const p=SW_INIT[act]!==undefined?SW_INIT[act]:0; swPos[act]=p;
       el.className="sw"+(p===1?" p1":p===2?" p2":""); el.innerHTML='<span class="nub"></span>'; }
+    /* WAKE UP (item u): indicador, não controle — por isso não ganha .hit e não entra
+       na contagem de "botão sem função" do clicar-tudo. */
+    else if(base==="wakeup"){ kind="ind"; el=document.createElement("div"); el.className="rled off"; }
     else if(/^(meter|mmeter)/.test(base)){ kind="meter"; el=document.createElement("div"); el.className="meter";
       const segs=[]; for(let s=0;s<11;s++){ const i=document.createElement("i"); i.className=MET_COL[s]; el.appendChild(i); segs.push(i);} meters[act]=segs; }
     else { kind="btn"; el=document.createElement("div"); el.className="btn"; }
@@ -727,7 +990,7 @@ function build(){
     pct(el,x,y,w,h); deck.appendChild(el); els[act]=el;
 
     const info=T[base]||T[act]||[base.toUpperCase(),""];
-    if(kind!=="meter"){
+    if(kind!=="meter"&&kind!=="ind"){
       const hit=document.createElement("div"); hit.className="hit"; pct(hit,x,y,w,h); hit.dataset.act=act; deck.appendChild(hit);
       hit.addEventListener("mouseenter",()=>teach(info[0],info[1]));
       if(kind!=="knob"){ hit.addEventListener("pointerdown",e=>onControl(act,base,info,e)); }
@@ -744,8 +1007,12 @@ function build(){
   const dp=POS.display; const dc=document.createElement("canvas"); dc.className="dispc";
   dc.width=330; dc.height=Math.round(330*dp[3]/(dp[2]*AR));
   pct(dc,dp[0],dp[1],dp[2],dp[3]); deck.appendChild(dc); dispCtx=dc.getContext("2d"); dispW=dc.width; dispH=dc.height;
-  const dhit=document.createElement("div"); dhit.className="hit"; pct(dhit,dp[0],dp[1],dp[2],dp[3]); deck.appendChild(dhit);
-  dhit.addEventListener("mouseenter",()=>teach(T.display[0],T.display[1]));
+  /* O visor é INDICADOR: a barra de ensino é presa no próprio canvas, do mesmo jeito
+     que nos medidores. Antes havia um .hit por cima dele — e um .hit sem tratador de
+     clique é exatamente o que o clicar-tudo acusa como "sem tratador". Era falso
+     positivo: display não se clica. */
+  dc.style.pointerEvents="auto";
+  dc.addEventListener("mouseenter",()=>teach(T.display[0],T.display[1]));
   renderMission();
 }
 
@@ -781,22 +1048,63 @@ function cycleSw(act,n){ const el=els[act]; const cur=swPos[act]|0;
 function onControl(act,base,info,e){ teach(info[0],info[1]);
   if(!started){ startAudio(); return; }
   flash(els[act]);
-  if(/^(cue1|cue2|cuemaster)$/.test(act)){ els[act].classList.toggle("on"); return; }
+  if(/^(cue1|cue2|cuemaster)$/.test(act)){ els[act].classList.toggle("on"); aplicarFone();
+    if(/^cue[12]$/.test(act) && els[act].classList.contains("on")){
+      const canal=FXCH[fxChIdx], meu=act.slice(3);
+      if(canal===meu) teach("CUE — CH "+meu,
+        "O canal está no fone. ⚠️ Manual, nota 1 da tabela de BEAT FX: com o <b>CH SELECT</b> "+
+        "em <b>"+meu+"</b>, o som do efeito <b>não</b> aparece no CUE deste canal — o CUE é "+
+        "pré-fader e sai antes do envio do efeito. Você ouve o canal seco.");
+    }
+    return; }
   if(/^sc/.test(base)){ const name=base==="scDUBECHO"?"DUB ECHO":base.slice(2); const already=(scType===name);
     $$(".scb",deck).forEach(x=>x.classList.remove("on"));
     scType=already?null:name; if(!already)els[act].classList.add("on");
     applyAllColor(); markMission("color"); return; }
-  if(act==="auxsel"||act==="sel1"||act==="sel2"||act==="xfcurve"){ cycleSw(act,3); if(act==="xfcurve")applyXf(); return; }
-  if(act==="rettype"||act==="hpsplit"){ cycleSw(act,2); return; }
+  if(act==="auxsel"||act==="sel1"||act==="sel2"||act==="xfcurve"){ const p=cycleSw(act,3);
+    if(act==="xfcurve")applyXf();
+    if(act==="auxsel")aplicarAux();
+    if(act==="sel1"||act==="sel2"){ aplicarEntradas(); const e=ENTRADAS[p], n=act.slice(3);
+      teach("SELETOR DE ENTRADA — CH "+n+" · "+e.lab,
+        e.d+(e.ligado?"":"<br><br>⚠️ O canal <b>parou de tocar</b>: a chave saiu da entrada onde o cabo está."));
+    }
+    return; }
+  if(act==="rettype"){ cycleSw(act,2); aplicarSendReturn(); return; }
+  if(act==="hpsplit"){ cycleSw(act,2); aplicarFone(); return; }
   if(act==="eqcurve"){ cycleSw(act,2); refreshEq(); return; }
   if(act==="xfrev"){ cycleSw(act,2); applyXf(); return; }
   if(act==="beatL"||act==="beatR"){ beatIdx=clamp(beatIdx+(act==="beatR"?1:-1),0,BEATS.length-1); configureFx(); return; }
   if(act==="tap"){ tapTempo(); return; }
-  if(act==="sron"||act==="fxon"){ const on=els[act].classList.toggle("on");
-    if(act==="fxon"){ fxOn=on; configureFx(); markMission("fx"); } return; }
-  if(act==="usbjack"){ return; }
+  if(act==="fxon"){ fxOn=els[act].classList.toggle("on"); configureFx(); markMission("fx"); return; }
+  /* SEND/RETURN ON/OFF — o manual não deixa ligar em duas situações (p.11). Antes o
+     botão só acendia; agora ele recusa, e explica por quê. */
+  if(act==="sron"){
+    if(!srOn && !srPermitido()){ els.sron.classList.remove("on");
+      /* O aparelho de verdade não só ignora o toque: ele FORÇA o send e o return a
+         zero ("The SEND/RETURN function turns off automatically to prevent the sound
+         being too loud"). Sem esta chamada o botão só acenderia e apagaria a pele. */
+      srOn=false; aplicarSendReturn();
+      teach("SEND/RETURN ON/OFF — não liga",
+        !celularPlugado
+          ? "Manual: <i>“When a mobile device is not connected to this unit”</i> o botão apaga sozinho e não religa. "+
+            "Toque na <b>porta USB</b> acima para plugar um celular com app de efeito."
+          : "Manual: com o <b>RETURN TYPE</b> em <b>AUX</b> e o <b>CH SELECT</b> em <b>AUX</b> ou <b>MASTER</b> "+
+            "o aparelho desliga o SEND/RETURN sozinho, para o som não realimentar. Mude o CH SELECT ou passe o RETURN TYPE para INSERT.");
+      return; }
+    srOn=els.sron.classList.toggle("on"); aplicarSendReturn(); return; }
+  /* Porta USB do SEND/RETURN (item o): plugar/desplugar o celular. É o manual que dá
+     função a este conector — sem aparelho ligado o SEND/RETURN não existe. */
+  if(act==="usbjack"){ celularPlugado=!celularPlugado;
+    els.usbjack.classList.toggle("on",celularPlugado);
+    aplicarSendReturn();
+    teach("USB (5 V ⎓ 1 A) — SEND/RETURN",
+      celularPlugado
+        ? "Celular <b>plugado</b>. Agora o <b>SEND/RETURN ON/OFF</b> liga: o canal do <b>CH SELECT</b> sai para o app de efeito e volta pelo <b>RETURN</b>."
+        : "Celular <b>desplugado</b>. Manual: sem aparelho conectado o SEND/RETURN apaga sozinho e não religa.");
+    return; }
   if(act==="fxsel"){ fxIdx=(fxIdx+1)%EFFECTS.length; els.fxsel.style.rotate=(((fxIdx+0.5)/EFFECTS.length-0.5)*280)+"deg"; configureFx(); return; }
-  if(act==="fxch"){ fxChIdx=(fxChIdx+1)%FXCH.length; els.fxch.style.rotate=(((fxChIdx+0.5)/FXCH.length-0.5)*280)+"deg"; routeFx(); configureFx(); return; }
+  if(act==="fxch"){ fxChIdx=(fxChIdx+1)%FXCH.length; els.fxch.style.rotate=(((fxChIdx+0.5)/FXCH.length-0.5)*280)+"deg";
+    routeFx(); configureFx(); aplicarSendReturn(); return; }   // o CH SELECT também é o SEND CH
 }
 
 let tapTimes=[];
