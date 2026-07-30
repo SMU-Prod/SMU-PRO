@@ -460,9 +460,46 @@
   /* GLOBAL RECALL SAFE — o que nao pertence a um canal (manual p.80). */
   const RSGLOBAL=["INPUT PATCH","OUTPUT PATCH","INPUT NAME","HA","CUSTOM FADER BANK",
                   "GEQ RACK","EFFECT RACK","PREMIUM RACK","BUS SETUP MIX","BUS SETUP MTX"];
-  /* INPUT PATCH: canal c ouve a porta state.inPatch[c]. Nasce 1:1 (DANTE n -> CH n), que e'
-     como a mesa chega do rack, mas agora da' para mudar — inclusive tocando. */
+  /* ============ PATCH DE ENTRADA E DE SAIDA (Reference Manual p.18-27) ==================
+     PORTAS DE ENTRADA na CL5, na ordem de fabrica do manual (p.18):
+        CH1-48  <- DANTE 1-48      CH49-64 <- DANTE 49-64      CH65-72 <- OMNI IN 1-8
+     Repare no fim: os 8 ultimos canais NAO vem do Dante, vem das entradas ANALOGICAS do
+     corpo da mesa. O simulador chamava as 72 portas de "DANTE n" — em numero dava no mesmo,
+     mas ensinava o nome errado justamente da porta onde se pluga cabo de microfone. */
+  const INPORTS=Array.from({length:64},(_,i)=>"DANTE "+(i+1))
+          .concat(Array.from({length:8},(_,i)=>"OMNI IN "+(i+1)));
+  /* CANAIS DE SAIDA e PORTAS DE SAIDA (p.18). */
+  const OUTCH=[].concat(
+    Array.from({length:N_MIX},(_,i)=>"MIX "+(i+1)),
+    Array.from({length:N_MTX},(_,i)=>"MATRIX "+(i+1)),
+    ["STEREO L","STEREO R","MONO","MONITOR L","MONITOR R","MONITOR C","CUE L","CUE R"]);
+  const I_ST_L=N_MIX+N_MTX, I_ST_R=I_ST_L+1, I_MONO=I_ST_L+2;
+  const OUTPORTS=Array.from({length:64},(_,i)=>"DANTE OUT "+(i+1))
+          .concat(Array.from({length:8},(_,i)=>"OMNI OUT "+(i+1)),["DIGITAL OUT L","DIGITAL OUT R"]);
+  /* Patch de saida DE FABRICA, copiado da tabela do manual p.18 — nao inventado. */
+  function outPatchFabrica(){
+    const m=new Array(OUTPORTS.length).fill(null);
+    for(let i=0;i<24;i++)m[i]=i;                  // DANTE 1-24  <- MIX 1-24
+    for(let i=0;i<8;i++)m[24+i]=N_MIX+i;          // DANTE 25-32 <- MATRIX 1-8
+    m[32]=I_ST_L; m[33]=I_ST_R;                   // DANTE 33-34 <- STEREO L/R
+    m[34]=I_MONO;                                 // DANTE 35    <- MONO
+    m[35]=I_MONO+1; m[36]=I_MONO+2; m[37]=I_MONO+3;   // DANTE 36-38 <- MONITOR L/R/C
+    m[38]=I_MONO+4; m[39]=I_MONO+5;               // DANTE 39-40 <- CUE L/R
+    /* DANTE 41-64 = NO ASSIGN (fica null, como no manual) */
+    for(let i=0;i<6;i++)m[64+i]=i;                // OMNI OUT 1-6 <- MIX 1-6
+    m[70]=I_ST_L; m[71]=I_ST_R;                   // OMNI OUT 7-8 <- STEREO L/R
+    m[72]=I_ST_L; m[73]=I_ST_R;                   // DIGITAL OUT  <- STEREO L/R
+    return m;
+  }
+  /* INPUT PATCH: canal c ouve a porta state.inPatch[c]. Nasce como a tabela de fabrica. */
   state.inPatch=Array.from({length:MAXCAP},(_,i)=>i);
+  state.outPatch=outPatchFabrica();
+  state.patchTab=0; state.patchPag=0;
+  /* Porta de INSERT e de DIRECT OUT por canal (p.23 e p.26). O ON/ponto/nivel ja' existiam
+     na tela do canal; o que faltava era PARA ONDE vai. */
+  state.insPatch=new Array(MAXCAP).fill(null);
+  state.dirPatch=new Array(MAXCAP).fill(null);
+  state.insOutPatch=new Array(OUTCH.length).fill(null);
   state.rsGlobal={};                               // nome -> true quando protegido
   state.rsSetBySel=false; state.rsSel=0;           // SET BY SEL / canal em edicao na aba
   state.fcSetBySel=false; state.fcSel=0;
@@ -1368,35 +1405,81 @@
     vbegin(910,646);
     ctx.fillStyle=ED.bg; ctx.fillRect(0,0,910,646);
     const tabs=["INPUT PATCH","OUTPUT PATCH","INPUT INSERT","OUTPUT INSERT","DIRECT OUT"];
-    tabs.forEach((tl,ti)=>{ const tx=8+ti*179, on=ti===0;
+    const ptab=state.patchTab|0;
+    tabs.forEach((tl,ti)=>{ const tx=8+ti*179, on=ptab===ti;
       ctx.fillStyle=on?"#1a1a1a":"#333333"; ctx.fillRect(tx,4,175,20); bevel(tx,4,175,20,!on);
       ctx.fillStyle=on?"#f0f0f0":"#9a9a9a"; ctx.font="700 8px 'Courier New',monospace";
       ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(tl,tx+87,15); ctx.textBaseline="alphabetic";
-      if(ti>0)vreg({x:tx,y:4,w:175,h:20,onDown:()=>toast(tl+": não incluído no simulador")});
+      vreg({x:tx,y:4,w:175,h:20,onDown:()=>{state.patchTab=ti;state.patchPag=0;state.patchPagC=0;}});
     });
     ctx.fillStyle="#2e2e2e"; ctx.fillRect(8,28,894,610); bevel(8,28,894,610,false);
-    eTitle(16,44,"INPUT PATCH — DANTE 1-24 ▸ CH 1-24",500,11);
-    const x0=96, y0=96, cw=32, rh=20;
-    // channel headers (vertical names, selected one highlighted)
-    for(let c=0;c<24;c++){ const x=x0+c*cw;
+
+    /* As 5 abas do Patch Editor sao a MESMA grade: porta na linha, destino na coluna. Muda
+       so quem e' linha, quem e' coluna e onde a marca fica guardada. Por isso uma funcao. */
+    const nomeCanal=i=>CH[i]?((i+1)+" "+CH[i].name):(""+(i+1));
+    const CFG=[
+      { titulo:"INPUT PATCH — porta de entrada ▸ canal",
+        linhas:INPORTS, colunas:Array.from({length:MAXCH},(_,i)=>nomeCanal(i)),
+        ligada:(p,c)=>state.inPatch[c]===p,
+        clicar:(p,c)=>{ selectChannel(c); repatch(c,p);
+          toast(state.inPatch[c]===p?(INPORTS[p]+" ▸ <b>CH"+(c+1)+"</b>"):("CH"+(c+1)+" <b>sem porta</b> (mudo)")); },
+        rodape:"Clique para re-patchear — vale com a base tocando. Na célula acesa, tira a porta do canal." },
+      { titulo:"OUTPUT PATCH — porta de saída ▸ canal de saída",
+        linhas:OUTPORTS, colunas:OUTCH,
+        ligada:(p,c)=>state.outPatch[p]===c,
+        clicar:(p,c)=>{ state.outPatch[p]=(state.outPatch[p]===c)?null:c;
+          toast(state.outPatch[p]===c?(OUTPORTS[p]+" ▸ <b>"+OUTCH[c]+"</b>"):(OUTPORTS[p]+" <b>NO ASSIGN</b>")); },
+        rodape:"De fábrica: DANTE 1-24 ▸ MIX 1-24 · OMNI OUT 1-6 ▸ MIX 1-6 · OMNI OUT 7-8 ▸ STEREO L/R (manual p.18)." },
+      { titulo:"INPUT INSERT — saída do insert do canal de entrada",
+        linhas:OUTPORTS, colunas:Array.from({length:MAXCH},(_,i)=>nomeCanal(i)),
+        ligada:(p,c)=>state.insPatch[c]===p,
+        clicar:(p,c)=>{ state.insPatch[c]=(state.insPatch[c]===p)?null:p; selectChannel(c);
+          toast(state.insPatch[c]===p?("INSERT OUT do CH"+(c+1)+" ▸ <b>"+OUTPORTS[p]+"</b>"):("CH"+(c+1)+" <b>sem insert</b>")); },
+        rodape:"O liga/desliga e o ponto (PRE EQ/PRE FADER/POST ON) ficam na tela do canal — aqui é PARA ONDE o insert sai." },
+      { titulo:"OUTPUT INSERT — saída do insert do canal de saída",
+        linhas:OUTPORTS, colunas:OUTCH,
+        ligada:(p,c)=>state.insOutPatch[c]===p,
+        clicar:(p,c)=>{ state.insOutPatch[c]=(state.insOutPatch[c]===p)?null:p;
+          toast(state.insOutPatch[c]===p?("INSERT OUT de "+OUTCH[c]+" ▸ <b>"+OUTPORTS[p]+"</b>"):(OUTCH[c]+" <b>sem insert</b>")); },
+        rodape:"Insert nos barramentos de saída (MIX, MATRIX, STEREO) — é onde entra o processador externo do PA." },
+      { titulo:"DIRECT OUT — saída direta do canal de entrada",
+        linhas:OUTPORTS, colunas:Array.from({length:MAXCH},(_,i)=>nomeCanal(i)),
+        ligada:(p,c)=>state.dirPatch[c]===p,
+        clicar:(p,c)=>{ state.dirPatch[c]=(state.dirPatch[c]===p)?null:p; selectChannel(c);
+          toast(state.dirPatch[c]===p?("DIRECT OUT do CH"+(c+1)+" ▸ <b>"+OUTPORTS[p]+"</b>"):("CH"+(c+1)+" <b>sem direct out</b>")); },
+        rodape:"É por aqui que se manda cada canal para o gravador ou para a mesa de monitor (manual p.26)." },
+    ][ptab];
+
+    eTitle(16,44,CFG.titulo,540,11);
+    const NL=24, NC=24;                                   // linhas e colunas por pagina
+    const totL=Math.ceil(CFG.linhas.length/NL), totC=Math.ceil(CFG.colunas.length/NC);
+    state.patchPag=Math.min(state.patchPag|0,totL-1); state.patchPagC=Math.min(state.patchPagC|0,totC-1);
+    const p0=state.patchPag*NL, c0=state.patchPagC*NC;
+    /* paginacao — a CL5 tem 74 portas de saida e 72 canais: nao cabe tudo numa tela */
+    if(totL>1){ eBtn(596,38,20,16,"▲",false,()=>{state.patchPag=(state.patchPag+totL-1)%totL;},null,8);
+                eBtn(618,38,20,16,"▼",false,()=>{state.patchPag=(state.patchPag+1)%totL;},null,8);
+                eVal(642,38,74,16,"L "+(p0+1)+"-"+Math.min(p0+NL,CFG.linhas.length)); }
+    if(totC>1){ eBtn(726,38,20,16,"◀",false,()=>{state.patchPagC=(state.patchPagC+totC-1)%totC;},null,8);
+                eBtn(748,38,20,16,"▶",false,()=>{state.patchPagC=(state.patchPagC+1)%totC;},null,8);
+                eVal(772,38,110,16,"C "+(c0+1)+"-"+Math.min(c0+NC,CFG.colunas.length)); }
+
+    const x0=112, y0=96, cw=31, rh=20;
+    for(let j=0;j<NC;j++){ const c=c0+j; if(c>=CFG.colunas.length)break; const x=x0+j*cw;
       ctx.save(); ctx.translate(x+cw/2+3,y0-6); ctx.rotate(-Math.PI/2);
-      ctx.fillStyle=c===state.sel?"#efe3ae":"#9a9a9a"; ctx.font="700 7.5px Arial"; ctx.textAlign="left";
-      ctx.fillText(CH[c].name.slice(0,9),0,0); ctx.restore();
-      eBtn(x+2,y0-4,cw-4,10,""+(c+1),c===state.sel,()=>selectChannel(c),ED.yel,6);
+      ctx.fillStyle="#9a9a9a"; ctx.font="700 7.5px Arial"; ctx.textAlign="left";
+      ctx.fillText(String(CFG.colunas[c]).slice(0,11),0,0); ctx.restore();
     }
-    // rows: DANTE ports; the diagonal is the 1:1 patch this sim ships with
-    for(let p=0;p<24;p++){ const y=y0+10+p*rh;
-      eNameBox(16,y+2,74,15,"DANTE "+(p+1));
-      for(let c=0;c<24;c++){ const x=x0+c*cw, on=(state.inPatch[c]===p);
+    for(let i=0;i<NL;i++){ const p=p0+i; if(p>=CFG.linhas.length)break; const y=y0+10+i*rh;
+      eNameBox(16,y+2,90,15,CFG.linhas[p]);
+      for(let j=0;j<NC;j++){ const c=c0+j; if(c>=CFG.colunas.length)break;
+        const x=x0+j*cw, on=CFG.ligada(p,c);
         ctx.fillStyle=on?ED.btnLit:"#3a3a3a"; ctx.fillRect(x+4,y+3,cw-8,rh-8); bevel(x+4,y+3,cw-8,rh-8,on);
         if(on){ ctx.fillStyle="#101010"; ctx.font="700 9px Arial"; ctx.textAlign="center"; ctx.fillText("●",x+cw/2,y+13); }
-        vreg({x:x+4,y:y+3,w:cw-8,h:rh-8,onDown:()=>{ selectChannel(c); repatch(c,p);
-          toast(state.inPatch[c]===p?("DANTE "+(p+1)+" ▸ <b>CH"+(c+1)+" "+CH[c].name+"</b>")
-                                    :("CH"+(c+1)+" <b>sem porta</b> (mudo)")); }});
+        vreg({x:x+4,y:y+3,w:cw-8,h:rh-8,onDown:()=>{ CFG.clicar(p,c); drawScreen(); }});
       }
     }
     ctx.fillStyle="#9a9a9a"; ctx.font="700 9px Arial"; ctx.textAlign="left";
-    ctx.fillText("Clique na grade para re-patchear (vale com a base tocando). Clicar na célula acesa tira a porta do canal.",16,632);
+    ctx.fillText(CFG.rodape,16,632);
     vend();
   }
 
@@ -3034,7 +3117,9 @@
   const SESSAO_V=1;
   function sessaoSalvar(){
     const dados={ v:SESSAO_V, app:"SMU CL Editor", model:state.model, quando:new Date().toISOString(),
-      ch:CH.map(snapCh), cenas:scenes, inPatch:state.inPatch,
+      ch:CH.map(snapCh), cenas:scenes,
+      inPatch:state.inPatch, outPatch:state.outPatch,
+      insPatch:state.insPatch, dirPatch:state.dirPatch, insOutPatch:state.insOutPatch,
       master:state.master, mono:state.mono,
       dcaGain:state.dcaGain, dcaOn:state.dcaOn, muteActive:state.muteActive,
       rack:state.rack, geq:state.geq,
@@ -3061,6 +3146,10 @@
         (d.rsPar||[]).forEach((v,i)=>{ if(CH[i])CH[i].rsPar=v||{ALL:true}; });
         if(d.cenas) d.cenas.forEach((c,i)=>scenes[i]=c);
         if(d.inPatch) state.inPatch=d.inPatch.slice();
+        if(d.outPatch) state.outPatch=d.outPatch.slice();
+        if(d.insPatch) state.insPatch=d.insPatch.slice();
+        if(d.dirPatch) state.dirPatch=d.dirPatch.slice();
+        if(d.insOutPatch) state.insOutPatch=d.insOutPatch.slice();
         if(d.master!=null)state.master=d.master; if(d.mono!=null)state.mono=d.mono;
         if(d.dcaGain)state.dcaGain=d.dcaGain.slice(); if(d.dcaOn)state.dcaOn=d.dcaOn.slice();
         if(d.muteActive)state.muteActive=d.muteActive.slice();
@@ -3079,6 +3168,10 @@
     marcarUndo();
     for(let i=0;i<N_SCENE;i++)scenes[i]=null;
     state.inPatch=Array.from({length:MAXCAP},(_,i)=>i);
+    state.outPatch=outPatchFabrica();
+    state.insPatch=new Array(MAXCAP).fill(null);
+    state.dirPatch=new Array(MAXCAP).fill(null);
+    state.insOutPatch=new Array(OUTCH.length).fill(null);
     state.rsGlobal={};
     state.focus=Array.from({length:N_SCENE},()=>({on:false,all:true,ch:{},par:{}}));
     state.fade =Array.from({length:N_SCENE},()=>{ const ch={}; for(let i=0;i<MAXCAP;i++)ch[i]=true; return {on:false,time:3.0,ch}; });
