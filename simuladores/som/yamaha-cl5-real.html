@@ -418,6 +418,11 @@
   const GEQF=[20,25,31.5,40,50,63,80,100,125,160,200,250,315,400,500,630,800,1000,1250,1600,2000,2500,3150,4000,5000,6300,8000,10000,12500,16000,20000];
   let _taps=[]; // tap-tempo timestamps (ms)
   const scenes=new Array(N_SCENE).fill(null);
+  /* Coluna FILE da janela SCENE (biblioteca de cenas em arquivo). Declarado AQUI, junto de
+     scenes, e nao la' embaixo com as funcoes que o usam: `let` no meio do arquivo fica em
+     zona morta temporal ate a execucao chegar nele, e um draw que rode antes derruba o
+     simulador inteiro em silencio. */
+  let cenasArquivo=new Array(N_SCENE).fill(null), nomeArqCenas="NO FILE";
   const ukState={}; // user key toggles
 
   /* ============ RECALL SAFE / FOCUS RECALL / FADE  (Reference Manual p.79-80, 102-104) ============
@@ -455,6 +460,9 @@
   /* GLOBAL RECALL SAFE — o que nao pertence a um canal (manual p.80). */
   const RSGLOBAL=["INPUT PATCH","OUTPUT PATCH","INPUT NAME","HA","CUSTOM FADER BANK",
                   "GEQ RACK","EFFECT RACK","PREMIUM RACK","BUS SETUP MIX","BUS SETUP MTX"];
+  /* INPUT PATCH: canal c ouve a porta state.inPatch[c]. Nasce 1:1 (DANTE n -> CH n), que e'
+     como a mesa chega do rack, mas agora da' para mudar — inclusive tocando. */
+  state.inPatch=Array.from({length:MAXCAP},(_,i)=>i);
   state.rsGlobal={};                               // nome -> true quando protegido
   state.rsSetBySel=false; state.rsSel=0;           // SET BY SEL / canal em edicao na aba
   state.fcSetBySel=false; state.fcSel=0;
@@ -1379,15 +1387,16 @@
     // rows: DANTE ports; the diagonal is the 1:1 patch this sim ships with
     for(let p=0;p<24;p++){ const y=y0+10+p*rh;
       eNameBox(16,y+2,74,15,"DANTE "+(p+1));
-      for(let c=0;c<24;c++){ const x=x0+c*cw, on=(p===c);
+      for(let c=0;c<24;c++){ const x=x0+c*cw, on=(state.inPatch[c]===p);
         ctx.fillStyle=on?ED.btnLit:"#3a3a3a"; ctx.fillRect(x+4,y+3,cw-8,rh-8); bevel(x+4,y+3,cw-8,rh-8,on);
         if(on){ ctx.fillStyle="#101010"; ctx.font="700 9px Arial"; ctx.textAlign="center"; ctx.fillText("●",x+cw/2,y+13); }
-        vreg({x:x+4,y:y+3,w:cw-8,h:rh-8,onDown:()=>{ selectChannel(c);
-          toast(on?("DANTE "+(p+1)+" ▸ <b>"+CH[c].name+"</b>"):"Re-patch: não incluído (patch 1:1 fixo)"); }});
+        vreg({x:x+4,y:y+3,w:cw-8,h:rh-8,onDown:()=>{ selectChannel(c); repatch(c,p);
+          toast(state.inPatch[c]===p?("DANTE "+(p+1)+" ▸ <b>CH"+(c+1)+" "+CH[c].name+"</b>")
+                                    :("CH"+(c+1)+" <b>sem porta</b> (mudo)")); }});
       }
     }
     ctx.fillStyle="#9a9a9a"; ctx.font="700 9px Arial"; ctx.textAlign="left";
-    ctx.fillText("Patch 1:1 (DANTE n ▸ CH n) — as bases do SMU entram por estas portas.",16,632);
+    ctx.fillText("Clique na grade para re-patchear (vale com a base tocando). Clicar na célula acesa tira a porta do canal.",16,632);
     vend();
   }
 
@@ -2206,8 +2215,11 @@
     if(stab===1){ paneRecallSafe(); vend(); return; }
     if(stab===2){ paneFadeTime();  vend(); return; }
     if(stab===3){ paneFocus();     vend(); return; }
-    eVal(20,44,310,16,"NO FILE");
-    ["OPEN","CLOSE","SAVE","SAVE AS..."].forEach((bl,bi)=>eBtn(340+bi*66,44,62,16,bl,false,()=>toast("Arquivo de cenas: recurso do CL Editor (PC)"),null,7));
+    eVal(20,44,310,16,nomeArqCenas);
+    eBtn(340,44,62,16,"OPEN",false,()=>abrirArqCenas(),null,7);
+    eBtn(406,44,62,16,"CLOSE",false,()=>{ cenasArquivo=new Array(N_SCENE).fill(null); nomeArqCenas="NO FILE"; drawScreen(); toast("Arquivo de cenas <b>fechado</b>"); },null,7);
+    eBtn(472,44,62,16,"SAVE",false,()=>salvarArqCenas(),null,7);
+    eBtn(538,44,62,16,"SAVE AS...",false,()=>salvarArqCenas(),null,7);
     ctx.fillStyle="#bdbdbd"; ctx.font="700 10px Arial"; ctx.textAlign="center";
     ctx.fillText("FILE",226,82); ctx.fillText("INTERNAL DATA",690,82);
     const drawList=(x,internal)=>{
@@ -2232,12 +2244,26 @@
             ctx.fillStyle="#8a8a8a"; ctx.fillText(sc?new Date(sc.ts).toLocaleTimeString().slice(0,5):"",x+272,y+11);
             vreg({x,y,w:402,h:16,onDown:()=>{state.scene=i2-1;paintRightRack();}}); }
         }
+        else if(i2<N_SCENE){                       /* coluna FILE — o que veio do arquivo */
+          const fc=cenasArquivo[i2];
+          ctx.textAlign="left"; ctx.fillStyle=fc?"#e0e0e0":"#5a5a5a";
+          ctx.fillText(fc?("Scene "+String(i2+1).padStart(3,'0')):"",x+48,y+11);
+          ctx.fillStyle="#8a8a8a";
+          ctx.fillText(fc&&fc.ts?new Date(fc.ts).toLocaleTimeString().slice(0,5):"",x+272,y+11);
+        }
       }
       ctx.strokeStyle="#0e0e0e"; ctx.strokeRect(x+.5,90.5,402,458);
     };
     drawList(24,false); drawList(488,true);
-    eBtn(436,280,44,18,"→",false,()=>toast("Transferência p/ arquivo: recurso do editor"),null,10);
-    eBtn(436,304,44,18,"←",false,()=>toast("Transferência p/ arquivo: recurso do editor"),null,10);
+    /* Transferencia entre as duas listas, como no editor: -> leva do ARQUIVO (esquerda) para
+       a MEMORIA INTERNA (direita); <- leva da memoria para o arquivo. */
+    eBtn(436,280,44,18,"→",false,()=>{ let n=0;
+      cenasArquivo.forEach((c,i)=>{ if(c){ scenes[i]=JSON.parse(JSON.stringify(c)); n++; } });
+      drawScreen(); toast(n?("<b>"+n+"</b> cena(s) do arquivo ▸ memória interna"):"Arquivo vazio"); },null,10);
+    eBtn(436,304,44,18,"←",false,()=>{ let n=0;
+      scenes.forEach((c,i)=>{ if(c){ cenasArquivo[i]=JSON.parse(JSON.stringify(c)); n++; } });
+      if(n&&nomeArqCenas==="NO FILE")nomeArqCenas="(não salvo)";
+      drawScreen(); toast(n?("<b>"+n+"</b> cena(s) da memória ▸ arquivo"):"Memória interna vazia"); },null,10);
     eBtn(488,566,110,26,"STORE",false,()=>{storeScene(state.scene);paintRightRack();},ED.yel,10);
     eBtn(606,566,110,26,"RECALL",false,()=>{recallScene(state.scene);},ED.yel,10);
     eBtn(724,566,80,26,"UNDO",false,()=>desfazer(),null,10);
@@ -2439,6 +2465,13 @@
       o.textContent=s.label+extra; sel.appendChild(o); }); sel.value=Math.min(curSong,SONGS.length-1); }
   let ac=null,masterGain=null,monoTrim=null,lim=null,masterAn=null,playing=false,curSong=0,loadTok=0,realSources=[];
   let rackN=[],geqN=[],stinN=[]; const bufCache={},aNodes=[];
+  /* PORTAS DE ENTRADA (DANTE) — camada que faltava para o INPUT PATCH ser de verdade.
+     Antes o stem i era ligado direto no canal i ("patch 1:1 fixo"), e a tela de patch
+     recusava o clique. Num console digital o sinal chega numa PORTA e o patch decide qual
+     canal a recebe; uma porta pode alimentar varios canais, um canal ouve UMA porta.
+     Por isso: fonte -> portN[porta] -> aNodes[canal].trim, e re-patchear e' so trocar essa
+     ultima ligacao — inclusive com a base TOCANDO, como na mesa. */
+  let portN=[];
 
   /* ===================== P() — automação que TERMINA =====================
      Um AudioParam com automação pendente sai do caminho rápido do navegador: o
@@ -2636,8 +2669,30 @@
       for(let r=0;r<8;r++){ const g=ac.createGain(); g.gain.value=0; dlyN.connect(g); g.connect(rackN[r].inG); fxS.push(g); }
       aNodes[i]={trim,hpf,eq:[eq0,eq1,eq2,eq3],lpf,preAn,preBuf:new Float32Array(preAn.fftSize),gate,comp,mk,dlyN,fdr,pan,an,buf:new Float32Array(an.fftSize),fxS};
     }
+    portN=[]; for(let p=0;p<MAXCAP;p++){ const g=ac.createGain(); g.gain.value=1; portN.push(g); }
+    ligarPatch();
     for(let i=0;i<MAXCAP;i++) applyChanAudio(i);
     applyRackAll();
+  }
+  /* (re)faz TODAS as ligacoes porta -> canal a partir de state.inPatch */
+  function ligarPatch(){
+    if(!ac||!portN.length)return;
+    portN.forEach(g=>{ try{ g.disconnect(); }catch(e){} });
+    for(let c=0;c<MAXCAP;c++){ const p=state.inPatch[c];
+      if(p!=null && portN[p] && aNodes[c]) portN[p].connect(aNodes[c].trim); }
+  }
+  /* Re-patch de UM canal. Vale tocando: so troca a ligacao, nao reinicia a base. */
+  function repatch(c,p){
+    const ant=state.inPatch[c];
+    if(ant===p){ state.inPatch[c]=null; }               // clicar na celula acesa DESPATCHA
+    else state.inPatch[c]=p;
+    if(ac&&portN.length){
+      if(ant!=null&&portN[ant]&&aNodes[c]){ try{ portN[ant].disconnect(aNodes[c].trim); }catch(e){} }
+      const novo=state.inPatch[c];
+      if(novo!=null&&portN[novo]&&aNodes[c]) portN[novo].connect(aNodes[c].trim);
+    }
+    CH[c].hasAudio = state.inPatch[c]!=null && state.inPatch[c]<MAXCH;
+    drawScreen();
   }
   applyChanAudio=function(i){
     if(!ac||!aNodes[i])return; const n=aNodes[i],c=CH[i],t=ac.currentTime;
@@ -2881,8 +2936,10 @@
     let durMax=0,durMin=Infinity,iLongo=0;
     bufs.forEach((b,i)=>{ if(!b)return; if(b.duration>durMax){durMax=b.duration;iLongo=i;} if(b.duration<durMin)durMin=b.duration; });
     const emLoop=(durMax-durMin)<0.02;
-    useStems.forEach((st,i)=>{ if(i>=MAXCH||!aNodes[i])return; const src=ac.createBufferSource();
-      src.buffer=bufs[i]; src.loop=emLoop; src.connect(aNodes[i].trim); src.start(t0); realSources.push(src); });
+    /* O stem entra na PORTA, nao no canal. Quem decide o canal e' o INPUT PATCH. */
+    useStems.forEach((st,i)=>{ if(i>=MAXCH||!portN[i])return; const src=ac.createBufferSource();
+      src.buffer=bufs[i]; src.loop=emLoop; src.connect(portN[i]); src.start(t0); realSources.push(src); });
+    ligarPatch();
     if(!emLoop){ const fim=realSources.find(s=>s.buffer===bufs[iLongo]); if(fim) fim.onended=()=>{ stopSong(); setStatus("fim da música","#7fb2c8"); }; }
     for(let i=0;i<MAXCAP;i++)applyChanAudio(i); playing=true; setPlayBtn(true); setStatus("tocando ♪ "+song.label,"#3ad07a"); }
   function stopSong(keep){ realSources.forEach(s=>{try{s.onended=null;s.stop();s.disconnect();}catch(e){}}); realSources=[]; playing=false; setPlayBtn(false); if(!keep)setStatus("parado"); }
@@ -2943,6 +3000,96 @@
       if(m){ setMode(m); e.preventDefault(); }
     });
   })();
+  /* ============ BIBLIOTECA DE CENAS (janela SCENE, coluna FILE) ==========================
+     A janela tinha as duas listas do editor (FILE e INTERNAL DATA) e as setas de
+     transferencia, mas a coluna da esquerda vivia vazia e todo botao respondia
+     "recurso do CL Editor (PC)". Agora o arquivo de cenas existe: grava, abre e transfere. */
+  function salvarArqCenas(){
+    const fonte=cenasArquivo.some(Boolean)?cenasArquivo:scenes;
+    if(!fonte.some(Boolean)){ toast("Nenhuma cena para salvar"); return; }
+    const blob=new Blob([JSON.stringify({app:"SMU CL Editor",tipo:"cenas",model:state.model,cenas:fonte},null,1)],{type:"application/json"});
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+    a.download="cenas-"+state.model+"-"+new Date().toISOString().slice(0,16).replace(/[:T]/g,"")+".smusc";
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+    nomeArqCenas=a.download; drawScreen(); toast("Cenas <b>salvas</b> ▸ "+a.download);
+  }
+  function abrirArqCenas(){
+    const inp=document.createElement("input"); inp.type="file"; inp.accept=".smusc,application/json";
+    inp.onchange=()=>{ const f=inp.files&&inp.files[0]; if(!f)return; const fr=new FileReader();
+      fr.onload=()=>{ let d; try{ d=JSON.parse(fr.result); }catch(e){ toast("Arquivo ilegível"); return; }
+        if(!d||d.tipo!=="cenas"){ toast("Este arquivo não é uma biblioteca de cenas"); return; }
+        cenasArquivo=new Array(N_SCENE).fill(null);
+        (d.cenas||[]).forEach((c,i)=>{ if(i<N_SCENE)cenasArquivo[i]=c; });
+        nomeArqCenas=f.name; drawScreen();
+        toast("Arquivo de cenas <b>aberto</b> — use ▸ para levar à memória interna"); };
+      fr.readAsText(f); };
+    inp.click();
+  }
+
+  /* ============ ARQUIVO DE SESSAO (menu File) ============================================
+     No CL Editor o File > Save grava a sessao inteira do console num arquivo e o Open
+     devolve. Aqui isso era um toast "recurso do CL Editor (PC)" — mas o simulador E' o
+     CL Editor, entao a desculpa nao se sustentava. Grava tudo o que define a mesa:
+     modelo, canais, cenas, patch de entrada, racks, GEQ e as regras de recall. */
+  const SESSAO_V=1;
+  function sessaoSalvar(){
+    const dados={ v:SESSAO_V, app:"SMU CL Editor", model:state.model, quando:new Date().toISOString(),
+      ch:CH.map(snapCh), cenas:scenes, inPatch:state.inPatch,
+      master:state.master, mono:state.mono,
+      dcaGain:state.dcaGain, dcaOn:state.dcaOn, muteActive:state.muteActive,
+      rack:state.rack, geq:state.geq,
+      rsGlobal:state.rsGlobal, focus:state.focus, fade:state.fade,
+      rsPar:CH.map(c=>c.rsPar), recallSafe:CH.map(c=>c.recallSafe) };
+    const blob=new Blob([JSON.stringify(dados,null,1)],{type:"application/json"});
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download="sessao-"+state.model+"-"+new Date().toISOString().slice(0,16).replace(/[:T]/g,"")+".smucl";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+    toast("Sessão <b>salva</b> ▸ "+a.download);
+  }
+  function sessaoAbrir(){
+    const inp=document.createElement("input"); inp.type="file"; inp.accept=".smucl,application/json";
+    inp.onchange=()=>{ const f=inp.files&&inp.files[0]; if(!f)return;
+      const fr=new FileReader();
+      fr.onload=()=>{ let d; try{ d=JSON.parse(fr.result); }catch(e){ toast("Arquivo ilegível: não é uma sessão"); return; }
+        if(!d||d.app!=="SMU CL Editor"){ toast("Este arquivo não é uma sessão do CL Editor"); return; }
+        marcarUndo();
+        if(d.model&&MODELS[d.model]) applyModel(d.model,{repatch:false});
+        (d.ch||[]).forEach((sc,i)=>{ if(CH[i]) Object.assign(CH[i],sc); });
+        (d.recallSafe||[]).forEach((v,i)=>{ if(CH[i])CH[i].recallSafe=!!v; });
+        (d.rsPar||[]).forEach((v,i)=>{ if(CH[i])CH[i].rsPar=v||{ALL:true}; });
+        if(d.cenas) d.cenas.forEach((c,i)=>scenes[i]=c);
+        if(d.inPatch) state.inPatch=d.inPatch.slice();
+        if(d.master!=null)state.master=d.master; if(d.mono!=null)state.mono=d.mono;
+        if(d.dcaGain)state.dcaGain=d.dcaGain.slice(); if(d.dcaOn)state.dcaOn=d.dcaOn.slice();
+        if(d.muteActive)state.muteActive=d.muteActive.slice();
+        if(d.rack)state.rack=d.rack; if(d.geq)state.geq=d.geq;
+        if(d.rsGlobal)state.rsGlobal=d.rsGlobal;
+        if(d.focus)state.focus=d.focus; if(d.fade)state.fade=d.fade;
+        ligarPatch();
+        for(let i=0;i<MAXCAP;i++)applyChanAudio(i); applyMasterAudio(); applyRackAll(); applyGeq();
+        paintBay(); paintSelected(); paintRightRack(); drawScreen();
+        toast("Sessão <b>aberta</b> ▸ "+f.name);
+      };
+      fr.readAsText(f); };
+    inp.click();
+  }
+  function sessaoNova(){
+    marcarUndo();
+    for(let i=0;i<N_SCENE;i++)scenes[i]=null;
+    state.inPatch=Array.from({length:MAXCAP},(_,i)=>i);
+    state.rsGlobal={};
+    state.focus=Array.from({length:N_SCENE},()=>({on:false,all:true,ch:{},par:{}}));
+    state.fade =Array.from({length:N_SCENE},()=>{ const ch={}; for(let i=0;i<MAXCAP;i++)ch[i]=true; return {on:false,time:3.0,ch}; });
+    for(let i=0;i<MAXCAP;i++){ CH[i].recallSafe=false; CH[i].rsPar={ALL:true}; }
+    loadSong(curSong);                       // devolve nome/patch/ganho de fabrica aos canais
+    ligarPatch();
+    for(let i=0;i<MAXCAP;i++)applyChanAudio(i); applyMasterAudio();
+    paintBay(); paintSelected(); paintRightRack(); drawScreen();
+    toast("Sessão <b>nova</b> ▸ cenas apagadas, patch 1:1, recall liberado");
+  }
+
   function menuAct(a,it){
     switch(a){
       case "tile": tileWins(); break;
@@ -2951,8 +3098,9 @@
       case "closeall": Object.keys(WINS).forEach(closeWin); break;
       case "undo": desfazer(); break;
       case "redo": refazer(); break;
-      case "new": case "open": case "save": case "saveas":
-        toast("Arquivo de sessão: recurso do CL Editor (PC)"); break;
+      case "new":    sessaoNova(); break;
+      case "open":   sessaoAbrir(); break;
+      case "save": case "saveas": sessaoSalvar(); break;
       case "pc2console": toast("Re-synchronize <b>PC → Console</b> ✔"); state.online=true; break;
       case "console2pc": toast("Re-synchronize <b>Console → PC</b> ✔"); state.online=true; break;
       case "offline": state.online=state.online===false; toast(state.online===false?"<b>OFFLINE EDIT</b> ativo":"<b>ONLINE</b>"); break;
@@ -3001,6 +3149,7 @@
     play:()=>playSong(), stop:()=>stopSong(), isPlaying:()=>playing, isLoading:()=>loadingSong,
     srcs:()=>realSources, mg:()=>masterGain, stinN:i=>stinN[i], bufs:()=>bufCache,
     storeScene, recallScene, N_DCA, N_MUTE, desfazer, refazer, scenes:()=>scenes,
+    repatch, ligarPatch, portN:p=>portN[p],
     // model selector (headless verification)
     setModel, applyModel, MODELS, model:()=>state.model, maxch:()=>MAXCH, maxcap:MAXCAP,
     songs:()=>SONGS, rebuildSongSel,
