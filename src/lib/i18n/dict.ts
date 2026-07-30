@@ -661,6 +661,7 @@ export const DICT: Record<string, { en: string; es: string }> = {
   "interativo": { en: "interactive", es: "interactivo" },
   "imagem": { en: "image", es: "imagen" },
   "cena": { en: "scene", es: "escena" },
+  "Sobre esta prática": { en: "About this practice", es: "Sobre esta práctica" },
   "Pontos-chave": { en: "Key points", es: "Puntos clave" },
   "Dica do Profissional": { en: "Pro Tip", es: "Consejo del Profesional" },
   "Interaja com o widget acima — mova sliders e clique nos elementos": { en: "Interact with the widget above — move sliders and click the elements", es: "Interactúa con el widget de arriba — mueve los deslizadores y haz clic en los elementos" },

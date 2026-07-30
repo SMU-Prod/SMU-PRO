@@ -2,12 +2,11 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
-  Zap, Loader2, ChevronDown, ChevronUp, Play, Pause,
-  SkipForward, SkipBack, Volume2, VolumeX, Sparkles, BookOpen,
-  CheckCircle2, Lightbulb, Maximize2, Minimize2,
+  Zap, Play, Pause, SkipForward, SkipBack, Volume2, VolumeX,
+  Sparkles, CheckCircle2, Maximize2, Minimize2,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useT } from "@/lib/i18n/ui";
+import { YoutubeBridge } from "./youtube-bridge";
 
 // ── Types ──────────────────────────────────────────────────
 
@@ -114,14 +113,12 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
   const [data, setData] = useState<AnimationData | null>(null);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [expanded, setExpanded] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Player state
   const [currentScene, setCurrentScene] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
-  const [showText, setShowText] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -134,7 +131,6 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
   const isReady = data?.status === "ready" && data.roteiro && data.urls;
   const scenes = data?.roteiro?.cenas || [];
   const urls = data?.urls || [];
-  const isHybrid = data?.model?.includes("hybrid") || data?.model?.includes("interactive");
 
   useEffect(() => { playingRef.current = playing; }, [playing]);
 
@@ -325,15 +321,19 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
   const currentSceneData = scenes[currentScene];
   const currentUrl = urls[currentScene];
 
-  // ── Badge ──
-  const engineLabel = data?.model?.includes("hybrid")
-    ? t("Híbrido")
-    : isHybrid
-    ? t("Interativo")
-    : t("IA Visual");
+  // ── Ficha da prática (o texto que ANTES ficava em volta do simulador) ──
+  const abordagem = data.roteiro?.metadata?.abordagem_didatica;
+  const explicacao = currentSceneData?.explicacao_texto;
+  const destaques = currentSceneData?.destaques ?? [];
+  const dica = currentSceneData?.dica_profissional;
+  const temFicha = !!(currentSceneData?.titulo || abordagem || explicacao || destaques.length || dica);
 
-  const currentMode = currentSceneData?.modo;
-  const nivel = data?.roteiro?.classificacao?.nivel;
+  // A barra de transporte (play/anterior/próxima/volume) só faz sentido em conteúdo NARRADO —
+  // várias cenas ou áudio de narração. Simulador é uma cena só e sem áudio nenhum: a barra ficava
+  // ali sem função, ocupando tela e sugerindo ao aluno que havia algo para "tocar". Hoje isso vale
+  // para 306 de 306 registros; a condição fica no lugar do `false` para o dia em que voltar a
+  // existir conteúdo multi-cena de verdade.
+  const temNarrativa = scenes.length > 1 || urls.some((u) => !!u?.audio);
 
   // Admin: regenerar com force
   async function handleRegenerate() {
@@ -364,227 +364,181 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
   }
 
   // ── Player ──
+  // O quadro é DO SIMULADOR: nada de moldura, cabeçalho ou controle em volta dele. Todo o texto de
+  // leitura (título, explicação, pontos-chave, dica) virou uma peça própria, LOGO ABAIXO do palco.
+  // Esse enfeite era herança da animação narrada por IA — formato que não existe mais em produção
+  // (306 de 306 registros têm 1 cena e nenhum áudio). Ocupava tela do simulador e deixava o aluno
+  // adivinhando o que aqueles botões faziam: nada.
   return (
     <div
       ref={containerRef}
-      className={`rounded-xl bg-purple-500/5 border border-purple-500/20 overflow-hidden ${
-        fullscreen ? "flex h-full flex-col bg-[#0b0e14]" : ""
-      }`}
+      className={fullscreen ? "flex h-full flex-col bg-[#0b0e14]" : "space-y-3"}
     >
       <audio ref={audioRef} preload="auto" />
 
-      {/* Header */}
-      <div className="flex shrink-0 items-center justify-between px-4 py-3">
+      {/* Palco — só o simulador.
+          Em tela cheia a proporção 16:9 sai de cena: `aspect-video` deriva a altura da LARGURA, que
+          ali é a da tela inteira — o palco ficaria mais alto que a janela e o rodapé do console
+          sairia do quadro. A borda também sai: em tela cheia não há o que emoldurar. */}
+      <div
+        className={`relative w-full overflow-hidden bg-[#0f172a] ${
+          fullscreen ? "min-h-0 flex-1" : "aspect-video min-h-[470px] rounded-xl ring-1 ring-border"
+        }`}
+      >
+        {/* Interactive widget (iframe with srcdoc) */}
+        {currentUrl?.html ? (
+          <iframe
+            key={`widget-${currentScene}`}
+            ref={frameRef}
+            onLoad={sinalizaTelaCheia}
+            srcDoc={preparaWidget(currentUrl.html)}
+            className="absolute inset-0 w-full h-full border-0"
+            sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
+            allow="autoplay"
+            title={currentSceneData?.titulo || t("Widget interativo")}
+            style={{ display: "block" }}
+          />
+        ) : currentUrl?.widget ? (
+          <iframe
+            key={`widget-url-${currentScene}`}
+            src={currentUrl.widget}
+            className="absolute inset-0 w-full h-full border-0"
+            sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
+            title={currentSceneData?.titulo || t("Widget interativo")}
+          />
+        ) : currentUrl?.image ? (
+          /* Fallback: static image */
+          <img
+            key={`img-${currentScene}`}
+            src={currentUrl.image}
+            alt={currentSceneData?.titulo || ""}
+            className="absolute inset-0 w-full h-full object-contain"
+          />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Zap size={32} className="text-purple-400/40" />
+          </div>
+        )}
+
+        {/* Tela cheia — o ÚNICO controle que fica sobre o palco, no canto que os simuladores deixam
+            livre. A faixa preta com o título da cena saiu daqui: o título agora está na ficha
+            abaixo, e em 7 registros sem `modo` aquela faixa cobria o cabeçalho do próprio console. */}
         <button
-          onClick={() => setExpanded(!expanded)}
-          className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+          onClick={toggleFullscreen}
+          className="absolute bottom-2 right-2 z-20 p-1.5 rounded-lg bg-black/50 text-white/70 hover:text-white hover:bg-black/70 transition-colors"
         >
-          <Zap size={14} className="text-purple-400" />
-          <span className="text-sm font-medium text-foreground">
-            {isHybrid ? t("Simulação Interativa") : t("Conteúdo Visual")}
-          </span>
-          <span className="text-[10px] text-muted-light px-1.5 py-0.5 rounded-full bg-surface-3">
-            {engineLabel}
-          </span>
-          {nivel && (
-            <span className="text-[10px] text-muted-light px-1.5 py-0.5 rounded-full bg-surface-3 capitalize">
-              {nivel}
-            </span>
-          )}
-          <span className="text-[10px] text-muted-light">
-            {scenes.length} {t("cenas")}
-          </span>
+          {fullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
         </button>
-        <div className="flex items-center gap-2">
-          {/* Admin: Regenerar (IA) removido a pedido */}
-          {false && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleRegenerate}
-              disabled={loading || generating}
-              className="gap-1.5 text-xs border-smu-amber/30 text-smu-amber hover:bg-smu-amber/10 h-7 px-3"
-            >
-              {loading ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />}
-              {loading ? "Regenerando..." : "Regenerar"}
-            </Button>
-          )}
-          <button onClick={() => setExpanded(!expanded)} className="p-1 hover:opacity-70">
-            {expanded ? <ChevronUp size={14} className="text-muted" /> : <ChevronDown size={14} className="text-muted" />}
-          </button>
-        </div>
       </div>
 
-      {expanded && (
-        <div className={`px-4 pb-4 space-y-3 ${fullscreen ? "flex min-h-0 flex-1 flex-col" : ""}`}>
-          {/* Widget canvas — responsivo: altura mínima confortável em celular/tablet, 16:9 quando sobra espaço.
-              Em tela cheia o 16:9 sai de cena: `aspect-video` deriva a altura da largura, que ali é a da tela
-              inteira, então o palco ficaria mais alto que a janela e o `overflow-hidden` cortaria a base. */}
-          <div
-            className={`relative w-full rounded-lg overflow-hidden bg-[#0f172a] ${
-              fullscreen ? "min-h-0 flex-1" : "aspect-video min-h-[470px]"
-            }`}
+      {/* Player do YouTube. Fica FORA do iframe do simulador de propósito: o sandbox de produção
+          não tem `allow-same-origin`, e lá dentro o player do YouTube nem sobe (testado — ver o
+          cabeçalho de youtube-bridge.tsx). Só aparece quando o simulador pede; sim que não usa
+          YouTube não vê nada. Continua DENTRO do container de tela cheia porque esconder o player
+          viola a política da API. */}
+      <YoutubeBridge frameRef={frameRef} />
+
+      {/* Transporte — só existe para conteúdo NARRADO (ver `temNarrativa`). Nenhum simulador cai
+          aqui hoje; some inteiro em vez de ficar inerte na tela. */}
+      {temNarrativa && !fullscreen && (
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            onClick={prevSceneFn}
+            disabled={currentScene === 0}
+            className="p-1.5 rounded-lg text-muted hover:text-foreground hover:bg-hover transition-colors disabled:opacity-30"
           >
-            {/* Interactive widget (iframe with srcdoc) */}
-            {currentUrl?.html ? (
-              <iframe
-                key={`widget-${currentScene}`}
-                ref={frameRef}
-                onLoad={sinalizaTelaCheia}
-                srcDoc={preparaWidget(currentUrl.html)}
-                className="absolute inset-0 w-full h-full border-0"
-                sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
-                allow="autoplay"
-                title={currentSceneData?.titulo || t("Widget interativo")}
-                style={{ display: "block" }}
-              />
-            ) : currentUrl?.widget ? (
-              <iframe
-                key={`widget-url-${currentScene}`}
-                src={currentUrl.widget}
-                className="absolute inset-0 w-full h-full border-0"
-                sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
-                title={currentSceneData?.titulo || t("Widget interativo")}
-              />
-            ) : currentUrl?.image ? (
-              /* Fallback: static image */
-              <img
-                key={`img-${currentScene}`}
-                src={currentUrl.image}
-                alt={currentSceneData?.titulo || ""}
-                className="absolute inset-0 w-full h-full object-contain"
-              />
-            ) : (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Zap size={32} className="text-purple-400/40" />
-              </div>
-            )}
+            <SkipBack size={14} />
+          </button>
 
-            {/* Scene label overlay — oculto nos simuladores interativos: a faixa
-                cobria o cabeçalho/logo do próprio console (o simulador ocupa o quadro todo). */}
-            {currentMode !== "widget" && (
-            <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-3 py-2 bg-gradient-to-b from-black/50 to-transparent pointer-events-none">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] px-1.5 py-0.5 rounded text-white font-medium uppercase tracking-wider bg-purple-500/80">
-                  {currentMode === "image" ? t("imagem") : currentSceneData?.tipo?.replace(/_/g, " ") || t("cena")}
-                </span>
-                <span className="text-xs font-medium text-white/80 line-clamp-1">
-                  {currentSceneData?.titulo}
-                </span>
-              </div>
-            </div>
-            )}
+          <button
+            onClick={togglePlay}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-purple-500 text-white hover:bg-purple-400 transition-colors"
+          >
+            {playing ? <Pause size={14} /> : <Play size={14} className="ml-0.5" />}
+          </button>
 
-            {/* Fullscreen button */}
-            <button
-              onClick={toggleFullscreen}
-              className="absolute bottom-2 right-2 z-20 p-1.5 rounded-lg bg-black/50 text-white/70 hover:text-white hover:bg-black/70 transition-colors"
-            >
-              {fullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-            </button>
+          <button
+            onClick={nextScene}
+            disabled={currentScene === scenes.length - 1}
+            className="p-1.5 rounded-lg text-muted hover:text-foreground hover:bg-hover transition-colors disabled:opacity-30"
+          >
+            <SkipForward size={14} />
+          </button>
+
+          {/* Progress dots */}
+          <div className="flex-1 flex items-center justify-center gap-1">
+            {scenes.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => goToScene(i, playing)}
+                className={`h-1.5 rounded-full transition-all ${
+                  i === currentScene
+                    ? "w-4 bg-purple-400"
+                    : i < currentScene
+                    ? "w-1.5 bg-purple-400/40"
+                    : "w-1.5 bg-surface-3"
+                }`}
+              />
+            ))}
           </div>
 
-          {/* Controls */}
-          <div className="flex shrink-0 items-center gap-2">
-            <button
-              onClick={prevSceneFn}
-              disabled={currentScene === 0}
-              className="p-1.5 rounded-lg text-muted hover:text-foreground hover:bg-hover transition-colors disabled:opacity-30"
-            >
-              <SkipBack size={14} />
-            </button>
+          {/* Volume — muta a NARRAÇÃO, não o simulador: o áudio da mesa mora no `AudioContext` de
+              dentro do iframe e não passa por aqui. Por isso este botão só aparece quando existe
+              narração de verdade; solto na tela ele prometia calar a mesa e não calava nada. */}
+          <button
+            onClick={() => {
+              setMuted(!muted);
+              if (audioRef.current) audioRef.current.muted = !muted;
+            }}
+            className="p-1.5 rounded-lg text-muted hover:text-foreground hover:bg-hover transition-colors"
+          >
+            {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+          </button>
 
-            <button
-              onClick={togglePlay}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-purple-500 text-white hover:bg-purple-400 transition-colors"
-            >
-              {playing ? <Pause size={14} /> : <Play size={14} className="ml-0.5" />}
-            </button>
+          <span className="text-[10px] text-muted-light min-w-[60px] text-right">
+            {currentScene + 1}/{scenes.length}
+          </span>
+        </div>
+      )}
 
-            <button
-              onClick={nextScene}
-              disabled={currentScene === scenes.length - 1}
-              className="p-1.5 rounded-lg text-muted hover:text-foreground hover:bg-hover transition-colors disabled:opacity-30"
-            >
-              <SkipForward size={14} />
-            </button>
-
-            {/* Progress dots */}
-            <div className="flex-1 flex items-center justify-center gap-1">
-              {scenes.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => goToScene(i, playing)}
-                  className={`h-1.5 rounded-full transition-all ${
-                    i === currentScene
-                      ? "w-4 bg-purple-400"
-                      : i < currentScene
-                      ? "w-1.5 bg-purple-400/40"
-                      : "w-1.5 bg-surface-3"
-                  }`}
-                />
-              ))}
+      {/* ── Ficha da prática ──────────────────────────────────────────────────────────────────
+          É aqui que mora o que antes emoldurava o simulador. Fora do palco, largura inteira, para
+          ler. Sai em tela cheia: ali a página é do console, e a altura desta ficha viraria corte
+          na base do simulador. */}
+      {temFicha && !fullscreen && (
+        <section className="overflow-hidden rounded-xl border border-purple-500/20 bg-gradient-to-br from-purple-500/[0.07] to-indigo-500/[0.03]">
+          <header className="flex items-start gap-3 border-b border-purple-500/10 px-4 py-3">
+            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-purple-500/15">
+              <Zap size={15} className="text-purple-300" />
             </div>
+            <div className="min-w-0">
+              <h4 className="text-sm font-semibold text-foreground">
+                {currentSceneData?.titulo || t("Sobre esta prática")}
+              </h4>
+              {abordagem && (
+                <p className="mt-0.5 text-[11px] leading-relaxed text-muted-light">{abordagem}</p>
+              )}
+            </div>
+          </header>
 
-            {/* Toggle text */}
-            <button
-              onClick={() => setShowText(!showText)}
-              className={`p-1.5 rounded-lg transition-colors ${
-                showText ? "text-purple-400 bg-purple-500/10" : "text-muted hover:text-foreground hover:bg-hover"
-              }`}
-              title={showText ? t("Ocultar texto") : t("Mostrar texto")}
-            >
-              <BookOpen size={14} />
-            </button>
-
-            {/* Volume */}
-            <button
-              onClick={() => {
-                setMuted(!muted);
-                if (audioRef.current) audioRef.current.muted = !muted;
-              }}
-              className="p-1.5 rounded-lg text-muted hover:text-foreground hover:bg-hover transition-colors"
-            >
-              {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
-            </button>
-
-            <span className="text-[10px] text-muted-light min-w-[60px] text-right">
-              {currentScene + 1}/{scenes.length}
-            </span>
-          </div>
-
-          {/* Didactic panel — card-based visual layout.
-              Oculto em tela cheia: a altura que ele ocuparia sairia do palco do simulador. */}
-          {showText && currentSceneData && !fullscreen && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-2">
-              {/* Card: Conceito + Explicação */}
-              {currentSceneData.explicacao_texto && (
-                <div className="rounded-xl bg-gradient-to-br from-purple-500/8 to-indigo-500/5 border border-purple-500/15 p-3">
-                  {currentSceneData.conceito_tecnico && (
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <div className="w-1 h-4 rounded-full bg-purple-400" />
-                      <span className="text-[11px] font-semibold text-purple-300 uppercase tracking-wide">
-                        {currentSceneData.conceito_tecnico}
-                      </span>
-                    </div>
-                  )}
-                  <p className="text-xs text-foreground/80 leading-relaxed">
-                    {currentSceneData.explicacao_texto}
-                  </p>
-                </div>
+          {(explicacao || destaques.length > 0 || dica) && (
+            <div className="space-y-3 p-4">
+              {explicacao && (
+                <p className="text-sm leading-relaxed text-foreground/80">{explicacao}</p>
               )}
 
-              {/* Card: Pontos-chave */}
-              {currentSceneData.destaques && currentSceneData.destaques.length > 0 && (
-                <div className="rounded-xl bg-gradient-to-br from-cyan-500/8 to-blue-500/5 border border-cyan-500/15 p-3">
-                  <div className="flex items-center gap-1.5 mb-2">
+              {destaques.length > 0 && (
+                <div className="rounded-lg border border-cyan-500/15 bg-cyan-500/[0.05] p-3">
+                  <div className="mb-2 flex items-center gap-1.5">
                     <CheckCircle2 size={12} className="text-cyan-400" />
-                    <span className="text-[10px] font-semibold text-cyan-300 uppercase tracking-wide">{t("Pontos-chave")}</span>
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-cyan-300">
+                      {t("Pontos-chave")}
+                    </span>
                   </div>
                   <div className="space-y-1.5">
-                    {currentSceneData.destaques.map((d, idx) => (
+                    {destaques.map((d, idx) => (
                       <div key={idx} className="flex items-start gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-cyan-400/60 mt-1.5 shrink-0" />
+                        <div className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-400/60" />
                         <span className="text-xs text-foreground/70">{d}</span>
                       </div>
                     ))}
@@ -592,44 +546,22 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
                 </div>
               )}
 
-              {/* Card: Dica profissional (full width) */}
-              {currentSceneData.dica_profissional && (
-                <div className="md:col-span-2 rounded-xl bg-gradient-to-r from-amber-500/8 to-orange-500/5 border border-amber-500/15 p-3 flex gap-3 items-start">
-                  <div className="w-8 h-8 rounded-lg bg-amber-500/15 flex items-center justify-center shrink-0">
-                    <Sparkles size={14} className="text-amber-400" />
+              {dica && (
+                <div className="flex items-start gap-3 rounded-lg border border-amber-500/15 bg-amber-500/[0.05] p-3">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-500/15">
+                    <Sparkles size={13} className="text-amber-400" />
                   </div>
                   <div>
-                    <span className="text-[10px] font-semibold text-amber-300 uppercase tracking-wide">{t("Dica do Profissional")}</span>
-                    <p className="text-xs text-amber-100/70 leading-relaxed mt-0.5">
-                      {currentSceneData.dica_profissional}
-                    </p>
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-300">
+                      {t("Dica do Profissional")}
+                    </span>
+                    <p className="mt-0.5 text-xs leading-relaxed text-amber-100/70">{dica}</p>
                   </div>
-                </div>
-              )}
-
-              {/* Interactivity hint */}
-              {isHybrid && currentUrl?.html && (
-                <div className="md:col-span-2 flex items-center gap-1.5 text-[10px] text-purple-400/50 px-1">
-                  <Zap size={10} />
-                  <span>{t("Interaja com o widget acima — mova sliders e clique nos elementos")}</span>
                 </div>
               )}
             </div>
           )}
-
-          {/* Footer */}
-          <div className="flex items-center gap-2 pt-1 border-t border-purple-500/10">
-            <Sparkles size={10} className="text-purple-400 shrink-0" />
-            <span className="text-[10px] text-muted-light line-clamp-1">
-              {data.roteiro?.metadata?.abordagem_didatica}
-            </span>
-            {data.custo_usd != null && data.custo_usd > 0 && (
-              <span className="text-[10px] text-muted-light ml-auto">
-                ~${data.custo_usd.toFixed(3)}
-              </span>
-            )}
-          </div>
-        </div>
+        </section>
       )}
     </div>
   );
