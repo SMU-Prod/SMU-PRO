@@ -1432,7 +1432,35 @@ function render(){
 function assinaturaMesa(){ return "mesa|"+S.aio+"|"+S.d1+"|"+S.d2+"|"+S.mix; }
 function pintarComo(){ $("#como").innerHTML = textoComo(); if(S.popAberto==="mus") pintarMusicas(); }
 
-$("#btnReset").addEventListener("click",()=>location.reload());
+/* ⛔ NAO usar location.reload() aqui. Solta, a aula tem URL propria e recarrega
+   numa boa — foi assim que passou despercebido. Mas no player ela entra por
+   srcdoc com sandbox="allow-scripts", ou seja ORIGEM OPACA e sem
+   allow-same-origin: nessa condicao o navegador PROIBE reload e lanca
+   SecurityError. O defeito so existia no ambiente que o aluno usa.
+   Recomecar agora refaz o estado por codigo. */
+function recomecar(){
+  /* derruba o audio dos simuladores antes de tirar os iframes do ar, senao o
+     contexto sobrevive tocando (preview_stop nao cala som; aba/iframe fora do
+     DOM tambem nao garante) */
+  document.querySelectorAll("iframe").forEach(f=>{
+    try{ f.contentWindow.postMessage({smu:"parar"},"*"); }catch(_){}
+  });
+  S.passo=1; S.d1=null; S.d2=null; S.mix=null; S.aio=null;
+  S.cabo="ac"; S.pegou=null; S.ligacoes=[]; S.reguaLigada=false;
+  S.ampliado=null; S.mixEstado=null; S.ganho={1:null,2:null};
+  S.erroCabo=null;
+  const P=$("#palco"); if(P) P.dataset.assinatura="";   /* forca remontar */
+  /* fecha o popover aberto: abrirPop(null) nao serve porque ele ALTERNA —
+     chamar com o nome aberto fecharia, com outro abriria. Zera direto. */
+  S.popAberto=null;
+  ["falta","como","mus"].forEach(n=>{
+    const q=$("#pop-"+n); if(q) q.classList.remove("on");
+    const b=document.querySelector('.btn[data-pop="'+n+'"]'); if(b) b.classList.remove("on");
+  });
+  aplicarPreset();          /* aula travada volta direto para a mesa dela */
+  render();
+}
+$("#btnReset").addEventListener("click",recomecar);
 $("#btnAmpliar").addEventListener("click",()=>{
   if(eCabeamento||S.passo!==2) return;
   ampliar(S.ampliado || "m");        /* o mixer e o que mais pede tela */
