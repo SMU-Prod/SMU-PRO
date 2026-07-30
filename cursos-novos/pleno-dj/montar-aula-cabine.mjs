@@ -1059,6 +1059,37 @@ const VISOR_JS = `
     }
   }
 
+  /* ------------------------------------------------------------------
+     TRANSPORTE DO YOUTUBE — o PLAY do aparelho tem de valer para ele.
+     Faltava o elo: nao existia UM cmd:"play" no codigo todo. A faixa do
+     YouTube carregava e ficava parada, porque o botao PLAY do aparelho
+     dirige o motor de MP3 e o player do YouTube mora na moldura, sem
+     ninguem mandando nele. Reclamacao do dono: "copio e colo o link e nao
+     toca a musica".
+     Aqui espelhamos o transporte do deck no player: o aluno aperta PLAY no
+     aparelho e o YouTube anda junto. So dispara na MUDANCA, para nao
+     inundar a moldura de mensagens a cada quadro.                       */
+  var YT_ANT = {};                      /* lado -> ultimo estado espelhado */
+  function espelharTransporte(){
+    var L = decksDo();
+    for(var lado=1; lado<=2; lado++){
+      var f = ST.carregada && ST.carregada[lado];
+      if(!f || f.tipo !== "yt"){ YT_ANT[lado] = undefined; continue; }
+      var D = L[lado-1] || L[0];
+      if(!D) continue;
+      var tocando = !!(D.playing || D.tocando || D.play);
+      if(YT_ANT[lado] === tocando) continue;   /* so na mudanca */
+      YT_ANT[lado] = tocando;
+      env({smu:"yt", cmd: tocando ? "play" : "pause", slot:(ST.slot||"1")+"-"+lado});
+    }
+  }
+  /* Laco PROPRIO, e nao pendurado no publicar() do mixer: aquele vive em OUTRA
+     IIFE (fecha antes desta) — chamar de la daria ReferenceError, que o
+     try/catch engoliria calado e o conserto viraria nada. Foi assim que
+     "escolher musica nao fazia nada" durou o dia inteiro.
+     4 vezes por segundo basta: e transporte, nao e ganho. */
+  setInterval(function(){ try{ espelharTransporte(); }catch(e){} }, 250);
+
   async function carregar(lado, faixa){
     if(ST.ocupado) return;
     ST.ocupado = true; ST.msg = "carregando " + faixa.nome + "…"; pintar();
