@@ -42,6 +42,25 @@
     4. SEND/RETURN inteiro era pele (itens n,o,p,q).
     5. BEAT ◄ ► com a faixa CURTA: faltavam 1/16 e 1/8. O manual repete em todo
        efeito "between 1/16 and 16 beats". Ver o comentário em BEATS.
+    5b. O CH SELECT estava com a ORDEM INVERTIDA: o ponteiro apontava para um rótulo
+       e o efeito ia para outro (na posição escrita CROSS FADER B ele aplicava no
+       canal 1; na escrita MASTER, no CROSS FADER B). Só MIC e AUX calhavam de bater.
+       Os dois rotativos varriam ±120° uniformes; a serigrafia medida diz −91,2° a
+       +72,2° no CH SELECT e −92,8° a +92,9° no seletor de efeito, com passo
+       DESIGUAL. Agora cada detente tem o ângulo tirado do próprio rótulo — a conta
+       está no comentário de FXCH_ANG. O CH SELECT não encosta no tempo do efeito:
+       medido nas 7 posições, o delay não se move.
+    5c. MEDIDORES. Acendiam por uma conta sem unidade (pico × 1,5) enquanto o painel
+       imprime uma escala em dB, e ficavam PÓS-fader — o manual, item f, manda o
+       oposto: "It shows the volume BEFORE passing the channel fader". Baixar o fader
+       apagava o medidor do canal, o que impede o ajuste de TRIM antes de abrir o
+       canal. Além disso a leitura era instantânea, sem retenção de pico: a varredura
+       do TRIM saía NÃO-MONOTÔNICA (0,50 → −5,5 dB; 0,75 → −20,6; 1,00 → −11,1),
+       porque a janela de 46 ms caía entre um bumbo e outro. Agora: ponto pré-fader
+       que soma inclusive os caminhos paralelos do SOUND COLOR FX, escala ancorada
+       (o "0" impresso = −12 dBFS, topo = 0 dBFS) e balística de PPM.
+       ⚠️ O medidor NÃO tem animação: ele lê um AnalyserNode. Sem sinal elétrico
+       chegando, nenhum LED acende — medido, 8 LEDs → 0 ao tirar a chave do LINE.
     6. EQ com frequência inventada na barra de ensino ("13 kHz" / "70 Hz").
        Manual: HI −26/+6 dB (20 kHz) · MID (1 kHz) · LOW (20 Hz).
     + o .hit por cima do visor era falso positivo: display não se clica.
@@ -403,10 +422,37 @@ let master,masterAn,mixBus,fxIn,fxDry,fxFilter,fxDelay,fxWet,fxFB,xfA,xfB,thru,m
 /* fone (itens 1–4 e h do manual) · MIC (7,8) · AUX (9) · SEND/RETURN (o,p,q) */
 let hpCue,hpMst,hpMix,hpVol,hpSplitL,hpSplitR,hpCueR,hpMerge,micG,micTone,auxG,srSend,srRet;
 const chans={};
-let xf=0.5, scType=null, fxOn=false, fxIdx=0, fxChIdx=4, beatIdx=5, autoMode=true, baseBpm=120;
+/* fxChIdx=6 → "MASTER". Era 4 no array antigo, que também era MASTER; o índice mudou
+   junto com a reordenação do CH SELECT, o SIGNIFICADO não. */
+let xf=0.5, scType=null, fxOn=false, fxIdx=0, fxChIdx=6, beatIdx=5, autoMode=true, baseBpm=120;
 let srOn=false, celularPlugado=false, modoOff=false;   /* SEND/RETURN, aparelho no USB, Off mode */
+/* ============ OS DOIS ROTATIVOS DO BEAT FX ============
+   ⛔ 30/07/2026 — o CH SELECT estava com a ORDEM INVERTIDA e os dois rotativos com
+   ângulo errado. O ponteiro apontava para um rótulo e o código mandava o efeito para
+   outro: na posição escrita CROSS FADER B ele aplicava no canal 1, e na escrita
+   MASTER aplicava no CROSS FADER B. Só MIC e AUX calhavam de bater.
+
+   A ordem e o ângulo abaixo NÃO foram escolhidos: saem do ângulo de cada rótulo da
+   serigrafia, que já estava medido na foto oficial (as coordenadas em chrome()).
+   A conta tem de converter os dois eixos, porque 1% de x e 1% de y são distâncias
+   diferentes neste painel (254 mm de largura × 323,3 de profundidade):
+        dx_mm = (x_rotulo − x_centro) × 2,540
+        dy_mm = (y_rotulo − y_centro) × 3,233
+        ângulo = atan2(dx_mm, −dy_mm)      (0° = ponteiro para cima, + = horário)
+   Sem essa conversão o ângulo sai torto. Refazer a conta: ferramentas/ e o bloco
+   de rótulos em chrome() são tudo o que é preciso.
+
+   O passo NÃO é uniforme no aparelho real (20,0° a 33,9° no CH SELECT) — por isso
+   cada detente tem o seu ângulo, em vez do sweep de ±120° que estava aqui.        */
 const EFFECTS=["DELAY","ECHO","SPIRAL","REVERB","TRANS","FLANGER","PITCH","ROLL"];
-const FXCH=["1","2","MIC","AUX","MASTER","CF.A","CF.B"];
+const EFFECTS_ANG=[-92.8,-71.1,-47.7,-19.5,20.7,52.2,71.7,92.9];   // medido: varredura 185,6°
+/* ⚠️ CONFIRMAR COM O DONO: a serigrafia põe o "A" ACIMA do "B" no lado esquerdo do
+   knob, e num rotativo que anda no sentido horário isso faz o B vir ANTES do A. É o
+   que a foto diz, então é o que está aqui. Se na foto oficial for o contrário, a
+   correção é trocar estes dois primeiros itens (e os dois primeiros ângulos). */
+const FXCH=["CF.B","CF.A","MIC","AUX","1","2","MASTER"];
+const FXCH_ANG=[-91.2,-66.2,-46.2,-20.2,13.8,41.5,72.2];           // medido: varredura 163,4°
+function angRot(base,i){ return (base==="fxch"?FXCH_ANG:EFFECTS_ANG)[i]; }
 /* ⛔ 30/07/2026 — a faixa do BEAT estava CURTA. O manual repete em TODO efeito
    "Sets the delay time between 1/16 and 16 beats"; faltavam o 1/16 e o 1/8, que
    são justamente as divisões de roll e de trans. Mesma lista do XDJ-RX3. */
@@ -414,7 +460,7 @@ const BEATS=[0.0625,0.125,0.25,0.5,0.75,1,2,4,8,16];
 const BEAT_LAB=["1/16","1/8","1/4","1/2","3/4","1","2","4","8","16"];
 const delayFx={DELAY:0.26,ECHO:0.62,SPIRAL:0.74,REVERB:0.58,ROLL:0.82};
 const FADER_INIT=0.53;                          // cap onde a foto mostra (≈5,3 na escala 0–10)
-const lvl={meter1:0,meter2:0,mmeterL:0,mmeterR:0};
+const lvl={meter1:-999,meter2:-999,mmeterL:-999,mmeterR:-999};   // em dB da escala; -999 = mudo
 let swPos={};                                   // posição corrente de cada chave
 
 /* ===== render das bases (motor reutilizado — bars=16, loop contínuo) ===== */
@@ -539,17 +585,29 @@ async function startAudio(){ if(started)return; started=true;
     c.entrada=AC.createGain(); c.entrada.gain.value=0;
     sp.connect(c.entrada); c.entrada.connect(c.trim);
     c.trim.connect(c.hi); c.hi.connect(c.mid); c.mid.connect(c.low); c.low.connect(c.color); c.color.connect(c.fader);
+    /* ===== PONTO PRÉ-FADER — onde o medidor e o CUE do canal se penduram =====
+       ⛔ 30/07/2026: o medidor estava PÓS-fader. O manual, item f, é explícito:
+       "Channel Level indicator — It shows the volume BEFORE passing the channel fader."
+       Num DJM de verdade, baixar o fader NÃO apaga o medidor do canal: é assim que se
+       ajusta o TRIM de uma faixa antes de abrir o canal na pista. Aqui apagava.
+       Este nó soma TUDO que existe antes do fader — inclusive os caminhos paralelos do
+       SOUND COLOR FX (DUB ECHO e NOISE), que entravam direto no fader e por isso não
+       eram medidos nem monitorados. */
+    c.preFader=AC.createGain(); c.preFader.gain.value=1;
+    c.color.connect(c.preFader);
     // eco do SOUND COLOR FX (DUB ECHO), em paralelo, antes do fader
-    c.color.connect(c.echoBp); c.echoBp.connect(c.echo); c.echo.connect(c.echoWet); c.echoWet.connect(c.fader);
+    c.color.connect(c.echoBp); c.echoBp.connect(c.echo); c.echo.connect(c.echoWet); c.echoWet.connect(c.preFader);
     c.echo.connect(c.echoFB); c.echoFB.connect(c.echo);
     // ruído do SOUND COLOR FX (NOISE)
-    noiseSrc.connect(c.nzBp); c.nzBp.connect(c.nzGain); c.nzGain.connect(c.fader);
-    c.fader.connect(c.analyser); c.fader.connect(c.send); c.send.connect(fxIn);
+    noiseSrc.connect(c.nzBp); c.nzBp.connect(c.nzGain); c.nzGain.connect(c.preFader);
+    c.preFader.connect(c.fader);
+    c.preFader.connect(c.analyser);                    // medidor: PRÉ-fader (item f)
+    c.fader.connect(c.send); c.send.connect(fxIn);
     /* CUE do canal — PRÉ-FADER, como em todo DJM: é o que permite ouvir a próxima
        música no fone com o channel fader ainda embaixo. Sai depois do EQ e do COLOR
        (é por isso que o manual avisa, na nota 1 da tabela de BEAT FX, que com o
        effect channel em [1] ou [2] o efeito NÃO aparece no CUE daquele canal). */
-    c.cue=AC.createGain(); c.cue.gain.value=0; c.color.connect(c.cue); c.cue.connect(hpCue);
+    c.cue=AC.createGain(); c.cue.gain.value=0; c.preFader.connect(c.cue); c.cue.connect(hpCue);
     c.fader.connect(c.dry); c.dry.connect(n==="1"?xfA:xfB);
     chans[n]=c;
   }
@@ -743,14 +801,54 @@ function configureFx(){ dispDirty=true; if(!ready)return;
   else { /* FLANGER */ fxFilter.type="allpass"; fxDelay.delayTime.value=0.003+t*0.013; fxFB.gain.value=0.5; fxWet.gain.value=depth; setDryDuck(0); }
 }
 
+/* ===================== MEDIDORES =====================
+   ⛔ 30/07/2026 — o medidor acendia por uma conta sem unidade (pico × 1,5), enquanto a
+   serigrafia imprime uma escala em dB: 12, 9, 6, 3, 0, −3 … −24. Não havia relação entre
+   o que estava escrito no painel e o que acendia, e por isso a instrução do manual —
+   "Adjust the [TRIM] control so that the channel level indicator lights at about [0 dB]
+   at the peak level" — não tinha como ser seguida.
+
+   Agora cada LED acende no dB que está escrito nele. A âncora: o "0" da serigrafia é
+   −12 dBFS, o que faz o topo da escala (+12) cair exatamente em 0 dBFS, o limite do
+   digital. Assim o topo vermelho é literalmente o clipe.
+
+   E o medidor só se move com SINAL DE VERDADE: ele lê um AnalyserNode pendurado no
+   ponto pré-fader do canal. Sem sinal elétrico chegando — seletor de entrada fora do
+   conector ligado, ou fonte parada — o pico é zero e nenhum LED acende. Não existe
+   animação de VU em lugar nenhum deste arquivo. */
+const MET_DB=[12,9,6,3,0,-3,-6,-9,-12,-18,-24];   // topo → base, igual ao MET_LAB
+const MET_ZERO_DBFS=-12;                          // onde fica o "0" impresso no painel
+const MUDO=-999;
+function picoEmDb(an){ const b=new Uint8Array(an.fftSize); an.getByteTimeDomainData(b);
+  let pk=0; for(const v of b){ const x=Math.abs(v-128)/128; if(x>pk)pk=x; }
+  return pk>1e-5 ? 20*Math.log10(pk)-MET_ZERO_DBFS : MUDO; }
+/* BALÍSTICA — ataque instantâneo, queda controlada.
+   ⚠️ Medido: sem isto a escala do TRIM saía NÃO-MONOTÔNICA (trim 0,50 → −5,5 dB;
+   0,75 → −20,6; 1,00 → −11,1). A janela do getByteTimeDomainData são ~46 ms, e entre
+   um bumbo e outro ela cai no silêncio: o que estava sendo medido era o ponto do loop,
+   não o ganho. Um LED de verdade retém o pico e desce devagar — é o que faz a
+   instrução do manual ("suba o TRIM até o medidor beirar o 0") ter sentido. */
+const MET_QUEDA_DB_S=26;                 // ~1 s do topo até apagar, típico de PPM
+let metT=0;
 function updMeters(){ if(!ready)return;
-  for(const n of ["1","2"]){ const c=chans[n]; const b=new Uint8Array(c.analyser.fftSize); c.analyser.getByteTimeDomainData(b);
-    let pk=0; for(const v of b){ const x=Math.abs(v-128)/128; if(x>pk)pk=x; } lvl["meter"+n]=clamp(pk*1.5,0,1); }
-  const mb=new Uint8Array(masterAn.fftSize); masterAn.getByteTimeDomainData(mb); let mp=0; for(const v of mb){const x=Math.abs(v-128)/128;if(x>mp)mp=x;}
-  lvl.mmeterL=clamp(mp*1.5,0,1); lvl.mmeterR=clamp(mp*1.45,0,1);
+  const agora=(typeof performance!=="undefined")?performance.now():0;
+  const dt=metT?Math.min((agora-metT)/1000,0.25):0; metT=agora;
+  const reter=(id,an)=>{ const novo=picoEmDb(an);
+    const ant=lvl[id]===undefined?MUDO:lvl[id];
+    const caindo=(ant<=MUDO)?MUDO:ant-MET_QUEDA_DB_S*dt;
+    lvl[id]=Math.max(novo,caindo,MUDO); };
+  for(const n of ["1","2"]) reter("meter"+n,chans[n].analyser);
+  reter("mmeterL",masterAn); lvl.mmeterR=lvl.mmeterL;
 }
-function drawMeters(){ for(const id in meters){ const segs=meters[id]; const on=Math.round(lvl[id]*segs.length);
-  for(let i=0;i<segs.length;i++) segs[i].classList.toggle("on", (segs.length-i)<=on); } }
+function drawMeters(){ const t=(typeof performance!=="undefined")?performance.now():0;
+  for(const id in meters){ const segs=meters[id], db=lvl[id]===undefined?MUDO:lvl[id];
+    for(let i=0;i<segs.length;i++) segs[i].classList.toggle("on", db>=MET_DB[i]);
+    /* CLIP do master (item e do manual): "Slow flashing: sound will become distorted.
+       Fast flashing: sound is distorted." O LED de topo é o vermelho. */
+    if(/^mmeter/.test(id)&&segs.length){
+      const piscaRapido=db>=MET_DB[0], piscaLento=db>=MET_DB[1];
+      if(piscaRapido||piscaLento){ const per=piscaRapido?140:420;
+        segs[0].classList.toggle("on", (t%(per*2))<per); } } } }
 
 /* ===== LCD do BEAT FX (matriz de pontos branca, como na foto) ===== */
 let dispCtx,dispW,dispH;
@@ -967,7 +1065,7 @@ function build(){
     let el, kind;
     if(KNOBS.has(base)){ kind="knob"; el=makeKnob(act,base); }
     else if(base==="fxsel"||base==="fxch"){ kind="rotary"; el=document.createElement("div"); el.className="knob rot";
-      el.style.rotate=(((base==="fxch"?(fxChIdx+0.5)/FXCH.length:(fxIdx+0.5)/EFFECTS.length)-0.5)*280)+"deg"; }
+      el.style.rotate=angRot(base,base==="fxch"?fxChIdx:fxIdx)+"deg"; }
     else if(/^(cue|cuemaster)/.test(base)){ kind="cue"; el=document.createElement("div"); el.className="cue"; el.textContent="CUE"; }
     else if(/^sc/.test(base)){ kind="scb"; el=document.createElement("div"); el.className="scb";
       el.innerHTML='<span>'+(base==="scDUBECHO"?"DUB<br>ECHO":base.slice(2))+'</span>'; }
@@ -1102,9 +1200,14 @@ function onControl(act,base,info,e){ teach(info[0],info[1]);
         ? "Celular <b>plugado</b>. Agora o <b>SEND/RETURN ON/OFF</b> liga: o canal do <b>CH SELECT</b> sai para o app de efeito e volta pelo <b>RETURN</b>."
         : "Celular <b>desplugado</b>. Manual: sem aparelho conectado o SEND/RETURN apaga sozinho e não religa.");
     return; }
-  if(act==="fxsel"){ fxIdx=(fxIdx+1)%EFFECTS.length; els.fxsel.style.rotate=(((fxIdx+0.5)/EFFECTS.length-0.5)*280)+"deg"; configureFx(); return; }
-  if(act==="fxch"){ fxChIdx=(fxChIdx+1)%FXCH.length; els.fxch.style.rotate=(((fxChIdx+0.5)/FXCH.length-0.5)*280)+"deg";
-    routeFx(); configureFx(); aplicarSendReturn(); return; }   // o CH SELECT também é o SEND CH
+  if(act==="fxsel"){ fxIdx=(fxIdx+1)%EFFECTS.length; els.fxsel.style.rotate=angRot("fxsel",fxIdx)+"deg";
+    configureFx();
+    teach("BEAT FX — "+EFFECTS[fxIdx], T.fxsel[1]); return; }
+  /* CH SELECT: escolhe ONDE o efeito age — e SÓ isso. Não encosta no tempo do efeito
+     (esse é o BEAT ◄ ► com o TIME). Medido nas 7 posições: o delay não se move. */
+  if(act==="fxch"){ fxChIdx=(fxChIdx+1)%FXCH.length; els.fxch.style.rotate=angRot("fxch",fxChIdx)+"deg";
+    routeFx(); configureFx(); aplicarSendReturn();              // o CH SELECT também é o SEND CH
+    teach("CH SELECT — "+FXCH[fxChIdx], T.fxch[1]); return; }
 }
 
 let tapTimes=[];
