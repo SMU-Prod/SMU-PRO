@@ -246,7 +246,7 @@ const PONTE = `<script>/* PONTE SMU */
      mixer, ele ligava o audio com ganho 1 e as bases de demonstracao DELE
      tocavam por cima do player. Agora o pedido fica guardado e e aplicado no
      instante em que o contexto nasce.                                       */
-  var ultVol = {v:1, eq:null, temPedido:false};
+  var ultVol = {v:1, eq:null, filtros:null, temPedido:false};
   if(O){
     function P(){
       var c=new O(), destReal=c.destination;
@@ -260,29 +260,80 @@ const PONTE = `<script>/* PONTE SMU */
       var pre=c.createGain(); pre.gain.value=1;          /* o sim conecta AQUI */
       var an=c.createAnalyser(); an.fftSize=512; pre.connect(an);
       var g=c.createGain(); g.gain.value=1; pre.connect(g);
+      /* ---------------------------------------------------------------
+         A TIRA DE CANAL DO MIXER, DENTRO DO DECK.
+         O audio nao atravessa o iframe, entao o timbre nao pode "vir
+         pronto" do mixer. O que atravessa e a DESCRICAO dos filtros que o
+         mixer tem ligados; aqui existem biquads DE VERDADE, e o som do
+         player passa por eles. Quatro: as 3 bandas do EQ + o COLOR/FILTER.
+         O tipo/frequencia/Q de cada um NAO e chutado aqui — chega do
+         proprio no do mixer (ver a funcao cadeia() no lado mixer). Estes valores
+         iniciais so valem enquanto o mixer nao falou.                  */
       var lo=c.createBiquadFilter(); lo.type="lowshelf";  lo.frequency.value=200;  lo.gain.value=0;
       var md=c.createBiquadFilter(); md.type="peaking";   md.frequency.value=1000; md.Q.value=0.9; md.gain.value=0;
       var hi=c.createBiquadFilter(); hi.type="highshelf"; hi.frequency.value=4000; hi.gain.value=0;
-      g.connect(lo); lo.connect(md); md.connect(hi); hi.connect(destReal);
+      var col=c.createBiquadFilter(); col.type="allpass"; col.frequency.value=1000; col.Q.value=1; col.gain.value=0;
+      /* 5a casa: mixer de 4 bandas (DJM-V10) precisa dela alem do FILTER */
+      var col2=c.createBiquadFilter(); col2.type="allpass"; col2.frequency.value=1000; col2.Q.value=1; col2.gain.value=0;
+      /* torneira de bancada: 1 em producao. Serve para MEDIR sem tocar som
+         na maquina de quem esta testando (window.__SMU_MUDO=1). */
+      var sai=c.createGain(); sai.gain.value = window.__SMU_MUDO ? 0 : 1;
+      g.connect(lo); lo.connect(md); md.connect(hi); hi.connect(col); col.connect(col2);
+      col2.connect(sai); sai.connect(destReal);
       try{ Object.defineProperty(c,"destination",{get:function(){return pre},configurable:true}); }catch(e){}
-      window.__g.push(g); window.__cad.push({ctx:c,an:an,g:g,lo:lo,md:md,hi:hi});
+      var reg={ctx:c,an:an,g:g,lo:lo,md:md,hi:hi,col:col,col2:col2,sai:sai,dest:destReal};
+      reg.f=[lo,md,hi,col,col2];
+      window.__g.push(g); window.__cad.push(reg);
       if(ultVol.temPedido){                 /* o pedido que chegou antes da hora */
         g.gain.value = ultVol.v;
         if(ultVol.eq){ lo.gain.value=ultVol.eq.low||0; md.gain.value=ultVol.eq.mid||0; hi.gain.value=ultVol.eq.hi||0; }
+        if(ultVol.filtros) porFiltros(reg, ultVol.filtros, true);
       }
       return c;
     }
     P.prototype=O.prototype; window.AudioContext=P; window.webkitAudioContext=P;
   }
   function rampa(p,v){ try{
+      if(!isFinite(v)) return;
+      if(Math.abs(p.value-v) < 1e-6) return;         /* ja esta la: nao agenda nada */
       var t=(window.__cad[0]&&window.__cad[0].ctx?window.__cad[0].ctx.currentTime:0);
       p.cancelScheduledValues(t); p.setValueAtTime(p.value,t); p.linearRampToValueAtTime(v,t+0.02);
     }catch(e){ try{ p.value=v; }catch(_){} } }
-  function volume(v,eq){
-    ultVol.v = v; ultVol.eq = eq; ultVol.temPedido = true;
+  /* ---------------------------------------------------------------------
+     O TIMBRE DO MIXER APLICADO AQUI DENTRO.
+     O parametro fs e a lista de filtros que o mixer REALMENTE tem ligados, cada um
+     {t:tipo, f:frequencia, q:Q, g:ganho em dB}, lida dos nos dele. Nada e
+     inventado deste lado: se o mixer nao mandar, o filtro fica em allpass
+     (transparente), que e o mesmo que nao existir.
+     ⚠️ Rampa LINEAR de 20 ms, que TERMINA. Nada de setTargetAtTime: ele e
+     exponencial e nunca acaba, o parametro vira a-rate e o biquad passa a
+     recalcular coeficiente por amostra (34,5% de CPU na CL5).           */
+  function porFiltros(a, fs, direto){
+    if(!a || !a.f) return;
+    for(var i=0;i<a.f.length;i++){
+      var n=a.f[i], s=fs&&fs[i];
+      if(!s){                                   /* sobra de filtro: transparente */
+        try{ n.type="allpass"; }catch(e){}
+        if(direto){ try{ n.gain.value=0; }catch(e){} } else rampa(n.gain,0);
+        continue;
+      }
+      try{ if(s.t && n.type!==s.t) n.type=s.t; }catch(e){}
+      if(direto){
+        try{ if(s.f!=null) n.frequency.value=s.f; if(s.q!=null) n.Q.value=s.q; if(s.g!=null) n.gain.value=s.g; }catch(e){}
+      } else {
+        if(s.f!=null) rampa(n.frequency, s.f);
+        if(s.q!=null) rampa(n.Q, s.q);
+        if(s.g!=null) rampa(n.gain, s.g);
+      }
+    }
+  }
+  function volume(v,eq,filtros){
+    ultVol.v = v; ultVol.eq = eq; if(filtros!==undefined) ultVol.filtros = filtros;
+    ultVol.temPedido = true;
     (window.__cad||[]).forEach(function(a){
       rampa(a.g.gain, v);
-      if(eq){ rampa(a.lo.gain, eq.low||0); rampa(a.md.gain, eq.mid||0); rampa(a.hi.gain, eq.hi||0); }
+      if(filtros) porFiltros(a, filtros, false);
+      else if(eq){ rampa(a.lo.gain, eq.low||0); rampa(a.md.gain, eq.mid||0); rampa(a.hi.gain, eq.hi||0); }
     });
   }
   /* pico ANTES do ganho: diz se o PLAYER esta tocando, nao se o mixer deixou passar */
@@ -315,9 +366,125 @@ const PONTE = `<script>/* PONTE SMU */
        d.an / b.an / d.masterAn ....... DJM-600
        dA.an / dB.an / masterAn ....... DJM-2000
      Os tres casos leem por getByteTimeDomainData, entao um so remendo serve. */
+  function po(o){ return o && typeof o==="object"; }
+  /* ---------------------------------------------------------------------
+     OS CANAIS DO MIXER — o mesmo levantamento arquivo por arquivo que ja
+     servia para achar os analisadores serve para achar a TIRA DE CANAL
+     inteira. Cada simulador guarda o canal num objeto so; o que muda e o
+     nome da variavel.                                                   */
+  function achaCanais(){
+    var C={};
+    try{ if(typeof chans!=="undefined" && po(chans))
+      for(var k in chans){ if(po(chans[k])) C[k]=chans[k]; } }catch(e){}
+    try{ if(!C["1"] && typeof d!=="undefined" && po(d) && (d.fader||d.trim)) C["1"]=d; }catch(e){}
+    try{ if(!C["2"] && typeof b!=="undefined" && po(b) && (b.fader||b.trim)) C["2"]=b; }catch(e){}
+    try{ if(!C["1"] && typeof dA!=="undefined" && po(dA) && (dA.fader||dA.trim)) C["1"]=dA; }catch(e){}
+    try{ if(!C["2"] && typeof dB!=="undefined" && po(dB) && (dB.fader||dB.trim)) C["2"]=dB; }catch(e){}
+    /* DJM-A9: os canais moram em CH */
+    try{ if(!C["1"] && typeof CH!=="undefined" && po(CH))
+      for(var j in CH){ if(po(CH[j])) C[j]=CH[j]; } }catch(e){}
+    return C;
+  }
+  /* ⚠️ Procurar por NOME nao basta: ha simulador em que c.ch e o NUMERO do
+     canal e nao o no de ganho. Por isso cada leitor so aceita o que de fato
+     tem o parametro que ele vai ler, e segue procurando quando nao tem.    */
+  function pgan(o,nomes){
+    for(var i=0;i<nomes.length;i++){
+      try{ var n=o[nomes[i]];
+        if(n && n.gain && typeof n.gain.value==="number") return +n.gain.value;
+      }catch(e){}
+    }
+    return null;
+  }
+  function pgan1(n){ try{ return (n && n.gain && typeof n.gain.value==="number") ? +n.gain.value : null; }catch(e){ return null; } }
+  function pbq(o,nomes){
+    for(var i=0;i<nomes.length;i++){
+      try{ var n=o[nomes[i]];
+        if(n && n.frequency && typeof n.frequency.value==="number" && n.type)
+          return {t:String(n.type), f:+n.frequency.value, q:(n.Q?+n.Q.value:1), g:(n.gain?+n.gain.value:0)};
+      }catch(e){}
+    }
+    return null;
+  }
+  /* ---------------------------------------------------------------------
+     CADEIA — o caminho do som DENTRO do mixer, lido dos nos de audio.
+     ⛔ Nao se re-deduz dB por angulo de knob aqui. O simulador ja converteu
+     posicao em parametro (o DJM-900NXS2 faz -26..+6 dB por banda, e o TRIM
+     -inf..+9 dB, exatamente como o manual dele). Ler o NO e a fonte de
+     verdade; refazer a conta do lado de fora seria inventar uma segunda.
+     So existe depois que o aluno liga o audio do mixer. Antes disso volta
+     null e a aula cai no caminho antigo, por posicao de controle.       */
+  function cadeia(){
+    var C=achaCanais(), out={ch:{}, master:null, bus:{}}, achou=false;
+    var xa=null, xb=null, th=null, ms=null, am=null;
+    try{ if(typeof xfA!=="undefined") xa=xfA; }catch(e){}
+    try{ if(typeof xfB!=="undefined") xb=xfB; }catch(e){}
+    try{ if(typeof thru!=="undefined") th=thru; }catch(e){}
+    try{ if(th==null && typeof thruBus!=="undefined") th=thruBus; }catch(e){}
+    try{ if(typeof master!=="undefined") ms=master; }catch(e){}
+    try{ if(typeof assignMode!=="undefined") am=assignMode; }catch(e){}
+    try{ if(!am && typeof xfAssign!=="undefined" && po(xfAssign)) am=xfAssign; }catch(e){}   /* Denon X1850 */
+    try{ if(!am && typeof SW!=="undefined" && po(SW))
+      am={1:SW.assign1,2:SW.assign2,3:SW.assign3,4:SW.assign4}; }catch(e){}                  /* DJM-A9 */
+    out.bus.A=pgan1(xa); out.bus.B=pgan1(xb); out.bus.T=pgan1(th);
+    out.master=pgan1(ms);
+    /* DJM-600: nao tem master global — o volume de saida mora no canal 1 */
+    if(out.master==null) for(var m1 in C){ var mv=pgan(C[m1],["masterVol","masterG","mst"]);
+      if(mv!=null){ out.master=mv; break; } }
+    for(var k in C){
+      var c=C[k];
+      var e={
+        trim : pgan(c,["trim","gain","gan"]),
+        /* "ch" fica por ULTIMO de proposito: em alguns simuladores ch e o
+           NUMERO do canal, nao o no de ganho. pgan() so aceita quem tem
+           .gain.value, entao segue procurando em vez de aceitar o numero.
+           ⚠️ chFader ANTES de fader, e a ordem tem motivo MEDIDO: no DJM-600 o
+           objeto do canal 1 carrega os dois — "fader" e o volume de SAIDA do
+           aparelho e "chFader" e o do canal. Lendo "fader" primeiro, o canal 1
+           publicava o master e o canal 2 publicava o dele: o fader do canal 1
+           nao mexia no deck 1 e o master mexia duas vezes. */
+        fader: pgan(c,["chFader","chfader","fader","fdr","ch"]),
+        hi   : pbq(c,["hi","high","eqHi","eqhi","treble"]),
+        mid  : pbq(c,["mid","eqMid","eqmid","himid","midHi","midhi"]),
+        low  : pbq(c,["low","eqLo","eqLow","eqlow","bass"]),
+        color: pbq(c,["color","colour","filter","filt","filtro","cf"])
+      };
+      if(e.trim==null && e.fader==null && !e.hi && !e.low) continue;
+      /* a 4a banda do DJM-V10 e o corte -inf do ISOLATOR entram como fator */
+      var extra = pbq(c,["midLow","midlow","lowMid","lowmid","mid2"]);
+      if(extra) e.mid2=extra;
+      var iso = pgan(c,["isoCut","iso","kill"]);
+      if(iso!=null && e.trim!=null) e.trim*=iso; else if(iso!=null) e.trim=iso;
+      var src = pgan(c,["src","fonte","input"]);        /* seletor de entrada modelado no audio */
+      if(src!=null && e.trim!=null) e.trim*=src;
+      /* PARA QUE BARRAMENTO DO CROSSFADER ESTE CANAL VAI — tres fontes:
+         1) o proprio canal ja aplica a lei do crossfader num no dele
+            (DJM-2000: d.xf). E o mais fiel: nem precisa saber o assign.
+         2) o assign publicado pelo simulador + o ganho do barramento.
+         3) mixer de 2 canais sem assign nenhum (DJM-450): CH1 vai no A e CH2
+            no B porque e assim que o proprio simulador liga o grafo
+            (c.dry.connect(n==="1"?xfA:xfB)) — e assim que a mesa de battle e
+            fisicamente montada. Em mixer de 4 canais NAO se chuta: fica nulo,
+            e nulo faz o crossfader nao mexer no ganho. */
+      var proprio = pgan(c,["xf","xfG","xfGain"]);
+      var modo = null; try{ if(am && am[k]!=null) modo=String(am[k]); }catch(_){}
+      if(proprio!=null) e.bus = proprio;
+      else if(/^A$/i.test(modo||"")) e.bus = out.bus.A;
+      else if(/^B$/i.test(modo||"")) e.bus = out.bus.B;
+      else if(/THRU|OFF|CENTER/i.test(modo||"")) e.bus = (out.bus.T==null?1:out.bus.T);
+      else e.bus = null;
+      out.ch[k]=e; achou=true;
+    }
+    var chaves=Object.keys(out.ch);
+    if(chaves.length===2 && out.ch[chaves[0]].bus==null && out.ch[chaves[1]].bus==null
+       && out.bus.A!=null && out.bus.B!=null){
+      out.ch[chaves[0]].bus = out.bus.A;
+      out.ch[chaves[1]].bus = out.bus.B;
+    }
+    return achou ? out : null;
+  }
   function achaAnalisadores(){
     var A={ch:{}, master:[]};
-    function po(o){ return o && typeof o==="object"; }
     try{ if(typeof chans!=="undefined" && po(chans))
       for(var k in chans){ if(po(chans[k]) && chans[k].analyser) A.ch[k]=chans[k].analyser; } }catch(e){}
     try{ if(!A.ch["1"] && typeof d!=="undefined" && po(d) && d.an) A.ch["1"]=d.an; }catch(e){}
@@ -389,13 +556,39 @@ const PONTE = `<script>/* PONTE SMU */
     var v=eixo==="left" ? (n-7)/86 : 1-(n-6)/88;
     return c01(v);
   }
-  function posClasse(el){ if(!el||!el.classList) return null;
+  /* ACHAR O ELEMENTO DE UM CONTROLE — nesta ordem, e a ordem tem motivo:
+     o mapa els do proprio simulador vem primeiro porque e ele que guarda a
+     PELE (e a pele e quem recebe a classe "on"); o [data-act] do DOM e a
+     camada .hit transparente por cima, que nunca acende. Procurar so pelo
+     data-act fazia todo CUE parecer apagado. */
+  function elDe(EL, nomes){
+    for(var i=0;i<nomes.length;i++){
+      try{ if(EL && EL[nomes[i]]) return EL[nomes[i]]; }catch(e){}
+    }
+    for(var j=0;j<nomes.length;j++){
+      var e2=document.querySelector('[data-act="'+nomes[j]+'"]');
+      if(e2) return e2;
+    }
+    return null;
+  }
+  /* Posicao de uma CHAVE (2 ou 3 posicoes): o simulador marca com p1/p2.
+     ⛔ So vale para CHAVE. Ler um KNOB por aqui devolve 0 sempre — e 0 nao e
+     "nao sei", e "primeira posicao". Foi exatamente isso que aconteceu quando
+     o seletor de entrada do DJM-900NXS2 (que e um knob rotativo, nao uma
+     chave) passou a ser encontrado: a aula concluiu "o canal esta em USB A",
+     achou que nao casava com o player e EMUDECEU os dois decks. Quem nao e
+     chave sai NULO, e nulo a aula trata como "nao sei" — nunca como fechado. */
+  function ehChave(el){ if(!el||!el.classList) return false;
+    if(el.classList.contains("knob")) return false;
+    return el.classList.contains("swp")||el.classList.contains("swv")||
+           el.classList.contains("sw")||el.classList.contains("p1")||el.classList.contains("p2"); }
+  function posClasse(el){ if(!ehChave(el)) return null;
     return el.classList.contains("p2")?2:el.classList.contains("p1")?1:0; }
   function knob(act){
     var KS=G("knobState"), VV=G("V");
     if(KS&&KS[act]!=null) return c01(+KS[act]);
     if(VV&&VV[act]!=null) return c01(+VV[act]);
-    var e=document.querySelector('[data-act="'+act+'"]');
+    var e=elDe(G("els"),[act]);
     if(e){ var r=parseFloat(e.style.rotate);
       if(!isFinite(r)&&e.style.transform){ var m=/rotate\\(([-\\d.]+)deg/.exec(e.style.transform); if(m) r=parseFloat(m[1]); }
       if(isFinite(r)) return c01(r/270+0.5); }
@@ -435,27 +628,46 @@ const PONTE = `<script>/* PONTE SMU */
   }
   function selIdxDo(c,SW,SWS){
     if(typeof SW==="function"){ try{ var p=SW("sel"+c); if(p!=null&&isFinite(p)) return p; }catch(e){} }
+    /* DJM-450: swPos e um OBJETO com a posicao de cada chave. E o estado do
+       proprio simulador — vale mais que ler classe de CSS. */
+    if(SW && typeof SW==="object"){
+      if(SW["sel"+c]!=null && isFinite(+SW["sel"+c])) return +SW["sel"+c];
+      if(SW["sel"+LETRA[c-1]]!=null && isFinite(+SW["sel"+LETRA[c-1]])) return +SW["sel"+LETRA[c-1]];
+    }
     if(SWS){ if(SWS["sel"+c]!=null) return +SWS["sel"+c];
              if(SWS["sel"+LETRA[c-1]]!=null) return +SWS["sel"+LETRA[c-1]]; }
-    var e=document.querySelector('[data-act="sel'+c+'"]')||document.querySelector('[data-act="sel'+LETRA[c-1]+'"]');
-    return posClasse(e);
+    return posClasse(elDe(G("els"),["sel"+c,"sel"+LETRA[c-1]]));
   }
   function estado(){
     var FV=G("faderVal"), EL=G("els"), SW=G("swPos"), AM=G("assignMode"),
         SL=G("SEL_LAB"), SWS=G("SWST"), VV=G("V");
     var fads=document.querySelectorAll(".fad,.fader");
-    var est={fader:{},trim:{},eq:{},selIdx:{},selOps:{},assign:{},xf:null,master:null};
+    var est={fader:{},trim:{},eq:{},filter:{},cue:{},on:{},selIdx:{},selOps:{},assign:{},xf:null,master:null,aud:null};
     for(var c=1;c<=6;c++){
       var v=faderDo(c,FV,VV,EL,fads); if(v!=null) est.fader[c]=v;
       var t=knob("trim"+c); if(t==null&&VV&&VV["trim"+c]!=null) t=c01(+VV["trim"+c]);
       if(t!=null) est.trim[c]=t;
       var h=knob("hi"+c), m=knob("mid"+c), l=knob("low"+c);
       if(h!=null||m!=null||l!=null) est.eq[c]={hi:h,mid:m,low:l};
+      /* FILTER / SOUND COLOR FX do canal: knob CENTRADO — 0,5 e neutro.
+         Publicado em -1..+1, que e como o proprio simulador trata (setColor
+         recebe (v-0,5)*2). O NOME do efeito escolhido vem em est.fx.       */
+      var fl=knob("color"+c); if(fl==null) fl=knob("filter"+c); if(fl==null) fl=knob("filtro"+c);
+      if(fl!=null) est.filter[c]=+( (fl-0.5)*2 ).toFixed(4);
+      /* CUE do canal: e monitoracao de fone. Publicado para a aula MOSTRAR;
+         ⛔ nao entra no ganho — ela nao tem saida de fone separada. */
+      var ce=elDe(EL,["cue"+c,"cueCh"+c,"hp"+c]);
+      if(ce&&ce.classList) est.cue[c]=ce.classList.contains("on");
+      /* ON/OFF do canal: so os mixers que TEM a tecla. O DJM-900NXS2 nao tem
+         (o painel do manual nao traz essa tecla) — ali fica indefinido, e a
+         aula trata indefinido como LIGADO. Nao se inventa botao. */
+      var oe=elDe(EL,["on"+c,"ch"+c+"on","chon"+c]);
+      if(oe&&oe.classList) est.on[c]=oe.classList.contains("on");
       var pos=selIdxDo(c,SW,SWS);   if(pos!=null) est.selIdx[c]=pos;
       var ops=opcoesSel(SL&&SL[c-1]); if(ops) est.selOps[c]=ops;
       var a=null;
       if(AM&&AM[c]!=null) a=String(AM[c]);
-      else { var ea=document.querySelector('[data-act="assign'+c+'"]'); var p=posClasse(ea);
+      else { var p=posClasse(elDe(EL,["assign"+c]));
         if(p!=null) a=["A","THRU","B"][p]; }
       if(a) est.assign[c]=a;
     }
@@ -464,6 +676,8 @@ const PONTE = `<script>/* PONTE SMU */
     else if(VV&&VV.crossfader!=null&&isFinite(+VV.crossfader)) est.xf=c01(+VV.crossfader);
     else est.xf=capV(document.querySelector(".xfad,.xf"),"left");
     est.master = masterDo(VV,EL);
+    try{ if(typeof scType!=="undefined" && scType) est.fx=String(scType); }catch(e){}
+    est.aud = cadeia();          /* a fonte de verdade, quando o audio ja ligou */
     return est;
   }
 
@@ -471,8 +685,16 @@ const PONTE = `<script>/* PONTE SMU */
   var anterior="";
   window.addEventListener("message",function(e){
     var d=e.data; if(!d||!d.smu) return;
-    if(d.smu==="vol"){ volume(typeof d.v==="number"?d.v:1, d.eq||null); return; }
+    /* "canal" e o nome novo do mesmo caminho: o deck recebe a tira de canal
+       que o mixer aplicou nele. "vol" continua valendo (contrato antigo). */
+    if(d.smu==="canal"||d.smu==="vol"){
+      volume(typeof d.v==="number"?d.v:(typeof d.g==="number"?d.g:1), d.eq||null,
+             d.filtros!==undefined?d.filtros:undefined);
+      return;
+    }
     if(d.smu==="tam?"){ mandaTam(); return; }
+    if(d.smu==="mudo"){ (window.__cad||[]).forEach(function(a){ try{ a.sai.gain.value = d.on?0:1; }catch(e){} });
+      window.__SMU_MUDO = !!d.on; return; }
     if(d.smu==="vu"){ porVU(d); return; }
     if(d.smu==="estado?"){ env({smu:"estado",est:estado()}); return; }
     if(d.smu==="faixas?"){
@@ -566,12 +788,55 @@ const PONTE = `<script>/* PONTE SMU */
     });
   }
 
-  function bater(){
+  /* ---------------------------------------------------------------------
+     QUANDO O MIXER AVISA
+     Antes so havia batida de 150 ms. Passar a avisar NA HORA tira o atraso
+     de ate 150 ms que dava sensacao de fader mole.
+     ⚠️ Nada de mandar mensagem a cada pointermove — foi redraw sincrono por
+     movimento que travou o iPad. O ponteiro so LEVANTA UMA BANDEIRA; quem
+     monta e envia o estado e o requestAnimationFrame, uma vez por quadro.
+     A batida de 150 ms fica como rede: em aba escondida o rAF nao roda.   */
+  var quadro=0;
+  function publicar(){
+    if(quadro){ try{ cancelAnimationFrame(quadro); }catch(e){} quadro=0; }
     var e=estado(); var j=JSON.stringify(e);
-    if(j!==anterior){ anterior=j; env({smu:"estado",est:e}); }
-    env({smu:"nivel",v:pico()});
+    if(j===anterior) return;
+    anterior=j; env({smu:"estado",est:e});
+    /* contrato por canal, que e como a aula pensa: um aviso por canal */
+    for(var c=1;c<=2;c++){
+      var q=e.eq[c]||{};
+      env({smu:"mix", ch:c, trim:e.trim[c]==null?null:e.trim[c],
+           hi:q.hi==null?null:q.hi, mid:q.mid==null?null:q.mid, low:q.low==null?null:q.low,
+           filter:e.filter[c]==null?null:e.filter[c], fader:e.fader[c]==null?null:e.fader[c],
+           xf:e.xf, cue:e.cue[c]==null?null:e.cue[c], on:e.on[c]==null?null:e.on[c],
+           assign:e.assign[c]||null, master:e.master, fx:e.fx||null,
+           aud:e.aud&&e.aud.ch?e.aud.ch[c]:null, audMaster:e.aud?e.aud.master:null});
+    }
+  }
+  function agenda(){ if(quadro) return;
+    quadro = (window.requestAnimationFrame||function(f){return setTimeout(f,16)})(function(){ quadro=0; publicar(); }); }
+  function bater(){ publicar(); env({smu:"nivel",v:pico()}); }
+  /* pendura o aviso nas proprias funcoes do simulador, sem reescrever nenhuma:
+     declaracao function no topo do script vira propriedade de window, entao
+     trocar window.setEq troca o que as chamadas de dentro enxergam. Chamamos
+     a original SEMPRE e devolvemos o retorno dela. */
+  function pendurar(){
+    ["setEq","setColor","applyColor","applyAllColor","applyXf","setAssign","onKnob",
+     "setFader","applyFader","applyEq","applyCross","applyTrim","setTrim","setMaster"]
+    .forEach(function(n){
+      var f=window[n];
+      if(typeof f!=="function" || f.__smuAviso) return;
+      var w=function(){ var r=f.apply(this,arguments); try{ agenda(); }catch(e){} return r; };
+      w.__smuAviso=1; try{ window[n]=w; }catch(e){}
+    });
   }
   function comecar(){ mandaTam(); setTimeout(mandaTam,400); setTimeout(mandaTam,1500);
+    pendurar(); setTimeout(pendurar,1200);     /* de novo: quem so nasce no startAudio */
+    /* so levanta a bandeira. Em pointermove sem botao apertado (mouse so
+       passeando) nem isso: nao ha o que publicar e o estado() custa DOM. */
+    var bandeira=function(ev){ if(ev.type==="pointermove" && !ev.buttons) return; agenda(); };
+    ["pointerdown","pointermove","pointerup","pointercancel","wheel","keydown"]
+      .forEach(function(t){ addEventListener(t, bandeira, true); });
     setInterval(bater,150); }
   if(document.readyState==="complete"||document.readyState==="interactive") setTimeout(comecar,0);
   else window.addEventListener("DOMContentLoaded",comecar);

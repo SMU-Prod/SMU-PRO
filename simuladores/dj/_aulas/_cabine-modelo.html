@@ -148,6 +148,20 @@
     background:#10304a;color:#7fd4ff;border:1px solid #1c4e73;white-space:nowrap}
   .apl .cab .ch.mix{background:#2b1f3a;color:#d3b6ff;border-color:#4b3670}
   .apl .cab .esq{margin-left:auto;display:flex;gap:5px}
+  /* --- o caminho do som, à vista --- */
+  #rota{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:5px 8px;
+        background:#0e1216;border-bottom:1px solid #1b2027;font-size:10px;line-height:1.35}
+  #rota .via{display:flex;align-items:center;gap:5px;padding:3px 7px;border-radius:5px;
+             background:#141a20;border:1px solid #222a33;white-space:nowrap}
+  #rota .via.off{opacity:.45}
+  #rota .via b{font-weight:900;letter-spacing:.4px}
+  #rota .ch1 b{color:#8fd6ff} #rota .ch2 b{color:#ffc98a} #rota .mst b{color:#d3b6ff}
+  #rota .db{font-variant-numeric:tabular-nums;color:#cfe6ff;font-weight:800}
+  #rota .det{color:#7d8b99}
+  #rota .seta{color:#4d5a68;font-weight:900}
+  #rota .barra{width:46px;height:5px;border-radius:3px;background:#1d242c;overflow:hidden}
+  #rota .barra i{display:block;height:100%;background:linear-gradient(90deg,#2f7d4f,#8fd66a)}
+  #rota .barra.q i{background:linear-gradient(90deg,#8a6d2a,#ffcf5a)}
   /* A MOLDURA e so a janela. Quem encolhe e o IFRAME INTEIRO, por transform:
      medida em px (fonte, borda, padding) nao escala sozinha — escalar o
      contexto todo resolve tudo junto e nunca encavala. */
@@ -281,6 +295,11 @@
     <div class="pop" id="pop-mus"><h4>Músicas</h4><div id="mus"></div></div>
   </header>
 
+  <!-- O CAMINHO DO SOM, à vista. O aluno tem de VER que o player da esquerda
+       entra no CH1, que quem manda no volume/timbre é o mixer, e que o MASTER
+       é o que sai no alto-falante do aparelho dele. -->
+  <div id="rota" hidden></div>
+
   <main id="palco"></main>
 </div>
 
@@ -324,6 +343,7 @@ const S = {
   /* --- aula 2 (praticando) --- */
   ampliado:null,                /* "1" | "m" | "2" */
   mixEstado:null,               /* estado publicado pelo simulador do mixer */
+  ganho:{1:null,2:null},        /* o que a aula MANDOU para cada deck (mostrado na tela) */
   nivel:{1:0,2:0},              /* nivel de audio medido na saida de cada deck */
   tam:{},                       /* tamanho natural informado por cada simulador */
   /* ---------------------------------------------------------------------
@@ -694,9 +714,9 @@ function telaMesa(){
   }
   const s1=simDe(S.d1), s2=simDe(S.d2), sm=simDe(S.mix);
   return '<div class="mesa" id="mesa">'+
-    caixaAparelho("1", s1, "CANAL 1", "")+
-    caixaAparelho("m", sm, "MIXER", "mix")+
-    caixaAparelho("2", s2, "CANAL 2", "")+
+    caixaAparelho("1", s1, "SAI NO CANAL 1", "")+
+    caixaAparelho("m", sm, "MIXER · MANDA NOS DOIS", "mix")+
+    caixaAparelho("2", s2, "SAI NO CANAL 2", "")+
   '</div>';
 }
 function caixaAparelho(slot, s, rot, cls){
@@ -871,6 +891,7 @@ function selDoCanal(c){
 function eloDoCanal(c){
   const m=S.mixEstado;
   if(!m) return {ok:false, txt:"o simulador do mixer ainda não respondeu — toque no mixer uma vez para acordá-lo."};
+  if(m.on && m.on[c]===false) return {ok:false, txt:"o <b>CANAL "+c+"</b> está <b>desligado</b> na tecla ON."};
   const sel=selDoCanal(c);
   if(sel.conhecido && !sel.casa)
     return {ok:false, txt:"o <b>seletor de entrada do CANAL "+c+"</b> está em <b>"+esc(sel.pos)+"</b>. Nessa posição o canal ouve outra fonte — o player não sai. "+
@@ -889,16 +910,50 @@ function eloDoCanal(c){
                     : "carregue uma faixa <b>no visor do aparelho</b> (USB / BROWSE) e aperte PLAY.")};
   return {ok:true, txt:""};
 }
+/* ----------------------------------------------------------------------------
+   O GANHO E O TIMBRE QUE VAO PARA O DECK
+   Duas fontes, nesta ordem — e a ordem importa:
+
+   1) m.aud — os NÓS DE ÁUDIO do próprio mixer, lidos depois que o aluno ligou
+      o áudio dele. É a fonte de verdade: o simulador já converteu posição de
+      controle em parâmetro (o DJM-900NXS2 faz −26..+6 dB por banda e o TRIM
+      −∞..+9 dB, como no manual dele). Aqui só se MULTIPLICA o que ele fez e se
+      copia a especificação dos filtros para o deck montar biquads iguais.
+      ⛔ Não se refaz a conta de dB deste lado. Refazer seria criar uma segunda
+      verdade, que discorda da primeira no dia em que alguém mexer no mixer.
+
+   2) posição dos controles — o caminho antigo, que continua valendo enquanto o
+      áudio do mixer não ligou (aí não existe nó nenhum para ler).
+
+   O que sai daqui:  v = trim × fader × crossfader × master   (produto puro, sem
+   constante inventada), e `filtros` = as 3 bandas do EQ + o COLOR/FILTER, cada
+   um com tipo, frequência, Q e ganho MEDIDOS no mixer.
+   ---------------------------------------------------------------------------- */
 function ganhoDoCanal(c){
-  const m=S.mixEstado; if(!m) return {v:0, eq:null};
-  if(m.sel && m.sel[c] && m.sel[c].casa===false) return {v:0, eq:null};
+  const m=S.mixEstado; if(!m) return {v:0, eq:null, filtros:null};
+  const sel=selDoCanal(c);
+  if(sel.conhecido && !sel.casa) return {v:0, eq:null, filtros:null};  /* seletor noutra fonte */
+  if(m.on && m.on[c]===false)    return {v:0, eq:null, filtros:null};  /* canal desligado na tecla */
+
+  const A = m.aud && m.aud.ch ? m.aud.ch[c] : null;
+  if(A){
+    const bus  = A.bus!=null ? A.bus : xfGanho(m.xf, m.assign?m.assign[c]:null);
+    const mstA = m.aud.master!=null ? m.aud.master : 1;
+    const v = (A.trim!=null?A.trim:1) * (A.fader!=null?A.fader:1) * bus * mstA;
+    /* ordem indiferente: filtros lineares em cascata comutam.
+       São 5 casas no deck — o bastante para um mixer de 4 bandas (DJM-V10)
+       mais o FILTER/COLOR do canal. */
+    const filtros = [A.low, A.mid2, A.mid, A.hi, A.color].filter(Boolean).slice(0,5);
+    return {v:clamp(v,0,2), eq:null, filtros:filtros.length?filtros:null};
+  }
+
   const f = m.fader && m.fader[c]!=null ? m.fader[c] : 1;
   const t = m.trim  && m.trim[c]!=null  ? m.trim[c]  : 0.55;
   const lado = m.assign ? m.assign[c] : null;
   const mst = m.master!=null ? m.master : 0.75;
   const v = faderLaw(f) * xfGanho(m.xf,lado) * (0.35+t*1.3) * (mst*1.2);
   const eq = m.eq && m.eq[c] ? { hi:eqDb(m.eq[c].hi), mid:eqDb(m.eq[c].mid), low:eqDb(m.eq[c].low) } : null;
-  return {v:clamp(v,0,2), eq};
+  return {v:clamp(v,0,2), eq, filtros:null};
 }
 /* ============================================================================
    OS DOIS VU DO MIXER — sao medidores DIFERENTES, e de proposito.
@@ -925,23 +980,35 @@ function ganhoEq(c){
   const db=(eqDb(e.hi)+eqDb(e.mid)+eqDb(e.low))/3;    /* media das 3 bandas */
   return Math.pow(10, db/20);
 }
+const audDo = c => { const m=S.mixEstado; return (m&&m.aud&&m.aud.ch)?m.aud.ch[c]:null; };
+/* ganho de tensao dos 3 EQ, em linear. Quando os nos existem, sai do dB DELES. */
+function ganhoEqReal(c){
+  const A=audDo(c); if(!A) return ganhoEq(c);
+  const db=[A.hi,A.mid,A.low].filter(Boolean).map(x=>x.g||0);
+  if(!db.length) return 1;
+  return Math.pow(10, (db.reduce((a,b)=>a+b,0)/db.length)/20);
+}
 function vuDoCanal(c){
   const m=S.mixEstado; if(!m) return 0;
   const sel=selDoCanal(c);
   if(sel.conhecido && !sel.casa) return 0;      /* seletor noutra fonte: nada entra */
-  const t = m.trim && m.trim[c]!=null ? m.trim[c] : 0.55;
-  return clamp((S.nivel[c]||0)*(0.35+t*1.3)*ganhoEq(c), 0, 1);
+  if(m.on && m.on[c]===false) return 0;
+  const A=audDo(c);
+  const t = A ? (A.trim!=null?A.trim:1) : (m.trim&&m.trim[c]!=null ? (0.35+m.trim[c]*1.3) : 0.9);
+  return clamp((S.nivel[c]||0)*t*ganhoEqReal(c), 0, 1);
 }
 function vuMaster(){
   const m=S.mixEstado; if(!m) return 0;
-  const mst = m.master!=null ? m.master : 0.75;
   let s=0;
   [1,2].forEach(c=>{
+    const A=audDo(c);
+    if(A){ s += vuDoCanal(c) * (A.fader!=null?A.fader:1) * (A.bus!=null?A.bus:1); return; }
     const f = m.fader && m.fader[c]!=null ? m.fader[c] : 1;
     const lado = m.assign ? m.assign[c] : null;
     s += vuDoCanal(c) * faderLaw(f) * xfGanho(m.xf,lado);
   });
-  return clamp(s*(mst*1.2), 0, 1);
+  const mst = (m.aud && m.aud.master!=null) ? m.aud.master : (m.master!=null ? m.master*1.2 : 0.9);
+  return clamp(s*mst, 0, 1);
 }
 function mandarVU(){
   if(eCabeamento || S.aio) return;              /* tudo-em-um mede o proprio audio */
@@ -956,13 +1023,66 @@ function aplicarAudio(){
   manda("m",{smu:"vol",v:0});                  /* o mixer nao toca: quem toca e o player */
   [1,2].forEach(c=>{
     const g=ganhoDoCanal(c);
-    manda(String(c),{smu:"vol",v:g.v,eq:g.eq});
+    S.ganho[c]=g;
+    /* "canal" e o contrato novo; "v" segue junto para o deck antigo entender */
+    manda(String(c),{smu:"canal", ch:c, g:g.v, v:g.v, eq:g.eq, filtros:g.filtros});
   });
   mandarVU();
+  pintarRoteamento();
 }
 function manda(slot,msg){
   const f=$("#if-"+slot);
   if(f&&f.contentWindow) try{ f.contentWindow.postMessage(msg,"*"); }catch(e){}
+}
+
+/* ============================================================================
+   O CAMINHO DO SOM, À VISTA
+   Ordem do dono: "a CDJ escolhe a música, dá play, este sinal vai para o canal
+   da DJM que passa por todo o processo do mixer (gain, EQ, efeitos entre
+   outros) e vai para o master, que sai no som do equipamento".
+   Se o aluno não VÊ esse caminho, ele não aprende que existe. Esta faixa mostra,
+   em tempo real, o número que a aula está mandando para cada deck — o mesmo
+   número que o deck aplica no ganho dele.
+   ============================================================================ */
+const emDb = v => (v==null||v<=0.0005) ? "−∞" : (20*Math.log10(v)).toFixed(1).replace(".",",");
+function pintarRoteamento(){
+  const el=$("#rota"); if(!el) return;
+  if(eCabeamento || S.passo!==2 || S.aio){ el.hidden=true; return; }
+  el.hidden=false;
+  const m=S.mixEstado;
+  const via=(c)=>{
+    const g=S.ganho[c], A=audDo(c);
+    const v=g?g.v:null, mudo=(v==null||v<0.0005);
+    const det=[];
+    /* o SELETOR DE ENTRADA vem primeiro: é o defeito nº 1 da cabine de verdade
+       e, quando ele está errado, é ele que está cortando o som. */
+    const sel=selDoCanal(c);
+    if(sel.conhecido) det.push("ENTRADA "+sel.pos+(sel.casa?"":" ✗ devia ser "+sel.certas.join("/")));
+    if(A){
+      if(A.trim!=null) det.push("TRIM "+emDb(A.trim)+" dB");
+      const eqDbTxt = x => { if(!x) return "·"; const r=Math.round(x.g||0); return (r>0?"+":r<0?"−":"")+Math.abs(r); };
+      if([A.hi,A.mid,A.low].some(Boolean)) det.push("EQ "+[A.hi,A.mid,A.low].map(eqDbTxt).join("/"));
+      if(A.color && A.color.t!=="allpass") det.push("FILTER "+A.color.t.toUpperCase()+" "+Math.round(A.color.f)+" Hz");
+      if(A.fader!=null) det.push("FADER "+emDb(A.fader)+" dB");
+    } else if(m){
+      if(m.trim&&m.trim[c]!=null)  det.push("TRIM "+Math.round(m.trim[c]*100)+"%");
+      if(m.fader&&m.fader[c]!=null)det.push("FADER "+Math.round(m.fader[c]*100)+"%");
+    }
+    if(m&&m.assign&&m.assign[c]) det.push("X-FADER "+m.assign[c]);
+    if(m&&m.cue&&m.cue[c]) det.push("CUE");
+    const larg=Math.round(clamp(v||0,0,1.2)/1.2*100);
+    return '<span class="via ch'+c+' '+(mudo?"off":"")+'">'+
+      '<b>PLAYER '+(c===1?"ESQ":"DIR")+'</b><span class="seta">▶</span><b>CH'+c+'</b>'+
+      '<span class="db">'+emDb(v)+' dB</span>'+
+      '<span class="barra '+(larg>92?"q":"")+'"><i style="width:'+larg+'%"></i></span>'+
+      (det.length?'<span class="det">'+esc(det.join(" · "))+'</span>':'')+
+    '</span>';
+  };
+  const mst = (m&&m.aud&&m.aud.master!=null) ? m.aud.master : (m&&m.master!=null? m.master*1.2 : null);
+  el.innerHTML = via(1)+'<span class="seta">▶</span>'+
+    '<span class="via mst"><b>MASTER</b><span class="db">'+emDb(mst)+' dB</span>'+
+      '<span class="seta">▶</span><span class="det">sai no alto-falante do seu aparelho</span></span>'+
+    '<span class="seta">◀</span>'+via(2);
 }
 
 /* ---- conversa com os simuladores ---- */
@@ -1289,11 +1409,11 @@ function render(){
   if(antes && antes===P.dataset.assinatura){
     /* a MESA ja esta montada: nao remontar (isso recarregaria os simuladores
        e mataria o audio do aluno). So repinta o painel. */
-    pintarPainel(); pintarComo(); return;
+    pintarPainel(); pintarComo(); pintarRoteamento(); return;
   }
   P.innerHTML = S.passo===1 ? telaEscolha() : (eCabeamento ? telaTraseira() : telaMesa());
   P.dataset.assinatura = antes || "";
-  ligar(); pintarPainel(); pintarComo();
+  ligar(); pintarPainel(); pintarComo(); pintarRoteamento();
   if(eCabeamento && S.passo===2){
     requestAnimationFrame(fios);
     if(S.erroCabo){ $("#elo").innerHTML="<div class='elo'>"+S.erroCabo+"</div>"; }
