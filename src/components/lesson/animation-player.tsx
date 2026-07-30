@@ -2,11 +2,10 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
-  Zap, Loader2, ChevronDown, ChevronUp, Play, Pause,
+  Zap, ChevronDown, ChevronUp, Play, Pause,
   SkipForward, SkipBack, Volume2, VolumeX, Sparkles, BookOpen,
-  CheckCircle2, Lightbulb, Maximize2, Minimize2,
+  CheckCircle2, Maximize2, Minimize2,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useT } from "@/lib/i18n/ui";
 
 // ── Types ──────────────────────────────────────────────────
@@ -63,15 +62,21 @@ interface AnimationData {
     audio?: string;
   }>;
   model?: string;
-  custo_usd?: number;
+  // `custo_usd` (coluna do banco) NÃO entra aqui: era o gasto da IA por aula, e a geração por
+  // IA está desativada. As 306 linhas de ai_animations são artesanais, todas com custo 0 — o
+  // rodapé nunca tinha o que mostrar. A COLUNA continua no banco e em src/types/database.ts:
+  // vários `publicar-*.mjs` fazem pós-checagem `custo_usd !== 0 → aborta`.
 }
 
+// `titulo`, `categoria` e `isAdmin` continuam no contrato porque o lesson-player os passa
+// (tirá-los daqui quebraria a chamada em lesson-player.tsx:584). O componente não os lê mais:
+// serviam só para o POST de geração por IA, hoje desativado — por isso não são desestruturados.
 interface AnimationPlayerProps {
   lessonId: string;
   titulo: string;
   conteudo: string;
   categoria: string;
-  isAdmin?: boolean;  // Só admin pode gerar. Aluno só vê se já existe.
+  isAdmin?: boolean;
 }
 
 // ── Component ──────────────────────────────────────────────
@@ -109,13 +114,11 @@ function preparaWidget(html: string): string {
     : limpo + PONTE_TELA_CHEIA;
 }
 
-export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin = false }: AnimationPlayerProps) {
+export function AnimationPlayer({ lessonId, conteudo }: AnimationPlayerProps) {
   const t = useT();
   const [data, setData] = useState<AnimationData | null>(null);
-  const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [expanded, setExpanded] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   // Player state
   const [currentScene, setCurrentScene] = useState(0);
@@ -139,7 +142,45 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
   useEffect(() => { playingRef.current = playing; }, [playing]);
 
   // ── Check existing ──
-  useEffect(() => { checkExisting(); }, [lessonId]);
+  // ORDEM IMPORTA: `pollStatus` e `checkExisting` vêm ANTES do useEffect que os chama.
+  // Declarar depois funciona em runtime (hoisting), mas o React Compiler lê como acesso a
+  // valor ainda não declarado dentro do hook e barra (react-hooks/immutability).
+  //
+  // Não há estado de erro: com a geração desativada o player devolve `null` enquanto não
+  // houver conteúdo pronto (o guard mais abaixo), então nunca existiu lugar na tela para a
+  // mensagem aparecer — era um `useState` só de escrita. O que resta vai para o console.
+  async function pollStatus() {
+    // Evita polls concorrentes: limpa qualquer intervalo anterior antes de iniciar
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/animation/generate?lessonId=${lessonId}&tipo=interactive`);
+        const result = await res.json();
+        if (result.status === "ready") {
+          setData(result);
+          setGenerating(false);
+          clearInterval(interval);
+          pollIntervalRef.current = null;
+        } else if (result.status === "error") {
+          console.warn(`[AnimationPlayer] geração falhou para a aula ${lessonId}`);
+          setGenerating(false);
+          clearInterval(interval);
+          pollIntervalRef.current = null;
+        }
+      } catch { /* keep polling */ }
+    }, 5000);
+    pollIntervalRef.current = interval;
+    // Esgotou o tempo: sai do estado `generating` — sem isto o poll de 5s ficaria de pé para
+    // sempre nesta aula.
+    setTimeout(() => {
+      clearInterval(interval);
+      if (pollIntervalRef.current === interval) {
+        pollIntervalRef.current = null;
+        setGenerating(false);
+        console.warn(`[AnimationPlayer] geração demorou demais na aula ${lessonId}`);
+      }
+    }, 300_000);
+  }
 
   async function checkExisting() {
     try {
@@ -154,70 +195,13 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
     } catch { /* No existing */ }
   }
 
-  async function pollStatus() {
-    // Evita polls concorrentes: limpa qualquer intervalo anterior antes de iniciar
-    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/animation/generate?lessonId=${lessonId}&tipo=interactive`);
-        const result = await res.json();
-        if (result.status === "ready") {
-          setData(result);
-          setGenerating(false);
-          clearInterval(interval);
-          pollIntervalRef.current = null;
-        } else if (result.status === "error") {
-          setError(t("Erro na geração. Tente novamente."));
-          setGenerating(false);
-          clearInterval(interval);
-          pollIntervalRef.current = null;
-        }
-      } catch { /* keep polling */ }
-    }, 5000);
-    pollIntervalRef.current = interval;
-    // Esgotou o tempo: sai do estado `generating` com aviso — sem isto o player renderiza
-    // null para sempre e o aluno nunca sabe que o simulador existe e falhou.
-    setTimeout(() => {
-      clearInterval(interval);
-      if (pollIntervalRef.current === interval) {
-        pollIntervalRef.current = null;
-        setGenerating(false);
-        setError(t("A geração demorou demais. Recarregue a página ou tente novamente."));
-      }
-    }, 300_000);
-  }
-
-  // ── Generate ──
-  async function handleGenerate() {
-    if (loading || generating) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/animation/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lessonId, titulo, conteudo, categoria, force: false }),
-      });
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || "Erro ao gerar conteúdo");
-      }
-      const result = await res.json();
-      if (result.status === "ready") {
-        setData(result);
-      } else {
-        setGenerating(true);
-        pollStatus();
-      }
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }
+  useEffect(() => { checkExisting(); }, [lessonId]);
 
   // ── Navigation ──
-  const goToScene = useCallback((index: number, autoplay: boolean) => {
+  // Função comum, não `useCallback`: nenhum hook depende da identidade dela (só os handlers de
+  // clique a chamam), e `advanceToNext` a chama recursivamente para encadear as cenas — dentro
+  // de um useCallback isso é auto-referência e o React Compiler barra.
+  function goToScene(index: number, autoplay: boolean) {
     if (!isReady || index < 0 || index >= scenes.length) return;
 
     if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
@@ -262,7 +246,7 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
     } else {
       timerRef.current = setTimeout(advanceToNext, sceneDuration + 2000);
     }
-  }, [isReady, scenes, urls, muted]);
+  }
 
   function togglePlay() {
     if (!isReady) return;
@@ -335,34 +319,6 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
   const currentMode = currentSceneData?.modo;
   const nivel = data?.roteiro?.classificacao?.nivel;
 
-  // Admin: regenerar com force
-  async function handleRegenerate() {
-    if (loading || generating) return;
-    setLoading(true);
-    setError(null);
-    setData(null);
-    try {
-      const res = await fetch("/api/animation/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lessonId, titulo, conteudo, categoria, force: true }),
-      });
-      if (!res.ok) throw new Error("Erro ao regenerar");
-      const result = await res.json();
-      if (result.status === "ready") {
-        setData(result);
-        setCurrentScene(0);
-      } else {
-        setGenerating(true);
-        pollStatus();
-      }
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
   // ── Player ──
   return (
     <div
@@ -396,19 +352,8 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
           </span>
         </button>
         <div className="flex items-center gap-2">
-          {/* Admin: Regenerar (IA) removido a pedido */}
-          {false && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleRegenerate}
-              disabled={loading || generating}
-              className="gap-1.5 text-xs border-smu-amber/30 text-smu-amber hover:bg-smu-amber/10 h-7 px-3"
-            >
-              {loading ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />}
-              {loading ? "Regenerando..." : "Regenerar"}
-            </Button>
-          )}
+          {/* O botão "Regenerar (IA)" morava aqui, dentro de um `{false && …}`. Saiu junto com
+              o `handleRegenerate`: a geração por IA está desativada. */}
           <button onClick={() => setExpanded(!expanded)} className="p-1 hover:opacity-70">
             {expanded ? <ChevronUp size={14} className="text-muted" /> : <ChevronDown size={14} className="text-muted" />}
           </button>
@@ -623,11 +568,6 @@ export function AnimationPlayer({ lessonId, titulo, conteudo, categoria, isAdmin
             <span className="text-[10px] text-muted-light line-clamp-1">
               {data.roteiro?.metadata?.abordagem_didatica}
             </span>
-            {data.custo_usd != null && data.custo_usd > 0 && (
-              <span className="text-[10px] text-muted-light ml-auto">
-                ~${data.custo_usd.toFixed(3)}
-              </span>
-            )}
           </div>
         </div>
       )}
