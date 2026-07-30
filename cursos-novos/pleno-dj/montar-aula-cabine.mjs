@@ -51,6 +51,8 @@ const AULAS = [
     preset: { d1:"cdj2000", mix:"djm900", d2:"cdj2000" } },
   { modo: "praticando", arq: "cabine-cdj3000-djmv10.html",
     preset: { d1:"cdj3000", mix:"djmv10", d2:"cdj3000" } },
+  { modo: "praticando", arq: "cabine-cdj3000-djma9.html",
+    preset: { d1:"cdj3000", mix:"djma9", d2:"cdj3000" } },
 ];
 
 /* --------------------------------------------------------------------------
@@ -135,6 +137,7 @@ const CATALOGO = [
   { id:"djm800",   arq:"pioneer-djm-800-real.html",      tipo:"mixer", sub:"4 canais · COLOR",            tras:"djm-800" },
   { id:"djm900",   arq:"pioneer-djm-900nxs2-real.html",  tipo:"mixer", sub:"4 canais · padrao de clube",  tras:"djm-900nxs2" },
   { id:"djm2000",  arq:"pioneer-djm-2000-real.html",     tipo:"mixer", sub:"4 canais · flagship",         tras:"djm-2000" },
+  { id:"djma9",    arq:"pioneer-djm-a9-real.html",       tipo:"mixer", sub:"flagship · 4 canais · MULTI I/O" },
   { id:"djmv10",   arq:"pioneer-djm-v10-real.html",      tipo:"mixer", sub:"6 canais · EQ 4 bandas",      tras:"djm-v10" },
   { id:"x1850",    arq:"denon-x1850-real.html",          tipo:"mixer", sub:"Denon Prime · 4 canais",      tras:"denon-x1850" },
 ];
