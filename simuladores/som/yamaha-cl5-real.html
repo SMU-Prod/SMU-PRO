@@ -364,6 +364,9 @@
       key1Src:"SELF POST EQ",key1F:80,key1Hpf:false,key2Src:"SELF POST EQ",
       pan:0, stMode:'ST/MONO', stAssign:true, monoAsn:false,
       fader:-4-((i*5)%8), on:true, cue:false, muteSafe:false, recallSafe:false,
+      /* rsPar: quais GRUPOS de parametro este canal protege quando recallSafe esta ligado.
+         ALL = o canal inteiro (o padrao da mesa ao marcar SAFE). Ver SAFEPAR. */
+      rsPar:{ALL:true},
       insertOn:false, insertPoint:'PRE EQ', directOn:false, directLv:0, directPoint:'PRE HPF',
       delayOn:false, delayMs:0,
       sends:new Array(N_MIX).fill(-90), sendOn:new Array(N_MIX).fill(false), sendPre:new Array(N_MIX).fill(false),
@@ -416,6 +419,56 @@
   let _taps=[]; // tap-tempo timestamps (ms)
   const scenes=new Array(N_SCENE).fill(null);
   const ukState={}; // user key toggles
+
+  /* ============ RECALL SAFE / FOCUS RECALL / FADE  (Reference Manual p.79-80, 102-104) ============
+     As tres funcoes decidem O QUE o RECALL escreve. Sem elas o botao de aba era so um aviso
+     "nao incluido" — a mesa real NAO recusa: ela filtra o recall.
+
+       RECALL SAFE  = exclusao GLOBAL, vale para TODAS as cenas   (manual p.79)
+       FOCUS RECALL = inclusao POR CENA, so o marcado e' recuperado (manual p.102)
+       FADE         = por cena; o fader ANDA ate o valor novo no tempo dado (manual p.103)
+
+     O manual e' explicito no cruzamento das duas primeiras:
+       "Channels or parameters that are excluded from Recall operations by either Focus or
+        Recall Safe will not be recalled."
+     Ou seja: o canal so recebe o parametro se o FOCUS deixou entrar E o SAFE nao barrou.
+
+     Cada grupo aponta para as chaves REAIS do snapCh. Botao que nao mexe em chave nenhuma
+     seria a mesma mentira de antes, entao a tabela e' a ligacao entre o rotulo do fabricante
+     e o dado que a cena guarda. */
+  const SAFEPAR=[
+    ["HA",       ["gain","phantom","dgain","att","phase"]],
+    ["PATCH",    ["file","hasAudio"]],
+    ["NAME",     ["name","color"]],
+    ["FADER/ON", ["fader","on"]],
+    ["EQ",       ["eqOn","eq","eqType","hpfOn","hpf","lpfOn","lpf"]],
+    ["DYNA1",    ["gateOn","gateThr","gateRange","gateAtk","gateHold","gateDecay","key1Src","key1F","key1Hpf"]],
+    ["DYNA2",    ["compOn","compThr","compRatio","compAtk","compRel","compKnee","compGain","key2Src"]],
+    ["MIX SEND", ["sends","sendOn","sendPre"]],
+    ["MTX SEND", ["mtxSends","mtxOn","mtxPre"]],
+    ["INS/DIR",  ["insertOn","insertPoint","directOn","directLv","directPoint"]],
+    ["DELAY",    ["delayOn","delayMs"]],
+    ["PAN/ST",   ["pan","stMode","stAssign","monoAsn"]],
+    ["DCA/MUTE", ["dca","mute","muteSafe"]],
+  ];
+  const SAFEKEY={}; SAFEPAR.forEach(([g,ks])=>ks.forEach(k=>SAFEKEY[k]=g));
+  /* GLOBAL RECALL SAFE — o que nao pertence a um canal (manual p.80). */
+  const RSGLOBAL=["INPUT PATCH","OUTPUT PATCH","INPUT NAME","HA","CUSTOM FADER BANK",
+                  "GEQ RACK","EFFECT RACK","PREMIUM RACK","BUS SETUP MIX","BUS SETUP MTX"];
+  state.rsGlobal={};                               // nome -> true quando protegido
+  state.rsSetBySel=false; state.rsSel=0;           // SET BY SEL / canal em edicao na aba
+  state.fcSetBySel=false; state.fcSel=0;
+  state.fdSel=0;
+  /* por cena */
+  state.focus=Array.from({length:N_SCENE},()=>({on:false,all:true,ch:{},par:{}}));
+  /* O FADE nasce com TODOS os canais marcados. No console o operador abre a janela FADE TIME
+     e escolhe os canais pelo [SEL]; comecar com a lista vazia faria o botao FADE ligar e o
+     recall nao andar fader nenhum — o aluno leria como defeito. Desmarcar tudo continua
+     desligando o efeito, como na mesa. */
+  state.fade =Array.from({length:N_SCENE},()=>{
+    const ch={}; for(let i=0;i<MAXCAP;i++)ch[i]=true;
+    return {on:false,time:3.0,ch};
+  });
 
   /* ================= HELPERS ================= */
   const $=s=>document.querySelector(s);
@@ -519,7 +572,19 @@
     if(ch.lpfOn) g+=biquadDb('lowpass',ch.lpf,0,0.707,f);
     return clamp(g,-30,20); }
 
-  function selectChannel(i){ state.sel=i; state.selStin=-1; paintSelected(); paintBay(); drawScreen(); checkMissions(); }
+  function selectChannel(i){
+    /* SET BY SEL (manual p.80 e p.102): com o botao ligado, a tecla [SEL] do painel deixa de
+       apenas selecionar e passa a MARCAR o canal em RECALL SAFE / FOCUS. E' assim no console —
+       e' o unico jeito pratico de marcar 40 canais sem caçar celula por celula na tela. */
+    if(state.rsSetBySel && state.mode==="scenes" && state.scnTab===1){
+      CH[i].recallSafe=!CH[i].recallSafe; state.rsSel=i;
+      toast("CH"+(i+1)+" RECALL SAFE <b>"+(CH[i].recallSafe?"ON":"OFF")+"</b>");
+    } else if(state.fcSetBySel && state.mode==="scenes" && state.scnTab===3){
+      const fo=state.focus[state.scene]; fo.all=false;
+      fo.ch[i]=!fo.ch[i]; if(!fo.ch[i])delete fo.ch[i]; state.fcSel=i;
+      toast("CH"+(i+1)+" FOCUS <b>"+(fo.ch[i]?"ON":"OFF")+"</b>");
+    }
+    state.sel=i; state.selStin=-1; paintSelected(); paintBay(); drawScreen(); checkMissions(); }
 
   /* The console-surface skin is gone: every panel it used to own is now drawn inside a real
      editor window. These stay as no-ops so the audio engine / scene recall / missions keep
@@ -1950,17 +2015,197 @@
     vend();
   }
 
+  /* ====== Campo de canais compartilhado pelas abas RECALL SAFE e FOCUS (manual p.80: "Safe
+     channel display section" / p.102: "Focus channel display section" — o manual diz que a
+     vista das duas e' a MESMA, entao a funcao tambem e').
+     O manual define 3 estados de celula, e e' isso que a cor mostra:
+        cheio   = todos os parametros do canal afetados
+        parcial = alguns parametros
+        apagado = cancelado nesse canal                                              */
+  function campoCanais(x0,y0,leitura,clique,selAtual){
+    const cw=34,chh=17,porLinha=24;
+    for(let i=0;i<MAXCH;i++){
+      const cx=x0+(i%porLinha)*cw, cy=y0+Math.floor(i/porLinha)*(chh+3);
+      const st=leitura(i);                                  // 0=off 1=parcial 2=cheio
+      ctx.fillStyle=st===2?"#e8c838":(st===1?"#8a7420":"#242424");
+      ctx.fillRect(cx,cy,cw-2,chh); bevel(cx,cy,cw-2,chh,st>0);
+      if(i===selAtual){ ctx.strokeStyle="#4aa3ff"; ctx.lineWidth=1.5; ctx.strokeRect(cx-.5,cy-.5,cw-1,chh+1); ctx.lineWidth=1; }
+      ctx.fillStyle=st===2?"#101010":(st===1?"#e8d8a0":"#8a8a8a");
+      ctx.font="700 8px Arial"; ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.fillText(String(i+1),cx+(cw-2)/2,cy+chh/2+.5); ctx.textBaseline="alphabetic";
+      vreg({x:cx,y:cy,w:cw-2,h:chh,onDown:()=>clique(i)});
+    }
+    return y0+Math.ceil(MAXCH/porLinha)*(chh+3);
+  }
+  /* Seletor de parametro — os grupos da SAFEPAR + ALL, do jeito que a mesa mostra. */
+  function botoesParametro(x0,y0,pega,alterna){
+    const bw=88,bh=18;
+    const itens=["ALL"].concat(SAFEPAR.map(p=>p[0]));
+    itens.forEach((g,gi)=>{
+      const bx=x0+(gi%6)*(bw+5), by=y0+Math.floor(gi/6)*(bh+5);
+      eBtn(bx,by,bw,bh,g,!!pega(g),()=>alterna(g),ED.yel,8);
+    });
+    return y0+Math.ceil(itens.length/6)*(bh+5);
+  }
+
+  /* ================= RECALL SAFE (Reference Manual p.79-80) =================
+     Exclusao GLOBAL: vale para todas as cenas. O canal marcado NAO e' sobrescrito no recall. */
+  function paneRecallSafe(){
+    const c=CH[state.rsSel]||CH[0];
+    eTitle(20,46,"RECALL SAFE MODE",190,11);
+    /* 1 — CLEAR ALL / SET ALL (manual: ligam/desligam canal a canal E o global de uma vez) */
+    eBtn(300,38,84,18,"CLEAR ALL",false,()=>{
+      for(let i=0;i<MAXCAP;i++){ CH[i].recallSafe=false; CH[i].rsPar={ALL:true}; }
+      state.rsGlobal={}; toast("RECALL SAFE: <b>tudo liberado</b>");
+    },null,8);
+    eBtn(390,38,84,18,"SET ALL",false,()=>{
+      for(let i=0;i<MAXCH;i++){ CH[i].recallSafe=true; CH[i].rsPar={ALL:true}; }
+      RSGLOBAL.forEach(g=>state.rsGlobal[g]=true); toast("RECALL SAFE: <b>tudo protegido</b>");
+    },null,8);
+    /* 3 — SET BY SEL: o [SEL] do painel passa a marcar SAFE */
+    eBtn(486,38,96,18,"SET BY SEL",!!state.rsSetBySel,()=>{state.rsSetBySel=!state.rsSetBySel;},ED.yel,8);
+    ctx.fillStyle="#8a8a8a"; ctx.font="700 8px Arial"; ctx.textAlign="left";
+    ctx.fillText("ligado: o [SEL] do painel marca/desmarca SAFE no canal",592,51);
+
+    /* 2 — campo de canais */
+    ctx.fillStyle="#9a9a9a"; ctx.font="700 9px Arial"; ctx.textAlign="left";
+    ctx.fillText("SAFE CHANNEL",20,74);
+    const yFim=campoCanais(20,82,
+      i=>{ if(!CH[i].recallSafe)return 0; return (CH[i].rsPar&&CH[i].rsPar.ALL)?2:1; },
+      i=>{ state.rsSel=i; CH[i].recallSafe=!CH[i].recallSafe; },
+      state.rsSel);
+
+    /* 5/6 — canal em edicao */
+    let y=yFim+14;
+    ctx.fillStyle="#9a9a9a"; ctx.font="700 9px Arial"; ctx.textAlign="left";
+    ctx.fillText("SELECTED CHANNEL",20,y+12);
+    eBtn(140,y+2,22,16,"◀",false,()=>{state.rsSel=(state.rsSel+MAXCH-1)%MAXCH;},null,9);
+    eBtn(166,y+2,22,16,"▶",false,()=>{state.rsSel=(state.rsSel+1)%MAXCH;},null,9);
+    ctx.fillStyle=c.color||"#334155"; ctx.fillRect(196,y+2,10,16);
+    eVal(210,y+2,150,16,(state.rsSel+1)+"  "+(c.name||"—"));
+    eBtn(370,y+2,70,16,"SAFE",!!c.recallSafe,()=>{c.recallSafe=!c.recallSafe;},ED.yel,8);
+
+    /* 8 — parametros protegidos NESTE canal */
+    y+=28;
+    ctx.fillStyle="#9a9a9a"; ctx.font="700 9px Arial"; ctx.textAlign="left";
+    ctx.fillText("SAFE PARAMETER",20,y+10);
+    y=botoesParametro(20,y+16,
+      g=>(c.rsPar||{})[g],
+      g=>{ const p=c.rsPar||(c.rsPar={});
+           if(g==="ALL"){ const v=!p.ALL; c.rsPar=v?{ALL:true}:{}; }
+           else { delete p.ALL; p[g]=!p[g]; if(!p[g])delete p[g]; }
+           if(Object.keys(c.rsPar).length) c.recallSafe=true; });
+
+    /* 4 — GLOBAL RECALL SAFE */
+    y+=12;
+    ctx.fillStyle="#9a9a9a"; ctx.font="700 9px Arial"; ctx.textAlign="left";
+    ctx.fillText("GLOBAL RECALL SAFE",20,y+10);
+    RSGLOBAL.forEach((g,gi)=>{ const bx=20+(gi%6)*93, by=y+16+Math.floor(gi/6)*23;
+      eBtn(bx,by,88,18,g,!!state.rsGlobal[g],()=>{ state.rsGlobal[g]=!state.rsGlobal[g]; if(!state.rsGlobal[g])delete state.rsGlobal[g]; },ED.yel,7);
+    });
+    ctx.fillStyle="#7a7a7a"; ctx.font="700 8px Arial"; ctx.textAlign="left";
+    ctx.fillText("Manual p.79: o canal marcado NAO e' sobrescrito pelo RECALL — vale para TODAS as cenas.",20,624);
+  }
+
+  /* ================= FOCUS RECALL (Reference Manual p.102) =================
+     Inclusao POR CENA: so o que esta marcado e' recuperado nessa cena. */
+  function paneFocus(){
+    const slot=state.scene, fo=state.focus[slot];
+    const i0=state.fcSel, c=CH[i0]||CH[0];
+    eTitle(20,46,"FOCUS RECALL — CENA "+String(slot+1).padStart(3,'0'),260,11);
+    eBtn(300,38,70,18,"FOCUS",!!fo.on,()=>{fo.on=!fo.on;},ED.yel,8);
+    eBtn(376,38,70,18,"ALL",!!fo.all,()=>{fo.all=!fo.all;},ED.yel,8);
+    eBtn(452,38,84,18,"CLEAR ALL",false,()=>{ fo.ch={}; fo.par={}; fo.all=true; toast("FOCUS: limpo"); },null,8);
+    eBtn(542,38,96,18,"SET BY SEL",!!state.fcSetBySel,()=>{state.fcSetBySel=!state.fcSetBySel;},ED.yel,8);
+    ctx.fillStyle="#8a8a8a"; ctx.font="700 8px Arial"; ctx.textAlign="left";
+    ctx.fillText(fo.all?"ALL ligado: a cena recupera TUDO":"ALL desligado: so o marcado e' recuperado",648,51);
+
+    ctx.fillStyle="#9a9a9a"; ctx.font="700 9px Arial"; ctx.textAlign="left";
+    ctx.fillText("FOCUS CHANNEL",20,74);
+    const yFim=campoCanais(20,82,
+      i=>{ if(fo.all)return 2; if(!fo.ch[i])return 0; const p=fo.par[i]; return (!p||p.ALL)?2:1; },
+      i=>{ state.fcSel=i; if(fo.all)fo.all=false; fo.ch[i]=!fo.ch[i]; if(!fo.ch[i])delete fo.ch[i]; },
+      state.fcSel);
+
+    let y=yFim+14;
+    ctx.fillStyle="#9a9a9a"; ctx.font="700 9px Arial"; ctx.textAlign="left";
+    ctx.fillText("SELECTED CHANNEL",20,y+12);
+    eBtn(140,y+2,22,16,"◀",false,()=>{state.fcSel=(state.fcSel+MAXCH-1)%MAXCH;},null,9);
+    eBtn(166,y+2,22,16,"▶",false,()=>{state.fcSel=(state.fcSel+1)%MAXCH;},null,9);
+    ctx.fillStyle=c.color||"#334155"; ctx.fillRect(196,y+2,10,16);
+    eVal(210,y+2,150,16,(i0+1)+"  "+(c.name||"—"));
+    /* 7 — APPLY TO ALL INPUT (manual p.102): copia a selecao deste canal para todos */
+    eBtn(370,y+2,124,16,"APPLY TO ALL INPUT",false,()=>{
+      const base=JSON.parse(JSON.stringify(fo.par[i0]||{ALL:true}));
+      for(let i=0;i<MAXCH;i++){ fo.par[i]=JSON.parse(JSON.stringify(base)); if(fo.ch[i0])fo.ch[i]=true; }
+      fo.all=false; toast("FOCUS: parametros do CH"+(i0+1)+" aplicados a <b>todos</b>");
+    },null,7);
+
+    y+=28;
+    ctx.fillStyle="#9a9a9a"; ctx.font="700 9px Arial"; ctx.textAlign="left";
+    ctx.fillText("RECALL PARAMETER",20,y+10);
+    y=botoesParametro(20,y+16,
+      g=>{ const p=fo.par[i0]; return p?p[g]:(g==="ALL"); },
+      g=>{ const p=fo.par[i0]||(fo.par[i0]={ALL:true});
+           if(g==="ALL"){ const v=!p.ALL; fo.par[i0]=v?{ALL:true}:{}; }
+           else { delete p.ALL; p[g]=!p[g]; if(!p[g])delete p[g]; }
+           fo.all=false; fo.ch[i0]=true; });
+    ctx.fillStyle="#7a7a7a"; ctx.font="700 8px Arial"; ctx.textAlign="left";
+    ctx.fillText("Manual p.102: FOCUS e' por CENA. Barrado pelo FOCUS ou pelo RECALL SAFE = nao recupera.",20,624);
+  }
+
+  /* ================= FADE TIME (Reference Manual p.103-104) =================
+     Por cena: no recall o fader ANDA ate o valor novo no tempo ajustado. */
+  function paneFadeTime(){
+    eTitle(20,46,"FADE TIME",120,11);
+    ctx.fillStyle="#9a9a9a"; ctx.font="700 9px Arial"; ctx.textAlign="left";
+    ctx.fillText("SCENE",24,74); ctx.fillText("FADE",120,74); ctx.fillText("FADE TIME",180,74); ctx.fillText("STATUS",280,74);
+    for(let s2=0;s2<N_SCENE;s2++){
+      const y=80+s2*24, fd=state.fade[s2], sel=s2===state.scene;
+      ctx.fillStyle=sel?"#2a4a8a":(s2%2?"#242424":"#1e1e1e"); ctx.fillRect(20,y,340,22);
+      ctx.fillStyle="#d0d0d0"; ctx.font="700 9px 'Courier New',monospace"; ctx.textAlign="center";
+      ctx.fillText(String(s2+1).padStart(3,'0'),44,y+15);
+      vreg({x:20,y,w:96,h:22,onDown:()=>{state.scene=s2;}});
+      eBtn(118,y+3,52,16,"FADE",!!fd.on,()=>{fd.on=!fd.on;},ED.yel,8);
+      /* tempo: o multifunction knob do console. Aqui, arrastar OU clicar nas setas. */
+      eVal(178,y+3,62,16,fd.time.toFixed(1)+"s");
+      eBtn(244,y+3,16,16,"–",false,()=>{fd.time=Math.max(0.1,+(fd.time-0.5).toFixed(1));},null,9);
+      eBtn(263,y+3,16,16,"+",false,()=>{fd.time=Math.min(60,+(fd.time+0.5).toFixed(1));},null,9);
+      const n=Object.keys(fd.ch).length;
+      ctx.fillStyle=fd.on?"#e8c838":"#6a6a6a"; ctx.font="700 8px Arial"; ctx.textAlign="left";
+      ctx.fillText(fd.on?("FADE · "+n+" canais"):"—",286,y+15);
+      if(!scenes[s2]){ ctx.fillStyle="#5a5a5a"; ctx.textAlign="right"; ctx.fillText("cena vazia",356,y+15); }
+    }
+    /* janela FADE TIME: escolha dos canais que andam */
+    const fd=state.fade[state.scene];
+    ctx.fillStyle="#9a9a9a"; ctx.font="700 9px Arial"; ctx.textAlign="left";
+    ctx.fillText("FADE CHANNEL — cena "+String(state.scene+1).padStart(3,'0'),380,74);
+    eBtn(620,64,64,16,"ALL",false,()=>{ for(let i=0;i<MAXCH;i++)fd.ch[i]=true; },null,8);
+    eBtn(690,64,64,16,"CLEAR",false,()=>{ fd.ch={}; },null,8);
+    campoCanais(380,82,
+      i=>fd.ch[i]?2:0,
+      i=>{ fd.ch[i]=!fd.ch[i]; if(!fd.ch[i])delete fd.ch[i]; },
+      -1);
+    ctx.fillStyle="#7a7a7a"; ctx.font="700 8px Arial"; ctx.textAlign="left";
+    ctx.fillText("Manual p.103: com FADE ligado o fader NAO pula — ele anda ate o valor da cena no tempo ajustado.",20,624);
+    ctx.fillText("Recall da mesma cena com o fader andando leva todo mundo direto ao destino.",20,636);
+  }
+
   /* ================= SCENE — mirrors CL Editor "Scene" window ================= */
   function drawScenes(){
     vbegin(910,646); ctx.fillStyle=ED.bg; ctx.fillRect(0,0,910,646);
     const tabs=["SCENE MEMORY","RECALL SAFE","FADE TIME","FOCUS RECALL"];
-    tabs.forEach((tl,ti)=>{ const tx=8+ti*224, on=ti===0;
+    const stab=state.scnTab|0;
+    tabs.forEach((tl,ti)=>{ const tx=8+ti*224, on=stab===ti;
       ctx.fillStyle=on?"#1a1a1a":"#333333"; ctx.fillRect(tx,4,220,20); bevel(tx,4,220,20,!on);
       ctx.fillStyle=on?"#f0f0f0":"#9a9a9a"; ctx.font="700 9px 'Courier New',monospace"; ctx.textAlign="center"; ctx.textBaseline="middle";
       ctx.fillText(tl,tx+110,15); ctx.textBaseline="alphabetic";
-      if(ti>0)vreg({x:tx,y:4,w:220,h:20,onDown:()=>toast(tl+": não incluído no simulador")});
+      vreg({x:tx,y:4,w:220,h:20,onDown:()=>{state.scnTab=ti;}});
     });
     ctx.fillStyle="#2e2e2e"; ctx.fillRect(8,30,894,608); bevel(8,30,894,608,false);
+    if(stab===1){ paneRecallSafe(); vend(); return; }
+    if(stab===2){ paneFadeTime();  vend(); return; }
+    if(stab===3){ paneFocus();     vend(); return; }
     eVal(20,44,310,16,"NO FILE");
     ["OPEN","CLOSE","SAVE","SAVE AS..."].forEach((bl,bi)=>eBtn(340+bi*66,44,62,16,bl,false,()=>toast("Arquivo de cenas: recurso do CL Editor (PC)"),null,7));
     ctx.fillStyle="#bdbdbd"; ctx.font="700 10px Arial"; ctx.textAlign="center";
@@ -1995,7 +2240,7 @@
     eBtn(436,304,44,18,"←",false,()=>toast("Transferência p/ arquivo: recurso do editor"),null,10);
     eBtn(488,566,110,26,"STORE",false,()=>{storeScene(state.scene);paintRightRack();},ED.yel,10);
     eBtn(606,566,110,26,"RECALL",false,()=>{recallScene(state.scene);},ED.yel,10);
-    eBtn(724,566,80,26,"UNDO",false,()=>toast("UNDO (última cena)"),null,10);
+    eBtn(724,566,80,26,"UNDO",false,()=>desfazer(),null,10);
     ctx.fillStyle="#bdbdbd"; ctx.font="700 10px Arial"; ctx.textAlign="left";
     ctx.fillText("Cena selecionada: "+String(state.scene+1).padStart(3,'0'),24,582);
     vend();
@@ -2454,17 +2699,132 @@
   }
   function applyMasterAudio(){ if(ac&&masterGain){ P(masterGain.gain,dbToLin(state.master),ac.currentTime,0.02); P(monoTrim.gain,dbToLin(state.mono),ac.currentTime,0.02); } }
   applyMonitor=function(){ /* monitor bus is didactic; dim lowers master monitor feel */ };
-  function snapCh(c){ return JSON.parse(JSON.stringify({gain:c.gain,dgain:c.dgain,att:c.att,phase:c.phase,phantom:c.phantom,hpfOn:c.hpfOn,hpf:c.hpf,lpfOn:c.lpfOn,lpf:c.lpf,eqOn:c.eqOn,eq:c.eq,eqType:c.eqType,gateOn:c.gateOn,gateThr:c.gateThr,gateRange:c.gateRange,gateAtk:c.gateAtk,gateHold:c.gateHold,gateDecay:c.gateDecay,compOn:c.compOn,compThr:c.compThr,compRatio:c.compRatio,compAtk:c.compAtk,compRel:c.compRel,compKnee:c.compKnee,compGain:c.compGain,key1Src:c.key1Src,key1F:c.key1F,key1Hpf:c.key1Hpf,key2Src:c.key2Src,pan:c.pan,stMode:c.stMode,stAssign:c.stAssign,monoAsn:c.monoAsn,fader:c.fader,on:c.on,muteSafe:c.muteSafe,recallSafe:c.recallSafe,insertOn:c.insertOn,insertPoint:c.insertPoint,directOn:c.directOn,directLv:c.directLv,directPoint:c.directPoint,delayOn:c.delayOn,delayMs:c.delayMs,sends:c.sends,sendOn:c.sendOn,sendPre:c.sendPre,mtxSends:c.mtxSends,mtxOn:c.mtxOn,mtxPre:c.mtxPre,dca:c.dca,mute:c.mute})); }
-  function storeScene(slot){ scenes[slot]={ model:state.model, ch:CH.map(snapCh), master:state.master, mono:state.mono, dcaGain:state.dcaGain.slice(), dcaOn:state.dcaOn.slice(), muteActive:state.muteActive.slice(), rack:JSON.parse(JSON.stringify(state.rack)), geq:JSON.parse(JSON.stringify(state.geq)), ts:Date.now() }; toast("Cena "+(slot+1)+" <b>armazenada</b> ✔"); }
+  /* name/color/file entram na cena porque a mesa real guarda nome e patch de entrada na cena
+     (Function Tree: PATCH/NAME). Sem eles os botoes NAME e PATCH do RECALL SAFE/FOCUS nao
+     teriam dado nenhum para proteger — seriam botao de enfeite, que e' o defeito que estamos
+     tirando. hasAudio acompanha file: canal sem stem patchado e' canal mudo. */
+  function snapCh(c){ return JSON.parse(JSON.stringify({name:c.name,color:c.color,file:c.file,hasAudio:c.hasAudio,gain:c.gain,dgain:c.dgain,att:c.att,phase:c.phase,phantom:c.phantom,hpfOn:c.hpfOn,hpf:c.hpf,lpfOn:c.lpfOn,lpf:c.lpf,eqOn:c.eqOn,eq:c.eq,eqType:c.eqType,gateOn:c.gateOn,gateThr:c.gateThr,gateRange:c.gateRange,gateAtk:c.gateAtk,gateHold:c.gateHold,gateDecay:c.gateDecay,compOn:c.compOn,compThr:c.compThr,compRatio:c.compRatio,compAtk:c.compAtk,compRel:c.compRel,compKnee:c.compKnee,compGain:c.compGain,key1Src:c.key1Src,key1F:c.key1F,key1Hpf:c.key1Hpf,key2Src:c.key2Src,pan:c.pan,stMode:c.stMode,stAssign:c.stAssign,monoAsn:c.monoAsn,fader:c.fader,on:c.on,muteSafe:c.muteSafe,recallSafe:c.recallSafe,insertOn:c.insertOn,insertPoint:c.insertPoint,directOn:c.directOn,directLv:c.directLv,directPoint:c.directPoint,delayOn:c.delayOn,delayMs:c.delayMs,sends:c.sends,sendOn:c.sendOn,sendPre:c.sendPre,mtxSends:c.mtxSends,mtxOn:c.mtxOn,mtxPre:c.mtxPre,dca:c.dca,mute:c.mute})); }
+  function storeScene(slot){ marcarUndoCena(slot); scenes[slot]={ model:state.model, ch:CH.map(snapCh), master:state.master, mono:state.mono, dcaGain:state.dcaGain.slice(), dcaOn:state.dcaOn.slice(), muteActive:state.muteActive.slice(), rack:JSON.parse(JSON.stringify(state.rack)), geq:JSON.parse(JSON.stringify(state.geq)), ts:Date.now() }; toast("Cena "+(slot+1)+" <b>armazenada</b> ✔"); }
+  /* Um grupo de parametro passa para o canal i? (manual p.79 e p.102)
+     FOCUS decide o que ENTRA (por cena); RECALL SAFE decide o que fica de FORA (global).
+     O manual manda os dois valerem juntos: barrado por qualquer um dos dois = nao recupera. */
+  function grupoPassa(i,grupo,fo){
+    if(fo && fo.on && !fo.all){                       // FOCUS ligado e restrito
+      if(!fo.ch[i]) return false;                     // canal fora do foco
+      const p=fo.par[i];
+      if(p && !p.ALL && !p[grupo]) return false;      // parametro fora do foco
+    }
+    const c=CH[i];
+    if(c.recallSafe){                                 // RECALL SAFE do canal
+      const p=c.rsPar||{ALL:true};
+      if(p.ALL || p[grupo]) return false;             // protegido = nao sobrescreve
+    }
+    return true;
+  }
+  /* FADE (manual p.103): o fader nao pula, ANDA ate o valor da cena no tempo ajustado.
+     "If you recall the same scene while faders are moving, the faders ... will move
+     immediately to their target positions" — por isso um recall novo encerra o anterior. */
+  let _fadeRAF=0, _fadeJob=null, _fadeFim=0;
+  function pararFade(saltar){
+    if(!_fadeJob) return;
+    if(saltar) _fadeJob.alvos.forEach(a=>{ CH[a.i].fader=a.to; applyChanAudio(a.i); });
+    cancelAnimationFrame(_fadeRAF); clearTimeout(_fadeFim); _fadeJob=null; paintBay(); drawScreen();
+  }
+  function iniciarFade(alvos,segundos){
+    pararFade(true);                                  // recall durante fade: vai direto ao alvo
+    if(!alvos.length) return;
+    const t0=performance.now(), dur=Math.max(0.05,segundos)*1000;
+    alvos.forEach(a=>a.from=CH[a.i].fader);
+    _fadeJob={alvos};
+    const passo=()=>{
+      if(!_fadeJob) return;
+      const t=Math.min(1,(performance.now()-t0)/dur);
+      alvos.forEach(a=>{ CH[a.i].fader=a.from+(a.to-a.from)*t; applyChanAudio(a.i); });
+      paintBay(); paintSelected(); drawScreen();
+      if(t<1) _fadeRAF=requestAnimationFrame(passo); else _fadeJob=null;
+    };
+    _fadeRAF=requestAnimationFrame(passo);
+    /* REDE DE SEGURANCA — o rAF NAO roda com a pagina oculta (aba trocada, iframe fora de
+       vista): medido document.hidden=true -> zero quadros, enquanto o setTimeout continua.
+       Sem isto o fader CONGELA no meio do caminho e nunca chega ao valor da cena, e o aluno
+       volta para a aba com a mesa num estado que a mesa real nunca teria. O rAF cuida da
+       suavidade quando da' para ver; este relogio garante a CHEGADA de qualquer jeito. */
+    _fadeFim=setTimeout(()=>{
+      if(!_fadeJob) return;
+      _fadeJob.alvos.forEach(a=>{ CH[a.i].fader=a.to; applyChanAudio(a.i); });
+      cancelAnimationFrame(_fadeRAF); _fadeJob=null; paintBay(); paintSelected(); drawScreen();
+    }, dur+60);
+  }
+  /* ============ UNDO / REDO de cena (manual: a CL guarda o estado ANTERIOR ao ultimo
+     RECALL/STORE, e o UNDO devolve a mesa a esse estado).
+     Antes isto era um toast dizendo "cena anterior restaurada" sem restaurar NADA — mentir
+     e' pior que nao ter: o aluno confia e segue com a mesa errada. */
+  const _undo=[], _redo=[];
+  function fotoMesa(){ return { ch:CH.map(snapCh), master:state.master, mono:state.mono,
+      dcaGain:state.dcaGain.slice(), dcaOn:state.dcaOn.slice(), muteActive:state.muteActive.slice(),
+      rack:JSON.parse(JSON.stringify(state.rack)), geq:JSON.parse(JSON.stringify(state.geq)) }; }
+  function aplicarFoto(s){
+    pararFade(false);                                     // um fade correndo escreveria por cima
+    s.ch.forEach((sc,i)=>{ if(CH[i]) Object.assign(CH[i],JSON.parse(JSON.stringify(sc))); });
+    state.master=s.master; state.mono=s.mono;
+    state.dcaGain=s.dcaGain.slice(); state.dcaOn=s.dcaOn.slice(); state.muteActive=s.muteActive.slice();
+    state.rack=JSON.parse(JSON.stringify(s.rack)); state.geq=JSON.parse(JSON.stringify(s.geq));
+    for(let i=0;i<MAXCAP;i++)applyChanAudio(i); applyMasterAudio(); applyRackAll(); applyGeq();
+    paintBay(); paintSelected(); paintRightRack(); drawScreen();
+  }
+  /* O UNDO da CL desfaz a ultima operacao de RECALL **ou** de STORE — e as duas sao coisas
+     diferentes: desfazer um RECALL devolve a MESA ao estado de antes; desfazer um STORE
+     devolve a MEMORIA DA CENA ao conteudo de antes (a mesa nao se mexe). Por isso a pilha
+     guarda o tipo, e nao so uma foto. */
+  const cenaFoto=slot=>scenes[slot]?JSON.parse(JSON.stringify(scenes[slot])):null;
+  function marcarUndo(){ _undo.push({tipo:'mesa',foto:fotoMesa()}); if(_undo.length>20)_undo.shift(); _redo.length=0; }
+  function marcarUndoCena(slot){ _undo.push({tipo:'cena',slot,dados:cenaFoto(slot)}); if(_undo.length>20)_undo.shift(); _redo.length=0; }
+  function trocar(e){                                    // aplica a entrada e devolve a inversa
+    if(e.tipo==='mesa'){ const inv={tipo:'mesa',foto:fotoMesa()}; aplicarFoto(e.foto); return inv; }
+    const inv={tipo:'cena',slot:e.slot,dados:cenaFoto(e.slot)};
+    scenes[e.slot]=e.dados; drawScreen(); return inv;
+  }
+  function desfazer(){ if(!_undo.length){ toast("UNDO: nada para desfazer"); return; }
+    const e=_undo.pop(); _redo.push(trocar(e));
+    toast(e.tipo==='mesa'?"<b>UNDO</b> ▸ RECALL desfeito, mesa como estava"
+                         :"<b>UNDO</b> ▸ STORE desfeito na cena "+(e.slot+1)); }
+  function refazer(){ if(!_redo.length){ toast("REDO: nada para refazer"); return; }
+    const e=_redo.pop(); _undo.push(trocar(e));
+    toast(e.tipo==='mesa'?"<b>REDO</b> ▸ RECALL refeito":"<b>REDO</b> ▸ STORE refeito"); }
+
   function recallScene(slot){ const s=scenes[slot]; if(!s){ toast("Cena "+(slot+1)+" vazia"); return; }
+    marcarUndo();
     if(s.model && s.model!==state.model) applyModel(s.model,{repatch:false});   // scene carries the model — restore capacity first
-    s.ch.forEach((sc,i)=>{ if(!CH[i].recallSafe) Object.assign(CH[i],JSON.parse(JSON.stringify(sc))); });
+    const fo=state.focus[slot], fd=state.fade[slot], rg=state.rsGlobal||{};
+    const fadeAlvos=[];
+    let barrados=0;
+    s.ch.forEach((sc,i)=>{
+      if(!CH[i]) return;
+      const copia=JSON.parse(JSON.stringify(sc));
+      for(const k in copia){
+        const grupo=SAFEKEY[k]; if(!grupo) continue;                 // chave fora da tabela: sempre entra
+        /* GLOBAL RECALL SAFE: protege a familia inteira, em todos os canais (manual p.80) */
+        if(rg["INPUT PATCH"] && grupo==="PATCH") { barrados++; continue; }
+        if(rg["INPUT NAME"]  && grupo==="NAME")  { barrados++; continue; }
+        if(rg["HA"]          && grupo==="HA")    { barrados++; continue; }
+        if(!grupoPassa(i,grupo,fo)) { barrados++; continue; }
+        /* FADE: o fader e' o unico que nao e' escrito agora — ele anda ate la */
+        if(k==="fader" && fd.on && fd.ch[i]){
+          if(CH[i].fader!==copia[k]) fadeAlvos.push({i,to:copia[k]});
+          continue;
+        }
+        CH[i][k]=copia[k];
+      }
+    });
     state.master=s.master; if(s.mono!=null)state.mono=s.mono;
     state.dcaGain=s.dcaGain.slice(); state.dcaOn=s.dcaOn.slice(); state.muteActive=s.muteActive.slice();
-    if(s.rack) state.rack=JSON.parse(JSON.stringify(s.rack));
-    if(s.geq) state.geq=JSON.parse(JSON.stringify(s.geq));
+    if(s.rack && !rg["EFFECT RACK"] && !rg["PREMIUM RACK"]) state.rack=JSON.parse(JSON.stringify(s.rack));
+    if(s.geq  && !rg["GEQ RACK"])    state.geq =JSON.parse(JSON.stringify(s.geq));
     for(let i=0;i<MAXCAP;i++)applyChanAudio(i); applyMasterAudio(); applyRackAll(); applyGeq();
-    paintBay(); paintSelected(); paintRightRack(); drawScreen(); toast("Cena "+(slot+1)+" <b>recuperada</b> ▸ faders atualizados"); }
+    if(fadeAlvos.length) iniciarFade(fadeAlvos,fd.time);
+    paintBay(); paintSelected(); paintRightRack(); drawScreen();
+    const marca=[fo.on&&!fo.all?"FOCUS":null, barrados?"SAFE":null, fadeAlvos.length?("FADE "+fd.time.toFixed(1)+"s"):null].filter(Boolean).join(" · ");
+    toast("Cena "+(slot+1)+" <b>recuperada</b>"+(marca?" ▸ "+marca:" ▸ faders atualizados")); }
   function chLevelDb(i){ if(!ac||!aNodes[i])return -90; const n=aNodes[i]; n.an.getFloatTimeDomainData(n.buf); let s=0; for(let k=0;k<n.buf.length;k++)s+=n.buf[k]*n.buf[k]; const rms=Math.sqrt(s/n.buf.length); return rms>1e-5?20*Math.log10(rms):-90; }
   function masterLevelDb(){ if(!masterAn)return -90; masterAn.getFloatTimeDomainData(masterAn._buf); let s=0; for(let k=0;k<masterAn._buf.length;k++)s+=masterAn._buf[k]*masterAn._buf[k]; const rms=Math.sqrt(s/masterAn._buf.length); return rms>1e-5?20*Math.log10(rms):-90; }
   function loadBuf(url){ if(!bufCache[url]){ bufCache[url]=(async()=>{ const r=await fetch(url); if(!r.ok)throw new Error("HTTP "+r.status); const ab=await r.arrayBuffer(); return await ac.decodeAudioData(ab); })().catch(e=>{ delete bufCache[url]; throw e; }); } return bufCache[url]; }
@@ -2567,7 +2927,7 @@
             else if(d.rack==='premium'){state.rackKind='fx';toast("PREMIUM RACK: usa os módulos REV-X do Virtual Rack");} }
           if(d.mt!=null) state.mtTab=+d.mt;
           if(d.grp!=null){ if(+d.grp<2) state.grpTab=+d.grp; else toast((+d.grp===2?"CHANNEL LINK":"OUTPUT CHANNEL LINK")+": não incluído no simulador"); }
-          if(d.sc!=null){ if(+d.sc>0) toast(it.textContent+": não incluído no simulador"); state.scnTab=+d.sc; }
+          if(d.sc!=null){ state.scnTab=+d.sc; }
           if(WINDEF[d.win]) setMode(d.win); else toast(it.textContent.replace(/Ctrl.*/,'')+": não incluído no simulador");
         }
         else if(d.model){ setModel(d.model); }
@@ -2589,8 +2949,8 @@
       case "cascade": cascadeWins(); break;
       case "close": if(focusId)closeWin(focusId); break;
       case "closeall": Object.keys(WINS).forEach(closeWin); break;
-      case "undo": toast("UNDO: <b>cena anterior</b> restaurada"); break;
-      case "redo": toast("REDO: não incluído no simulador"); break;
+      case "undo": desfazer(); break;
+      case "redo": refazer(); break;
       case "new": case "open": case "save": case "saveas":
         toast("Arquivo de sessão: recurso do CL Editor (PC)"); break;
       case "pc2console": toast("Re-synchronize <b>PC → Console</b> ✔"); state.online=true; break;
@@ -2640,7 +3000,7 @@
     chDb:i=>chLevelDb(i), preDb:i=>chPreDb(i), rackDb:r=>rackLevelDb(r), masterDb:()=>masterLevelDb(),
     play:()=>playSong(), stop:()=>stopSong(), isPlaying:()=>playing, isLoading:()=>loadingSong,
     srcs:()=>realSources, mg:()=>masterGain, stinN:i=>stinN[i], bufs:()=>bufCache,
-    storeScene, recallScene, N_DCA, N_MUTE,
+    storeScene, recallScene, N_DCA, N_MUTE, desfazer, refazer, scenes:()=>scenes,
     // model selector (headless verification)
     setModel, applyModel, MODELS, model:()=>state.model, maxch:()=>MAXCH, maxcap:MAXCAP,
     songs:()=>SONGS, rebuildSongSel,

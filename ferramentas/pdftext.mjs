@@ -311,7 +311,16 @@ function extrairTexto(txt, fontes) {
     // o caminho: tratada byte a byte (fonte de 1 byte), ela vira o lixo "þÿPower section" — foi
     // assim que "þÿ" apareceu grudado em cada bullet do manual do XDJ-RX2.
     if (bytes.length >= 2 && bytes[0] === 0xfe && bytes[1] === 0xff) {
-      out += bytes.subarray(2).swap16().toString("utf16le");
+      // O corpo depois do BOM tem de ter tamanho PAR — é uma sequência de unidades de 16 bits.
+      // O manual do CL5 (Yamaha) traz strings UTF-16 com 1 byte sobrando: o swap16 lança
+      // ERR_INVALID_BUFFER_SIZE e o extrator MORRE no meio do arquivo, devolvendo zero texto.
+      // Decifra o par e marca o byte órfão como buraco — sumir com ele calado é o erro do
+      // "COPY/PAS" documentado abaixo. Cópia obrigatória: swap16 inverte NO LUGAR, e a
+      // subarray divide memória com o buffer da página.
+      const corpo = bytes.subarray(2);
+      const par = corpo.length - (corpo.length % 2);
+      out += Buffer.from(corpo.subarray(0, par)).swap16().toString("utf16le");
+      if (par !== corpo.length) { perdidos++; out += "�"; }
       continue;
     }
     if (!atual) { out += bytes.toString("latin1"); continue; }
