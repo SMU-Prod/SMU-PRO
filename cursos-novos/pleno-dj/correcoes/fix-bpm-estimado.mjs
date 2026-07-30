@@ -38,7 +38,7 @@ async function req(m, p, b, x = {}) {
 }
 
 (async () => {
-  const html = fs.readFileSync(path.join(ROOT, "simuladores/dj/dj-bpm-genero-lab.html"), "utf8");
+  const html = fs.readFileSync(path.join(ROOT, "simuladores/dj/_aulas/dj-bpm-genero-lab.html"), "utf8");
   if (!/⚠️ ESTIMADO/.test(html)) { console.log("  ✗ falta a marcação ⚠️ ESTIMADO no código — abortado"); process.exit(1); }
   // sem as tags: o aviso na tela tem <b> no meio da frase
   const naTela = html.replace(/<!--[\s\S]*?-->/g, "").replace(/<[^>]+>/g, "");

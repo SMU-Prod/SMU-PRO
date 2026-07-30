@@ -34,7 +34,21 @@ const html = fs.readFileSync(
 /* guardas: se qualquer uma falhar, e melhor nao publicar */
 if (!/srcdoc=/.test(html)) throw new Error("guard: a aula nao tem simulador embutido");
 if (!/"d1":"sl1200"/.test(html)) throw new Error("guard: o preset do MK7 nao esta na aula");
-if (html.length < 500e3) throw new Error("guard: aula pequena demais, algo faltou");
+/* A guarda era por TAMANHO (>500KB) de quando a aula carregava os 29 aparelhos.
+   Agora a aula travada leva so os dela e tem ~380KB — o tamanho parou de dizer
+   alguma coisa. O que importa e se os 3 simuladores certos estao dentro.      */
+/* Os simuladores vivem num array `const SIMS = [...]`; o `srcdoc=` aparece uma
+   vez so, no codigo que monta os iframes. Contar srcdoc nao serve. */
+if (!/const SIMS = \[/.test(html)) throw new Error("guard: nao achei o array SIMS na aula");
+/* conta os aparelhos pelo campo "id" do array — o HTML de cada um vem escapado
+   no meio, entao casar o fecha-colchete do array e furada. */
+const quantos = (html.match(/\{"id":"/g) || []).length;
+/* sao DOIS aparelhos unicos, nao tres: o preset usa o MESMO MK7 nos dois lados
+   (d1 e d2 iguais), entao o gerador embute o arquivo uma vez so e a aula o
+   monta duas vezes. Contar 3 era erro da guarda, nao da aula. */
+if (quantos !== 2) throw new Error(`guard: a aula tem ${quantos} aparelhos unicos, esperava 2 (MK7 + mixer)`);
+if (!/\{"id":"sl1200"/.test(html)) throw new Error("guard: o MK7 nao esta embutido");
+if (!/"d1":"sl1200"/.test(html)) throw new Error("guard: o preset do MK7 nao esta na aula");
 
 /* REGRA 5: so mexe se a aula for mesmo a do MK7 */
 const l = await req("GET", `/lessons?id=eq.${AULA}&select=id,titulo`);

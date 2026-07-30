@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 const __dir = path.dirname(fileURLToPath(import.meta.url));
-const SIM = path.join(__dir, "../../simuladores/dj");
+const SIM = path.join(__dir, "../../simuladores/dj/_aulas");
 const base = fs.readFileSync(path.join(SIM, "dj-marca-lab.html"), "utf8");
 
 const CONTRATANTE = {

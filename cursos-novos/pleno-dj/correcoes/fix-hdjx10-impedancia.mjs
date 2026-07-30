@@ -84,7 +84,7 @@ const TROCAS = [
   if (!DRY && n) await req("PATCH", `/lessons?id=eq.${L25}`, { conteudo_rico: h }, { Prefer: "return=minimal" });
 
   console.log("\n— republicando o Lab de Fones —");
-  const html = fs.readFileSync(path.join(ROOT, "simuladores/dj/dj-fones-lab-real.html"), "utf8");
+  const html = fs.readFileSync(path.join(ROOT, "simuladores/dj/_aulas/dj-fones-lab-real.html"), "utf8");
   if (!/"Driver ø50 mm","5 Hz–40.000 Hz","32 Ω"/.test(html)) { console.log("  ✗ o HDJ-X10 no simulador ainda está sem os 32 Ω — abortando"); process.exit(1); }
   console.log(`  ✓ HDJ-X10 com 32 Ω · ${(html.length / 1024).toFixed(0)} KB`);
   if (!DRY) {

@@ -59,7 +59,7 @@ const roteiro = {
 };
 
 (async () => {
-  const html = fs.readFileSync(path.join(ROOT, "simuladores/dj/smu-dj-studio-real.html"), "utf8");
+  const html = fs.readFileSync(path.join(ROOT, "simuladores/dj/_aulas/smu-dj-studio-real.html"), "utf8");
   console.log(`Simulador: ${(html.length / 1024).toFixed(0)} KB`);
   const mod = await req("GET", `/modules?id=eq.${MODULE}&select=id,titulo`);
   if (!mod.length) throw new Error("módulo não encontrado");

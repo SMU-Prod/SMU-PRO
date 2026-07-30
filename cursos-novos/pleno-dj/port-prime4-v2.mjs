@@ -6,7 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 const __dir = path.dirname(fileURLToPath(import.meta.url));
-const F = path.resolve(__dir, "../../simuladores/dj/denon-prime4-real.html");
+const F = path.resolve(__dir, "../../simuladores/dj/denon/denon-prime4-real.html");
 let s = fs.readFileSync(F, "utf8");
 if (s.includes("MOTOR v2 · PRIME4")) { console.log("• já portado — nada a fazer"); process.exit(0); }
 

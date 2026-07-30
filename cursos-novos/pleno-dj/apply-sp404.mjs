@@ -85,7 +85,7 @@ const QUIZ = { titulo: "Quiz — Roland SP-404", questoes: [
 ] };
 
 (async () => {
-  const html = fs.readFileSync(path.join(ROOT, "simuladores/dj/roland-sp404-real.html"), "utf8");
+  const html = fs.readFileSync(path.join(ROOT, "simuladores/dj/roland/roland-sp404-real.html"), "utf8");
   console.log(`SP-404: ${(html.length / 1024).toFixed(0)} KB → aula 7.5`);
   if (DRY) { console.log("[dry-run]"); return; }
   await req("DELETE", `/ai_animations?lesson_id=eq.${LID}`, null, { Prefer: "return=minimal" });

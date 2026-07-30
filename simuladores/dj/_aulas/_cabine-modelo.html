@@ -326,8 +326,15 @@ const S = {
   mixEstado:null,               /* estado publicado pelo simulador do mixer */
   nivel:{1:0,2:0},              /* nivel de audio medido na saida de cada deck */
   tam:{},                       /* tamanho natural informado por cada simulador */
-  faixaDe:{1:null,2:null},
-  faixas:[],
+  /* ---------------------------------------------------------------------
+     O PEN DRIVE DA AULA
+     Ordem do dono: a musica se escolhe NO VISOR DO APARELHO, e o aluno guarda
+     VARIAS na playlist para ir carregando uma a uma, como faria com um pen
+     drive. Por isso a playlist mora AQUI, na moldura: e UMA so, a mesma nos
+     dois decks (um pen drive nao se divide), e a aula manda copia para cada
+     aparelho. Quem escolhe continua sendo o visor.                        */
+  playlist:[],                  /* faixas guardadas pelo aluno, na ordem */
+  carregada:{1:null,2:null,m:null},  /* o que cada aparelho relatou ter carregado */
   popAberto:null,
 };
 
@@ -877,7 +884,9 @@ function eloDoCanal(c){
   const gx = xfGanho(m.xf, lado);
   if(gx<0.03) return {ok:false, txt:"o <b>crossfader</b> está todo do outro lado (canal "+c+" atribuído a <b>"+esc(lado||"?")+"</b>)."};
   if(m.master!=null && m.master<0.03) return {ok:false, txt:"o <b>MASTER</b> do mixer está fechado."};
-  if((S.nivel[c]||0)<0.004) return {ok:false, txt:"o <b>player do canal "+c+"</b> não está tocando: dê play e carregue uma faixa."};
+  if((S.nivel[c]||0)<0.004) return {ok:false, txt:"o <b>player do canal "+c+"</b> não está tocando: "+
+    (S.carregada[c] ? "a faixa <b>"+esc(S.carregada[c].nome)+"</b> está carregada — aperte <b>PLAY</b>."
+                    : "carregue uma faixa <b>no visor do aparelho</b> (USB / BROWSE) e aperte PLAY.")};
   return {ok:true, txt:""};
 }
 function ganhoDoCanal(c){
@@ -968,17 +977,68 @@ addEventListener("message",ev=>{
   if(d.smu==="estado" && slot==="m"){ S.mixEstado=d.est; aplicarAudio(); pintarPainel(); return; }
   /* o pico do player chega ~7x por segundo; e ele que move o VU do mixer */
   if(d.smu==="nivel" && (slot==="1"||slot==="2")){ S.nivel[+slot]=d.v; mandarVU(); pintarPainel(); return; }
-  if(d.smu==="faixas"){ S.faixas=d.lista||[]; if(S.popAberto==="mus") pintarMusicas(); return; }
+  /* ---------------------------------------------------------------------
+     O VISOR DO APARELHO FALANDO COM A AULA
+     A playlist e UMA so (um pen drive nao se divide): quem guarda e a aula, e
+     ela devolve a lista atualizada para os tres aparelhos. Assim o que o aluno
+     guardou olhando o deck 1 aparece no visor do deck 2 — como no pen drive.
+     --------------------------------------------------------------------- */
+  if(d.smu==="plToggle"){
+    const f=d.faixa; if(!f||!f.id) return;
+    S.playlist = naPlaylist(f.id) ? S.playlist.filter(x=>x.id!==f.id) : S.playlist.concat([f]);
+    mandarBiblioteca(); pintarPainel(); return;
+  }
+  if(d.smu==="plNova"){
+    const f=d.faixa;
+    /* confere o id do YouTube tambem deste lado: 11 caracteres, nada mais */
+    if(!f || f.tipo!=="yt" || !idDoYoutube(f.yt)) return;
+    if(!naPlaylist(f.id)) S.playlist = S.playlist.concat([f]);
+    mandarBiblioteca(); pintarPainel(); return;
+  }
+  if(d.smu==="carregou" && slot){
+    S.carregada[slot]={nome:d.nome,bpm:d.bpm,tipo:d.tipo,amostras:d.amostras,taxa:d.taxa};
+    pintarPainel(); if(S.popAberto==="mus") pintarMusicas(); return;
+  }
+  if(d.smu==="carregouErro" && slot){
+    S.erroFaixa="Deck "+slot+": "+d.erro; pintarPainel(); return;
+  }
   /* PONTE DO YOUTUBE: o player mora na moldura da AULA (React), nunca no
-     simulador. Aqui a aula so repassa — ela e o iframe direto do player. */
-  if(d.smu==="yt"){ try{ parent.postMessage(d,"*"); }catch(e){} return; }
+     simulador. Aqui a aula so repassa — ela e o iframe direto do player.
+     O visor ja manda um `slot` unico na cabine ("1-1", "2-1", "m-2"): sem isso
+     os dois aparelhos pediriam o slot "A" e um comeria o player do outro.
+     Aqui so se poe o ROTULO que o aluno le na moldura. */
+  if(d.smu==="yt"){
+    /* ⛔ SO REPASSA O QUE VEIO DE UM SIMULADOR NOSSO.
+       MEDIDO: com a aula aberta SOZINHA (fora do player do curso) `parent` E a
+       propria janela. O repasse voltava para este mesmo ouvinte, que repassava
+       de novo — LACO INFINITO de postMessage, o navegador travava e no teste
+       encheu 79 MB de mensagens em segundos. Fora do player nao ha ponte do
+       YouTube para receber: o certo e nao repassar. */
+    if(!slot) return;
+    if(parent === window){
+      /* aula aberta fora do player: nao existe ponte do YouTube. Avisa o visor
+         em vez de deixar o aluno achando que carregou e nao toca. */
+      manda(slot,{smu:"ytev", ev:"semPonte"});
+      return;
+    }
+    const m=Object.assign({},d);
+    m.label = slot==="m" ? "TUDO-EM-UM" : ("DECK "+slot+" ("+(slot==="1"?"esquerda":"direita")+")");
+    try{ parent.postMessage(m,"*"); }catch(e){}
+    return;
+  }
   if(d.smu==="ytev"){ ["1","2","m"].forEach(s=>manda(s,d)); return; }
 });
 function slotDaJanela(w){
   for(const s of ["1","2","m"]){ const f=$("#if-"+s); if(f&&f.contentWindow===w) return s; }
   return null;
 }
-function pedirFaixas(){ ["1","2","m"].forEach(s=>manda(s,{smu:"faixas?"})); }
+/* apresenta a cabine a cada aparelho (quem e ele na mesa) e entrega o pen drive.
+   E chamado mais de uma vez de proposito: o iframe pode ainda estar carregando
+   quando a mesa monta, e mensagem para janela que nao acordou cai no vazio. */
+function pedirFaixas(){
+  ["1","2","m"].forEach(s=>{ manda(s,{smu:"cabine", slot:s}); });
+  mandarBiblioteca();
+}
 
 /* ============================================================================
    9. PAINEL "O QUE FALTA" / "COMO FUNCIONA" / "MUSICAS"
@@ -988,14 +1048,24 @@ function faltaPraticando(){
   if(S.aio){
     it.push([true,"<b>Tudo-em-um</b>: player e mixer no mesmo corpo",
       "Não há canal para escolher nem cabo para ligar — os decks já saem no mixer interno."]);
+    it.push([S.playlist.length>0, "Guardar faixas na <b>playlist</b> pelo visor",
+      "Aperte <b>USB</b> ou <b>BROWSE</b> no aparelho: a lista abre na tela dele. Guarde várias — é o seu pen drive."]);
+    it.push([!!S.carregada.m, "<b>Carregar</b> no deck pelo visor",
+      "Na aba PLAYLIST, escolha a faixa e use <b>LOAD 1</b> / <b>LOAD 2</b> (ou o seletor rotativo)."]);
     it.push([(S.nivel[1]||0)>0.004||(S.nivel[2]||0)>0.004 ? true : false,
       "Dar <b>play</b> e subir o fader",
-      "Toque no aparelho, carregue uma faixa e suba o fader do canal."]);
+      "Com a faixa carregada, aperte PLAY e suba o fader do canal."]);
     return it;
   }
   const e1=eloDoCanal(1), e2=eloDoCanal(2);
   it.push([true,"Cabine <b>montada</b>: esquerda = <b>CANAL 1</b>, direita = <b>CANAL 2</b>",
     "A posição na mesa é que manda. Não há canal a escolher."]);
+  /* o pen drive vem ANTES do som: sem faixa carregada nao ha o que sair */
+  it.push([S.playlist.length>0, "Guardar faixas na <b>playlist</b> pelo visor",
+    "Aperte <b>USB</b> ou <b>BROWSE</b> no aparelho; na aba <b>USB — BANCO SMU</b> guarde com a estrela ou com <b>TAG TRACK</b>. É o seu pen drive: guarde várias."]);
+  it.push([!!(S.carregada[1]&&S.carregada[2]), "<b>Carregar</b> uma faixa em cada deck",
+    "Na aba <b>PLAYLIST</b> do visor: toque duas vezes na faixa (tela sensível) ou aperte o <b>seletor rotativo</b>. "+
+    "No CD player, quem anda de faixa é o <b>TRACK SEARCH</b>."]);
   it.push([e1.ok,"Fazer o <b>canal 1</b> sair", e1.txt || "está passando."]);
   it.push([e2.ok,"Fazer o <b>canal 2</b> sair", e2.txt || "está passando."]);
   return it;
@@ -1029,6 +1099,9 @@ function pintarPainel(){
       elo = cortes.length ? "<div class='elo'>"+cortes.join("<br>")+"</div>" : "";
     }
   }
+  /* falha de carga do visor nao pode sumir calada — foi ela que fez o aluno
+     achar que "escolher musica nao faz nada" */
+  if(S.erroFaixa) elo = "<div class='elo'>Não deu para carregar: "+esc(S.erroFaixa)+"</div>" + elo;
   const sm=$("#som");
   sm.className="som"+(som?" on":"");
   sm.textContent = som ? "SOM NO AR ♪" : (S.passo===1?"cabine ainda não montada":"SEM SOM");
@@ -1056,6 +1129,13 @@ function textoComo(){
     'Qualquer um desses fechado e não sai nada — e o painel <b>O QUE FALTA</b> diz qual deles está cortando, em vez de só dizer "sem som".</p>'+
     '<p><b>O seletor de entrada</b> é o defeito nº 1 da cabine de verdade. Player no canal certo, fader em cima, e mesmo assim silêncio: a chave estava em PHONO. '+
     'Some em 2 segundos quando você sabe onde olhar.</p>'+
+    '<p><b>A música se escolhe no visor do aparelho</b>, como na cabine — não existe menu na moldura. '+
+      'Aperte <b>USB</b> ou <b>BROWSE</b> e a lista abre na tela do próprio player. A <b>PLAYLIST</b> é o seu pen drive: '+
+      'guarde várias faixas (estrela, ou <b>TAG TRACK</b>) e vá carregando uma a uma. '+
+      'Tela sensível ao toque (CDJ-2000NXS2, CDJ-3000, XDJ-700, XDJ-1000MK2): toca e toca de novo para carregar. '+
+      'Tela não sensível (CDJ-850, CDJ-900NXS): gira o <b>seletor rotativo</b> e aperta. '+
+      'CD player (CDJ-100S, 200, 400, 800MK2, 1000MK3): não há lista rolando — quem anda de faixa é o <b>TRACK SEARCH</b>, '+
+      'igualzinho a um CD. Toca-discos não tem visor: a troca é no painel de ensino, que é a sua mão pegando o disco.</p>'+
     '<p><b>Ampliar.</b> Toque em <b>AMPLIAR</b> no cabeçalho de qualquer aparelho para ele ocupar a tela toda — e de novo para voltar. No iPad é o jeito de operar o jog com o dedo.</p>'+
     '<p style="color:#8b97a9">Força e cabos são a outra aula, <b>“Ligando a cabine”</b>. Aqui a cabine já está ligada: o assunto é operar.</p>';
 }
@@ -1076,6 +1156,22 @@ const BANCO_FAIXAS = [
   {arquivo:"sotex-11.mp3",nome:"SOTEX 11", bpm:89.6 },{arquivo:"sotex-12.mp3",nome:"SOTEX 12", bpm:139.6},
   {arquivo:"sotex-13.mp3",nome:"SOTEX 13", bpm:122.5}
 ];
+/* o que vai para o visor do aparelho: id, nome, BPM e o ENDERECO ABSOLUTO.
+   Absoluto por obrigacao — o sim roda em iframe srcdoc de origem opaca, sem
+   <base>: caminho relativo da 404 e o fetch sai com Origin: null. */
+const BANCO = BANCO_FAIXAS.map(f=>({
+  id:f.arquivo, arquivo:f.arquivo, nome:f.nome, bpm:f.bpm, tipo:"mp3", url:BANCO_BASE+f.arquivo
+}));
+const naPlaylist = id => S.playlist.some(f=>f.id===id);
+/* a biblioteca inteira: o Banco SMU + o que o aluno colou do YouTube */
+function bancoTodo(){
+  const extras = S.playlist.filter(f=>f.tipo==="yt");
+  return BANCO.concat(extras);
+}
+function mandarBiblioteca(){
+  ["1","2","m"].forEach(s=>manda(s,{smu:"biblioteca", banco:bancoTodo(), playlist:S.playlist}));
+  if(S.popAberto==="mus") pintarMusicas();
+}
 
 /* extrai o id de um link do YouTube em qualquer formato, ou aceita o id cru.
    Colar link NAO gasta cota de API — e o caminho recomendado ao aluno. */
@@ -1086,58 +1182,48 @@ function idDoYoutube(t){
   return m?m[1]:null;
 }
 
+/* ---------------------------------------------------------------------------
+   ⛔ A JANELA "MUSICAS" NAO ESCOLHE MAIS MUSICA — E SO EXPLICACAO.
+   Ordem do dono, 29/07/2026: "as musicas devem ser selecionadas na tela da CDJ
+   e nao em uma lista no cabecalho, ate a procura do YouTube."
+   Num aparelho de verdade ninguem escolhe faixa num menu da moldura: escolhe no
+   VISOR do player. Entao saiu daqui a lista com DECK 1 / DECK 2 e saiu o campo
+   do YouTube. O que sobra e o mapa: onde apertar, no aparelho, para chegar la —
+   mais o espelho, so de leitura, do que ja esta no pen drive e nos decks.
+   --------------------------------------------------------------------------- */
 function pintarMusicas(){
   const M=$("#mus");
-  if(eCabeamento){ M.innerHTML='<p>Nesta aula nao ha musica: o assunto e o cabo. As faixas entram na aula <b>"Monte seu Setup e treine"</b>.</p>'; return; }
-  if(S.passo!==2){ M.innerHTML='<p>Escolha os aparelhos primeiro. Depois volte aqui para por musica em cada deck.</p>'; return; }
+  if(eCabeamento){ M.innerHTML='<p>Nesta aula não há música: o assunto é o cabo. As faixas entram na aula <b>"Monte seu Setup e treine"</b>.</p>'; return; }
+  if(S.passo!==2){ M.innerHTML='<p>Escolha os aparelhos primeiro. Depois a música se escolhe <b>no visor de cada aparelho</b>.</p>'; return; }
 
-  const L = S.faixas.length ? S.faixas : BANCO_FAIXAS;
-  const linha=(f,i)=>'<div class="faixa"><span class="fn">'+esc(f.nome)+(f.bpm?" &middot; "+f.bpm+" BPM":"")+'</span>'+
-    '<button class="fb '+(S.faixaDe[1]===i?"on":"")+'" data-faixa="1" data-i="'+i+'">DECK 1</button>'+
-    '<button class="fb '+(S.faixaDe[2]===i?"on":"")+'" data-faixa="2" data-i="'+i+'">DECK 2</button></div>';
+  const carreg = c => S.carregada[c] ? (esc(S.carregada[c].nome)+(S.carregada[c].bpm?" · "+S.carregada[c].bpm+" BPM":"")) : "—";
+  const semVisor = [S.d1,S.d2].some(id=>ehVinil(nomeDe(id)));
 
   M.innerHTML =
-    '<p><b>Minhas faixas</b> — as musicas do Banco SMU. Escolha uma para cada deck.</p>'+
-    L.map(linha).join("")+
-    '<hr style="border:0;border-top:1px solid #1c2229;margin:12px 0">'+
-    '<p><b>YouTube</b> — cole o link do video e mande para um deck.</p>'+
-    '<div class="faixa" style="gap:5px">'+
-      '<input id="ytUrl" class="fn" placeholder="cole aqui o link do YouTube" '+
-        'style="font:inherit;font-size:11px;padding:6px 7px;border-radius:6px;background:#0c1015;'+
-        'color:#dbe4ee;border:1px solid #22303c;min-width:0">'+
-      '<button class="fb" id="ytD1">DECK 1</button><button class="fb" id="ytD2">DECK 2</button>'+
-    '</div>'+
-    '<div id="ytMsg" style="font-size:10.5px;color:#8b97a9;margin-top:5px">'+
-      'Colar o link funciona sempre e nao gasta cota. <b>Nao e preciso entrar na sua conta Google</b> '+
-      'para ouvir — a conta so serve para playlist particular, que a aula nao usa.</div>'+
-    '<p style="color:#8b97a9;margin-top:9px;font-size:10.5px">O player do YouTube aparece na '+
-      '<b>moldura da aula</b>, nunca dentro do aparelho: sem <code>allow-same-origin</code> o '+
-      '<code>onReady</code> nunca chega (testado lado a lado). Por isso <b>pitch, jog e EQ nao agem</b> '+
-      'em faixa de streaming — o audio do YouTube nao pode ser processado.</p>';
-
-  $$("[data-faixa]",M).forEach(b=>b.addEventListener("click",()=>{
-    const d=+b.dataset.faixa, i=+b.dataset.i;
-    S.faixaDe[d] = (S.faixaDe[d]===i) ? null : i;
-    const f = L[i];
-    /* manda o ENDERECO junto: assim funciona ate no aparelho que nao tem o Banco */
-    manda(String(d), {smu:"faixa", i:S.faixaDe[d],
-      url: S.faixaDe[d]===null?null:(BANCO_BASE+f.arquivo), nome:f.nome, bpm:f.bpm});
-    pintarMusicas();
-  }));
-
-  const mandarYT = d => {
-    const id = idDoYoutube($("#ytUrl").value);
-    const msg = $("#ytMsg");
-    if(!id){ msg.innerHTML='<span style="color:#ff9b9b">Nao reconheci esse link. '+
-      'Vale youtube.com/watch?v=..., youtu.be/... ou o id de 11 caracteres.</span>'; return; }
-    /* o player mora na moldura do curso; a aula so avisa */
-    parent.postMessage({smu:"youtube", deck:d, id:id}, "*");
-    manda(String(d), {smu:"fonte", tipo:"youtube", id:id});
-    msg.innerHTML='<span style="color:#7df0a8">Video mandado para o DECK '+d+'. '+
-      'O player aparece na moldura da aula.</span>';
-  };
-  $("#ytD1").addEventListener("click",()=>mandarYT(1));
-  $("#ytD2").addEventListener("click",()=>mandarYT(2));
+    '<p><b>A música se escolhe no visor do aparelho</b>, não aqui. É assim na cabine: '+
+      'você espeta o pen drive, abre o <b>BROWSE</b> na tela do player, gira o <b>seletor rotativo</b> '+
+      'e aperta para <b>carregar no deck</b>.</p>'+
+    '<div class="chk"><div class="b">1</div><div class="tx">Aperte <b>USB</b> ou <b>BROWSE</b> no aparelho — a lista abre no visor dele.</div></div>'+
+    '<div class="chk"><div class="b">2</div><div class="tx">Aba <b>USB — BANCO SMU</b>: guarde na playlist com a <b>estrela</b> ou com <b>TAG TRACK</b>. Guarde quantas quiser: é o seu pen drive.</div></div>'+
+    '<div class="chk"><div class="b">3</div><div class="tx">Aba <b>PLAYLIST</b>: escolha e <b>carregue</b> — toque duas vezes na faixa (tela sensível) ou aperte o <b>seletor rotativo</b>.</div></div>'+
+    '<div class="chk"><div class="b">4</div><div class="tx">Aba <b>YOUTUBE</b>, no próprio visor: cole o endereço do vídeo e ele entra na playlist como as outras.</div></div>'+
+    (semVisor ? '<div class="elo">Toca-discos <b>não tem visor</b> — não há onde escolher música nele. '+
+      'A troca fica no <b>painel de ensino do próprio simulador</b>, embaixo do aparelho: é a sua mão trocando o disco.</div>' : "")+
+    '<h4 style="margin-top:11px">No pen drive agora</h4>'+
+    (S.playlist.length
+      ? S.playlist.map(f=>'<div class="faixa"><span class="fn">'+esc(f.nome)+
+          (f.bpm?" &middot; "+f.bpm+" BPM":(f.tipo==="yt"?" &middot; YouTube":""))+'</span></div>').join("")
+      : '<p style="color:#8b97a9">Playlist vazia. Guarde faixas pelo visor do aparelho.</p>')+
+    '<h4 style="margin-top:11px">Nos decks</h4>'+
+    (S.aio
+      ? '<div class="faixa"><span class="fn">TUDO-EM-UM &middot; '+carreg("m")+'</span></div>'
+      : '<div class="faixa"><span class="fn">DECK 1 (esquerda) &middot; '+carreg(1)+'</span></div>'+
+        '<div class="faixa"><span class="fn">DECK 2 (direita) &middot; '+carreg(2)+'</span></div>')+
+    '<p style="color:#8b97a9;margin-top:9px;font-size:10.5px">Procurar no YouTube <b>por nome</b> ainda não está no ar: '+
+      'depende da chave da API no servidor. Colar o endereço funciona e não gasta cota nenhuma. '+
+      'O player do YouTube aparece na <b>moldura da aula</b>, nunca dentro do aparelho: sem '+
+      '<code>allow-same-origin</code> o <code>onReady</code> nunca chega (testado lado a lado). '+
+      'Por isso <b>pitch, jog e EQ não agem</b> em faixa de streaming — o áudio do YouTube não pode ser processado.</p>';
 }
 
 /* ============================================================================
@@ -1216,6 +1302,9 @@ function render(){
     S.ampliado=null;
     document.documentElement.classList.remove("ampliado");
     requestAnimationFrame(()=>{ dimensionar(); requestAnimationFrame(dimensionar); });
+    /* entrega o pen drive aos visores. Mais de uma vez porque o iframe pode
+       ainda nao ter acordado — mensagem para janela sem ouvinte cai no vazio. */
+    [150,700,1800].forEach(t=>setTimeout(pedirFaixas,t));
   }
   const bt=$("#btnAmpliar");
   if(bt){ bt.disabled = !(S.passo===2 && !eCabeamento); bt.textContent = S.ampliado?"VOLTAR":"AMPLIAR"; }

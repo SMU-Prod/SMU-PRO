@@ -64,33 +64,70 @@ const argPonte = (process.argv.find(a => a.startsWith("--ponte=")) || "").split(
 if (!["full", "min", "none"].includes(argPonte)) throw new Error("--ponte= full | min | none");
 const SUFIXO = argPonte === "full" ? "" : "-PONTE-" + argPonte;
 
+/* ==========================================================================
+   VISOR — como CADA aparelho escolhe musica NA TELA DELE
+   --------------------------------------------------------------------------
+   Ordem do dono (29/07/2026): "as musicas devem ser selecionadas na tela da
+   CDJ e nao em uma lista no cabecalho, ate a procura do YouTube".
+
+   Aqui nao se chuta: o modo sai do que o aparelho REALMENTE tem.
+     "lista"  visor grafico que mostra LISTA de faixas (browse do proprio
+              aparelho). toque:true so onde a tela e SENSIVEL AO TOQUE —
+              CDJ-2000NXS2 (7" touch), CDJ-3000 (9" touch), XDJ-700 (7" touch),
+              XDJ-1000MK2 (7" touch), OPUS-QUAD (10,1" touch), XDJ-AZ (touch),
+              Prime 4 (10,1" touch). CDJ-850 e CDJ-900NXS TEM lista no visor
+              mas a tela NAO e touch: navegam so pelo SELETOR ROTATIVO.
+     "faixa"  visor de texto/segmento: nao existe lista rolando. E CD player —
+              anda faixa a faixa com TRACK SEARCH, que ja e o gesto real.
+              texto:false no CDJ-100S, que nao mostra titulo (so numero).
+     "nativo" o aparelho JA tem browse proprio (bloco BROWSE-USB-PADRAO):
+              XDJ-RR / RX2 / RX3 / XZ. Nao se poe nada por cima — a playlist
+              da aula e injetada no BANCO_SMU e o browse dele mostra.
+     "nenhum" NAO TEM VISOR (toca-discos). ⛔ Nao inventar display: a escolha
+              cai no painel de ensino do proprio simulador.
+
+   carga: como a faixa entra no motor de audio do aparelho, MEDIDO no codigo:
+     "deck"    o onaudioprocess le D.data a CADA chamada -> trocar o buffer no
+               objeto do deck ja muda o som (OPUS-QUAD e Prime 4).
+     "reload"  o onaudioprocess fechou por cima de `data`/`len` do startAudio()
+               -> trocar D.data NAO muda o som. Para valer, o audio e religado
+               (e o que a CDJ real faz no LOAD: zera pitch, cue e loops).
+
+   demo: o TITULO DE DEMONSTRACAO que o simulador desenha no visor, LITERAL,
+   copiado do fillText de cada arquivo. A ponte troca por IGUALDADE EXATA (nada
+   de regex solta em cima do canvas: um "DEMO" generico reescreveria texto que
+   nao e titulo). Aparelho cujo visor nao mostra titulo nao entra na lista.
+   ========================================================================== */
+const V_CD    = (t, demo) => ({ modo:"faixa", texto:t !== false, decks:1, carga:"reload", demo:demo||[] });
+const V_LISTA = (toque, decks, carga, demo) => ({ modo:"lista", toque:!!toque, decks:decks||1, carga:carga||"reload", demo:demo||[] });
+
 /* TODOS os simuladores ficam disponiveis (ordem do dono).
    `tras` = chave do modelo nos JSON de _ref-traseiras. null = sem fonte. */
 const CATALOGO = [
   /* --- players digitais: saida LINE --- */
-  { id:"cdj100s",  arq:"pioneer-cdj-100s-real.html",     tipo:"deck", sub:"CD player · Jog Break",        tras:"cdj-100s" },
-  { id:"cdj200",   arq:"pioneer-cdj-200-real.html",      tipo:"deck", sub:"CD compacto · Beat Loop",      tras:"cdj-200" },
-  { id:"cdj400",   arq:"pioneer-cdj-400-real.html",      tipo:"deck", sub:"CD/USB · Hot Loop",            tras:"cdj-400" },
-  { id:"cdj800mk2",arq:"pioneer-cdj-800mk2-real.html",   tipo:"deck", sub:"vinil · Auto Beat Loop",       tras:"cdj-800mk2" },
-  { id:"cdj850",   arq:"pioneer-cdj-850-real.html",      tipo:"deck", sub:"rekordbox · jog grande",       tras:"cdj-850" },
-  { id:"cdj900nxs",arq:"pioneer-cdj-900nxs-real.html",   tipo:"deck", sub:"Nexus · memoria de pontos",    tras:"cdj-900nxs" },
-  { id:"cdj1000",  arq:"pioneer-cdj-1000mk3-real.html",  tipo:"deck", sub:"padrao de clube · scratch",    tras:"cdj-1000mk3" },
-  { id:"cdj2000",  arq:"pioneer-cdj-2000nxs2-real.html", tipo:"deck", sub:"tela colorida · 8 hot cue",    tras:"cdj-2000nxs2" },
-  { id:"cdj3000",  arq:"pioneer-cdj-3000-real.html",     tipo:"deck", sub:"flagship · tela 9\"",          tras:"cdj-3000" },
-  { id:"xdj700",   arq:"pioneer-xdj-700-real.html",      tipo:"deck", sub:"USB · touch compacto",         tras:"xdj-700" },
-  { id:"xdj1000",  arq:"pioneer-xdj-1000mk2-real.html",  tipo:"deck", sub:"touch 7\" · sem bandeja",      tras:"xdj-1000mk2" },
+  { id:"cdj100s",  arq:"pioneer-cdj-100s-real.html",     tipo:"deck", sub:"CD player · Jog Break",        tras:"cdj-100s", visor:V_CD(false) },
+  { id:"cdj200",   arq:"pioneer-cdj-200-real.html",      tipo:"deck", sub:"CD compacto · Beat Loop",      tras:"cdj-200", visor:V_CD(false) },
+  { id:"cdj400",   arq:"pioneer-cdj-400-real.html",      tipo:"deck", sub:"CD/USB · Hot Loop",            tras:"cdj-400", visor:V_CD(true,["SMU-DEMO-128"]) },
+  { id:"cdj800mk2",arq:"pioneer-cdj-800mk2-real.html",   tipo:"deck", sub:"vinil · Auto Beat Loop",       tras:"cdj-800mk2", visor:V_CD(true,["SMU-PRO / DEMO 128"]) },
+  { id:"cdj850",   arq:"pioneer-cdj-850-real.html",      tipo:"deck", sub:"rekordbox · jog grande",       tras:"cdj-850", visor:V_LISTA(false) },
+  { id:"cdj900nxs",arq:"pioneer-cdj-900nxs-real.html",   tipo:"deck", sub:"Nexus · memoria de pontos",    tras:"cdj-900nxs", visor:V_LISTA(false,1,"reload",["♪ Catch The Break"]) },
+  { id:"cdj1000",  arq:"pioneer-cdj-1000mk3-real.html",  tipo:"deck", sub:"padrao de clube · scratch",    tras:"cdj-1000mk3", visor:V_CD(true,["SMU-DEMO-128","SMU-PRO / DEMO TRACK 128"]) },
+  { id:"cdj2000",  arq:"pioneer-cdj-2000nxs2-real.html", tipo:"deck", sub:"tela colorida · 8 hot cue",    tras:"cdj-2000nxs2", visor:V_LISTA(true,1,"reload",["SMU DEMO — Dance Floor Bomb"]) },
+  { id:"cdj3000",  arq:"pioneer-cdj-3000-real.html",     tipo:"deck", sub:"flagship · tela 9\"",          tras:"cdj-3000", visor:V_LISTA(true,1,"reload",["ABOVE THE CLOUD E.P."]) },
+  { id:"xdj700",   arq:"pioneer-xdj-700-real.html",      tipo:"deck", sub:"USB · touch compacto",         tras:"xdj-700", visor:V_LISTA(true,1,"reload",["♪  SMU DEMO — Cryin' Through The Rain"]) },
+  { id:"xdj1000",  arq:"pioneer-xdj-1000mk2-real.html",  tipo:"deck", sub:"touch 7\" · sem bandeja",      tras:"xdj-1000mk2", visor:V_LISTA(true) },
   /* --- toca-discos: saida PHONO + fio terra --- */
-  { id:"plx1000",  arq:"pioneer-plx-1000-real.html",     tipo:"deck", sub:"toca-discos direct drive",     tras:"plx-1000" },
-  { id:"sl1200mk2",arq:"technics-sl1200mk2-real.html",   tipo:"deck", sub:"toca-discos · o classico",     tras:"technics-sl-1200mk2" },
-  { id:"sl1200",   arq:"technics-sl1200mk7-real.html",   tipo:"deck", sub:"toca-discos · atual",          tras:"technics-sl-1200mk7" },
+  { id:"plx1000",  arq:"pioneer-plx-1000-real.html",     tipo:"deck", sub:"toca-discos direct drive",     tras:"plx-1000", visor:{modo:"nenhum",decks:1,carga:"reload",demo:["TRAINING TRAX"]} },
+  { id:"sl1200mk2",arq:"technics-sl1200mk2-real.html",   tipo:"deck", sub:"toca-discos · o classico",     tras:"technics-sl-1200mk2", visor:{modo:"nenhum",decks:1,carga:"reload",demo:[]} },
+  { id:"sl1200",   arq:"technics-sl1200mk7-real.html",   tipo:"deck", sub:"toca-discos · atual",          tras:"technics-sl-1200mk7", visor:{modo:"nenhum",decks:1,carga:"reload",demo:[]} },
   /* --- tudo-em-um: player + mixer no MESMO corpo --- */
-  { id:"xdjrr",    arq:"pioneer-xdj-rr-real.html",       tipo:"allinone", sub:"all-in-one · 2 canais",    tras:"xdj-rr" },
-  { id:"xdjrx2",   arq:"pioneer-xdj-rx2-real.html",      tipo:"allinone", sub:"all-in-one · tela 7\"",    tras:"xdj-rx2" },
-  { id:"xdjrx3",   arq:"pioneer-xdj-rx3-real.html",      tipo:"allinone", sub:"all-in-one · tela 10,1\"", tras:"xdj-rx3" },
-  { id:"xdjxz",    arq:"pioneer-xdj-xz-real.html",       tipo:"allinone", sub:"all-in-one · 4 canais",    tras:"xdj-xz" },
-  { id:"opusquad", arq:"alphatheta-opus-quad-real.html", tipo:"allinone", sub:"AlphaTheta · 4 decks",     tras:"opus-quad" },
-  { id:"xdjaz",    arq:"alphatheta-xdj-az-real.html",    tipo:"allinone", sub:"AlphaTheta · bateria",     tras:"xdj-az" },
-  { id:"prime4",   arq:"denon-prime4-real.html",         tipo:"allinone", sub:"Denon · 4 decks + tela",   tras:"prime4" },
+  { id:"xdjrr",    arq:"pioneer-xdj-rr-real.html",       tipo:"allinone", sub:"all-in-one · 2 canais",    tras:"xdj-rr", visor:{modo:"nativo",decks:2} },
+  { id:"xdjrx2",   arq:"pioneer-xdj-rx2-real.html",      tipo:"allinone", sub:"all-in-one · tela 7\"",    tras:"xdj-rx2", visor:{modo:"nativo",decks:2} },
+  { id:"xdjrx3",   arq:"pioneer-xdj-rx3-real.html",      tipo:"allinone", sub:"all-in-one · tela 10,1\"", tras:"xdj-rx3", visor:{modo:"nativo",decks:2} },
+  { id:"xdjxz",    arq:"pioneer-xdj-xz-real.html",       tipo:"allinone", sub:"all-in-one · 4 canais",    tras:"xdj-xz", visor:{modo:"nativo",decks:2} },
+  { id:"opusquad", arq:"alphatheta-opus-quad-real.html", tipo:"allinone", sub:"AlphaTheta · 4 decks",     tras:"opus-quad", visor:V_LISTA(true,2,"deck") },
+  { id:"xdjaz",    arq:"alphatheta-xdj-az-real.html",    tipo:"allinone", sub:"AlphaTheta · bateria",     tras:"xdj-az", visor:V_LISTA(true,2,"reload") },
+  { id:"prime4",   arq:"denon-prime4-real.html",         tipo:"allinone", sub:"Denon · 4 decks + tela",   tras:"prime4", visor:V_LISTA(true,2,"deck") },
   /* --- mixers --- */
   { id:"djm450",   arq:"pioneer-djm-450-real.html",      tipo:"mixer", sub:"2 canais · COLOR FX",         tras:"djm-450" },
   { id:"djm600",   arq:"pioneer-djm-600-real.html",      tipo:"mixer", sub:"4 canais · Beat FX",          tras:"djm-600" },
@@ -210,6 +247,13 @@ const PONTE = `<script>/* PONTE SMU */
   if(O){
     function P(){
       var c=new O(), destReal=c.destination;
+      /* ⛔ PODA. O LOAD do visor RELIGA o audio do aparelho (fecha o contexto e
+         chama startAudio() de novo). Sem podar, __cad[0] fica sendo o contexto
+         MORTO — o pico() mediria silencio para sempre e a aula acusaria
+         "o player nao esta tocando" com a musica no ar. */
+      window.__cad = (window.__cad||[]).filter(function(a){
+        try{ return a.ctx && a.ctx.state !== "closed"; }catch(e){ return false; } });
+      window.__g = window.__cad.map(function(a){ return a.g; });
       var pre=c.createGain(); pre.gain.value=1;          /* o sim conecta AQUI */
       var an=c.createAnalyser(); an.fftSize=512; pre.connect(an);
       var g=c.createGain(); g.gain.value=1; pre.connect(g);
@@ -532,6 +576,7 @@ const PONTE = `<script>/* PONTE SMU */
 
   window.__SMU_EMBUTIDO = 1;   /* o Banco SMU nao monta a barra aqui dentro */
 })();
+__VISOR__
 <\/script>`;
 
 /* A CAIXA-PRETA sozinha: so escuta erro e responde sonda. Nao embrulha o
@@ -552,7 +597,694 @@ const PONTE_MIN = PONTE.slice(0, PONTE.indexOf("/* -----------------------------
   window.__SMU_EMBUTIDO=1;
 })();
 <\/script>`;
-const PONTE_USADA = argPonte === "full" ? PONTE : argPonte === "min" ? PONTE_MIN : CAIXA_PRETA;
+/* ==========================================================================
+   VISOR SMU — A MUSICA SE ESCOLHE NA TELA DO APARELHO
+   --------------------------------------------------------------------------
+   ORDEM DO DONO, palavra final (29/07/2026):
+     "as musicas devem ser selecionadas na tela da CDJ e nao em uma lista no
+      cabecalho, ate a procura do YouTube. E preciso que estas musicas possam
+      ter varias salvas na playlist, assim o usuario vai mixando como um
+      pen drive."
+
+   POR QUE ESTE MODULO E NA PONTE, e nao dentro de cada simulador:
+   sao 29 aparelhos. Reescrever o visor de cada um seria REDESENHAR A PELE —
+   proibido. O que muda aqui e COMPORTAMENTO: a lista aparece EM CIMA do visor
+   do proprio aparelho (mesma coisa que o bloco BROWSE-USB-PADRAO ja faz nos
+   XDJ-RX2/RX3/XZ, onde "com a lista aberta o visor E a lista"), presa ao
+   MESMO elemento de tela que o simulador desenha, e some quando fecha.
+
+   COMO ABRE — pelo controle REAL do aparelho, nunca por botao inventado:
+     BROWSE / MENU / TAG LIST / INFO ... telas do browse
+     USB / SD / porta de midia ......... espetar a midia abre a lista
+     SELETOR ROTATIVO .................. gira = anda · aperta = CARREGA
+     BACK .............................. volta / fecha
+     TRACK SEARCH ...................... anda na lista (e no CD player e o
+                                         proprio gesto de trocar de faixa)
+   A tela so responde a TOQUE onde a tela e touch de verdade (ver a tabela
+   `visor` la em cima). No CDJ-850 e no CDJ-900NXS, tocar no visor avisa que
+   aquele visor nao e sensivel — e o que acontece no aparelho.
+
+   O CAMINHO DO AUDIO segue sendo o que ja funcionava: baixa o MP3, decodifica
+   NO AudioContext DO PROPRIO APARELHO (senao a taxa de amostragem nao bate e a
+   musica toca acelerada) e entrega ao motor dele.
+   ⚠️ `AC` e `d` sao `let` de topo de script: NAO existem em `window`. Por isso
+   se le por eval indireto — foi o que sempre faltou (o trocarFaixa antigo
+   procurava window.AC, achava undefined e morria em "o aparelho ainda nao
+   ligou o audio", em silencio).
+   ========================================================================== */
+const VISOR_JS = `
+/* VISOR SMU — escolher musica na tela do aparelho */
+(function(){
+  var CFG = window.__SMU_VISOR;
+  if(!CFG || !CFG.modo) return;                 /* mixer: nao escolhe musica */
+  var PAI=(window.parent&&window.parent!==window)?window.parent:null;
+  function env(m){ if(PAI) try{ PAI.postMessage(m,"*"); }catch(e){} }
+  function ev(n){ try{ return (0,eval)(n); }catch(e){ return undefined; } }
+  function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+  function clamp(v,a,b){ return v<a?a:v>b?b:v; }
+
+  var ST = { slot:null, banco:[], playlist:[], aberto:false, tela:"raiz",
+             sel:0, topo:0, lado:1, msg:"", carregada:{}, ocupado:false };
+  window.__SMU_VISOR_ST = ST;                     /* a sonda da aula le daqui */
+
+  /* ---------------------------------------------------------------------
+     1. TITULO NO VISOR — troca por IGUALDADE EXATA do literal de demo.
+     Nada de regex por cima do canvas: cada aparelho tem o titulo dele e um
+     "DEMO" solto reescreveria texto que nao e titulo.                    */
+  (function(){
+    var lista = CFG.demo || [];
+    if(!lista.length || !window.CanvasRenderingContext2D) return;
+    var p = CanvasRenderingContext2D.prototype, orig = p.fillText;
+    p.fillText = function(t,x,y,mw){
+      if(typeof t === "string" && window.__SMU_TITULO){
+        for(var i=0;i<lista.length;i++){
+          if(t === lista[i]){
+            /* preserva o prefixo grafico do aparelho (o "♪ " do CDJ-900NXS) */
+            var pre = /^[^A-Za-z0-9]*/.exec(lista[i])[0];
+            t = pre + window.__SMU_TITULO; break;
+          }
+        }
+      }
+      return (mw===undefined) ? orig.call(this,t,x,y) : orig.call(this,t,x,y,mw);
+    };
+  })();
+
+  /* ---------------------------------------------------------------------
+     2. CARREGAR DE VERDADE
+     --------------------------------------------------------------------- */
+  var CACHE = {};
+  var CARGA = { buf:{}, bpm:{}, nome:{}, kinds:[] };
+
+  /* renderTrack e o unico ponto comum aos 29 motores. Embrulhado, ele passa a
+     devolver a faixa escolhida do lado pedido. A ORDEM em que o aparelho pede
+     as faixas e que diz qual kind e o lado 1 e qual e o lado 2 — nao se chuta,
+     grava-se na primeira vez. */
+  function embrulharRender(){
+    if(window.__smuVisorRT || typeof window.renderTrack !== "function") return;
+    var orig = window.renderTrack; window.__smuVisorRT = 1;
+    window.renderTrack = function(kind){
+      var k = String(kind===undefined ? "_" : kind);
+      if(CARGA.kinds.indexOf(k) < 0) CARGA.kinds.push(k);
+      var lado = CARGA.kinds.indexOf(k) + 1;
+      var b = CARGA.buf[lado];
+      if(b){ window.__BANCO_BPM = CARGA.bpm[lado] || null; return b; }
+      return orig.apply(this, arguments);
+    };
+  }
+
+  function decksDo(){
+    var fora = [];
+    ["DK","decks","DECKS"].forEach(function(n){
+      var o = ev(n); if(!o || typeof o !== "object") return;
+      Object.keys(o).forEach(function(k){
+        var v = o[k];
+        if(v && typeof v === "object" && v.data && v.len && fora.indexOf(v) < 0) fora.push(v);
+      });
+    });
+    ["d","dL","dR","dA","dB"].forEach(function(n){
+      var v = ev(n);
+      if(v && typeof v === "object" && v.data && v.len && fora.indexOf(v) < 0) fora.push(v);
+    });
+    return fora;
+  }
+  function picos(data,len){
+    var N=320, p=new Float32Array(N), blk=Math.max(1,Math.floor(len/N));
+    for(var i=0;i<N;i++){ var mx=0;
+      for(var j=0;j<blk;j+=32){ var v=Math.abs(data[i*blk+j]||0); if(v>mx)mx=v; }
+      p[i]=mx; }
+    return p;
+  }
+  function acAtual(){ return ev("AC") || null; }
+  function esperarDecks(){
+    return new Promise(function(ok){
+      var n = 0;
+      (function bate(){
+        var L = decksDo();
+        if(L.length || n > 60) return ok(L);
+        n++; setTimeout(bate, 100);
+      })();
+    });
+  }
+
+  async function baixar(url){
+    if(CACHE[url]) return CACHE[url];
+    var ac = acAtual();
+    if(!ac && typeof window.startAudio === "function"){ await window.startAudio(); ac = acAtual(); }
+    if(!ac) throw new Error("o aparelho ainda nao ligou o audio");
+    var r = await fetch(url);
+    if(!r.ok) throw new Error("HTTP " + r.status);
+    var buf = await ac.decodeAudioData(await r.arrayBuffer());
+    CACHE[url] = buf; return buf;
+  }
+
+  /* carga "deck": o onaudioprocess le D.data a cada chamada — trocar o buffer
+     no objeto ja muda o som (medido em OPUS-QUAD e Prime 4). */
+  function porNoDeck(D, buf, faixa){
+    D.buffer = buf; D.data = buf.getChannelData(0); D.len = D.data.length;
+    D.pos = 0; D.cuePoint = 0; D.rate = 0; D.playing = false;
+    D.loopOn = false; D.loopIn = false;
+    if(faixa.bpm) D.baseBpm = faixa.bpm;
+    ["title","titulo","nome"].forEach(function(k){ if(k in D) D[k] = faixa.nome; });
+    try{ D.peaks = picos(D.data, D.len); }catch(e){}
+  }
+
+  /* carga "reload": o onaudioprocess fechou por cima de "data"/"len" do
+     startAudio() — trocar D.data NAO muda o som. Entao o audio e religado, que
+     e o que a CDJ real faz no LOAD (zera pitch, cue e loops). */
+  async function religar(){
+    var ac = acAtual();
+    if(ev("started")){
+      try{ if(ac && ac.close) ac.close(); }catch(e){}
+      try{ (0,eval)("started=false; ready=false;"); }catch(e){}
+    }
+    if(typeof window.startAudio !== "function") throw new Error("este aparelho nao expoe startAudio()");
+    await window.startAudio();
+  }
+
+  async function carregar(lado, faixa){
+    if(ST.ocupado) return;
+    ST.ocupado = true; ST.msg = "carregando " + faixa.nome + "…"; pintar();
+    try{
+      if(faixa.tipo === "yt"){
+        /* streaming: o player mora na moldura da aula (sem allow-same-origin o
+           onReady nunca chega — provado em teste A/B). A ESCOLHA e daqui. */
+        env({smu:"yt", cmd:"load", slot:(ST.slot||"1")+"-"+lado,
+             label:"DECK "+lado, videoId:faixa.yt});
+        ST.carregada[lado] = faixa; ST.msg = "";
+        window.__SMU_TITULO = faixa.nome;
+        env({smu:"carregou", lado:lado, nome:faixa.nome, bpm:faixa.bpm||null,
+             tipo:"yt", amostras:0, taxa:0});
+        fechar();
+      } else {
+        var buf = await baixar(faixa.url);
+        embrulharRender();
+        CARGA.buf[lado] = buf; CARGA.bpm[lado] = faixa.bpm || null; CARGA.nome[lado] = faixa.nome;
+        if(CFG.carga === "deck"){
+          /* ⛔ ESPERAR O MOTOR FICAR PRONTO. MEDIDO no Prime 4: apertar USB ja
+             chama startAudio(), que e async — o AudioContext existe no mesmo
+             instante mas os decks so nascem no fim. Sem esta espera o LOAD
+             caia em "nao achei o deck deste aparelho" com o aparelho ligando
+             normalmente atras. */
+          var L = await esperarDecks();
+          var D = L[lado-1] || L[0];
+          if(!D) throw new Error("o aparelho ainda nao terminou de ligar o audio");
+          porNoDeck(D, buf, faixa);
+        } else {
+          await religar();
+        }
+        ST.carregada[lado] = faixa;
+        window.__SMU_TITULO = faixa.nome;
+        var Dv = decksDo()[lado-1] || decksDo()[0] || {};
+        ST.msg = "";
+        env({smu:"carregou", lado:lado, nome:faixa.nome, bpm:faixa.bpm||null, tipo:"mp3",
+             amostras:(Dv.len||buf.length), taxa:buf.sampleRate});
+        fechar();
+      }
+    }catch(e){
+      ST.msg = "falhou: " + (e && e.message || e);
+      env({smu:"carregouErro", lado:lado, nome:faixa.nome, erro:String(e && e.message || e)});
+      pintar();
+    }
+    ST.ocupado = false;
+  }
+
+  /* ---------------------------------------------------------------------
+     3. A LISTA — o que o visor mostra
+     --------------------------------------------------------------------- */
+  /* A RAIZ e o nivel de cima do browse — a "arvore" que a CDJ real mostra
+     (USB > Playlists > faixas). E ela que faz o aparelho de tela NAO sensivel
+     navegar de verdade: gira o rotativo na pasta, aperta para entrar, BACK
+     sobe um nivel. Sem isso, num CDJ-850 so daria para trocar de tela tocando
+     no visor — e o visor dele nao e touch. */
+  function raiz(){
+    return [
+      {id:"#playlist", pasta:"playlist", nome:"PLAYLIST — o seu pen drive (" + ST.playlist.length + ")"},
+      {id:"#usb",      pasta:"usb",      nome:"USB — BANCO SMU (" + ST.banco.length + ")"},
+      {id:"#yt",       pasta:"yt",       nome:"YOUTUBE — colar endereço"}
+    ];
+  }
+  function itens(){
+    if(ST.tela === "raiz") return raiz();
+    if(ST.tela === "playlist") return ST.playlist;
+    if(ST.tela === "yt") return [];
+    return ST.banco;
+  }
+  function naPlaylist(f){
+    for(var i=0;i<ST.playlist.length;i++) if(ST.playlist[i].id === f.id) return true;
+    return false;
+  }
+  function ajustar(){
+    if(CFG.modo === "faixa"){                 /* CD player: nao ha lista rolando */
+      var L = ST.playlist.length ? ST.playlist : ST.banco;
+      ST.sel = L.length ? clamp(ST.sel, 0, L.length - 1) : 0;
+      return;
+    }
+    var n = itens().length;
+    ST.sel = n ? clamp(ST.sel, 0, n-1) : 0;
+    var vis = LINHAS();
+    if(ST.sel < ST.topo) ST.topo = ST.sel;
+    if(ST.sel > ST.topo + vis - 1) ST.topo = ST.sel - vis + 1;
+    ST.topo = clamp(ST.topo, 0, Math.max(0, n - vis));
+  }
+  function mover(n){
+    var t = itens().length; if(!t){ ST.sel=0; ST.topo=0; return; }
+    ST.sel = (ST.sel + n % t + t) % t; ajustar(); pintar();
+  }
+  function confirmar(){
+    var L = itens(), it = L[ST.sel];
+    if(!it){ ST.msg = "nada para carregar"; pintar(); return; }
+    if(it.pasta){ irPara(it.pasta); return; }        /* pasta: entra um nivel */
+    carregar(ST.lado, it);
+  }
+  function irPara(tela){ ST.tela = tela; ST.sel = 0; ST.topo = 0; ST.msg = ""; ajustar(); pintar(); }
+  /* BACK do Pioneer: volta UM nivel; no topo, sai. */
+  function voltar(){
+    if(!ST.aberto) return;
+    if(ST.tela === "raiz") fechar(); else irPara("raiz");
+  }
+  function guardar(){                       /* + / − na playlist (o "pen drive") */
+    var L = itens(), it = L[ST.sel]; if(!it || it.pasta) return;
+    env({smu:"plToggle", faixa:it});
+    ST.msg = naPlaylist(it) ? "tirada da playlist" : "guardada na playlist";
+    pintar();
+  }
+  function abrir(tela){
+    if(tela) ST.tela = tela;
+    ST.aberto = true; ST.msg = ""; ajustar(); pintar();
+  }
+  function fechar(){ ST.aberto = false; pintar(); }
+
+  /* ---------------------------------------------------------------------
+     4. ONDE FICA A TELA DO APARELHO
+     A lista e IRMA do canvas do visor e copia o posicionamento em % dele.
+     Assim ela acompanha o fit()/transform do simulador sem medir nada em px
+     (medir em px do viewport quebraria: o #stage e escalado por transform).
+     --------------------------------------------------------------------- */
+  var CX = null, OV = null;
+  function achaTela(){
+    if(CX && CX.isConnected) return CX;
+    var e = null;
+    var els = ev("els");
+    if(els && els.display && els.display.isConnected) e = els.display;
+    if(!e){
+      var cands = [].slice.call(document.querySelectorAll("canvas"));
+      var melhor = null, area = 0;
+      for(var i=0;i<cands.length;i++){
+        var c = cands[i];
+        if(/jog/i.test(c.className)) continue;         /* o prato nao e visor */
+        var w = c.offsetWidth, h = c.offsetHeight;
+        if(!w || !h) continue;
+        if(w/h < 1.15) continue;                        /* visor e deitado */
+        if(w*h > area){ area = w*h; melhor = c; }
+      }
+      e = melhor;
+    }
+    CX = e; return e;
+  }
+  function molde(){
+    var t = achaTela(); if(!t) return null;
+    var pai = t.parentNode, s = t.style;
+    if(!pai) return null;
+    if(s.left && s.top && s.width && s.height)
+      return {pai:pai, left:s.left, top:s.top, width:s.width, height:s.height};
+    /* sem estilo em linha: cai para a caixa medida DENTRO do pai (o pai tambem
+       esta dentro do transform, entao a conta continua valendo) */
+    var rp = pai.getBoundingClientRect(), rt = t.getBoundingClientRect();
+    if(!rp.width || !rp.height) return null;
+    return {pai:pai,
+      left:((rt.left-rp.left)/rp.width*100)+"%", top:((rt.top-rp.top)/rp.height*100)+"%",
+      width:(rt.width/rp.width*100)+"%",         height:(rt.height/rp.height*100)+"%"};
+  }
+  function LINHAS(){
+    if(!OV) return 7;
+    var h = OV.clientHeight || 0;
+    if(!h) return 7;
+    return clamp(Math.floor((h*0.70) / Math.max(12, h*0.105)), 3, 12);
+  }
+`;
+
+const VISOR_JS2 = `
+  /* ---------------------------------------------------------------------
+     5. DESENHO
+     --------------------------------------------------------------------- */
+  var CSS = "" +
+  ".smuv{position:absolute;z-index:40;overflow:hidden;border-radius:2px;" +
+    "background:#000205;color:#cfd8e3;font-family:Inter,Arial,sans-serif;" +
+    "display:none;flex-direction:column;box-shadow:0 0 0 1px #0d2340 inset}" +
+  ".smuv.on{display:flex}" +
+  ".smuv *{box-sizing:border-box}" +
+  ".smuv .tp{display:flex;align-items:center;gap:.35em;padding:.28em .5em;flex:0 0 auto;" +
+    "background:linear-gradient(180deg,#16385f,#081a30);border-bottom:1px solid #0d2340}" +
+  ".smuv .tab{font-size:.62em;font-weight:800;letter-spacing:.04em;padding:.28em .6em;border-radius:.35em;" +
+    "color:#7f97b3;background:#0a1726;border:1px solid #13324f;white-space:nowrap}" +
+  ".smuv .tab.on{color:#fff;background:#1d5f9e;border-color:#4a90d0}" +
+  ".smuv .dv{margin-left:auto;font-size:.55em;font-weight:800;color:#8fa8c4;white-space:nowrap}" +
+  ".smuv .co{display:flex;padding:.14em .6em;font-size:.52em;font-weight:800;color:#6d7684;flex:0 0 auto}" +
+  ".smuv .co u{margin-left:auto;text-decoration:none}" +
+  ".smuv .ls{flex:1 1 auto;min-height:0;overflow:hidden;display:flex;flex-direction:column}" +
+  ".smuv .r{display:flex;align-items:center;gap:.4em;padding:0 .6em;font-size:.66em;font-weight:800;" +
+    "flex:1 1 0;min-height:0;" +
+    "color:#cfd8e3;background:#0d1219;border-bottom:1px solid #05080c}" +
+  ".smuv .r:nth-child(even){background:#0b0f15}" +
+  ".smuv .r.on{background:#1d5f9e;color:#fff;box-shadow:.16em 0 0 #8fd4ff inset}" +
+  ".smuv .r i{font-style:normal;color:#242c37;flex:0 0 auto}" +
+  ".smuv .r.pl i{color:#f0a63c}" +
+  ".smuv .r b{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:800}" +
+  ".smuv .r u{flex:0 0 auto;text-decoration:none;color:#f0a63c;font-variant-numeric:tabular-nums}" +
+  ".smuv .r.on u{color:#ffe6bd}" +
+  ".smuv .vz{padding:1em .8em;text-align:center;color:#5a6472;font-size:.62em;font-weight:800;line-height:1.5}" +
+  ".smuv .ft{flex:0 0 auto;padding:.26em .6em;font-size:.5em;font-weight:800;color:#6d7684;" +
+    "background:#0a0e14;border-top:1px solid #05080c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}" +
+  ".smuv .ft.al{color:#f0a63c}" +
+  ".smuv .yt{padding:.5em .6em;font-size:.58em;line-height:1.5;color:#9fb0c4;overflow:auto}" +
+  ".smuv .yt b{color:#fff}" +
+  ".smuv .yt input{width:100%;font:inherit;font-size:1em;padding:.4em .5em;margin:.4em 0;border-radius:.3em;" +
+    "background:#0c1015;color:#dbe4ee;border:1px solid #22303c}" +
+  ".smuv .yt button{font:inherit;font-size:.95em;font-weight:800;padding:.4em .8em;border-radius:.3em;cursor:pointer;" +
+    "background:#1d5f9e;color:#fff;border:1px solid #4a90d0}" +
+  /* faixa a faixa (CD player): uma TARJA de uma linha, nao uma lista */
+  ".smuf{position:absolute;z-index:40;display:none;align-items:center;gap:.5em;padding:0 .5em;" +
+    "background:#04070b;color:#cfd8e3;font-family:Inter,Arial,sans-serif;font-weight:800;" +
+    "box-shadow:0 0 0 1px #1b2530 inset;overflow:hidden}" +
+  ".smuf.on{display:flex}" +
+  ".smuf .n{color:#f0a63c;white-space:nowrap}" +
+  ".smuf .t{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}" +
+  /* aparelho SEM VISOR: cai no painel de ensino do proprio simulador */
+  ".smud{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin-top:6px;width:100%}" +
+  ".smud .e{font-size:9px;font-weight:900;letter-spacing:.5px;color:#f0a63c}" +
+  ".smud button{font:inherit;font-size:10px;font-weight:800;padding:4px 7px;border-radius:5px;cursor:pointer;" +
+    "color:#cdd5e0;background:#141a22;border:1px solid #2a3038;touch-action:manipulation}" +
+  ".smud button.on{border-color:#39d271;color:#7df0a8;background:#0f2418}";
+
+  function estilo(){
+    if(document.getElementById("smuVisorCss")) return;
+    var s = document.createElement("style"); s.id = "smuVisorCss"; s.textContent = CSS;
+    document.head.appendChild(s);
+  }
+
+  function criar(){
+    if(OV && OV.isConnected) return OV;
+    var m = molde(); if(!m) return null;
+    estilo();
+    OV = document.createElement("div");
+    OV.className = (CFG.modo === "faixa") ? "smuf" : "smuv";
+    OV.style.left = m.left; OV.style.top = m.top;
+    OV.style.width = m.width; OV.style.height = m.height;
+    m.pai.appendChild(OV);
+    if(CFG.modo === "faixa"){
+      /* a tarja ocupa so a faixa de texto do visor, nao o visor todo */
+      OV.style.top = "calc(" + m.top + " + " + m.height + " * 0.62)";
+      OV.style.height = "calc(" + m.height + " * 0.30)";
+    }
+    ligarToque();
+    if(window.ResizeObserver){
+      try{ new ResizeObserver(function(){ ajustarFonte(); }).observe(m.pai); }catch(e){}
+    }
+    ajustarFonte();
+    return OV;
+  }
+  function ajustarFonte(){
+    if(!OV) return;
+    var h = OV.clientHeight || 0;
+    if(h > 0) OV.style.fontSize = Math.max(6, h * (CFG.modo === "faixa" ? 0.52 : 0.115)) + "px";
+  }
+
+  function linhaHTML(f,i){
+    var sel = (i === ST.sel);
+    if(f.pasta) return '<div class="r' + (sel ? " on" : "") + '" data-i="' + i + '">' +
+      '<i>▸</i><b>' + esc(f.nome) + '</b><u></u></div>';
+    return '<div class="r' + (sel ? " on" : "") + (naPlaylist(f) ? " pl" : "") + '" data-i="' + i + '">' +
+      '<i>' + (naPlaylist(f) ? "★" : "☆") + '</i>' +
+      '<b>' + esc(f.nome) + (f.tipo === "yt" ? "  ▶" : "") + '</b>' +
+      '<u>' + (f.bpm ? (+f.bpm).toFixed(1) : (f.tipo === "yt" ? "YT" : "—")) + '</u></div>';
+  }
+  function pintar(){
+    if(CFG.modo === "nenhum"){ pintarSemVisor(); return; }
+    if(CFG.modo === "faixa"){ pintarFaixa(); return; }
+    var o = criar(); if(!o) return;
+    o.classList.toggle("on", ST.aberto);
+    if(!ST.aberto){ o.innerHTML = ""; return; }
+    var L = itens(), vis = LINHAS();
+    ajustar();
+    /* A fita de cima e o CAMINHO (USB > PLAYLIST > …). Em tela sensivel ela
+       tambem serve de atalho; em tela que NAO e sensivel ela e so leitura —
+       ali se anda pelo rotativo e pelo BACK, como no aparelho. */
+    var abas = [["raiz","▸ TOPO"],
+                ["playlist","PLAYLIST (" + ST.playlist.length + ")"],
+                ["usb","USB — BANCO SMU (" + ST.banco.length + ")"],
+                ["yt","YOUTUBE"]];
+    var topo = '<div class="tp">' + abas.map(function(a){
+        return '<span class="tab' + (ST.tela === a[0] ? " on" : "") + '" data-tela="' + a[0] + '">' + a[1] + '</span>';
+      }).join("") + '<span class="dv">' + (CFG.decks > 1 ? ("LOAD " + ST.lado) : "DECK") + '</span></div>';
+    var corpo;
+    if(ST.tela === "yt"){
+      corpo = '<div class="yt"><b>YouTube</b> — cole o endereço do vídeo. ' +
+        'Ele entra na playlist como as outras e você carrega no deck do mesmo jeito.' +
+        '<input id="smuYt" placeholder="youtube.com/watch?v=… ou youtu.be/…">' +
+        '<button data-yt="1">GUARDAR NA PLAYLIST</button>' +
+        '<div style="margin-top:.5em;color:#6d7684">Procurar POR NOME ainda não está no ar: ' +
+        'depende da chave da API do YouTube no servidor. Enquanto não houver, é o endereço colado — ' +
+        'que não gasta cota nenhuma. No deck, faixa de streaming só faz play/pause: ' +
+        'o áudio do YouTube não pode ser processado (nada de EQ, pitch ou scratch).</div></div>';
+    } else if(!L.length){
+      corpo = '<div class="vz">' + (ST.tela === "playlist"
+        ? "PLAYLIST VAZIA<br>Vá em <b>USB — BANCO SMU</b> e guarde as faixas que quer levar."
+        : "NENHUMA FAIXA") + '</div>';
+    } else {
+      var linhas = "";
+      for(var i = ST.topo; i < Math.min(L.length, ST.topo + vis); i++) linhas += linhaHTML(L[i], i);
+      corpo = '<div class="co"><span>TRACK</span><u>BPM</u></div><div class="ls">' + linhas + '</div>';
+    }
+    var carreg = ST.carregada[ST.lado];
+    var pe = ST.msg ? ST.msg
+      : (CFG.toque ? "toque na faixa · toque de novo CARREGA"
+                   : "gire o SELETOR ROTATIVO · aperte para ENTRAR / CARREGAR") +
+        "  ·  BACK volta um nível" + (carreg ? ("  ·  no deck: " + carreg.nome) : "") +
+        (L.length ? ("  ·  " + (ST.sel + 1) + "/" + L.length) : "");
+    o.innerHTML = topo + corpo + '<div class="ft' + (ST.msg ? " al" : "") + '">' + esc(pe) + '</div>';
+    ajustarFonte();
+  }
+
+  /* --- CD player: nao ha lista rolando, ha FAIXA n de N (TRACK SEARCH) --- */
+  function pintarFaixa(){
+    var o = criar(); if(!o) return;
+    var L = ST.playlist.length ? ST.playlist : ST.banco;
+    var carreg = ST.carregada[1];
+    var n = 0;
+    for(var i=0;i<L.length;i++) if(carreg && L[i].id === carreg.id) n = i + 1;
+    var mostra = ST.aberto || !!carreg || !!ST.msg;
+    o.classList.toggle("on", mostra && L.length > 0);
+    if(!mostra) { o.innerHTML = ""; return; }
+    var atual = L[ST.sel] || carreg;
+    o.innerHTML = '<span class="n">TRK ' + (ST.sel + 1) + '/' + L.length + '</span>' +
+      (CFG.texto ? ('<span class="t">' + esc(ST.msg || (atual ? atual.nome : "—")) + '</span>') : '<span class="t"></span>') +
+      (atual && atual.bpm ? ('<span class="n">' + (+atual.bpm).toFixed(1) + '</span>') : "");
+    ajustarFonte();
+  }
+
+  /* --- toca-discos: NAO TEM VISOR. Vai para o painel de ensino do sim. --- */
+  var DSC = null;
+  function pintarSemVisor(){
+    var t = document.getElementById("teach"); if(!t) return;
+    estilo();
+    if(!DSC || !DSC.isConnected){
+      DSC = document.createElement("div"); DSC.className = "smud";
+      t.appendChild(DSC);
+      DSC.addEventListener("click", function(e){
+        var b = e.target.closest("button[data-i]"); if(!b) return;
+        e.stopPropagation();
+        var L = ST.playlist.length ? ST.playlist : ST.banco;
+        var f = L[+b.dataset.i]; if(f) carregar(1, f);
+      });
+    }
+    var L = ST.playlist.length ? ST.playlist : ST.banco;
+    var carreg = ST.carregada[1];
+    DSC.innerHTML = '<span class="e">O DISCO NA MÃO — este aparelho NÃO TEM VISOR: ' +
+      'no mundo real quem troca a música é a sua mão, escolhendo o vinil.</span>' +
+      L.map(function(f,i){
+        return '<button data-i="' + i + '" class="' + (carreg && carreg.id === f.id ? "on" : "") + '">' +
+          esc(f.nome) + '</button>';
+      }).join("") + (ST.msg ? ('<span class="e">' + esc(ST.msg) + '</span>') : "");
+  }
+`;
+
+const VISOR_JS3 = `
+  /* ---------------------------------------------------------------------
+     6. OS CONTROLES DO APARELHO — nada de botao inventado
+     --------------------------------------------------------------------- */
+  var ABRE   = ["browse","navbrowse","usbport","usbslot","usb","sdslot","srcusb","srcusb1","srcusb2",
+                "source","playlist","shortcut","disc","pc","srcrb","srclink","srcdisc","usb1","usb2"];
+  var TELAS  = { browse:"usb", navbrowse:"usb", playlist:"playlist", shortcut:"playlist",
+                 taglist:"playlist", navtag:"playlist" };
+  /* ⛔ so o TAG TRACK / REMOVE. Nada de sequestrar o MEMORY: naquele botao o
+     aparelho grava PONTO DE CUE — usar para playlist seria ensinar errado. */
+  var GUARDA = ["tagtrack"];
+  var PROX   = ["trknext","tracksearchR","srchfwd","foldernext","folder2","callnext"];
+  var ANT    = ["trkprev","tracksearchL","srchback","folderprev","folder","callprev"];
+
+  function ligarControles(){
+    document.addEventListener("pointerdown", function(e){
+      var alvo = e.target && e.target.closest ? e.target.closest("[data-act]") : null;
+      if(!alvo) return;
+      var a = alvo.dataset.act;
+      /* ⛔ nunca stopPropagation: o handler do proprio aparelho tem de rodar
+         igual. Aqui so se ACRESCENTA comportamento. */
+      if(CFG.modo === "faixa"){
+        if(PROX.indexOf(a) >= 0){ andarCD(1); return; }
+        if(ANT.indexOf(a)  >= 0){ andarCD(-1); return; }
+        return;
+      }
+      if(CFG.modo !== "lista") return;
+      if(a === "back"){ voltar(); return; }
+      if(TELAS[a]){ abrir(TELAS[a]); return; }
+      if(ABRE.indexOf(a) >= 0){ abrir("raiz"); return; }
+      if(GUARDA.indexOf(a) >= 0 && ST.aberto){ guardar(); return; }
+      if(ST.aberto && PROX.indexOf(a) >= 0){ mover(1); return; }
+      if(ST.aberto && ANT.indexOf(a)  >= 0){ mover(-1); return; }
+      /* LOAD de cada aparelho, com o nome que ELE usa (levantado arquivo por
+         arquivo): XDJ-AZ/RX = load1/load2 · Prime 4 = loadl/loadr ·
+         OPUS-QUAD = load13/load24 (um botao serve dois decks). */
+      var lado = {load1:1, loadl:1, load13:1, load3:1,
+                  load2:2, loadr:2, load24:2, load4:2}[a];
+      if(lado){ ST.lado = lado; if(ST.aberto) confirmar(); else abrir("raiz"); return; }
+    }, true);
+
+    /* SELETOR ROTATIVO: girar anda, apertar carrega. Arrasto vertical serve de
+       giro — e como se gira um encoder com o dedo no iPad. */
+    ligarRotativo();
+  }
+  function achaRotativo(){
+    var n = ["rotary","selectpush","select","folder","browseknob"];
+    for(var i=0;i<n.length;i++){
+      var e = document.querySelector('[data-act="' + n[i] + '"]');
+      if(e) return e;
+    }
+    return null;
+  }
+  var rotLigado = false;
+  function ligarRotativo(){
+    if(rotLigado) return;
+    var r = achaRotativo(); if(!r) return;
+    rotLigado = true;
+    var y0 = 0, acc = 0, andou = false, t0 = 0, ativo = false;
+    r.addEventListener("pointerdown", function(e){
+      ativo = true; andou = false; acc = 0; y0 = e.clientY; t0 = Date.now();
+    });
+    document.addEventListener("pointermove", function(e){
+      if(!ativo) return;
+      /* um passo por ~1/6 da altura do proprio seletor: medido no CDJ-850, com
+         0,28 da altura um arrasto curto de dedo nao virava passo nenhum e o
+         rotativo parecia morto. */
+      var passo = Math.max(7, (r.offsetHeight || 40) * 0.16);
+      acc += (e.clientY - y0); y0 = e.clientY;
+      while(Math.abs(acc) >= passo){
+        if(!ST.aberto) abrir("raiz");
+        mover(acc > 0 ? 1 : -1);
+        acc += (acc > 0 ? -passo : passo);
+        andou = true;
+      }
+    });
+    document.addEventListener("pointerup", function(){
+      if(!ativo) return;
+      ativo = false;
+      if(andou || (Date.now() - t0) > 600) return;      /* girou: nao e clique */
+      if(!ST.aberto) abrir("raiz");
+      else confirmar();
+    });
+  }
+
+  /* CD player: TRACK SEARCH anda na playlist e JA CARREGA — e o gesto real de
+     um CD player, onde nao existe "selecionar sem carregar". */
+  function andarCD(n){
+    var L = ST.playlist.length ? ST.playlist : ST.banco;
+    if(!L.length){ ST.msg = "sem faixas: guarde alguma na playlist"; pintarFaixa(); return; }
+    ST.aberto = true;
+    ST.sel = (ST.sel + n % L.length + L.length) % L.length;
+    pintarFaixa();
+    carregar(1, L[ST.sel]);
+  }
+
+  /* toque NA TELA — so onde a tela e touch de verdade */
+  function ligarToque(){
+    if(!OV || CFG.modo !== "lista") return;
+    OV.addEventListener("pointerdown", function(e){
+      e.stopPropagation();
+      /* ⛔ o campo do YouTube e a unica coisa que responde ao dedo em TODO
+         aparelho: e teclado, nao tela sensivel. O resto segue o aparelho. */
+      if(e.target.closest("[data-yt]")){ guardarYT(); return; }
+      if(e.target.tagName === "INPUT") return;
+      if(!CFG.toque){
+        ST.msg = "este visor NÃO é sensível ao toque — gire o SELETOR ROTATIVO e aperte";
+        pintar(); return;
+      }
+      var t = e.target.closest("[data-tela]");
+      if(t){ irPara(t.dataset.tela); return; }
+      var r = e.target.closest(".r");
+      if(!r) return;
+      var i = +r.dataset.i;
+      /* a estrela e o TAG TRACK da tela: guarda/tira da playlist */
+      if(e.target.tagName === "I"){ ST.sel = i; ajustar(); guardar(); return; }
+      if(i === ST.sel) confirmar();          /* 2o toque na mesma linha carrega */
+      else { ST.sel = i; ajustar(); ST.msg = ""; pintar(); }
+    });
+  }
+  function idYoutube(t){
+    t = (t || "").trim(); if(!t) return null;
+    if(/^[\\w-]{11}$/.test(t)) return t;
+    var m = t.match(/(?:youtu\\.be\\/|v=|\\/embed\\/|\\/shorts\\/|\\/live\\/)([\\w-]{11})/);
+    return m ? m[1] : null;
+  }
+  function guardarYT(){
+    var c = document.getElementById("smuYt");
+    var id = idYoutube(c ? c.value : "");
+    if(!id){ ST.msg = "não reconheci esse endereço do YouTube"; pintar(); return; }
+    env({smu:"plNova", faixa:{id:"yt:" + id, nome:"YouTube " + id, bpm:null, tipo:"yt", yt:id}});
+    ST.msg = "guardada na playlist";
+    ST.tela = "playlist"; ST.sel = 0; ST.topo = 0;
+    pintar();
+  }
+
+  /* ---------------------------------------------------------------------
+     7. CONVERSA COM A AULA
+     --------------------------------------------------------------------- */
+  window.addEventListener("message", function(e){
+    var d = e.data; if(!d || !d.smu) return;
+    if(d.smu === "cabine"){ ST.slot = d.slot; return; }
+    if(d.smu === "biblioteca"){
+      ST.banco = d.banco || []; ST.playlist = d.playlist || [];
+      /* aparelho com browse PROPRIO (BROWSE-USB-PADRAO): a playlist vira o
+         conteudo do pendrive DELE e quem mostra e o visor dele. */
+      if(window.BANCO_SMU){
+        var L = ST.playlist.length ? ST.playlist : ST.banco;
+        window.BANCO_SMU.faixas = L.map(function(f){
+          return { arquivo:f.arquivo || f.id, nome:f.nome, bpm:f.bpm || 0, url:f.url, tipo:f.tipo };
+        });
+      }
+      ajustar(); pintar(); return;
+    }
+    if(d.smu === "ladoVisor"){ ST.lado = d.lado || 1; pintar(); return; }
+    if(d.smu === "ytev" && d.ev === "semPonte"){
+      ST.msg = "YouTube só toca com a aula aberta DENTRO do curso — o player mora na moldura";
+      ST.aberto = true; pintar(); return;
+    }
+  });
+
+  function comecar(){
+    if(CFG.modo === "nenhum"){ pintarSemVisor(); return; }
+    if(CFG.modo === "nativo") return;             /* o browse dele ja resolve */
+    ligarControles();
+    /* o rotativo so existe depois do build(): tenta de novo por um tempo */
+    var n = 0, t = setInterval(function(){ n++; ligarRotativo(); if(rotLigado || n > 25) clearInterval(t); }, 200);
+    embrulharRender();
+    pintar();
+  }
+  if(document.readyState === "complete" || document.readyState === "interactive") setTimeout(comecar, 0);
+  else window.addEventListener("DOMContentLoaded", comecar);
+})();
+`;
+
+const PONTE_USADA = (argPonte === "full" ? PONTE : argPonte === "min" ? PONTE_MIN : CAIXA_PRETA)
+  .replace("__VISOR__", () => (argPonte === "full" ? VISOR_JS + VISOR_JS2 + VISOR_JS3 : ""));
 
 /* ==========================================================================
    TRASEIRAS — normalizacao dos dois JSON num formato so
@@ -667,7 +1399,12 @@ const lista = CATALOGO.map(c => {
   if (!p) throw new Error("simulador nao encontrado: " + c.arq);
   let h = fs.readFileSync(p, "utf8");
   const nome = (h.match(/<title>([^<]*)<\/title>/) || [, c.arq])[1].replace(/\s*—.*$/, "").trim();
-  h = h.replace(/<head>/i, "<head>\n" + PONTE_USADA);
+  /* o VISOR de cada aparelho — tem de estar declarado ANTES da ponte, que le
+     window.__SMU_VISOR logo na entrada. Mixer nao recebe: nao escolhe musica. */
+  const cfgVisor = c.visor
+    ? "<script>window.__SMU_VISOR=" + JSON.stringify(c.visor) + ";<" + "/script>\n"
+    : "";
+  h = h.replace(/<head>/i, "<head>\n" + cfgVisor + PONTE_USADA);
   /* ------------------------------------------------------------------------
      ⛔ NAO APAGAR A BARRA `util`. ESCONDER.
      Isto aqui era `h.replace(/<div class="util">…<\/div>/, "")` — apagava a
@@ -702,6 +1439,17 @@ for (const c of CATALOGO) {
 }
 
 const modelo = fs.readFileSync(path.join(DIR_AULAS, "_cabine-modelo.html"), "utf8");
+/* Aula com PRESET fala de aparelhos especificos: embutir os 29 nela e carregar
+   3,5 MB para mostrar 3. Regra do dono: "na aula o aluno acessa o equipamento
+   exclusivo da aula". Entao a aula travada leva SO os aparelhos dela.        */
+function simsDaAula(a) {
+  if (!a.preset) return lista;
+  const querer = new Set([a.preset.d1, a.preset.d2, a.preset.mix].filter(Boolean));
+  const so = lista.filter(s => querer.has(s.id));
+  if (so.length !== querer.size)
+    throw new Error(`preset de ${a.arq} pede ${[...querer].join(",")} e o catalogo so tem ${so.map(x => x.id).join(",")}`);
+  return so;
+}
 const jsonSims = JSON.stringify(lista);
 const jsonTras = JSON.stringify(TRAS);
 
@@ -709,7 +1457,7 @@ for (const a of AULAS) {
   /* replace com FUNCAO de proposito: com string, um "$&" ou "$'" dentro do HTML
      de algum simulador seria interpretado como referencia da substituicao. */
   const out = modelo
-    .replace("__SIMS__", () => jsonSims)
+    .replace("__SIMS__", () => JSON.stringify(simsDaAula(a)))
     .replace("__TRAS__", () => jsonTras)
     .replace("__MODO__", () => a.modo)
     .replace("__PRESET__", () => JSON.stringify(a.preset || null));
