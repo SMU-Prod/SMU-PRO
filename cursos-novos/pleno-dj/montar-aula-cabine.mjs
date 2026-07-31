@@ -1085,10 +1085,46 @@ const VISOR_JS = `
   }
   /* Laco PROPRIO, e nao pendurado no publicar() do mixer: aquele vive em OUTRA
      IIFE (fecha antes desta) — chamar de la daria ReferenceError, que o
-     try/catch engoliria calado e o conserto viraria nada. Foi assim que
-     "escolher musica nao fazia nada" durou o dia inteiro.
+     try/catch engoliria calado e o conserto viraria nada.
      4 vezes por segundo basta: e transporte, nao e ganho. */
   setInterval(function(){ try{ espelharTransporte(); }catch(e){} }, 250);
+
+  /* ⛔ E POR QUE O ESPELHO SOZINHO NAO BASTA.
+     playDeck() do simulador comeca com um if(!ready) return: o d.playing SO muda
+     se o audio de MP3 do deck ja tiver sido ligado. Quem poe uma faixa do
+     YouTube nao aperta "Ligar audio" do MP3 — entao ready e falso, d.playing
+     nunca vira verdadeiro, e observar essa variavel nunca dispara nada.
+     Foi por isso que o primeiro conserto nao adiantou.
+     Aqui interceptamos o BOTAO, que responde com audio ligado ou nao.        */
+  var YT_TOCA = {};                     /* lado -> estamos tocando no YouTube? */
+  function ladoDoAlvo(el){
+    /* aparelho de 1 deck = lado 1. Nos de 2 decks o act termina em 1/2 ou L/R */
+    var a = el.getAttribute("data-act") || "";
+    if(/2$|R$|_R$/.test(a)) return 2;
+    return 1;
+  }
+  function interceptarTransporte(){
+    document.addEventListener("pointerdown", function(ev){
+      var el = ev.target && ev.target.closest && ev.target.closest("[data-act]");
+      if(!el) return;
+      var act = el.getAttribute("data-act") || "";
+      if(!/^(play|pp|playpause|cue)[0-9LR_]*$/i.test(act)) return;
+      var lado = ladoDoAlvo(el);
+      var f = ST.carregada && ST.carregada[lado];
+      if(!f || f.tipo !== "yt") return;          /* faixa de MP3: nao e conosco */
+      var slot = (ST.slot||"1")+"-"+lado;
+      if(/^cue/i.test(act)){
+        /* CUE na CDJ real: volta ao ponto e fica em pausa enquanto solto */
+        env({smu:"yt", cmd:"seek",  slot:slot, val:0});
+        env({smu:"yt", cmd:"pause", slot:slot});
+        YT_TOCA[lado] = false;
+        return;
+      }
+      YT_TOCA[lado] = !YT_TOCA[lado];
+      env({smu:"yt", cmd: YT_TOCA[lado] ? "play" : "pause", slot:slot});
+    }, true);                                    /* captura: antes do sim      */
+  }
+  try{ interceptarTransporte(); }catch(e){}
 
   async function carregar(lado, faixa){
     if(ST.ocupado) return;
