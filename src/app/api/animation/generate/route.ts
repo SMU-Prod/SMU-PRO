@@ -8,6 +8,16 @@ import { rateLimit } from "@/lib/rate-limit";
 import type { CourseCategory } from "@/types/database";
 
 /**
+ * ⚠ ESTE ARQUIVO NÃO PODE SER APAGADO — leia antes de "limpar a rota morta".
+ *
+ * As duas metades têm destinos opostos:
+ *   • GET  → CARREGA TODOS OS SIMULADORES. É o que o AnimationPlayer chama em toda aula
+ *            (animation-player.tsx, `checkExisting`). Sem ele, as 306 linhas artesanais de
+ *            ai_animations somem da tela.
+ *   • POST → pipeline de geração por IA, DORMENTE. Os botões que o chamavam saíram no
+ *            commit 7d1aaeb; nenhuma linha do banco tem `model: gpt-4.1+hybrid-v9`.
+ *            Continua atrás de `auth()` + rate limit, mas não produz nada há meses.
+ *
  * POST /api/animation/generate
  *
  * Pipeline v9 HÍBRIDO:
