@@ -1467,9 +1467,10 @@ function fazBarraTransporte(){
     /* o catálogo chega por rede, depois da barra existir: se as músicas já
        vieram e o seletor ainda está com o texto de espera, enche agora */
     if (AUD.bases.length && sel.options.length !== AUD.bases.length) encher();
-    st.innerHTML = AUD.carregando ? "carregando faixas…"
-      : AUD.base ? ("<b>"+AUD.stems.length+"</b> faixas nos canais · "+
-                    (AUD.tocando ? "tocando" : "parado"))
+    st.innerHTML = AUD.carregando
+      ? ("carregando <b>"+((AUD.baseAlvo&&AUD.baseAlvo.label)||"")+"</b>…")
+      : AUD.base ? ("<b>"+AUD.base.label.split("—")[0].trim()+"</b> · "+
+                    AUD.stems.length+" faixas · "+(AUD.tocando ? "tocando" : "parado"))
       : "escolha uma música e aperte tocar";
     if (!AUD.tocando && play.textContent.indexOf("❚❚") === 0) play.textContent = "► Tocar base";
     if (AUD.base){
@@ -4626,7 +4627,12 @@ async function carregarBase(idx){
   pararAudio();
   AUD.offset = 0;            /* música nova começa do início, não de onde a outra parou */
   AUD.carregando = true;
-  AUD.base = b;
+  /* ⚠️ NÃO publica AUD.base aqui. Publicar a base no INÍCIO e as faixas só no
+     FIM deixa a mesa num estado mentiroso enquanto baixa: diz que a música é
+     a nova enquanto as faixas ainda são da anterior. Com 42 faixas isso dura
+     segundos, e é a janela em que se dispara a música errada. Base e faixas
+     são publicadas JUNTAS, lá embaixo. */
+  AUD.baseAlvo = b;          /* só para mostrar "carregando X" na interface */
   const pedido = ++AUD.pedido;   /* só o ÚLTIMO pedido pode publicar o resultado */
   S.ajuda = "Carregando <b>"+b.label+"</b> ("+b.stems.length+" faixas)…";
   pedirRender();
@@ -4635,13 +4641,26 @@ async function carregarBase(idx){
   const ctx = AUD.ctx;
   /* uma base pode ter mais faixas que 48; usa as primeiras e avisa */
   const usar = b.stems.slice(0, N_IN);
-  const carregados = await Promise.all(usar.map(async (st,i)=>{
+  let prontas = 0;
+  /* Promise.all inteiro nunca rejeita: cada faixa já trata o próprio erro.
+     Ainda assim o corpo abaixo pode lançar -- por isso o finally no fim
+     solta AUD.carregando SEMPRE. Ficar preso em true trava o áudio do
+     simulador inteiro, e em silêncio. */
+  const carregados = await Promise.all(usar.map(async (st)=>{
     try{
       const resp = await fetch(SB_MEDIA + b.folder + "/" + st.f);
       if (!resp.ok) return null;
       const buf = await ctx.decodeAudioData(await resp.arrayBuffer());
       return { ...st, buffer:buf };
     }catch(e){ console.error("[m7cl] faixa falhou:", st.f, e); return null; }
+    finally{
+      prontas++;
+      /* progresso: com 42 faixas o aluno precisa ver que está andando */
+      if (pedido === AUD.pedido){
+        S.ajuda = "Carregando <b>"+b.label+"</b> — "+prontas+" de "+usar.length+" faixas…";
+        pedirRender();
+      }
+    }
   }));
 
   /* O canal é numerado DEPOIS de descartar as faixas que falharam.
@@ -4651,10 +4670,14 @@ async function carregarBase(idx){
      sobrando (usando AUD.stems.length) desligava canais que TINHAM faixa.
      Um download perdido desalinhava a mesa inteira. */
   /* Se o aluno trocou de música de novo enquanto esta baixava, este resultado
-     está velho: descarta em vez de sobrescrever a base mais recente. */
-  if (pedido !== AUD.pedido) return;
+     está velho: descarta em vez de sobrescrever a base mais recente.
+     ⚠️ Antes eu dava `return` aqui SEM soltar AUD.carregando -- ele ficava
+     preso em true e o áudio não tocava nunca mais, calado. */
+  if (pedido !== AUD.pedido){ AUD.carregando = false; return; }
 
   const perdidas = carregados.filter(x=>!x).length;
+  /* base e faixas publicadas JUNTAS: a partir daqui a mesa é coerente */
+  AUD.base  = b;
   AUD.stems = carregados.filter(Boolean).map((s,i)=>({ ...s, canal:"CH"+(i+1) }));
   AUD.dur = AUD.stems.reduce((m,s)=>Math.max(m, s.buffer.duration), 0);
 
