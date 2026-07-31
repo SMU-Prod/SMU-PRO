@@ -366,7 +366,17 @@ html.smu-fs body{align-items:center}
   box-shadow:inset 0 1px 0 #ffffff12;
 }
 .bcols{flex-wrap:nowrap}
-.bgrupo{display:flex;flex-direction:column;gap:1px}
+.bgrupo{display:flex;flex-direction:column;gap:1px;justify-content:flex-end}
+.blinha{display:flex;gap:3px;align-items:flex-end}
+/* escala em dB serigrafada dos DOIS lados de cada grupo (p.17/19) */
+.besc{
+  display:flex;flex-direction:column;justify-content:flex-end;
+  gap:1px;padding-bottom:1px;
+}
+.besc span{
+  font-size:4.5px;line-height:5px;height:5px;color:var(--serigrafia-fraca);
+  text-align:right;white-space:nowrap;
+}
 .bcols{display:flex;gap:3px;align-items:flex-end}
 .bcol{display:flex;flex-direction:column;align-items:center;gap:1px}
 .bcol>span{font-size:6px;color:var(--serigrafia-fraca);line-height:1}
@@ -376,7 +386,9 @@ html.smu-fs body{align-items:center}
 /* LED bicolor APAGADO é escuro, seja qual for a cor que ele acende.
    Pintar o topo de vermelho/âmbar escuro deixava a bridge com cara suja --
    na foto a bridge apagada é uma grade verde-escura uniforme. */
-.bleds b{display:block;width:10px;height:5px;border-radius:1px;background:#15281a;
+/* LED da bridge: retângulo HORIZONTAL, como no desenho do manual */
+.bleds{display:flex;flex-direction:column;gap:1px}
+.bleds b{display:block;width:11px;height:4px;border-radius:1px;background:#15281a;
   box-shadow:inset 0 0 0 1px #0a0c0b}
 .bleds b.a{background:var(--led-on);box-shadow:0 0 4px #48e05a99}
 .bleds b.a.am{background:#e8c020;box-shadow:0 0 4px #e8c02099}
@@ -415,7 +427,12 @@ html.smu-fs body{align-items:center}
   background:var(--tela-fundo);padding:5px;
   color:var(--tela-texto);font-size:14px;overflow:hidden;
 }
-#area{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;overflow:hidden}
+/* position:relative para as janelas (popup) ficarem contidas na ÁREA
+   PRINCIPAL. Sem isto elas se ancoravam em #tela e cobriam também a área de
+   acesso a funções -- na mesa real o menu da direita CONTINUA visível com a
+   janela aberta (ver a figura de SELECTED CHANNEL VIEW e a p.32). */
+#area{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;overflow:hidden;
+  position:relative}
 
 /* --- function access area (barra direita da tela, p.32) --- */
 /* function access area: ~22 % da largura da tela (medido na p.32).
@@ -524,9 +541,13 @@ html.smu-fs body{align-items:center}
 #ajuda b{color:#ffd45e}
 
 /* ================= popups da tela ================= */
+/* A janela ocupa a ÁREA PRINCIPAL e NUNCA o menu da direita: na mesa real a
+   área de acesso a funções continua visível com a janela aberta (figura de
+   SELECTED CHANNEL VIEW e ATT/HPF/EQ no manual). O #area agora é relative,
+   então o inset é relativo a ela. */
 .popup{
-  position:absolute;inset:15.2px 15.2px 15.2px 15.2px;background:#242629;border:1.9px solid #5a5e64;
-  border-radius:7.6px;display:flex;flex-direction:column;overflow:hidden;z-index:20;
+  position:absolute;inset:3px;background:#242629;border:1.9px solid #5a5e64;
+  border-radius:6px;display:flex;flex-direction:column;overflow:hidden;z-index:20;
 }
 .popup .cab{
   display:flex;align-items:center;gap:11.4px;padding:5.7px 9.5px;background:linear-gradient(180deg,#3d4147,#2a2d31);
@@ -534,6 +555,22 @@ html.smu-fs body{align-items:center}
 }
 .popup .cab .x{margin-left:auto;cursor:pointer;background:#1f6fb8;border-radius:2px;
   padding:1px 7px;border:1px solid #0d3f6d}
+/* teclas de ferramentas do manual (p.35): LIBRARY DEFAULT COPY PASTE COMPARE */
+.ferramentas{display:flex;gap:3px;margin-left:auto}
+.ferramentas .fbt{
+  background:linear-gradient(180deg,#4a4f56,#33373c);border:1px solid #14161a;
+  border-radius:2px;color:#e9eaec;font-size:9px;padding:2px 6px;cursor:pointer;
+  font-family:inherit;
+}
+.ferramentas .fbt:hover{background:linear-gradient(180deg,#5a6069,#3d4249)}
+/* fichas 1ch / 8ch / ALL no rodapé da janela */
+.abas1ch{display:flex;gap:2px;padding:3px 4px 0}
+.abas1ch .abt{
+  background:linear-gradient(180deg,#3c4046,#2a2d31);border:1px solid #14161a;
+  border-bottom:0;border-radius:3px 3px 0 0;color:#c9ced4;font-size:10px;
+  padding:2px 12px;cursor:pointer;font-family:inherit;
+}
+.abas1ch .abt.on{background:#fff;color:#15181b;font-weight:700}
 .popup .corpo{flex:1 1 auto;overflow:auto;padding:11.4px}
 
 /* ===== cores dos knobs NA TELA, medidas na figura oficial (p.90) =====
@@ -1071,16 +1108,25 @@ function fazStrip(idCanal, rotuloTopo, opc){
 const ESCALA_BRIDGE = ["OVER","-3","-6","-9","-12","-15","-18","-24","-30","-40","-50","-60"];
 function fazMeterBridge(){
   const mb = el("div","bridge");
-  /* TRÊS blocos, como na p.19 e na foto: MIX 1-8 | MIX 9-16 | MATRIX 1-8.
-     Eu tinha feito o MIX como um bloco corrido de 16. */
+  /* Estrutura MEDIDA no recorte ampliado da p.17: TRÊS grupos
+     (MIX 1-8 | MIX 9-16 | MATRIX 1-8), e cada grupo tem a escala em dB
+     serigrafada dos DOIS lados das colunas -- era o que faltava na minha
+     versão, e é o que dá à bridge a cara de bridge. */
+  const escala = () => {
+    const e = el("div","besc");
+    ESCALA_BRIDGE.forEach(v=>e.appendChild(el("span",null,v)));
+    return e;
+  };
   const faz = (rot, n, pref, base) => {
     base = base || 0;
     const g = el("div","bgrupo");
+    const linha = el("div","blinha");
+    linha.appendChild(escala());                 /* dB à esquerda */
     const cols = el("div","bcols");
     for (let i=0;i<n;i++){
       const c = el("div","bcol");
       c.dataset.canal = pref+(base+i+1);
-      c.appendChild(el("span",null,String(base+i+1)));
+      c.appendChild(el("span",null,String(base+i+1)));   /* número em cima */
       const leds = el("div","bleds");
       ESCALA_BRIDGE.forEach((_,j)=>{
         const b=el("b");
@@ -1091,7 +1137,9 @@ function fazMeterBridge(){
       c.appendChild(leds);
       cols.appendChild(c);
     }
-    g.appendChild(cols);
+    linha.appendChild(cols);
+    linha.appendChild(escala());                 /* dB à direita */
+    g.appendChild(linha);
     g.appendChild(el("div","brot",rot));
     return g;
   };
@@ -2880,17 +2928,70 @@ TELAS.SOF = function(area){
    POPUPS
    ================================================================== */
 const TELAS_POPUP = {};
-function molde(area, titulo, sub){
+/* opc.ferramentas -> mostra as TECLAS DE FERRAMENTAS do manual (p.35):
+     LIBRARY · DEFAULT · COPY · PASTE · COMPARE
+   opc.abas -> as fichas 1ch / 8ch / ALL do rodapé
+   opc.canais -> a faixa com os 8 canais, para trocar de canal DENTRO da
+   janela (o manual chama de "tecla de nome / número de canal") */
+function molde(area, titulo, sub, opc){
+  opc = opc || {};
   const p = el("div","popup");
   const cab = el("div","cab");
   cab.appendChild(el("span",null,titulo));
   if (sub){ const s = el("span",null,sub); s.style.cssText="font-size:9px;color:#9aa0a8;font-weight:400"; cab.appendChild(s); }
+
+  if (opc.ferramentas){
+    const fer = el("div","ferramentas");
+    const c = S.canais[S.sel];
+    [["LIBRARY", ()=>{ abrirPopup(opc.lib || "EQ_LIB"); }],
+     ["DEFAULT", ()=>{ opc.padrao && opc.padrao(c); S.ajuda = "Voltou ao padrão"; }],
+     ["COPY",    ()=>{ S.copiaFer = opc.copiar && opc.copiar(c); S.ajuda = "Copiado"; }],
+     ["PASTE",   ()=>{ if (!S.copiaFer){ S.ajuda="Nada copiado ainda"; return; }
+                       opc.colar && opc.colar(c, S.copiaFer); S.ajuda = "Colado em "+c.nome; }],
+     ["COMPARE", ()=>{ if (!S.copiaFer){ S.ajuda="Copie algo antes de comparar"; return; }
+                       const atual = opc.copiar && opc.copiar(c);
+                       opc.colar && opc.colar(c, S.copiaFer); S.copiaFer = atual;
+                       S.ajuda = "Comparando — aperte de novo para voltar"; }],
+    ].forEach(([rot,fn])=>{
+      const b = el("button","fbt",rot); b.type="button";
+      b.addEventListener("pointerdown",()=>{ fn(); pedirRender(); });
+      fer.appendChild(b);
+    });
+    cab.appendChild(fer);
+  }
+
   const x = el("button","x","X"); x.type="button";
   x.addEventListener("pointerdown",()=>{ fecharPopup(); pedirRender(); });
   cab.appendChild(x);
   p.appendChild(cab);
   const corpo = el("div","corpo");
   p.appendChild(corpo);
+
+  if (opc.abas){
+    const ab = el("div","abas1ch");
+    S.popAba = S.popAba || "1ch";
+    ["1ch","8ch","ALL"].forEach(a=>{
+      const b = el("button","abt"+(S.popAba===a?" on":""), a); b.type="button";
+      b.addEventListener("pointerdown",()=>{ S.popAba=a;
+        S.ajuda = a==="1ch" ? "Janela mostrando só o canal selecionado"
+                : a==="8ch" ? "Janela mostrando os 8 canais da Centralogic"
+                            : "Janela mostrando todos os canais";
+        telaChave=null; pedirRender(); });
+      ab.appendChild(b);
+    });
+    p.appendChild(ab);
+  }
+  if (opc.canais){
+    const rod = el("div","rodape-canais");
+    grupoTela().forEach(id=>{
+      const cc = S.canais[id];
+      const d = el("div", id===S.sel ? "sel" : null, cc ? cc.nome : "—");
+      if (cc) d.addEventListener("pointerdown",()=>{ S.sel=id; telaChave=null;
+        S.ajuda="Canal <b>"+cc.nome+"</b> — a janela seguiu"; pedirRender(); });
+      rod.appendChild(d);
+    });
+    p.appendChild(rod);
+  }
   area.appendChild(p);
   return corpo;
 }
@@ -2946,7 +3047,16 @@ const EQ_LIB = [
 /* ---- ATT / HPF / EQ (4 bandas, Type I / II) ---- */
 TELAS_POPUP.EQ = function(area){
   const c = S.canais[S.sel];
-  const b = molde(area,"ATT / HPF / EQ", c.nome);
+  /* Janela ATT/HPF/EQ como na figura do manual: teclas de ferramentas no
+     alto, fichas 1ch/8ch/ALL e a faixa de canais no rodapé -- e o menu da
+     direita continua visível. */
+  const b = molde(area,"ATT / HPF / EQ", c.nome, {
+    ferramentas:true, abas:true, canais:true, lib:"EQ_LIB",
+    padrao: ch=>{ for (const x of Object.values(ch.eq.bandas)) x.g = 0; ch.eq.att = 0; },
+    copiar: ch=>JSON.parse(JSON.stringify({eq:ch.eq, hpf:ch.hpf})),
+    colar: (ch,d)=>{ ch.eq = JSON.parse(JSON.stringify(d.eq));
+                     ch.hpf = JSON.parse(JSON.stringify(d.hpf)); },
+  });
   const topo = linhaTela();
   topo.appendChild(btTela("TYPE I", ()=>c.eq.tipo==="I", ()=>{ c.eq.tipo="I";
     S.ajuda="EQ Type I — o clássico das digitais Yamaha, mais 'redondo'"; }));
