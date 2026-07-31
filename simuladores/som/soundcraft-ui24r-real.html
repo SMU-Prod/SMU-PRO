@@ -573,7 +573,47 @@
       if(st){ c.name=st.n; c.color=st.c; c.file=st.f; c.pan=st.p; c.hpfOn=st.h; c.hpf=st.h?100:80; c.hasAudio=true; c.on=true; c.fader=-3; c.gain=16; c.phase=false; }
       else { c.name="—"; c.color="#334155"; c.file=null; c.hasAudio=false; c.on=false; } }
     const mt=$("#mediaTrack"); if(mt)mt.textContent=song.label;
+    montarGrupos();
     renderMix(); renderEdit(); if(ac){ for(let i=0;i<N_CH;i++)applyChanAudio(i); } }
+
+  /* ============ GRUPOS DO SHOW =========================================================
+     O Ui24R sai de fabrica com VCA, Mute Group e Subgroup VAZIOS — e assim estava aqui:
+     `dca/mute/sub` nasciam todos false. Resultado: 6 VCA + 6 Mute + 4 Sub, dezesseis
+     masters na tela, e NENHUM fazia nada visivel. Fiel a um console zerado, sim; mas o
+     simulador carrega um SHOW com os canais ja' nomeados, e nenhum operador entrega uma
+     mesa com o show montado e os grupos vazios.
+
+     ISTO NAO E' ESPECIFICACAO DO FABRICANTE — e' o arquivo de show que o simulador traz,
+     do mesmo jeito que ele ja' traz nome, cor, pan e HPF por canal. Por isso a divisao e'
+     por FUNCAO NA BANDA, deduzida do nome do canal, e vale para as tres bases (pagode,
+     forro e a que tem voz), em vez de indices fixos que quebrariam ao trocar de musica. */
+  function papelDoCanal(nome){
+    const n=(nome||"").toLowerCase();
+    if(/voz|vocal|lead|back/.test(n))                              return 'voz';
+    if(/bumbo|caixa|surdo|chimbal|tom|prato|hh|bateria/.test(n))   return 'bateria';
+    if(/repique|rototom|timbau|conga|perc|tanta|agog|ganz/.test(n))return 'perc';
+    if(/baixo|guitarra|violao|teclado|key|sax|metais|naipe/.test(n))return 'harmonia';
+    return null;
+  }
+  function montarGrupos(){
+    for(let i=0;i<N_CH;i++){ const c=CH[i];
+      c.dca.fill(false); c.mute.fill(false); c.sub.fill(false);
+      if(!c.hasAudio) continue;
+      const p=papelDoCanal(c.name); if(!p) continue;
+      /* VCA 1 bateria · 2 percussao · 3 harmonia · 4 voz  (os 2 restantes ficam livres
+         para o aluno montar o dele, que e' metade da aula) */
+      const vca={bateria:0, perc:1, harmonia:2, voz:3}[p];
+      const sub={bateria:0, perc:1, harmonia:2, voz:3}[p];
+      c.dca[vca]=true;
+      c.sub[sub]=true;
+      /* Mute Group 1 corta a percussao (o uso classico: tirar a percussao na balada),
+         2 corta a harmonia, 3 corta a bateria inteira. Voz nunca entra em mute group
+         por engano — e' o erro que mais custa caro num show. */
+      if(p==='perc')      c.mute[0]=true;
+      if(p==='harmonia')  c.mute[1]=true;
+      if(p==='bateria')   c.mute[2]=true;
+    }
+  }
   function setPlayBtn(on){ const b=$("#playBtn"); if(b){ b.disabled=false; b.textContent=on?"■ STOP":"► PLAY"; b.classList.toggle("on",on); b.style.background=''; b.style.color=''; b.style.cursor=''; } }
   let loadingSong=false;
   function setPlayLoading(n,total){ const b=$("#playBtn"); if(b){ b.disabled=true; b.classList.remove("on"); b.style.background="linear-gradient(180deg,#f8c451,#eebb22)"; b.style.color="#1a1200"; b.style.cursor="wait"; b.textContent="⏳ BASE "+n+"/"+total; } setStatus("baixando stems "+n+"/"+total+"…","#eebb22"); }
