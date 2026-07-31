@@ -565,6 +565,42 @@ html.smu-fs body{align-items:center}
 }
 .rodape-canais div.sel{background:var(--tela-azul);color:#fff}
 
+/* ===== caixa de confirmação (p.32) =====
+   A M7CL pergunta antes de chamar ou guardar cena -- é a RECALL/STORE
+   CONFIRMATION das preferences (p.214). Eu tinha a preferência declarada mas
+   NÃO a usava: um toque numa tecla de cena apagava a mixagem inteira do aluno
+   sem aviso. A caixa segue a figura do manual: verde, com "?" e CANCEL/OK. */
+#confirma{
+  position:absolute;inset:0;z-index:120;display:none;
+  align-items:center;justify-content:center;background:#0008;
+}
+#confirma.on{display:flex}
+#confirma .cx{
+  background:linear-gradient(180deg,#3f6b46,#2c4b31);
+  border:2px solid #8fbf96;border-radius:5px;min-width:260px;max-width:80%;
+  box-shadow:0 8px 30px #000a;overflow:hidden;
+}
+#confirma .tit{
+  background:#24402a;padding:4px 10px;font-size:13px;font-weight:700;
+  letter-spacing:.5px;color:#dff0e2;
+}
+#confirma .msg{
+  display:flex;align-items:center;gap:10px;padding:14px 12px;font-size:14px;color:#f0f6f1;
+}
+#confirma .msg .q{
+  width:30px;height:30px;border-radius:50%;flex:0 0 auto;
+  background:radial-gradient(circle at 38% 30%,#bfe0c4,#4d7d55);
+  border:1px solid #24402a;display:flex;align-items:center;justify-content:center;
+  font-size:19px;font-weight:800;color:#1b2f1f;
+}
+#confirma .bts{display:flex;gap:10px;justify-content:center;padding:0 12px 12px}
+#confirma .bts button{
+  min-width:96px;padding:6px 10px;font-size:13px;font-family:inherit;cursor:pointer;
+  background:linear-gradient(180deg,#20351f,#16250f);color:#eaf3ea;
+  border:1px solid #6f9a76;border-radius:3px;
+}
+#confirma .bts button.ok{background:linear-gradient(180deg,#2c4b31,#20351f)}
+
 /* botão genérico dentro da tela */
 .tbt{
   background:linear-gradient(180deg,#3c4046,#2a2d31);border:1.9px solid #14161a;border-radius:3.8px;
@@ -1349,6 +1385,17 @@ function montar(){
   const av = el("div"); av.id = "avisosof";
   mesa.appendChild(av);
 
+  /* caixa de confirmação de cena (p.32) */
+  const cf = el("div"); cf.id = "confirma";
+  cf.innerHTML =
+    '<div class="cx">' +
+      '<div class="tit" id="cf-tit">CONFIRMATION</div>' +
+      '<div class="msg"><div class="q">?</div><div id="cf-msg"></div></div>' +
+      '<div class="bts"><button type="button" id="cf-cancel">CANCEL</button>' +
+      '<button type="button" class="ok" id="cf-ok">OK</button></div>' +
+    '</div>';
+  mesa.appendChild(cf);
+
   mesa.appendChild(fazBarraTransporte());
 }
 
@@ -1954,13 +2001,59 @@ function acaoUDK(i){
 }
 
 /* ---- cenas ---- */
+/* Caixa de confirmação da mesa (p.32). Se a preferência estiver desligada,
+   executa direto -- é o que a M7CL faz. */
+/* O callback vive aqui; os botões têm tratador PERMANENTE.
+   Antes eu registrava o listener só ao abrir a caixa — com ela fechada os
+   botões ficavam sem função nenhuma, e o portão acusou os dois como mortos. */
+let cfAcao = null;
+function fecharConfirma(){
+  const cx = document.getElementById("confirma");
+  if (cx) cx.classList.remove("on");
+  cfAcao = null;
+}
+function ligarConfirma(){
+  const ok = document.getElementById("cf-ok");
+  const no = document.getElementById("cf-cancel");
+  if (!ok || !no) return;
+  ok.addEventListener("click", ()=>{
+    const f = cfAcao; fecharConfirma();
+    if (f) f(); else { S.ajuda = "Nada a confirmar"; pedirRender(); }
+  });
+  no.addEventListener("click", ()=>{
+    const tinha = !!cfAcao;
+    fecharConfirma();
+    S.ajuda = tinha ? "Cancelado — a mixagem continua como estava" : "Nada a cancelar";
+    pedirRender();
+  });
+}
+
+function confirmarNaTela(titulo, texto, quandoOk, precisa){
+  if (!precisa){ quandoOk(); return; }
+  const cx = document.getElementById("confirma");
+  if (!cx){ quandoOk(); return; }
+  document.getElementById("cf-tit").textContent = titulo;
+  document.getElementById("cf-msg").innerHTML = texto;
+  cfAcao = quandoOk;
+  cx.classList.add("on");
+}
+
 function recallCena(){
   const c = S.cena.lista.find(x=>x.n===S.cena.n);
   if (!c){ S.ajuda = "Cena <b>"+num3(S.cena.n)+"</b> está vazia — nada para chamar"; pedirRender(); return; }
-  if (c.dados) aplicarCena(c.dados);
-  S.cena.nome = c.nome;
-  S.ajuda = "Cena <b>"+num3(c.n)+" "+c.nome+"</b> chamada — os faders andaram sozinhos";
-  pedirRender();
+  /* RECALL CONFIRMATION (p.214): chamar cena SOBRESCREVE a mesa inteira.
+     Sem esta pergunta, um toque na tecla apagava a mixagem do aluno sem
+     aviso -- e como tudo ficava mudo, parecia que a música tinha parado. */
+  confirmarNaTela("RECALL CONFIRMATION",
+    "Chamar a cena <b>"+num3(c.n)+" "+c.nome+"</b>?<br>"+
+    "<span style='font-size:11px;opacity:.85'>A mixagem atual será substituída.</span>",
+    ()=>{
+      if (c.dados) aplicarCena(c.dados);
+      S.cena.nome = c.nome;
+      S.ajuda = "Cena <b>"+num3(c.n)+" "+c.nome+"</b> chamada — os faders andaram sozinhos";
+      pedirRender();
+    },
+    S.pref.recallConf);
 }
 function fotoDaMesa(){
   const f = {};
@@ -2015,6 +2108,16 @@ function aplicarMuteGroup(n, ligado){
 }
 function guardarCena(n, nome){
   if (n===0){ S.ajuda="A cena <b>000 Initial Data</b> é protegida na mesa real — escolha outro número"; return false; }
+  /* STORE CONFIRMATION (p.214/p.32): guardar por cima de uma cena que já
+     existe apaga a anterior. A mesa pergunta; aqui também. */
+  const existente = S.cena.lista.find(x=>x.n===n);
+  if (existente && S.pref.storeConf && !S._confirmandoStore){
+    confirmarNaTela("STORE CONFIRMATION",
+      "Guardar sobre a cena <b>"+num3(n)+" "+existente.nome+"</b>?",
+      ()=>{ S._confirmandoStore = true; guardarCena(n, nome); S._confirmandoStore = false; pedirRender(); },
+      true);
+    return false;
+  }
   const ja = S.cena.lista.findIndex(x=>x.n===n);
   const reg = {n, nome:nome||("SCENE "+num3(n)), bloq:false, dados:fotoDaMesa()};
   if (ja>=0) S.cena.lista[ja] = reg; else S.cena.lista.push(reg);
@@ -4906,6 +5009,12 @@ function m7clTeste(){
   };
   const C = id => S.canais[id];
   const guardaEstado = JSON.stringify({sel:S.sel, nav:S.nav, tela:S.tela});
+  /* As confirmações de cena (p.214) abrem uma caixa e ESPERAM resposta. Num
+     teste automático ninguém aperta OK, então o recall nunca se aplicava e
+     dois testes falhavam sem que houvesse defeito. Desligo durante a prova e
+     devolvo no fim -- a caixa tem teste próprio, na tela. */
+  const prefRecall = S.pref.recallConf, prefStore = S.pref.storeConf;
+  S.pref.recallConf = false; S.pref.storeConf = false;
 
   /* cap.2 — painel */
   T(2,"62 strips (48 in + 4 ST IN + 8 Centralogic + 2 master)",
@@ -4990,6 +5099,21 @@ function m7clTeste(){
     ()=>{const t=S.bus.mix[0].tipo;S.bus.mix[0].tipo="FIXED";
          const r=S.bus.mix[0].tipo==="FIXED";S.bus.mix[0].tipo=t;return r;});
 
+  /* A confirmação de cena existe e PROTEGE a mixagem (p.214) — um toque na
+     tecla de cena não pode apagar o trabalho do aluno sem perguntar. */
+  T(12,"RECALL CONFIRMATION pergunta e o CANCEL preserva a mixagem", ()=>{
+    S.pref.recallConf = true;
+    const c = C("CH7"); c.fader = -7;
+    S.cena.n = 0;
+    recallCena();                                   /* deve abrir a caixa */
+    const abriu = document.getElementById("confirma").classList.contains("on");
+    const intacto = c.fader === -7;                 /* nada aplicado ainda */
+    document.getElementById("cf-cancel").click();
+    const preservou = c.fader === -7;
+    S.pref.recallConf = false;
+    return abriu && intacto && preservou;
+  });
+
   /* telas */
   T(0,"todas as telas abrem com conteúdo", ()=>{
     const area = document.getElementById("area");
@@ -5001,6 +5125,9 @@ function m7clTeste(){
     S.popup=null; S.tela="OVERVIEW"; telaChave=null; construirTela();
     return vazias === 0;
   });
+
+  /* confirmações voltam ao que eram antes da prova */
+  S.pref.recallConf = prefRecall; S.pref.storeConf = prefStore;
 
   /* limpa o que o teste criou */
   S.cena.lista = S.cena.lista.filter(x=>x.n<298);
@@ -5027,6 +5154,7 @@ S.ajuda = "Aperte um <b>[SEL]</b> para escolher o canal · gire os knobs do <b>S
    mexida, e o RECALL não devolvia nada. */
 S.cena.lista[0].dados = fotoDaMesa();
 
+ligarConfirma();          /* CANCEL/OK ganham tratador permanente */
 encaixarLCDnaMesa();      /* põe o LCD 640x480 dentro do espaço físico da mesa */
 desenhar();
 </script>
