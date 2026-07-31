@@ -387,6 +387,7 @@
   }
   const CH=Array.from({length:N_CH},(_,i)=>mkChannel(i));
   const state={ sel:12, mode:"selected", sof:-1, sofBus:0, sofType:'mix', master:-3, mono:-3, eqBand:3,
+    soloMain:false, soloMono:false, mainOn:true, monoOn:true,   /* SOLO/MUTE tambem nas tiras MAIN e MONO */
     knobMode:'gain', scene:0, monitor:-20, dim:false, talkback:false, fxSel:0,
     dcaGain:new Array(N_DCA).fill(0), dcaOn:new Array(N_DCA).fill(true),
     mixMaster:new Array(N_MIX).fill(0), mixOn:new Array(N_MIX).fill(true),
@@ -624,7 +625,8 @@
         setFdb(v){ const c=CH[idx]; if(state.sof>=0){ c.sends[state.sofBus]=v; if(v>FMIN)c.sendOn[state.sofBus]=true; } else { c.fader=v; applyChanAudio(idx); } },
         get knobVal(){ return state.knobMode==='pan'?CH[idx].pan:CH[idx].gain; },
         setKnob(dy){ const c=CH[idx]; if(state.knobMode==='pan'){ c.pan=clamp(Math.round(c.pan+dy),-100,100);} else { c.gain=clamp(c.gain+dy*0.4,-12,60);} applyChanAudio(idx); },
-        meter(){ return meterDbOf(idx); }, sofActive(){return false;}, hasAudio(){return CH[idx].hasAudio;} };
+        meter(){ return meterDbOf(idx); }, sofActive(){return false;}, hasAudio(){return CH[idx].hasAudio;},
+        get idx(){return idx;}, get emSolo(){ return !!(CH[idx]&&CH[idx].cue); } };
     }
     if(kind==='aux'){
       // AUX IN 1-6 + USB L/R. Real strips (fader/mute/knob/scene), unpatched in this rig -> no signal,
@@ -634,6 +636,7 @@
         get sel(){return false;}, doSel(){ toast("<b>"+nm+"</b> — entrada auxiliar (sem fonte conectada neste rig)"); },
         get on(){ return state.auxOn[idx]; }, toggleOn(){ state.auxOn[idx]=!state.auxOn[idx]; },
         get fdb(){ return state.auxLvl[idx]; }, setFdb(v){ state.auxLvl[idx]=v; },
+        get idx(){return idx;}, get emSolo(){ return soloAux[idx]; },
         get knobVal(){return 0;}, setKnob(){}, meter(){return -90;}, sofActive(){return false;}, hasAudio(){return false;} };
     }
     if(kind==='fxret'){
@@ -643,6 +646,7 @@
         get sel(){ return state.fxSel===p; }, doSel(){ state.fxSel=p; setMode('fx'); },
         get on(){ return state.fxRetOn[p]; }, toggleOn(){ state.fxRetOn[p]=!state.fxRetOn[p]; applyFX(); },
         get fdb(){ return state.fxRetLvl[p]; }, setFdb(v){ state.fxRetLvl[p]=v; applyFX(); },
+        get p(){return p;}, get emSolo(){ return soloFx[p]; },
         get knobVal(){return 0;}, setKnob(){}, meter(){ return fxRetMeterDb(p); }, sofActive(){return false;}, hasAudio(){return true;} };
     }
     if(kind==='dca'){
@@ -650,6 +654,7 @@
         get sel(){return false;}, doSel(){ setMode('dca'); },
         get on(){ return state.dcaOn[idx]; }, toggleOn(){ state.dcaOn[idx]=!state.dcaOn[idx]; for(let i=0;i<N_CH;i++)if(CH[i].dca[idx])applyChanAudio(i); },
         get fdb(){ return state.dcaGain[idx]; }, setFdb(v){ state.dcaGain[idx]=v; for(let i=0;i<N_CH;i++)if(CH[i].dca[idx])applyChanAudio(i); },
+        get idx(){return idx;}, get emSolo(){ return soloDca[idx]; },
         get knobVal(){return 0;}, setKnob(){}, meter(){return -90;}, sofActive(){return false;}, hasAudio(){return true;} };
     }
     if(kind==='mix'){
@@ -658,6 +663,7 @@
         doSel(){ engageSof('mix',idx); },
         get on(){ return state.mixOn[idx]; }, toggleOn(){ state.mixOn[idx]=!state.mixOn[idx]; },
         get fdb(){ return state.mixMaster[idx]; }, setFdb(v){ state.mixMaster[idx]=v; },
+        get idx(){return idx;}, get emSolo(){ return soloMix[idx]; },
         get knobVal(){return 0;}, setKnob(){}, meter(){return -90;}, sofActive(){return true;}, hasAudio(){return true;} };
     }
     if(kind==='mtx'){
@@ -665,21 +671,26 @@
         get sel(){ return state.sof>=0&&state.sofType==='mtx'&&state.sofBus===idx; }, doSel(){ engageSof('mtx',idx); },
         get on(){ return state.mtxOn[idx]; }, toggleOn(){ state.mtxOn[idx]=!state.mtxOn[idx]; },
         get fdb(){ return state.mtxMaster[idx]; }, setFdb(v){ state.mtxMaster[idx]=v; },
+        get idx(){return idx;}, get emSolo(){ return soloMtx[idx]; },
         get knobVal(){return 0;}, setKnob(){}, meter(){return -90;}, sofActive(){return true;}, hasAudio(){return true;} };
     }
     if(kind==='st'){
       return { kind, get name(){return "STEREO";}, get color(){return "#ffd27a";}, get num(){return "ST";},
-        get sel(){return false;}, doSel(){}, get on(){return true;}, toggleOn(){},
+        get sel(){return false;}, doSel(){},
+        get on(){return state.mainOn;}, toggleOn(){ state.mainOn=!state.mainOn; applyMasterAudio(); },
+        get emSolo(){ return state.soloMain; },
         get fdb(){return state.master;}, setFdb(v){ state.master=v; applyMasterAudio(); },
         get knobVal(){return 0;}, setKnob(){}, meter(){return playing?masterLevelDb():-90;}, sofActive(){return false;}, hasAudio(){return true;} };
     }
     if(kind==='mono'){
       return { kind, get name(){return "MONO";}, get color(){return "#ffd27a";}, get num(){return "M/C";},
-        get sel(){return false;}, doSel(){}, get on(){return true;}, toggleOn(){},
+        get sel(){return false;}, doSel(){},
+        get on(){return state.monoOn;}, toggleOn(){ state.monoOn=!state.monoOn; applyMasterAudio(); },
+        get emSolo(){ return state.soloMono; },
         get fdb(){return state.mono;}, setFdb(v){ state.mono=v; applyMasterAudio(); },
         get knobVal(){return 0;}, setKnob(){}, meter(){return playing?masterLevelDb()-2:-90;}, sofActive(){return false;}, hasAudio(){return true;} };
     }
-    return { kind:'empty', name:"—", color:"#2a2f37", num:"", sel:false, doSel(){}, on:false, toggleOn(){}, fdb:FMIN, setFdb(){}, knobVal:0, setKnob(){}, meter(){return -90;}, sofActive(){return false;}, hasAudio(){return false;} };
+    return { kind:'empty', name:"—", color:"#2a2f37", num:"", sel:false, doSel(){}, on:false, toggleOn(){}, fdb:FMIN, setFdb(){}, knobVal:0, setKnob(){}, meter(){return -90;}, sofActive(){return false;}, hasAudio(){return false;}, emSolo:false };
   }
   function meterDbOf(i){ const ch=CH[i];
     if(playing&&ch.hasAudio) return chLevelDb(i)+(ch.on?0:-90);
@@ -759,7 +770,17 @@
     // SELECT
     o.sel.onclick=()=>{ if(o.ctl){ o.ctl.doSel(); paintBay(); } };
     // SOLO (audible solo / AFL)
-    o.solo.onclick=()=>{ const c=o.ctl; if(c&&c.kind==='ch'){ CH[c.chIdx].cue=!CH[c.chIdx].cue; applyCue(); } };
+    o.solo.onclick=()=>{ const c=o.ctl; if(!c) return;
+      if(c.kind==='ch'){ CH[c.chIdx].cue=!CH[c.chIdx].cue; }
+      else if(c.kind==='dca'){ soloDca[c.idx]=!soloDca[c.idx]; }
+      else if(c.kind==='mix'){ soloMix[c.idx]=!soloMix[c.idx]; }
+      else if(c.kind==='mtx'){ soloMtx[c.idx]=!soloMtx[c.idx]; }
+      else if(c.kind==='st'){  state.soloMain=!state.soloMain; }
+      else if(c.kind==='mono'){ state.soloMono=!state.soloMono; }
+      else if(c.kind==='aux'){   soloAux[c.idx]=!soloAux[c.idx]; }
+      else if(c.kind==='fxret'){ soloFx[c.p]=!soloFx[c.p]; }
+      else return;
+      applyCue(); };
     // MUTE
     o.mute.onclick=()=>{ if(o.ctl){ o.ctl.toggleOn(); paintBay(); if(state.mode!=="overview")drawScreen(); checkMissions(); } };
   }
@@ -768,9 +789,33 @@
     for(let i=0;i<bayStrips.length;i++){ const o=bayStrips[i], d=descs[i]; if(!d){continue;} o.ctl=d.ctl; paintOneStrip(o); }
   };
   // CUE = SOLO-in-place (AFL): se algum canal está em CUE, só os canais em CUE são ouvidos.
-  function anyCue(){ for(let i=0;i<CH.length;i++){ if(CH[i].cue) return true; } return false; }
+  /* SOLO das SAIDAS. Na X32 o SOLO existe em toda tira da bancada, nao so' no canal de
+     entrada. Solar uma saida monitora aquele barramento: ouvem-se os canais que o
+     alimentam (DCA -> atribuidos; MIX/MATRIX -> com envio ligado; MAIN/MONO -> a mistura). */
+  const soloMix=new Array(N_MIX).fill(false), soloMtx=new Array(N_MTX).fill(false),
+        soloDca=new Array(N_DCA).fill(false),
+        /* AUX IN e FX RETURN tambem tem SOLO na X32 — sao fontes que entram na mistura. */
+        soloAux=new Array(8).fill(false), soloFx=new Array(8).fill(false);
+  function canalEmSolo(i){
+    const c=CH[i]; if(!c) return false;
+    if(c.cue) return true;
+    if(state.soloMain||state.soloMono) return true;
+    for(let d=0;d<N_DCA;d++) if(soloDca[d] && c.dca && c.dca[d]) return true;
+    for(let m=0;m<N_MIX;m++) if(soloMix[m] && c.sendOn && c.sendOn[m]) return true;
+    for(let m=0;m<N_MTX;m++) if(soloMtx[m] && c.mtxOn && c.mtxOn[m]) return true;
+    return false; }
+  function anySoloSaida(){
+    if(state.soloMain||state.soloMono) return true;
+    for(let i=0;i<8;i++) if(soloAux[i]||soloFx[i]) return true;
+    for(let i=0;i<N_MIX;i++) if(soloMix[i]) return true;
+    for(let i=0;i<N_MTX;i++) if(soloMtx[i]) return true;
+    for(let i=0;i<N_DCA;i++) if(soloDca[i]) return true;
+    return false; }
+  function anyCue(){ for(let i=0;i<CH.length;i++){ if(CH[i].cue) return true; } return anySoloSaida(); }
   function applyCue(){ for(let i=0;i<CH.length;i++) applyChanAudio(i); if(typeof paintBay==='function') paintBay(); if(state.mode!=="overview") drawScreen(); }
-  function clearCue(){ for(let i=0;i<CH.length;i++) CH[i].cue=false; applyCue(); }
+  function clearCue(){ for(let i=0;i<CH.length;i++) CH[i].cue=false;
+    soloMix.fill(false); soloMtx.fill(false); soloDca.fill(false);
+    state.soloMain=false; state.soloMono=false; applyCue(); }
   function paintOneStrip(o){
     const c=o.ctl; if(!c){return;}
     const empty=c.kind==='empty';
@@ -781,7 +826,7 @@
     const fdb=c.fdb; o.cap.style.bottom="calc("+(db2pos(fdb)*100)+"% - 10px)";
     o.sel.classList.toggle("act", !!c.sel);
     // SOLO lit (yellow) when this channel is cued
-    o.solo.classList.toggle("act", c.kind==='ch' && CH[c.chIdx] && !!CH[c.chIdx].cue);
+    o.solo.classList.toggle("act", !!c.emSolo);
     // MUTE lit (red) when the strip is OFF / muted; in SOF mode reflects send-off
     o.mute.classList.toggle("act", !empty && !c.on);
     o.mute.textContent = (state.sof>=0&&c.kind==='ch') ? (c.on?"SEND":"MUTE") : "MUTE";
@@ -1527,7 +1572,7 @@
     for(let g=0;g<N_DCA;g++){ if(c.dca[g]){ if(!state.dcaOn[g])muted=true; dcaLin*=dbToLin(state.dcaGain[g]); } }
     // Mute groups — active group mutes members unless the channel is Mute Safe.
     if(!c.muteSafe){ for(let g=0;g<N_MUTE;g++){ if(c.mute[g]&&state.muteActive[g])muted=true; } }
-    const soloMuted = anyCue() && !c.cue;
+    const soloMuted = anyCue() && !canalEmSolo(i);
     const audible=c.on&&!muted&&!soloMuted&&c.fader>FMIN&&c.hasAudio;
     P(n.fdr.gain,audible?dbToLin(c.fader)*dcaLin:0,t,0.02);
     // FX sends (slots 1–4). Post-fader tap already (fed from n.fdr). On/off follows the send level.
@@ -1561,7 +1606,11 @@
       const rms=Math.sqrt(s/n.preBuf.length),db=rms>1e-5?20*Math.log10(rms):-90; const open=db>c.gateThr,target=open?1:dbToLin(c.gateRange);
       const tc=Math.max(0.004,(open?c.gateAtk:c.gateDecay)/1000/3); P(n.gate.gain,target,t,tc); c._gr=open?0:Math.max(0,-c.gateRange); }
   }
-  function applyMasterAudio(){ if(ac&&masterGain){ P(masterGain.gain,dbToLin(state.master),ac.currentTime,0.02); P(monoTrim.gain,dbToLin(state.mono),ac.currentTime,0.02); } }
+  /* O MUTE da tira MAIN corta o barramento principal, e o da MONO corta o mono. Antes os dois
+     eram on:true fixo com toggleOn(){} vazio — botao que so' acendia. */
+  function applyMasterAudio(){ if(ac&&masterGain){
+    P(masterGain.gain, state.mainOn?dbToLin(state.master):0, ac.currentTime,0.02);
+    P(monoTrim.gain,   state.monoOn?dbToLin(state.mono):0,   ac.currentTime,0.02); } }
   applyMonitor=function(){ /* monitor bus is didactic; dim lowers master monitor feel */ };
   function snapCh(c){ return JSON.parse(JSON.stringify({gain:c.gain,phase:c.phase,phantom:c.phantom,hpfOn:c.hpfOn,hpf:c.hpf,lpfOn:c.lpfOn,lpf:c.lpf,eq:c.eq,eqType:c.eqType,eqOn:c.eqOn,gateMode:c.gateMode,gateOn:c.gateOn,gateThr:c.gateThr,gateRange:c.gateRange,gateAtk:c.gateAtk,gateHold:c.gateHold,gateDecay:c.gateDecay,compOn:c.compOn,compThr:c.compThr,compRatio:c.compRatio,compAtk:c.compAtk,compRel:c.compRel,compKnee:c.compKnee,compGain:c.compGain,pan:c.pan,fader:c.fader,on:c.on,muteSafe:c.muteSafe,sends:c.sends,sendOn:c.sendOn,sendPre:c.sendPre,dca:c.dca,mute:c.mute,fxRev:c.fxRev,fxDly:c.fxDly,fxSend3:c.fxSend3,fxSend4:c.fxSend4})); }
   function storeScene(slot){ scenes[slot]={ ch:CH.map(snapCh), master:state.master, mono:state.mono, dcaGain:state.dcaGain.slice(), dcaOn:state.dcaOn.slice(), muteActive:state.muteActive.slice(), fx:JSON.parse(JSON.stringify(state.fx)), ts:Date.now() }; toast("Cena "+(slot+1)+" <b>armazenada</b> ✔"); }

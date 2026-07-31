@@ -402,6 +402,7 @@
   }
   const CH=Array.from({length:MAXCH},(_,i)=>mkChannel(i));
   const state={ sel:12, mode:"selected", sof:-1, sofBus:0, sofType:'mix', master:-3, mono:-3, eqBand:3,
+    cueSt:false, cueMono:false, stOn:true, monoOn:true,   /* CUE e ON tambem nas tiras de master */
     knobMode:'gain', scene:0, monitor:-20, dim:false, talkback:false,
     chBank:0, dcaGain:new Array(N_DCA).fill(0), dcaOn:new Array(N_DCA).fill(true),
     mixMaster:new Array(N_MIX).fill(0), mixOn:new Array(N_MIX).fill(true),
@@ -810,13 +811,15 @@
         setFdb(v){ const c=CH[idx]; if(state.sof>=0){ c.sends[state.sofBus]=v; if(v>FMIN)c.sendOn[state.sofBus]=true; } else { c.fader=v; applyChanAudio(idx); } },
         get knobVal(){ return state.knobMode==='pan'?CH[idx].pan:CH[idx].gain; },
         setKnob(dy){ const c=CH[idx]; if(state.knobMode==='pan'){ c.pan=clamp(Math.round(c.pan+dy),-63,63);} else { c.gain=clamp(c.gain+dy*0.4,-6,45);} applyChanAudio(idx); },
-        meter(){ return meterDbOf(idx); }, sofActive(){return false;}, hasAudio(){return CH[idx].hasAudio;} };
+        meter(){ return meterDbOf(idx); }, sofActive(){return false;}, hasAudio(){return CH[idx].hasAudio;},
+        get idx(){return idx;}, get emCue(){ return !!(CH[idx]&&CH[idx].cue); } };
     }
     if(kind==='dca'){
       return { kind, get name(){return "VCA "+(idx+1);}, get color(){return "#2f7bff";}, get num(){return "VCA";},
         get sel(){return false;}, doSel(){ setMode('dca'); },
         get on(){ return state.dcaOn[idx]; }, toggleOn(){ state.dcaOn[idx]=!state.dcaOn[idx]; for(let i=0;i<MAXCH;i++)if(CH[i].dca[idx])applyChanAudio(i); },
         get fdb(){ return state.dcaGain[idx]; }, setFdb(v){ state.dcaGain[idx]=v; for(let i=0;i<MAXCH;i++)if(CH[i].dca[idx])applyChanAudio(i); },
+        get idx(){return idx;}, get emCue(){ return cueDca[idx]; },
         get knobVal(){return 0;}, setKnob(){}, meter(){return -90;}, sofActive(){return false;}, hasAudio(){return true;} };
     }
     if(kind==='mix'){
@@ -825,6 +828,7 @@
         doSel(){ engageSof('mix',idx); },
         get on(){ return state.mixOn[idx]; }, toggleOn(){ state.mixOn[idx]=!state.mixOn[idx]; },
         get fdb(){ return state.mixMaster[idx]; }, setFdb(v){ state.mixMaster[idx]=v; },
+        get idx(){return idx;}, get emCue(){ return cueMix[idx]; },
         get knobVal(){return 0;}, setKnob(){}, meter(){return -90;}, sofActive(){return true;}, hasAudio(){return true;} };
     }
     if(kind==='mtx'){
@@ -832,21 +836,26 @@
         get sel(){ return state.sof>=0&&state.sofType==='mtx'&&state.sofBus===idx; }, doSel(){ engageSof('mtx',idx); },
         get on(){ return state.mtxOn[idx]; }, toggleOn(){ state.mtxOn[idx]=!state.mtxOn[idx]; },
         get fdb(){ return state.mtxMaster[idx]; }, setFdb(v){ state.mtxMaster[idx]=v; },
+        get idx(){return idx;}, get emCue(){ return cueMtx[idx]; },
         get knobVal(){return 0;}, setKnob(){}, meter(){return -90;}, sofActive(){return true;}, hasAudio(){return true;} };
     }
     if(kind==='st'){
       return { kind, get name(){return "STEREO";}, get color(){return "#ffd27a";}, get num(){return "ST";},
-        get sel(){return false;}, doSel(){}, get on(){return true;}, toggleOn(){},
+        get sel(){return false;}, doSel(){},
+        get on(){return state.stOn;}, toggleOn(){ state.stOn=!state.stOn; applyMasterAudio(); },
+        get emCue(){ return state.cueSt; },
         get fdb(){return state.master;}, setFdb(v){ state.master=v; applyMasterAudio(); },
         get knobVal(){return 0;}, setKnob(){}, meter(){return playing?masterLevelDb():-90;}, sofActive(){return false;}, hasAudio(){return true;} };
     }
     if(kind==='mono'){
       return { kind, get name(){return "MONO";}, get color(){return "#ffd27a";}, get num(){return "M/C";},
-        get sel(){return false;}, doSel(){}, get on(){return true;}, toggleOn(){},
+        get sel(){return false;}, doSel(){},
+        get on(){return state.monoOn;}, toggleOn(){ state.monoOn=!state.monoOn; applyMasterAudio(); },
+        get emCue(){ return state.cueMono; },
         get fdb(){return state.mono;}, setFdb(v){ state.mono=v; applyMasterAudio(); },
         get knobVal(){return 0;}, setKnob(){}, meter(){return playing?masterLevelDb()-2:-90;}, sofActive(){return false;}, hasAudio(){return true;} };
     }
-    return { kind:'empty', name:"—", color:"#2a2f37", num:"", sel:false, doSel(){}, on:false, toggleOn(){}, fdb:FMIN, setFdb(){}, knobVal:0, setKnob(){}, meter(){return -90;}, sofActive(){return false;}, hasAudio(){return false;} };
+    return { kind:'empty', name:"—", color:"#2a2f37", num:"", sel:false, doSel(){}, on:false, toggleOn(){}, fdb:FMIN, setFdb(){}, knobVal:0, setKnob(){}, meter(){return -90;}, sofActive(){return false;}, hasAudio(){return false;}, emCue:false };
   }
   function meterDbOf(i){ const ch=CH[i];
     if(playing&&ch.hasAudio) return chLevelDb(i)+(ch.on?0:-90);
@@ -927,7 +936,15 @@
     const kup=()=>kd=false; o.knob.addEventListener("pointerup",kup); o.knob.addEventListener("pointercancel",kup);
     // keys
     o.sel.onclick=()=>{ if(o.ctl){ o.ctl.doSel(); paintBay(); } };
-    o.cue.onclick=()=>{ const c=o.ctl; if(c&&c.kind==='ch'){ CH[c.chIdx].cue=!CH[c.chIdx].cue; applyCue(); } };
+    o.cue.onclick=()=>{ const c=o.ctl; if(!c) return;
+      if(c.kind==='ch'){ CH[c.chIdx].cue=!CH[c.chIdx].cue; }
+      else if(c.kind==='dca'){ cueDca[c.idx]=!cueDca[c.idx]; }
+      else if(c.kind==='mix'){ cueMix[c.idx]=!cueMix[c.idx]; }
+      else if(c.kind==='mtx'){ cueMtx[c.idx]=!cueMtx[c.idx]; }
+      else if(c.kind==='st'){  state.cueSt=!state.cueSt; }
+      else if(c.kind==='mono'){ state.cueMono=!state.cueMono; }
+      else return;
+      applyCue(); };
     o.on.onclick=()=>{ if(o.ctl){ o.ctl.toggleOn(); paintBay(); if(state.mode!=="overview")drawScreen(); checkMissions(); } };
   }
   paintBay=function(){
@@ -935,7 +952,26 @@
     for(let i=0;i<bayStrips.length;i++){ const o=bayStrips[i], d=descs[i]; if(!d){continue;} o.ctl=d.ctl; paintOneStrip(o); }
   };
   // CUE = SOLO-in-place (AFL): se algum canal está em CUE, só os canais em CUE são ouvidos.
-  function anyCue(){ for(let i=0;i<CH.length;i++){ if(CH[i].cue) return true; } return false; }
+  /* CUE das SAIDAS. Na Vi o CUE existe em toda tira, inclusive nas de MIX/MATRIX/VCA e no
+     master. Antes so' o canal de entrada respondia. Dar CUE numa saida monitora aquele
+     barramento: ouvem-se os canais que o alimentam. */
+  const cueMix=new Array(N_MIX).fill(false), cueMtx=new Array(N_MTX).fill(false),
+        cueDca=new Array(N_DCA).fill(false);
+  function canalEmCue(i){
+    const c=CH[i]; if(!c) return false;
+    if(c.cue) return true;
+    if(state.cueSt||state.cueMono) return true;
+    for(let d=0;d<N_DCA;d++) if(cueDca[d] && c.dca && c.dca[d]) return true;
+    for(let m=0;m<N_MIX;m++) if(cueMix[m] && c.sendOn && c.sendOn[m]) return true;
+    for(let m=0;m<N_MTX;m++) if(cueMtx[m] && c.mtxOn && c.mtxOn[m]) return true;
+    return false; }
+  function anyCueSaida(){
+    if(state.cueSt||state.cueMono) return true;
+    for(let i=0;i<N_MIX;i++) if(cueMix[i]) return true;
+    for(let i=0;i<N_MTX;i++) if(cueMtx[i]) return true;
+    for(let i=0;i<N_DCA;i++) if(cueDca[i]) return true;
+    return false; }
+  function anyCue(){ for(let i=0;i<CH.length;i++){ if(CH[i].cue) return true; } return anyCueSaida(); }
   function applyCue(){ for(let i=0;i<CH.length;i++) applyChanAudio(i); if(typeof paintBay==='function') paintBay(); if(state.mode!=="overview") drawScreen(); }
   function clearCue(){ for(let i=0;i<CH.length;i++) CH[i].cue=false; applyCue(); }
   function paintOneStrip(o){
@@ -948,7 +984,7 @@
     const fdb=c.fdb; o.cap.style.bottom="calc("+(db2pos(fdb)*100)+"% - 10px)";
     o.sel.classList.toggle("act", !!c.sel);
     o.on.classList.toggle("act", !!c.on);
-    o.cue.classList.toggle("act", c.kind==='ch' && CH[c.chIdx] && !!CH[c.chIdx].cue);
+    o.cue.classList.toggle("act", !!c.emCue);
     o.on.textContent = (state.sof>=0&&c.kind==='ch')? (c.on?"SEND":"OFF") : "ON";
     o.knob.style.visibility = (c.kind==='ch')?'visible':'hidden';
     if(c.kind==='ch'){ setPK(o.knob, state.knobMode==='pan'?KDEF.pan:KDEF.gain, c.knobVal); }
@@ -1604,7 +1640,7 @@
     let dcaLin=1,muted=false;
     for(let g=0;g<N_DCA;g++){ if(c.dca[g]){ if(!state.dcaOn[g])muted=true; dcaLin*=dbToLin(state.dcaGain[g]); } }
     if(!c.muteSafe) for(let g=0;g<N_MUTE;g++){ if(c.mute[g]&&state.muteActive[g])muted=true; }
-    const soloMuted = anyCue() && !c.cue;
+    const soloMuted = anyCue() && !canalEmCue(i);
     const audible=c.on&&!muted&&!soloMuted&&c.fader>FMIN&&c.hasAudio;
     P(n.fdr.gain,audible?dbToLin(c.fader)*dcaLin:0,t,0.02);
     P(n.revSend.gain,(c.hasAudio&&c.fxRev>FMIN)?dbToLin(c.fxRev):0,t,0.02);
@@ -1618,7 +1654,10 @@
       const rms=Math.sqrt(s/n.preBuf.length),db=rms>1e-5?20*Math.log10(rms):-90; const open=db>c.gateThr,target=open?1:dbToLin(c.gateRange);
       const tc=Math.max(0.004,(open?c.gateAtk:c.gateDecay)/1000/3); P(n.gate.gain,target,t,tc); c._gr=open?0:Math.max(0,-c.gateRange); }
   }
-  function applyMasterAudio(){ if(ac&&masterGain){ P(masterGain.gain,dbToLin(state.master),ac.currentTime,0.02); P(monoTrim.gain,dbToLin(state.mono),ac.currentTime,0.02); } }
+  /* O ON das tiras de master corta o barramento — antes era on:true fixo. */
+  function applyMasterAudio(){ if(ac&&masterGain){
+    P(masterGain.gain, state.stOn?dbToLin(state.master):0, ac.currentTime,0.02);
+    P(monoTrim.gain,   state.monoOn?dbToLin(state.mono):0, ac.currentTime,0.02); } }
   applyMonitor=function(){ /* monitor bus is didactic; dim lowers master monitor feel */ };
   function snapCh(c){ return JSON.parse(JSON.stringify({gain:c.gain,phase:c.phase,phantom:c.phantom,hpfOn:c.hpfOn,hpf:c.hpf,lpfOn:c.lpfOn,lpf:c.lpf,eq:c.eq,eqType:c.eqType,gateOn:c.gateOn,gateThr:c.gateThr,gateRange:c.gateRange,gateAtk:c.gateAtk,gateHold:c.gateHold,gateDecay:c.gateDecay,compOn:c.compOn,compThr:c.compThr,compRatio:c.compRatio,compAtk:c.compAtk,compRel:c.compRel,compKnee:c.compKnee,compGain:c.compGain,pan:c.pan,fader:c.fader,on:c.on,sends:c.sends,sendOn:c.sendOn,sendPre:c.sendPre,dca:c.dca,mute:c.mute,fxRev:c.fxRev,fxDly:c.fxDly})); }
   function storeScene(slot){ scenes[slot]={ ch:CH.map(snapCh), master:state.master, mono:state.mono, dcaGain:state.dcaGain.slice(), dcaOn:state.dcaOn.slice(), muteActive:state.muteActive.slice(), fx:JSON.parse(JSON.stringify(state.fx)), ts:Date.now() }; toast("Cue "+(slot+1)+" <b>armazenada</b> ✔"); }

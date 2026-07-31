@@ -389,8 +389,20 @@
   /* ================= MODEL ================= */
   const MIX_NAMES=["MIX 1 Mon","MIX 2 Mon","MIX 3 IEM","MIX 4 IEM","MIX 5 FX","MIX 6 FX","MIX 7 Sub","MIX 8 FB",
     "MIX 9","MIX 10","MIX 11","MIX 12","MIX 13","MIX 14","MIX 15","MIX 16","MIX 17","MIX 18","MIX 19","MIX 20","MIX 21","MIX 22","MIX 23","MIX 24"];
-  const N_MIX=24,N_MTX=8,N_DCA=24,N_MUTE=8,N_SCENE=10;  // DiGiCo Quantum: 24 Control Groups (VCA-style)
-  const N_CH=96;   // Quantum 338 input capacity (spec). The console does 96 -> the simulator does 96.
+  /* Numeros da FICHA TECNICA oficial da Quantum 338 (DiGiCo, "KEY FEATURES"):
+       "128 Input Channels with full processing
+        64 Aux/Sub-Group busses with full processing
+        24 x 24 Matrix with full processing"
+     e "128 channel mixing console with 38 physical faders and 3 x 17" LCD touchscreens".
+     Antes daqui saiam 24 MIX e 8 MATRIX — a mesa tem 64 e 24. Os nos de envio sao criados
+     sob demanda (ver applyChanSends), entao subir o numero de barramentos custa apenas os
+     nos de bus, nao 96x64 nos de envio. */
+  const N_MIX=64,N_MTX=24,N_DCA=24,N_MUTE=8,N_SCENE=10;  // DiGiCo Quantum: 24 Control Groups (VCA-style)
+  /* ATENCAO: a ficha tecnica da Quantum 338 diz "128 Input Channels with full processing".
+     O comentario que estava aqui afirmava que 96 ERA a especificacao — nao e'. 96 e' um TETO
+     do simulador (cada canal monta uma cadeia de nos de audio; 128 pesa no iPad). Fica dito
+     com todas as letras para ninguem repetir o numero errado como se fosse do fabricante. */
+  const N_CH=96;   // teto do SIMULADOR. Especificacao da mesa: 128 canais de entrada.
   const COLORS=["#e0483f","#f97316","#22a8c0","#eab308","#3ad07a","#14b8a6","#39c0e6","#3b82f6","#6366f1","#a855f7","#ec4899","#f43f5e"];
   const NAMES=["Kick In","Snare","Hat","Tom 1","Tom 2","OH L","OH R","Bass DI","Gtr L","Gtr R","Keys L","Keys R","Lead Voc","Voc 2","Voc 3","Coro","Sax","Trumpet","Perc","Play L","Play R","Amb L","Amb R","Talk"];
   const RAWSRC=[-42,-40,-48,-44,-45,-47,-47,-38,-41,-41,-39,-39,-34,-40,-41,-43,-43,-44,-46,-36,-36,-52,-52,-30];
@@ -406,8 +418,13 @@
       dca:new Array(N_DCA).fill(false), mute:new Array(N_MUTE).fill(false), muteSafe:false,
       fxRev:-90, fxDly:-90, src:RAWSRC[i]||-42 };
   }
+  /* SOLO das SAIDAS. A DiGiCo chama de SOLO (nao CUE nem PAFL) e ele existe em toda tira
+     da bancada, inclusive nas de MIX/MATRIX/Control Group e no master. */
+  const soloMix=new Array(N_MIX).fill(false), soloMtx=new Array(N_MTX).fill(false),
+        soloDca=new Array(N_DCA).fill(false);
   const CH=Array.from({length:N_CH},(_,i)=>mkChannel(i));
   const state={ sel:12, mode:"overview", sof:-1, sofBus:0, sofType:'mix', master:-3, mono:-3, eqBand:3,
+    soloSt:false, soloMono:false,          /* SOLO tambem nas tiras de master */
     knobMode:'gain', scene:0, monitor:-20, dim:false, talkback:false,
     dcaGain:new Array(N_DCA).fill(0), dcaOn:new Array(N_DCA).fill(true),
     mixMaster:new Array(N_MIX).fill(0), mixOn:new Array(N_MIX).fill(true),
@@ -540,7 +557,15 @@
   const inPagesFrom24=()=>Array.from({length:Math.ceil(N_CH/12)-2},(_,j)=>{ const from=24+j*12; return {from,label:'IN '+(from+1)+'-'+(from+12)}; });
   const bankA={cur:0, banks:[ {from:0,label:'IN 1-12'}, {from:12,label:'IN 13-24'}, ...inPagesFrom24() ]};
   const bankB={cur:0, banks:[ {from:12,label:'IN 13-24'}, {from:0,label:'IN 1-12'}, ...inPagesFrom24() ]};
-  const bankC={cur:0, layers:[ {t:'dca',from:0,n:12,label:'CG 1-12'}, {t:'dca',from:12,n:12,label:'CG 13-24'}, {t:'mix',from:0,n:12,label:'MIX 1-12'}, {t:'mix',from:12,n:12,label:'MIX 13-24'}, {t:'mtx',from:0,n:8,label:'MATRIX 1-8'} ]};
+  /* Camadas do bloco MASTERS. Agora cobrem TODOS os barramentos da mesa: 64 Aux/Sub-Group e
+     24 Matrix (ficha tecnica). Antes parava em MIX 24 e MATRIX 8, entao 40 aux e 16 matrix
+     da mesa real simplesmente nao existiam na bancada. */
+  const bankC={cur:0, layers:[
+    {t:'dca',from:0, n:12,label:'CG 1-12'},   {t:'dca',from:12,n:12,label:'CG 13-24'},
+    {t:'mix',from:0, n:12,label:'MIX 1-12'},  {t:'mix',from:12,n:12,label:'MIX 13-24'},
+    {t:'mix',from:24,n:12,label:'MIX 25-36'}, {t:'mix',from:36,n:12,label:'MIX 37-48'},
+    {t:'mix',from:48,n:12,label:'MIX 49-60'}, {t:'mix',from:60,n:4, label:'MIX 61-64'},
+    {t:'mtx',from:0, n:12,label:'MTX 1-12'},  {t:'mtx',from:12,n:12,label:'MTX 13-24'} ]};
 
   function stripDesc(kind,idx){
     // returns interface object per strip
@@ -553,13 +578,15 @@
         setFdb(v){ const c=CH[idx]; if(state.sof>=0){ c.sends[state.sofBus]=v; if(v>FMIN)c.sendOn[state.sofBus]=true; applyChanSends(idx); } else { c.fader=v; applyChanAudio(idx); } },
         get knobVal(){ return state.knobMode==='pan'?CH[idx].pan:CH[idx].gain; },
         setKnob(dy){ const c=CH[idx]; if(state.knobMode==='pan'){ c.pan=clamp(Math.round(c.pan+dy),-63,63);} else { c.gain=clamp(c.gain+dy*0.4,-6,45);} applyChanAudio(idx); },
-        meter(){ return meterDbOf(idx); }, sofActive(){return false;}, hasAudio(){return CH[idx].hasAudio;} };
+        meter(){ return meterDbOf(idx); }, sofActive(){return false;}, hasAudio(){return CH[idx].hasAudio;},
+        get idx(){return idx;}, get emSolo(){ return !!(CH[idx]&&CH[idx].cue); } };
     }
     if(kind==='dca'){
       return { kind, get name(){return "CG "+(idx+1);}, get color(){return "#22a8c0";}, get num(){return "CG";},
         get sel(){return false;}, doSel(){ setMode('dca'); },
         get on(){ return state.dcaOn[idx]; }, toggleOn(){ state.dcaOn[idx]=!state.dcaOn[idx]; for(let i=0;i<N_CH;i++)if(CH[i].dca[idx])applyChanAudio(i); },
         get fdb(){ return state.dcaGain[idx]; }, setFdb(v){ state.dcaGain[idx]=v; for(let i=0;i<N_CH;i++)if(CH[i].dca[idx])applyChanAudio(i); },
+        get idx(){return idx;}, get emSolo(){ return soloDca[idx]; },
         get knobVal(){return 0;}, setKnob(){}, meter(){return -90;}, sofActive(){return false;}, hasAudio(){return true;} };
     }
     if(kind==='mix'){
@@ -568,6 +595,7 @@
         doSel(){ engageSof('mix',idx); },
         get on(){ return state.mixOn[idx]; }, toggleOn(){ state.mixOn[idx]=!state.mixOn[idx]; applyMixMaster(idx); },
         get fdb(){ return state.mixMaster[idx]; }, setFdb(v){ state.mixMaster[idx]=v; applyMixMaster(idx); },
+        get idx(){return idx;}, get emSolo(){ return soloMix[idx]; },
         get knobVal(){return 0;}, setKnob(){}, meter(){return -90;}, sofActive(){return true;}, hasAudio(){return true;} };
     }
     if(kind==='mtx'){
@@ -575,17 +603,20 @@
         get sel(){ return state.sof>=0&&state.sofType==='mtx'&&state.sofBus===idx; }, doSel(){ engageSof('mtx',idx); },
         get on(){ return state.mtxOn[idx]; }, toggleOn(){ state.mtxOn[idx]=!state.mtxOn[idx]; },
         get fdb(){ return state.mtxMaster[idx]; }, setFdb(v){ state.mtxMaster[idx]=v; },
+        get idx(){return idx;}, get emSolo(){ return soloMtx[idx]; },
         get knobVal(){return 0;}, setKnob(){}, meter(){return -90;}, sofActive(){return true;}, hasAudio(){return true;} };
     }
     if(kind==='st'){
       return { kind, get name(){return "STEREO";}, get color(){return "#63d6e8";}, get num(){return "ST";},
         get sel(){return false;}, doSel(){}, get on(){return true;}, toggleOn(){},
+        get emSolo(){ return state.soloSt; },
         get fdb(){return state.master;}, setFdb(v){ state.master=v; applyMasterAudio(); },
         get knobVal(){return 0;}, setKnob(){}, meter(){return playing?masterLevelDb():-90;}, sofActive(){return false;}, hasAudio(){return true;} };
     }
     if(kind==='mono'){
       return { kind, get name(){return "MONO";}, get color(){return "#63d6e8";}, get num(){return "M/C";},
         get sel(){return false;}, doSel(){}, get on(){return true;}, toggleOn(){},
+        get emSolo(){ return state.soloMono; },
         get fdb(){return state.mono;}, setFdb(v){ state.mono=v; applyMasterAudio(); },
         get knobVal(){return 0;}, setKnob(){}, meter(){return playing?masterLevelDb()-2:-90;}, sofActive(){return false;}, hasAudio(){return true;} };
     }
@@ -660,7 +691,15 @@
     const kup=()=>kd=false; o.knob.addEventListener("pointerup",kup); o.knob.addEventListener("pointercancel",kup);
     // keys
     o.sel.onclick=()=>{ if(o.ctl){ o.ctl.doSel(); paintBay(); } };
-    o.cue.onclick=()=>{ const c=o.ctl; if(c&&c.kind==='ch'){ CH[c.chIdx].cue=!CH[c.chIdx].cue; applyCue(); } };
+    o.cue.onclick=()=>{ const c=o.ctl; if(!c) return;
+      if(c.kind==='ch'){ CH[c.chIdx].cue=!CH[c.chIdx].cue; }
+      else if(c.kind==='dca'){ soloDca[c.idx]=!soloDca[c.idx]; }
+      else if(c.kind==='mix'){ soloMix[c.idx]=!soloMix[c.idx]; }
+      else if(c.kind==='mtx'){ soloMtx[c.idx]=!soloMtx[c.idx]; }
+      else if(c.kind==='st'){  state.soloSt=!state.soloSt; }
+      else if(c.kind==='mono'){ state.soloMono=!state.soloMono; }
+      else return;
+      applyCue(); };
     o.on.onclick=()=>{ if(o.ctl){ o.ctl.toggleOn(); paintBay(); if(state.mode!=="overview")drawScreen(); checkMissions(); } };
   }
   paintBay=function(){
@@ -669,9 +708,28 @@
     if(typeof drawBanks==='function') drawBanks();
   };
   // CUE = SOLO-in-place (AFL): se algum canal está em CUE, só os canais em CUE são ouvidos.
-  function anyCue(){ for(let i=0;i<CH.length;i++){ if(CH[i].cue) return true; } return false; }
+  /* SOLO numa SAIDA escuta aquele barramento: ouvem-se os canais que o alimentam.
+     Control Group -> canais atribuidos; MIX/MATRIX -> canais com envio ligado;
+     ST/MONO -> a mistura inteira. */
+  function canalEmSolo(i){
+    const c=CH[i]; if(!c) return false;
+    if(c.cue) return true;
+    if(state.soloSt||state.soloMono) return true;
+    for(let d=0;d<N_DCA;d++) if(soloDca[d] && c.dca && c.dca[d]) return true;
+    for(let m=0;m<N_MIX;m++) if(soloMix[m] && c.sendOn && c.sendOn[m]) return true;
+    for(let m=0;m<N_MTX;m++) if(soloMtx[m] && c.mtxOn && c.mtxOn[m]) return true;
+    return false; }
+  function anySoloSaida(){
+    if(state.soloSt||state.soloMono) return true;
+    for(let i=0;i<N_MIX;i++) if(soloMix[i]) return true;
+    for(let i=0;i<N_MTX;i++) if(soloMtx[i]) return true;
+    for(let i=0;i<N_DCA;i++) if(soloDca[i]) return true;
+    return false; }
+  function anyCue(){ for(let i=0;i<CH.length;i++){ if(CH[i].cue) return true; } return anySoloSaida(); }
   function applyCue(){ for(let i=0;i<CH.length;i++) applyChanAudio(i); if(typeof paintBay==='function') paintBay(); if(state.mode!=="overview") drawScreen(); }
-  function clearCue(){ for(let i=0;i<CH.length;i++) CH[i].cue=false; applyCue(); }
+  function clearCue(){ for(let i=0;i<CH.length;i++) CH[i].cue=false;
+    soloMix.fill(false); soloMtx.fill(false); soloDca.fill(false);
+    state.soloSt=false; state.soloMono=false; applyCue(); }
   function paintOneStrip(o){
     const c=o.ctl; if(!c){return;}
     const empty=c.kind==='empty';
@@ -682,7 +740,7 @@
     const fdb=c.fdb; o.cap.style.bottom="calc("+(db2pos(fdb)*100)+"% - 10px)";
     o.sel.classList.toggle("act", !!c.sel);
     o.on.classList.toggle("act", !!c.on);
-    o.cue.classList.toggle("act", c.kind==='ch' && CH[c.chIdx] && !!CH[c.chIdx].cue);
+    o.cue.classList.toggle("act", !!c.emSolo);
     o.on.textContent = (state.sof>=0&&c.kind==='ch')? (c.on?"SEND":"OFF") : "ON";
     o.knob.style.visibility = (c.kind==='ch')?'visible':'hidden';
     if(c.kind==='ch'){ setPK(o.knob, state.knobMode==='pan'?KDEF.pan:KDEF.gain, c.knobVal); }
@@ -1499,7 +1557,7 @@
     let dcaLin=1,muted=false;
     for(let g=0;g<N_DCA;g++){ if(c.dca[g]){ if(!state.dcaOn[g])muted=true; dcaLin*=dbToLin(state.dcaGain[g]); } }
     if(!c.muteSafe){ for(let g=0;g<N_MUTE;g++){ if(c.mute[g]&&state.muteActive[g])muted=true; } } // Mute Safe excludes channel from mute-group action
-    const soloMuted = anyCue() && !c.cue;
+    const soloMuted = anyCue() && !canalEmSolo(i);
     const audible=c.on&&!muted&&!soloMuted&&c.fader>FMIN&&c.hasAudio;
     P(n.fdr.gain,audible?dbToLin(c.fader)*dcaLin:0,t,0.02);
     P(n.revSend.gain,(c.hasAudio&&c.fxRev>FMIN)?dbToLin(c.fxRev):0,t,0.02);
