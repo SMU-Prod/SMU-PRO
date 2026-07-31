@@ -1551,15 +1551,30 @@ function desenharNav(){
 }
 function desenharUDK(){
   document.querySelectorAll("[data-udk]").forEach(b=>{
-    const f = S.udk[+b.dataset.udk];
+    const i = +b.dataset.udk;
+    const f = S.udk[i];
     b.title = f || "(sem atribuição)";
+    /* Funções de ESTADO ficam acesas enquanto valem. As de AÇÃO (recall, cue
+       clear, tap tempo…) não têm estado: elas ganham um flash ao serem
+       apertadas — sem isso 8 das 12 teclas nunca acendiam e pareciam mortas,
+       mesmo funcionando. Foi o que o dono viu no painel. */
     let aceso = false;
-    if (f==="TALKBACK ON")    aceso = S.talkback.on;
-    if (f==="OSCILLATOR ON")  aceso = S.osc.on;
-    if (f==="SENDS ON FADER") aceso = !!S.sof;
-    if (f==="MONITOR DIMM")   aceso = S.monitor.dimm;
+    if (f==="TALKBACK ON")     aceso = S.talkback.on;
+    else if (f==="OSCILLATOR ON")  aceso = S.osc.on;
+    else if (f==="SENDS ON FADER") aceso = !!S.sof;
+    else if (f==="MONITOR DIMM")   aceso = S.monitor.dimm;
+    else if (f==="MUTE GROUP 1")   aceso = !!(S.mg && S.mg[1]);
+    else if (f==="MUTE GROUP 2")   aceso = !!(S.mg && S.mg[2]);
+    else if (f==="HELP")           aceso = S.popup === "HELP";
+    else aceso = (S.udkFlash === i);          /* ação: pisca ao apertar */
     b.classList.toggle("on", aceso);
   });
+}
+/* acende a tecla por um instante, para a ação dar retorno visível */
+function flashUDK(i){
+  S.udkFlash = i;
+  clearTimeout(S.udkFlashT);
+  S.udkFlashT = setTimeout(()=>{ S.udkFlash = null; pedirRender(); }, 180);
 }
 
 /* ==================================================================
@@ -1830,6 +1845,7 @@ function acaoNav(b, ev){
 /* ---- USER DEFINED KEYS ---- */
 function acaoUDK(i){
   const f = S.udk[i];
+  flashUDK(i);            /* retorno visível mesmo nas funções sem estado */
   switch(f){
     /* INC/DEC avisam quando batem no fim, senão parecem mortos */
     case "SCENE INC": {
@@ -4528,6 +4544,13 @@ function tocarStem(s, quando, offset){
   const ctx = AUD.ctx, c = S.canais[s.canal];
   const src = ctx.createBufferSource();
   src.buffer = s.buffer;
+  /* LOOP: a música repete sozinha, como nos outros simuladores da frota.
+     O ponto de volta é a faixa MAIS LONGA da base (AUD.dur), não a duração
+     de cada uma — senão cada stem voltaria num instante diferente e a banda
+     se desmontaria depois da primeira volta. */
+  src.loop = true;
+  src.loopStart = 0;
+  src.loopEnd = AUD.dur || s.buffer.duration;
 
   const hpf = ctx.createBiquadFilter(); hpf.type = "highpass";
   const bandas = ["low","lomid","himid","high"].map(()=>{
@@ -4555,7 +4578,10 @@ function tocarStem(s, quando, offset){
   s.src = src;
   s.nodes = { hpf, bandas, gain, pan, anaPre, anaPos, buf:new Uint8Array(anaPos.frequencyBinCount) };
   aplicarCanalNoAudio(s);
-  src.start(quando, offset % (s.buffer.duration||1));
+  /* offset pela duração da BASE (não da faixa): com o loop sincronizado em
+     AUD.dur, usar a duração de cada stem faria as faixas entrarem
+     desencontradas ao retomar de uma pausa */
+  src.start(quando, offset % (AUD.dur || s.buffer.duration || 1));
 }
 
 /** Espelha o canal da mesa nos nós de áudio daquele stem. */
@@ -4588,7 +4614,7 @@ function tocarAudio(){
   AUD.stems.forEach(s=>tocarStem(s, quando, AUD.offset));
   AUD.t0 = quando - AUD.offset;
   AUD.tocando = true;
-  S.ajuda = "Tocando <b>"+AUD.base.label+"</b> — mexa nos faders e ouça";
+  S.ajuda = "Tocando <b>"+AUD.base.label+"</b> em looping — mexa nos faders e ouça";
   pedirRender();
 }
 function pararAudio(){
@@ -4598,7 +4624,11 @@ function pararAudio(){
     const c = S.canais[s.canal];
     if (c) c.nivel = 0;          /* LED apaga junto com o som */
   });
-  if (AUD.tocando && AUD.ctx) AUD.offset = Math.max(0, AUD.ctx.currentTime - AUD.t0);
+  /* com loop o tempo cresce sem parar: guarda a posição DENTRO da volta */
+  if (AUD.tocando && AUD.ctx){
+    const t = Math.max(0, AUD.ctx.currentTime - AUD.t0);
+    AUD.offset = AUD.dur ? (t % AUD.dur) : t;
+  }
   AUD.tocando = false;
 }
 function pausarAudio(){ pararAudio(); S.ajuda="Pausado"; pedirRender(); }
