@@ -162,10 +162,23 @@
 "use strict";
 (function(){
   /* ================= MODEL ================= */
+  /* A StudioLive 32SC tem 16 FlexMixes — e SO' isso. A lista antiga tinha 24, com
+     "AUX 17" a "AUX 24" que NAO EXISTEM no console. */
   const MIX_NAMES=["FlexMix 1 Mon","FlexMix 2 Mon","FlexMix 3 IEM","FlexMix 4 IEM","FlexMix 5 Sub","FlexMix 6 Sub","FlexMix 7 FB","FlexMix 8 FB",
-    "FlexMix 9","FlexMix 10","FlexMix 11","FlexMix 12","FlexMix 13","FlexMix 14","FlexMix 15","FlexMix 16",
-    "AUX 17","AUX 18","AUX 19","AUX 20","AUX 21","AUX 22","AUX 23","AUX 24"];
-  const N_MIX=24,N_MTX=8,N_DCA=24,N_MUTE=8,N_SCENE=10,N_FX=4;
+    "FlexMix 9","FlexMix 10","FlexMix 11","FlexMix 12","FlexMix 13","FlexMix 14","FlexMix 15","FlexMix 16"];
+  /* Arquitetura na palavra da PreSonus (pagina oficial da StudioLive 32SC):
+       "16 FlexMixes that can be auxes, subgroups, or matrix mixes, plus four effects
+        buses, four subgroups, and 24 DCAs"  ·  "40-channel digital mixer"
+     O simulador tinha 24 MIX + 8 MATRIX como bancos FIXOS E SEPARADOS. A StudioLive III
+     nao funciona assim: e' UM pool de 16 barramentos cujo TIPO o operador escolhe — e e'
+     justamente o recurso que da' nome a mesa. Nao era erro de numero, era de arquitetura. */
+  const N_MIX=16, N_SUB=4, N_DCA=24, N_MUTE=8, N_SCENE=10, N_FX=4;
+  const N_MTX=0;   /* nao existe banco fixo de matriz: a matriz sai de um FlexMix */
+  /* Tipo de cada FlexMix. O padrao segue os nomes que o show ja' trazia (monitores e IEM
+     como AUX, os "Sub" como SUBGROUP) e as duas ultimas como MATRIX, que e' o uso classico
+     de matriz: alimentar delay tower / gravacao a partir da mistura pronta. */
+  const FLEX_TIPO=["AUX","AUX","AUX","AUX","SUB","SUB","AUX","AUX",
+                   "AUX","AUX","AUX","AUX","SUB","SUB","MATRIX","MATRIX"];
   /* StudioLive Série III (32) = 40 canais de entrada no FLEX DSP; capado em MAXCH=40. */
   const MAXCH=40, NCH=MAXCH;
   const COLORS=["#e0483f","#f97316","#12a5e5","#eab308","#3ad07a","#14b8a6","#39c0e6","#3b82f6","#6366f1","#a855f7","#ec4899","#f43f5e"];
@@ -208,6 +221,7 @@
     knobMode:'gain', scene:0, monitor:-20, dim:false, talkback:false,
     dcaGain:new Array(N_DCA).fill(0), dcaOn:new Array(N_DCA).fill(true),
     mixMaster:new Array(N_MIX).fill(0), mixOn:new Array(N_MIX).fill(true),
+    flexTipo:FLEX_TIPO.slice(),   /* tipo de cada FlexMix: AUX | SUB | MATRIX */
     mtxMaster:new Array(N_MTX).fill(0), mtxOn:new Array(N_MTX).fill(true),
     muteActive:new Array(N_MUTE).fill(false),
     fxSel:0, flexfx:makeFlexFX() };
@@ -672,12 +686,23 @@
   function drawSends(){
     const ch=CH[state.sel];
     ctx.fillStyle=ch.color; ctx.font="800 12px Inter"; ctx.textAlign="left"; ctx.fillText("FLEXMIX SENDS — "+ch.name+" (CH"+(ch.i+1)+")",10,16);
-    scrBtn(W-150,4,68,18,"16 FLEXMIX",true,()=>{},SC.amber,true); scrBtn(W-78,4,68,18,"8 AUX",false,()=>toast("AUX 17–24"),SC.amber,true);
-    const cols=2,rows=12,top=26,cw=(W-20-10)/cols,rh=(H-top-6)/rows;
-    for(let mn=0;mn<24;mn++){ const col=Math.floor(mn/rows),row=mn%rows; const x=10+col*(cw+10),yy=top+row*rh,on=ch.sendOn[mn];
+    /* Havia um botao "8 AUX" que anunciava "AUX 17-24". Esses barramentos NAO EXISTEM na
+       StudioLive: sao 16 FlexMixes, ponto. Saiu. */
+    scrBtn(W-150,4,140,18,"16 FLEXMIX",true,()=>{},SC.amber,true);
+    const cols=2,rows=8,top=26,cw=(W-20-10)/cols,rh=(H-top-6)/rows;
+    for(let mn=0;mn<N_MIX;mn++){ const col=Math.floor(mn/rows),row=mn%rows; const x=10+col*(cw+10),yy=top+row*rh,on=ch.sendOn[mn];
       ctx.fillStyle=on?SC.amber:"#333a42"; ctx.beginPath();ctx.arc(x+8,yy+rh/2,5,0,7);ctx.fill();
       reg({hit:'circle',cx:x+8,cy:yy+rh/2,rr:10,onDown:()=>{ch.sendOn[mn]=!ch.sendOn[mn];applyChanAudio(ch.i);checkMissions();}});
       ctx.fillStyle=on?SC.ink:SC.dim; ctx.font="700 9px Inter"; ctx.textAlign="left"; ctx.fillText(MIX_NAMES[mn],x+18,yy+rh/2-3);
+      /* TIPO do FlexMix — o recurso que da nome a mesa: cada um dos 16 pode ser AUX,
+         SUBGROUP ou MATRIX. Clique para trocar, como no Bus Config do console. */
+      { const tp=state.flexTipo[mn];
+        const cor = tp==="AUX"?SC.cyan : (tp==="SUB"?SC.amber:"#a855f7");
+        scrBtn(x+18+96, yy+rh/2-12, 52, 12, tp, true, ()=>{
+          const ordem=["AUX","SUB","MATRIX"];
+          state.flexTipo[mn]=ordem[(ordem.indexOf(tp)+1)%3];
+          toast(MIX_NAMES[mn]+" agora e <b>"+state.flexTipo[mn]+"</b>");
+        }, cor, true); }
       const bx=x+18,bw=cw-104,by=yy+rh/2+2,bh=6; ctx.fillStyle="#12151a"; roundRect(bx,by,bw,bh,3); ctx.fill();
       const t=clamp((ch.sends[mn]-FMIN)/(FMAX-FMIN),0,1); ctx.fillStyle=on?SC.amber:"#3d454e"; roundRect(bx,by,t*bw,bh,3); ctx.fill();
       reg({x:bx-3,y:by-7,w:bw+6,h:bh+14,onDrag:p=>{ let tt=clamp((p.x-bx)/bw,0,1); ch.sends[mn]=Math.round(FMIN+tt*(FMAX-FMIN)); if(ch.sends[mn]>FMIN)ch.sendOn[mn]=true; applyChanAudio(ch.i); checkMissions(); }});

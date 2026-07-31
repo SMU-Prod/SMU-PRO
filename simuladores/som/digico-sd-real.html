@@ -608,14 +608,16 @@
     }
     if(kind==='st'){
       return { kind, get name(){return "STEREO";}, get color(){return "#63d6e8";}, get num(){return "ST";},
-        get sel(){return false;}, doSel(){}, get on(){return true;}, toggleOn(){},
+        get sel(){return false;}, doSel(){},
+        get on(){return state.stOn;}, toggleOn(){ state.stOn=!state.stOn; applyMasterAudio(); },
         get emSolo(){ return state.soloSt; },
         get fdb(){return state.master;}, setFdb(v){ state.master=v; applyMasterAudio(); },
         get knobVal(){return 0;}, setKnob(){}, meter(){return playing?masterLevelDb():-90;}, sofActive(){return false;}, hasAudio(){return true;} };
     }
     if(kind==='mono'){
       return { kind, get name(){return "MONO";}, get color(){return "#63d6e8";}, get num(){return "M/C";},
-        get sel(){return false;}, doSel(){}, get on(){return true;}, toggleOn(){},
+        get sel(){return false;}, doSel(){},
+        get on(){return state.monoOn;}, toggleOn(){ state.monoOn=!state.monoOn; applyMasterAudio(); },
         get emSolo(){ return state.soloMono; },
         get fdb(){return state.mono;}, setFdb(v){ state.mono=v; applyMasterAudio(); },
         get knobVal(){return 0;}, setKnob(){}, meter(){return playing?masterLevelDb()-2:-90;}, sofActive(){return false;}, hasAudio(){return true;} };
@@ -1596,7 +1598,11 @@
       const rms=Math.sqrt(s/n.preBuf.length),db=rms>1e-5?20*Math.log10(rms):-90; const open=db>c.gateThr,target=open?1:dbToLin(c.gateRange);
       const tc=Math.max(0.004,(open?c.gateAtk:c.gateDecay)/1000/3); P(n.gate.gain,target,t,tc); c._gr=open?0:Math.max(0,-c.gateRange); }
   }
-  function applyMasterAudio(){ if(ac&&masterGain){ P(masterGain.gain,dbToLin(state.master),ac.currentTime,0.02); P(monoTrim.gain,dbToLin(state.mono),ac.currentTime,0.02); } }
+  /* O ON das tiras de master corta o barramento — antes era on:true fixo com
+     toggleOn(){} vazio, entao o botao so' acendia. */
+  function applyMasterAudio(){ if(ac&&masterGain){
+    P(masterGain.gain, state.stOn?dbToLin(state.master):0, ac.currentTime,0.02);
+    P(monoTrim.gain,   state.monoOn?dbToLin(state.mono):0, ac.currentTime,0.02); } }
   applyMonitor=function(){ /* monitor bus is didactic; dim lowers master monitor feel */ };
   function snapCh(c){ return JSON.parse(JSON.stringify({gain:c.gain,phase:c.phase,phantom:c.phantom,hpfOn:c.hpfOn,hpf:c.hpf,lpfOn:c.lpfOn,lpf:c.lpf,eq:c.eq,eqType:c.eqType,gateOn:c.gateOn,gateThr:c.gateThr,gateRange:c.gateRange,gateAtk:c.gateAtk,gateHold:c.gateHold,gateDecay:c.gateDecay,compOn:c.compOn,compThr:c.compThr,compRatio:c.compRatio,compAtk:c.compAtk,compRel:c.compRel,compKnee:c.compKnee,compGain:c.compGain,pan:c.pan,fader:c.fader,on:c.on,sends:c.sends,sendOn:c.sendOn,sendPre:c.sendPre,dca:c.dca,mute:c.mute,muteSafe:c.muteSafe,fxRev:c.fxRev,fxDly:c.fxDly})); }
   function storeScene(slot){ scenes[slot]={ ch:CH.map(snapCh), master:state.master, mono:state.mono, dcaGain:state.dcaGain.slice(), dcaOn:state.dcaOn.slice(), muteActive:state.muteActive.slice(), fx:JSON.parse(JSON.stringify(state.fx)), ts:Date.now() }; toast("Cena "+(slot+1)+" <b>armazenada</b> ✔"); }

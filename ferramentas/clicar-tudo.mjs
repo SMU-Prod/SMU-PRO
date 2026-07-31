@@ -1069,6 +1069,49 @@ async function testar(arquivo) {
   amb.rodarTimers(200); amb.rodarQuadros(1);
   await respirar(4);
 
+  /* ============ MODO SONDA (SMU_SONDA=arquivo.mjs) ==================================
+     POR QUE EXISTE: este portao mede "o botao reagiu?", nunca "reagiu do jeito que o
+     fabricante manda". Para a segunda pergunta era preciso abrir o simulador num
+     navegador de verdade e falar com o window.__dbg dele — e quando o painel do
+     navegador cai, a verificacao para junto. Aconteceu na sessao de revisao das mesas:
+     tres consoles ficaram sem poder ser conferidos por um problema de ambiente.
+
+     A sonda resolve isso sem navegador: o ambiente falso ja' e' um DOM completo com os
+     scripts do simulador rodados: `amb.janela.__dbg` (ou __diag) EXISTE aqui. Basta
+     deixar alguem de fora escrever as asserçoes.
+
+       SMU_SONDA=./minha-sonda.mjs node ferramentas/clicar-tudo.mjs <sim.html>
+
+     A sonda exporta `default async ({janela, documento, ok, rodarTimers, rodarQuadros})`
+     e usa ok(condicao, "texto") para cada afirmacao. Depois dela o portao segue a
+     medicao normal, entao um comando faz as duas coisas. */
+  if (process.env.SMU_SONDA) {
+    const alvoSonda = path.resolve(process.env.SMU_SONDA);
+    const linhas = [];
+    const ok = (cond, texto) => { linhas.push((cond ? "PASSOU  " : "FALHOU  ") + texto); return !!cond; };
+    try {
+      const mod = await import("file://" + alvoSonda.replace(/\\/g, "/"));
+      const fn = mod.default;
+      if (typeof fn !== "function") throw new Error("a sonda precisa de `export default` que seja funcao");
+      /* ATENCAO: `amb.janela` NAO e' o `window` que o simulador enxerga — o `window`
+         dele e' o global do vm. Um `window.__dbg = {...}` no simulador cai no CONTEXTO,
+         nao neste objeto. Por isso a sonda recebe `avaliar()`, que roda a expressao
+         DENTRO do vm, e e' por ali que se chega ao __dbg/__diag da mesa. */
+      const avaliar = (expr) => vm.runInContext(expr, amb.ctx, { timeout: 8000 });
+      await fn({
+        janela: amb.janela, documento: amb.documento, ok, avaliar, ctx: amb.ctx,
+        rodarTimers: amb.rodarTimers, rodarQuadros: amb.rodarQuadros,
+        respirar,
+      });
+    } catch (e) {
+      linhas.push("FALHOU  a sonda estourou: " + (e && e.message || e));
+    }
+    console.log("\n--- SONDA em " + nome + " ---");
+    linhas.forEach(l => console.log("  " + l));
+    const maus = linhas.filter(l => l.startsWith("FALHOU")).length;
+    console.log("  " + (linhas.length - maus) + "/" + linhas.length + (maus ? "  <<< TEM FALHA" : ""));
+  }
+
   /* --- estado: nomes declarados no topo dos scripts + globais do vm --- */
   const nomes = new Set(nomesDeclarados(blocos.map(b => b.src)));
   try { for (const k of vm.runInContext("Object.keys(globalThis)", amb.ctx)) if (/^[A-Za-z_$][\w$]*$/.test(k)) nomes.add(k); } catch (_) { }
