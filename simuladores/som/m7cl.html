@@ -212,6 +212,12 @@ html.smu-fs body{align-items:center}
   background:linear-gradient(180deg,#4b5057,#3c4046);
   border-radius:2px;box-shadow:inset 0 0 3px #0008;
 }
+/* Sem a fita de nome (a Centralogic não tem, p.21), sobram os 14 px da fita
+   mais os 2 px de gap. Devolvo ao FADER, que é o que a figura do manual
+   mostra: o fader da Centralogic corre mais longo que o do canal de input.
+   Isto é aritmética em cima da medida da planta (43 %), não medida nova. */
+.strip[data-cl] .fader{flex:0 0 calc(43% + 16px)}
+
 /* O fader é o elemento mais visível do canal na mesa real (ver foto).
    A 1ª versão tinha trilho fino e escuro e o strip virava um buraco preto. */
 /* a fenda por onde o punho corre: escura contra o painel claro */
@@ -601,6 +607,18 @@ html.smu-fs body{align-items:center}
   background:#8d939b;color:#15181b;overflow:hidden;white-space:nowrap;cursor:pointer;
 }
 .rodape-canais div.sel{background:var(--tela-azul);color:#fff}
+/* A linha L do OVERVIEW é MOSTRUÁRIO, não botoeira: o manual (p.99) diz que
+   ela indica quais canais os faders pegam — não há operação de tocar nela.
+   Classe PRÓPRIA de propósito: se reusasse `.rodape-canais` as 8 células
+   casariam um seletor com cursor:pointer e virariam botão que finge — que é
+   exatamente o defeito que o portão clicar-tudo caça (e ele resolve seletor,
+   não cascata, então sobrescrever o cursor depois não bastaria). */
+.linha-l{display:flex;gap:1px;padding-top:3px}
+.linha-l span{
+  flex:1 1 0;min-width:0;font-size:13.3px;text-align:center;padding:1.9px 0;border-radius:1.9px;
+  background:#5f656c;color:#dfe3e8;overflow:hidden;white-space:nowrap;
+}
+.linha-l span.sel{background:#3c6ea8;color:#fff}
 
 /* ===== caixa de confirmação (p.32) =====
    A M7CL pergunta antes de chamar ou guardar cena -- é a RECALL/STORE
@@ -637,6 +655,20 @@ html.smu-fs body{align-items:center}
   border:1px solid #6f9a76;border-radius:3px;
 }
 #confirma .bts button.ok{background:linear-gradient(180deg,#2c4b31,#20351f)}
+
+/* ===== moldura grossa do parâmetro em foco (p.99) =====
+   "Quando você pressiona um dos knobs na tela OVERVIEW, o mesmo tipo de knob
+   de cada canal fica cercado por uma moldura grossa. Essa moldura indica que
+   o parâmetro pode ser editado — nesse estado você opera os encoders 1–8."
+   Sem a moldura o aluno não tem como saber o que os encoders estão movendo. */
+/* O alvo é sempre um .knob (redondo), então o anel também tem de ser: outline
+   quadrado em cima de um círculo fica com jeito de erro de layout. */
+.emfoco{ box-shadow:0 0 0 2px #ffd45e, 0 0 7px #ffd45e88 !important; }
+/* "Knobs com moldura DUPLA indicam PAN/BALANCE" (p.31) — dois anéis */
+.emfoco.dupla{
+  box-shadow:0 0 0 2px #ffd45e, 0 0 0 3px #15171a, 0 0 0 5px #ffd45e,
+             0 0 7px #ffd45e88 !important;
+}
 
 /* botão genérico dentro da tela */
 .tbt{
@@ -807,7 +839,12 @@ function novoCanal(id, tipo, nome){
     dyn2:{ on:false, tipo:"COMPRESSOR",
            thr:-14, range:-70, attack:6, hold:0.02, decay:0.3,
            ratio:5, release:0.3, knee:2, out:0, width:6, freq:6300 },
-    pan:0, toSt:true, toMono:false,
+    /* TO STEREO/MONO (p.63). Dois modos POR CANAL:
+       ST/MONO -> STEREO e MONO ligam/desligam separados (toSt, toMono)
+       LCR     -> os dois ligam JUNTOS (lcrOn) e o CSR reparte o nível entre
+                  o STEREO (L/R) e o MONO (C). CSR em 0% = pan comum, nada
+                  vai para o MONO (p.65) -- por isso 0 é o padrão. */
+    pan:0, toSt:true, toMono:false, lcr:false, lcrOn:true, csr:0,
     mix: Array.from({length:N_MIX}, () => ({ lvl:-138, on:true, pre:false })),
     mtx: Array.from({length:N_MTX}, () => ({ lvl:-138, on:true, pre:false })),
     dca:[], mute:[],
@@ -957,6 +994,22 @@ function grupoTela(){
   return Array.from({length:8}, (_,i)=>nv.alvo(i));
 }
 
+/* ==================================================================
+   ENCODERS MULTIFUNÇÃO — a TELA decide o que eles fazem
+   ==================================================================
+   Na M7CL os 8 encoders da Centralogic não têm função fixa: quem manda é a
+   tela aberta. Na visão 8ch do EQ cada encoder mexe no MESMO parâmetro de um
+   canal diferente; na tela SETUP os mesmos encoders viram SCREEN/PANEL/LAMP.
+   É o que a Yamaha chama de multifunção -- 8 encoders para centenas de
+   parâmetros.
+
+   Cada tela REGISTRA seus alvos aqui, em ordem (posição 0 = encoder 1). */
+S.encAlvos = [];
+S.encRotulo = "";
+function limparEncoders(){ S.encAlvos = []; S.encRotulo = ""; }
+/* d = {ler, escrever, min, max, rot, log} */
+function registrarEncoder(i, d){ S.encAlvos[i] = d; }
+
 /* ---------- render coalescido por frame ----------
    (memória do projeto: repaint síncrono por pointermove travava o iPad) */
 let sujo = false;
@@ -1096,7 +1149,14 @@ function fazStrip(idCanal, rotuloTopo, opc){
   const cue = fazTecla("cue","CUE");  s.appendChild(cue.cel); cue.b.dataset.acao="cue";
   s.appendChild(fazMeterLed());
   const on  = fazTecla("on","ON");    s.appendChild(on.cel);  on.b.dataset.acao="on";
-  const nm  = el("div","nome");       s.appendChild(nm);
+  /* ⛔ A Centralogic NÃO tem fita de nome — conferido na figura do manual
+     (p.21): o strip tem encoder, [SEL], [CUE], LEDs, [ON], fader e o número
+     1-8, e mais nada. É de propósito: como os 8 faders trocam de canal a cada
+     nav key, uma fita escrita à mão mentiria. Na mesa real o único lugar que
+     diz em que canal o fader está é a LINHA DE BAIXO DA TELA (p.99) — que é
+     justamente por isso que ela existe. Eu tinha posto a fita aqui, e isso
+     entregava de graça o que o operador aprende a ler na tela. */
+  if (!opc.encoder){ const nm = el("div","nome"); s.appendChild(nm); }
   s.appendChild(fazFader());
   s.appendChild(el("div","num b",opc.rodape != null ? opc.rodape : rotuloTopo));
   return s;
@@ -1640,6 +1700,13 @@ function desenhar(){
 
 /* ---- knobs do SELECTED CHANNEL ---- */
 const anguloDe = (v,min,max) => ((v-min)/(max-min))*270-135;
+/* PAN na M7CL é mostrado como L63 … CENTER … R63 (lista de parâmetros, p.256).
+   Internamente guardo -1..+1 porque é o que o StereoPannerNode quer; a conversão
+   para o número da mesa acontece só aqui, na hora de escrever na tela. */
+function textoPan(p){
+  const n = Math.round(clamp(p,-1,1)*63);
+  return n === 0 ? "CENTER" : (n < 0 ? "L"+(-n) : "R"+n);
+}
 
 function desenharSelectedChannel(){
   const c = S.canais[S.sel];
@@ -1759,6 +1826,19 @@ document.addEventListener("pointerdown", ev=>{
   ev.preventDefault();
 
   const strip = alvo.closest(".strip");
+
+  /* p.100: "com a tela SELECTED CHANNEL VIEW aberta, apertar qualquer um dos
+     encoders 1-8 leva de volta ao OVERVIEW, mantendo os mesmos canais
+     selecionados." É o atalho que o operador usa no show para não perder o
+     grupo de oito que já estava na mão. */
+  if (alvoDrag.tipo === "knob" && alvoDrag.nó.dataset.papel === "enc" &&
+      S.tela === "SELCH" && !S.popup){
+    S.tela = "OVERVIEW"; telaChave = null;
+    S.ajuda = "Encoder apertado — voltou ao <b>OVERVIEW</b> com os mesmos 8 canais (p.100)";
+    pedirRender();
+    return;
+  }
+
   arrasto = { ...alvoDrag, strip, y0: ev.clientY, ini:null, nó:alvoDrag.nó };
 
   if (alvoDrag.tipo === "fader"){
@@ -1892,6 +1972,21 @@ function aplicarKnob(k, strip, ini, d){
     }
   }
   else if (papel==="enc"){                 /* encoder multifunção da Centralogic */
+    const nEnc = strip && strip.dataset.cl != null ? +strip.dataset.cl : -1;
+    /* Se a TELA registrou alvos, é ela quem manda: o encoder vira o que a
+       tela disser (parâmetro de EQ na visão 8ch, brilho no SETUP, etc.).
+       Sem alvos registrados, cai no comportamento de sempre (send/pan/fader). */
+    const alvo = nEnc >= 0 ? S.encAlvos[nEnc] : null;
+    if (alvo){
+      const v0 = alvo.log ? Math.log10(Math.max(alvo.ler(), 1e-6)) : alvo.ler();
+      const min = alvo.log ? Math.log10(alvo.min) : alvo.min;
+      const max = alvo.log ? Math.log10(alvo.max) : alvo.max;
+      const nv = clamp(v0 + d*(max-min), min, max);
+      alvo.escrever(alvo.log ? Math.pow(10, nv) : nv);
+      S.ajuda = (S.encRotulo ? "<b>"+S.encRotulo+"</b> · " : "") +
+                (alvo.rot || ("encoder "+(nEnc+1)));
+      return;
+    }
     const id = canalDoStrip(strip); const cc = S.canais[id];
     if (!cc) return;
     if (S.encFoco==="pan"){
@@ -2108,6 +2203,7 @@ function fotoDaMesa(){
   const f = {};
   for (const [id,c] of Object.entries(S.canais)){
     f[id] = { fader:c.fader, on:c.on, pan:c.pan, toSt:c.toSt, toMono:c.toMono,
+      lcr:c.lcr, lcrOn:c.lcrOn, csr:c.csr,
       ha:{...c.ha}, hpf:{...c.hpf},
       eq:{on:c.eq.on,tipo:c.eq.tipo,att:c.eq.att,bandas:JSON.parse(JSON.stringify(c.eq.bandas))},
       dyn1:{...c.dyn1}, dyn2:{...c.dyn2},
@@ -2130,6 +2226,9 @@ function aplicarCena(f){
     if (S.focus.PAN   === false) guardado.pan   = c.pan;
     Object.assign(c, {
       fader:v.fader, on:v.on, pan:v.pan, toSt:v.toSt, toMono:v.toMono,
+      /* cena antiga (gravada antes do LCR existir) não tem estes campos --
+         cair no valor de fábrica é melhor que gravar undefined no canal */
+      lcr:!!v.lcr, lcrOn:v.lcrOn !== false, csr:Number.isFinite(v.csr) ? v.csr : 0,
       ha:{...v.ha}, hpf:{...v.hpf},
       eq:{on:v.eq.on,tipo:v.eq.tipo,att:v.eq.att,bandas:JSON.parse(JSON.stringify(v.eq.bandas))},
       dyn1:{...v.dyn1}, dyn2:{...v.dyn2},
@@ -2223,7 +2322,8 @@ function tickMeters(ts){
        fader (em POST ON), então não se multiplica por ele de novo -- isso
        elevava o sinal ao quadrado e o master ficava sempre baixo demais. */
     const entradas = Object.values(S.canais)
-      .filter(c=>(c.tipo==="in"||c.tipo==="stin") && c.on && c.toSt);
+      /* em LCR quem abre a saída é o botão LCR, não o ST (p.63) */
+      .filter(c=>(c.tipo==="in"||c.tipo==="stin") && c.on && (c.lcr ? c.lcrOn : c.toSt));
     /* Sinais somam em POTÊNCIA, não em amplitude: raiz da soma dos quadrados.
        Somar amplitude direto e depois dividir por um número escolhido a dedo
        deixava o master sempre baixo demais e o meter apagado. */
@@ -2287,6 +2387,11 @@ function construirTela(){
   const fac  = document.getElementById("fac");
   if (!area || !fac) return;
   area.innerHTML = ""; fac.innerHTML = "";
+  /* Os encoders são multifunção: quem os arma é a tela, na hora de se montar.
+     Zerar aqui garante que uma tela que NÃO arma nada deixe os encoders no
+     comportamento antigo (send/pan/fader) em vez de herdar o alvo da tela
+     anterior -- alvo velho apontando para o canal errado é defeito mudo. */
+  limparEncoders();
   construirFAC(fac);
   if (S.popup) TELAS_POPUP[S.popup] ? TELAS_POPUP[S.popup](area) : area.appendChild(el("div",null,"?"));
   else (TELAS[S.tela] || TELAS.OVERVIEW)(area);
@@ -2411,6 +2516,31 @@ const TELAS = {};
 
 TELAS.OVERVIEW = function(area){
   const grupo = grupoTela();
+  /* Os 8 encoders passam a mexer no parâmetro EM FOCO, um canal cada (p.99).
+     Os FADERS da Centralogic continuam sendo o nível desses mesmos canais. */
+  limparEncoders();
+  const foco = S.encFoco || "send0";
+  grupo.forEach((id,i)=>{
+    const c = S.canais[id];
+    if (!c) return;
+    if (foco === "ha"){
+      S.encRotulo = "HA GAIN";
+      registrarEncoder(i, { rot:c.nome, min:-62, max:10,
+        ler:()=>c.ha.gain, escrever:v=>{ c.ha.gain = v; } });
+    } else if (foco === "pan"){
+      S.encRotulo = "PAN";
+      registrarEncoder(i, { rot:c.nome, min:-1, max:1,
+        ler:()=>c.pan, escrever:v=>{ c.pan = v; } });
+    } else if (foco.startsWith("send")){
+      const n = +foco.slice(4);
+      const arr = S.sendDest==="mix" ? c.mix : c.mtx;
+      if (!arr[n]) return;
+      S.encRotulo = (S.sendDest==="mix"?"MIX ":"MATRIX ")+(n+1);
+      registrarEncoder(i, { rot:c.nome, min:0, max:1,
+        ler:()=>dbParaPos(arr[n].lvl),
+        escrever:v=>{ arr[n].lvl = posParaDb(v); } });
+    }
+  });
   const g = el("div");
   g.style.cssText = "display:grid;grid-template-columns:repeat(8,1fr);gap:2px;height:100%;min-height:0";
 
@@ -2441,12 +2571,24 @@ TELAS.OVERVIEW = function(area){
       const ph = el("button","tbt"); ph.type="button"; ph.textContent="Ø"; ph.style.fontSize="7px";
       ph.addEventListener("pointerdown",e=>{e.stopPropagation();c.ha.phase=!c.ha.phase;
         S.ajuda="Polaridade de <b>"+c.nome+"</b> "+(c.ha.phase?"INVERTIDA":"normal");pedirRender();});
+      /* clicar no knob de HA põe o HA de TODOS os 8 canais sob os encoders */
+      k.style.cursor = "pointer";
+      k.addEventListener("pointerdown", ev=>{ ev.stopPropagation();
+        /* p.101: "se o knob de GAIN estiver aparecendo, toque nele para
+           selecionar e toque de novo" -> aí sim abre a HA/PATCH. */
+        if (S.encFoco === "ha"){ S.sel = id; abrirPopup("HA"); pedirRender(); return; }
+        S.encFoco = "ha";
+        S.ajuda = "Knob <b>GAIN</b> selecionado — gire os encoders 1-8 da Centralogic "+
+                  "para ajustar o ganho dos 8 canais; toque de novo para abrir HA/PATCH";
+        telaChave = null; pedirRender();
+      });
       ha.appendChild(k); ha.appendChild(v); ha.appendChild(p48); ha.appendChild(ph);
       lig(()=>{
         k.style.setProperty("--ang", anguloDe(c.ha.gain,-62,10)+"deg");
         v.textContent = c.ha.gain.toFixed(0);
         p48.classList.toggle("on", c.ha.phantom);
         ph.classList.toggle("on", c.ha.phase);
+        k.classList.toggle("emfoco", S.encFoco === "ha");   /* moldura grossa */
       });
       cel.appendChild(ha);
     } else {
@@ -2519,7 +2661,7 @@ TELAS.OVERVIEW = function(area){
       });
       lig(()=>{
         k.style.setProperty("--ang", (dbParaPos(s.lvl)*270-135)+"deg");
-        k.style.filter = S.encFoco==="send"+n ? "drop-shadow(0 0 3px var(--tela-azul-claro))" : "none";
+        k.classList.toggle("emfoco", S.encFoco==="send"+n);   /* moldura grossa, p.99 */
         k.style.opacity = s.on ? "1" : ".4";
         t.textContent = s.lvl<=-138 ? "-∞" : s.lvl.toFixed(0);
       });
@@ -2536,12 +2678,21 @@ TELAS.OVERVIEW = function(area){
       S.ajuda="<b>"+c.nome+"</b> "+(c.toSt?"vai":"NÃO vai")+" para o STEREO";pedirRender();});
     bMO.addEventListener("pointerdown",()=>{c.toMono=!c.toMono;
       S.ajuda="<b>"+c.nome+"</b> "+(c.toMono?"vai":"não vai")+" para o MONO";pedirRender();});
-    kp.addEventListener("pointerdown",()=>{ S.encFoco="pan";
-      S.ajuda="Knob <b>PAN</b> selecionado — use os encoders da Centralogic"; pedirRender(); });
+    /* p.103: 1ª batida seleciona (moldura); com a moldura já posta, a 2ª abre
+       a janela TO STEREO/MONO (8 ch). Vale o mesmo para o GAIN do HA (p.101). */
+    kp.addEventListener("pointerdown",()=>{
+      if (S.encFoco==="pan"){ abrirPopup("TOST"); pedirRender(); return; }
+      S.encFoco="pan";
+      S.ajuda="Knob <b>PAN</b> selecionado — gire os encoders 1-8 para panoramizar "+
+              "os 8 canais; toque de novo para abrir TO STEREO/MONO";
+      telaChave = null; pedirRender();
+    });
     st.appendChild(kp); st.appendChild(bST); st.appendChild(bMO);
     lig(()=>{
       kp.style.setProperty("--ang", anguloDe(c.pan,-1,1)+"deg");
-      kp.style.filter = S.encFoco==="pan" ? "drop-shadow(0 0 3px var(--tela-azul-claro))" : "none";
+      /* moldura DUPLA: é assim que a mesa marca PAN/BALANCE (p.31) */
+      kp.classList.toggle("emfoco", S.encFoco==="pan");
+      kp.classList.toggle("dupla",  S.encFoco==="pan");
       bST.classList.toggle("on",c.toSt); bMO.classList.toggle("on",c.toMono);
     });
     cel.appendChild(st);
@@ -2574,6 +2725,37 @@ TELAS.OVERVIEW = function(area){
   t.style.cssText="font-size:9px;color:#9aa0a8;margin-left:auto";
   barra.appendChild(t);
   area.appendChild(barra);
+
+  /* ---- L: a linha de baixo (p.99/100) ----------------------------------
+     "A linha de baixo do OVERVIEW mostra os canais ou grupos DCA que podem
+      ser controlados pelos FADERS, pela tecla [ON] e pela tecla [CUE] da
+      Centralogic. A linha de cima mostra os canais controlados pelos
+      encoders multifunção 1–8."
+     Nem sempre são os mesmos: com o [DCA] escolhido, ou com uma nav key
+     travada (2 s), a tela fica num grupo e os faders em outro. Sem esta
+     linha o aluno não tem como saber qual dos dois está na mão dele. */
+  const grupoF = grupoCentralogic();
+  const difere = grupoF.some((id,i)=>id !== grupo[i]);
+  const rodL = el("div","linha-l");
+  grupoF.forEach(id=>{
+    const cc = S.canais[id];
+    rodL.appendChild(el("span", id===S.sel ? "sel" : null, cc ? cc.nome : "—"));
+  });
+  area.appendChild(rodL);
+  /* Duas causas diferentes para as linhas divergirem — e a saída de cada uma
+     é outra. Dizer "solte a trava" no caso do [DCA] mandaria o aluno procurar
+     uma trava que não existe. */
+  const leg = el("div", null,
+    !difere ? "linha de baixo = FADERS e [ON] · linha de cima = ENCODERS 1-8 e [SEL]/[CUE]"
+    : S.navFixa
+      ? "⚠ Centralogic TRAVADA em "+(navPorId(S.navFixa)||{rot:"?"}).rot+
+        ": os FADERS e [ON] ficam nos canais de baixo e só os ENCODERS e [SEL]/[CUE] "+
+        "seguem a tela. Dois toques na nav key que pisca soltam a trava (p.104)."
+      : "⚠ Não existe OVERVIEW de DCA (p.98): os FADERS e [ON] estão nos grupos DCA "+
+        "de baixo, e os ENCODERS e [SEL]/[CUE] continuam nos canais de cima.");
+  leg.style.cssText = "font-size:8px;line-height:1.3;padding-top:2px;color:"+
+    (difere ? "var(--tela-amarelo,#ffd45e)" : "#7d838a");
+  area.appendChild(leg);
 };
 
 /* curva de EQ em SVG (4 bandas + HPF), MEDIDA: F 20-20k, G ±18, Q .1-10 */
@@ -2969,8 +3151,11 @@ function molde(area, titulo, sub, opc){
 
   if (opc.abas){
     const ab = el("div","abas1ch");
-    S.popAba = S.popAba || "1ch";
-    ["1ch","8ch","ALL"].forEach(a=>{
+    /* nem toda janela tem as três: a TO STEREO/MONO só existe em 8 ch e ALL
+       (p.63). opc.abas pode vir como lista para dizer quais. */
+    const quais = Array.isArray(opc.abas) ? opc.abas : ["1ch","8ch","ALL"];
+    if (quais.indexOf(S.popAba) < 0) S.popAba = quais[0];
+    quais.forEach(a=>{
       const b = el("button","abt"+(S.popAba===a?" on":""), a); b.type="button";
       b.addEventListener("pointerdown",()=>{ S.popAba=a;
         S.ajuda = a==="1ch" ? "Janela mostrando só o canal selecionado"
@@ -3496,6 +3681,270 @@ TELAS_POPUP.DYN_LIB = function(area){
 
 /* ---- PATCH de entrada e de saída (cap.9, p.105-113) ---- */
 S.patchAba = "saida";
+/* ==================================================================
+   HA / PATCH  (p.61-62) — 1 ch · 8 ch · ALL
+   ==================================================================
+   Quem manda no GAIN aqui é o ENCODER, não o mouse: na 1 ch é o encoder 3
+   (o manual nomeia o número); na 8 ch são os 1–8, um por canal; na ALL você
+   toca o knob para pôr a moldura e então gira os 1–8. */
+const ENTRADA_TEM_HA = p => /^(INPUT|ST IN|OMNI IN|SLOT)/i.test(p || "");
+
+function haLinha(id, nEnc, compacta){
+  const c = S.canais[id];
+  const linha = el("div");
+  linha.style.cssText = "display:flex;align-items:center;gap:4px;background:#26292d;"+
+    "border:1px solid #3d4147;border-radius:2px;padding:2px 4px;min-width:0";
+
+  /* 1 — tecla de seleção de canal: "ao apertar, o canal é selecionado e o
+     [SEL] correspondente acende" (p.62) */
+  const nm = el("button","tbt", rotuloCurto(c)+" "+c.nome);
+  nm.type = "button";
+  nm.style.cssText = "flex:0 0 "+(compacta?"78px":"104px")+";overflow:hidden;"+
+    "white-space:nowrap;text-align:left;font-size:8.5px";
+  nm.addEventListener("pointerdown",e=>{ e.stopPropagation(); S.sel = id;
+    S.ajuda = "Canal <b>"+c.nome+"</b> selecionado (o [SEL] dele acendeu)"; pedirRender(); });
+  lig(()=>nm.classList.toggle("on", id===S.sel));
+  linha.appendChild(nm);
+
+  const porta = S.patch.entrada[id] || "";
+  const temHA = ENTRADA_TEM_HA(porta);
+
+  /* 2 — INPUT PATCH: abre a seleção de porta de entrada */
+  if (!compacta){
+    const bp = el("button","tbt", porta || "—"); bp.type="button";
+    bp.style.cssText = "flex:0 0 82px;font-size:8px;overflow:hidden;white-space:nowrap";
+    bp.addEventListener("pointerdown",e=>{ e.stopPropagation();
+      S.patchAba = "entrada"; abrirPopup("PATCH"); pedirRender(); });
+    linha.appendChild(bp);
+  }
+
+  /* 4 — GAIN + meter da porta, do lado direito do knob (p.62) */
+  const k = el("div","knob mini"); k.style.setProperty("--kd", compacta?"17px":"22px");
+  const vv = el("span"); vv.style.cssText="font-size:8px;width:26px;text-align:right";
+  const met = el("div"); met.style.cssText =
+    "width:5px;height:"+(compacta?"14px":"18px")+";background:#15171a;border-radius:1px;"+
+    "position:relative;overflow:hidden;flex:0 0 auto";
+  const barra = el("div"); barra.style.cssText =
+    "position:absolute;left:0;right:0;bottom:0;background:var(--tela-verde)";
+  met.appendChild(barra);
+
+  /* p.62: "o knob GAIN, o botão +48V e o botão ø só valem para canais cuja
+     porta de entrada é um jack INPUT/ST IN/OMNI ou um slot com head amp
+     externo". Sem isso o aluno mexe num ganho que não existe. */
+  if (temHA){
+    k.style.cursor = "pointer";
+    k.addEventListener("pointerdown", e=>{ e.stopPropagation();
+      S.sel = id; S.encFoco = "ha"; telaChave = null;
+      S.ajuda = "GAIN de <b>"+c.nome+"</b> — gire o encoder "+(nEnc+1)+" da Centralogic";
+      pedirRender(); });
+    registrarEncoder(nEnc, { rot:c.nome+" GAIN", min:-62, max:10,
+      ler:()=>c.ha.gain, escrever:v=>{ c.ha.gain = v; } });
+  } else {
+    k.style.opacity = ".25";
+  }
+  const p48 = el("button","tbt laranja","+48"); p48.type="button"; p48.style.fontSize="7.5px";
+  const ph  = el("button","tbt","ø");           ph.type="button";  ph.style.fontSize="8px";
+  if (temHA){
+    p48.addEventListener("pointerdown",e=>{ e.stopPropagation(); c.ha.phantom=!c.ha.phantom;
+      S.ajuda="Phantom +48V "+(c.ha.phantom?"LIGADO":"desligado")+" em <b>"+c.nome+"</b>"; pedirRender(); });
+    ph.addEventListener("pointerdown",e=>{ e.stopPropagation(); c.ha.phase=!c.ha.phase;
+      S.ajuda="Polaridade de <b>"+c.nome+"</b> "+(c.ha.phase?"INVERTIDA":"normal"); pedirRender(); });
+  } else { p48.disabled = true; ph.disabled = true; p48.style.opacity=".25"; ph.style.opacity=".25"; }
+
+  linha.appendChild(k); linha.appendChild(met); linha.appendChild(vv);
+  linha.appendChild(p48); linha.appendChild(ph);
+  if (!temHA){
+    const av = el("span",null,"sem head amp");
+    av.style.cssText="font-size:7.5px;color:#7d838a;margin-left:auto";
+    linha.appendChild(av);
+  }
+  lig(()=>{
+    k.style.setProperty("--ang", anguloDe(c.ha.gain,-62,10)+"deg");
+    k.classList.toggle("emfoco", temHA && S.encFoco==="ha" && id===S.sel);
+    vv.textContent = c.ha.gain.toFixed(0)+" dB";
+    barra.style.height = Math.round(clamp(c.nivel,0,1)*100)+"%";
+    p48.classList.toggle("on", c.ha.phantom);
+    ph.classList.toggle("on", c.ha.phase);
+  });
+  return linha;
+}
+
+TELAS_POPUP.HA = function(area){
+  const b = molde(area,"HA / PATCH","head amp: ganho, phantom e polaridade · p.61",
+    { abas:["1ch","8ch","ALL"] });
+  limparEncoders();
+  S.encRotulo = "HA GAIN";
+  const cx = el("div");
+  cx.style.cssText="display:flex;flex-direction:column;gap:2px;overflow:auto;min-height:0";
+
+  if (S.popAba === "1ch"){
+    /* p.61: na visão de 1 canal o ganho vai no ENCODER 3 -- não é escolha
+       minha, o manual diz o número. */
+    cx.appendChild(haLinha(S.sel, 2, false));
+    const n = el("div",null,
+      "Visão 1 ch — o ganho responde ao <b>encoder 3</b> da Centralogic (p.61). "+
+      "Troque de canal pelas teclas [SEL].");
+    n.style.cssText="font-size:9px;color:#9aa0a8;margin-top:6px;line-height:1.35";
+    cx.appendChild(n);
+  } else if (S.popAba === "8ch"){
+    grupoTela().forEach((id,i)=>{ if (S.canais[id]) cx.appendChild(haLinha(id, i, false)); });
+    const n = el("div",null,
+      "Visão 8 ch — <b>encoders 1 a 8</b>, um para cada linha. As NAVIGATION KEYS "+
+      "trocam o grupo de oito (p.62).");
+    n.style.cssText="font-size:9px;color:#9aa0a8;margin-top:6px;line-height:1.35";
+    cx.appendChild(n);
+  } else {
+    /* ALL: todos os canais de entrada; os encoders seguem o grupo de 8 da tela */
+    const g8 = grupoTela();
+    const g = el("div");
+    g.style.cssText="display:grid;grid-template-columns:repeat(2,1fr);gap:2px";
+    [...Array.from({length:N_IN},(_,i)=>"CH"+(i+1)),
+     ...Array.from({length:N_STIN},(_,i)=>"ST"+(i+1))].forEach(id=>{
+      const i = g8.indexOf(id);
+      g.appendChild(haLinha(id, i>=0 ? i : -1, true));
+    });
+    cx.appendChild(g);
+    const n = el("div",null,
+      "Visão ALL — os <b>encoders 1 a 8</b> pegam só o grupo de oito que está na "+
+      "Centralogic; os demais canais você ajusta tocando no knob (p.62).");
+    n.style.cssText="font-size:9px;color:#9aa0a8;margin-top:6px;line-height:1.35";
+    cx.appendChild(n);
+  }
+  b.appendChild(cx);
+};
+
+/* ==================================================================
+   TO STEREO / MONO  (p.63-64) — 8 ch · ALL
+   ==================================================================
+   Só existe em 8 ch e ALL, e o botão MODE troca o canal entre ST/MONO e LCR.
+   Em LCR o par STEREO/MONO vira um botão só e aparece o CSR. */
+function tostLinha(id, nEnc, compacta){
+  const c = S.canais[id];
+  const linha = el("div");
+  linha.style.cssText="display:flex;align-items:center;gap:4px;background:#26292d;"+
+    "border:1px solid #3d4147;border-radius:2px;padding:2px 4px;min-width:0";
+
+  const nm = el("button","tbt", rotuloCurto(c)+" "+c.nome); nm.type="button";
+  nm.style.cssText="flex:0 0 "+(compacta?"78px":"104px")+";overflow:hidden;"+
+    "white-space:nowrap;text-align:left;font-size:8.5px";
+  nm.addEventListener("pointerdown",e=>{ e.stopPropagation(); S.sel=id;
+    S.ajuda="Canal <b>"+c.nome+"</b> selecionado"; pedirRender(); });
+  lig(()=>nm.classList.toggle("on", id===S.sel));
+  linha.appendChild(nm);
+
+  /* estéreo (ST IN e MIX estéreo) mostra BALANCE; mono mostra PAN (p.64) */
+  const ehEstereo = c.tipo === "stin";
+  const rotPan = ehEstereo ? "BALANCE" : "PAN";
+
+  if (!compacta){
+    const modo = el("div");
+    modo.style.cssText="display:flex;flex-direction:column;align-items:center;flex:0 0 46px";
+    const ind = el("div"); ind.style.cssText="font-size:7px;color:#ffd45e";
+    const bm = el("button","tbt","MODE"); bm.type="button"; bm.style.fontSize="7.5px";
+    bm.addEventListener("pointerdown",e=>{ e.stopPropagation(); c.lcr = !c.lcr;
+      S.ajuda = "<b>"+c.nome+"</b> em modo <b>"+(c.lcr?"LCR":"ST/MONO")+"</b> — "+
+        (c.lcr ? "STEREO e MONO ligam juntos e o CSR reparte o nível"
+               : "STEREO e MONO ligam separados");
+      telaChave=null; pedirRender(); });
+    lig(()=>{ ind.textContent = c.lcr ? "LCR" : "ST/MONO"; });
+    modo.appendChild(ind); modo.appendChild(bm);
+    linha.appendChild(modo);
+  }
+
+  /* botões: ST + MONO separados, ou LCR único */
+  if (c.lcr){
+    const bl = el("button","tbt","LCR"); bl.type="button"; bl.style.fontSize="8px";
+    bl.addEventListener("pointerdown",e=>{ e.stopPropagation(); c.lcrOn=!c.lcrOn;
+      S.ajuda="<b>"+c.nome+"</b> "+(c.lcrOn?"vai":"NÃO vai")+" para STEREO+MONO"; pedirRender(); });
+    lig(()=>bl.classList.toggle("on", c.lcrOn));
+    linha.appendChild(bl);
+  } else {
+    const bs = el("button","tbt","ST"); bs.type="button"; bs.style.fontSize="8px";
+    const bo = el("button","tbt","MONO"); bo.type="button"; bo.style.fontSize="8px";
+    bs.addEventListener("pointerdown",e=>{ e.stopPropagation(); c.toSt=!c.toSt;
+      S.ajuda="<b>"+c.nome+"</b> "+(c.toSt?"vai":"NÃO vai")+" para o STEREO"; pedirRender(); });
+    bo.addEventListener("pointerdown",e=>{ e.stopPropagation(); c.toMono=!c.toMono;
+      S.ajuda="<b>"+c.nome+"</b> "+(c.toMono?"vai":"não vai")+" para o MONO"; pedirRender(); });
+    lig(()=>{ bs.classList.toggle("on",c.toSt); bo.classList.toggle("on",c.toMono); });
+    linha.appendChild(bs); linha.appendChild(bo);
+  }
+
+  /* CSR — só em LCR (p.64), 0 a 100% */
+  if (c.lcr && !compacta){
+    const kc = el("div","knob mini"); kc.style.setProperty("--kd","20px");
+    const vc = el("span"); vc.style.cssText="font-size:7.5px;width:30px";
+    kc.style.cursor="pointer";
+    kc.addEventListener("pointerdown",e=>{ e.stopPropagation(); S.sel=id;
+      S.encFoco="csr"; telaChave=null;
+      S.ajuda="<b>CSR</b> de "+c.nome+" — encoder "+(nEnc+1)+" (0% = pan comum, "+
+              "nada vai para o MONO)"; pedirRender(); });
+    lig(()=>{ kc.style.setProperty("--ang", anguloDe(c.csr,0,100)+"deg");
+      kc.classList.toggle("emfoco", S.encFoco==="csr" && id===S.sel);
+      vc.textContent = "CSR "+c.csr.toFixed(0)+"%"; });
+    linha.appendChild(kc); linha.appendChild(vc);
+    if (nEnc >= 0 && S.encFoco === "csr")
+      registrarEncoder(nEnc, { rot:c.nome+" CSR", min:0, max:100,
+        ler:()=>c.csr, escrever:v=>{ c.csr = v; } });
+  }
+
+  /* PAN / BALANCE + indicador OVER (p.64) */
+  const kp = el("div","knob mini"); kp.style.setProperty("--kd", compacta?"17px":"20px");
+  const vp = el("span"); vp.style.cssText="font-size:7.5px;width:38px";
+  const over = el("div"); over.style.cssText=
+    "width:5px;height:5px;border-radius:50%;background:#3d4147;flex:0 0 auto";
+  kp.style.cursor="pointer";
+  kp.addEventListener("pointerdown",e=>{ e.stopPropagation(); S.sel=id;
+    S.encFoco="pan"; telaChave=null;
+    S.ajuda="<b>"+rotPan+"</b> de "+c.nome+" — encoder "+(nEnc+1)+" da Centralogic";
+    pedirRender(); });
+  lig(()=>{
+    kp.style.setProperty("--ang", anguloDe(c.pan,-1,1)+"deg");
+    const emf = S.encFoco==="pan" && (compacta ? id===S.sel : true);
+    kp.classList.toggle("emfoco", emf);
+    kp.classList.toggle("dupla",  emf);          /* moldura dupla = PAN, p.31 */
+    vp.textContent = (compacta?"":rotPan+" ")+textoPan(c.pan);
+    over.style.background = c.nivel > 0.97 ? "#ff3b30" : "#3d4147";
+  });
+  linha.appendChild(kp); linha.appendChild(over); linha.appendChild(vp);
+  if (nEnc >= 0 && S.encFoco !== "csr")
+    registrarEncoder(nEnc, { rot:c.nome+" "+rotPan, min:-1, max:1,
+      ler:()=>c.pan, escrever:v=>{ c.pan = v; } });
+  return linha;
+}
+
+TELAS_POPUP.TOST = function(area){
+  const b = molde(area,"TO STEREO / MONO","o que sai no P.A. · p.63", { abas:["8ch","ALL"] });
+  limparEncoders();
+  S.encRotulo = "TO ST PAN";
+  const cx = el("div");
+  cx.style.cssText="display:flex;flex-direction:column;gap:2px;overflow:auto;min-height:0";
+  const g8 = grupoTela();
+
+  if (S.popAba === "8ch"){
+    g8.forEach((id,i)=>{ if (S.canais[id]) cx.appendChild(tostLinha(id, i, false)); });
+    const n = el("div",null,
+      "Visão 8 ch — o <b>MODE</b> troca o canal entre ST/MONO e LCR, e o knob de "+
+      "PAN responde ao encoder da mesma coluna (p.63).");
+    n.style.cssText="font-size:9px;color:#9aa0a8;margin-top:6px;line-height:1.35";
+    cx.appendChild(n);
+  } else {
+    const g = el("div");
+    g.style.cssText="display:grid;grid-template-columns:repeat(2,1fr);gap:2px";
+    [...Array.from({length:N_IN},(_,i)=>"CH"+(i+1)),
+     ...Array.from({length:N_STIN},(_,i)=>"ST"+(i+1))].forEach(id=>{
+      const i = g8.indexOf(id);
+      g.appendChild(tostLinha(id, i>=0 ? i : -1, true));
+    });
+    cx.appendChild(g);
+    const n = el("div",null,
+      "Visão ALL — os <b>encoders 1 a 8</b> pegam o grupo de oito que está na "+
+      "Centralogic; o ponto vermelho ao lado do knob é o OVER do canal (p.64).");
+    n.style.cssText="font-size:9px;color:#9aa0a8;margin-top:6px;line-height:1.35";
+    cx.appendChild(n);
+  }
+  b.appendChild(cx);
+};
+
 TELAS_POPUP.PATCH = function(area){
   const b = molde(area,"PATCH","entrada e saída · padrão de fábrica na p.105");
   const abas = linhaTela();
@@ -4258,14 +4707,22 @@ TELAS_POPUP.SYS = function(area){
     cx.appendChild(lb);
     const bset = S.sys.brilho[S.sys.brilhoBanco];
     const l2 = linhaTela(); l2.style.marginTop="5px";
-    [["screen","SCREEN"],["panel","PANEL"],["lamp","LAMP"]].forEach(([k,rot])=>{
+    /* Aqui a tela arma os encoders 1, 2 e 3 (p.30: "o knob corresponde ao
+       encoder que fica logo abaixo dele"). Mexer no encoder físico da
+       Centralogic move o knob desenhado -- é a mesma multifunção do OVERVIEW,
+       só que agora ela aponta para o brilho e não para um canal. */
+    S.encRotulo = "BRIGHTNESS "+S.sys.brilhoBanco;
+    [["screen","SCREEN"],["panel","PANEL"],["lamp","LAMP"]].forEach(([k,rot],i)=>{
       l2.appendChild(knobTela(rot, ()=>bset[k], v=>{ bset[k]=v; aplicarBrilho(); },
         0.1, 1, v=>Math.round(v*100)+"%"));
+      registrarEncoder(i, { rot:rot, min:0.1, max:1,
+        ler:()=>bset[k], escrever:v=>{ bset[k]=v; aplicarBrilho(); } });
     });
     cx.appendChild(l2);
     const nota = el("div",null,
       "SCREEN = tela · PANEL = LEDs do painel e da meter bridge · LAMP = luminárias de haste. "+
-      "Dois bancos para trocar de uma vez entre passagem de som e show.");
+      "Dois bancos para trocar de uma vez entre passagem de som e show. "+
+      "Os três knobs respondem aos encoders 1, 2 e 3 da Centralogic.");
     nota.style.cssText="font-size:9px;color:#9aa0a8;margin-top:4px;line-height:1.4";
     cx.appendChild(nota);
   }
@@ -4892,8 +5349,17 @@ function aplicarCanalNoAudio(s){
      [ON] desligado = 0: o canal não passa som, por mais que o fader suba. */
   const ha = Math.pow(10, (c.ha.gain + 20) / 20);
   const fd = c.fader <= -138 ? 0 : Math.pow(10, c.fader / 20);
-  R(n.gain.gain, (c.on ? 1 : 0) * ha * fd * (c.toSt ? 1 : 0));
-  if (n.pan) P(n.pan.pan, clamp(c.pan, -1, 1));
+  /* TO STEREO/MONO (p.63): em ST/MONO quem abre a saída é o botão ST; em LCR
+     é o botão LCR, que liga STEREO e MONO de uma vez. */
+  const abre = c.lcr ? (c.lcrOn ? 1 : 0) : (c.toSt ? 1 : 0);
+  R(n.gain.gain, (c.on ? 1 : 0) * ha * fd * abre);
+  /* CSR só existe em LCR e reparte o nível entre o STEREO (L/R) e o MONO (C).
+     ⚠️ Este simulador soma num barramento ESTÉREO só -- não há nó de MONO
+     separado. O que dá para reproduzir fielmente é o efeito audível: o sinal
+     mandado ao centro fecha a imagem. Em 0% o pan é o comum e nada vai ao
+     MONO; em 100% a imagem fecha no centro (p.65). */
+  const panEf = c.lcr ? c.pan * (1 - clamp(c.csr,0,100)/100) : c.pan;
+  if (n.pan) P(n.pan.pan, clamp(panEf, -1, 1));
   P(n.hpf.frequency, c.hpf.on ? c.hpf.freq : 20);
   const bs = [c.eq.bandas.low, c.eq.bandas.lomid, c.eq.bandas.himid, c.eq.bandas.high];
   n.bandas.forEach((f,i)=>{
@@ -5193,6 +5659,9 @@ function m7clTeste(){
     ()=>document.querySelectorAll(".strip").length===62);
   T(2,"SELECTED CHANNEL com 33 knobs (16 send + HA/PAN/HPF/DYN1/DYN2 + EQ 4x3)",
     ()=>document.querySelectorAll(".selch .knob").length===33);
+  T(2,"a Centralogic NÃO tem fita de nome — quem diz o canal é a tela (p.21/99)",
+    ()=>document.querySelectorAll('.strip[data-cl] .nome').length===0 &&
+        document.querySelectorAll('.strip:not([data-cl]) .nome').length===54);
   T(2,"12 USER DEFINED KEYS", ()=>document.querySelectorAll("[data-udk]").length===12);
   T(2,"12 NAVIGATION KEYS",   ()=>document.querySelectorAll("[data-nav]").length===12);
 
@@ -5284,6 +5753,98 @@ function m7clTeste(){
     const preservou = c.fader === -7;
     S.pref.recallConf = false;
     return abriu && intacto && preservou;
+  });
+
+  /* cap.8 — ENCODERS MULTIFUNÇÃO: quem manda neles é a TELA (p.30/31/99) */
+  T(8,"a tela ARMA os encoders: com o campo HA em foco, o encoder N mexe no canal N", ()=>{
+    S.tela="OVERVIEW"; S.popup=null; S.nav="IN1-8"; S.encFoco="ha";
+    telaChave=null; construirTela();
+    const g = grupoTela();
+    const a = C(g[0]).ha.gain, b = C(g[4]).ha.gain;
+    /* gira o encoder 5 -> tem de mexer SÓ no 5º canal do grupo */
+    const enc5 = document.querySelectorAll('.strip[data-cl] [data-papel="enc"]')[4];
+    aplicarKnob(enc5, enc5.closest(".strip"), C(g[4]).ha.gain, 0.1);
+    return C(g[4]).ha.gain > b && C(g[0]).ha.gain === a;
+  });
+  T(8,"sem alvo armado, o encoder volta a ser o fader do canal (comportamento antigo)", ()=>{
+    S.tela="OVERVIEW"; S.popup=null; S.encFoco=null; limparEncoders();
+    const g = grupoCentralogic();
+    const antes = C(g[2]).fader;
+    const enc3 = document.querySelectorAll('.strip[data-cl] [data-papel="enc"]')[2];
+    aplicarKnob(enc3, enc3.closest(".strip"), antes, 0.1);
+    const r = C(g[2]).fader > antes;
+    C(g[2]).fader = antes;
+    return r;
+  });
+  T(8,"no SETUP > BRIGHTNESS os encoders 1-3 viram SCREEN/PANEL/LAMP (p.30)", ()=>{
+    S.popup="SYS"; S.sys.sysAba="bright"; telaChave=null; construirTela();
+    const bset = S.sys.brilho[S.sys.brilhoBanco];
+    const antes = bset.panel;
+    bset.panel = 0.5;
+    const enc2 = document.querySelectorAll('.strip[data-cl] [data-papel="enc"]')[1];
+    aplicarKnob(enc2, enc2.closest(".strip"), 0.5, 0.2);
+    const r = bset.panel > 0.5;                  /* encoder 2 = PANEL */
+    bset.panel = antes; aplicarBrilho();
+    S.popup=null; telaChave=null; construirTela();
+    return r;
+  });
+  T(8,"OVERVIEW mostra a linha L (canais dos FADERS) separada da linha de cima (p.99)", ()=>{
+    S.tela="OVERVIEW"; S.popup=null; telaChave=null; construirTela();
+    return document.querySelectorAll(".linha-l span").length === 8;
+  });
+  T(8,"com o [DCA] escolhido, faders vão para os DCA e a tela fica nos canais (p.98)", ()=>{
+    S.navAnterior="IN1-8"; S.nav="DCA"; telaChave=null;
+    const f = grupoCentralogic(), t = grupoTela();
+    S.nav="IN1-8"; telaChave=null;
+    return f[0]==="DCA1" && t[0]==="CH1";
+  });
+  T(8,"apertar um encoder na SELECTED CHANNEL VIEW volta ao OVERVIEW (p.100)", ()=>{
+    S.tela="SELCH"; S.popup=null; telaChave=null; construirTela();
+    const enc1 = document.querySelector('.strip[data-cl] [data-papel="enc"]');
+    enc1.dispatchEvent(new PointerEvent("pointerdown",{bubbles:true,clientY:100}));
+    const r = S.tela === "OVERVIEW";
+    S.tela="OVERVIEW"; telaChave=null; construirTela();
+    return r;
+  });
+
+  /* cap.5 — TO STEREO/MONO: os dois modos por canal (p.63-65) */
+  T(5,"TO STEREO/MONO: modo LCR liga STEREO e MONO JUNTOS, num botão só", ()=>{
+    const c = C("CH1"); const gl=c.lcr, go=c.lcrOn, gs=c.toSt;
+    c.lcr=true; c.lcrOn=false; c.toSt=true;
+    /* em LCR quem abre a saída é o LCR, não o ST */
+    const fechado = !(c.lcr ? c.lcrOn : c.toSt);
+    c.lcrOn=true;
+    const aberto = (c.lcr ? c.lcrOn : c.toSt);
+    c.lcr=gl; c.lcrOn=go; c.toSt=gs;
+    return fechado && aberto;
+  });
+  T(5,"CSR em 0% = pan comum (nada vai ao MONO); 100% fecha a imagem (p.65)", ()=>{
+    const c = C("CH1"); const gl=c.lcr, gc=c.csr, gp=c.pan;
+    c.lcr=true; c.pan=-1; c.csr=0;
+    const a = c.pan * (1 - c.csr/100);
+    c.csr=100;
+    const b = c.pan * (1 - c.csr/100);
+    c.lcr=gl; c.csr=gc; c.pan=gp;
+    return a===-1 && b===0;
+  });
+  T(5,"PAN é mostrado como a mesa mostra: L63 · CENTER · R63 (p.256)",
+    ()=>textoPan(-1)==="L63" && textoPan(0)==="CENTER" && textoPan(1)==="R63");
+  T(5,"HA/PATCH e TO STEREO/MONO abrem em 8 ch com um knob por canal (p.62/64)", ()=>{
+    const area = document.getElementById("area");
+    const aba = S.popAba;
+    let ok = true;
+    for (const p of ["HA","TOST"]){
+      S.popup=p; S.popAba="8ch"; telaChave=null; construirTela();
+      if (area.querySelectorAll(".knob").length !== 8) ok = false;
+    }
+    /* a 1 ch da HA existe e mostra UM canal — o manual só a define para a HA
+       (a TO STEREO/MONO não tem 1 ch, p.63) */
+    S.popup="HA"; S.popAba="1ch"; telaChave=null; construirTela();
+    if (area.querySelectorAll(".knob").length !== 1) ok = false;
+    S.popup="TOST"; telaChave=null; construirTela();
+    if (S.popAba !== "8ch") ok = false;          /* caiu na 1ª aba que existe */
+    S.popAba = aba; S.popup=null; telaChave=null; construirTela();
+    return ok;
   });
 
   /* telas */
