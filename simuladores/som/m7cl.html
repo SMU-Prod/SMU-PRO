@@ -4794,6 +4794,44 @@ function aplicarCanalNoAudio(s){
   });
 }
 
+/* ==================================================================
+   UMA INSTÂNCIA POR VEZ
+   ==================================================================
+   O simulador pode estar aberto em mais de uma aba/painel ao mesmo tempo --
+   e cada cópia tem o SEU AudioContext. Dar play numa e depois abrir outra
+   deixava as duas tocando juntas, e nada dentro da cópia nova alcançava a
+   antiga: era o "não para o pagode".
+
+   Agora quem começa a tocar AVISA as outras cópias, que se calam. Uso
+   BroadcastChannel e, onde ele não existe (file:// em alguns navegadores),
+   caio no localStorage, que dispara 'storage' nas outras abas.            */
+const EU = Math.random().toString(36).slice(2);
+let canalAvisos = null;
+try { canalAvisos = new BroadcastChannel("m7cl-audio"); } catch(e) {}
+
+function avisarQueVouTocar(){
+  const msg = { quem: EU, t: Date.now() };
+  try { canalAvisos && canalAvisos.postMessage(msg); } catch(e) {}
+  try { localStorage.setItem("m7cl-tocando", JSON.stringify(msg)); } catch(e) {}
+}
+function calarPorOutraInstancia(quem){
+  if (quem === EU) return;
+  if (!AUD.tocando) return;
+  pararAudio();
+  S.ajuda = "Outra janela do simulador começou a tocar — esta parou para não "+
+            "sobrepor as músicas.";
+  pedirRender();
+}
+if (canalAvisos) canalAvisos.onmessage = ev => {
+  if (ev && ev.data && ev.data.quem) calarPorOutraInstancia(ev.data.quem);
+};
+window.addEventListener("storage", ev => {
+  if (ev.key !== "m7cl-tocando" || !ev.newValue) return;
+  try { calarPorOutraInstancia(JSON.parse(ev.newValue).quem); } catch(e) {}
+});
+/* fechar ou recarregar a aba não pode deixar som órfão tocando */
+window.addEventListener("pagehide", ()=>{ pararAudio(); try{ AUD.ctx && AUD.ctx.close(); }catch(e){} });
+
 function tocarAudio(){
   /* Não toca ENQUANTO outra base carrega. Sem esta guarda, apertar play
      durante a troca disparava a lista ANTIGA; logo depois AUD.stems virava a
@@ -4804,6 +4842,7 @@ function tocarAudio(){
     pedirRender(); return;
   }
   if (!AUD.ctx || !AUD.stems.length || AUD.tocando) return;
+  avisarQueVouTocar();      /* cala qualquer outra cópia aberta */
   AUD.ctx.resume();
   const quando = AUD.ctx.currentTime + 0.06;   /* todas as faixas juntas */
   AUD.stems.forEach(s=>tocarStem(s, quando, AUD.offset));
