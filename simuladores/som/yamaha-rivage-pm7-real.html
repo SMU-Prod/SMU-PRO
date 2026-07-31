@@ -664,7 +664,7 @@
     };
   }
   const CH = Array.from({length:MAXCAP}, (_,i)=>mkChannel(i));
-  const state = { sel:12, bank:0, mode:"overview", sof:-1, sofMix:0, master:-3, eqBand:3, sendView:0,
+  const state = { sel:12, bank:0, mode:"overview", sof:-1, sofMix:0, master:-3, stOn:true, eqBand:3, sendView:0,
     curScene:0, udkBank:0, udnBank:0,
     dcaGain:new Array(N_DCA).fill(0), dcaOn:new Array(N_DCA).fill(true),
     muteActive:new Array(N_MUTE).fill(false),
@@ -737,8 +737,12 @@
         <div class="fader"><div class="line"></div><div class="unity"></div><div class="cap"></div></div></div>
       <div class="db"></div><div class="sbtns"><button class="sbtn on act">ON</button></div>`;
     stripsEl.appendChild(m);
+    /* O botao ON do ST MASTER existia no HTML e NINGUEM o escutava: nao era capturado
+       aqui nem ligado no wireMasterFader. Botao de enfeite — o portao o acusou como
+       "sem tratador", que e' o diagnostico mais grave dos tres. */
     masterEl={ root:m, cap:m.querySelector(".cap"), fader:m.querySelector(".fader"),
-      db:m.querySelector(".db"), meters:m.querySelectorAll(".meter i") };
+      db:m.querySelector(".db"), meters:m.querySelectorAll(".meter i"),
+      on:m.querySelector(".sbtn.on") };
     wireMasterFader(masterEl);
   }
 
@@ -757,6 +761,8 @@
     o.fader.addEventListener("pointerup",up); o.fader.addEventListener("pointercancel",up);
   }
   function wireMasterFader(o){
+    if(o.on) o.on.onclick=()=>{ state.stOn=!state.stOn; o.on.classList.toggle('act',state.stOn);
+      applyMasterAudio(); toast('STEREO MASTER <b>'+(state.stOn?'ON':'OFF')+'</b>'); };
     let drag=false;
     const move=e=>{ if(!drag)return; const r=o.fader.getBoundingClientRect(); state.master=pos2db(1-(e.clientY-r.top)/r.height); paintMaster(); applyMasterAudio(); e.preventDefault(); };
     o.fader.addEventListener("pointerdown",e=>{drag=true;o.fader.setPointerCapture(e.pointerId);move(e);e.preventDefault();});
@@ -1786,13 +1792,14 @@
       c._gr=open?0:Math.max(0,-c.gateRange);
     }
   }
-  function applyMasterAudio(){ if(ac&&masterGain) P(masterGain.gain,dbToLin(state.master),ac.currentTime,0.02); }
+  /* O [ON] do STEREO corta o barramento principal — sem isto o botao so' acenderia. */
+  function applyMasterAudio(){ if(ac&&masterGain) P(masterGain.gain,state.stOn?dbToLin(state.master):0,ac.currentTime,0.02); }
   function snapCh(c){ return JSON.parse(JSON.stringify({gain:c.gain,hpfOn:c.hpfOn,hpf:c.hpf,lpfOn:c.lpfOn,lpf:c.lpf,
     silkOn:c.silkOn,silkChar:c.silkChar,silkTex:c.silkTex,
     eq:c.eq,eqType:c.eqType,gateOn:c.gateOn,gateThr:c.gateThr,gateRange:c.gateRange,gateAtk:c.gateAtk,gateHold:c.gateHold,gateDecay:c.gateDecay,
     compOn:c.compOn,compThr:c.compThr,compRatio:c.compRatio,compAtk:c.compAtk,compRel:c.compRel,compKnee:c.compKnee,compGain:c.compGain,
     pan:c.pan,fader:c.fader,on:c.on,sends:c.sends,sendOn:c.sendOn,sendPre:c.sendPre,mtx:c.mtx,mtxOn:c.mtxOn,mtxPre:c.mtxPre,dca:c.dca,mute:c.mute,muteSafe:c.muteSafe,fxRev:c.fxRev,fxDly:c.fxDly})); }
-  function storeScene(slot){ scenes[slot]={ ch:CH.map(snapCh), master:state.master,
+  function storeScene(slot){ scenes[slot]={ ch:CH.map(snapCh), master:state.master, stOn:state.stOn,
     dcaGain:state.dcaGain.slice(), dcaOn:state.dcaOn.slice(), muteActive:state.muteActive.slice(),
     fx:JSON.parse(JSON.stringify(state.fx)), ts:Date.now() }; toast("Cena "+(slot+1)+" armazenada ✔"); }
   function recallScene(slot){ const s=scenes[slot]; if(!s){ toast("Cena "+(slot+1)+" vazia"); return; }

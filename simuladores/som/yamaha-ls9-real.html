@@ -351,6 +351,7 @@
       key1Src:"SELF POST EQ",key1F:80,key1Hpf:false,key2Src:"SELF POST EQ",
       pan:0, stMode:'ST/MONO', stAssign:true, monoAsn:false,
       fader:-4-((i*5)%8), on:true, cue:false, muteSafe:false, recallSafe:false,
+      rsPar:{ALL:true},   /* grupos de parametro protegidos quando recallSafe esta ligado */
       insertOn:false, insertPoint:'PRE EQ', directOn:false, directLv:0, directPoint:'PRE HPF',
       delayOn:false, delayMs:0,
       sends:new Array(N_MIX).fill(-90), sendOn:new Array(N_MIX).fill(false), sendPre:new Array(N_MIX).fill(false),
@@ -399,6 +400,71 @@
   const GEQF=[20,25,31.5,40,50,63,80,100,125,160,200,250,315,400,500,630,800,1000,1250,1600,2000,2500,3150,4000,5000,6300,8000,10000,12500,16000,20000];
   let _taps=[]; // tap-tempo timestamps (ms)
   const scenes=new Array(N_SCENE).fill(null);
+  /* Coluna FILE da janela SCENE. Declarado junto de scenes: `let` no meio do arquivo fica em
+     zona morta temporal e um draw que rode antes derruba o simulador em silencio. */
+  let cenasArquivo=new Array(N_SCENE).fill(null), nomeArqCenas="NO FILE";
+
+  /* ============ RECALL SAFE / FOCUS / FADE (Owner’s Manual p.139, 140, 143) ============
+     A LS9 tem as tres. Eram abas desenhadas que respondiam "nao incluido no simulador".
+     ATENCAO AO QUE A LS9 **NAO** TEM: nada de DCA (o agrupamento dela e' 8 mute groups +
+     Channel Link) e nada de GLOBAL PASTE (zero ocorrencia no manual; e' funcao da CL5).
+     Por isso o grupo de parametro aqui e' MUTE, e nao DCA/MUTE como na CL5 e na M7CL. */
+  const SAFEPAR=[
+    ["HA",       ["gain","phantom","dgain","att","phase"]],
+    ["PATCH",    ["file","hasAudio"]],
+    ["NAME",     ["name","color"]],
+    ["FADER/ON", ["fader","on"]],
+    ["EQ",       ["eqOn","eq","eqType","hpfOn","hpf","lpfOn","lpf"]],
+    ["DYNA1",    ["gateOn","gateThr","gateRange","gateAtk","gateHold","gateDecay","key1Src","key1F","key1Hpf"]],
+    ["DYNA2",    ["compOn","compThr","compRatio","compAtk","compRel","compKnee","compGain","key2Src"]],
+    ["MIX SEND", ["sends","sendOn","sendPre"]],
+    ["MTX SEND", ["mtxSends","mtxOn","mtxPre"]],
+    ["INS/DIR",  ["insertOn","insertPoint","directOn","directLv","directPoint"]],
+    ["DELAY",    ["delayOn","delayMs"]],
+    ["PAN/ST",   ["pan","stMode","stAssign","monoAsn"]],
+    ["MUTE",     ["mute","muteSafe"]],
+  ];
+  const SAFEKEY={}; SAFEPAR.forEach(([g,ks])=>ks.forEach(k=>SAFEKEY[k]=g));
+  const RSGLOBAL=["INPUT PATCH","OUTPUT PATCH","INPUT NAME","HA","GEQ RACK","EFFECT RACK",
+                  "BUS SETUP MIX","BUS SETUP MTX"];
+
+  /* ============ PATCH — dados da LS9, do Owner’s Manual =============================
+     Painel traseiro: INPUT jacks 1-16 {1-32}, OMNI OUT 1-8 {1-16}, slots {1-2}.
+     Entrada de fabrica: "INPUT jacks 1-32 -> INPUT channels 1-32"; os canais 33-64 vem dos
+     slots. ST IN 1-4 recebem, de fabrica, a saida dos racks virtuais 5-8.
+     NAO copie da M7CL nem da CL5 — as tres tabelas sao diferentes. */
+  const INPORTS=Array.from({length:32},(_,i)=>"IN "+(i+1))
+    .concat([1,2].flatMap(sl=>Array.from({length:16},(_,i)=>"SLOT"+sl+" "+(i+1))));
+  const OUTCH=[].concat(
+    Array.from({length:N_MIX},(_,i)=>"MIX "+(i+1)),
+    Array.from({length:N_MTX},(_,i)=>"MATRIX "+(i+1)),
+    ["STEREO L","STEREO R","MONO","MONITOR L","MONITOR R","MONITOR C","CUE L","CUE R"]);
+  const I_ST_L=N_MIX+N_MTX, I_ST_R=I_ST_L+1;
+  const OUTPORTS=Array.from({length:16},(_,i)=>"OMNI OUT "+(i+1))
+    .concat([1,2].flatMap(sl=>Array.from({length:16},(_,i)=>"SLOT"+sl+" "+(i+1))))
+    .concat(["2TR OUT L","2TR OUT R"]);
+  /* Saida de fabrica, tabela "Analog output connections" do manual:
+       LS9-32: OMNI OUT 1-14 -> MIX 1-14 · OMNI OUT 15-16 -> STEREO L/R
+       LS9-16: OMNI OUT 1-6  -> MIX 1-6  · OMNI OUT 7-8   -> STEREO L/R
+     Depende do MODELO — por isso e' funcao, e nao tabela fixa. */
+  function outPatchFabrica(){
+    const m=new Array(OUTPORTS.length).fill(null);
+    const n=(state.model==="LS9-16")?6:14, ult=(state.model==="LS9-16")?6:14;
+    for(let i=0;i<n;i++)m[i]=i;
+    m[ult]=I_ST_L; m[ult+1]=I_ST_R;
+    return m;
+  }
+  state.inPatch=Array.from({length:MAXCAP},(_,i)=>i);
+  state.outPatch=outPatchFabrica();
+  state.patchTab=0; state.patchPag=0; state.patchPagC=0;
+  state.insPatch=new Array(MAXCAP).fill(null);
+  state.dirPatch=new Array(MAXCAP).fill(null);
+  state.insOutPatch=new Array(OUTCH.length).fill(null);
+  state.rsGlobal={}; state.rsSetBySel=false; state.rsSel=0;
+  state.fcSetBySel=false; state.fcSel=0;
+  state.focus=Array.from({length:N_SCENE},()=>({on:false,all:true,ch:{},par:{}}));
+  state.fade =Array.from({length:N_SCENE},()=>{
+    const ch={}; for(let i=0;i<MAXCAP;i++)ch[i]=true; return {on:false,time:3.0,ch}; });
   const ukState={}; // user key toggles
 
   /* ================= HELPERS ================= */
@@ -508,7 +574,18 @@
     if(ch.lpfOn) g+=biquadDb('lowpass',ch.lpf,0,0.707,f);
     return clamp(g,-30,20); }
 
-  function selectChannel(i){ state.sel=i; state.selStin=-1; paintSelected(); paintBay(); drawScreen(); checkMissions(); }
+  function selectChannel(i){
+    /* SET BY SEL: com o botao ligado, a tecla [SEL] do painel passa a MARCAR o canal em
+       RECALL SAFE / FOCUS. E o unico jeito pratico de marcar dezenas de canais. */
+    if(state.rsSetBySel && state.mode==="scenes" && state.scnTab===1){
+      CH[i].recallSafe=!CH[i].recallSafe; state.rsSel=i;
+      toast("CH"+(i+1)+" RECALL SAFE <b>"+(CH[i].recallSafe?"ON":"OFF")+"</b>");
+    } else if(state.fcSetBySel && state.mode==="scenes" && state.scnTab===3){
+      const fo=state.focus[state.scene]; fo.all=false;
+      fo.ch[i]=!fo.ch[i]; if(!fo.ch[i])delete fo.ch[i]; state.fcSel=i;
+      toast("CH"+(i+1)+" FOCUS <b>"+(fo.ch[i]?"ON":"OFF")+"</b>");
+    }
+    state.sel=i; state.selStin=-1; paintSelected(); paintBay(); drawScreen(); checkMissions(); }
 
   /* ===== CHANNEL LINK (LS9 has NO DCA — linked channels move together) =====
      Each input channel carries a link-group id in state.link[i] (-1 = unlinked,
@@ -1269,34 +1346,79 @@
     vbegin(910,646);
     ctx.fillStyle=ED.bg; ctx.fillRect(0,0,910,646);
     const tabs=["INPUT PATCH","OUTPUT PATCH","INPUT INSERT","OUTPUT INSERT","DIRECT OUT"];
-    tabs.forEach((tl,ti)=>{ const tx=8+ti*179, on=ti===0;
+    const ptab=state.patchTab|0;
+    tabs.forEach((tl,ti)=>{ const tx=8+ti*179, on=ptab===ti;
       ctx.fillStyle=on?"#1a1a1a":"#333333"; ctx.fillRect(tx,4,175,20); bevel(tx,4,175,20,!on);
       ctx.fillStyle=on?"#f0f0f0":"#9a9a9a"; ctx.font="700 8px 'Courier New',monospace";
       ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(tl,tx+87,15); ctx.textBaseline="alphabetic";
-      if(ti>0)vreg({x:tx,y:4,w:175,h:20,onDown:()=>toast(tl+": não incluído no simulador")});
+      vreg({x:tx,y:4,w:175,h:20,onDown:()=>{state.patchTab=ti;state.patchPag=0;state.patchPagC=0;}});
     });
     ctx.fillStyle="#2e2e2e"; ctx.fillRect(8,28,894,610); bevel(8,28,894,610,false);
-    eTitle(16,44,"INPUT PATCH — IN 1-24 ▸ CH 1-24",500,11);
-    const x0=96, y0=96, cw=32, rh=20;
-    // channel headers (vertical names, selected one highlighted)
-    for(let c=0;c<24;c++){ const x=x0+c*cw;
+
+    /* As 5 abas do Patch Editor sao a MESMA grade: porta na linha, destino na coluna. */
+    const nomeCanal=i=>CH[i]?((i+1)+" "+CH[i].name):(""+(i+1));
+    const CFG=[
+      { titulo:"INPUT PATCH — porta de entrada ▸ canal",
+        linhas:INPORTS, colunas:Array.from({length:MAXCH},(_,i)=>nomeCanal(i)),
+        ligada:(pp,c)=>state.inPatch[c]===pp,
+        clicar:(pp,c)=>{ selectChannel(c); repatch(c,pp);
+          toast(state.inPatch[c]===pp?(INPORTS[pp]+" ▸ <b>CH"+(c+1)+"</b>"):("CH"+(c+1)+" <b>sem porta</b> (mudo)")); },
+        rodape:"Clique para re-patchear — vale com a base tocando. Na célula acesa, tira a porta do canal." },
+      { titulo:"OUTPUT PATCH — porta de saída ▸ canal de saída",
+        linhas:OUTPORTS, colunas:OUTCH,
+        ligada:(pp,c)=>state.outPatch[pp]===c,
+        clicar:(pp,c)=>{ state.outPatch[pp]=(state.outPatch[pp]===c)?null:c;
+          toast(state.outPatch[pp]===c?(OUTPORTS[pp]+" ▸ <b>"+OUTCH[c]+"</b>"):(OUTPORTS[pp]+" <b>sem atribuição</b>")); },
+        rodape:"De fábrica na LS9-32: OMNI OUT 1-14 ▸ MIX 1-14 · OMNI OUT 15-16 ▸ STEREO L/R (a LS9-16 é 1-6 e 7-8)." },
+      { titulo:"INPUT INSERT — saída do insert do canal de entrada",
+        linhas:OUTPORTS, colunas:Array.from({length:MAXCH},(_,i)=>nomeCanal(i)),
+        ligada:(pp,c)=>state.insPatch[c]===pp,
+        clicar:(pp,c)=>{ state.insPatch[c]=(state.insPatch[c]===pp)?null:pp; selectChannel(c);
+          toast(state.insPatch[c]===pp?("INSERT OUT do CH"+(c+1)+" ▸ <b>"+OUTPORTS[pp]+"</b>"):("CH"+(c+1)+" <b>sem insert</b>")); },
+        rodape:"O liga/desliga e o ponto do insert ficam na tela do canal — aqui é PARA ONDE o insert sai." },
+      { titulo:"OUTPUT INSERT — saída do insert do canal de saída",
+        linhas:OUTPORTS, colunas:OUTCH,
+        ligada:(pp,c)=>state.insOutPatch[c]===pp,
+        clicar:(pp,c)=>{ state.insOutPatch[c]=(state.insOutPatch[c]===pp)?null:pp;
+          toast(state.insOutPatch[c]===pp?("INSERT OUT de "+OUTCH[c]+" ▸ <b>"+OUTPORTS[pp]+"</b>"):(OUTCH[c]+" <b>sem insert</b>")); },
+        rodape:"Insert nos barramentos de saída (MIX, MATRIX, STEREO) — onde entra o processador do PA." },
+      { titulo:"DIRECT OUT — saída direta do canal de entrada",
+        linhas:OUTPORTS, colunas:Array.from({length:MAXCH},(_,i)=>nomeCanal(i)),
+        ligada:(pp,c)=>state.dirPatch[c]===pp,
+        clicar:(pp,c)=>{ state.dirPatch[c]=(state.dirPatch[c]===pp)?null:pp; selectChannel(c);
+          toast(state.dirPatch[c]===pp?("DIRECT OUT do CH"+(c+1)+" ▸ <b>"+OUTPORTS[pp]+"</b>"):("CH"+(c+1)+" <b>sem direct out</b>")); },
+        rodape:"É por aqui que se manda cada canal para o gravador ou para a mesa de monitor." },
+    ][ptab];
+
+    eTitle(16,44,CFG.titulo,540,11);
+    const NLIN=24, NCOL=24;
+    const totL=Math.ceil(CFG.linhas.length/NLIN), totC=Math.ceil(CFG.colunas.length/NCOL);
+    state.patchPag=Math.min(state.patchPag|0,totL-1); state.patchPagC=Math.min(state.patchPagC|0,totC-1);
+    const p0=state.patchPag*NLIN, c0=state.patchPagC*NCOL;
+    if(totL>1){ eBtn(596,38,20,16,"▲",false,()=>{state.patchPag=(state.patchPag+totL-1)%totL;},null,8);
+                eBtn(618,38,20,16,"▼",false,()=>{state.patchPag=(state.patchPag+1)%totL;},null,8);
+                eVal(642,38,74,16,"L "+(p0+1)+"-"+Math.min(p0+NLIN,CFG.linhas.length)); }
+    if(totC>1){ eBtn(726,38,20,16,"◀",false,()=>{state.patchPagC=(state.patchPagC+totC-1)%totC;},null,8);
+                eBtn(748,38,20,16,"▶",false,()=>{state.patchPagC=(state.patchPagC+1)%totC;},null,8);
+                eVal(772,38,110,16,"C "+(c0+1)+"-"+Math.min(c0+NCOL,CFG.colunas.length)); }
+
+    const x0=112, y0=96, cw=31, rh=20;
+    for(let j=0;j<NCOL;j++){ const c=c0+j; if(c>=CFG.colunas.length)break; const x=x0+j*cw;
       ctx.save(); ctx.translate(x+cw/2+3,y0-6); ctx.rotate(-Math.PI/2);
-      ctx.fillStyle=c===state.sel?"#f2a83c":"#9a9a9a"; ctx.font="700 7.5px Arial"; ctx.textAlign="left";
-      ctx.fillText(CH[c].name.slice(0,9),0,0); ctx.restore();
-      eBtn(x+2,y0-4,cw-4,10,""+(c+1),c===state.sel,()=>selectChannel(c),ED.yel,6);
+      ctx.fillStyle="#9a9a9a"; ctx.font="700 7.5px Arial"; ctx.textAlign="left";
+      ctx.fillText(String(CFG.colunas[c]).slice(0,11),0,0); ctx.restore();
     }
-    // rows: LS9 local input ports; the diagonal is the 1:1 patch this sim ships with
-    for(let p=0;p<24;p++){ const y=y0+10+p*rh;
-      eNameBox(16,y+2,74,15,"IN "+(p+1));
-      for(let c=0;c<24;c++){ const x=x0+c*cw, on=(p===c);
+    for(let i=0;i<NLIN;i++){ const pp=p0+i; if(pp>=CFG.linhas.length)break; const y=y0+10+i*rh;
+      eNameBox(16,y+2,90,15,CFG.linhas[pp]);
+      for(let j=0;j<NCOL;j++){ const c=c0+j; if(c>=CFG.colunas.length)break;
+        const x=x0+j*cw, on=CFG.ligada(pp,c);
         ctx.fillStyle=on?ED.btnLit:"#3a3a3a"; ctx.fillRect(x+4,y+3,cw-8,rh-8); bevel(x+4,y+3,cw-8,rh-8,on);
         if(on){ ctx.fillStyle="#101010"; ctx.font="700 9px Arial"; ctx.textAlign="center"; ctx.fillText("●",x+cw/2,y+13); }
-        vreg({x:x+4,y:y+3,w:cw-8,h:rh-8,onDown:()=>{ selectChannel(c);
-          toast(on?("IN "+(p+1)+" ▸ <b>"+CH[c].name+"</b>"):"Re-patch: não incluído (patch 1:1 fixo)"); }});
+        vreg({x:x+4,y:y+3,w:cw-8,h:rh-8,onDown:()=>{ CFG.clicar(pp,c); drawScreen(); }});
       }
     }
     ctx.fillStyle="#9a9a9a"; ctx.font="700 9px Arial"; ctx.textAlign="left";
-    ctx.fillText("Patch 1:1 (IN n ▸ CH n) — as bases do SMU entram por estas portas.",16,632);
+    ctx.fillText(CFG.rodape,16,632);
     vend();
   }
 
@@ -1895,18 +2017,240 @@
   }
 
   /* ================= SCENE — mirrors CL Editor "Scene" window ================= */
+  /* ====== Campo de canais, compartilhado por RECALL SAFE e FOCUS.
+     Tres estados: cheio = todos os parametros, meio-tom = alguns, apagado = fora. */
+  function campoCanais(x0,y0,leitura,clique,selAtual){
+    const cw=34,chh=17,porLinha=24;
+    for(let i=0;i<MAXCH;i++){
+      const cx=x0+(i%porLinha)*cw, cy=y0+Math.floor(i/porLinha)*(chh+3);
+      const st=leitura(i);
+      ctx.fillStyle=st===2?"#e8c838":(st===1?"#8a7420":"#242424");
+      ctx.fillRect(cx,cy,cw-2,chh); bevel(cx,cy,cw-2,chh,st>0);
+      if(i===selAtual){ ctx.strokeStyle="#4aa3ff"; ctx.lineWidth=1.5; ctx.strokeRect(cx-.5,cy-.5,cw-1,chh+1); ctx.lineWidth=1; }
+      ctx.fillStyle=st===2?"#101010":(st===1?"#e8d8a0":"#8a8a8a");
+      ctx.font="700 8px Arial"; ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.fillText(String(i+1),cx+(cw-2)/2,cy+chh/2+.5); ctx.textBaseline="alphabetic";
+      vreg({x:cx,y:cy,w:cw-2,h:chh,onDown:()=>clique(i)});
+    }
+    return y0+Math.ceil(MAXCH/porLinha)*(chh+3);
+  }
+  function botoesParametro(x0,y0,pega,alterna){
+    const bw=88,bh=18, itens=["ALL"].concat(SAFEPAR.map(pp=>pp[0]));
+    itens.forEach((g,gi)=>{ const bx=x0+(gi%6)*(bw+5), by=y0+Math.floor(gi/6)*(bh+5);
+      eBtn(bx,by,bw,bh,g,!!pega(g),()=>alterna(g),ED.yel,8); });
+    return y0+Math.ceil(itens.length/6)*(bh+5);
+  }
+
+  /* ============ RECALL SAFE (Owner's Manual p.140) — exclusao GLOBAL ============ */
+  function paneRecallSafe(){
+    const c=CH[state.rsSel]||CH[0];
+    eTitle(20,46,"RECALL SAFE",190,11);
+    eBtn(300,38,84,18,"CLEAR ALL",false,()=>{ for(let i=0;i<MAXCAP;i++){ CH[i].recallSafe=false; CH[i].rsPar={ALL:true}; }
+      state.rsGlobal={}; toast("RECALL SAFE: <b>tudo liberado</b>"); },null,8);
+    eBtn(390,38,84,18,"SET ALL",false,()=>{ for(let i=0;i<MAXCH;i++){ CH[i].recallSafe=true; CH[i].rsPar={ALL:true}; }
+      RSGLOBAL.forEach(g=>state.rsGlobal[g]=true); toast("RECALL SAFE: <b>tudo protegido</b>"); },null,8);
+    eBtn(486,38,96,18,"SET BY SEL",!!state.rsSetBySel,()=>{state.rsSetBySel=!state.rsSetBySel;},ED.yel,8);
+    ctx.fillStyle="#8a8a8a"; ctx.font="700 8px Arial"; ctx.textAlign="left";
+    ctx.fillText("ligado: o [SEL] do painel marca/desmarca SAFE no canal",592,51);
+    ctx.fillStyle="#9a9a9a"; ctx.font="700 9px Arial"; ctx.fillText("SAFE CHANNEL",20,74);
+    const yFim=campoCanais(20,82,
+      i=>{ if(!CH[i].recallSafe)return 0; return (CH[i].rsPar&&CH[i].rsPar.ALL)?2:1; },
+      i=>{ state.rsSel=i; CH[i].recallSafe=!CH[i].recallSafe; }, state.rsSel);
+    let y=yFim+14;
+    ctx.fillStyle="#9a9a9a"; ctx.font="700 9px Arial"; ctx.fillText("SELECTED CHANNEL",20,y+12);
+    eBtn(140,y+2,22,16,"◀",false,()=>{state.rsSel=(state.rsSel+MAXCH-1)%MAXCH;},null,9);
+    eBtn(166,y+2,22,16,"▶",false,()=>{state.rsSel=(state.rsSel+1)%MAXCH;},null,9);
+    ctx.fillStyle=c.color||"#334155"; ctx.fillRect(196,y+2,10,16);
+    eVal(210,y+2,150,16,(state.rsSel+1)+"  "+(c.name||"—"));
+    eBtn(370,y+2,70,16,"SAFE",!!c.recallSafe,()=>{c.recallSafe=!c.recallSafe;},ED.yel,8);
+    y+=28;
+    ctx.fillStyle="#9a9a9a"; ctx.font="700 9px Arial"; ctx.fillText("SAFE PARAMETER",20,y+10);
+    y=botoesParametro(20,y+16, g=>(c.rsPar||{})[g],
+      g=>{ const pr=c.rsPar||(c.rsPar={});
+           if(g==="ALL"){ const v=!pr.ALL; c.rsPar=v?{ALL:true}:{}; }
+           else { delete pr.ALL; pr[g]=!pr[g]; if(!pr[g])delete pr[g]; }
+           if(Object.keys(c.rsPar).length) c.recallSafe=true; });
+    y+=12;
+    ctx.fillStyle="#9a9a9a"; ctx.font="700 9px Arial"; ctx.fillText("GLOBAL RECALL SAFE",20,y+10);
+    RSGLOBAL.forEach((g,gi)=>{ const bx=20+(gi%6)*93, by=y+16+Math.floor(gi/6)*23;
+      eBtn(bx,by,88,18,g,!!state.rsGlobal[g],()=>{ state.rsGlobal[g]=!state.rsGlobal[g]; if(!state.rsGlobal[g])delete state.rsGlobal[g]; },ED.yel,7); });
+    ctx.fillStyle="#7a7a7a"; ctx.font="700 8px Arial";
+    ctx.fillText("O canal marcado NÃO é sobrescrito pelo RECALL — vale para TODAS as cenas.",20,624);
+  }
+
+  /* ============ FOCUS RECALL (p.139) — inclusao POR CENA ============ */
+  function paneFocus(){
+    const slot=state.scene, fo=state.focus[slot], i0=state.fcSel, c=CH[i0]||CH[0];
+    eTitle(20,46,"FOCUS — CENA "+String(slot+1).padStart(3,"0"),260,11);
+    eBtn(300,38,70,18,"FOCUS",!!fo.on,()=>{fo.on=!fo.on;},ED.yel,8);
+    eBtn(376,38,70,18,"ALL",!!fo.all,()=>{fo.all=!fo.all;},ED.yel,8);
+    eBtn(452,38,84,18,"CLEAR ALL",false,()=>{ fo.ch={}; fo.par={}; fo.all=true; toast("FOCUS: limpo"); },null,8);
+    eBtn(542,38,96,18,"SET BY SEL",!!state.fcSetBySel,()=>{state.fcSetBySel=!state.fcSetBySel;},ED.yel,8);
+    ctx.fillStyle="#8a8a8a"; ctx.font="700 8px Arial"; ctx.textAlign="left";
+    ctx.fillText(fo.all?"ALL ligado: a cena recupera TUDO":"ALL desligado: só o marcado é recuperado",648,51);
+    ctx.fillStyle="#9a9a9a"; ctx.font="700 9px Arial"; ctx.fillText("FOCUS CHANNEL",20,74);
+    const yFim=campoCanais(20,82,
+      i=>{ if(fo.all)return 2; if(!fo.ch[i])return 0; const pr=fo.par[i]; return (!pr||pr.ALL)?2:1; },
+      i=>{ state.fcSel=i; if(fo.all)fo.all=false; fo.ch[i]=!fo.ch[i]; if(!fo.ch[i])delete fo.ch[i]; }, state.fcSel);
+    let y=yFim+14;
+    ctx.fillStyle="#9a9a9a"; ctx.font="700 9px Arial"; ctx.fillText("SELECTED CHANNEL",20,y+12);
+    eBtn(140,y+2,22,16,"◀",false,()=>{state.fcSel=(state.fcSel+MAXCH-1)%MAXCH;},null,9);
+    eBtn(166,y+2,22,16,"▶",false,()=>{state.fcSel=(state.fcSel+1)%MAXCH;},null,9);
+    ctx.fillStyle=c.color||"#334155"; ctx.fillRect(196,y+2,10,16);
+    eVal(210,y+2,150,16,(i0+1)+"  "+(c.name||"—"));
+    eBtn(370,y+2,124,16,"APPLY TO ALL INPUT",false,()=>{
+      const base=JSON.parse(JSON.stringify(fo.par[i0]||{ALL:true}));
+      for(let i=0;i<MAXCH;i++){ fo.par[i]=JSON.parse(JSON.stringify(base)); if(fo.ch[i0])fo.ch[i]=true; }
+      fo.all=false; toast("FOCUS: parâmetros do CH"+(i0+1)+" aplicados a <b>todos</b>"); },null,7);
+    y+=28;
+    ctx.fillStyle="#9a9a9a"; ctx.font="700 9px Arial"; ctx.fillText("RECALL PARAMETER",20,y+10);
+    y=botoesParametro(20,y+16, g=>{ const pr=fo.par[i0]; return pr?pr[g]:(g==="ALL"); },
+      g=>{ const pr=fo.par[i0]||(fo.par[i0]={ALL:true});
+           if(g==="ALL"){ const v=!pr.ALL; fo.par[i0]=v?{ALL:true}:{}; }
+           else { delete pr.ALL; pr[g]=!pr[g]; if(!pr[g])delete pr[g]; }
+           fo.all=false; fo.ch[i0]=true; });
+    ctx.fillStyle="#7a7a7a"; ctx.font="700 8px Arial";
+    ctx.fillText("FOCUS é por CENA. Barrado pelo FOCUS ou pelo RECALL SAFE = não recupera.",20,624);
+  }
+
+  /* ============ FADE TIME (p.143) — a LS9 guarda 300 cenas: lista pagina de 20 em 20 ====== */
+  function paneFadeTime(){
+    eTitle(20,46,"FADE TIME",120,11);
+    const POR=20, pag=Math.floor(state.scene/POR), base=pag*POR;
+    ctx.fillStyle="#9a9a9a"; ctx.font="700 9px Arial"; ctx.textAlign="left";
+    ctx.fillText("SCENE",24,74); ctx.fillText("FADE",120,74); ctx.fillText("FADE TIME",180,74); ctx.fillText("STATUS",286,74);
+    eBtn(300,38,22,16,"◀",false,()=>{ state.scene=Math.max(0,base-POR); },null,9);
+    eBtn(324,38,22,16,"▶",false,()=>{ state.scene=Math.min(N_SCENE-1,base+POR); },null,9);
+    eVal(350,38,120,16,"cenas "+(base+1)+"-"+Math.min(base+POR,N_SCENE));
+    for(let k=0;k<POR;k++){
+      const s2=base+k; if(s2>=N_SCENE)break;
+      const y=80+k*24, fd=state.fade[s2], sel=s2===state.scene;
+      ctx.fillStyle=sel?"#2a4a8a":(k%2?"#242424":"#1e1e1e"); ctx.fillRect(20,y,340,22);
+      ctx.fillStyle="#d0d0d0"; ctx.font="700 9px 'Courier New',monospace"; ctx.textAlign="center";
+      ctx.fillText(String(s2+1).padStart(3,"0"),44,y+15);
+      vreg({x:20,y,w:96,h:22,onDown:()=>{state.scene=s2;}});
+      eBtn(118,y+3,52,16,"FADE",!!fd.on,()=>{fd.on=!fd.on;},ED.yel,8);
+      eVal(178,y+3,62,16,fd.time.toFixed(1)+"s");
+      eBtn(244,y+3,16,16,"–",false,()=>{fd.time=Math.max(0.1,+(fd.time-0.5).toFixed(1));},null,9);
+      eBtn(263,y+3,16,16,"+",false,()=>{fd.time=Math.min(60,+(fd.time+0.5).toFixed(1));},null,9);
+      ctx.fillStyle=fd.on?"#e8c838":"#6a6a6a"; ctx.font="700 8px Arial"; ctx.textAlign="left";
+      ctx.fillText(fd.on?("FADE · "+Object.keys(fd.ch).length+" canais"):"—",286,y+15);
+      if(!scenes[s2]){ ctx.fillStyle="#5a5a5a"; ctx.textAlign="right"; ctx.fillText("vazia",356,y+15); }
+    }
+    const fd=state.fade[state.scene];
+    ctx.fillStyle="#9a9a9a"; ctx.font="700 9px Arial"; ctx.textAlign="left";
+    ctx.fillText("FADE CHANNEL — cena "+String(state.scene+1).padStart(3,"0"),380,74);
+    eBtn(620,64,64,16,"ALL",false,()=>{ for(let i=0;i<MAXCH;i++)fd.ch[i]=true; },null,8);
+    eBtn(690,64,64,16,"CLEAR",false,()=>{ fd.ch={}; },null,8);
+    campoCanais(380,82, i=>fd.ch[i]?2:0, i=>{ fd.ch[i]=!fd.ch[i]; if(!fd.ch[i])delete fd.ch[i]; }, -1);
+    ctx.fillStyle="#7a7a7a"; ctx.font="700 8px Arial"; ctx.textAlign="left";
+    ctx.fillText("Com FADE ligado o fader NÃO pula — ele anda até o valor da cena no tempo ajustado.",20,624);
+    ctx.fillText("Recall da mesma cena com o fader andando leva todo mundo direto ao destino.",20,636);
+  }
+
+  /* ============ BIBLIOTECA DE CENAS e ARQUIVO DE SESSAO ============ */
+  function salvarArqCenas(){
+    const fonte=cenasArquivo.some(Boolean)?cenasArquivo:scenes;
+    if(!fonte.some(Boolean)){ toast("Nenhuma cena para salvar"); return; }
+    const blob=new Blob([JSON.stringify({app:"SMU LS9 Editor",tipo:"cenas",model:state.model,cenas:fonte},null,1)],{type:"application/json"});
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+    a.download="cenas-"+state.model+"-"+new Date().toISOString().slice(0,16).replace(/[:T]/g,"")+".smusc";
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+    nomeArqCenas=a.download; drawScreen(); toast("Cenas <b>salvas</b> ▸ "+a.download);
+  }
+  function abrirArqCenas(){
+    const inp=document.createElement("input"); inp.type="file"; inp.accept=".smusc,application/json";
+    inp.onchange=()=>{ const f=inp.files&&inp.files[0]; if(!f)return; const fr=new FileReader();
+      fr.onload=()=>{ let d; try{ d=JSON.parse(fr.result); }catch(e){ toast("Arquivo ilegível"); return; }
+        if(!d||d.tipo!=="cenas"){ toast("Este arquivo não é uma biblioteca de cenas"); return; }
+        cenasArquivo=new Array(N_SCENE).fill(null);
+        (d.cenas||[]).forEach((c,i)=>{ if(i<N_SCENE)cenasArquivo[i]=c; });
+        nomeArqCenas=f.name; drawScreen();
+        toast("Arquivo de cenas <b>aberto</b> — use ▸ para levar à memória interna"); };
+      fr.readAsText(f); };
+    inp.click();
+  }
+  function sessaoSalvar(){
+    const dados={ v:1, app:"SMU LS9 Editor", model:state.model, quando:new Date().toISOString(),
+      ch:CH.map(snapCh), cenas:scenes,
+      inPatch:state.inPatch, outPatch:state.outPatch,
+      insPatch:state.insPatch, dirPatch:state.dirPatch, insOutPatch:state.insOutPatch,
+      master:state.master, mono:state.mono, link:state.link, muteActive:state.muteActive,
+      rack:state.rack, geq:state.geq,
+      rsGlobal:state.rsGlobal, focus:state.focus, fade:state.fade,
+      rsPar:CH.map(c=>c.rsPar), recallSafe:CH.map(c=>c.recallSafe) };
+    const blob=new Blob([JSON.stringify(dados,null,1)],{type:"application/json"});
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+    a.download="sessao-"+state.model+"-"+new Date().toISOString().slice(0,16).replace(/[:T]/g,"")+".smuls9";
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+    toast("Sessão <b>salva</b> ▸ "+a.download);
+  }
+  function sessaoAbrir(){
+    const inp=document.createElement("input"); inp.type="file"; inp.accept=".smuls9,application/json";
+    inp.onchange=()=>{ const f=inp.files&&inp.files[0]; if(!f)return; const fr=new FileReader();
+      fr.onload=()=>{ let d; try{ d=JSON.parse(fr.result); }catch(e){ toast("Arquivo ilegível: não é uma sessão"); return; }
+        if(!d||d.app!=="SMU LS9 Editor"){ toast("Este arquivo não é uma sessão do LS9 Editor"); return; }
+        marcarUndo();
+        if(d.model&&MODELS[d.model]) applyModel(d.model,{repatch:false});
+        (d.ch||[]).forEach((sc,i)=>{ if(CH[i]) Object.assign(CH[i],sc); });
+        (d.recallSafe||[]).forEach((v,i)=>{ if(CH[i])CH[i].recallSafe=!!v; });
+        (d.rsPar||[]).forEach((v,i)=>{ if(CH[i])CH[i].rsPar=v||{ALL:true}; });
+        if(d.cenas) d.cenas.forEach((c,i)=>scenes[i]=c);
+        if(d.inPatch) state.inPatch=d.inPatch.slice();
+        if(d.outPatch) state.outPatch=d.outPatch.slice();
+        if(d.insPatch) state.insPatch=d.insPatch.slice();
+        if(d.dirPatch) state.dirPatch=d.dirPatch.slice();
+        if(d.insOutPatch) state.insOutPatch=d.insOutPatch.slice();
+        if(d.master!=null)state.master=d.master; if(d.mono!=null)state.mono=d.mono;
+        if(d.link)state.link=d.link.slice();
+        if(d.muteActive)state.muteActive=d.muteActive.slice();
+        if(d.rack)state.rack=d.rack; if(d.geq)state.geq=d.geq;
+        if(d.rsGlobal)state.rsGlobal=d.rsGlobal;
+        if(d.focus)state.focus=d.focus; if(d.fade)state.fade=d.fade;
+        ligarPatch();
+        for(let i=0;i<MAXCAP;i++)applyChanAudio(i); applyMasterAudio(); applyRackAll(); applyGeq();
+        paintBay(); paintSelected(); paintRightRack(); drawScreen();
+        toast("Sessão <b>aberta</b> ▸ "+f.name); };
+      fr.readAsText(f); };
+    inp.click();
+  }
+  function sessaoNova(){
+    marcarUndo();
+    for(let i=0;i<N_SCENE;i++)scenes[i]=null;
+    state.inPatch=Array.from({length:MAXCAP},(_,i)=>i);
+    state.outPatch=outPatchFabrica();
+    state.insPatch=new Array(MAXCAP).fill(null);
+    state.dirPatch=new Array(MAXCAP).fill(null);
+    state.insOutPatch=new Array(OUTCH.length).fill(null);
+    state.rsGlobal={};
+    state.focus=Array.from({length:N_SCENE},()=>({on:false,all:true,ch:{},par:{}}));
+    state.fade =Array.from({length:N_SCENE},()=>{ const ch={}; for(let i=0;i<MAXCAP;i++)ch[i]=true; return {on:false,time:3.0,ch}; });
+    for(let i=0;i<MAXCAP;i++){ CH[i].recallSafe=false; CH[i].rsPar={ALL:true}; }
+    loadSong(curSong); ligarPatch();
+    for(let i=0;i<MAXCAP;i++)applyChanAudio(i); applyMasterAudio();
+    paintBay(); paintSelected(); paintRightRack(); drawScreen();
+    toast("Sessão <b>nova</b> ▸ cenas apagadas, patch de fábrica, recall liberado");
+  }
+
   function drawScenes(){
     vbegin(910,646); ctx.fillStyle=ED.bg; ctx.fillRect(0,0,910,646);
     const tabs=["SCENE MEMORY","RECALL SAFE","FADE TIME","FOCUS RECALL"];
-    tabs.forEach((tl,ti)=>{ const tx=8+ti*224, on=ti===0;
+    const stab=state.scnTab|0;
+    tabs.forEach((tl,ti)=>{ const tx=8+ti*224, on=stab===ti;
       ctx.fillStyle=on?"#1a1a1a":"#333333"; ctx.fillRect(tx,4,220,20); bevel(tx,4,220,20,!on);
       ctx.fillStyle=on?"#f0f0f0":"#9a9a9a"; ctx.font="700 9px 'Courier New',monospace"; ctx.textAlign="center"; ctx.textBaseline="middle";
       ctx.fillText(tl,tx+110,15); ctx.textBaseline="alphabetic";
-      if(ti>0)vreg({x:tx,y:4,w:220,h:20,onDown:()=>toast(tl+": não incluído no simulador")});
+      vreg({x:tx,y:4,w:220,h:20,onDown:()=>{state.scnTab=ti;}});
     });
     ctx.fillStyle="#2e2e2e"; ctx.fillRect(8,30,894,608); bevel(8,30,894,608,false);
-    eVal(20,44,310,16,"NO FILE");
-    ["OPEN","CLOSE","SAVE","SAVE AS..."].forEach((bl,bi)=>eBtn(340+bi*66,44,62,16,bl,false,()=>toast("Arquivo de cenas: recurso do M7CL Editor (PC)"),null,7));
+    if(stab===1){ paneRecallSafe(); vend(); return; }
+    if(stab===2){ paneFadeTime();  vend(); return; }
+    if(stab===3){ paneFocus();     vend(); return; }
+    eVal(20,44,310,16,nomeArqCenas);
+    eBtn(340,44,62,16,"OPEN",false,()=>abrirArqCenas(),null,7);
+    eBtn(406,44,62,16,"CLOSE",false,()=>{ cenasArquivo=new Array(N_SCENE).fill(null); nomeArqCenas="NO FILE"; drawScreen(); toast("Arquivo de cenas <b>fechado</b>"); },null,7);
+    eBtn(472,44,62,16,"SAVE",false,()=>salvarArqCenas(),null,7);
+    eBtn(538,44,62,16,"SAVE AS...",false,()=>salvarArqCenas(),null,7);
     ctx.fillStyle="#bdbdbd"; ctx.font="700 10px Arial"; ctx.textAlign="center";
     ctx.fillText("FILE",226,82); ctx.fillText("INTERNAL DATA",690,82);
     const drawList=(x,internal)=>{
@@ -1939,7 +2283,7 @@
     eBtn(436,304,44,18,"←",false,()=>toast("Transferência p/ arquivo: recurso do editor"),null,10);
     eBtn(488,566,110,26,"STORE",false,()=>{storeScene(state.scene);paintRightRack();},ED.yel,10);
     eBtn(606,566,110,26,"RECALL",false,()=>{recallScene(state.scene);},ED.yel,10);
-    eBtn(724,566,80,26,"UNDO",false,()=>toast("UNDO (última cena)"),null,10);
+    eBtn(724,566,80,26,"UNDO",false,()=>desfazer(),null,10);
     ctx.fillStyle="#bdbdbd"; ctx.font="700 10px Arial"; ctx.textAlign="left";
     ctx.fillText("Cena selecionada: "+String(state.scene+1).padStart(3,'0'),24,582);
     vend();
@@ -2131,6 +2475,10 @@
       o.textContent=s.label+extra; sel.appendChild(o); }); sel.value=Math.min(curSong,SONGS.length-1); }
   let ac=null,masterGain=null,monoTrim=null,lim=null,masterAn=null,playing=false,curSong=0,loadTok=0,realSources=[];
   let rackN=[],geqN=[],stinN=[]; const bufCache={},aNodes=[];
+  /* PORTAS DE ENTRADA: o sinal chega numa PORTA e o patch decide qual canal a recebe
+     (fonte -> portN[porta] -> canal). Antes o stem ia direto no canal e a grade de patch
+     recusava o clique com "patch 1:1 fixo". */
+  let portN=[];
 
   /* ===================== P() — automação que TERMINA =====================
      Um AudioParam com automação pendente sai do caminho rápido do navegador: o
@@ -2325,7 +2673,28 @@
       aNodes[i]={trim,hpf,eq:[eq0,eq1,eq2,eq3],lpf,preAn,preBuf:new Float32Array(preAn.fftSize),gate,comp,mk,dlyN,fdr,pan,an,buf:new Float32Array(an.fftSize),fxS};
     }
     for(let i=0;i<MAXCAP;i++) applyChanAudio(i);
+    portN=[]; for(let pp=0;pp<INPORTS.length;pp++){ const g=ac.createGain(); g.gain.value=1; portN.push(g); }
+    ligarPatch();
     applyRackAll();
+  }
+  /* (re)faz TODAS as ligacoes porta -> canal a partir de state.inPatch */
+  function ligarPatch(){
+    if(!ac||!portN.length)return;
+    portN.forEach(g=>{ try{ g.disconnect(); }catch(e){} });
+    for(let c=0;c<MAXCAP;c++){ const pp=state.inPatch[c];
+      if(pp!=null && portN[pp] && aNodes[c]) portN[pp].connect(aNodes[c].trim); }
+  }
+  /* Re-patch de UM canal. Vale com a base tocando: so troca a ligacao. */
+  function repatch(c,pp){
+    const ant=state.inPatch[c];
+    state.inPatch[c]=(ant===pp)?null:pp;
+    if(ac&&portN.length){
+      if(ant!=null&&portN[ant]&&aNodes[c]){ try{ portN[ant].disconnect(aNodes[c].trim); }catch(e){} }
+      const novo=state.inPatch[c];
+      if(novo!=null&&portN[novo]&&aNodes[c]) portN[novo].connect(aNodes[c].trim);
+    }
+    CH[c].hasAudio = state.inPatch[c]!=null && state.inPatch[c]<MAXCH;
+    drawScreen();
   }
   applyChanAudio=function(i){
     if(!ac||!aNodes[i])return; const n=aNodes[i],c=CH[i],t=ac.currentTime;
@@ -2387,17 +2756,106 @@
   }
   function applyMasterAudio(){ if(ac&&masterGain){ P(masterGain.gain,dbToLin(state.master),ac.currentTime,0.02); P(monoTrim.gain,dbToLin(state.mono),ac.currentTime,0.02); } }
   applyMonitor=function(){ /* monitor bus is didactic; dim lowers master monitor feel */ };
-  function snapCh(c){ return JSON.parse(JSON.stringify({gain:c.gain,dgain:c.dgain,att:c.att,phase:c.phase,phantom:c.phantom,hpfOn:c.hpfOn,hpf:c.hpf,lpfOn:c.lpfOn,lpf:c.lpf,eqOn:c.eqOn,eq:c.eq,eqType:c.eqType,gateOn:c.gateOn,gateThr:c.gateThr,gateRange:c.gateRange,gateAtk:c.gateAtk,gateHold:c.gateHold,gateDecay:c.gateDecay,compOn:c.compOn,compThr:c.compThr,compRatio:c.compRatio,compAtk:c.compAtk,compRel:c.compRel,compKnee:c.compKnee,compGain:c.compGain,key1Src:c.key1Src,key1F:c.key1F,key1Hpf:c.key1Hpf,key2Src:c.key2Src,pan:c.pan,stMode:c.stMode,stAssign:c.stAssign,monoAsn:c.monoAsn,fader:c.fader,on:c.on,muteSafe:c.muteSafe,recallSafe:c.recallSafe,insertOn:c.insertOn,insertPoint:c.insertPoint,directOn:c.directOn,directLv:c.directLv,directPoint:c.directPoint,delayOn:c.delayOn,delayMs:c.delayMs,sends:c.sends,sendOn:c.sendOn,sendPre:c.sendPre,mtxSends:c.mtxSends,mtxOn:c.mtxOn,mtxPre:c.mtxPre,mute:c.mute})); }
-  function storeScene(slot){ scenes[slot]={ model:state.model, ch:CH.map(snapCh), master:state.master, mono:state.mono, link:state.link.slice(), muteActive:state.muteActive.slice(), rack:JSON.parse(JSON.stringify(state.rack)), geq:JSON.parse(JSON.stringify(state.geq)), ts:Date.now() }; toast("Cena "+(slot+1)+" <b>armazenada</b> ✔"); }
+  /* name/color/file entram na cena: sem eles os botoes NAME e PATCH do RECALL SAFE nao
+     teriam o que proteger. */
+  function snapCh(c){ return JSON.parse(JSON.stringify({name:c.name,color:c.color,file:c.file,hasAudio:c.hasAudio,gain:c.gain,dgain:c.dgain,att:c.att,phase:c.phase,phantom:c.phantom,hpfOn:c.hpfOn,hpf:c.hpf,lpfOn:c.lpfOn,lpf:c.lpf,eqOn:c.eqOn,eq:c.eq,eqType:c.eqType,gateOn:c.gateOn,gateThr:c.gateThr,gateRange:c.gateRange,gateAtk:c.gateAtk,gateHold:c.gateHold,gateDecay:c.gateDecay,compOn:c.compOn,compThr:c.compThr,compRatio:c.compRatio,compAtk:c.compAtk,compRel:c.compRel,compKnee:c.compKnee,compGain:c.compGain,key1Src:c.key1Src,key1F:c.key1F,key1Hpf:c.key1Hpf,key2Src:c.key2Src,pan:c.pan,stMode:c.stMode,stAssign:c.stAssign,monoAsn:c.monoAsn,fader:c.fader,on:c.on,muteSafe:c.muteSafe,recallSafe:c.recallSafe,insertOn:c.insertOn,insertPoint:c.insertPoint,directOn:c.directOn,directLv:c.directLv,directPoint:c.directPoint,delayOn:c.delayOn,delayMs:c.delayMs,sends:c.sends,sendOn:c.sendOn,sendPre:c.sendPre,mtxSends:c.mtxSends,mtxOn:c.mtxOn,mtxPre:c.mtxPre,mute:c.mute})); }
+  function storeScene(slot){ marcarUndoCena(slot); scenes[slot]={ model:state.model, ch:CH.map(snapCh), master:state.master, mono:state.mono, link:state.link.slice(), muteActive:state.muteActive.slice(), rack:JSON.parse(JSON.stringify(state.rack)), geq:JSON.parse(JSON.stringify(state.geq)), ts:Date.now() }; toast("Cena "+(slot+1)+" <b>armazenada</b> ✔"); }
+  /* Um grupo de parametro passa para o canal i?  FOCUS decide o que ENTRA (por cena),
+     RECALL SAFE decide o que fica de FORA (global). Barrado por um dos dois = nao recupera. */
+  function grupoPassa(i,grupo,fo){
+    if(fo && fo.on && !fo.all){
+      if(!fo.ch[i]) return false;
+      const p=fo.par[i]; if(p && !p.ALL && !p[grupo]) return false;
+    }
+    const c=CH[i];
+    if(c.recallSafe){ const p=c.rsPar||{ALL:true}; if(p.ALL||p[grupo]) return false; }
+    return true;
+  }
+  /* FADE: o fader ANDA ate o valor da cena. Recall novo durante o movimento leva todo mundo
+     direto ao destino. A rede por relogio existe porque o rAF NAO roda com a pagina oculta
+     (medido: zero quadros) e o fader congelaria no meio do caminho, num estado que a mesa
+     real nunca teria. */
+  let _fadeRAF=0,_fadeJob=null,_fadeFim=0;
+  function pararFade(saltar){
+    if(!_fadeJob)return;
+    if(saltar)_fadeJob.alvos.forEach(a=>{ CH[a.i].fader=a.to; applyChanAudio(a.i); });
+    cancelAnimationFrame(_fadeRAF); clearTimeout(_fadeFim); _fadeJob=null; paintBay(); drawScreen();
+  }
+  function iniciarFade(alvos,segundos){
+    pararFade(true); if(!alvos.length)return;
+    const t0=performance.now(), dur=Math.max(0.05,segundos)*1000;
+    alvos.forEach(a=>a.from=CH[a.i].fader);
+    _fadeJob={alvos};
+    const passo=()=>{ if(!_fadeJob)return;
+      const t=Math.min(1,(performance.now()-t0)/dur);
+      alvos.forEach(a=>{ CH[a.i].fader=a.from+(a.to-a.from)*t; applyChanAudio(a.i); });
+      paintBay(); paintSelected(); drawScreen();
+      if(t<1)_fadeRAF=requestAnimationFrame(passo); else _fadeJob=null; };
+    _fadeRAF=requestAnimationFrame(passo);
+    _fadeFim=setTimeout(()=>{ if(!_fadeJob)return;
+      _fadeJob.alvos.forEach(a=>{ CH[a.i].fader=a.to; applyChanAudio(a.i); });
+      cancelAnimationFrame(_fadeRAF); _fadeJob=null; paintBay(); paintSelected(); drawScreen(); }, dur+60);
+  }
+  /* UNDO/REDO. Antes o UNDO mostrava "cena anterior restaurada" e nao restaurava nada —
+     mentir e pior que faltar. Desfazer RECALL volta a MESA; desfazer STORE volta a MEMORIA
+     da cena (a mesa nao se mexe). Sao operacoes diferentes, por isso a pilha guarda o tipo. */
+  const _undo=[],_redo=[];
+  function fotoMesa(){ return { ch:CH.map(snapCh), master:state.master, mono:state.mono,
+      link:state.link.slice(), muteActive:state.muteActive.slice(),
+      rack:JSON.parse(JSON.stringify(state.rack)), geq:JSON.parse(JSON.stringify(state.geq)) }; }
+  function aplicarFoto(s){
+    pararFade(false);
+    s.ch.forEach((sc,i)=>{ if(CH[i]) Object.assign(CH[i],JSON.parse(JSON.stringify(sc))); });
+    state.master=s.master; state.mono=s.mono;
+    state.link=s.link.slice(); state.muteActive=s.muteActive.slice();
+    state.rack=JSON.parse(JSON.stringify(s.rack)); state.geq=JSON.parse(JSON.stringify(s.geq));
+    for(let i=0;i<MAXCAP;i++)applyChanAudio(i); applyMasterAudio(); applyRackAll(); applyGeq();
+    paintBay(); paintSelected(); paintRightRack(); drawScreen();
+  }
+  const cenaFoto=slot=>scenes[slot]?JSON.parse(JSON.stringify(scenes[slot])):null;
+  function marcarUndo(){ _undo.push({tipo:"mesa",foto:fotoMesa()}); if(_undo.length>20)_undo.shift(); _redo.length=0; }
+  function marcarUndoCena(slot){ _undo.push({tipo:"cena",slot,dados:cenaFoto(slot)}); if(_undo.length>20)_undo.shift(); _redo.length=0; }
+  function trocar(e){
+    if(e.tipo==="mesa"){ const inv={tipo:"mesa",foto:fotoMesa()}; aplicarFoto(e.foto); return inv; }
+    const inv={tipo:"cena",slot:e.slot,dados:cenaFoto(e.slot)}; scenes[e.slot]=e.dados; drawScreen(); return inv;
+  }
+  function desfazer(){ if(!_undo.length){ toast("UNDO: nada para desfazer"); return; }
+    const e=_undo.pop(); _redo.push(trocar(e));
+    toast(e.tipo==="mesa"?"<b>UNDO</b> ▸ RECALL desfeito, mesa como estava":"<b>UNDO</b> ▸ STORE desfeito na cena "+(e.slot+1)); }
+  function refazer(){ if(!_redo.length){ toast("REDO: nada para refazer"); return; }
+    const e=_redo.pop(); _undo.push(trocar(e));
+    toast(e.tipo==="mesa"?"<b>REDO</b> ▸ RECALL refeito":"<b>REDO</b> ▸ STORE refeito"); }
   function recallScene(slot){ const s=scenes[slot]; if(!s){ toast("Cena "+(slot+1)+" vazia"); return; }
+    marcarUndo();
     if(s.model && s.model!==state.model) applyModel(s.model,{repatch:false});   // scene carries the model — restore capacity first
-    s.ch.forEach((sc,i)=>{ if(!CH[i].recallSafe) Object.assign(CH[i],JSON.parse(JSON.stringify(sc))); });
+    const fo=state.focus[slot], fd=state.fade[slot], rg=state.rsGlobal||{};
+    const fadeAlvos=[]; let barrados=0;
+    s.ch.forEach((sc,i)=>{
+      if(!CH[i])return;
+      const copia=JSON.parse(JSON.stringify(sc));
+      for(const k in copia){
+        const grupo=SAFEKEY[k]; if(!grupo)continue;
+        if(rg["INPUT PATCH"]&&grupo==="PATCH"){ barrados++; continue; }
+        if(rg["INPUT NAME"] &&grupo==="NAME"){  barrados++; continue; }
+        if(rg["HA"]         &&grupo==="HA"){    barrados++; continue; }
+        if(!grupoPassa(i,grupo,fo)){ barrados++; continue; }
+        if(k==="fader" && fd.on && fd.ch[i]){
+          if(CH[i].fader!==copia[k]) fadeAlvos.push({i,to:copia[k]});
+          continue;
+        }
+        CH[i][k]=copia[k];
+      }
+    });
     state.master=s.master; if(s.mono!=null)state.mono=s.mono;
+    /* o Channel Link volta SEMPRE: nao e sujeito ao Recall Safe */
     if(s.link) state.link=s.link.slice(); state.muteActive=s.muteActive.slice();
     if(s.rack) state.rack=JSON.parse(JSON.stringify(s.rack));
     if(s.geq) state.geq=JSON.parse(JSON.stringify(s.geq));
     for(let i=0;i<MAXCAP;i++)applyChanAudio(i); applyMasterAudio(); applyRackAll(); applyGeq();
-    paintBay(); paintSelected(); paintRightRack(); drawScreen(); toast("Cena "+(slot+1)+" <b>recuperada</b> ▸ faders atualizados"); }
+    if(fadeAlvos.length) iniciarFade(fadeAlvos,fd.time);
+    paintBay(); paintSelected(); paintRightRack(); drawScreen();
+    const marca=[fo.on&&!fo.all?"FOCUS":null, barrados?"SAFE":null, fadeAlvos.length?("FADE "+fd.time.toFixed(1)+"s"):null].filter(Boolean).join(" · ");
+    toast("Cena "+(slot+1)+" <b>recuperada</b>"+(marca?" ▸ "+marca:" ▸ faders atualizados")); }
   function chLevelDb(i){ if(!ac||!aNodes[i])return -90; const n=aNodes[i]; n.an.getFloatTimeDomainData(n.buf); let s=0; for(let k=0;k<n.buf.length;k++)s+=n.buf[k]*n.buf[k]; const rms=Math.sqrt(s/n.buf.length); return rms>1e-5?20*Math.log10(rms):-90; }
   function masterLevelDb(){ if(!masterAn)return -90; masterAn.getFloatTimeDomainData(masterAn._buf); let s=0; for(let k=0;k<masterAn._buf.length;k++)s+=masterAn._buf[k]*masterAn._buf[k]; const rms=Math.sqrt(s/masterAn._buf.length); return rms>1e-5?20*Math.log10(rms):-90; }
   function loadBuf(url){ if(!bufCache[url]){ bufCache[url]=(async()=>{ const r=await fetch(url); if(!r.ok)throw new Error("HTTP "+r.status); const ab=await r.arrayBuffer(); return await ac.decodeAudioData(ab); })().catch(e=>{ delete bufCache[url]; throw e; }); } return bufCache[url]; }
@@ -2455,7 +2913,8 @@
     bufs.forEach((b,i)=>{ if(!b)return; if(b.duration>durMax){durMax=b.duration;iLongo=i;} if(b.duration<durMin)durMin=b.duration; });
     const emLoop=(durMax-durMin)<0.02;
     useStems.forEach((st,i)=>{ if(i>=MAXCH||!aNodes[i])return; const src=ac.createBufferSource();
-      src.buffer=bufs[i]; src.loop=emLoop; src.connect(aNodes[i].trim); src.start(t0); realSources.push(src); });
+      src.buffer=bufs[i]; src.loop=emLoop; src.connect(portN[i]||aNodes[i].trim); src.start(t0); realSources.push(src); });
+    ligarPatch();   /* o stem entra na PORTA; quem decide o canal e o INPUT PATCH */
     if(!emLoop){ const fim=realSources.find(s=>s.buffer===bufs[iLongo]); if(fim) fim.onended=()=>{ stopSong(); setStatus("fim da música","#7fb2c8"); }; }
     for(let i=0;i<MAXCAP;i++)applyChanAudio(i); playing=true; setPlayBtn(true); setStatus("tocando ♪ "+song.label,"#3ad07a"); }
   function stopSong(keep){ realSources.forEach(s=>{try{s.onended=null;s.stop();s.disconnect();}catch(e){}}); realSources=[]; playing=false; setPlayBtn(false); if(!keep)setStatus("parado"); }
@@ -2497,8 +2956,8 @@
           if(d.rack){ if(d.rack==='geq1'){state.rackKind='geq';state.geqSel=0;}
             else if(d.rack==='effect'||d.rack==='virtual'){state.rackKind='fx';} }
           if(d.mt!=null) state.mtTab=+d.mt;
-          if(d.grp!=null){ if(+d.grp<2) state.grpTab=+d.grp; else toast((+d.grp===2?"CHANNEL LINK":"OUTPUT CHANNEL LINK")+": não incluído no simulador"); }
-          if(d.sc!=null){ if(+d.sc>0) toast(it.textContent+": não incluído no simulador"); state.scnTab=+d.sc; }
+          if(d.grp!=null){ state.grpTab=+d.grp; }   /* a LS9 so tem 2 abas: Mute Group e Channel Link */
+          if(d.sc!=null){ state.scnTab=+d.sc; }
           if(WINDEF[d.win]) setMode(d.win); else toast(it.textContent.replace(/Ctrl.*/,'')+": não incluído no simulador");
         }
         else if(d.model){ setModel(d.model); }
@@ -2520,10 +2979,11 @@
       case "cascade": cascadeWins(); break;
       case "close": if(focusId)closeWin(focusId); break;
       case "closeall": Object.keys(WINS).forEach(closeWin); break;
-      case "undo": toast("UNDO: <b>cena anterior</b> restaurada"); break;
-      case "redo": toast("REDO: não incluído no simulador"); break;
-      case "new": case "open": case "save": case "saveas":
-        toast("Arquivo de sessão: recurso do LS9 Editor (PC)"); break;
+      case "undo": desfazer(); break;
+      case "redo": refazer(); break;
+      case "new":  sessaoNova(); break;
+      case "open": sessaoAbrir(); break;
+      case "save": case "saveas": sessaoSalvar(); break;
       case "pc2console": toast("Re-synchronize <b>PC → Console</b> ✔"); state.online=true; break;
       case "console2pc": toast("Re-synchronize <b>Console → PC</b> ✔"); state.online=true; break;
       case "offline": state.online=state.online===false; toast(state.online===false?"<b>OFFLINE EDIT</b> ativo":"<b>ONLINE</b>"); break;
@@ -2572,7 +3032,8 @@
     apply:applyChanAudio, applyRack, applyRackAll, tap:tapTempo, setMode,
     chDb:i=>chLevelDb(i), preDb:i=>chPreDb(i), rackDb:r=>rackLevelDb(r), masterDb:()=>masterLevelDb(),
     play:()=>playSong(), stop:()=>stopSong(), isPlaying:()=>playing, isLoading:()=>loadingSong,
-    storeScene, recallScene, N_MUTE, N_LINK,
+    storeScene, recallScene, N_MUTE, N_LINK, desfazer, refazer, scenes:()=>scenes,
+    repatch, ligarPatch, INPORTS, OUTPORTS, OUTCH,
     // LS9 grouping: Channel Link (linked faders move together) — no DCA
     setChFader, setChOn, assignLink, linkPeers,
     // model selector (headless verification)

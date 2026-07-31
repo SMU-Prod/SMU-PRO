@@ -339,7 +339,13 @@
       fxRev:-90, fxDly:-90, src:-42, hasAudio:false };
   }
   const CH=Array.from({length:NCH},(_,i)=>mkChannel(i));
+  /* CUE das saidas. O manual lista o alcance do CUE e ele NAO e' so' canal de entrada:
+     "CUE  Specific CH: CH 1-40, ST IN 1, ST IN 2, FX 1, FX 2, DCA 1-8, AUX 1-8,
+      AUX 9/10-19/20, STEREO, SUB, MATRIX 1-4". Antes, apertar CUE numa tira de AUX, DCA,
+     STEREO ou SUB nao fazia NADA — nem acendia. */
+  const cueAux=new Array(N_AUX).fill(false), cueDca=new Array(N_DCA).fill(false);
   const state={ sel:0, mode:"chview", sof:-1, sofBus:0, sofType:'aux', master:-3, sub:-6,
+    cueSt:false, cueSub:false, stOn:true, subOn:true,   /* o manual: ha' ON no STEREO e no SUB */
     scene:0, monitor:-20, dim:false, talkback:false, phones:true,
     dcaGain:new Array(N_DCA).fill(0), dcaOn:new Array(N_DCA).fill(true),
     auxMaster:new Array(N_AUX).fill(0), auxOn:new Array(N_AUX).fill(true),
@@ -468,13 +474,15 @@
         toggleOn(){ const c=CH[idx]; if(state.sof>=0){ c.sendOn[state.sofBus]=!c.sendOn[state.sofBus]; } else { c.on=!c.on; applyChanAudio(idx); } },
         get fdb(){ return state.sof>=0 ? CH[idx].sends[state.sofBus] : CH[idx].fader; },
         setFdb(v){ const c=CH[idx]; if(state.sof>=0){ c.sends[state.sofBus]=v; if(v>FMIN)c.sendOn[state.sofBus]=true; } else { c.fader=v; applyChanAudio(idx); } },
-        meter(){ return meterDbOf(idx); }, hasAudio(){return CH[idx].hasAudio;} };
+        meter(){ return meterDbOf(idx); }, hasAudio(){return CH[idx].hasAudio;},
+        get idx(){return idx;}, get emCue(){ return !!(CH[idx]&&CH[idx].cue); } };
     }
     if(kind==='dca'){
       return { kind, get name(){return "DCA "+(idx+1);}, get color(){return "#f5a623";}, get num(){return "DCA";},
         get sel(){return false;}, doSel(){ setMode('dca'); },
         get on(){ return state.dcaOn[idx]; }, toggleOn(){ state.dcaOn[idx]=!state.dcaOn[idx]; for(let i=0;i<NCH;i++)if(CH[i].dca[idx])applyChanAudio(i); },
         get fdb(){ return state.dcaGain[idx]; }, setFdb(v){ state.dcaGain[idx]=v; for(let i=0;i<NCH;i++)if(CH[i].dca[idx])applyChanAudio(i); },
+        get idx(){return idx;}, get emCue(){ return cueDca[idx]; },
         meter(){return -90;}, hasAudio(){return true;} };
     }
     if(kind==='aux'){
@@ -482,21 +490,26 @@
         get sel(){ return state.sof>=0&&state.sofType==='aux'&&state.sofBus===idx; }, doSel(){ engageSof('aux',idx); },
         get on(){ return state.auxOn[idx]; }, toggleOn(){ state.auxOn[idx]=!state.auxOn[idx]; },
         get fdb(){ return state.auxMaster[idx]; }, setFdb(v){ state.auxMaster[idx]=v; },
+        get idx(){return idx;}, get emCue(){ return cueAux[idx]; },
         meter(){return -90;}, hasAudio(){return true;} };
     }
     if(kind==='st'){
       return { kind, get name(){return "STEREO";}, get color(){return "#ffd27a";}, get num(){return "ST";},
-        get sel(){return false;}, doSel(){}, get on(){return true;}, toggleOn(){},
+        get sel(){return false;}, doSel(){},
+        get on(){return state.stOn;}, toggleOn(){ state.stOn=!state.stOn; applyMasterAudio(); },
         get fdb(){return state.master;}, setFdb(v){ state.master=v; applyMasterAudio(); },
+        get emCue(){ return state.cueSt; },
         meter(){return playing?masterLevelDb():-90;}, hasAudio(){return true;} };
     }
     if(kind==='sub'){
       return { kind, get name(){return "SUB";}, get color(){return "#ffd27a";}, get num(){return "SUB";},
-        get sel(){return false;}, doSel(){}, get on(){return true;}, toggleOn(){},
+        get sel(){return false;}, doSel(){},
+        get on(){return state.subOn;}, toggleOn(){ state.subOn=!state.subOn; },
         get fdb(){return state.sub;}, setFdb(v){ state.sub=v; },
+        get emCue(){ return state.cueSub; },
         meter(){return playing?masterLevelDb()-4:-90;}, hasAudio(){return true;} };
     }
-    return { kind:'empty', name:"—", color:"#242a33", num:"", sel:false, doSel(){}, on:false, toggleOn(){}, fdb:FMIN, setFdb(){}, meter(){return -90;}, hasAudio(){return false;} };
+    return { kind:'empty', name:"—", color:"#242a33", num:"", sel:false, doSel(){}, on:false, toggleOn(){}, fdb:FMIN, setFdb(){}, meter(){return -90;}, hasAudio(){return false;}, emCue:false };
   }
   function meterDbOf(i){ const ch=CH[i];
     if(playing&&ch.hasAudio) return chLevelDb(i)+(ch.on?0:-90);
@@ -550,7 +563,14 @@
     o.fader.addEventListener("pointermove",mv);
     const up=()=>drag=false; o.fader.addEventListener("pointerup",up); o.fader.addEventListener("pointercancel",up);
     o.lcd.onclick=()=>{ if(o.ctl){ o.ctl.doSel(); paintBay(); } };
-    o.cue.onclick=()=>{ const c=o.ctl; if(c&&c.kind==='ch'){ CH[c.chIdx].cue=!CH[c.chIdx].cue; applyCue(); } };
+    o.cue.onclick=()=>{ const c=o.ctl; if(!c) return;
+      if(c.kind==='ch'){ CH[c.chIdx].cue=!CH[c.chIdx].cue; }
+      else if(c.kind==='dca'){ cueDca[c.idx]=!cueDca[c.idx]; }
+      else if(c.kind==='aux'){ cueAux[c.idx]=!cueAux[c.idx]; }
+      else if(c.kind==='st'){  state.cueSt=!state.cueSt; }
+      else if(c.kind==='sub'){ state.cueSub=!state.cueSub; }
+      else return;
+      applyCue(); };
     o.on.onclick=()=>{ if(o.ctl){ o.ctl.toggleOn(); paintBay(); if(state.mode!=="overview")drawScreen(); checkMissions(); } };
   }
   paintBay=function(){
@@ -558,9 +578,30 @@
     for(let i=0;i<bayStrips.length;i++){ const o=bayStrips[i], d=descs[i]; if(!d){continue;} o.ctl=d; paintOneStrip(o); }
   };
   // CUE = SOLO-in-place (AFL): se algum canal está em CUE, só os canais em CUE são ouvidos.
-  function anyCue(){ for(let i=0;i<CH.length;i++){ if(CH[i].cue) return true; } return false; }
+  function anyCue(){
+    for(let i=0;i<CH.length;i++){ if(CH[i].cue) return true; }
+    if(state.cueSt||state.cueSub) return true;
+    for(let i=0;i<N_AUX;i++) if(cueAux[i]) return true;
+    for(let i=0;i<N_DCA;i++) if(cueDca[i]) return true;
+    return false; }
+  /* Quem se ouve quando ha' CUE ligado. O CUE de uma SAIDA monitora aquele barramento,
+     entao o que se escuta sao os canais que ALIMENTAM o barramento:
+       DCA n  -> os canais atribuidos ao DCA n
+       AUX n  -> os canais com envio ligado para o AUX n
+       STEREO -> a mistura inteira (e' o barramento principal)
+       SUB    -> os canais mandados ao SUB
+     E' o mesmo raciocinio do solo-in-place que o simulador ja' usava para o canal. */
+  function canalEmCue(i){
+    const c=CH[i]; if(!c) return false;
+    if(c.cue) return true;
+    if(state.cueSt) return true;
+    if(state.cueSub && c.toSub!==false) return true;
+    for(let d=0;d<N_DCA;d++) if(cueDca[d] && c.dca[d]) return true;
+    for(let a=0;a<N_AUX;a++) if(cueAux[a] && c.sendOn[a]) return true;
+    return false; }
   function applyCue(){ for(let i=0;i<CH.length;i++) applyChanAudio(i); if(typeof paintBay==='function') paintBay(); if(state.mode!=="overview") drawScreen(); }
-  function clearCue(){ for(let i=0;i<CH.length;i++) CH[i].cue=false; applyCue(); }
+  function clearCue(){ for(let i=0;i<CH.length;i++) CH[i].cue=false;
+    cueAux.fill(false); cueDca.fill(false); state.cueSt=false; state.cueSub=false; applyCue(); }
   function paintOneStrip(o){
     const c=o.ctl; if(!c){return;}
     const empty=c.kind==='empty';
@@ -570,7 +611,7 @@
     o.root.classList.toggle("sel", !!c.sel);
     const fdb=c.fdb; o.cap.style.bottom="calc("+(db2pos(fdb)*100)+"% - 10px)";
     o.on.classList.toggle("act", !!c.on);
-    o.cue.classList.toggle("act", c.kind==='ch' && CH[c.chIdx] && !!CH[c.chIdx].cue);
+    o.cue.classList.toggle("act", !!c.emCue);
     o.on.textContent = (state.sof>=0&&c.kind==='ch')? (c.on?"SEND":"OFF") : "ON";
     o.fader.style.opacity = empty?0.35:1;
   }
@@ -1251,7 +1292,7 @@
   function effLin(i){ const c=CH[i]; let dcaLin=1,muted=false;
     for(let g=0;g<N_DCA;g++){ if(c.dca[g]){ if(!state.dcaOn[g])muted=true; dcaLin*=dbToLin(state.dcaGain[g]); } }
     if(state.muteInput && !c.muteSafe) muted=true;
-    const soloMuted=anyCue()&&!c.cue;
+    const soloMuted=anyCue()&&!canalEmCue(i);
     const audible=c.on&&!muted&&!soloMuted&&c.fader>FMIN&&c.hasAudio;
     return audible?dbToLin(c.fader)*dcaLin:0; }
   // Tap Tempo (FX2 · DELAY) → tempo do delay a partir do intervalo médio entre toques.
@@ -1290,10 +1331,15 @@
       const rms=Math.sqrt(s/n.preBuf.length),db=rms>1e-5?20*Math.log10(rms):-90; const open=db>c.gateThr,target=open?1:dbToLin(c.gateRange);
       const tc=Math.max(0.004,(open?c.gateAtk:c.gateDecay)/1000/3); P(n.gate.gain,target,t,tc); c._gr=open?0:Math.max(0,-c.gateRange); }
   }
-  function applyMasterAudio(){ if(ac&&masterGain){ P(masterGain.gain,dbToLin(state.master)*(state.dim?dbToLin(-20):1),ac.currentTime,0.02); } }
+  /* O [ON] do STEREO corta o barramento principal. O manual lista o ON entre os parametros
+     do canal de saida e diz "ON button for the AUX channel, STEREO channel, or SUB channel".
+     Antes o descritor devolvia on:true fixo com toggleOn() vazio: o botao so' acendia. */
+  function applyMasterAudio(){ if(ac&&masterGain){
+    const nivel = state.stOn ? dbToLin(state.master) : 0;
+    P(masterGain.gain, nivel*(state.dim?dbToLin(-20):1), ac.currentTime, 0.02); } }
   applyMonitor=function(){ applyMasterAudio(); };
   function snapCh(c){ return JSON.parse(JSON.stringify({gain:c.gain,phase:c.phase,phantom:c.phantom,hpfOn:c.hpfOn,hpf:c.hpf,lpfOn:c.lpfOn,lpf:c.lpf,eq:c.eq,oneEqType:c.oneEqType,oneEqMode:c.oneEqMode,oneEqAmt:c.oneEqAmt,gateOn:c.gateOn,gateThr:c.gateThr,gateRange:c.gateRange,gateAtk:c.gateAtk,gateHold:c.gateHold,gateDecay:c.gateDecay,oneComp:c.oneComp,compOn:c.compOn,compThr:c.compThr,compRatio:c.compRatio,compAtk:c.compAtk,compRel:c.compRel,compKnee:c.compKnee,compGain:c.compGain,pan:c.pan,fader:c.fader,on:c.on,sends:c.sends,sendOn:c.sendOn,sendPre:c.sendPre,dca:c.dca,muteSafe:c.muteSafe,fxRev:c.fxRev,fxDly:c.fxDly})); }
-  function storeScene(slot){ scenes[slot]={ ch:CH.map(snapCh), master:state.master, sub:state.sub, dcaGain:state.dcaGain.slice(), dcaOn:state.dcaOn.slice(), muteInput:state.muteInput, muteFx:state.muteFx, auxMaster:state.auxMaster.slice(), auxOn:state.auxOn.slice(), fx:JSON.parse(JSON.stringify(state.fx)), ts:Date.now() }; toast("Cena "+(slot+1)+" <b>armazenada</b> ✔"); }
+  function storeScene(slot){ scenes[slot]={ ch:CH.map(snapCh), master:state.master, sub:state.sub, stOn:state.stOn, subOn:state.subOn, dcaGain:state.dcaGain.slice(), dcaOn:state.dcaOn.slice(), muteInput:state.muteInput, muteFx:state.muteFx, auxMaster:state.auxMaster.slice(), auxOn:state.auxOn.slice(), fx:JSON.parse(JSON.stringify(state.fx)), ts:Date.now() }; toast("Cena "+(slot+1)+" <b>armazenada</b> ✔"); }
   function recallScene(slot){ const s=scenes[slot]; if(!s){ toast("Cena "+(slot+1)+" vazia"); return; }
     s.ch.forEach((sc,i)=>Object.assign(CH[i],JSON.parse(JSON.stringify(sc)))); state.master=s.master; if(s.sub!=null)state.sub=s.sub;
     state.dcaGain=s.dcaGain.slice(); state.dcaOn=s.dcaOn.slice(); state.muteInput=!!s.muteInput; state.muteFx=!!s.muteFx; if(s.auxMaster)state.auxMaster=s.auxMaster.slice(); if(s.auxOn)state.auxOn=s.auxOn.slice(); state.fx=JSON.parse(JSON.stringify(s.fx));

@@ -117,13 +117,67 @@ if (encIdx >= 0) {
   const id0 = Buffer.from(/\/ID\s*\[\s*<([0-9a-fA-F]+)>/.exec(s)?.[1] || "", "hex");
   const n = R === 2 ? 5 : len >> 3;
 
-  const pb = Buffer.alloc(4);
-  pb.writeInt32LE(P, 0);
-  let h = Buffer.concat([PAD, O.subarray(0, 32), pb, id0, R >= 4 && !encMeta ? Buffer.from([0xff, 0xff, 0xff, 0xff]) : Buffer.alloc(0)]);
-  let key = md5(h);
-  if (R >= 3) for (let i = 0; i < 50; i++) key = md5(key.subarray(0, n));
-  fileKey = key.subarray(0, n);
-  console.error(`[cripto] PDF protegido: R=${R} V=${V} CFM=${cfm} — senha de usuário vazia, decifrando`);
+  if (R >= 5) {
+    /* ---- AES-256 (R=5 do padrão Adobe, R=6 do PDF 2.0 / ISO 32000-2) ----------------
+       NÃO é o Algoritmo 2 acima com chave maior: a derivação é OUTRA. A chave do arquivo
+       não vem de MD5(padding+/O+/P+ID); ela está GUARDADA, cifrada, no /UE, e a senha só
+       serve para abrir esse cofre.
+
+       Isto entrou porque o manual da TF5 é R=6: o extrator lia o rótulo "AESV3", seguia
+       com a derivação velha e devolvia 2,3 MB de LIXO BINÁRIO sem reclamar. Falha silenciosa
+       é pior que quebrar — parecia manual extraído, e daria para "concluir" que a Yamaha não
+       publica uma especificação que está lá.
+
+         /U = 48 bytes: hash(32) + validation salt(8) + key salt(8)
+         confere a senha:  Hash(senha, validation salt) === /U[0..32]
+         chave do arquivo: AES-256-CBC-sem-padding(/UE, chave=Hash(senha, key salt), IV=0)
+
+       No R=5 o Hash é um SHA-256 simples. No R=6 é o hash ENDURECIDO (Algoritmo 2.B):
+       64+ rodadas de AES-128-CBC alternando SHA-256/384/512 — e o critério de parada
+       depende do ÚLTIMO byte do bloco cifrado, não de um contador fixo. */
+    const U = readString(dbuf, dict, "/U");
+    const UE = readString(dbuf, dict, "/UE");
+    if (U.length < 48 || UE.length < 32) throw new Error(`/U ou /UE curtos demais (R=${R}) — dicionário de criptografia fora do padrão`);
+    const vazia = Buffer.alloc(0);
+    const conf = hash2B(vazia, U.subarray(32, 40), vazia, R);
+    if (!conf.equals(U.subarray(0, 32)))
+      throw new Error(`este PDF tem senha de usuário (R=${R}) — o extrator só abre os de senha vazia`);
+    const ikey = hash2B(vazia, U.subarray(40, 48), vazia, R);
+    const dec = crypto.createDecipheriv("aes-256-cbc", ikey, Buffer.alloc(16));
+    dec.setAutoPadding(false);
+    fileKey = Buffer.concat([dec.update(UE.subarray(0, 32)), dec.final()]);
+    cfm = "AESV3";
+    console.error(`[cripto] PDF protegido: R=${R} V=${V} CFM=${cfm} — AES-256, senha de usuário vazia CONFERIDA, decifrando`);
+  } else {
+    const pb = Buffer.alloc(4);
+    pb.writeInt32LE(P, 0);
+    let h = Buffer.concat([PAD, O.subarray(0, 32), pb, id0, R >= 4 && !encMeta ? Buffer.from([0xff, 0xff, 0xff, 0xff]) : Buffer.alloc(0)]);
+    let key = md5(h);
+    if (R >= 3) for (let i = 0; i < 50; i++) key = md5(key.subarray(0, n));
+    fileKey = key.subarray(0, n);
+    console.error(`[cripto] PDF protegido: R=${R} V=${V} CFM=${cfm} — senha de usuário vazia, decifrando`);
+  }
+}
+/* Algoritmo 2.B da especificação (o "hash endurecido" do R=6). No R=5 é só SHA-256. */
+function hash2B(senha, sal, udata, R) {
+  let K = crypto.createHash("sha256").update(Buffer.concat([senha, sal, udata])).digest();
+  if (R === 5) return K;
+  let rodada = 0, E;
+  for (;;) {
+    const bloco = Buffer.concat([senha, K, udata]);
+    const K1 = Buffer.alloc(bloco.length * 64);
+    for (let i = 0; i < 64; i++) bloco.copy(K1, i * bloco.length);
+    const c = crypto.createCipheriv("aes-128-cbc", K.subarray(0, 16), K.subarray(16, 32));
+    c.setAutoPadding(false);
+    E = Buffer.concat([c.update(K1), c.final()]);
+    let soma = 0; for (let i = 0; i < 16; i++) soma += E[i];
+    const qual = soma % 3;
+    K = crypto.createHash(qual === 0 ? "sha256" : qual === 1 ? "sha384" : "sha512").update(E).digest();
+    rodada++;
+    /* Parada da spec: no mínimo 64 rodadas E o último byte do bloco cifrado <= rodada-32. */
+    if (rodada >= 64 && E[E.length - 1] <= rodada - 32) break;
+  }
+  return K.subarray(0, 32);
 }
 function objKey(num, gen) {
   const e = Buffer.alloc(5);
@@ -133,6 +187,16 @@ function objKey(num, gen) {
 }
 function decrypt(data, num, gen) {
   if (!fileKey) return data;
+  /* AES-256 (R=5/6): a chave do arquivo vale para TODO objeto. Não existe a chave por objeto
+     do MD5 — passar por objKey() aqui produziria lixo, calado, como acontecia antes. */
+  if (fileKey.length === 32 && cfm === "AESV3") {
+    const iv = data.subarray(0, 16);
+    const d = crypto.createDecipheriv("aes-256-cbc", fileKey, iv);
+    d.setAutoPadding(false);
+    const out = Buffer.concat([d.update(data.subarray(16, 16 + (((data.length - 16) >> 4) << 4))), d.final()]);
+    const pad = out[out.length - 1];
+    return pad >= 1 && pad <= 16 ? out.subarray(0, out.length - pad) : out;
+  }
   const k = objKey(num, gen);
   if (cfm.startsWith("AES")) {
     const iv = data.subarray(0, 16);
