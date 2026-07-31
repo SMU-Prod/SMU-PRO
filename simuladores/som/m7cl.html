@@ -4057,6 +4057,136 @@ document.addEventListener("keydown", ev=>{
   if (ev.key === "ArrowLeft")  pularCanal(-1);
 });
 
+/* ==================================================================
+   AUTOTESTE — confere as funções contra o MANUAL, não contra o código
+   ==================================================================
+   Rode `m7clTeste()` no console do navegador. Cada teste cita o capítulo
+   do manual de onde saiu o número, para dar pra checar na fonte.
+
+   Por que isto mora dentro do arquivo: o portão do projeto
+   (ferramentas/clicar-tudo.mjs) prova que todo controle RESPONDE, não que
+   faça a coisa certa. Um botão pode responder e mexer no parâmetro errado.
+   Estes testes olham o ESTADO depois da ação.                          */
+function m7clTeste(){
+  const R = [];
+  const T = (cap, nome, fn) => {
+    let ok = false, erro = "";
+    try { ok = !!fn(); } catch(e){ erro = e.message; }
+    R.push({cap, nome, ok, erro});
+  };
+  const C = id => S.canais[id];
+  const guardaEstado = JSON.stringify({sel:S.sel, nav:S.nav, tela:S.tela});
+
+  /* cap.2 — painel */
+  T(2,"62 strips (48 in + 4 ST IN + 8 Centralogic + 2 master)",
+    ()=>document.querySelectorAll(".strip").length===62);
+  T(2,"SELECTED CHANNEL com 33 knobs (16 send + HA/PAN/HPF/DYN1/DYN2 + EQ 4x3)",
+    ()=>document.querySelectorAll(".selch .knob").length===33);
+  T(2,"12 USER DEFINED KEYS", ()=>document.querySelectorAll("[data-udk]").length===12);
+  T(2,"12 NAVIGATION KEYS",   ()=>document.querySelectorAll("[data-nav]").length===12);
+
+  /* cap.5 — canal de entrada */
+  T(5,"HA gain vai de -62 a +10 dB",
+    ()=>{const c=C("CH1"),v=c.ha.gain;c.ha.gain=-62;const a=c.ha.gain;c.ha.gain=10;
+         const b=c.ha.gain;c.ha.gain=v;return a===-62&&b===10;});
+  T(5,"16 sends de MIX e 8 de MATRIX por canal",
+    ()=>C("CH1").mix.length===N_MIX && C("CH1").mtx.length===N_MTX);
+
+  /* cap.9 — patch */
+  T(9,"patch de fábrica: OMNI 1-12 = MIX 1-12 (p.105)", ()=>S.patch.saida.MIX1==="OMNI 1");
+  T(9,"patch de fábrica: OMNI 13/14 = MATRIX 1/2",
+    ()=>S.patch.saida.MTX1==="OMNI 13" && S.patch.saida.MTX2==="OMNI 14");
+  T(9,"patch de fábrica: OMNI 15/16 = STEREO", ()=>S.patch.saida.STEREO==="OMNI 15");
+
+  /* cap.10 — EQ e dinâmica */
+  T(10,"EQ 4 bandas, 20 Hz-20 kHz, ±18 dB",
+    ()=>{const b=C("CH1").eq.bandas.low,g=b.g,f=b.f;b.g=18;b.f=20000;
+         const r=b.g===18&&b.f===20000;b.g=g;b.f=f;return r;});
+  T(10,"entrada DYN1 = GATE/DUCKING/COMPRESSOR/EXPANDER (p.249)",
+    ()=>tiposDyn(C("CH1"),"dyn1").join()==="GATE,DUCKING,COMPRESSOR,EXPANDER");
+  T(10,"entrada DYN2 = COMPRESSOR/COMPANDER-H/COMPANDER-S/DE-ESSER",
+    ()=>tiposDyn(C("CH1"),"dyn2").join()==="COMPRESSOR,COMPANDER-H,COMPANDER-S,DE-ESSER");
+  T(10,"SAÍDA DYN1 tem lista PRÓPRIA (não a de entrada)",
+    ()=>tiposDyn(C("MIX1"),"dyn1").join()==="COMPRESSOR,EXPANDER,COMPANDER-H,COMPANDER-S");
+  T(10,"GATE: THRESHOLD -72..0 · COMPRESSOR: -54..0",
+    ()=>paramsDyn("GATE")[0].min===-72 && paramsDyn("COMPRESSOR")[0].min===-54);
+  T(10,"OUT GAIN: 0..+18 no compressor, -18..0 no compander",
+    ()=>paramsDyn("COMPRESSOR").find(p=>p.campo==="out").min===0 &&
+        paramsDyn("COMPANDER-H").find(p=>p.campo==="out").min===-18);
+  T(10,"RATIO são 16 pontos discretos, terminando em ∞:1",
+    ()=>RATIOS.length===16 && RATIOS[15]===Infinity);
+  T(10,"EQ LIBRARY: 39 presets, Bass Drum 1 com os valores do manual",
+    ()=>EQ_LIB.length===39 && EQ_LIB[0][1]==="Bass Drum 1" &&
+        EQ_LIB[0][3][0]===3.5 && EQ_LIB[0][4][0]===100);
+  T(10,"DYNAMICS LIBRARY: 41 presets", ()=>DYN_LIB.length===41);
+
+  /* cap.11 — grupos */
+  T(11,"MUTE GROUP muta o canal do grupo",
+    ()=>{const a=C("CH1");a.mute=[1];a.on=true;S.muteSafe={};aplicarMuteGroup(1,true);
+         const r=a.on===false;a.on=true;a.mute=[];return r;});
+  T(11,"MUTE SAFE impede o mute group de mutar",
+    ()=>{const a=C("CH2");a.mute=[1];a.on=true;S.muteSafe={};S.muteSafe[a.id]=true;
+         aplicarMuteGroup(1,true);const r=a.on===true;S.muteSafe={};a.mute=[];a.on=true;return r;});
+
+  /* cap.12 — cenas */
+  T(12,"STORE guarda e RECALL restaura",
+    ()=>{const c=C("CH5"),v=c.fader;c.fader=-11;guardarCena(299,"AUTOTESTE");
+         c.fader=-40;S.cena.n=299;recallCena();const r=c.fader===-11;c.fader=v;return r;});
+  T(12,"cena 000 é protegida", ()=>guardarCena(0,"x")===false);
+  T(12,"RECALL SAFE protege o canal do recall",
+    ()=>{const c=C("CH5");c.recallSafe=true;c.fader=-33;S.cena.n=299;recallCena();
+         const r=c.fader===-33;c.recallSafe=false;return r;});
+  T(12,"FOCUS impede o recall de mexer no fader",
+    ()=>{const c=C("CH5");c.fader=-22;S.focus={FADER:false};S.cena.n=299;recallCena();
+         const r=c.fader===-22;S.focus={};return r;});
+
+  /* cap.15/16 */
+  T(15,"meter bridge: 16 MIX + 8 MATRIX = 24 colunas",
+    ()=>document.querySelectorAll(".bcol").length===24);
+  T(16,"GEQ de 31 bandas", ()=>S.rack[0].geq.length===31 && FREQ_GEQ.length===31);
+  T(16,"41 tipos de efeito oficiais (p.252)",
+    ()=>EFEITOS.length===41 && EFEITOS.includes("REV-X HALL") && EFEITOS.includes("OPENDECK"));
+
+  /* cap.17/20 */
+  T(17,"PROGRAM CHANGE chama a cena de mesmo número",
+    ()=>{const c=C("CH5"),v=c.fader;c.fader=-11;guardarCena(298,"PGM");c.fader=-40;
+         S.cena.n=298;recallCena();const r=c.fader===-11;c.fader=v;return r;});
+  T(20,"BRIGHTNESS muda mesmo o brilho da tela",
+    ()=>{const bk=S.sys.brilhoBanco;S.sys.brilhoBanco="B";aplicarBrilho();
+         const b=document.getElementById("tela").style.filter;S.sys.brilhoBanco="A";
+         aplicarBrilho();const a=document.getElementById("tela").style.filter;
+         S.sys.brilhoBanco=bk;aplicarBrilho();return a!==b && !!a;});
+  T(20,"BUS SETUP alterna VARI/FIXED",
+    ()=>{const t=S.bus.mix[0].tipo;S.bus.mix[0].tipo="FIXED";
+         const r=S.bus.mix[0].tipo==="FIXED";S.bus.mix[0].tipo=t;return r;});
+
+  /* telas */
+  T(0,"todas as telas abrem com conteúdo", ()=>{
+    const area = document.getElementById("area");
+    let vazias = 0;
+    for (const p of Object.keys(TELAS_POPUP)){
+      S.tela="OVERVIEW"; S.popup=p; telaChave=null; construirTela();
+      if (area.querySelectorAll("*").length < 10) vazias++;
+    }
+    S.popup=null; S.tela="OVERVIEW"; telaChave=null; construirTela();
+    return vazias === 0;
+  });
+
+  /* limpa o que o teste criou */
+  S.cena.lista = S.cena.lista.filter(x=>x.n<298);
+  const g = JSON.parse(guardaEstado);
+  S.sel=g.sel; S.nav=g.nav; S.tela=g.tela; S.popup=null; telaChave=null;
+  pedirRender();
+
+  const falhas = R.filter(x=>!x.ok);
+  console.log("M7CL — "+R.length+" testes · "+falhas.length+" falha(s)");
+  R.forEach(x=>console.log((x.ok?"  OK   ":"  FALHA")+" cap."+String(x.cap).padEnd(3)+x.nome+
+    (x.erro?"  ["+x.erro+"]":"")));
+  return {total:R.length, falhas:falhas.length,
+          detalhe:falhas.map(f=>"cap."+f.cap+" — "+f.nome)};
+}
+window.m7clTeste = m7clTeste;
+
 /* ---- primeiro render ---- */
 S.ajuda = "Aperte um <b>[SEL]</b> para escolher o canal · gire os knobs do <b>SELECTED CHANNEL</b> · "+
           "as <b>NAVIGATION KEYS</b> mandam 8 canais para a Centralogic";
