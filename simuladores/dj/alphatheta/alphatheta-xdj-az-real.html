@@ -468,6 +468,9 @@ let AC=null,started=false,ready=false;
    Deixar o `let` la embaixo e pedir um ReferenceError silencioso. */
 let audioPronto=null;
 let master=null,mixBus=null,xfA=null,xfB=null,fxIn=null,fxFilter=null,fxDelay=null,fxWet=null,fxFB=null,fxDry=null,masterAn=null;
+/* barramento de fone — não existia neste arquivo até 30/07/2026 */
+let hpCue=null,hpMst=null,hpMix=null,hpVol=null;
+const cueOn={};                                  // estado dos CUE, por canal + master/link
 let duck=null,fqSum=null,fqB=null,fqG=null;    /* TALK OVER + FX FREQUENCY         */
 const DK={};                                   /* decks A e B                      */
 const CH={};                                   /* canais 1..4 do mixer             */
@@ -532,8 +535,20 @@ function makeChannel(n){
   c.an=AC.createAnalyser(); c.an.fftSize=256;
   c.dry=AC.createGain(); c.dry.gain.value=1;
   c.send=AC.createGain(); c.send.gain.value=0;
-  c.trim.connect(c.hi); c.hi.connect(c.mid); c.mid.connect(c.low); c.low.connect(c.color); c.color.connect(c.fader);
-  c.fader.connect(c.an); c.fader.connect(c.send); c.send.connect(fxIn);
+  c.trim.connect(c.hi); c.hi.connect(c.mid); c.mid.connect(c.low); c.low.connect(c.color);
+  /* ⛔ 30/07/2026 — PONTO PRÉ-FADER.
+     O medidor estava pendurado no fader (`c.fader.connect(c.an)`), e o manual do
+     XDJ-AZ é explícito: "Channel level indicator — Displays the volume level
+     BEFORE the sound passes through the channel fader."
+     Baixar o fader apagava o medidor do canal, e é exatamente com o fader fechado
+     que se acerta o TRIM antes de abrir na pista.
+     É daqui que sai o CUE também — em todo mixer da casa o CUE é pré-fader: é o
+     que deixa escutar a próxima música com o canal ainda fechado. */
+  c.pre=AC.createGain(); c.pre.gain.value=1; c.color.connect(c.pre);
+  c.pre.connect(c.an);
+  c.cue=AC.createGain(); c.cue.gain.value=0; c.pre.connect(c.cue); c.cue.connect(hpCue);
+  c.pre.connect(c.fader);
+  c.fader.connect(c.send); c.send.connect(fxIn);
   c.fader.connect(c.dry);
   c.dry.connect(n==="1"?xfA:n==="2"?xfB:mixBus);   /* 1→A · 2→B · 3 e 4 direto  */
   return c;
@@ -581,6 +596,17 @@ async function startAudio(){ if(started)return audioPronto; started=true;
   master=AC.createGain(); master.gain.value=0.9; master.connect(AC.destination);
   masterAn=AC.createAnalyser(); masterAn.fftSize=256; master.connect(masterAn);
   duck=AC.createGain(); duck.gain.value=1; duck.connect(master);   /* TALK OVER */
+  /* ===== MONITORAÇÃO DE FONE =====
+     ⛔ 30/07/2026: não existia. Os CUE dos 4 canais, o MASTER CUE, o LINK CUE e os
+     knobs HEADPHONES MIX / LEVEL eram todos pele — não havia um único nó de áudio
+     por trás deles. O fone é OUTRA SAÍDA FÍSICA (jack PHONES do painel frontal):
+     o barramento não vai ao destination, e o que se mede é o que o manual descreve. */
+  hpCue=AC.createGain(); hpCue.gain.value=1;      // soma dos canais com CUE apertado
+  hpMst=AC.createGain(); hpMst.gain.value=0;      // MASTER CUE
+  hpMix=AC.createGain(); hpMix.gain.value=1;      // lado CUE, dosado pelo HEADPHONES MIX
+  hpVol=AC.createGain(); hpVol.gain.value=0.5;    // HEADPHONES LEVEL
+  master.connect(hpMst);
+  hpCue.connect(hpMix); hpMix.connect(hpVol); hpMst.connect(hpVol);
   mixBus=AC.createGain(); fxDry=AC.createGain(); fxDry.gain.value=1;
   mixBus.connect(fxDry); fxDry.connect(duck);
   fxIn=AC.createGain();
@@ -641,6 +667,7 @@ async function startAudio(){ if(started)return audioPronto; started=true;
      Ligar ready DEPOIS delas fazia as três não rodarem — o crossfader nascia com
      os DOIS lados abertos (xfB=1 em vez de 0) e o send do Beat FX ficava em 0. */
   ready=true;
+  aplicarFone();                 // o fone passa a valer desde o start
   applyXf(); applyFq(); configureFx(); routeFx(); applyDuck();
   setFader("1",KV.fader1); setFader("2",KV.fader2); setFader("3",KV.fader3); setFader("4",KV.fader4);
   for(const n of ["1","2","3","4"]) for(const b of ["trim","hi","mid","low"]) setEq(n,b,KV[b+n]);
@@ -1293,7 +1320,12 @@ function silk(){
   lab("XDJ-AZ",36.40,96.80,"big");
   /* ---------- BEAT FX ---------- */
   lab("BEAT FX",61.60,39.40,"md"); lab("X-PAD",61.60,41.10,"sm");
-  lab("BEAT",62.32,48.70,"xs");
+  /* ⛔ 30/07/2026 — aqui havia lab("BEAT",62.32,48.70,"xs"), um rótulo de serigrafia
+     desenhado EM CIMA do visor `beatdisp`, que já mostra a palavra BEAT (ver o btn
+     mais abaixo, "beatdisp"). Medido no navegador: os dois ocupavam 724,354 e
+     723,353 — 100% de cobertura, um sobre o outro. Dois textos iguais empilhados a
+     1 px viram borrão na tela; era um dos "escritos ruins" que o dono apontou.
+     O rótulo saiu; quem mostra a palavra é o visor, que é o certo. */
   lab("AUTO/TAP",60.10,49.90,"xs"); lab("FX QUANTIZE",64.60,49.90,"xs");
   lab("FX FREQUENCY",62.30,54.60,"sm");
   ["FLANGER","REVERB","HELIX","SPIRAL","PING PONG","ECHO","DELAY"].forEach((t,i)=>lab(t,60.10,60.10+i*1.30,"xs"));
@@ -1597,12 +1629,19 @@ function doAct(act){
   if(act==="talkover"){ el.classList.toggle("on"); talkOn=el.classList.contains("on");
     applyDuck(); return; }                                  /* abaixa a musica sob o mic   */
   if(act==="quantize"){ el.classList.toggle("on"); quantOn=el.classList.contains("on"); return; }
-  if(act==="linkcue"){ el.classList.toggle("on"); linkCue=el.classList.contains("on"); return; }
+  if(act==="linkcue"){ el.classList.toggle("on"); linkCue=el.classList.contains("on"); aplicarFone(); return; }
   /* FX QUANTIZE: o flag fxQuant ja mandava no fxBeatSec() e nunca era escrito */
   if(act==="fxquant"){ el.classList.toggle("on"); fxQuant=el.classList.contains("on");
     configureFx(); return; }
-  if(act==="mastercue"){ el.classList.toggle("on"); cueSel.M=el.classList.contains("on"); return; }
-  if(/^cue[1234]$/.test(act)){ el.classList.toggle("on"); cueSel[act[3]]=el.classList.contains("on"); return; }
+  /* ⛔ 30/07/2026 — os CUE só guardavam o estado em cueSel e acendiam a pele.
+     Não havia UM nó de áudio por trás deles: nada ia para o fone. */
+  if(act==="mastercue"){ el.classList.toggle("on"); cueSel.M=el.classList.contains("on"); aplicarFone(); return; }
+  if(/^cue[1234]$/.test(act)){ el.classList.toggle("on"); cueSel[act[3]]=el.classList.contains("on"); aplicarFone();
+    /* Manual: sem LINK CUE, apertar um CUE novo troca a escuta; com LINK CUE, soma.
+       Aqui os CUE já somavam sozinhos — o LINK passa a ter função de verdade. */
+    if(!linkCue && cueSel[act[3]]) for(const k of ["1","2","3","4"]) if(k!==act[3]){
+      cueSel[k]=false; if(els["cue"+k])els["cue"+k].classList.remove("on"); }
+    aplicarFone(); return; }
   if(/^chsel[1234]$/.test(act)||["chmic","chcfa","chcfb","chmst"].includes(act)){
     ["chsel3","chsel1","chsel2","chsel4","chmic","chcfa","chcfb","chmst"].forEach(k=>els[k].classList.remove("on"));
     el.classList.add("on");
@@ -1709,7 +1748,20 @@ function bindKnob(hit,act){ let drag=false,last=0;
   document.addEventListener("pointerup",up); document.addEventListener("pointercancel",up);
   hit.addEventListener("dblclick",()=>{ setKnob(act,0.5); onKnob(act); });
 }
+/* ===== MONITORAÇÃO DE FONE — escrita em 30/07/2026 =====
+   CUE dos 4 canais + MASTER CUE, com HEADPHONES MIX e LEVEL. */
+function aplicarFone(){ if(!ready||!hpCue)return;
+  for(const n of ["1","2","3","4"]){ const c=CH[n]; if(c&&c.cue) c.cue.gain.value=cueSel[n]?1:0; }
+  const mx=KV.hpmix===undefined?0.5:KV.hpmix;      // esquerda = CUE · direita = MASTER
+  hpMix.gain.value=1-mx;
+  hpMst.gain.value=(cueSel.M?1:0)*mx;
+  hpVol.gain.value=Math.pow(KV.hplevel===undefined?0.5:KV.hplevel,1.7)*1.6;
+}
 function onKnob(act){ const v=KV[act];
+  /* ⛔ HEADPHONES MIX e LEVEL giravam no vazio: o onKnob não tinha ramo para eles.
+     O portão não pega — gravar KV[act] já conta como estado mudado; o critério que
+     vale é escrever em AudioParam. */
+  if(act==="hpmix"||act==="hplevel"){ aplicarFone(); return; }
   let m=act.match(/^(trim|hi|mid|low)([1234])$/);
   if(m){ setEq(m[2],m[1]==="trim"?"trim":m[1],v); return; }
   m=act.match(/^color([1234])$/);
