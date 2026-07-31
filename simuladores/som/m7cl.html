@@ -754,6 +754,13 @@ const AUD = {
   ctx:null, base:null, bases:[], tocando:false, carregando:false,
   stems:[],            /* {n,c,f,p, canal, buffer, src, nodes} */
   t0:0, offset:0, dur:0,
+  pedido:0,            /* contador de carregamentos, para descartar o atrasado */
+  /* TODOS os sources criados, independente da música a que pertencem.
+     pararAudio() percorria AUD.stems -- mas trocar de música SUBSTITUI essa
+     lista, e os sources criados antes ficavam fora dela: vivos, tocando, e
+     sem ninguém que os alcançasse. Resultado: duas músicas ao mesmo tempo.
+     Esta lista existe para que parar signifique parar TUDO. */
+  vivos:[],
 };
 
 const S = {
@@ -4514,8 +4521,10 @@ async function carregarBase(idx){
   const b = AUD.bases[idx];
   if (!b || AUD.carregando) return;
   pararAudio();
+  AUD.offset = 0;            /* música nova começa do início, não de onde a outra parou */
   AUD.carregando = true;
   AUD.base = b;
+  const pedido = ++AUD.pedido;   /* só o ÚLTIMO pedido pode publicar o resultado */
   S.ajuda = "Carregando <b>"+b.label+"</b> ("+b.stems.length+" faixas)…";
   pedirRender();
 
@@ -4538,6 +4547,10 @@ async function carregarBase(idx){
      o CH1 ficava MUDO com o LED mexendo, e o loop que desliga os canais
      sobrando (usando AUD.stems.length) desligava canais que TINHAM faixa.
      Um download perdido desalinhava a mesa inteira. */
+  /* Se o aluno trocou de música de novo enquanto esta baixava, este resultado
+     está velho: descarta em vez de sobrescrever a base mais recente. */
+  if (pedido !== AUD.pedido) return;
+
   const perdidas = carregados.filter(x=>!x).length;
   AUD.stems = carregados.filter(Boolean).map((s,i)=>({ ...s, canal:"CH"+(i+1) }));
   AUD.dur = AUD.stems.reduce((m,s)=>Math.max(m, s.buffer.duration), 0);
@@ -4612,6 +4625,8 @@ function tocarStem(s, quando, offset){
 
   s.src = src;
   s.nodes = { hpf, bandas, gain, pan, anaPre, anaPos, buf:new Uint8Array(anaPos.frequencyBinCount) };
+  /* registra para poder ser parado mesmo se a música trocar depois */
+  AUD.vivos.push({ src, gain, stem:s });
   aplicarCanalNoAudio(s);
   /* offset pela duração da BASE (não da faixa): com o loop sincronizado em
      AUD.dur, usar a duração de cada stem faria as faixas entrarem
@@ -4654,6 +4669,14 @@ function aplicarCanalNoAudio(s){
 }
 
 function tocarAudio(){
+  /* Não toca ENQUANTO outra base carrega. Sem esta guarda, apertar play
+     durante a troca disparava a lista ANTIGA; logo depois AUD.stems virava a
+     nova, e aqueles sources ficavam órfãos tocando por baixo -- as duas
+     músicas juntas. */
+  if (AUD.carregando){
+    S.ajuda = "Espere a música terminar de carregar…";
+    pedirRender(); return;
+  }
   if (!AUD.ctx || !AUD.stems.length || AUD.tocando) return;
   AUD.ctx.resume();
   const quando = AUD.ctx.currentTime + 0.06;   /* todas as faixas juntas */
@@ -4664,12 +4687,22 @@ function tocarAudio(){
   pedirRender();
 }
 function pararAudio(){
+  /* Para TODOS os sources já criados, não só os da música atual: é o que
+     impede duas músicas de tocarem juntas quando se troca a base. */
+  AUD.vivos.forEach(v=>{
+    try{ v.gain && (v.gain.gain.value = 0); }catch(e){}   /* corta antes de parar */
+    try{ v.src && v.src.stop(); }catch(e){}
+    try{ v.src && v.src.disconnect(); }catch(e){}
+    if (v.stem){ v.stem.src = null; v.stem.nodes = null; }
+  });
+  AUD.vivos = [];
   AUD.stems.forEach(s=>{
-    try{ s.src && s.src.stop(); }catch(e){}
     s.src=null; s.nodes=null;
     const c = S.canais[s.canal];
     if (c) c.nivel = 0;          /* LED apaga junto com o som */
   });
+  /* zera o LED de qualquer canal que tenha sobrado de outra base */
+  for (const c of Object.values(S.canais)) if (c.tipo==="in"||c.tipo==="stin") c.nivel = 0;
   /* com loop o tempo cresce sem parar: guarda a posição DENTRO da volta */
   if (AUD.tocando && AUD.ctx){
     const t = Math.max(0, AUD.ctx.currentTime - AUD.t0);
