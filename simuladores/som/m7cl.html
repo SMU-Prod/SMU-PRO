@@ -651,6 +651,12 @@ const N_MUTE = 8;
 const ESCALA_FADER = [10,5,0,-5,-10,-20,-30,-40,-50,-60,-Infinity];
 /* LEDs do meter do strip, p.18 */
 const LEDS_STRIP = ["OVER","-6","-12","-18","-30","-60"];
+/* O limiar de cada LED é o PRÓPRIO rótulo, convertido de dBFS para linear.
+   OVER é clip (0 dBFS). Usar números lineares inventados aqui deixava o
+   meter apagado com música tocando. */
+const LIMIAR_LED = [0, -6, -12, -18, -30, -60].map(db => Math.pow(10, db/20));
+/* a bridge tem 12 passos, com os dB impressos nela (p.19) */
+const LIMIAR_BRIDGE = [0,-3,-6,-9,-12,-15,-18,-24,-30,-40,-50,-60].map(db => Math.pow(10, db/20));
 
 /* ---------- helpers ---------- */
 const el = (tag, cls, txt) => {
@@ -1460,11 +1466,14 @@ function desenharStrip(strip){
     cur.style.top = ((1-p)*100).toFixed(2)+"%";
   }
 
-  /* meter de 6 LEDs */
+  /* meter de 6 LEDs. Os limiares saem dos PRÓPRIOS rótulos em dB
+     (OVER, -6, -12, -18, -30, -60) -- ver LIMIAR_LED.
+     Antes eram números lineares arbitrários (o menor 0,12 = -18 dBFS), então
+     música tocando a -25 dBFS não acendia LED NENHUM: o meter ficava apagado
+     com áudio correndo. Foi o "não toca" que o dono viu. */
   const leds = strip.querySelectorAll(".meterled b");
-  const n = c ? c.nivel : 0;                    /* 0..1 */
-  const limiares = [0.97,0.82,0.66,0.5,0.3,0.12];
-  leds.forEach((b,i)=>b.classList.toggle("a", n >= limiares[i]));
+  const n = c ? c.nivel : 0;                    /* 0..1 linear */
+  leds.forEach((b,i)=>b.classList.toggle("a", n >= LIMIAR_LED[i]));
 
   /* encoder da Centralogic */
   const enc = strip.querySelector('[data-papel="enc"]');
@@ -1966,9 +1975,32 @@ let t0 = 0;
 function tickMeters(ts){
   if (ts - t0 > 60){
     t0 = ts;
+    /* Com música tocando, o meter mede o SINAL REAL de cada faixa.
+       O metering point escolhe de qual analisador ler (p.167). */
+    const comAudio = new Set();
+    if (AUD.tocando){
+      for (const s of AUD.stems){
+        const c = S.canais[s.canal], n = s.nodes;
+        if (!c || !n || !n.anaPos) continue;
+        const ana = (S.meterPonto === "POST ON") ? n.anaPos : n.anaPre;
+        ana.getByteTimeDomainData(n.buf);
+        let pico = 0;
+        for (let i=0;i<n.buf.length;i++){
+          const v = Math.abs(n.buf[i] - 128) / 128;
+          if (v > pico) pico = v;
+        }
+        /* ataque rápido, queda lenta -- é o que faz o LED ser legível */
+        c.nivel = Math.max(pico, (c.nivel||0) * 0.82);
+        comAudio.add(c.id);
+      }
+    }
     for (const c of Object.values(S.canais)){
+      if (comAudio.has(c.id)) continue;          /* já medido no áudio real */
       if (c.tipo==="in" || c.tipo==="stin"){
-        /* nível de entrada depende do ganho de HA; sem sinal se o HA está no fim */
+        /* Sem música carregada o meter fica PARADO: um LED que mexe sem sinal
+           é exatamente o "botão que finge" que o dono cobra. Só há animação
+           quando o oscilador interno está ligado, que aí há sinal de verdade. */
+        if (!S.osc.on){ c.nivel = 0; continue; }
         const base = clamp((c.ha.gain+62)/72, 0, 1);
         const vivo = base * (0.55 + 0.45*Math.sin(ts/300 + c.id.length*1.7 + (+c.id.replace(/\D/g,"")||0)));
         /* O METERING POINT muda de verdade o que o meter mostra (p.167):
@@ -1981,13 +2013,45 @@ function tickMeters(ts){
         }
       }
     }
-    /* saídas somam o que chega */
-    const soma = Object.values(S.canais)
-      .filter(c=>(c.tipo==="in"||c.tipo==="stin") && c.on && c.toSt)
-      .reduce((a,c)=>a + c.nivel*dbParaPos(c.fader), 0);
+    /* O master soma o que chega. Com áudio real o nível medido JÁ passou pelo
+       fader (em POST ON), então não se multiplica por ele de novo -- isso
+       elevava o sinal ao quadrado e o master ficava sempre baixo demais. */
+    const entradas = Object.values(S.canais)
+      .filter(c=>(c.tipo==="in"||c.tipo==="stin") && c.on && c.toSt);
+    /* Sinais somam em POTÊNCIA, não em amplitude: raiz da soma dos quadrados.
+       Somar amplitude direto e depois dividir por um número escolhido a dedo
+       deixava o master sempre baixo demais e o meter apagado. */
+    const soma = AUD.tocando
+      ? Math.sqrt(entradas.reduce((a,c)=>a + c.nivel*c.nivel, 0))
+      : Math.sqrt(entradas.reduce((a,c)=>{ const v=c.nivel*dbParaPos(c.fader); return a+v*v; },0));
     const st = S.canais.STEREO;
-    st.nivel = clamp(soma/6 * dbParaPos(st.fader) * (st.on?1:0), 0, 1);
-    S.canais.MONO.nivel = st.nivel*0.8;
+    const fdSt = st.fader <= -138 ? 0 : Math.pow(10, st.fader/20);
+    st.nivel = clamp(soma * fdSt * (st.on?1:0), 0, 1);
+    S.canais.MONO.nivel = S.canais.MONO.on ? st.nivel*0.8 : 0;
+
+    /* Os buses MIX e MATRIX medem o que os canais MANDAM para eles.
+       Sem isto a meter bridge ficava sempre apagada, mesmo com o aluno
+       abrindo mandada -- e é justamente nela que se confere o monitor. */
+    const somaBus = (arrNome, idx) => {
+      let p = 0;
+      for (const c of entradas){
+        const s = c[arrNome] && c[arrNome][idx];
+        if (!s || !s.on || s.lvl <= -138) continue;
+        const v = c.nivel * Math.pow(10, s.lvl/20);
+        p += v*v;
+      }
+      return Math.sqrt(p);
+    };
+    for (let i=0;i<N_MIX;i++){
+      const m = S.canais["MIX"+(i+1)];
+      const fd = m.fader <= -138 ? 0 : Math.pow(10, m.fader/20);
+      m.nivel = clamp(somaBus("mix", i) * fd * (m.on?1:0), 0, 1);
+    }
+    for (let i=0;i<N_MTX;i++){
+      const m = S.canais["MTX"+(i+1)];
+      const fd = m.fader <= -138 ? 0 : Math.pow(10, m.fader/20);
+      m.nivel = clamp(somaBus("mtx", i) * fd * (m.on?1:0), 0, 1);
+    }
     pedirRender();
   }
   requestAnimationFrame(tickMeters);
@@ -4231,8 +4295,8 @@ function desenharBridge(){
     const c = S.canais[col.dataset.canal];
     const n = c ? c.nivel : 0;
     const leds = col.querySelectorAll(".bleds b");
-    /* 12 passos, do topo (OVER) para baixo (-60) */
-    leds.forEach((b,i)=>b.classList.toggle("a", n >= (1 - i/leds.length) * 0.98));
+    /* 12 passos com os dB IMPRESSOS na bridge, não uma rampa linear */
+    leds.forEach((b,i)=>b.classList.toggle("a", n >= LIMIAR_BRIDGE[i]));
   });
 }
 
@@ -4417,11 +4481,18 @@ async function carregarBase(idx){
       const resp = await fetch(SB_MEDIA + b.folder + "/" + st.f);
       if (!resp.ok) return null;
       const buf = await ctx.decodeAudioData(await resp.arrayBuffer());
-      return { ...st, canal:"CH"+(i+1), buffer:buf };
-    }catch(e){ return null; }
+      return { ...st, buffer:buf };
+    }catch(e){ console.error("[m7cl] faixa falhou:", st.f, e); return null; }
   }));
 
-  AUD.stems = carregados.filter(Boolean);
+  /* O canal é numerado DEPOIS de descartar as faixas que falharam.
+     Antes eu numerava no map (canal:"CH"+(i+1)) e só então filtrava: se a
+     faixa 1 falhasse, ela sumia e as outras continuavam em CH2, CH3... ->
+     o CH1 ficava MUDO com o LED mexendo, e o loop que desliga os canais
+     sobrando (usando AUD.stems.length) desligava canais que TINHAM faixa.
+     Um download perdido desalinhava a mesa inteira. */
+  const perdidas = carregados.filter(x=>!x).length;
+  AUD.stems = carregados.filter(Boolean).map((s,i)=>({ ...s, canal:"CH"+(i+1) }));
   AUD.dur = AUD.stems.reduce((m,s)=>Math.max(m, s.buffer.duration), 0);
 
   /* o canal recebe o nome e o pan da faixa, como numa passagem de som */
@@ -4444,6 +4515,9 @@ async function carregarBase(idx){
   AUD.carregando = false;
   S.ajuda = "<b>"+b.label+"</b> — "+AUD.stems.length+" faixas nos canais 1-"+AUD.stems.length+
             (b.stems.length>N_IN ? " (a base tem "+b.stems.length+", a mesa comporta "+N_IN+")" : "")+
+            /* falha de download não pode ficar muda: era o que fazia um canal
+               ficar sem som sem ninguém saber por quê */
+            (perdidas ? " · ⚠️ "+perdidas+" faixa(s) não baixaram" : "")+
             " · abra os faders e aperte PLAY";
   telaChave = null;
   pedirRender();
@@ -4462,13 +4536,24 @@ function tocarStem(s, quando, offset){
   const gain = ctx.createGain();
   const pan  = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
 
+  /* Analisadores para o METER medir o sinal DE VERDADE.
+     São dois porque o metering point da M7CL escolhe ONDE medir (p.167):
+       pre  = antes do fader/ON  ·  pos = depois de tudo, o que realmente sai
+     Sem isto o LED era um seno fictício: mexia sem áudio e não correspondia
+     ao que se ouvia -- foi o que o dono viu. */
+  const anaPre = ctx.createAnalyser(); anaPre.fftSize = 256;
+  const anaPos = ctx.createAnalyser(); anaPos.fftSize = 256;
+
   let no = src.connect(hpf);
   bandas.forEach(f=>{ no = no.connect(f); });
+  no.connect(anaPre);                    /* derivação: não corta a cadeia */
   no = no.connect(gain);
   if (pan) no = no.connect(pan);
+  no.connect(anaPos);
   no.connect(ctx.destination);
 
-  s.src = src; s.nodes = { hpf, bandas, gain, pan };
+  s.src = src;
+  s.nodes = { hpf, bandas, gain, pan, anaPre, anaPos, buf:new Uint8Array(anaPos.frequencyBinCount) };
   aplicarCanalNoAudio(s);
   src.start(quando, offset % (s.buffer.duration||1));
 }
@@ -4507,7 +4592,12 @@ function tocarAudio(){
   pedirRender();
 }
 function pararAudio(){
-  AUD.stems.forEach(s=>{ try{ s.src && s.src.stop(); }catch(e){} s.src=null; s.nodes=null; });
+  AUD.stems.forEach(s=>{
+    try{ s.src && s.src.stop(); }catch(e){}
+    s.src=null; s.nodes=null;
+    const c = S.canais[s.canal];
+    if (c) c.nivel = 0;          /* LED apaga junto com o som */
+  });
   if (AUD.tocando && AUD.ctx) AUD.offset = Math.max(0, AUD.ctx.currentTime - AUD.t0);
   AUD.tocando = false;
 }
