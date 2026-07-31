@@ -1,0 +1,2788 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>Yamaha M7CL-48 — console real (Simulador SMU)</title>
+<style>
+/* ==================================================================
+   YAMAHA M7CL-48 — RÉPLICA DA CONSOLE FÍSICA
+   ------------------------------------------------------------------
+   Este NÃO é o M7CL Editor (o software de PC). É a MESA: superfície,
+   faders, os 33 knobs do SELECTED CHANNEL e a touch screen central.
+
+   FONTE DE VERDADE (Regra 2) — tudo medido, nada chutado:
+     manuais/yamaha-M7CL-v3-owners.pdf, cap.2 "Panels and controls"
+       p.17  mapa geral do top panel
+       p.18  strip de INPUT e ST IN
+       p.19  SELECTED CHANNEL (16 MIX/MTX + HA/PAN/HPF/DYN + EQ 4x3)
+       p.21  Centralogic (8 strips com encoder multifunção)
+       p.22  SCENE MEMORY / MONITOR e USER DEFINED KEYS (12, grade 4x3)
+       p.23  STEREO/MONO MASTER e NAVIGATION KEYS
+       p.32  estrutura da touch screen (function access area + main area)
+       p.90  SELECTED CHANNEL VIEW screen (15 campos)
+       p.98  OVERVIEW screen (12 campos)
+     Páginas rasterizadas em _ref-m7cl/p0NN.png. Spec em _ref-m7cl/SPEC-PAINEL.md
+
+   ⚠️ ESTIMADO — a ÚNICA coisa não tirada do manual:
+     A COR do chassi. As figuras do manual são line art (P&B), então a
+     geometria é exata mas a cor não está lá. A paleta abaixo veio das
+     fotos do produto. Está toda em custom properties: para corrigir,
+     mexa SÓ no bloco :root — é 1 linha por cor.
+     As cores da TELA (azuis, laranja do +48V, verde da curva de EQ) NÃO
+     são estimadas: vieram das capturas coloridas da p.32 e p.98.
+   ================================================================== */
+
+:root{
+  /* --- chassi: MEDIDO na foto real da M7CL-48 enviada pelo dono ---
+     Correção: a primeira versão usava cinza grafite (estimativa minha a
+     partir do line art). Na foto o corpo é PRETO fosco com moldura preta
+     e os blocos de strip são um cinza-chumbo mais escuro que o corpo. */
+  --chassi:#17191c;          /* corpo preto fosco */
+  --chassi-alto:#23262a;     /* faces iluminadas / relevo */
+  --chassi-baixo:#0d0e10;    /* sombra / vinco */
+  --painel:#1f2226;          /* fundo dos blocos de strip */
+  --etiqueta:#1b5fa8;        /* faixa azul do topo de cada canal */
+  --fita:#e9e6dd;            /* fita branca de escrever o nome */
+  --serigrafia:#e8e8ea;      /* texto impresso no painel */
+  --serigrafia-fraca:#9a9da3;
+  --knob-send:#7d2230;       /* knobs MIX/MATRIX do SELECTED CHANNEL: bordô */
+
+  /* --- tela touch: MEDIDO nas capturas coloridas p.32 / p.98 --- */
+  --tela-fundo:#2b2d30;
+  --tela-canal:#3a3d42;
+  --tela-azul:#1f6fb8;       /* botões e faixa do canal selecionado */
+  --tela-azul-claro:#3fa9f5;
+  --tela-laranja:#e8741c;    /* +48V, INS  */
+  --tela-verde:#39b54a;      /* curva de EQ */
+  --tela-borda:#5a5e64;
+  --tela-texto:#e9eaec;
+
+  /* --- LEDs --- */
+  --led-on:#48e05a;          /* [ON] aceso */
+  --led-sel:#f2c200;         /* [SEL] aceso */
+  --led-cue:#ff8a1f;         /* [CUE] aceso */
+  --led-over:#ff2d2d;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{
+  background:#17181a;color:var(--serigrafia);
+  font-family:"Segoe UI",Tahoma,Verdana,sans-serif;
+  -webkit-font-smoothing:antialiased;user-select:none;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;
+}
+
+/* A mesa é desenhada num palco fixo de 1920x1000 e depois recebe um
+   scale para caber na janela. Assim as proporções do painel nunca
+   deformam -- só muda o zoom. */
+/* position:fixed + translate(-50%,-50%) centraliza o palco JÁ escalado.
+   Com o palco no fluxo normal ele continua ocupando 1920x1000 e o
+   flex do body empurra tudo -- foi o que deixou a mesa fora do lugar. */
+/* PROPORÇÃO MEDIDA, não escolhida:
+     - cotas oficiais (p.299): 1274 mm x 701 mm  ->  1.817
+     - vista de topo da figura p.17, medida por pixel: 1349 x 734 px -> 1.838
+   Duas fontes independentes batem, então o palco usa 1920 x 1044 (= 1.839). */
+/* Centralização: margem negativa de METADE do tamanho de design, e o scale
+   em torno do centro. Com translate(-50%,-50%) o deslocamento usaria o
+   tamanho NÃO escalado (960/522 px) e jogava a mesa para o canto. */
+#palco{
+  position:fixed;left:50%;top:50%;width:1920px;height:1044px;
+  margin-left:-960px;margin-top:-522px;
+  transform-origin:center center;
+}
+
+/* ---- contrato html.smu-fs (memória: o player avisa por postMessage e o
+   simulador responde SÓ com CSS -- sem isso o sim é cortado em tela cheia) --- */
+html.smu-fs,html.smu-fs body{height:100%}
+html.smu-fs body{align-items:center}
+
+/* ================= chassi ================= */
+.mesa{
+  position:absolute;inset:0;border-radius:10px;
+  background:linear-gradient(180deg,var(--chassi-alto) 0%,var(--chassi) 42%,var(--chassi-baixo) 100%);
+  box-shadow:0 18px 60px #000a, inset 0 1px 0 #ffffff18;
+  display:flex;flex-direction:column;padding:10px;gap:8px;
+}
+
+/* Profundidade dos andares, MEDIDA na figura p.17 (caixa de 734 px):
+   andar de cima 330 px = 45 %, andar de baixo 310 px = 42 %,
+   faixa frontal da mesa 94 px = 13 %. */
+/* gap ZERO de propósito: a posição de cada bloco vem das medidas da planta,
+   por vãos explícitos. Deixar o flex distribuir sobra foi o que desalinhou
+   os blocos de input da direita entre o andar de cima e o de baixo -- na
+   mesa real os dois começam no MESMO x (1119 de 1349 na planta). */
+.andar{display:flex;gap:0;min-height:0}
+.andar.cima{flex:45 1 0}
+.andar.baixo{flex:42 1 0}
+.rodape{
+  flex:13 1 0;min-height:0;display:flex;align-items:center;padding:0 14px;
+  border-top:1px solid #00000055;
+  background:linear-gradient(180deg,var(--chassi-baixo),#31343880);
+  border-radius:0 0 6px 6px;
+}
+
+/* bloco preto que abriga um grupo de strips */
+.bloco{
+  background:var(--painel);border-radius:6px;padding:5px 4px;
+  border:1px solid #000;box-shadow:inset 0 1px 0 #ffffff10;
+  display:flex;gap:2px;flex:0 0 auto;
+}
+.bloco.col{flex-direction:column;gap:4px}
+
+/* ================= strip de canal ================= */
+/* ordem MEDIDA no manual p.18: nº / SEL / CUE / 6 LEDs / ON / nome / fader / nº */
+/* Larguras MEDIDAS na figura p.17 (% da largura da mesa x 1920 px):
+     input  1.885 % -> 36 px   (confere nos dois blocos: 16 e 8 strips)
+     ST IN  1.90  % -> 36 px
+     Centralogic 2.41 % -> 46 px  (faders mais espaçados que os de input)
+     STEREO/MONO 2.15 % -> 41 px                                        */
+/* O strip divide a largura do bloco (que é quem tem a medida da planta),
+   em vez de cada strip ter largura fixa e a soma "dar mais ou menos certo". */
+.strip{
+  flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;
+  padding:2px 1px;background:#232629;border-radius:3px;border:1px solid #0c0d0e;
+}
+/* Etiqueta AZUL no topo de cada canal -- vista na foto real.
+   O rodapé do strip é serigrafia branca simples. */
+.strip .num{
+  font-size:9px;color:#fff;line-height:1;font-weight:700;width:100%;text-align:center;
+  background:linear-gradient(180deg,#2a78c4,var(--etiqueta));
+  border-radius:2px;padding:1px 0;border:1px solid #0b3a68;
+}
+.strip .num.b{
+  margin-top:1px;background:none;border:none;color:var(--serigrafia);
+  font-weight:600;font-size:8px;padding:0;
+}
+
+/* Alturas MEDIDAS no recorte ampliado do andar de baixo (strip de 280 px na
+   planta): a metade de cima do canal é botão e meter; o fader fica com 43 %.
+   A 1ª versão dava 67 % ao fader e o strip virava um trilho comprido e vazio. */
+/* As teclas da M7CL são CINZA-CLARAS com o LED escuro em cima (ver foto do
+   painel SCENE/UDK/NAV). A 1ª versão usava tecla escura e elas sumiam no
+   painel preto -- na mesa real elas saltam à vista. */
+.tecla{
+  width:26px;height:20px;border-radius:2px;cursor:pointer;position:relative;
+  background:linear-gradient(180deg,#d3d7db 0%,#b3b8be 55%,#969ba1 100%);
+  border:1px solid #15171a;
+  box-shadow:inset 0 1px 0 #ffffffcc, 0 1px 2px #0009;
+  display:flex;align-items:center;justify-content:center;padding:0;
+}
+.tecla:active{transform:translateY(1px)}
+/* o LED é a barrinha na parte de cima da tecla, como no hardware */
+.tecla i{
+  display:block;width:16px;height:4px;border-radius:1px;background:#2a2d31;
+  box-shadow:inset 0 1px 1px #000;transition:background .08s,box-shadow .08s;
+}
+.tecla.on i{background:var(--led-on);box-shadow:0 0 6px var(--led-on)}
+.tecla.sel.on i{background:var(--led-sel);box-shadow:0 0 6px var(--led-sel)}
+.tecla.cue.on i{background:var(--led-cue);box-shadow:0 0 6px var(--led-cue)}
+.rot{font-size:7px;color:var(--serigrafia-fraca);line-height:1;letter-spacing:.3px}
+
+/* meter de 6 LEDs -- OVER,-6,-12,-18,-30,-60 (p.18) */
+.meterled{display:flex;flex-direction:column;gap:1px;width:26px;padding:1px 2px;
+  background:#15171a;border-radius:2px;border:1px solid #0a0b0c}
+.meterled b{display:block;height:7px;border-radius:1px;background:#15281a;
+  box-shadow:inset 0 0 0 1px #0b0d0c;transition:background .05s}
+/* cores conferidas na foto: verde embaixo, âmbar no topo da faixa útil,
+   vermelho só no OVER */
+.meterled b.a{background:var(--led-on)}
+.meterled b.a.am{background:#e8c020;box-shadow:0 0 4px #e8c02088}
+.meterled b.a.ov{background:var(--led-over);box-shadow:0 0 5px var(--led-over)}
+
+/* fita BRANCA de escrever o nome do canal (na foto é fita clara, não faixa preta) */
+.nome{
+  width:32px;height:14px;background:var(--fita);border:1px solid #8d8a80;border-radius:1px;
+  font-size:7.5px;color:#15181b;font-weight:600;
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;white-space:nowrap;cursor:pointer;
+}
+
+/* fader 100mm: trilho + escala impressa + cursor */
+/* 43 % do strip -- MEDIDO na planta (fader 120 px num strip de 280 px).
+   Com flex:1 ele engolia 67 % e o canal virava um trilho vazio. */
+.fader{
+  position:relative;width:30px;flex:0 0 43%;min-height:0;cursor:ns-resize;
+  display:flex;align-items:stretch;justify-content:center;
+  /* Na foto (e na planta) a área do fader é um painel CLARO com a escala
+     impressa e a fenda escura no meio. Deixar tudo escuro como o resto do
+     strip fazia o fader sumir e o canal parecer oco. */
+  background:linear-gradient(180deg,#4b5057,#3c4046);
+  border-radius:2px;box-shadow:inset 0 0 3px #0008;
+}
+/* O fader é o elemento mais visível do canal na mesa real (ver foto).
+   A 1ª versão tinha trilho fino e escuro e o strip virava um buraco preto. */
+/* a fenda por onde o punho corre: escura contra o painel claro */
+.fader .trilho{
+  position:absolute;left:50%;top:3px;bottom:3px;width:7px;transform:translateX(-50%);
+  background:linear-gradient(90deg,#0b0d0f 0%,#17191c 40%,#25282c 50%,#17191c 60%,#0b0d0f 100%);
+  border-radius:2px;box-shadow:inset 0 1px 3px #000, 0 0 0 1px #5a6068;
+}
+.fader .escala{
+  position:absolute;inset:3px 0;font-size:5px;color:#e2e5e8;
+  pointer-events:none;
+}
+.fader .escala span{position:absolute;right:0;transform:translateY(-50%);line-height:1}
+.fader .escala u{position:absolute;left:0;width:4px;height:1px;background:#cfd3d8;
+  transform:translateY(-50%);text-decoration:none}
+/* cursor claro e graúdo, com o risco central branco do fader Yamaha */
+/* punho: ~62 % da largura do strip na planta. A 1ª versão usava 26 px num
+   strip de 29 px (90 %) e o punho transbordava por cima das bordas. */
+.fader .cursor{
+  position:absolute;left:50%;width:18px;height:13px;transform:translate(-50%,-50%);
+  border-radius:2px;pointer-events:none;
+  background:linear-gradient(180deg,#f2f4f6 0%,#cfd3d7 40%,#7e8288 50%,#c8ccd1 60%,#eef0f2 100%);
+  border:1px solid #0d0f11;box-shadow:0 2px 5px #000b, inset 0 1px 0 #fff;
+}
+.fader .cursor:after{content:"";position:absolute;left:1px;right:1px;top:50%;height:2px;
+  background:#fff;transform:translateY(-50%);box-shadow:0 0 2px #000a}
+/* Na M7CL o punho do STEREO e do MONO é VERMELHO -- é o que distingue o
+   master dos canais quando se olha a mesa de longe. */
+.strip.master .fader .cursor{
+  background:linear-gradient(180deg,#e8555f 0%,#c8202e 40%,#7d1019 50%,#c02434 60%,#e8555f 100%);
+  border-color:#3d070c;
+}
+.strip.master .fader .cursor:after{background:#ffd9dc}
+
+/* ================= knobs ================= */
+.knob{
+  width:var(--kd,26px);height:var(--kd,26px);border-radius:50%;position:relative;cursor:ns-resize;
+  background:radial-gradient(circle at 38% 30%,#6e727a,#33363b 70%,#212327);
+  border:1px solid #131517;box-shadow:0 2px 4px #0008,inset 0 1px 0 #ffffff20;
+}
+.knob:after{ /* traço indicador */
+  content:"";position:absolute;left:50%;top:8%;width:2px;height:34%;
+  background:#f0f2f4;border-radius:1px;transform-origin:50% 100%;
+  transform:translateX(-50%) rotate(var(--ang,0deg));
+}
+.knob.mini{--kd:19px}
+/* os 16 encoders MIX/MATRIX do SELECTED CHANNEL são bordô na mesa real */
+.knob.send{background:radial-gradient(circle at 38% 30%,#a8394a,var(--knob-send) 68%,#4a1119)}
+.knob.enc{ /* encoder multifunção: tem serrilha */
+  background:radial-gradient(circle at 38% 30%,#7a7e86,#3a3d42 68%,#232528);
+}
+.knob.enc:before{
+  content:"";position:absolute;inset:3px;border-radius:50%;
+  background:repeating-conic-gradient(#00000030 0 6deg,#ffffff10 6deg 12deg);
+}
+
+/* ================= SELECTED CHANNEL ================= */
+/* SELECTED CHANNEL: 11.1 % da largura da mesa.
+   MEDIDO no recorte ampliado da p.17 (x 557..707 da caixa de 1349 px).
+   A 1ª versão usava 21.5 % -- o dobro -- e era o que mais deixava a mesa
+   "fora de parâmetro": o painel de knobs engolia o lugar do display. */
+/* largura vem de MED.selch (medida na planta), aplicada no script */
+.selch{
+  background:var(--painel);border:1px solid #000;border-radius:6px;padding:3px;
+  display:flex;gap:3px;flex:0 0 auto;
+}
+/* vãos de chassi: larguras vindas das medidas da planta (const MED no script) */
+.vao-chassi{flex:0 0 auto}
+.vao{
+  flex:0 0 auto;display:flex;align-items:flex-end;justify-content:center;
+  padding-bottom:10px;
+}
+.vao span{font-size:9px;color:var(--serigrafia-fraca);letter-spacing:.5px}
+/* Knobs miúdos: o SELECTED CHANNEL real tem 213 px de largura para 33 knobs.
+   São pequenos na mesa de verdade -- encolher aqui é fidelidade, não economia. */
+/* knobs maiores: na foto o SELECTED CHANNEL é DENSO, os knobs preenchem a
+   caixa inteira. Os meus estavam espremidos no topo com vazio embaixo. */
+.selch .knob{--kd:24px}
+.selch .knob.mini{--kd:20px}
+/* Os dois blocos ESTICAM para preencher os 201 px da caixa. Sem isto eles
+   ficavam com a largura natural (131 px) e sobravam 70 px mortos à direita
+   -- era o vazio que aparecia na comparação com a foto. */
+.selch>*{flex:1 1 0;min-width:0}
+.selch>.caixa:first-child{flex:0 0 40%}
+.selch>div:last-child{display:flex;flex-direction:column;justify-content:space-between;height:100%}
+.selch .caixa{display:flex;flex-direction:column;justify-content:center}
+.gridmix{align-content:space-between;height:100%;justify-items:center}
+.eqlinha{justify-content:space-around}
+.selch .caixa{border:1px solid #4a4e54;border-radius:3px;padding:3px 3px;position:relative}
+.selch .caixa>.tit{
+  position:absolute;top:-5px;left:4px;background:var(--painel);padding:0 3px;
+  font-size:6px;color:var(--serigrafia);letter-spacing:.3px;font-weight:600;
+}
+.gridmix{display:grid;grid-template-columns:repeat(2,auto);gap:2px 6px}
+.gridmix .cel{display:flex;flex-direction:column;align-items:center;gap:1px}
+.gridmix .cel small{font-size:6.5px;color:var(--serigrafia-fraca);line-height:1}
+.eqlinha{display:flex;align-items:flex-end;gap:3px;margin-top:1px}
+.eqlinha .cel{display:flex;flex-direction:column;align-items:center;gap:0}
+.eqlinha .cel small{font-size:4.5px;color:var(--serigrafia-fraca);line-height:1}
+.gridmix .cel small{font-size:5px}
+.faixa-eq{font-size:5.5px;color:var(--serigrafia);text-align:center;letter-spacing:.3px}
+
+/* ================= touch screen ================= */
+/* Display: 24.5 % da mesa = moldura com a TELA LCD (16.8 %, razão ~4:3)
+   à esquerda e a placa YAMAHA / M7CL (6.7 %) à direita. MEDIDO na p.17. */
+.telabox{
+  flex:0 0 auto;background:var(--painel);border-radius:6px;border:1px solid #000;
+  padding:5px;display:flex;gap:4px;position:relative;
+}
+.placa{
+  flex:1 1 auto;min-width:0;display:flex;flex-direction:column;
+  align-items:flex-end;justify-content:space-between;padding:2px 2px 6px;
+}
+.placa .ym{font-size:13px;font-weight:800;letter-spacing:1.5px;color:#d8dbe0}
+.placa .mod{text-align:right;line-height:1.15}
+.placa .mod u{display:block;font-size:5.5px;letter-spacing:.6px;color:#92969c;
+  text-decoration:none}
+.placa .mod b{font-size:17px;letter-spacing:.5px;color:#e4e7ea}
+/* centro do andar de cima: bridge em cima (atravessando os dois),
+   selected channel + display embaixo. Larguras fixas porque foram MEDIDAS. */
+/* O centro alinha pela BASE com os blocos de input: na planta os blocos vão
+   até y=310 e o display até y=315. Alinhado pelo topo, sobrava um degrau de
+   uns 100 px embaixo do display -- foi o "flutuando" que o dono viu.
+   Altura: bridge (30..110) + display (117..315) = 285 px de 734 = 38,8 %. */
+.centro{
+  flex:0 0 auto;display:flex;flex-direction:column;gap:5px;
+  align-self:flex-end;height:405px;
+}
+/* altura da faixa selected-channel/display: 198 px de 734 = 27 % = 282 px.
+   Alinhada ao topo: abaixo dela a mesa real tem chassi liso até a Centralogic. */
+.centro-linha{flex:0 0 auto;height:282px;display:flex;gap:6px;align-items:stretch}
+
+/* --- meter bridge MBM7CL (atravessa selected channel + tela) --- */
+/* altura da bridge: 80 px de 734 na planta = 114 px no palco */
+.bridge{
+  flex:0 0 auto;width:100%;height:114px;overflow:hidden;display:flex;gap:8px;align-items:stretch;
+  background:#0e1012;border:1px solid #000;border-radius:4px;padding:3px 6px;
+  box-shadow:inset 0 1px 0 #ffffff12;
+}
+.bcols{flex-wrap:nowrap}
+.bgrupo{display:flex;flex-direction:column;gap:1px}
+.bcols{display:flex;gap:3px;align-items:flex-end}
+.bcol{display:flex;flex-direction:column;align-items:center;gap:1px}
+.bcol>span{font-size:6px;color:var(--serigrafia-fraca);line-height:1}
+.bleds{display:flex;flex-direction:column;gap:1px}
+/* LED apagado não é cinza morto: é o próprio LED sem corrente, e a grade
+   continua visível de longe (ver foto da bridge). */
+/* LED bicolor APAGADO é escuro, seja qual for a cor que ele acende.
+   Pintar o topo de vermelho/âmbar escuro deixava a bridge com cara suja --
+   na foto a bridge apagada é uma grade verde-escura uniforme. */
+.bleds b{display:block;width:10px;height:5px;border-radius:1px;background:#15281a;
+  box-shadow:inset 0 0 0 1px #0a0c0b}
+.bleds b.a{background:var(--led-on);box-shadow:0 0 4px #48e05a99}
+.bleds b.a.am{background:#e8c020;box-shadow:0 0 4px #e8c02099}
+.bleds b.a.ov{background:var(--led-over);box-shadow:0 0 5px var(--led-over)}
+.brot{font-size:6.5px;color:var(--serigrafia-fraca);text-align:center;letter-spacing:1px}
+.betiq{margin-left:auto;align-self:center;font-size:6.5px;color:var(--serigrafia-fraca);
+  border:1px solid #34383d;border-radius:2px;padding:2px 5px}
+.bridge .logo{align-self:center;font-size:13px;font-weight:800;letter-spacing:2.5px;
+  color:#d8dbe0;padding-left:6px}
+/* "M7CL" impresso à direita da tela, como na foto */
+.telabox .marca{font-size:13px;letter-spacing:1.5px;color:#b9bdc3;font-weight:700}
+
+/* TELA LCD: 16.8 % da mesa = 322 px. Razão medida na p.17: 226x172 px = 1.31,
+   ou seja ~4:3 -- NÃO é widescreen (foi outro erro da 1ª versão). */
+/* Altura MEDIDA na planta: 172 px de 734 = 23.4 % da profundidade = 246 px.
+   Fixa em px de propósito -- derivar altura da largura (aspect-ratio) é o que
+   já cortou simulador em tela cheia neste projeto. */
+#tela{
+  flex:0 0 auto;display:flex;gap:3px;
+  background:var(--tela-fundo);border:2px solid #0a0b0c;border-radius:2px;padding:3px;
+  color:var(--tela-texto);font-size:10px;overflow:hidden;
+}
+#area{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;overflow:hidden}
+
+/* --- function access area (barra direita da tela, p.32) --- */
+/* function access area: ~22 % da largura da tela (medido na p.32) */
+#fac{width:76px;flex:0 0 auto;display:flex;flex-direction:column;gap:2px}
+#fac .bt{
+  background:linear-gradient(180deg,#3c4046,#2a2d31);border:1px solid #14161a;border-radius:3px;
+  padding:3px 4px;font-size:9.5px;text-align:center;cursor:pointer;color:var(--tela-texto);
+}
+#fac .bt:hover{background:linear-gradient(180deg,#4a4f56,#33373c)}
+#fac .bt.ativo{background:linear-gradient(180deg,#2f8fd8,#1a5f9e);border-color:#0d3f6d}
+#fac .selcanal{
+  background:linear-gradient(180deg,#2f8fd8,#1a5f9e);border:1px solid #0d3f6d;border-radius:3px;
+  padding:2px 4px;cursor:pointer;line-height:1.15;
+}
+#fac .selcanal b{font-size:13px;display:block;letter-spacing:.5px}
+#fac .selcanal span{font-size:10px;color:#dbeaf7}
+#fac .relogio{font-size:10px;text-align:center;color:#c8ccd2;background:#1a1c1f;border-radius:2px;padding:1px}
+#fac .cena{
+  margin-top:auto;background:#1a1c1f;border:1px solid #14161a;border-radius:3px;padding:2px 4px;cursor:pointer;
+}
+#fac .cena u{font-size:8px;color:#9aa0a8;text-decoration:none;display:block}
+#fac .cena b{font-size:15px;letter-spacing:1px}
+#fac .cena span{font-size:8.5px;color:#c8ccd2;display:block;overflow:hidden;white-space:nowrap}
+
+/* meter da function access area */
+#facmeter{background:#111315;border:1px solid #14161a;border-radius:3px;padding:2px;
+  display:flex;flex-direction:column;align-items:center;gap:2px}
+#facmeter .barras{display:flex;gap:2px;height:74px;align-items:flex-end}
+#facmeter .barras i{width:8px;background:#1d2023;border-radius:1px;position:relative;height:100%}
+#facmeter .barras i b{position:absolute;left:0;right:0;bottom:0;border-radius:1px;
+  background:linear-gradient(0deg,#39b54a,#c8d400 72%,#ff2d2d 92%)}
+#facmeter .rot{font-size:7px}
+
+/* ================= Centralogic / UDK / NAV / SCENE ================= */
+.subtit{font-size:7.5px;color:var(--serigrafia);letter-spacing:.6px;text-align:center;
+  margin-bottom:2px;font-weight:600}
+.udk{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.udk .tecla{width:30px;height:15px;flex-direction:column}
+.udkcel{display:flex;flex-direction:column;align-items:center;gap:1px}
+.udkcel small{font-size:6.5px;color:var(--serigrafia-fraca);line-height:1}
+
+.nav{display:flex;gap:4px;align-items:flex-start}
+.nav .col{display:flex;flex-direction:column;gap:3px}
+.nav .navk{
+  width:44px;height:17px;border-radius:2px;cursor:pointer;font-size:7px;
+  background:linear-gradient(180deg,#5d6167,#3e4146);border:1px solid #1a1c1f;
+  color:var(--serigrafia);display:flex;align-items:center;justify-content:center;gap:2px;
+  box-shadow:inset 0 1px 0 #ffffff22;
+}
+.nav .navk i{width:5px;height:5px;border-radius:1px;background:#2a2d31;flex:0 0 auto}
+.nav .navk.on i{background:var(--led-sel);box-shadow:0 0 5px var(--led-sel)}
+.nav .navk.piscando i{animation:pisca .45s steps(1) infinite}
+@keyframes pisca{50%{background:#2a2d31;box-shadow:none}}
+
+.cena-sec{display:flex;align-items:center;gap:6px}
+.cena-sec .bt{
+  width:34px;height:26px;border-radius:3px;cursor:pointer;font-size:7px;
+  background:linear-gradient(180deg,#5d6167,#3e4146);border:1px solid #1a1c1f;
+  color:var(--serigrafia);display:flex;align-items:center;justify-content:center;
+  box-shadow:inset 0 1px 0 #ffffff22;
+}
+.cena-sec .bt:active{transform:translateY(1px)}
+.setas{display:flex;flex-direction:column;gap:3px}
+.setas .bt{width:26px;height:15px;font-size:8px}
+
+/* ================= rodapé de ajuda ================= */
+#ajuda{
+  position:absolute;left:10px;bottom:6px;right:250px;height:20px;
+  font-size:11px;color:#cfd3d8;display:flex;align-items:center;gap:8px;
+  pointer-events:none;
+}
+#ajuda b{color:#ffd45e}
+
+/* ================= popups da tela ================= */
+.popup{
+  position:absolute;inset:8px 8px 8px 8px;background:#242629;border:1px solid #5a5e64;
+  border-radius:4px;display:flex;flex-direction:column;overflow:hidden;z-index:20;
+}
+.popup .cab{
+  display:flex;align-items:center;gap:6px;padding:3px 5px;background:linear-gradient(180deg,#3d4147,#2a2d31);
+  border-bottom:1px solid #14161a;font-size:10px;font-weight:600;
+}
+.popup .cab .x{margin-left:auto;cursor:pointer;background:#1f6fb8;border-radius:2px;
+  padding:1px 7px;border:1px solid #0d3f6d}
+.popup .corpo{flex:1 1 auto;overflow:auto;padding:6px}
+
+/* botão genérico dentro da tela */
+.tbt{
+  background:linear-gradient(180deg,#3c4046,#2a2d31);border:1px solid #14161a;border-radius:2px;
+  color:var(--tela-texto);font-size:9px;padding:2px 5px;cursor:pointer;
+}
+.tbt.on{background:linear-gradient(180deg,#2f8fd8,#1a5f9e);border-color:#0d3f6d}
+.tbt.laranja.on{background:linear-gradient(180deg,#f08a30,#c85e0e);border-color:#8a3f06}
+
+/* ================= barra de aprendizado (fora da console) ================= */
+#barra{
+  position:absolute;left:0;right:0;top:0;height:0;overflow:visible;z-index:40;
+}
+#lupa{
+  position:absolute;right:10px;top:8px;z-index:45;
+  background:#1f6fb8;border:1px solid #0d3f6d;border-radius:3px;color:#fff;
+  font-size:11px;padding:3px 9px;cursor:pointer;
+}
+/* modo lupa: a tela ocupa a mesa inteira, para o aluno enxergar */
+.mesa.lupa .andar,.mesa.lupa .rodape{display:none}
+.mesa.lupa .telabox{display:flex;position:absolute;inset:8px}
+</style>
+</head>
+<body>
+<div id="palco">
+  <div class="mesa" id="mesa"></div>
+  <button id="lupa" type="button">AMPLIAR TELA</button>
+</div>
+
+<script>
+"use strict";
+/* ==================================================================
+   MOTOR DO SIMULADOR
+   Tudo em DOM/SVG de propósito: o portão de teste do projeto
+   (ferramentas/clicar-tudo.mjs) não enxerga dentro de <canvas>, então
+   um botão desenhado em canvas passaria por "vivo" sem nunca ter sido
+   clicado. Curva de EQ é SVG, que é DOM e é inspecionável.
+   ================================================================== */
+
+/* ---------- constantes da mesa (MEDIDAS no manual) ---------- */
+const N_IN = 48;            // M7CL-48
+const N_STIN = 4;
+const N_MIX = 16;
+const N_MTX = 8;
+const N_DCA = 8;
+const N_MUTE = 8;
+
+/* escala impressa no fader, p.18 */
+const ESCALA_FADER = [10,5,0,-5,-10,-20,-30,-40,-50,-60,-Infinity];
+/* LEDs do meter do strip, p.18 */
+const LEDS_STRIP = ["OVER","-6","-12","-18","-30","-60"];
+
+/* ---------- helpers ---------- */
+const el = (tag, cls, txt) => {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (txt != null) n.textContent = txt;
+  return n;
+};
+const clamp = (v,a,b) => v < a ? a : v > b ? b : v;
+const fmtDb = v => v <= -138 ? "-∞" : (v>0?"+":"") + v.toFixed(1);
+
+/* dB do fader -> posição 0..1 no trilho.
+   O fader da M7CL não é linear em dB: de +10 a -10 o curso é largo e
+   embaixo comprime. Reproduzo a escala impressa por interpolação nos
+   próprios pontos serigrafados, que é o que o operador enxerga. */
+const PONTOS = [[10,1],[5,.93],[0,.84],[-5,.75],[-10,.66],[-20,.52],
+                [-30,.40],[-40,.28],[-50,.17],[-60,.07],[-138,0]];
+function dbParaPos(db){
+  if (db <= -138) return 0;
+  for (let i=0;i<PONTOS.length-1;i++){
+    const [d1,p1] = PONTOS[i], [d2,p2] = PONTOS[i+1];
+    if (db <= d1 && db >= d2) return p2 + (db-d2)*(p1-p2)/(d1-d2);
+  }
+  return db > 10 ? 1 : 0;
+}
+function posParaDb(p){
+  p = clamp(p,0,1);
+  if (p <= 0) return -138;
+  for (let i=0;i<PONTOS.length-1;i++){
+    const [d1,p1] = PONTOS[i], [d2,p2] = PONTOS[i+1];
+    if (p <= p1 && p >= p2) return d2 + (p-p2)*(d1-d2)/(p1-p2);
+  }
+  return 10;
+}
+
+/* ---------- estado ---------- */
+function novoCanal(id, tipo, nome){
+  return {
+    id, tipo, nome,
+    on: true, sel:false, cue:false,
+    fader: tipo==="in" || tipo==="stin" ? -138 : 0,
+    /* HA: faixa MEDIDA no manual -62..+10 dB */
+    ha:{ gain:-20, phantom:false, phase:false },
+    hpf:{ on:tipo==="in"||tipo==="stin", freq:80 },        /* 20..600 Hz */
+    /* EQ 4 bandas, faixas MEDIDAS: F 20..20k, G ±18, Q 0.10..10 */
+    eq:{ on:true, tipo:"I", att:0, bandas:{
+      low:  {f:125,  g:0, q:0.7},
+      lomid:{f:1000, g:0, q:0.7},
+      himid:{f:4000, g:0, q:0.7},
+      high: {f:10000,g:0, q:0.7} } },
+    /* DYN1 gate/comp, DYN2 comp/de-esser -- faixas do manual p.249 */
+    dyn1:{ on:false, tipo:"GATE", thr:-26, range:-70, attack:0, hold:0.02, decay:0.3 },
+    dyn2:{ on:false, tipo:"COMP", thr:-14, ratio:2.5, attack:6, release:0.3, knee:2, out:0 },
+    pan:0, toSt:true, toMono:false,
+    mix: Array.from({length:N_MIX}, () => ({ lvl:-138, on:true, pre:false })),
+    mtx: Array.from({length:N_MTX}, () => ({ lvl:-138, on:true, pre:false })),
+    dca:[], mute:[],
+    insert:false, dout:false, recallSafe:false,
+    nivel:0   /* nível instantâneo p/ os meters */
+  };
+}
+
+const S = {
+  canais:{},
+  sel:"CH1",
+  nav:"IN1-8",          /* nav key ativa -> quem está na Centralogic */
+  navFixa:null,         /* nav key segurada 2s fixa a Centralogic */
+  tela:"OVERVIEW",
+  popup:null,
+  sof:null,             /* SENDS ON FADER: null | {tipo:"mix"|"mtx", n:0..} */
+  sendDest:"mix",       /* TO MIX x TO MATRIX no OVERVIEW */
+  cena:{ n:0, nome:"Initial Data", lista:[] },
+  monitor:{ nivel:0.7, cueAtivo:false, dimm:false },
+  osc:{ on:false, tipo:"SINE", freq:1000, nivel:-20 },
+  talkback:{ on:false, nivel:-10 },
+  udk:[],               /* 12 funções */
+  usuario:"ADMIN",
+  ajuda:"",
+};
+
+/* --- monta os canais --- */
+for (let i=1;i<=N_IN;i++)   S.canais["CH"+i]  = novoCanal("CH"+i,"in","ch "+i);
+for (let i=1;i<=N_STIN;i++) S.canais["ST"+i]  = novoCanal("ST"+i,"stin","ST IN "+i);
+for (let i=1;i<=N_MIX;i++)  S.canais["MIX"+i] = novoCanal("MIX"+i,"mix","MIX "+i);
+for (let i=1;i<=N_MTX;i++)  S.canais["MTX"+i] = novoCanal("MTX"+i,"mtx","MATRIX "+i);
+for (let i=1;i<=N_DCA;i++) S.canais["DCA"+i] = novoCanal("DCA"+i,"dca","DCA "+i);
+S.canais["STEREO"] = novoCanal("STEREO","stereo","ST");
+S.canais["MONO"]   = novoCanal("MONO","mono","MONO");
+
+/* Ordem do dono: a mesa nasce com TODOS os faders embaixo (-∞).
+   É também como se entrega uma console para o show: nada aberto. */
+for (const c of Object.values(S.canais)) c.fader = -138;
+
+/* funções que a Yamaha permite nas 12 USER DEFINED KEYS (apêndice p.280) */
+const FUNCOES_UDK = [
+  "SCENE INC","SCENE DEC","SCENE RECALL","TALKBACK ON","OSCILLATOR ON",
+  "MONITOR DIMM","SENDS ON FADER","CUE CLEAR","METER PEAK HOLD","TAP TEMPO",
+  "MUTE GROUP 1","MUTE GROUP 2","HELP","(sem atribuição)"
+];
+S.udk = ["SCENE DEC","SCENE INC","SCENE RECALL","TALKBACK ON",
+         "OSCILLATOR ON","CUE CLEAR","SENDS ON FADER","MONITOR DIMM",
+         "MUTE GROUP 1","MUTE GROUP 2","TAP TEMPO","HELP"];
+
+/* 300 cenas -- a 000 é "Initial Data" e é read-only na mesa real */
+S.cena.lista = [{n:0,nome:"Initial Data",bloq:true,dados:null}];
+
+/* ---------- qual grupo a Centralogic está controlando ---------- */
+const NAVS = [
+  {id:"IN1-8",   rot:"1-8",     alvo:i=>"CH"+(1+i)},
+  {id:"IN9-16",  rot:"9-16",    alvo:i=>"CH"+(9+i)},
+  {id:"IN17-24", rot:"17-24",   alvo:i=>"CH"+(17+i)},
+  {id:"IN25-32", rot:"25-32",   alvo:i=>"CH"+(25+i)},
+  {id:"IN33-40", rot:"33-40",   alvo:i=>"CH"+(33+i)},
+  {id:"IN41-48", rot:"41-48",   alvo:i=>"CH"+(41+i)},
+  {id:"STIN",    rot:"ST IN",   alvo:i=>i<4?"ST"+(1+i):null},
+  {id:"DCA",     rot:"DCA",     alvo:i=>"DCA"+(1+i)},
+  {id:"MIX1-8",  rot:"MIX1-8",  alvo:i=>"MIX"+(1+i)},
+  {id:"MIX9-16", rot:"MIX9-16", alvo:i=>"MIX"+(9+i)},
+  {id:"MATRIX",  rot:"MATRIX",  alvo:i=>"MTX"+(1+i)},
+  /* p.23: [STEREO] põe ST L/R + MONO nos módulos 1-3; 4-8 ficam sem uso */
+  {id:"STEREO",  rot:"STEREO",  alvo:i=>i===0?"STEREO":i===1?"STEREO":i===2?"MONO":null},
+];
+const navPorId = id => NAVS.find(n=>n.id===id);
+function grupoCentralogic(){
+  const nv = navPorId(S.navFixa || S.nav) || NAVS[0];
+  return Array.from({length:8}, (_,i)=>nv.alvo(i));
+}
+/* o OVERVIEW pode estar mostrando um grupo diferente do da Centralogic
+   (p.98/104) -- por isso as duas leituras são separadas */
+function grupoTela(){
+  const nv = navPorId(S.nav) || NAVS[0];
+  if (nv.id === "DCA") {           /* p.98: não existe OVERVIEW de DCA */
+    const ant = navPorId(S.navAnterior || "IN1-8");
+    return Array.from({length:8}, (_,i)=>ant.alvo(i));
+  }
+  return Array.from({length:8}, (_,i)=>nv.alvo(i));
+}
+
+/* ---------- render coalescido por frame ----------
+   (memória do projeto: repaint síncrono por pointermove travava o iPad) */
+let sujo = false;
+function pedirRender(){
+  if (sujo) return;
+  sujo = true;
+  requestAnimationFrame(()=>{ sujo = false; desenhar(); });
+}
+
+/* ================= construção do DOM da mesa =================
+   MEDIDAS DA PLANTA (p.17), caixa do painel = 1349 px de largura.
+   Convertidas para o palco de 1920 px pelo fator 1920/1349 = 1,4233.
+   Os dois andares usam os MESMOS x para os blocos de input -- é isso que
+   mantém 41-48 (cima) e 33-40 (baixo) na mesma coluna, como na foto.    */
+const F = 1920/1349;
+const mm = px => Math.round(px * F);          /* planta -> palco */
+
+/* Os x abaixo são as MOLDURAS do desenho, achadas por densidade de traço
+   (colunas com preto em >80 % da altura), medidas separadamente no andar de
+   cima e no de baixo. Correção importante da 2ª rodada: a 1ª versão media
+   "colunas vazias", e o texto "Centralogic™" impresso no chassi partia o vão
+   em dois -- daí a Centralogic ter saído 100 px larga demais e o vão estreito.
+   Molduras COMUNS aos dois andares (a carcaça): 53 · 233 · 257 · 436 · 1135 · 1314 */
+const MED = {
+  x0:        mm(53),                 /*  75  borda até o 1º bloco de input     */
+  bloco8:    mm(233-53),             /* 256  um grupo de 8 canais              */
+  divisoria: mm(257-233),            /*  34  chassi entre os dois grupos de 8  */
+  bloco8b:   mm(436-257),            /* 255  o segundo grupo de 8              */
+  blocoDir:  mm(1314-1135),          /* 255  8 strips, à direita               */
+  /* andar de cima */
+  vaoCima:   mm(566-436),            /* 185  chassi antes do SELECTED CHANNEL  */
+  selch:     mm(707-566),            /* 201  SELECTED CHANNEL — a moldura
+                                             EXTERNA é 566; eu tinha pegado a
+                                             linha interna (579) e perdido
+                                             20 px de largura útil de knob    */
+  vaoSel:    mm(715-707),            /*  11                                    */
+  lcd:       mm(945-715),            /* 327  a TELA                            */
+  placa:     mm(1036-945),           /* 130  YAMAHA / M7CL impressos           */
+  vaoDir:    mm(1135-1036),          /* 141  chassi depois do display          */
+  /* andar de baixo */
+  vaoStin:   mm(454-436),            /*  26                                    */
+  stin:      mm(570-454),            /* 165  4 strips ST IN                    */
+  vaoCL:     mm(722-570),            /* 216  o vão com a marca Centralogic     */
+  centralog: mm(902-722),            /* 256  8 strips -- MESMA largura dos de
+                                             input (22,5 px na planta), não
+                                             mais largos como eu tinha feito   */
+  meio:      mm(1042-902),           /* 199  SCENE / UDK / NAV                 */
+  master:    mm(1103-1042),          /*  87  STEREO + MONO                     */
+  vaoMaster: mm(1135-1103),          /*  46                                    */
+};
+const vao = w => { const v = el("div","vao-chassi"); v.style.width = w+"px"; return v; };
+
+/* O "bloco de 16" da esquerda são na verdade DOIS blocos de 8 com uma
+   divisória de chassi no meio (planta: 36..234 | 234..256 | 256..445).
+   Na foto isso é bem visível -- fazer um bloco único de 16 apagava a
+   divisória e deixava a mesa com cara de painel corrido. */
+function parDeBlocos(primeiro){
+  const total = MED.bloco8 + MED.divisoria + MED.bloco8b;
+  const w = el("div");
+  w.style.cssText = "flex:0 0 auto;display:flex;gap:"+MED.divisoria+"px;width:"+total+"px";
+  [[0,MED.bloco8],[8,MED.bloco8b]].forEach(([off,larg])=>{
+    const b = fazBloco(Array.from({length:8},(_,i)=>{
+      const n = primeiro + off + i;
+      return fazStrip("CH"+n, String(n));
+    }));
+    b.style.width = larg+"px";
+    w.appendChild(b);
+  });
+  return w;
+}
+
+const mesa = document.getElementById("mesa");
+
+function fazTecla(cls, rotulo){
+  const cel = el("div","udkcel");
+  const b = el("button","tecla "+cls);
+  b.type = "button";
+  b.appendChild(el("i"));
+  cel.appendChild(b);
+  if (rotulo) cel.appendChild(el("small",null,rotulo));
+  return {cel, b};
+}
+
+function fazMeterLed(){
+  const m = el("div","meterled");
+  LEDS_STRIP.forEach((_,i)=>{
+    const b = el("b");
+    if (i===0) b.classList.add("ov");        /* OVER: vermelho */
+    else if (i===1) b.classList.add("am");   /* -6: âmbar */
+    m.appendChild(b);
+  });
+  return m;
+}
+
+function fazFader(){
+  const f = el("div","fader");
+  f.appendChild(el("div","trilho"));
+  const esc = el("div","escala");
+  ESCALA_FADER.forEach(v=>{
+    const p = dbParaPos(v===-Infinity?-138:v);
+    const y = (1-p)*100;
+    const t = el("span",null, v===-Infinity?"-∞":String(v));
+    t.style.top = y+"%";
+    const u = el("u"); u.style.top = y+"%";
+    esc.appendChild(u); esc.appendChild(t);
+  });
+  f.appendChild(esc);
+  f.appendChild(el("div","cursor"));
+  return f;
+}
+
+/* um strip completo (input, ST IN, centralogic, master) */
+function fazStrip(idCanal, rotuloTopo, opc){
+  opc = opc || {};
+  const s = el("div","strip"+(opc.classe ? " "+opc.classe : ""));
+  s.dataset.canal = idCanal || "";
+
+  /* Na Centralogic o strip começa DIRETO no encoder: não existe etiqueta de
+     número no topo (o número fica só no rodapé) -- conferido na planta e na
+     foto. Nos canais de input a etiqueta azul existe. */
+  if (opc.encoder){
+    const k = el("div","knob enc");
+    k.dataset.papel = "enc";
+    s.appendChild(k);
+  } else {
+    s.appendChild(el("div","num",rotuloTopo));
+  }
+  const sel = fazTecla("sel","SEL");  s.appendChild(sel.cel); sel.b.dataset.acao="sel";
+  const cue = fazTecla("cue","CUE");  s.appendChild(cue.cel); cue.b.dataset.acao="cue";
+  s.appendChild(fazMeterLed());
+  const on  = fazTecla("on","ON");    s.appendChild(on.cel);  on.b.dataset.acao="on";
+  const nm  = el("div","nome");       s.appendChild(nm);
+  s.appendChild(fazFader());
+  s.appendChild(el("div","num b",opc.rodape != null ? opc.rodape : rotuloTopo));
+  return s;
+}
+
+/* ---- meter bridge MBM7CL (opcional no hardware; p.19)
+   MIX 1-16 à esquerda, MATRIX 1-8 à direita. Escala MEDIDA:
+   OVER,-3,-6,-9,-12,-15,-18,-24,-30,-40,-50,-60 ---- */
+const ESCALA_BRIDGE = ["OVER","-3","-6","-9","-12","-15","-18","-24","-30","-40","-50","-60"];
+function fazMeterBridge(){
+  const mb = el("div","bridge");
+  /* TRÊS blocos, como na p.19 e na foto: MIX 1-8 | MIX 9-16 | MATRIX 1-8.
+     Eu tinha feito o MIX como um bloco corrido de 16. */
+  const faz = (rot, n, pref, base) => {
+    base = base || 0;
+    const g = el("div","bgrupo");
+    const cols = el("div","bcols");
+    for (let i=0;i<n;i++){
+      const c = el("div","bcol");
+      c.dataset.canal = pref+(base+i+1);
+      c.appendChild(el("span",null,String(base+i+1)));
+      const leds = el("div","bleds");
+      ESCALA_BRIDGE.forEach((_,j)=>{
+        const b=el("b");
+        if (j===0) b.classList.add("ov");            /* OVER */
+        else if (j<=2) b.classList.add("am");        /* -3 / -6 */
+        leds.appendChild(b);
+      });
+      c.appendChild(leds);
+      cols.appendChild(c);
+    }
+    g.appendChild(cols);
+    g.appendChild(el("div","brot",rot));
+    return g;
+  };
+  mb.appendChild(faz("MIX", 8, "MIX", 0));
+  mb.appendChild(faz("", 8, "MIX", 8));
+  mb.appendChild(faz("MATRIX", N_MTX, "MTX", 0));
+  const et = el("div","betiq","METER BRIDGE MBM7CL FOR M7CL");
+  mb.appendChild(et);
+  /* logo YAMAHA no canto direito da bridge, como na foto */
+  mb.appendChild(el("div","logo","YAMAHA"));
+  return mb;
+}
+
+function fazBloco(lista){
+  const b = el("div","bloco");
+  lista.forEach(x=>b.appendChild(x));
+  return b;
+}
+
+/* ---- SELECTED CHANNEL: 33 knobs, layout medido na p.19 ---- */
+function fazSelectedChannel(){
+  const box = el("div","selch");
+
+  /* 16 encoders MIX/MATRIX, 2 colunas x 8 linhas */
+  const cx1 = el("div","caixa");
+  cx1.appendChild(el("div","tit","MIX / MATRIX"));
+  const g = el("div","gridmix");
+  for (let i=0;i<N_MIX;i++){
+    const cel = el("div","cel");
+    const k = el("div","knob mini send");
+    k.dataset.papel="send"; k.dataset.n=String(i);
+    cel.appendChild(k);
+    cel.appendChild(el("small",null,String(i+1)));
+    g.appendChild(cel);
+  }
+  cx1.appendChild(g);
+  box.appendChild(cx1);
+
+  /* coluna direita: HA/DYN1, PAN/DYN2, HPF, EQ 4 bandas */
+  const dir = el("div");
+  dir.style.cssText = "display:flex;flex-direction:column;gap:7px";
+
+  const linha1 = el("div"); linha1.style.cssText="display:flex;gap:6px";
+  const cHA = el("div","caixa"); cHA.appendChild(el("div","tit","HA"));
+  const kHA = el("div","knob"); kHA.dataset.papel="ha"; cHA.appendChild(kHA);
+  const cD1 = el("div","caixa"); cD1.appendChild(el("div","tit","DYNAMICS 1"));
+  const kD1 = el("div","knob"); kD1.dataset.papel="dyn1"; cD1.appendChild(kD1);
+  cD1.appendChild(el("div","faixa-eq","THRESHOLD"));
+  linha1.appendChild(cHA); linha1.appendChild(cD1);
+
+  const linha2 = el("div"); linha2.style.cssText="display:flex;gap:6px";
+  const cPAN = el("div","caixa"); cPAN.appendChild(el("div","tit","PAN"));
+  const kPAN = el("div","knob"); kPAN.dataset.papel="pan"; cPAN.appendChild(kPAN);
+  const cD2 = el("div","caixa"); cD2.appendChild(el("div","tit","DYNAMICS 2"));
+  const kD2 = el("div","knob"); kD2.dataset.papel="dyn2"; cD2.appendChild(kD2);
+  cD2.appendChild(el("div","faixa-eq","THRESHOLD"));
+  linha2.appendChild(cPAN); linha2.appendChild(cD2);
+
+  const cHPF = el("div","caixa"); cHPF.appendChild(el("div","tit","HPF"));
+  const kHPF = el("div","knob"); kHPF.dataset.papel="hpf"; cHPF.appendChild(kHPF);
+  cHPF.appendChild(el("div","faixa-eq","FREQUENCY"));
+
+  const cEQ = el("div","caixa"); cEQ.appendChild(el("div","tit","EQ"));
+  [["high","HIGH"],["himid","HIGH MID"],["lomid","LOW MID"],["low","LOW"]].forEach(([id,rot])=>{
+    cEQ.appendChild(el("div","faixa-eq",rot));
+    const l = el("div","eqlinha");
+    [["q","Q"],["f","FREQUENCY"],["g","GAIN"]].forEach(([p,r])=>{
+      const cel = el("div","cel");
+      const k = el("div","knob mini");
+      k.dataset.papel="eq"; k.dataset.banda=id; k.dataset.par=p;
+      cel.appendChild(k); cel.appendChild(el("small",null,r));
+      l.appendChild(cel);
+    });
+    cEQ.appendChild(l);
+  });
+
+  dir.appendChild(linha1); dir.appendChild(linha2);
+  dir.appendChild(cHPF); dir.appendChild(cEQ);
+  box.appendChild(dir);
+  return box;
+}
+
+/* ---- NAVIGATION KEYS: layout exato da p.23 ---- */
+function fazNav(){
+  const wrap = el("div");
+  wrap.appendChild(el("div","subtit","NAVIGATION KEYS"));
+  const n = el("div","nav");
+
+  const colA = el("div","col");
+  const l1 = el("div"); l1.style.cssText="display:flex;gap:3px";
+  const l2 = el("div"); l2.style.cssText="display:flex;gap:3px";
+  l1.appendChild(navK("IN17-24")); l1.appendChild(navK("IN25-32"));
+  l2.appendChild(navK("IN1-8"));   l2.appendChild(navK("IN9-16")); l2.appendChild(navK("STIN"));
+  colA.appendChild(l1); colA.appendChild(l2);
+
+  const colB = el("div","col");
+  colB.appendChild(navK("MATRIX")); colB.appendChild(navK("MIX9-16"));
+  colB.appendChild(navK("MIX1-8")); colB.appendChild(navK("DCA"));
+
+  const colC = el("div","col");
+  const r1 = el("div"); r1.style.cssText="display:flex;gap:3px;justify-content:flex-end";
+  const r2 = el("div"); r2.style.cssText="display:flex;gap:3px";
+  r1.appendChild(navK("IN41-48"));
+  r2.appendChild(navK("STEREO")); r2.appendChild(navK("IN33-40"));
+  colC.appendChild(r1); colC.appendChild(r2);
+
+  n.appendChild(colA); n.appendChild(colB); n.appendChild(colC);
+  wrap.appendChild(n);
+  return wrap;
+}
+function navK(id){
+  const nv = navPorId(id);
+  const b = el("button","navk"); b.type="button";
+  b.dataset.nav = id;
+  b.appendChild(el("i"));
+  b.appendChild(el("span",null,nv.rot));
+  return b;
+}
+
+/* ---- USER DEFINED KEYS 12, grade 4x3 (p.22) ---- */
+function fazUDK(){
+  const wrap = el("div");
+  wrap.appendChild(el("div","subtit","USER DEFINED KEYS"));
+  const g = el("div","udk");
+  for (let i=0;i<12;i++){
+    const t = fazTecla("udk", String(i+1));
+    t.b.dataset.udk = String(i);
+    g.appendChild(t.cel);
+  }
+  wrap.appendChild(g);
+  return wrap;
+}
+
+/* ---- SCENE MEMORY + MONITOR LEVEL (p.22) ---- */
+function fazCena(){
+  const wrap = el("div");
+  wrap.appendChild(el("div","subtit","SCENE MEMORY"));
+  const l = el("div","cena-sec");
+  const store = el("button","bt","STORE"); store.type="button"; store.dataset.acao="store";
+  const setas = el("div","setas");
+  const up = el("button","bt","▲"); up.type="button"; up.dataset.acao="cenaUp";
+  const dn = el("button","bt","▼"); dn.type="button"; dn.dataset.acao="cenaDown";
+  setas.appendChild(up); setas.appendChild(dn);
+  const rec = el("button","bt","RECALL"); rec.type="button"; rec.dataset.acao="recall";
+  const mon = el("div");
+  mon.style.cssText="display:flex;flex-direction:column;align-items:center;gap:1px";
+  const kmon = el("div","knob"); kmon.dataset.papel="monitor";
+  mon.appendChild(kmon);
+  mon.appendChild(el("div","faixa-eq","MONITOR LEVEL"));
+  l.appendChild(store); l.appendChild(setas); l.appendChild(rec); l.appendChild(mon);
+  wrap.appendChild(l);
+  return wrap;
+}
+
+/* ================= montagem ================= */
+function montar(){
+  mesa.innerHTML = "";
+
+  /* ---------- ANDAR DE CIMA ---------- */
+  const cima = el("div","andar cima");
+  cima.appendChild(vao(MED.x0));
+
+  /* esquerda: INPUT 17-24 | 25-32 (dois blocos, p.17) */
+  cima.appendChild(parDeBlocos(17));
+
+  cima.appendChild(vao(MED.vaoCima));
+
+  /* Centro do andar de cima: a meter bridge atravessa por CIMA do
+     SELECTED CHANNEL e da tela (é assim na foto real -- ela é bem mais
+     larga que a tela sozinha), e embaixo ficam os dois lado a lado. */
+  const centro = el("div","centro");
+  /* trava a largura do centro no que foi medido: sem isso a meter bridge,
+     que tem 24 colunas de LED, fica mais larga que o conjunto de baixo e
+     empurra o bloco de input da direita para fora do alinhamento */
+  centro.style.width = (MED.selch + MED.vaoSel + MED.lcd + MED.placa)+"px";
+  centro.appendChild(fazMeterBridge());
+
+  const linhaC = el("div","centro-linha");
+  linhaC.style.gap = MED.vaoSel+"px";
+  const sc = fazSelectedChannel();
+  sc.style.width = MED.selch+"px";
+  linhaC.appendChild(sc);
+
+  const tb = el("div","telabox");
+  const tela = el("div"); tela.id = "tela";
+  /* larguras MEDIDAS: LCD 327 px, placa YAMAHA/M7CL 130 px.
+     Altura do LCD pela razão medida na planta (230x176 = 1,31). */
+  tela.style.width  = MED.lcd+"px";
+  tela.style.height = Math.round(MED.lcd/1.31)+"px";
+  /* a moldura do display inteira mede 457 px (715..1036 na planta); com
+     box-sizing:border-box o padding entra nessa conta e a placa fica com o
+     resto -- assim os dois andares fecham no MESMO x e os blocos alinham */
+  tb.style.width = (MED.lcd + MED.placa)+"px";
+  const area = el("div"); area.id = "area";
+  const fac  = el("div"); fac.id  = "fac";
+  tela.appendChild(area); tela.appendChild(fac);
+  tb.appendChild(tela);
+
+  /* placa à direita do LCD: YAMAHA em cima, "DIGITAL MIXING CONSOLE M7CL"
+     no meio -- é assim na planta e na foto */
+  const placa = el("div","placa");
+  placa.appendChild(el("div","ym","YAMAHA"));
+  const mod = el("div","mod");
+  mod.appendChild(el("u",null,"DIGITAL MIXING CONSOLE"));
+  mod.appendChild(el("b",null,"M7CL"));
+  placa.appendChild(mod);
+  placa.appendChild(el("div"));
+  tb.appendChild(placa);
+  linhaC.appendChild(tb);
+
+  centro.appendChild(linhaC);
+  cima.appendChild(centro);
+
+  cima.appendChild(vao(MED.vaoDir));
+
+
+  /* direita: INPUT 41-48 */
+  const bDirC = fazBloco(Array.from({length:8},(_,i)=>fazStrip("CH"+(41+i), String(41+i))));
+  bDirC.style.width = MED.blocoDir+"px";
+  cima.appendChild(bDirC);
+  mesa.appendChild(cima);
+
+  /* ---------- ANDAR DE BAIXO ----------
+     Mesmos x do andar de cima nos blocos de input. */
+  const baixo = el("div","andar baixo");
+  baixo.appendChild(vao(MED.x0));
+
+  baixo.appendChild(parDeBlocos(1));   /* INPUT 1-8 | 9-16 */
+
+  baixo.appendChild(vao(MED.vaoStin));
+
+  /* ST IN 1-4 */
+  const bSt = fazBloco(Array.from({length:4},(_,i)=>fazStrip("ST"+(1+i), "ST IN", {rodape:String(i+1)})));
+  bSt.style.width = MED.stin+"px";
+  baixo.appendChild(bSt);
+
+  /* vão com a marca Centralogic -- na mesa real é chassi liso escrito */
+  const vaoC = el("div","vao");
+  vaoC.style.width = MED.vaoCL+"px";
+  vaoC.appendChild(el("span",null,"Centralogic™"));
+  baixo.appendChild(vaoC);
+
+  /* Centralogic: 8 strips com encoder multifunção */
+  const cl = fazBloco(
+    Array.from({length:8},(_,i)=>{
+      const s = fazStrip(null, String(i+1), {encoder:true, classe:"cl"});
+      s.dataset.cl = String(i);
+      return s;
+    })
+  );
+  cl.style.width = MED.centralog+"px";
+  baixo.appendChild(cl);
+
+  /* coluna SCENE / UDK / NAV */
+  const meio = el("div","bloco col");
+  meio.style.width = MED.meio+"px";
+  meio.appendChild(fazCena());
+  meio.appendChild(fazUDK());
+  meio.appendChild(fazNav());
+  baixo.appendChild(meio);
+
+  /* STEREO / MONO MASTER */
+  const bMst = fazBloco([
+    fazStrip("STEREO","STEREO",{rodape:"STEREO",classe:"master"}),
+    fazStrip("MONO","MONO",{rodape:"MONO",classe:"master"})
+  ]);
+  bMst.style.width = MED.master+"px";
+  baixo.appendChild(bMst);
+
+  baixo.appendChild(vao(MED.vaoMaster));
+
+  /* INPUT 33-40 — alinhado com o 41-48 do andar de cima */
+  const bDirB = fazBloco(Array.from({length:8},(_,i)=>fazStrip("CH"+(33+i), String(33+i))));
+  bDirB.style.width = MED.blocoDir+"px";
+  baixo.appendChild(bDirB);
+
+  mesa.appendChild(baixo);
+
+  /* faixa frontal da mesa (13% da profundidade, medido na p.17).
+     Na console real é onde ficam PHONES e a marca; aqui ela também
+     carrega a linha de ajuda do aluno. */
+  const rod = el("div","rodape");
+  const aj = el("div"); aj.id = "ajuda";
+  rod.appendChild(aj);
+  const marca = el("div","marcafrontal","YAMAHA   M7CL-48   DIGITAL MIXING CONSOLE");
+  rod.appendChild(marca);
+  mesa.appendChild(rod);
+}
+montar();
+
+/* ==================================================================
+   RENDER
+   ================================================================== */
+const $ajuda = () => document.getElementById("ajuda");
+
+function canalDoStrip(strip){
+  if (strip.dataset.cl != null && strip.dataset.cl !== "")
+    return grupoCentralogic()[+strip.dataset.cl];
+  return strip.dataset.canal || null;
+}
+
+/* valor que o fader mostra: em SENDS ON FADER ele vira o send, não o nível
+   do canal (p.18 -- "In SENDS ON FADER mode, this adjusts the send level") */
+function valorFader(c){
+  if (!c) return -138;
+  if (S.sof && (c.tipo==="in" || c.tipo==="stin")){
+    const arr = S.sof.tipo==="mix" ? c.mix : c.mtx;
+    return arr[S.sof.n].lvl;
+  }
+  return c.fader;
+}
+function ligadoFader(c){
+  if (!c) return false;
+  if (S.sof && (c.tipo==="in" || c.tipo==="stin")){
+    const arr = S.sof.tipo==="mix" ? c.mix : c.mtx;
+    return arr[S.sof.n].on;
+  }
+  return c.on;
+}
+
+function desenharStrip(strip){
+  const id = canalDoStrip(strip);
+  const c = id ? S.canais[id] : null;
+
+  strip.style.opacity = c ? "1" : ".35";
+
+  /* nome */
+  const nm = strip.querySelector(".nome");
+  if (nm) nm.textContent = c ? c.nome : "";
+
+  /* Na Centralogic só existe o número do RODAPÉ (não há etiqueta no topo),
+     então é o primeiro .num do strip -- e ele mostra o módulo 1-8, fixo. */
+  if (strip.dataset.cl != null && strip.dataset.cl !== "" && c){
+    const num = strip.querySelector(".num");
+    if (num) num.textContent = String(+strip.dataset.cl + 1);
+  }
+
+  /* teclas */
+  const sel = strip.querySelector('[data-acao="sel"]');
+  const cue = strip.querySelector('[data-acao="cue"]');
+  const on  = strip.querySelector('[data-acao="on"]');
+  /* p.18: em SENDS ON FADER os [SEL] de TODOS os canais acendem */
+  if (sel) sel.classList.toggle("on", !!c && (S.sel===id || (!!S.sof && (c.tipo==="in"||c.tipo==="stin"))));
+  if (cue) cue.classList.toggle("on", !!c && c.cue);
+  if (on)  on.classList.toggle("on", ligadoFader(c));
+
+  /* fader */
+  const cur = strip.querySelector(".cursor");
+  if (cur){
+    const p = dbParaPos(valorFader(c));
+    cur.style.top = ((1-p)*100).toFixed(2)+"%";
+  }
+
+  /* meter de 6 LEDs */
+  const leds = strip.querySelectorAll(".meterled b");
+  const n = c ? c.nivel : 0;                    /* 0..1 */
+  const limiares = [0.97,0.82,0.66,0.5,0.3,0.12];
+  leds.forEach((b,i)=>b.classList.toggle("a", n >= limiares[i]));
+
+  /* encoder da Centralogic */
+  const enc = strip.querySelector('[data-papel="enc"]');
+  if (enc && c) enc.style.setProperty("--ang", (valorEncoderCL(c)*270-135)+"deg");
+}
+
+/* o encoder multifunção segue o parâmetro selecionado na tela (p.99) */
+function valorEncoderCL(c){
+  if (S.encFoco === "pan") return (c.pan+1)/2;
+  if (S.encFoco && S.encFoco.startsWith("send")){
+    const n = +S.encFoco.slice(4);
+    const arr = S.sendDest==="mix" ? c.mix : c.mtx;
+    return dbParaPos(arr[n] ? arr[n].lvl : -138);
+  }
+  return dbParaPos(c.fader);
+}
+S.encFoco = "send0";
+
+function desenhar(){
+  document.querySelectorAll(".strip").forEach(desenharStrip);
+  desenharBridge();
+  desenharSelectedChannel();
+  desenharNav();
+  desenharUDK();
+  desenharTela();
+  const aj = $ajuda();
+  if (aj) aj.innerHTML = S.ajuda;
+}
+
+/* ---- knobs do SELECTED CHANNEL ---- */
+const anguloDe = (v,min,max) => ((v-min)/(max-min))*270-135;
+
+function desenharSelectedChannel(){
+  const c = S.canais[S.sel];
+  if (!c) return;
+  const box = document.querySelector(".selch");
+  if (!box) return;
+
+  box.querySelectorAll('[data-papel="send"]').forEach(k=>{
+    const n = +k.dataset.n;
+    const arr = ehSaida(c) ? c.mtx : c.mix;
+    const s = arr[n];
+    k.style.setProperty("--ang", (s ? dbParaPos(s.lvl)*270-135 : -135)+"deg");
+    k.style.opacity = s ? (s.on?"1":".45") : ".2";
+  });
+  const set = (papel,ang)=>{
+    const k = box.querySelector('[data-papel="'+papel+'"]');
+    if (k) k.style.setProperty("--ang", ang+"deg");
+  };
+  set("ha",   anguloDe(c.ha.gain,-62,10));
+  set("pan",  anguloDe(c.pan,-1,1));
+  set("hpf",  anguloDe(Math.log10(c.hpf.freq), Math.log10(20), Math.log10(600)));
+  set("dyn1", anguloDe(c.dyn1.thr,-72,0));
+  set("dyn2", anguloDe(c.dyn2.thr,-54,0));
+  box.querySelectorAll('[data-papel="eq"]').forEach(k=>{
+    const b = c.eq.bandas[k.dataset.banda];
+    if (!b) return;
+    let ang;
+    if (k.dataset.par==="f") ang = anguloDe(Math.log10(b.f), Math.log10(20), Math.log10(20000));
+    else if (k.dataset.par==="g") ang = anguloDe(b.g,-18,18);
+    else ang = anguloDe(Math.log10(b.q), Math.log10(0.1), Math.log10(10));
+    k.style.setProperty("--ang", ang+"deg");
+  });
+  const km = document.querySelector('[data-papel="monitor"]');
+  if (km) km.style.setProperty("--ang", anguloDe(S.monitor.nivel,0,1)+"deg");
+}
+const ehSaida = c => c && (c.tipo==="mix"||c.tipo==="mtx"||c.tipo==="stereo"||c.tipo==="mono");
+
+function desenharNav(){
+  document.querySelectorAll("[data-nav]").forEach(b=>{
+    b.classList.toggle("on", b.dataset.nav === S.nav);
+    b.classList.toggle("piscando", b.dataset.nav === S.navFixa);
+  });
+}
+function desenharUDK(){
+  document.querySelectorAll("[data-udk]").forEach(b=>{
+    const f = S.udk[+b.dataset.udk];
+    b.title = f || "(sem atribuição)";
+    let aceso = false;
+    if (f==="TALKBACK ON")    aceso = S.talkback.on;
+    if (f==="OSCILLATOR ON")  aceso = S.osc.on;
+    if (f==="SENDS ON FADER") aceso = !!S.sof;
+    if (f==="MONITOR DIMM")   aceso = S.monitor.dimm;
+    b.classList.toggle("on", aceso);
+  });
+}
+
+/* ==================================================================
+   INTERAÇÃO — arrastar faders e knobs, clicar teclas
+   ================================================================== */
+let arrasto = null;
+
+function ondeCliquei(alvo){
+  const k = alvo.closest(".knob");
+  if (k) return {tipo:"knob", nó:k};
+  const f = alvo.closest(".fader");
+  if (f) return {tipo:"fader", nó:f};
+  return null;
+}
+
+document.addEventListener("pointerdown", ev=>{
+  const alvo = ev.target;
+
+  /* --- teclas do strip --- */
+  const tecla = alvo.closest("[data-acao]");
+  if (tecla){ acaoTecla(tecla, ev); return; }
+
+  const nav = alvo.closest("[data-nav]");
+  if (nav){ acaoNav(nav, ev); return; }
+
+  const udk = alvo.closest("[data-udk]");
+  if (udk){ acaoUDK(+udk.dataset.udk); return; }
+
+  /* fita branca do nome: na mesa real é onde se escreve o canal.
+     Clicar seleciona o canal e abre o CH JOB, que tem o campo do nome. */
+  const fita = alvo.closest(".nome");
+  if (fita){
+    const strip = fita.closest(".strip");
+    const id = canalDoStrip(strip);
+    if (id){
+      S.sel = id;
+      abrirPopup("CHJOB");
+      S.ajuda = "Escreva o nome de <b>"+S.canais[id].nome+"</b> — igual a escrever na fita da mesa";
+      pedirRender();
+    }
+    return;
+  }
+
+  /* --- arraste --- */
+  const alvoDrag = ondeCliquei(alvo);
+  if (!alvoDrag) return;
+  ev.preventDefault();
+
+  const strip = alvo.closest(".strip");
+  arrasto = { ...alvoDrag, strip, y0: ev.clientY, ini:null, nó:alvoDrag.nó };
+
+  if (alvoDrag.tipo === "fader"){
+    /* clicar no trilho já leva o cursor para lá (como puxar o fader) */
+    const r = alvoDrag.nó.getBoundingClientRect();
+    const p = 1 - (ev.clientY - r.top) / r.height;
+    aplicarFader(strip, posParaDb(clamp(p,0,1)));
+  } else {
+    arrasto.ini = lerKnob(alvoDrag.nó, strip);
+  }
+  try { alvoDrag.nó.setPointerCapture(ev.pointerId); } catch(e){}
+  pedirRender();
+});
+
+document.addEventListener("pointermove", ev=>{
+  if (!arrasto) return;
+  ev.preventDefault();
+  if (arrasto.tipo === "fader"){
+    const r = arrasto.nó.getBoundingClientRect();
+    const p = 1 - (ev.clientY - r.top) / r.height;
+    aplicarFader(arrasto.strip, posParaDb(clamp(p,0,1)));
+  } else {
+    const d = (arrasto.y0 - ev.clientY) / 140;   /* 140px = curso cheio */
+    aplicarKnob(arrasto.nó, arrasto.strip, arrasto.ini, d);
+  }
+  pedirRender();
+});
+
+document.addEventListener("pointerup", ()=>{ arrasto = null; });
+document.addEventListener("pointercancel", ()=>{ arrasto = null; });
+
+function aplicarFader(strip, db){
+  const id = canalDoStrip(strip);
+  const c = S.canais[id];
+  if (!c) return;
+  db = clamp(db,-138,10);
+  if (S.sof && (c.tipo==="in"||c.tipo==="stin")){
+    const arr = S.sof.tipo==="mix" ? c.mix : c.mtx;
+    arr[S.sof.n].lvl = db;
+    S.ajuda = "<b>"+c.nome+"</b> → send "+(S.sof.tipo==="mix"?"MIX ":"MATRIX ")+(S.sof.n+1)+": "+fmtDb(db)+" dB";
+  } else {
+    c.fader = db;
+    S.ajuda = "<b>"+c.nome+"</b> fader: "+fmtDb(db)+" dB";
+  }
+}
+
+function lerKnob(k, strip){
+  const c = S.canais[S.sel];
+  const papel = k.dataset.papel;
+  if (papel==="monitor") return S.monitor.nivel;
+  if (!c) return 0;
+  if (papel==="ha")   return c.ha.gain;
+  if (papel==="pan")  return c.pan;
+  if (papel==="hpf")  return c.hpf.freq;
+  if (papel==="dyn1") return c.dyn1.thr;
+  if (papel==="dyn2") return c.dyn2.thr;
+  if (papel==="send"){ const a = ehSaida(c)?c.mtx:c.mix; const s=a[+k.dataset.n]; return s?s.lvl:-138; }
+  if (papel==="eq"){
+    const b = c.eq.bandas[k.dataset.banda];
+    return k.dataset.par==="f" ? b.f : k.dataset.par==="g" ? b.g : b.q;
+  }
+  if (papel==="enc"){
+    const id = canalDoStrip(strip); const cc = S.canais[id];
+    if (!cc) return 0;
+    if (S.encFoco==="pan") return cc.pan;
+    if (S.encFoco && S.encFoco.startsWith("send")){
+      const a = S.sendDest==="mix"?cc.mix:cc.mtx; const s=a[+S.encFoco.slice(4)];
+      return s?s.lvl:-138;
+    }
+    return cc.fader;
+  }
+  return 0;
+}
+
+function aplicarKnob(k, strip, ini, d){
+  const papel = k.dataset.papel;
+  if (papel==="monitor"){
+    S.monitor.nivel = clamp(ini + d, 0, 1);
+    S.ajuda = "<b>MONITOR LEVEL</b>: "+Math.round(S.monitor.nivel*10)+" / 10";
+    return;
+  }
+  const c = S.canais[S.sel];
+  if (!c) return;
+  const nome = c.nome;
+  if (papel==="ha"){                       /* faixa MEDIDA: -62..+10 */
+    c.ha.gain = clamp(ini + d*72, -62, 10);
+    /* p.19: o PAD entra sozinho entre -14 e -13 dB. Comportamento real. */
+    const pad = c.ha.gain >= -13;
+    S.ajuda = "<b>"+nome+"</b> HA GAIN: "+c.ha.gain.toFixed(0)+" dB"+(pad?"  ·  PAD interno LIGADO":"");
+  }
+  else if (papel==="pan"){
+    c.pan = clamp(ini + d*2, -1, 1);
+    const v = Math.round(c.pan*63);
+    S.ajuda = "<b>"+nome+"</b> PAN: "+(v===0?"C":v<0?"L"+(-v):"R"+v);
+  }
+  else if (papel==="hpf"){                 /* 20..600 Hz, log */
+    const lg = clamp(Math.log10(ini) + d*(Math.log10(600)-Math.log10(20)), Math.log10(20), Math.log10(600));
+    c.hpf.freq = Math.round(Math.pow(10,lg));
+    S.ajuda = "<b>"+nome+"</b> HPF: "+c.hpf.freq+" Hz  (-12 dB/oct)";
+  }
+  else if (papel==="dyn1"){
+    c.dyn1.thr = clamp(ini + d*72, -72, 0);
+    S.ajuda = "<b>"+nome+"</b> DYN1 "+c.dyn1.tipo+" THRESHOLD: "+c.dyn1.thr.toFixed(0)+" dB";
+  }
+  else if (papel==="dyn2"){
+    c.dyn2.thr = clamp(ini + d*54, -54, 0);
+    S.ajuda = "<b>"+nome+"</b> DYN2 "+c.dyn2.tipo+" THRESHOLD: "+c.dyn2.thr.toFixed(0)+" dB";
+  }
+  else if (papel==="send"){
+    const arr = ehSaida(c)?c.mtx:c.mix;
+    const n = +k.dataset.n;
+    if (!arr[n]) return;
+    arr[n].lvl = clamp(posParaDb(dbParaPos(ini)+d), -138, 10);
+    S.encFoco = "send"+n;
+    S.ajuda = "<b>"+nome+"</b> → "+(ehSaida(c)?"MATRIX ":"MIX ")+(n+1)+": "+fmtDb(arr[n].lvl)+" dB";
+  }
+  else if (papel==="eq"){
+    const b = c.eq.bandas[k.dataset.banda];
+    const rot = {high:"HIGH",himid:"HIGH MID",lomid:"LOW MID",low:"LOW"}[k.dataset.banda];
+    if (k.dataset.par==="f"){              /* 20 Hz..20 kHz, log, passo 1/12 oitava */
+      const lg = clamp(Math.log10(ini)+d*3, Math.log10(20), Math.log10(20000));
+      b.f = Math.round(Math.pow(10,lg));
+      S.ajuda = "<b>"+nome+"</b> EQ "+rot+" FREQ: "+(b.f>=1000?(b.f/1000).toFixed(2)+" k":b.f)+"Hz";
+    } else if (k.dataset.par==="g"){       /* ±18 dB */
+      b.g = clamp(ini + d*36, -18, 18);
+      S.ajuda = "<b>"+nome+"</b> EQ "+rot+" GAIN: "+(b.g>0?"+":"")+b.g.toFixed(1)+" dB";
+    } else {                               /* Q 0.10..10 */
+      const lg = clamp(Math.log10(ini)+d*2, Math.log10(0.1), Math.log10(10));
+      b.q = Math.round(Math.pow(10,lg)*100)/100;
+      S.ajuda = "<b>"+nome+"</b> EQ "+rot+" Q: "+b.q.toFixed(2);
+    }
+  }
+  else if (papel==="enc"){                 /* encoder multifunção da Centralogic */
+    const id = canalDoStrip(strip); const cc = S.canais[id];
+    if (!cc) return;
+    if (S.encFoco==="pan"){
+      cc.pan = clamp(ini + d*2, -1, 1);
+      S.ajuda = "<b>"+cc.nome+"</b> PAN (encoder Centralogic)";
+    } else if (S.encFoco && S.encFoco.startsWith("send")){
+      const n = +S.encFoco.slice(4);
+      const arr = S.sendDest==="mix"?cc.mix:cc.mtx;
+      if (arr[n]){
+        arr[n].lvl = clamp(posParaDb(dbParaPos(ini)+d), -138, 10);
+        S.ajuda = "<b>"+cc.nome+"</b> → "+(S.sendDest==="mix"?"MIX ":"MATRIX ")+(n+1)+": "+fmtDb(arr[n].lvl)+" dB";
+      }
+    } else {
+      cc.fader = clamp(posParaDb(dbParaPos(ini)+d), -138, 10);
+      S.ajuda = "<b>"+cc.nome+"</b> fader: "+fmtDb(cc.fader)+" dB";
+    }
+  }
+  /* p.91: mexer num knob do SELECTED CHANNEL abre a SELECTED CHANNEL VIEW */
+  if (papel!=="enc" && papel!=="monitor" && S.tela!=="SELCH" && !S.popup) S.tela = "SELCH";
+}
+
+/* ---- teclas SEL / CUE / ON e SCENE ---- */
+function acaoTecla(b, ev){
+  const acao = b.dataset.acao;
+  if (acao==="store"){ abrirPopup("SCENE_STORE"); pedirRender(); return; }
+  if (acao==="recall"){ recallCena(); pedirRender(); return; }
+  if (acao==="cenaUp"){ S.cena.n = clamp(S.cena.n+1,0,300); S.ajuda="Cena selecionada: <b>"+num3(S.cena.n)+"</b> (aperte RECALL)"; pedirRender(); return; }
+  if (acao==="cenaDown"){ S.cena.n = clamp(S.cena.n-1,0,300); S.ajuda="Cena selecionada: <b>"+num3(S.cena.n)+"</b> (aperte RECALL)"; pedirRender(); return; }
+
+  const strip = b.closest(".strip");
+  const id = canalDoStrip(strip);
+  const c = S.canais[id];
+  if (!c) return;
+  if (acao==="sel"){
+    /* p.18/23: no ST IN e no STEREO o [SEL] alterna entre L e R */
+    if (S.sel===id && (c.tipo==="stin"||c.tipo==="stereo")){
+      c.ladoR = !c.ladoR;
+      S.ajuda = "<b>"+c.nome+"</b> — controlando o lado "+(c.ladoR?"R":"L");
+    } else {
+      S.sel = id;
+      S.ajuda = "Canal selecionado: <b>"+c.nome+"</b>";
+    }
+    if (S.tela==="OVERVIEW") S.tela = "OVERVIEW";
+  }
+  else if (acao==="cue"){
+    c.cue = !c.cue;
+    S.monitor.cueAtivo = Object.values(S.canais).some(x=>x.cue);
+    S.ajuda = "CUE de <b>"+c.nome+"</b> "+(c.cue?"ligado":"desligado");
+  }
+  else if (acao==="on"){
+    if (S.sof && (c.tipo==="in"||c.tipo==="stin")){
+      const arr = S.sof.tipo==="mix"?c.mix:c.mtx;
+      arr[S.sof.n].on = !arr[S.sof.n].on;
+      S.ajuda = "<b>"+c.nome+"</b> send "+(S.sof.n+1)+" "+(arr[S.sof.n].on?"ON":"OFF");
+    } else {
+      c.on = !c.on;
+      S.ajuda = "<b>"+c.nome+"</b> "+(c.on?"ligado":"MUTADO");
+    }
+  }
+  pedirRender();
+}
+const num3 = n => String(n).padStart(3,"0");
+
+/* ---- NAVIGATION KEYS ----
+   p.23: segurar 2s fixa a Centralogic naquele grupo (a tecla pisca);
+   depois disso, outra nav key muda SÓ a tela. */
+let timerNav = null;
+function acaoNav(b, ev){
+  const id = b.dataset.nav;
+  S.navAnterior = (S.nav !== "DCA") ? S.nav : S.navAnterior;
+  S.nav = id;
+  S.ajuda = "Centralogic / tela: <b>"+navPorId(id).rot+"</b> — segure 2 s para FIXAR a Centralogic";
+  clearTimeout(timerNav);
+  timerNav = setTimeout(()=>{
+    S.navFixa = id;
+    S.ajuda = "Centralogic <b>FIXADA</b> em "+navPorId(id).rot+" — agora as nav keys mudam só a tela. Segure de novo para soltar.";
+    pedirRender();
+  }, 2000);
+  const solta = ()=>{ clearTimeout(timerNav); document.removeEventListener("pointerup",solta); };
+  document.addEventListener("pointerup", solta);
+  if (S.navFixa === id && ev.detail === 2) S.navFixa = null;
+  pedirRender();
+}
+
+/* ---- USER DEFINED KEYS ---- */
+function acaoUDK(i){
+  const f = S.udk[i];
+  switch(f){
+    case "SCENE INC": S.cena.n = clamp(S.cena.n+1,0,300); recallCena(); break;
+    case "SCENE DEC": S.cena.n = clamp(S.cena.n-1,0,300); recallCena(); break;
+    case "SCENE RECALL": recallCena(); break;
+    case "TALKBACK ON": S.talkback.on = !S.talkback.on;
+      S.ajuda = "TALKBACK "+(S.talkback.on?"ligado":"desligado"); break;
+    case "OSCILLATOR ON": S.osc.on = !S.osc.on;
+      S.ajuda = "OSCILADOR "+(S.osc.on?"LIGADO — cuidado com o PA":"desligado"); break;
+    case "MONITOR DIMM": S.monitor.dimm = !S.monitor.dimm;
+      S.ajuda = "MONITOR DIMM "+(S.monitor.dimm?"ligado":"desligado"); break;
+    case "SENDS ON FADER":
+      S.sof = S.sof ? null : {tipo:"mix", n:0};
+      S.ajuda = S.sof ? "<b>SENDS ON FADER</b> — os faders viram sends do MIX 1" : "Saiu do SENDS ON FADER";
+      break;
+    case "CUE CLEAR":
+      Object.values(S.canais).forEach(c=>c.cue=false);
+      S.monitor.cueAtivo = false; S.ajuda = "CUE limpo em todos os canais"; break;
+    case "HELP": abrirPopup("HELP"); break;
+    case "TAP TEMPO": S.ajuda = "TAP TEMPO — bata no ritmo (usado no delay do rack)"; break;
+    default:
+      S.ajuda = "USER DEFINED KEY "+(i+1)+": <b>"+(f||"sem atribuição")+"</b>";
+  }
+  pedirRender();
+}
+
+/* ---- cenas ---- */
+function recallCena(){
+  const c = S.cena.lista.find(x=>x.n===S.cena.n);
+  if (!c){ S.ajuda = "Cena <b>"+num3(S.cena.n)+"</b> está vazia — nada para chamar"; pedirRender(); return; }
+  if (c.dados) aplicarCena(c.dados);
+  S.cena.nome = c.nome;
+  S.ajuda = "Cena <b>"+num3(c.n)+" "+c.nome+"</b> chamada — os faders andaram sozinhos";
+  pedirRender();
+}
+function fotoDaMesa(){
+  const f = {};
+  for (const [id,c] of Object.entries(S.canais)){
+    f[id] = { fader:c.fader, on:c.on, pan:c.pan, toSt:c.toSt, toMono:c.toMono,
+      ha:{...c.ha}, hpf:{...c.hpf},
+      eq:{on:c.eq.on,tipo:c.eq.tipo,att:c.eq.att,bandas:JSON.parse(JSON.stringify(c.eq.bandas))},
+      dyn1:{...c.dyn1}, dyn2:{...c.dyn2},
+      mix:c.mix.map(s=>({...s})), mtx:c.mtx.map(s=>({...s})),
+      dca:[...c.dca], mute:[...c.mute], insert:c.insert, dout:c.dout, nome:c.nome };
+  }
+  return f;
+}
+function aplicarCena(f){
+  for (const [id,v] of Object.entries(f)){
+    const c = S.canais[id];
+    if (!c || c.recallSafe) continue;      /* RECALL SAFE respeitado */
+    Object.assign(c, {
+      fader:v.fader, on:v.on, pan:v.pan, toSt:v.toSt, toMono:v.toMono,
+      ha:{...v.ha}, hpf:{...v.hpf},
+      eq:{on:v.eq.on,tipo:v.eq.tipo,att:v.eq.att,bandas:JSON.parse(JSON.stringify(v.eq.bandas))},
+      dyn1:{...v.dyn1}, dyn2:{...v.dyn2},
+      mix:v.mix.map(s=>({...s})), mtx:v.mtx.map(s=>({...s})),
+      dca:[...v.dca], mute:[...v.mute], insert:v.insert, dout:v.dout, nome:v.nome
+    });
+  }
+}
+function guardarCena(n, nome){
+  if (n===0){ S.ajuda="A cena <b>000 Initial Data</b> é protegida na mesa real — escolha outro número"; return false; }
+  const ja = S.cena.lista.findIndex(x=>x.n===n);
+  const reg = {n, nome:nome||("SCENE "+num3(n)), bloq:false, dados:fotoDaMesa()};
+  if (ja>=0) S.cena.lista[ja] = reg; else S.cena.lista.push(reg);
+  S.cena.lista.sort((a,b)=>a.n-b.n);
+  S.cena.n = n; S.cena.nome = reg.nome;
+  S.ajuda = "Cena <b>"+num3(n)+" "+reg.nome+"</b> guardada";
+  return true;
+}
+
+/* ---- meters: sinal fictício, só visual. NÃO gera áudio de propósito ---- */
+let t0 = 0;
+function tickMeters(ts){
+  if (ts - t0 > 60){
+    t0 = ts;
+    for (const c of Object.values(S.canais)){
+      if (c.tipo==="in" || c.tipo==="stin"){
+        /* nível de entrada depende do ganho de HA; sem sinal se o HA está no fim */
+        const base = clamp((c.ha.gain+62)/72, 0, 1);
+        const vivo = base * (0.55 + 0.45*Math.sin(ts/300 + c.id.length*1.7 + (+c.id.replace(/\D/g,"")||0)));
+        c.nivel = c.on ? clamp(vivo*clamp(dbParaPos(c.fader)+0.15,0,1.2), 0, 1) : 0;
+      }
+    }
+    /* saídas somam o que chega */
+    const soma = Object.values(S.canais)
+      .filter(c=>(c.tipo==="in"||c.tipo==="stin") && c.on && c.toSt)
+      .reduce((a,c)=>a + c.nivel*dbParaPos(c.fader), 0);
+    const st = S.canais.STEREO;
+    st.nivel = clamp(soma/6 * dbParaPos(st.fader) * (st.on?1:0), 0, 1);
+    S.canais.MONO.nivel = st.nivel*0.8;
+    pedirRender();
+  }
+  requestAnimationFrame(tickMeters);
+}
+requestAnimationFrame(tickMeters);
+
+/* ==================================================================
+   TELA TOUCH
+   Estrutura só é recriada quando muda a "chave estrutural". Os valores
+   que mudam a todo frame (meters, ângulos, dB) são atualizados por
+   ligações registradas na construção -- sem recriar nó nenhum.
+   ================================================================== */
+let LIGACOES = [];
+const lig = fn => { LIGACOES.push(fn); fn(); };
+let telaChave = null;
+
+function desenharTela(){
+  const chave = [S.tela, S.popup, S.sel, S.nav, S.navFixa, S.sendDest,
+                 S.sof?S.sof.tipo+S.sof.n:"-", S.cena.n, S.cena.lista.length].join("|");
+  if (chave !== telaChave){ telaChave = chave; construirTela(); }
+  for (const f of LIGACOES) f();
+}
+
+function construirTela(){
+  LIGACOES = [];
+  const area = document.getElementById("area");
+  const fac  = document.getElementById("fac");
+  if (!area || !fac) return;
+  area.innerHTML = ""; fac.innerHTML = "";
+  construirFAC(fac);
+  if (S.popup) TELAS_POPUP[S.popup] ? TELAS_POPUP[S.popup](area) : area.appendChild(el("div",null,"?"));
+  else (TELAS[S.tela] || TELAS.OVERVIEW)(area);
+}
+
+/* ---------- function access area (p.32) ---------- */
+function construirFAC(fac){
+  const c = S.canais[S.sel];
+
+  const sc = el("div","selcanal");
+  sc.appendChild(el("b",null, c ? rotuloCurto(c) : "--"));
+  sc.appendChild(el("span",null, c ? c.nome : ""));
+  sc.title = "Aperte a metade esquerda para o canal anterior, a direita para o próximo (igual à mesa real)";
+  sc.addEventListener("pointerdown", ev=>{
+    const r = sc.getBoundingClientRect();
+    pularCanal(ev.clientX < r.left + r.width/2 ? -1 : 1);
+  });
+  fac.appendChild(sc);
+
+  const rel = el("div","relogio","--:--:--");
+  lig(()=>{ const d = new Date();
+    rel.textContent = [d.getHours(),d.getMinutes(),d.getSeconds()]
+      .map(x=>String(x).padStart(2,"0")).join(":"); });
+  fac.appendChild(rel);
+  fac.appendChild(el("div","relogio", S.usuario));
+
+  const botao = (rot, alvo, dica) => {
+    const b = el("div","bt",rot);
+    b.title = dica || "";
+    b.classList.toggle("ativo",
+      (alvo==="SOF" && !!S.sof) || S.tela===alvo || S.popup===alvo);
+    b.addEventListener("pointerdown", ()=>{
+      if (alvo==="SOF"){
+        S.sof = S.sof ? null : {tipo:"mix", n:0};
+        S.ajuda = S.sof
+          ? "<b>SENDS ON FADER</b> — escolha o bus na tela; os faders de input viram os sends"
+          : "Saiu do SENDS ON FADER";
+        if (S.sof) S.tela = "SOF";
+      }
+      else if (alvo==="CHJOB") abrirPopup("CHJOB");
+      else if (alvo==="RACK") abrirPopup("RACK");
+      else if (alvo==="MONITOR") abrirPopup("MONITOR");
+      else if (alvo==="SETUP") abrirPopup("SETUP");
+      else if (alvo==="METER"){ S.popup=null; S.tela="METER"; }
+      pedirRender();
+    });
+    return b;
+  };
+  fac.appendChild(botao("SENDS ON FADER","SOF","Os faders passam a controlar as mandadas para o bus escolhido"));
+  fac.appendChild(botao("CH JOB","CHJOB","Copiar, mover e inicializar canal"));
+  const linha = el("div"); linha.style.cssText="display:flex;gap:3px";
+  const bR = botao("RACK","RACK","GEQ e efeitos (racks 1-8)"); bR.style.flex="1";
+  const bM = botao("MONITOR","MONITOR","Monitor, cue, oscilador e talkback"); bM.style.flex="1";
+  linha.appendChild(bR); linha.appendChild(bM);
+  fac.appendChild(linha);
+
+  /* meter L R M da function access area */
+  const mt = el("div"); mt.id="facmeter";
+  mt.appendChild(el("div","rot","METER"));
+  const barras = el("div","barras");
+  const bs = ["L","R","M"].map(()=>{ const i = el("i"); const b = el("b"); i.appendChild(b); barras.appendChild(i); return b; });
+  mt.appendChild(barras);
+  mt.appendChild(el("div","rot","L   R   M"));
+  lig(()=>{
+    const st = S.canais.STEREO, mo = S.canais.MONO;
+    const v = [st.nivel, st.nivel*0.94, mo.nivel];
+    bs.forEach((b,i)=>b.style.height = (v[i]*100).toFixed(1)+"%");
+  });
+  mt.style.cursor="pointer";
+  mt.addEventListener("pointerdown", ()=>{ S.popup=null; S.tela="METER"; pedirRender(); });
+  fac.appendChild(mt);
+
+  fac.appendChild(botao("SETUP","SETUP","Ajustes gerais, usuário e user defined keys"));
+
+  const cen = el("div","cena");
+  cen.appendChild(el("u",null,"SCENE"));
+  cen.appendChild(el("b",null,num3(S.cena.n)));
+  cen.appendChild(el("span",null,S.cena.nome));
+  cen.addEventListener("pointerdown", ()=>{ abrirPopup("SCENE"); pedirRender(); });
+  fac.appendChild(cen);
+}
+function rotuloCurto(c){
+  if (c.tipo==="in") return "CH"+c.id.slice(2);
+  if (c.tipo==="stin") return "ST IN"+c.id.slice(2);
+  if (c.tipo==="mix") return "MIX"+c.id.slice(3);
+  if (c.tipo==="mtx") return "MTX"+c.id.slice(3);
+  if (c.tipo==="dca") return "DCA"+c.id.slice(3);
+  return c.id;
+}
+function pularCanal(d){
+  const ordem = [];
+  for (let i=1;i<=N_IN;i++) ordem.push("CH"+i);
+  for (let i=1;i<=N_STIN;i++) ordem.push("ST"+i);
+  for (let i=1;i<=N_MIX;i++) ordem.push("MIX"+i);
+  for (let i=1;i<=N_MTX;i++) ordem.push("MTX"+i);
+  ordem.push("STEREO","MONO");
+  const i = ordem.indexOf(S.sel);
+  S.sel = ordem[clamp(i+d, 0, ordem.length-1)];
+  S.ajuda = "Canal selecionado: <b>"+S.canais[S.sel].nome+"</b>";
+  pedirRender();
+}
+function abrirPopup(p){ S.popup = p; }
+function fecharPopup(){ S.popup = null; }
+
+/* ================= OVERVIEW (p.98/99) =================
+   12 campos: A nome · B HA/PHASE · C output port · D insert/direct ·
+   E EQ · F DYN1 · G DYN2 · H TO MIX/MATRIX · I FROM MIX · J TO ST/MONO ·
+   K DCA/MUTE · L nome (rodapé)                                        */
+const TELAS = {};
+
+TELAS.OVERVIEW = function(area){
+  const grupo = grupoTela();
+  const g = el("div");
+  g.style.cssText = "display:grid;grid-template-columns:repeat(8,1fr);gap:2px;height:100%;min-height:0";
+
+  grupo.forEach((id, col)=>{
+    const c = S.canais[id];
+    const cel = el("div");
+    cel.style.cssText = "background:var(--tela-canal);border:1px solid #1a1c1f;border-radius:2px;"+
+      "display:flex;flex-direction:column;gap:1px;padding:1px;min-height:0;overflow:hidden";
+    if (!c){ cel.style.opacity=".3"; g.appendChild(cel); return; }
+    if (id === S.sel) cel.style.outline = "1px solid var(--tela-azul-claro)";
+
+    /* A — nome no topo */
+    const topo = el("div", null, rotuloCurto(c)+"  "+c.nome);
+    topo.style.cssText = "font-size:8px;background:"+(id===S.sel?"var(--tela-azul)":"#26292d")+
+      ";border-radius:1px;padding:0 2px;white-space:nowrap;overflow:hidden;cursor:pointer";
+    topo.addEventListener("pointerdown",()=>{ S.sel=id; S.ajuda="Canal <b>"+c.nome+"</b> selecionado"; pedirRender(); });
+    cel.appendChild(topo);
+
+    /* B — HA / PHASE (só entrada) */
+    if (c.tipo==="in" || c.tipo==="stin"){
+      const ha = el("div");
+      ha.style.cssText="display:flex;align-items:center;gap:2px";
+      const k = el("div","knob mini"); k.style.setProperty("--kd","16px");
+      const v = el("span"); v.style.cssText="font-size:7.5px";
+      const p48 = el("button","tbt laranja"); p48.type="button"; p48.textContent="+48"; p48.style.fontSize="7px";
+      p48.addEventListener("pointerdown",e=>{e.stopPropagation();c.ha.phantom=!c.ha.phantom;
+        S.ajuda="Phantom +48V "+(c.ha.phantom?"LIGADO":"desligado")+" em <b>"+c.nome+"</b>";pedirRender();});
+      const ph = el("button","tbt"); ph.type="button"; ph.textContent="Ø"; ph.style.fontSize="7px";
+      ph.addEventListener("pointerdown",e=>{e.stopPropagation();c.ha.phase=!c.ha.phase;
+        S.ajuda="Polaridade de <b>"+c.nome+"</b> "+(c.ha.phase?"INVERTIDA":"normal");pedirRender();});
+      ha.appendChild(k); ha.appendChild(v); ha.appendChild(p48); ha.appendChild(ph);
+      lig(()=>{
+        k.style.setProperty("--ang", anguloDe(c.ha.gain,-62,10)+"deg");
+        v.textContent = c.ha.gain.toFixed(0);
+        p48.classList.toggle("on", c.ha.phantom);
+        ph.classList.toggle("on", c.ha.phase);
+      });
+      cel.appendChild(ha);
+    } else {
+      /* C — OUTPUT PORT (só saída) */
+      const op = el("div",null, c.tipo==="mix" ? "OMNI"+c.id.slice(3) : "—");
+      op.style.cssText="font-size:7.5px;background:#1f2225;border-radius:1px;text-align:center";
+      cel.appendChild(op);
+    }
+
+    /* D — INSERT / DIRECT OUT */
+    const dl = el("div"); dl.style.cssText="display:flex;gap:1px";
+    const bIns = el("button","tbt laranja","INS"); bIns.type="button"; bIns.style.cssText="flex:1;font-size:7px";
+    bIns.addEventListener("pointerdown",()=>{c.insert=!c.insert;
+      S.ajuda="INSERT de <b>"+c.nome+"</b> "+(c.insert?"ligado":"desligado");pedirRender();});
+    dl.appendChild(bIns);
+    if (c.tipo==="in"){
+      const bD = el("button","tbt","D.OUT"); bD.type="button"; bD.style.cssText="flex:1;font-size:7px";
+      bD.addEventListener("pointerdown",()=>{c.dout=!c.dout;
+        S.ajuda="DIRECT OUT de <b>"+c.nome+"</b> "+(c.dout?"ligado":"desligado");pedirRender();});
+      dl.appendChild(bD);
+      lig(()=>bD.classList.toggle("on",c.dout));
+    }
+    lig(()=>bIns.classList.toggle("on",c.insert));
+    cel.appendChild(dl);
+
+    /* E — gráfico de EQ (SVG, não canvas: o portão precisa enxergar) */
+    const svg = curvaEQ(c, 78, 26);
+    svg.style.cursor="pointer";
+    svg.addEventListener("pointerdown",()=>{ S.sel=id; abrirPopup("EQ"); pedirRender(); });
+    cel.appendChild(svg);
+
+    /* F/G — DYNAMICS 1 e 2 */
+    [["dyn1","DYN1"],["dyn2","DYN2"]].forEach(([k,rot])=>{
+      if (k==="dyn2" && !(c.tipo==="in"||c.tipo==="stin")) return;
+      const d = c[k];
+      const b = el("div");
+      b.style.cssText="display:flex;align-items:center;gap:2px;font-size:7px;cursor:pointer;"+
+        "background:#1f2225;border-radius:1px;padding:0 2px";
+      const nm = el("span"); nm.style.flex="0 0 auto";
+      const bar = el("div"); bar.style.cssText="flex:1;height:5px;background:#111;border-radius:1px;position:relative;overflow:hidden";
+      const gr = el("i"); gr.style.cssText="position:absolute;right:0;top:0;bottom:0;background:#e8a33d";
+      bar.appendChild(gr);
+      const val = el("span");
+      b.appendChild(nm); b.appendChild(bar); b.appendChild(val);
+      b.addEventListener("pointerdown",()=>{ S.sel=id; abrirPopup(k==="dyn1"?"DYN1":"DYN2"); pedirRender(); });
+      lig(()=>{
+        nm.textContent = d.on ? d.tipo.slice(0,4) : "—";
+        val.textContent = d.thr.toFixed(0);
+        gr.style.width = d.on ? clamp((c.nivel*60 + d.thr)*2, 0, 100)+"%" : "0%";
+      });
+      cel.appendChild(b);
+    });
+
+    /* H — TO MIX / TO MATRIX: 16 knobs em 2 colunas x 8 linhas */
+    const sends = el("div");
+    sends.style.cssText="flex:1 1 auto;min-height:0;display:grid;grid-template-columns:1fr 1fr;"+
+      "gap:1px;align-content:start;overflow:hidden";
+    const arr = S.sendDest==="mix" ? c.mix : c.mtx;
+    arr.forEach((s,n)=>{
+      const cel2 = el("div");
+      cel2.style.cssText="display:flex;align-items:center;gap:1px;cursor:pointer";
+      const k = el("div","knob mini"); k.style.setProperty("--kd","13px");
+      const t = el("span"); t.style.cssText="font-size:6px;color:#c9ced4";
+      cel2.appendChild(k); cel2.appendChild(t);
+      cel2.addEventListener("pointerdown",()=>{
+        S.encFoco = "send"+n;
+        S.ajuda = "Knob <b>"+(S.sendDest==="mix"?"MIX ":"MATRIX ")+(n+1)+
+          "</b> selecionado — gire os encoders 1-8 da Centralogic para mexer nos 8 canais de uma vez";
+        pedirRender();
+      });
+      lig(()=>{
+        k.style.setProperty("--ang", (dbParaPos(s.lvl)*270-135)+"deg");
+        k.style.filter = S.encFoco==="send"+n ? "drop-shadow(0 0 3px var(--tela-azul-claro))" : "none";
+        k.style.opacity = s.on ? "1" : ".4";
+        t.textContent = s.lvl<=-138 ? "-∞" : s.lvl.toFixed(0);
+      });
+      sends.appendChild(cel2);
+    });
+    cel.appendChild(sends);
+
+    /* J — TO STEREO / MONO */
+    const st = el("div"); st.style.cssText="display:flex;align-items:center;gap:1px";
+    const kp = el("div","knob mini"); kp.style.setProperty("--kd","14px");
+    const bST = el("button","tbt","ST"); bST.type="button"; bST.style.fontSize="6.5px";
+    const bMO = el("button","tbt","M");  bMO.type="button"; bMO.style.fontSize="6.5px";
+    bST.addEventListener("pointerdown",()=>{c.toSt=!c.toSt;
+      S.ajuda="<b>"+c.nome+"</b> "+(c.toSt?"vai":"NÃO vai")+" para o STEREO";pedirRender();});
+    bMO.addEventListener("pointerdown",()=>{c.toMono=!c.toMono;
+      S.ajuda="<b>"+c.nome+"</b> "+(c.toMono?"vai":"não vai")+" para o MONO";pedirRender();});
+    kp.addEventListener("pointerdown",()=>{ S.encFoco="pan";
+      S.ajuda="Knob <b>PAN</b> selecionado — use os encoders da Centralogic"; pedirRender(); });
+    st.appendChild(kp); st.appendChild(bST); st.appendChild(bMO);
+    lig(()=>{
+      kp.style.setProperty("--ang", anguloDe(c.pan,-1,1)+"deg");
+      kp.style.filter = S.encFoco==="pan" ? "drop-shadow(0 0 3px var(--tela-azul-claro))" : "none";
+      bST.classList.toggle("on",c.toSt); bMO.classList.toggle("on",c.toMono);
+    });
+    cel.appendChild(st);
+
+    /* K — DCA / MUTE GROUP */
+    const kg = el("div"); kg.style.cssText="font-size:6px;line-height:1.1;cursor:pointer";
+    kg.addEventListener("pointerdown",()=>{ S.sel=id; abrirPopup("DCAMUTE"); pedirRender(); });
+    lig(()=>{
+      kg.innerHTML = "<span style='color:#f2c200'>D:"+(c.dca.join("")||"-")+"</span> "+
+                     "<span style='color:#ff6b6b'>M:"+(c.mute.join("")||"-")+"</span>";
+    });
+    cel.appendChild(kg);
+
+    g.appendChild(cel);
+  });
+  area.appendChild(g);
+
+  /* barra de baixo: alterna TO MIX x TO MATRIX (p.99) */
+  const barra = el("div");
+  barra.style.cssText="display:flex;gap:4px;padding-top:3px;align-items:center";
+  ["mix","mtx"].forEach(d=>{
+    const b = el("button","tbt", d==="mix"?"TO MIX":"TO MATRIX");
+    b.type="button";
+    b.classList.toggle("on", S.sendDest===d);
+    b.addEventListener("pointerdown",()=>{ S.sendDest=d;
+      S.ajuda="Os knobs da tela agora mostram as mandadas para <b>"+(d==="mix"?"MIX":"MATRIX")+"</b>"; pedirRender(); });
+    barra.appendChild(b);
+  });
+  const t = el("span",null,"OVERVIEW — 8 canais da Centralogic");
+  t.style.cssText="font-size:9px;color:#9aa0a8;margin-left:auto";
+  barra.appendChild(t);
+  area.appendChild(barra);
+};
+
+/* curva de EQ em SVG (4 bandas + HPF), MEDIDA: F 20-20k, G ±18, Q .1-10 */
+function curvaEQ(c, w, h){
+  const svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
+  svg.setAttribute("viewBox","0 0 "+w+" "+h);
+  svg.style.cssText = "width:100%;height:"+h+"px;background:#15171a;border-radius:1px;display:block";
+  const path = document.createElementNS("http://www.w3.org/2000/svg","path");
+  path.setAttribute("fill","none");
+  path.setAttribute("stroke","var(--tela-verde)");
+  path.setAttribute("stroke-width","1.2");
+  const zero = document.createElementNS("http://www.w3.org/2000/svg","line");
+  zero.setAttribute("x1","0"); zero.setAttribute("x2",String(w));
+  zero.setAttribute("y1",String(h/2)); zero.setAttribute("y2",String(h/2));
+  zero.setAttribute("stroke","#3a3d42"); zero.setAttribute("stroke-width","0.5");
+  svg.appendChild(zero); svg.appendChild(path);
+  lig(()=>{
+    const pts = [];
+    for (let x=0;x<=w;x+=2){
+      const f = Math.pow(10, Math.log10(20) + (x/w)*(Math.log10(20000)-Math.log10(20)));
+      let db = 0;
+      if (c.eq.on){
+        for (const b of Object.values(c.eq.bandas)) db += ganhoPico(f, b.f, b.g, b.q);
+      }
+      if (c.hpf.on) db += ganhoHPF(f, c.hpf.freq);
+      pts.push(x.toFixed(0)+","+(h/2 - clamp(db,-20,20)*(h/2)/20).toFixed(1));
+    }
+    path.setAttribute("d","M"+pts.join("L"));
+  });
+  return svg;
+}
+/* resposta aproximada de um peaking bell -- suficiente para a tela,
+   é o mesmo desenho indicativo que a mesa mostra ("approximate EQ response", p.99) */
+function ganhoPico(f, f0, g, q){
+  if (!g) return 0;
+  const x = Math.log2(f/f0);
+  return g * Math.exp(-(x*x)*(q*q)*1.4);
+}
+/* HPF -12 dB/oct (MEDIDO no manual: 20-600 Hz, -12 dB/oct) */
+function ganhoHPF(f, fc){
+  if (f >= fc) return 0;
+  return Math.max(-24, 12*Math.log2(f/fc));
+}
+
+/* ==================================================================
+   HELPERS DE TELA
+   ================================================================== */
+/* knob com rótulo e valor, arrastável, que escreve direto no estado */
+function knobTela(rot, ler, escrever, min, max, fmt, opc){
+  opc = opc || {};
+  const cel = el("div");
+  cel.style.cssText = "display:flex;flex-direction:column;align-items:center;gap:1px;min-width:34px";
+  if (rot) { const r = el("div",null,rot); r.style.cssText="font-size:7.5px;color:#aeb4bb"; cel.appendChild(r); }
+  const k = el("div","knob"+(opc.mini?" mini":""));
+  if (opc.cor === "send") k.classList.add("send");
+  const v = el("div"); v.style.cssText="font-size:8px;color:var(--tela-texto)";
+  cel.appendChild(k); cel.appendChild(v);
+  k.style.touchAction = "none";
+  let base = null, y0 = 0;
+  k.addEventListener("pointerdown", ev=>{
+    ev.stopPropagation(); ev.preventDefault();
+    base = ler(); y0 = ev.clientY;
+    try{ k.setPointerCapture(ev.pointerId); }catch(e){}
+  });
+  k.addEventListener("pointermove", ev=>{
+    if (base === null) return;
+    const d = (y0 - ev.clientY)/140;
+    escrever(clamp(base + d*(max-min), min, max));
+    pedirRender();
+  });
+  const solta = ()=>{ base = null; };
+  k.addEventListener("pointerup", solta);
+  k.addEventListener("pointercancel", solta);
+  lig(()=>{
+    const val = ler();
+    k.style.setProperty("--ang", anguloDe(val,min,max)+"deg");
+    v.textContent = fmt ? fmt(val) : val.toFixed(1);
+  });
+  return cel;
+}
+/* botão liga/desliga ligado ao estado */
+function btTela(rot, ler, alternar, opc){
+  opc = opc || {};
+  const b = el("button","tbt"+(opc.laranja?" laranja":""), rot);
+  b.type = "button";
+  if (opc.largura) b.style.width = opc.largura;
+  b.addEventListener("pointerdown", ev=>{ ev.stopPropagation(); alternar(); pedirRender(); });
+  lig(()=>b.classList.toggle("on", !!ler()));
+  return b;
+}
+function tituloTela(area, txt, sub){
+  const h = el("div");
+  h.style.cssText="display:flex;align-items:baseline;gap:8px;padding:1px 2px 4px";
+  const t = el("div",null,txt); t.style.cssText="font-size:12px;font-weight:700";
+  h.appendChild(t);
+  if (sub){ const s = el("div",null,sub); s.style.cssText="font-size:9px;color:#9aa0a8"; h.appendChild(s); }
+  area.appendChild(h);
+  return h;
+}
+const caixaTela = (titulo) => {
+  const c = el("div");
+  c.style.cssText="background:#26292d;border:1px solid #3d4147;border-radius:3px;padding:4px 6px;"+
+    "display:flex;flex-direction:column;gap:3px;min-width:0";
+  if (titulo){ const t = el("div",null,titulo);
+    t.style.cssText="font-size:8px;color:#9aa0a8;letter-spacing:.5px"; c.appendChild(t); }
+  return c;
+};
+const linhaTela = () => { const l = el("div");
+  l.style.cssText="display:flex;gap:5px;align-items:center;flex-wrap:wrap"; return l; };
+
+/* ================= SELECTED CHANNEL VIEW (p.90/91) =================
+   15 campos: 1 TO MIX/MATRIX · 2 HA · 3 PATCH · 4 TO ST PAN/BALANCE ·
+   5/6 DYNAMICS 1/2 · 7 HPF · 8 EQ · 9 gráfico · 10 INSERT ·
+   11 DIRECT OUT · 12 RECALL SAFE · 13 FADER · 14 DCA · 15 MUTE      */
+TELAS.SELCH = function(area){
+  const c = S.canais[S.sel];
+  area.style.background = "#1b2a44";      /* fundo azul, como na foto/p.90 */
+  tituloTela(area, "SELECTED CHANNEL VIEW", c.nome);
+
+  const g = el("div");
+  g.style.cssText="flex:1 1 auto;min-height:0;display:grid;gap:4px;overflow:auto;"+
+    "grid-template-columns:150px 1fr 1fr 88px";
+
+  /* 1 — TO MIX / TO MATRIX: 16 sends com ON */
+  const cx1 = caixaTela(ehSaida(c) ? "TO MATRIX" : "TO MIX");
+  const gg = el("div");
+  gg.style.cssText="display:grid;grid-template-columns:1fr 1fr;gap:2px";
+  const arr = ehSaida(c) ? c.mtx : c.mix;
+  arr.forEach((s,n)=>{
+    const cel = el("div");
+    cel.style.cssText="display:flex;align-items:center;gap:2px";
+    const kn = knobTela(null, ()=>dbParaPos(s.lvl), p=>{ s.lvl = posParaDb(p); S.encFoco="send"+n; },
+      0, 1, ()=> (s.lvl<=-138?"-∞":s.lvl.toFixed(0)), {mini:true, cor:"send"});
+    const on = btTela(String(n+1), ()=>s.on, ()=>{ s.on = !s.on;
+      S.ajuda = "<b>"+c.nome+"</b> send "+(n+1)+" "+(s.on?"ON":"OFF"); });
+    on.style.cssText="font-size:7px;padding:1px 3px";
+    cel.appendChild(kn); cel.appendChild(on);
+    gg.appendChild(cel);
+  });
+  cx1.appendChild(gg);
+  g.appendChild(cx1);
+
+  /* coluna 2: HA, PAN/ST, HPF */
+  const col2 = el("div"); col2.style.cssText="display:flex;flex-direction:column;gap:4px";
+  if (c.tipo==="in" || c.tipo==="stin"){
+    const cxHA = caixaTela("HA");
+    const l = linhaTela();
+    l.appendChild(knobTela("GAIN", ()=>c.ha.gain, v=>c.ha.gain=v, -62, 10, v=>v.toFixed(0)+" dB"));
+    l.appendChild(btTela("+48V", ()=>c.ha.phantom, ()=>{ c.ha.phantom=!c.ha.phantom;
+      S.ajuda="Phantom +48V "+(c.ha.phantom?"LIGADO":"desligado")+" — nunca ligue com o canal aberto"; }, {laranja:true}));
+    l.appendChild(btTela("Ø", ()=>c.ha.phase, ()=>{ c.ha.phase=!c.ha.phase;
+      S.ajuda="Polaridade "+(c.ha.phase?"INVERTIDA":"normal")+" (Ø inverte 180°, não é atraso)"; }));
+    cxHA.appendChild(l);
+    const av = el("div"); av.style.cssText="font-size:7.5px;color:#ffd45e";
+    lig(()=>av.textContent = c.ha.gain >= -13 ? "PAD interno LIGADO (acima de -13 dB)" : "");
+    cxHA.appendChild(av);
+    col2.appendChild(cxHA);
+  } else {
+    const cxP = caixaTela("PATCH");
+    cxP.appendChild(el("div",null, c.tipo==="mix" ? "OMNI "+c.id.slice(3) : "—"));
+    col2.appendChild(cxP);
+  }
+
+  const cxPan = caixaTela("TO ST PAN / BALANCE");
+  const lp = linhaTela();
+  lp.appendChild(knobTela("PAN", ()=>c.pan, v=>c.pan=v, -1, 1, v=>{
+    const n = Math.round(v*63); return n===0?"C":n<0?"L"+(-n):"R"+n; }));
+  lp.appendChild(btTela("ST", ()=>c.toSt, ()=>c.toSt=!c.toSt));
+  lp.appendChild(btTela("MONO", ()=>c.toMono, ()=>c.toMono=!c.toMono));
+  cxPan.appendChild(lp);
+  col2.appendChild(cxPan);
+
+  if (c.tipo==="in" || c.tipo==="stin"){
+    const cxH = caixaTela("HPF");
+    const lh = linhaTela();
+    lh.appendChild(knobTela("FREQ", ()=>Math.log10(c.hpf.freq),
+      v=>c.hpf.freq=Math.round(Math.pow(10,v)),
+      Math.log10(20), Math.log10(600), v=>Math.round(Math.pow(10,v))+" Hz"));
+    lh.appendChild(btTela("ON", ()=>c.hpf.on, ()=>c.hpf.on=!c.hpf.on));
+    const nota = el("div",null,"-12 dB/oct"); nota.style.cssText="font-size:7px;color:#9aa0a8";
+    lh.appendChild(nota);
+    cxH.appendChild(lh);
+    col2.appendChild(cxH);
+  }
+  g.appendChild(col2);
+
+  /* coluna 3: DYN1, DYN2, gráfico */
+  const col3 = el("div"); col3.style.cssText="display:flex;flex-direction:column;gap:4px;min-width:0";
+  [["dyn1","DYNAMICS 1"],["dyn2","DYNAMICS 2"]].forEach(([kk,rot])=>{
+    if (kk==="dyn2" && !(c.tipo==="in"||c.tipo==="stin")) return;
+    const d = c[kk];
+    const cx = caixaTela(rot);
+    const l = linhaTela();
+    const nome = el("button","tbt", d.tipo);
+    nome.type="button";
+    nome.addEventListener("pointerdown",()=>{ abrirPopup(kk==="dyn1"?"DYN1":"DYN2"); pedirRender(); });
+    l.appendChild(nome);
+    l.appendChild(knobTela("THR", ()=>d.thr, v=>d.thr=v, kk==="dyn1"?-72:-54, 0, v=>v.toFixed(0)));
+    l.appendChild(btTela("ON", ()=>d.on, ()=>d.on=!d.on));
+    cx.appendChild(l);
+    col3.appendChild(cx);
+  });
+  const cxG = caixaTela("EQ / HPF");
+  cxG.appendChild(curvaEQ(c, 160, 62));
+  col3.appendChild(cxG);
+  g.appendChild(col3);
+
+  /* coluna 4: INSERT, DIRECT OUT, RECALL SAFE, FADER, DCA, MUTE */
+  const col4 = el("div"); col4.style.cssText="display:flex;flex-direction:column;gap:3px";
+  col4.appendChild(btTela("INSERT", ()=>c.insert, ()=>c.insert=!c.insert));
+  if (c.tipo==="in") col4.appendChild(btTela("DIRECT OUT", ()=>c.dout, ()=>c.dout=!c.dout));
+  col4.appendChild(btTela("RECALL SAFE", ()=>c.recallSafe, ()=>{ c.recallSafe=!c.recallSafe;
+    S.ajuda = "RECALL SAFE "+(c.recallSafe?"LIGADO — este canal não muda no recall de cena":"desligado"); }));
+  const cxF = caixaTela("FADER");
+  const fv = el("div"); fv.style.cssText="font-size:13px;font-weight:700";
+  lig(()=>fv.textContent = fmtDb(c.fader));
+  cxF.appendChild(fv);
+  cxF.appendChild(btTela("ON", ()=>c.on, ()=>c.on=!c.on));
+  col4.appendChild(cxF);
+  const cxD = caixaTela("DCA / MUTE");
+  const bd = el("button","tbt","atribuir"); bd.type="button";
+  bd.addEventListener("pointerdown",()=>{ abrirPopup("DCAMUTE"); pedirRender(); });
+  const res = el("div"); res.style.cssText="font-size:8px";
+  lig(()=>res.innerHTML = "<span style='color:#f2c200'>DCA "+(c.dca.join(",")||"-")+"</span><br>"+
+                          "<span style='color:#ff6b6b'>MUTE "+(c.mute.join(",")||"-")+"</span>");
+  cxD.appendChild(res); cxD.appendChild(bd);
+  col4.appendChild(cxD);
+  g.appendChild(col4);
+
+  area.appendChild(g);
+};
+
+/* ================= METER (p.167) ================= */
+TELAS.METER = function(area){
+  tituloTela(area,"METER","níveis de entrada e saída");
+  const g = el("div");
+  g.style.cssText="flex:1 1 auto;min-height:0;display:flex;gap:10px;overflow:auto";
+  const grupo = (rot, ids) => {
+    const cx = caixaTela(rot);
+    const l = el("div"); l.style.cssText="display:flex;gap:2px;align-items:flex-end;height:100%";
+    ids.forEach(id=>{
+      const c = S.canais[id]; if (!c) return;
+      const col = el("div"); col.style.cssText="display:flex;flex-direction:column;align-items:center;gap:1px";
+      const bar = el("div"); bar.style.cssText="width:9px;height:96px;background:#15171a;border-radius:1px;position:relative";
+      const f = el("i"); f.style.cssText="position:absolute;left:0;right:0;bottom:0;border-radius:1px;"+
+        "background:linear-gradient(0deg,#39b54a,#c8d400 74%,#ff2d2d 93%)";
+      bar.appendChild(f);
+      const nm = el("div",null,rotuloCurto(c).replace(/^CH/,""));
+      nm.style.cssText="font-size:6px;color:#9aa0a8";
+      col.appendChild(bar); col.appendChild(nm);
+      lig(()=>f.style.height = (c.nivel*100).toFixed(1)+"%");
+      l.appendChild(col);
+    });
+    cx.appendChild(l);
+    return cx;
+  };
+  g.appendChild(grupo("INPUT 1-24", Array.from({length:24},(_,i)=>"CH"+(i+1))));
+  g.appendChild(grupo("MIX", Array.from({length:N_MIX},(_,i)=>"MIX"+(i+1))));
+  g.appendChild(grupo("MATRIX / MASTER",
+    Array.from({length:N_MTX},(_,i)=>"MTX"+(i+1)).concat(["STEREO","MONO"])));
+  area.appendChild(g);
+  const v = el("div"); v.style.cssText="padding-top:3px";
+  v.appendChild(btTela("voltar ao OVERVIEW", ()=>false, ()=>{ S.tela="OVERVIEW"; }));
+  area.appendChild(v);
+};
+
+/* ================= SENDS ON FADER (p.70) ================= */
+TELAS.SOF = function(area){
+  tituloTela(area,"SENDS ON FADER",
+    "os faders de input viram as mandadas do bus escolhido");
+  const g = el("div"); g.style.cssText="display:flex;flex-direction:column;gap:6px";
+  const mk = (rot, tipo, n) => {
+    const cx = caixaTela(rot);
+    const l = el("div"); l.style.cssText="display:flex;gap:3px;flex-wrap:wrap";
+    for (let i=0;i<n;i++){
+      const b = btTela(String(i+1),
+        ()=>S.sof && S.sof.tipo===tipo && S.sof.n===i,
+        ()=>{ S.sof = {tipo, n:i};
+          S.ajuda = "<b>SENDS ON FADER</b> — os faders agora são as mandadas para "+
+                    (tipo==="mix"?"MIX ":"MATRIX ")+(i+1); });
+      b.style.width = "30px";
+      l.appendChild(b);
+    }
+    cx.appendChild(l);
+    return cx;
+  };
+  g.appendChild(mk("MIX 1-16","mix",N_MIX));
+  g.appendChild(mk("MATRIX 1-8","mtx",N_MTX));
+  const sair = btTela("SAIR do SENDS ON FADER", ()=>false, ()=>{ S.sof=null; S.tela="OVERVIEW";
+    S.ajuda="Voltou ao modo normal — os faders são de nível outra vez"; });
+  g.appendChild(sair);
+  const dica = el("div",null,
+    "Na mesa real: os [SEL] de todos os canais acendem, e a tecla [ON] de cada canal "+
+    "passa a ligar/desligar a mandada, não o canal.");
+  dica.style.cssText="font-size:9px;color:#9aa0a8;line-height:1.35";
+  g.appendChild(dica);
+  area.appendChild(g);
+};
+
+/* ==================================================================
+   POPUPS
+   ================================================================== */
+const TELAS_POPUP = {};
+function molde(area, titulo, sub){
+  const p = el("div","popup");
+  const cab = el("div","cab");
+  cab.appendChild(el("span",null,titulo));
+  if (sub){ const s = el("span",null,sub); s.style.cssText="font-size:9px;color:#9aa0a8;font-weight:400"; cab.appendChild(s); }
+  const x = el("button","x","X"); x.type="button";
+  x.addEventListener("pointerdown",()=>{ fecharPopup(); pedirRender(); });
+  cab.appendChild(x);
+  p.appendChild(cab);
+  const corpo = el("div","corpo");
+  p.appendChild(corpo);
+  area.appendChild(p);
+  return corpo;
+}
+
+/* ---- ATT / HPF / EQ (4 bandas, Type I / II) ---- */
+TELAS_POPUP.EQ = function(area){
+  const c = S.canais[S.sel];
+  const b = molde(area,"ATT / HPF / EQ", c.nome);
+  const topo = linhaTela();
+  topo.appendChild(btTela("TYPE I", ()=>c.eq.tipo==="I", ()=>{ c.eq.tipo="I";
+    S.ajuda="EQ Type I — o clássico das digitais Yamaha, mais 'redondo'"; }));
+  topo.appendChild(btTela("TYPE II", ()=>c.eq.tipo==="II", ()=>{ c.eq.tipo="II";
+    S.ajuda="EQ Type II — corta com menos interferência entre bandas vizinhas"; }));
+  topo.appendChild(btTela("EQ ON", ()=>c.eq.on, ()=>c.eq.on=!c.eq.on));
+  const flat = el("button","tbt","FLAT"); flat.type="button";
+  flat.addEventListener("pointerdown",()=>{
+    for (const bb of Object.values(c.eq.bandas)) bb.g = 0;
+    S.ajuda="EQ zerado (FLAT)"; pedirRender();
+  });
+  topo.appendChild(flat);
+  topo.appendChild(knobTela("ATT", ()=>c.eq.att, v=>c.eq.att=v, -96, 24, v=>v.toFixed(0)+" dB"));
+  b.appendChild(topo);
+
+  b.appendChild(curvaEQ(c, 320, 92));
+
+  const l = el("div"); l.style.cssText="display:flex;gap:6px;margin-top:4px";
+  [["low","LOW"],["lomid","LOW MID"],["himid","HIGH MID"],["high","HIGH"]].forEach(([id,rot])=>{
+    const banda = c.eq.bandas[id];
+    const cx = caixaTela(rot);
+    cx.appendChild(knobTela("Q", ()=>Math.log10(banda.q), v=>banda.q=Math.round(Math.pow(10,v)*100)/100,
+      Math.log10(0.1), Math.log10(10), v=>Math.pow(10,v).toFixed(2), {mini:true}));
+    cx.appendChild(knobTela("FREQ", ()=>Math.log10(banda.f), v=>banda.f=Math.round(Math.pow(10,v)),
+      Math.log10(20), Math.log10(20000), v=>{ const f=Math.pow(10,v);
+        return f>=1000?(f/1000).toFixed(2)+"k":f.toFixed(0); }, {mini:true}));
+    cx.appendChild(knobTela("GAIN", ()=>banda.g, v=>banda.g=v, -18, 18,
+      v=>(v>0?"+":"")+v.toFixed(1), {mini:true}));
+    l.appendChild(cx);
+  });
+  b.appendChild(l);
+  const nota = el("div",null,
+    "Faixas reais da M7CL: FREQ 20 Hz–20 kHz (passo 1/12 de oitava) · GAIN ±18 dB · Q 0,10–10 · ATT −96 a +24 dB.");
+  nota.style.cssText="font-size:9px;color:#9aa0a8;margin-top:4px;line-height:1.35";
+  b.appendChild(nota);
+};
+
+/* ---- DYNAMICS 1 e 2 ---- */
+const TIPOS_DYN1 = ["GATE","DUCKING","COMPRESSOR","EXPANDER"];
+const TIPOS_DYN2 = ["COMPRESSOR","COMPANDER-H","COMPANDER-S","DE-ESSER"];
+function popupDyn(area, qual){
+  const c = S.canais[S.sel];
+  const d = c[qual];
+  const tipos = qual==="dyn1" ? TIPOS_DYN1 : TIPOS_DYN2;
+  const b = molde(area, qual==="dyn1"?"DYNAMICS 1":"DYNAMICS 2", c.nome);
+
+  const lt = linhaTela();
+  tipos.forEach(t=>{
+    lt.appendChild(btTela(t, ()=>d.tipo===t, ()=>{ d.tipo=t;
+      S.ajuda = "DYN "+(qual==="dyn1"?"1":"2")+" agora é <b>"+t+"</b>"; }));
+  });
+  lt.appendChild(btTela("ON", ()=>d.on, ()=>d.on=!d.on));
+  b.appendChild(lt);
+
+  const l = linhaTela();
+  l.style.marginTop = "5px";
+  l.appendChild(knobTela("THRESHOLD", ()=>d.thr, v=>d.thr=v, qual==="dyn1"?-72:-54, 0, v=>v.toFixed(0)+" dB"));
+  if (qual==="dyn1"){
+    l.appendChild(knobTela("RANGE", ()=>d.range, v=>d.range=v, -70, 0, v=>v.toFixed(0)+" dB"));
+    l.appendChild(knobTela("ATTACK", ()=>d.attack, v=>d.attack=v, 0, 120, v=>v.toFixed(0)+" ms"));
+    l.appendChild(knobTela("HOLD", ()=>d.hold, v=>d.hold=v, 0.02, 1, v=>(v*1000).toFixed(0)+" ms"));
+    l.appendChild(knobTela("DECAY", ()=>d.decay, v=>d.decay=v, 0.005, 42.3, v=>v.toFixed(2)+" s"));
+  } else {
+    l.appendChild(knobTela("RATIO", ()=>d.ratio, v=>d.ratio=v, 1, 20, v=>v.toFixed(1)+":1"));
+    l.appendChild(knobTela("ATTACK", ()=>d.attack, v=>d.attack=v, 0, 120, v=>v.toFixed(0)+" ms"));
+    l.appendChild(knobTela("RELEASE", ()=>d.release, v=>d.release=v, 0.005, 42.3, v=>v.toFixed(2)+" s"));
+    l.appendChild(knobTela("KNEE", ()=>d.knee, v=>d.knee=v, 0, 5, v=>v<1?"HARD":v.toFixed(0)));
+    l.appendChild(knobTela("OUT", ()=>d.out, v=>d.out=v, 0, 18, v=>"+"+v.toFixed(0)+" dB"));
+  }
+  b.appendChild(l);
+
+  /* curva de transferência: mostra o que o compressor/gate faz de verdade */
+  const svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
+  svg.setAttribute("viewBox","0 0 120 120");
+  svg.style.cssText="width:180px;height:180px;background:#15171a;border-radius:2px;margin-top:5px";
+  const eixo = document.createElementNS("http://www.w3.org/2000/svg","path");
+  eixo.setAttribute("d","M0,120 L120,0"); eixo.setAttribute("stroke","#3a3d42");
+  eixo.setAttribute("stroke-width","0.7"); eixo.setAttribute("fill","none");
+  const curva = document.createElementNS("http://www.w3.org/2000/svg","path");
+  curva.setAttribute("stroke","var(--tela-verde)"); curva.setAttribute("stroke-width","1.6");
+  curva.setAttribute("fill","none");
+  svg.appendChild(eixo); svg.appendChild(curva);
+  lig(()=>{
+    const pts = [];
+    for (let i=0;i<=60;i++){
+      const inDb = -60 + i;                       /* -60..0 dB */
+      let outDb = inDb;
+      if (d.on){
+        if (qual==="dyn1"){
+          if (d.tipo==="GATE" || d.tipo==="DUCKING"){
+            if (inDb < d.thr) outDb = inDb + (d.range||-70)*(d.tipo==="GATE"?1:0);
+          } else if (inDb > d.thr){
+            outDb = d.thr + (inDb - d.thr)/2;
+          }
+        } else {
+          if (inDb > d.thr) outDb = d.thr + (inDb - d.thr)/Math.max(1,d.ratio);
+          outDb += d.out || 0;
+        }
+      }
+      const x = ((inDb+60)/60)*120;
+      const y = 120 - clamp((outDb+60)/60,0,1.2)*120;
+      pts.push(x.toFixed(1)+","+y.toFixed(1));
+    }
+    curva.setAttribute("d","M"+pts.join("L"));
+  });
+  b.appendChild(svg);
+  const nota = el("div",null, qual==="dyn1"
+    ? "DYN1 na M7CL: GATE, DUCKING, COMPRESSOR ou EXPANDER. THRESHOLD −72 a 0 dB."
+    : "DYN2 na M7CL: COMPRESSOR, COMPANDER-H, COMPANDER-S ou DE-ESSER. THRESHOLD −54 a 0 dB.");
+  nota.style.cssText="font-size:9px;color:#9aa0a8;margin-top:3px";
+  b.appendChild(nota);
+}
+TELAS_POPUP.DYN1 = a => popupDyn(a,"dyn1");
+TELAS_POPUP.DYN2 = a => popupDyn(a,"dyn2");
+
+/* ---- SCENE (300 cenas, p.135) ---- */
+TELAS_POPUP.SCENE = function(area){
+  const b = molde(area,"SCENE MEMORY","300 cenas · a 000 é protegida");
+  const l = el("div"); l.style.cssText="display:flex;gap:6px;height:100%;min-height:0";
+
+  const lista = el("div");
+  lista.style.cssText="flex:1 1 auto;min-width:0;overflow:auto;background:#1a1c1f;border-radius:2px;padding:2px";
+  for (let n=0;n<=24;n++){
+    const reg = S.cena.lista.find(x=>x.n===n);
+    const li = el("div");
+    li.style.cssText="display:flex;gap:6px;font-size:10px;padding:2px 4px;border-radius:2px;cursor:pointer;"+
+      (n===S.cena.n ? "background:var(--tela-azul);" : "");
+    li.appendChild(el("span",null,num3(n)));
+    const nm = el("span",null, reg ? reg.nome : "— vazia —");
+    nm.style.color = reg ? "var(--tela-texto)" : "#6d7278";
+    li.appendChild(nm);
+    if (reg && reg.bloq){ const c = el("span",null,"🔒"); c.style.marginLeft="auto"; li.appendChild(c); }
+    li.addEventListener("pointerdown",()=>{ S.cena.n = n;
+      S.ajuda = "Cena "+num3(n)+" selecionada — RECALL para chamar, STORE para guardar"; pedirRender(); });
+    lista.appendChild(li);
+  }
+  l.appendChild(lista);
+
+  const bts = el("div"); bts.style.cssText="display:flex;flex-direction:column;gap:4px;width:120px";
+  const bR = el("button","tbt","RECALL"); bR.type="button";
+  bR.addEventListener("pointerdown",()=>{ recallCena(); });
+  const bS = el("button","tbt","STORE"); bS.type="button";
+  bS.addEventListener("pointerdown",()=>{ abrirPopup("SCENE_STORE"); pedirRender(); });
+  const bC = el("button","tbt","CLEAR"); bC.type="button";
+  bC.addEventListener("pointerdown",()=>{
+    if (S.cena.n===0){ S.ajuda="A cena 000 é protegida"; pedirRender(); return; }
+    S.cena.lista = S.cena.lista.filter(x=>x.n!==S.cena.n);
+    S.ajuda="Cena "+num3(S.cena.n)+" apagada"; pedirRender();
+  });
+  bts.appendChild(bR); bts.appendChild(bS); bts.appendChild(bC);
+  const nota = el("div",null,
+    "Na mesa real o recall move os faders motorizados. Canais com RECALL SAFE ligado não mudam.");
+  nota.style.cssText="font-size:9px;color:#9aa0a8;line-height:1.35";
+  bts.appendChild(nota);
+  l.appendChild(bts);
+  b.appendChild(l);
+};
+
+TELAS_POPUP.SCENE_STORE = function(area){
+  const b = molde(area,"SCENE STORE","escolha o número e o nome");
+  const l = linhaTela();
+  const inp = el("input");
+  inp.type="text"; inp.value = "SCENE "+num3(S.cena.n);
+  inp.style.cssText="background:#15171a;border:1px solid #3d4147;color:var(--tela-texto);"+
+    "border-radius:2px;padding:3px 6px;font-size:11px;width:180px";
+  const num = el("div",null,"nº "+num3(S.cena.n));
+  num.style.cssText="font-size:14px;font-weight:700";
+  l.appendChild(num); l.appendChild(inp);
+  const ok = el("button","tbt on","GUARDAR"); ok.type="button";
+  ok.addEventListener("pointerdown",()=>{
+    if (guardarCena(S.cena.n, inp.value.trim())) fecharPopup();
+    pedirRender();
+  });
+  l.appendChild(ok);
+  b.appendChild(l);
+  const nota = el("div",null,
+    "STORE guarda TUDO que está na mesa agora: faders, ON, HA, EQ, dinâmica, sends, pan, DCA e mute.");
+  nota.style.cssText="font-size:9px;color:#9aa0a8;margin-top:6px";
+  b.appendChild(nota);
+};
+
+/* ---- DCA / MUTE GROUP ASSIGN (p.123/126) ---- */
+TELAS_POPUP.DCAMUTE = function(area){
+  const c = S.canais[S.sel];
+  const b = molde(area,"DCA / MUTE GROUP ASSIGN", c.nome);
+  const mk = (rot, campo, n, cor) => {
+    const cx = caixaTela(rot);
+    const l = el("div"); l.style.cssText="display:flex;gap:3px;flex-wrap:wrap";
+    for (let i=1;i<=n;i++){
+      const bt = btTela(String(i), ()=>c[campo].includes(i), ()=>{
+        const j = c[campo].indexOf(i);
+        if (j>=0) c[campo].splice(j,1); else c[campo].push(i);
+        c[campo].sort((a,b)=>a-b);
+        S.ajuda = "<b>"+c.nome+"</b> "+(rot)+" "+i+": "+(c[campo].includes(i)?"dentro":"fora");
+      });
+      bt.style.cssText="width:32px;font-size:11px;padding:4px 0";
+      l.appendChild(bt);
+    }
+    cx.appendChild(l);
+    return cx;
+  };
+  if (c.tipo==="in" || c.tipo==="stin") b.appendChild(mk("DCA","dca",N_DCA));
+  b.appendChild(mk("MUTE","mute",N_MUTE));
+  const nota = el("div",null,
+    "DCA controla o nível de um grupo sem mexer no fader de cada canal (só entradas). "+
+    "MUTE corta o grupo inteiro. Um canal pode estar em vários grupos.");
+  nota.style.cssText="font-size:9px;color:#9aa0a8;margin-top:6px;line-height:1.35";
+  b.appendChild(nota);
+};
+
+/* ---- RACK: GEQ 31 bandas + efeitos (p.171) ---- */
+S.rack = Array.from({length:8},(_,i)=>({
+  n:i+1,
+  tipo: i<4 ? "GEQ" : "EFFECT",
+  geq: new Array(31).fill(0),
+  efeito: "REV-X HALL",
+  param:{ tempo:500, mix:35 }
+}));
+const FREQ_GEQ = [20,25,31.5,40,50,63,80,100,125,160,200,250,315,400,500,630,800,1000,
+                  1250,1600,2000,2500,3150,4000,5000,6300,8000,10000,12500,16000,20000];
+const EFEITOS = ["REV-X HALL","REV-X ROOM","REV-X PLATE","REVERB HALL","ECHO","DELAY LCR",
+                 "CHORUS","FLANGE","PHASER","AUTO PAN","COMP276","EQ601","OPEN DECK"];
+S.rackSel = 0;
+TELAS_POPUP.RACK = function(area){
+  const b = molde(area,"VIRTUAL RACK","racks 1-4: GEQ · racks 5-8: GEQ ou efeito");
+  const abas = linhaTela();
+  S.rack.forEach((r,i)=>{
+    abas.appendChild(btTela(String(r.n)+" "+r.tipo, ()=>S.rackSel===i, ()=>{ S.rackSel=i;
+      S.ajuda="Rack "+r.n+" — "+r.tipo; }));
+  });
+  b.appendChild(abas);
+
+  const r = S.rack[S.rackSel];
+  const cx = caixaTela(null);
+  cx.style.marginTop = "5px";
+
+  if (r.n>4){
+    const lt = linhaTela();
+    lt.appendChild(btTela("GEQ", ()=>r.tipo==="GEQ", ()=>{ r.tipo="GEQ"; }));
+    lt.appendChild(btTela("EFFECT", ()=>r.tipo==="EFFECT", ()=>{ r.tipo="EFFECT"; }));
+    cx.appendChild(lt);
+  }
+
+  if (r.tipo==="GEQ"){
+    const g = el("div");
+    g.style.cssText="display:flex;gap:1px;align-items:flex-end;margin-top:5px";
+    FREQ_GEQ.forEach((f,i)=>{
+      const col = el("div"); col.style.cssText="display:flex;flex-direction:column;align-items:center;gap:1px";
+      const trilho = el("div");
+      trilho.style.cssText="width:9px;height:74px;background:#15171a;border-radius:1px;position:relative;cursor:ns-resize";
+      const cur = el("div");
+      cur.style.cssText="position:absolute;left:-1px;width:11px;height:6px;border-radius:1px;"+
+        "background:linear-gradient(180deg,#e6e8ea,#9a9da2);border:1px solid #17191b";
+      trilho.appendChild(cur);
+      const meio = el("div");
+      meio.style.cssText="position:absolute;left:0;right:0;top:50%;height:1px;background:#3a3d42";
+      trilho.appendChild(meio);
+      trilho.style.touchAction="none";
+      let base=null, y0=0;
+      trilho.addEventListener("pointerdown",ev=>{ ev.stopPropagation(); base=r.geq[i]; y0=ev.clientY;
+        try{trilho.setPointerCapture(ev.pointerId);}catch(e){} });
+      trilho.addEventListener("pointermove",ev=>{
+        if (base===null) return;
+        r.geq[i] = clamp(base + (y0-ev.clientY)/74*30, -15, 15);   /* ±15 dB, MEDIDO */
+        S.ajuda = "GEQ rack "+r.n+" · "+(f>=1000?(f/1000)+"k":f)+" Hz: "+
+                  (r.geq[i]>0?"+":"")+r.geq[i].toFixed(1)+" dB";
+        pedirRender();
+      });
+      const solta=()=>base=null;
+      trilho.addEventListener("pointerup",solta); trilho.addEventListener("pointercancel",solta);
+      lig(()=>{ cur.style.top = (50 - r.geq[i]/15*50)+"%"; cur.style.marginTop="-3px"; });
+      const rot = el("div",null, f>=1000?(f/1000)+"k":String(f));
+      rot.style.cssText="font-size:5px;color:#8f959c;writing-mode:vertical-rl;height:22px";
+      col.appendChild(trilho); col.appendChild(rot);
+      g.appendChild(col);
+    });
+    cx.appendChild(g);
+    const l2 = linhaTela();
+    const flat = el("button","tbt","FLAT"); flat.type="button";
+    flat.addEventListener("pointerdown",()=>{ r.geq.fill(0); S.ajuda="GEQ zerado"; pedirRender(); });
+    l2.appendChild(flat);
+    const nota = el("div",null,"31 bandas · ±15 dB · na mesa real os 8 faders da Centralogic pegam 8 bandas por vez");
+    nota.style.cssText="font-size:9px;color:#9aa0a8";
+    l2.appendChild(nota);
+    cx.appendChild(l2);
+  } else {
+    const lt = el("div"); lt.style.cssText="display:flex;gap:3px;flex-wrap:wrap;margin-top:5px";
+    EFEITOS.forEach(e=>{
+      lt.appendChild(btTela(e, ()=>r.efeito===e, ()=>{ r.efeito=e;
+        S.ajuda="Rack "+r.n+" — efeito <b>"+e+"</b>"; }));
+    });
+    cx.appendChild(lt);
+    const lp = linhaTela(); lp.style.marginTop="6px";
+    lp.appendChild(knobTela("TIME/TEMPO", ()=>r.param.tempo, v=>r.param.tempo=v, 20, 3000, v=>v.toFixed(0)+" ms"));
+    lp.appendChild(knobTela("MIX", ()=>r.param.mix, v=>r.param.mix=v, 0, 100, v=>v.toFixed(0)+" %"));
+    const tap = el("button","tbt","TAP TEMPO"); tap.type="button";
+    let ultimo = 0;
+    tap.addEventListener("pointerdown",()=>{
+      const agora = performance.now();
+      if (ultimo && agora-ultimo < 3000){
+        r.param.tempo = Math.round(agora-ultimo);
+        S.ajuda = "TAP TEMPO: "+r.param.tempo+" ms ("+Math.round(60000/r.param.tempo)+" BPM)";
+      } else S.ajuda = "TAP TEMPO — bata de novo no ritmo";
+      ultimo = agora; pedirRender();
+    });
+    lp.appendChild(tap);
+    cx.appendChild(lp);
+  }
+  b.appendChild(cx);
+};
+
+/* ---- MONITOR / CUE / OSCILADOR / TALKBACK (p.153/161) ---- */
+TELAS_POPUP.MONITOR = function(area){
+  const b = molde(area,"MONITOR / CUE / OSCILLATOR / TALKBACK");
+  const l = el("div"); l.style.cssText="display:flex;gap:6px;flex-wrap:wrap";
+
+  const cxM = caixaTela("MONITOR");
+  const lm = linhaTela();
+  lm.appendChild(knobTela("LEVEL", ()=>S.monitor.nivel, v=>S.monitor.nivel=v, 0, 1, v=>(v*10).toFixed(1)));
+  lm.appendChild(btTela("DIMM", ()=>S.monitor.dimm, ()=>S.monitor.dimm=!S.monitor.dimm));
+  cxM.appendChild(lm);
+  l.appendChild(cxM);
+
+  const cxC = caixaTela("CUE");
+  const nq = el("div"); nq.style.cssText="font-size:9px";
+  lig(()=>{
+    const ids = Object.values(S.canais).filter(c=>c.cue).map(c=>c.nome);
+    nq.textContent = ids.length ? ids.join(", ") : "nenhum canal em cue";
+  });
+  cxC.appendChild(nq);
+  const bc = el("button","tbt","CUE CLEAR"); bc.type="button";
+  bc.addEventListener("pointerdown",()=>{ Object.values(S.canais).forEach(c=>c.cue=false);
+    S.monitor.cueAtivo=false; S.ajuda="CUE limpo"; pedirRender(); });
+  cxC.appendChild(bc);
+  l.appendChild(cxC);
+
+  const cxO = caixaTela("OSCILLATOR");
+  const lo = linhaTela();
+  ["SINE","PINK NOISE","BURST"].forEach(t=>{
+    lo.appendChild(btTela(t, ()=>S.osc.tipo===t, ()=>S.osc.tipo=t));
+  });
+  cxO.appendChild(lo);
+  const lo2 = linhaTela();
+  lo2.appendChild(knobTela("FREQ", ()=>Math.log10(S.osc.freq), v=>S.osc.freq=Math.round(Math.pow(10,v)),
+    Math.log10(20), Math.log10(20000), v=>{ const f=Math.pow(10,v);
+      return f>=1000?(f/1000).toFixed(2)+"k":f.toFixed(0); }));
+  lo2.appendChild(knobTela("LEVEL", ()=>S.osc.nivel, v=>S.osc.nivel=v, -96, 0, v=>v.toFixed(0)+" dB"));
+  lo2.appendChild(btTela("OSC ON", ()=>S.osc.on, ()=>{ S.osc.on=!S.osc.on;
+    S.ajuda = S.osc.on ? "OSCILADOR LIGADO — no palco isso vai para o PA, cuidado" : "Oscilador desligado"; }));
+  cxO.appendChild(lo2);
+  l.appendChild(cxO);
+
+  const cxT = caixaTela("TALKBACK");
+  const lt = linhaTela();
+  lt.appendChild(knobTela("LEVEL", ()=>S.talkback.nivel, v=>S.talkback.nivel=v, -96, 0, v=>v.toFixed(0)+" dB"));
+  lt.appendChild(btTela("TB ON", ()=>S.talkback.on, ()=>S.talkback.on=!S.talkback.on));
+  cxT.appendChild(lt);
+  l.appendChild(cxT);
+
+  b.appendChild(l);
+  const nota = el("div",null,
+    "O simulador não emite som de propósito — o oscilador e o talkback aqui só mudam o estado da mesa.");
+  nota.style.cssText="font-size:9px;color:#9aa0a8;margin-top:6px";
+  b.appendChild(nota);
+};
+
+/* ---- SETUP + USER SETUP + USER DEFINED KEYS (p.207/216/229) ---- */
+TELAS_POPUP.SETUP = function(area){
+  const b = molde(area,"SETUP","usuário, user defined keys e ajustes gerais");
+  const l = el("div"); l.style.cssText="display:flex;gap:6px;flex-wrap:wrap";
+
+  const cxU = caixaTela("USER LEVEL");
+  ["ADMINISTRATOR","GUEST"].forEach(u=>{
+    cxU.appendChild(btTela(u, ()=>S.usuario===(u==="ADMINISTRATOR"?"ADMIN":"GUEST"),
+      ()=>{ S.usuario = u==="ADMINISTRATOR"?"ADMIN":"GUEST";
+        S.ajuda="Usuário agora é <b>"+S.usuario+"</b> — GUEST não pode guardar cena"; }));
+  });
+  l.appendChild(cxU);
+
+  const cxB = caixaTela("BUS SETUP");
+  const nb = el("div",null,"MIX 1-16: VARI · MATRIX 1-8 · STEREO (LCR) + MONO");
+  nb.style.cssText="font-size:9px;color:#c9ced4";
+  cxB.appendChild(nb);
+  l.appendChild(cxB);
+  b.appendChild(l);
+
+  const cxK = caixaTela("USER DEFINED KEYS 1-12");
+  cxK.style.marginTop = "6px";
+  const g = el("div"); g.style.cssText="display:grid;grid-template-columns:repeat(4,1fr);gap:4px";
+  S.udk.forEach((f,i)=>{
+    const cel = el("div"); cel.style.cssText="display:flex;flex-direction:column;gap:1px";
+    const t = el("div",null,"tecla "+(i+1)); t.style.cssText="font-size:8px;color:#9aa0a8";
+    const sel = el("select");
+    sel.style.cssText="background:#15171a;color:var(--tela-texto);border:1px solid #3d4147;"+
+      "border-radius:2px;font-size:9px;padding:2px";
+    FUNCOES_UDK.forEach(fn=>{
+      const o = el("option",null,fn); o.value = fn;
+      if (fn===f) o.selected = true;
+      sel.appendChild(o);
+    });
+    sel.addEventListener("change",()=>{ S.udk[i] = sel.value;
+      S.ajuda = "Tecla "+(i+1)+" agora faz <b>"+sel.value+"</b>"; pedirRender(); });
+    cel.appendChild(t); cel.appendChild(sel);
+    g.appendChild(cel);
+  });
+  cxK.appendChild(g);
+  b.appendChild(cxK);
+};
+
+/* ---- CH JOB (p.132) ---- */
+S.copia = null;
+TELAS_POPUP.CHJOB = function(area){
+  const c = S.canais[S.sel];
+  const b = molde(area,"CH JOB", c.nome);
+  const l = linhaTela();
+  const bc = el("button","tbt","COPY"); bc.type="button";
+  bc.addEventListener("pointerdown",()=>{ S.copia = JSON.parse(JSON.stringify({
+      ha:c.ha, hpf:c.hpf, eq:c.eq, dyn1:c.dyn1, dyn2:c.dyn2, pan:c.pan,
+      mix:c.mix, mtx:c.mtx, fader:c.fader, on:c.on }));
+    S.ajuda = "Parâmetros de <b>"+c.nome+"</b> copiados"; pedirRender(); });
+  const bp = el("button","tbt","PASTE"); bp.type="button";
+  bp.addEventListener("pointerdown",()=>{
+    if (!S.copia){ S.ajuda="Nada copiado ainda"; pedirRender(); return; }
+    Object.assign(c, JSON.parse(JSON.stringify(S.copia)));
+    S.ajuda = "Colado em <b>"+c.nome+"</b>"; pedirRender();
+  });
+  const bi = el("button","tbt","INITIALIZE"); bi.type="button";
+  bi.addEventListener("pointerdown",()=>{
+    const novo = novoCanal(c.id, c.tipo, c.nome);
+    novo.fader = -138;
+    Object.assign(c, novo);
+    S.ajuda = "<b>"+c.nome+"</b> voltou ao padrão de fábrica"; pedirRender();
+  });
+  l.appendChild(bc); l.appendChild(bp); l.appendChild(bi);
+  b.appendChild(l);
+
+  const cxN = caixaTela("NOME DO CANAL");
+  const inp = el("input"); inp.type="text"; inp.value = c.nome;
+  inp.style.cssText="background:#15171a;border:1px solid #3d4147;color:var(--tela-texto);"+
+    "border-radius:2px;padding:3px 6px;font-size:11px;width:200px";
+  inp.addEventListener("input",()=>{ c.nome = inp.value.slice(0,8); pedirRender(); });
+  cxN.appendChild(inp);
+  const dica = el("div",null,"Até 8 caracteres, como na fita da mesa real.");
+  dica.style.cssText="font-size:9px;color:#9aa0a8";
+  cxN.appendChild(dica);
+  b.appendChild(cxN);
+};
+
+/* ---- HELP ---- */
+TELAS_POPUP.HELP = function(area){
+  const b = molde(area,"HELP","como operar esta M7CL");
+  const txt = [
+    ["Escolher o canal","Aperte o [SEL] do canal. O nome aparece na faixa azul, no alto da tela."],
+    ["Ajustar ganho","Com o canal selecionado, gire o knob HA da seção SELECTED CHANNEL. Faixa: −62 a +10 dB. Acima de −13 dB a mesa liga o PAD sozinha."],
+    ["Equalizar","Gire os knobs de EQ (Q / FREQUENCY / GAIN das 4 bandas) ou toque no gráfico de EQ na tela para abrir a janela completa."],
+    ["Mandar para o monitor","SENDS ON FADER: escolha o MIX e os faders de input viram as mandadas daquele monitor."],
+    ["Centralogic","As NAVIGATION KEYS jogam 8 canais para os 8 faders do centro. Segure 2 s para fixar."],
+    ["Cenas","SCENE MEMORY: ▲▼ escolhe o número, STORE guarda, RECALL chama. RECALL SAFE protege um canal do recall."],
+    ["DCA e MUTE","Toque no campo DCA/MUTE de um canal na tela para atribuir os grupos."],
+  ];
+  txt.forEach(([t,d])=>{
+    const cx = caixaTela(null);
+    const a = el("div",null,t); a.style.cssText="font-size:10px;font-weight:700";
+    const p = el("div",null,d); p.style.cssText="font-size:9px;color:#c9ced4;line-height:1.4";
+    cx.appendChild(a); cx.appendChild(p);
+    b.appendChild(cx);
+  });
+};
+
+/* atualiza os LEDs da meter bridge */
+function desenharBridge(){
+  document.querySelectorAll(".bcol").forEach(col=>{
+    const c = S.canais[col.dataset.canal];
+    const n = c ? c.nivel : 0;
+    const leds = col.querySelectorAll(".bleds b");
+    /* 12 passos, do topo (OVER) para baixo (-60) */
+    leds.forEach((b,i)=>b.classList.toggle("a", n >= (1 - i/leds.length) * 0.98));
+  });
+}
+
+/* ==================================================================
+   ZOOM-TO-FIT
+   A mesa é desenhada num palco fixo de 1920x1000 e depois escalada.
+   SEM isto o painel fica cortado -- e um painel cortado é exatamente
+   o que faz as proporções parecerem erradas.
+   Nota do projeto: NÃO derivar a altura da largura (aspect-ratio) --
+   foi o que já cortou simulador em tela cheia antes.
+   ================================================================== */
+const palco = document.getElementById("palco");
+function ajustarZoom(){
+  const lw = window.innerWidth, lh = window.innerHeight;
+  const k = Math.min(lw / 1920, lh / 1044);
+  palco.style.transform = "scale(" + k.toFixed(4) + ")";
+}
+window.addEventListener("resize", ajustarZoom);
+ajustarZoom();
+
+/* contrato html.smu-fs: o player avisa por postMessage quando entra em
+   tela cheia; o simulador responde só com CSS + um novo cálculo de zoom */
+window.addEventListener("message", ev=>{
+  const d = ev && ev.data;
+  if (!d) return;
+  const tipo = typeof d === "string" ? d : d.type || d.tipo;
+  if (tipo === "smu-fs-on"  || tipo === "smu:fullscreen:on")  document.documentElement.classList.add("smu-fs");
+  if (tipo === "smu-fs-off" || tipo === "smu:fullscreen:off") document.documentElement.classList.remove("smu-fs");
+  requestAnimationFrame(ajustarZoom);
+});
+
+/* lupa: amplia a touch screen para a mesa inteira. É recurso do
+   SIMULADOR (a console real não faz isso) -- serve para o aluno enxergar
+   a tela num notebook. Por isso vem rotulado como tal. */
+const btLupa = document.getElementById("lupa");
+btLupa.addEventListener("click", ()=>{
+  const on = mesa.classList.toggle("lupa");
+  btLupa.textContent = on ? "VOLTAR À MESA" : "AMPLIAR TELA";
+  S.ajuda = on ? "Tela ampliada (recurso do simulador, não existe na mesa real)" : "";
+  pedirRender();
+});
+
+/* teclado: atalhos de estudo */
+document.addEventListener("keydown", ev=>{
+  if (ev.key === "Escape" && S.popup){ fecharPopup(); pedirRender(); }
+  if (ev.key === "ArrowRight") pularCanal(1);
+  if (ev.key === "ArrowLeft")  pularCanal(-1);
+});
+
+/* ---- primeiro render ---- */
+S.ajuda = "Aperte um <b>[SEL]</b> para escolher o canal · gire os knobs do <b>SELECTED CHANNEL</b> · "+
+          "as <b>NAVIGATION KEYS</b> mandam 8 canais para a Centralogic";
+desenhar();
+</script>
+</body>
+</html>
