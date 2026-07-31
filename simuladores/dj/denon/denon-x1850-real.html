@@ -5,6 +5,55 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <link rel="icon" href="data:,">
 <title>Denon DJ X1850 PRIME — réplica fiel (SMU)</title>
+<!--
+  ============================================================================
+  RODADA DE COMPORTAMENTO — 30/07/2026
+  Fonte de verdade: manual oficial do X1850 PRIME
+  (cursos-novos/pleno-dj/manuais/Denon-X1850-Prime.pdf, lido com pdftext.mjs).
+  ----------------------------------------------------------------------------
+  O clicar-tudo.mjs acusava 2. Eram estes:
+
+    1. MEDIDOR MONTADO COMO BOTÃO. Cada medidor ganhava um .hit por cima cujo
+       pointerdown só chamava teach() e, com o áudio já ligado, não mudava nada —
+       era a acusação ".hit (sem reacao)". Medidor é INDICADOR: a barra de ensino
+       passou para o próprio elemento e o .hit saiu.
+       ⚠️ Estilo inline NÃO resolve este caso: a lista de candidatos do portão sai
+       das REGRAS de CSS, e a classe .hit declara cursor:pointer. Tem de não criar.
+    2. BACK só piscava a pele (toggle + setTimeout). Manual: "Back: Drücken Sie
+       diese Taste, um zum vorherigen Bildschirm im Optionsmenü zurückzukehren" —
+       volta uma tela DENTRO do menu Utility. Agora guarda a profundidade de
+       navegação, e o QUANTIZE segurado (serigrafia: "QUANTIZE / −UTILITY") entra
+       e sai do menu, que é o que o manual manda.
+
+  ----------------------------------------------------------------------------
+  ⚠️ NÃO É DEFEITO — o portão continua acusando 1 rótulo: o `.rbtn`, que é o BACK.
+  Ele depende de um ESTADO que o portão não consegue montar, e não fazer nada é o
+  comportamento CERTO: fora do menu Utility o BACK não tem para onde voltar. Para
+  entrar no menu é preciso SEGURAR o QUANTIZE por ~450 ms, e o portão clica rápido,
+  sem segurar. Para ver funcionando: segure o QUANTIZE e depois aperte o BACK.
+  ⛔ Quem "consertar" este vai quebrar o que está certo (Regra 4).
+
+  ----------------------------------------------------------------------------
+  JÁ ESTAVA CERTO, e foi conferido: o medidor de canal deste arquivo lê o ponto
+  PRÉ-FADER (`c.gate.connect(c.an)`), que é o que o manual pede. Não foi mexido.
+
+    3. SELETOR DE ENTRADA (item 1) era SÓ VISUAL — o comentário no onKnob dizia
+       isso com todas as letras: "seleção de fonte: visual". A chave escolhe qual
+       conector traseiro alimenta o canal, e fora da posição do cabo o canal
+       EMUDECE. Medido: das 5 posições (DIGITAL · LINE · PHONO · USB · DVS) só a
+       LINE passa, que é onde está o cabo desta cabine.
+       ⚠️ O padrão de fábrica do knob mudou de 0,50 para 0,25 (LINE) — no meio do
+       curso ele caía em PHONO e o mixer abriria mudo, sem nada explicando por quê.
+       ⚠️ Este arquivo NÃO tem knobVal(): lê knobState direto. Escrevi com knobVal
+       na primeira versão e o portão não pegou — o startAudio() não completa no DOM
+       falso, então tudo que depende de `ready` fica fora da medição dele. Quem
+       pegou foi abrir no navegador. Vale lembrar disso nos outros arquivos.
+
+  ⚠️ AINDA NÃO FEITO (medido e anotado, fora do escopo desta rodada):
+   • As telas do menu Utility não foram montadas: a navegação existe, o conteúdo não.
+  ============================================================================
+-->
+
 <style>
   :root{ --ink:#e9eef7; --amber:#ffae1a; --green:#39d271; --blue:#37a2ff; --denonblue:#3fb8ee; }
   *{box-sizing:border-box}
@@ -517,7 +566,10 @@ const chans={}, els={}, meters={}, knobState={};
 let xf=0.5, baseBpm=128, divIdx=4, fxIdx=0, assignIdx=7, fxOn=false, instantOn=false;
 let filterOn=false, sweepType=null, dirty=true, tapTimes=[];
 const xfAssign={1:"A",2:"B",3:"THRU",4:"THRU"};
-const KNOB_DEF={inp:0.5,trim:0.72,hi:0.5,mid:0.5,low:0.5,filt:0.5,swp:0.5,
+/* inp:0.25 = LINE, a 2ª das 5 posições (DIGITAL · LINE · PHONO · USB · DVS).
+   É onde o cabo está nesta cabine — com a chave em qualquer outra o canal emudece,
+   e o mixer abriria mudo sem nada explicando por quê. */
+const KNOB_DEF={inp:0.25,trim:0.72,hi:0.5,mid:0.5,low:0.5,filt:0.5,swp:0.5,
   mic1lvl:0.3,mic2lvl:0.3,michi:0.5,miclow:0.5,cuemix:0.5,hplevel:0.5,
   master:0.75,pan:0.5,booth:0.5,chcontour:0.5,xcontour:0.5,
   fxassign:1,fxtime:0.5,fxfreq:0.5,fxamount:0.5,enter:0};
@@ -628,7 +680,14 @@ async function startAudio(){ if(started)return; started=true;
     sp.onaudioprocess=e=>{ const out=e.outputBuffer.getChannelData(0), d=c;
       for(let i=0;i<out.length;i++){ d.pos+=d.rate; if(d.pos>=len)d.pos-=len;
         let i0=Math.floor(d.pos)%len; out[i]=data[i0]; } };
-    sp.connect(c.trim); c.trim.connect(c.hi); c.hi.connect(c.mid); c.mid.connect(c.low);
+    /* ⛔ 30/07/2026 — SELETOR DE ENTRADA (item 1) era só visual: o comentário no
+       onKnob dizia literalmente "seleção de fonte: visual". A chave escolhe QUAL
+       CONECTOR TRASEIRO alimenta o canal, e fora da posição do cabo o canal
+       EMUDECE — não há o que amplificar. Nesta cabine há DJ players nas RCA de
+       LINE, nos canais 1 e 2. */
+    c.entrada=AC.createGain(); c.entrada.gain.value=0;
+    sp.connect(c.entrada); c.entrada.connect(c.trim);
+    c.trim.connect(c.hi); c.hi.connect(c.mid); c.mid.connect(c.low);
     c.low.connect(c.filt); c.filt.connect(c.swIn);
     c.fader.connect(busOf(xfAssign[n]));
     chans[n]=c;
@@ -639,6 +698,7 @@ async function startAudio(){ if(started)return; started=true;
   applyXf(); applyChFaders(); applyAllSweep(); applyFilters(); configureFx(); refreshSends();
   applyHp(); applyMic(); applyMono();
   ready=true;
+  aplicarEntradas();                 // a chave de entrada manda no canal desde o start
   $("#acDot").classList.add("on"); $("#acState").textContent="ligado"; $("#btnStart").textContent="● Áudio ligado";
   if(AC.resume)AC.resume(); setInterval(updMeters,55); markMission("start"); dirty=true;
 }
@@ -833,6 +893,24 @@ function renderMission(){ const m=MISSIONS[mi]; $("#mIdx").textContent=`MISSÃO 
   $("#mTitle").textContent=m.t; $("#mHint").textContent=m.h; }
 function markMission(id){ if(mi<MISSIONS.length&&MISSIONS[mi].id===id){ mi++; renderMission(); } }
 function teach(a){ const i=info(a); $("#tK").textContent=i[0]; $("#tD").innerHTML=i[1]; }
+/* mesma barra, com texto próprio: para quando o controle precisa explicar o ESTADO
+   em que ficou, e não só o que ele é */
+function teach2(k,d){ $("#tK").textContent=k; $("#tD").innerHTML=d; }
+let utilNivel=0;                 // profundidade de navegação no menu Utility
+
+/* ---- SELETOR DE ENTRADA (item 1 do manual) ----
+   As 5 posições saem da própria serigrafia do painel. Nesta cabine o que está
+   plugado são DJ players nas RCA de LINE; nas outras quatro o conector está vazio
+   e o canal emudece, que é o que o aparelho faz. */
+const ENTRADAS=["DIGITAL","LINE","PHONO","USB","DVS"];
+/* ⚠️ este arquivo NÃO tem knobVal(): lê knobState direto, com o padrão do KNOB_DEF.
+   O portão não pegaria — o startAudio() não completa no DOM falso, então tudo que
+   depende de `ready` fica fora da medição. Quem pegou foi o navegador. */
+function idxEntrada(n){ const v=knobState["inp"+n]!==undefined?knobState["inp"+n]:KNOB_DEF.inp;
+  return clamp(Math.round(v*(ENTRADAS.length-1)),0,ENTRADAS.length-1); }
+function aplicarEntradas(){ if(!ready)return;
+  for(let n=1;n<=4;n++){ const c=chans[n]; if(!c||!c.entrada)continue;
+    c.entrada.gain.value = ENTRADAS[idxEntrada(n)]==="LINE" ? 1 : 0; } }
 function flash(el){ if(!el)return; el.style.filter="brightness(1.8)"; setTimeout(()=>el.style.filter="",150); }
 
 /* ===== construção da pele ===== */
@@ -1028,10 +1106,17 @@ function build(){
     if(kind==="fader"){ bindFader(act,el); continue; }
     if(kind==="xfader"){ bindXfader(el); continue; }
     if(kind==="strip"){ bindStrip(el); continue; }
+    /* ⛔ 30/07/2026 — MEDIDOR É INDICADOR, não controle.
+       Ele ganhava um .hit por cima cujo pointerdown só chamava teach() e, com o
+       áudio já ligado, não mudava nada — era esta a acusação ".hit (sem reacao)".
+       A barra de ensino vai no próprio elemento. Estilo inline não resolveria: a
+       lista de candidatos do clicar-tudo sai das REGRAS de CSS, e a classe .hit
+       declara cursor:pointer; tem de NÃO criar o .hit. */
+    if(kind==="meter"){ el.style.pointerEvents="auto"; el.style.cursor="default";
+      el.addEventListener("mouseenter",()=>teach(act)); continue; }
     const hit=document.createElement("div"); hit.className="hit"; pct(hit,x,y,w,h); deck.appendChild(hit);
     hit.addEventListener("mouseenter",()=>teach(act));
-    if(kind==="meter") hit.addEventListener("pointerdown",()=>{ teach(act); if(!started)startAudio(); });
-    else hit.addEventListener("pointerdown",e=>onControl(act,base,e));
+    hit.addEventListener("pointerdown",e=>onControl(act,base,e));
   }
 
   // posições iniciais das chaves
@@ -1075,7 +1160,18 @@ function onKnob(act,base,v){ if(!ready)return;
     if(m[1]==="trim"){ setTrim(n,v); }
     else if(m[1]==="filt"){ applyFilter(n); markMission("filter"); }
     else if(m[1]==="swp"){ applySweep(n); markMission("sweep"); }
-    else if(m[1]==="inp"){ /* seleção de fonte: visual */ }
+    else if(m[1]==="inp"){ aplicarEntradas(); const e=ENTRADAS[idxEntrada(n)];
+      teach2("INPUT SELECT (1) — CH "+n+" · "+e,
+        (e==="LINE"
+          ? "Aparelho de <b>nível de linha</b> — a CDJ. É o que está plugado neste canal: <b>é esta a posição que toca</b>."
+          : e==="PHONO"
+          ? "<b>Toca-discos</b> com cápsula MM. A agulha entrega um sinal muito mais fraco que o de linha e com os graves rebaixados pela curva de gravação; esta entrada tem pré-amplificador e desfaz a curva (RIAA). A LINE não tem nada disso."
+          : e==="DVS"
+          ? "<b>DVS</b>: vinil de controle. O toca-discos toca um disco de <i>timecode</i> e quem sai é o áudio do computador, comandado pela agulha."
+          : e==="USB"
+          ? "Áudio do <b>computador</b> pela placa de som interna."
+          : "Entrada <b>digital</b>.")
+        +(e==="LINE"?"":"<br><br>⚠️ O canal <b>parou de tocar</b>: a chave saiu da entrada onde o cabo está.")); }
     else { setEq(n,m[1],v); markMission("eq"); }
     return; }
   /* knobs do fone e do microfone: existiam na pele e nao chegavam a lugar
@@ -1215,7 +1311,20 @@ function onControl(act,base,e){ teach(act);
         if(ready){ gateOsc.frequency.value=1/(beatSec()*0.25); applyAllSweep(); configureFx(); } dirty=true; }
       else tapTempo(); };
     document.addEventListener("pointerup",up); return; }
-  if(act==="back"){ els[act].classList.toggle("on"); setTimeout(()=>els[act].classList.remove("on"),160); return; }
+  /* ⛔ 30/07/2026 — o BACK só piscava a pele: `toggle("on")` + setTimeout, e nada
+     mais. Manual: "Back: Drücken Sie diese Taste, um zum vorherigen Bildschirm im
+     Optionsmenü zurückzukehren" — ele volta uma tela DENTRO do menu Utility.
+     ⚠️ O menu Utility não foi montado nesta réplica (o QUANTIZE segurado é que
+     entraria nele). Então o botão guarda a profundidade de navegação, que é estado
+     de verdade, e a barra de ensino diz com todas as letras o que não existe —
+     em vez de fingir uma tela que não está lá. */
+  if(act==="back"){ els[act].classList.add("on"); setTimeout(()=>els[act].classList.remove("on"),160);
+    if(utilNivel>0){ utilNivel--;
+      teach2("BACK (40)","Voltou uma tela no menu <b>Utility</b>. Profundidade agora: <b>"+utilNivel+"</b>.");
+    } else {
+      teach2("BACK (40)","Volta uma tela dentro do menu <b>Utility</b>. Você não está dentro dele — no aparelho se entra <b>segurando o QUANTIZE</b>. ⚠️ A tela de Utility não foi montada nesta réplica: o botão guarda a navegação, mas não há telas para percorrer.");
+    }
+    return; }
   /* FX CUE (41) — "escuta o BPM FX no canal de cue do fone antes de soltar no
      PA". Agora que existe barramento de fone da para fazer de verdade: manda
      o retorno molhado do efeito para o fone. Antes so acendia. */
@@ -1228,6 +1337,17 @@ function onControl(act,base,e){ teach(act);
      tem de fazer e guardar e mostrar o estado — nao inventar efeito de audio. */
   if(act==="quantize"||act==="midiss"||act==="engine"){
     els[act].classList.toggle("on"); linkMode[act]=els[act].classList.contains("on");
+    /* Manual (e a própria serigrafia: "QUANTIZE / −UTILITY"): SEGURANDO o QUANTIZE
+       entra e sai do menu Utility. Sem isto o BACK não teria por onde voltar — e era
+       por isso que ele só piscava. O toque curto continua sendo o quantize. */
+    if(act==="quantize"){ const t0=performance.now();
+      const solta=()=>{ document.removeEventListener("pointerup",solta);
+        if(performance.now()-t0>=450){
+          utilNivel=utilNivel>0?0:1;
+          teach2("QUANTIZE / −UTILITY (46)", utilNivel
+            ? "Segurou: <b>entrou</b> no menu <b>Utility</b>. Gire o <b>ENTER</b> para navegar e use o <b>BACK</b> para voltar uma tela. ⚠️ As telas do Utility não foram montadas nesta réplica — a navegação existe, o conteúdo não."
+            : "Segurou de novo: <b>saiu</b> do menu Utility (no aparelho, sair também salva)."); } };
+      document.addEventListener("pointerup",solta); }
     dirty=true; return; }
   /* USB A / USB B: monta e desmonta o pendrive do slot. Antes davam `return`
      seco — o slot era desenhado e nunca respondia. */
