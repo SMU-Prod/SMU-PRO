@@ -560,6 +560,37 @@ html.smu-fs body{align-items:center}
 #barra{
   position:absolute;left:0;right:0;top:0;height:0;overflow:visible;z-index:40;
 }
+/* ===== barra de transporte, o padrão da frota (.smu do CL5) =====
+   O play tem que estar SEMPRE à vista, não escondido dentro de uma tela.
+   Fica no rodapé da mesa e é REAPROVEITADA no overlay quando a tela amplia. */
+#smu{
+  display:flex;align-items:center;gap:8px;flex:0 0 auto;
+  padding:4px 10px;background:#111315;border-top:1px solid #000;
+  font-size:12px;color:#c9ced4;
+}
+#smu button{
+  background:linear-gradient(180deg,#2f8fd8,#1a5f9e);border:1px solid #0d3f6d;
+  border-radius:3px;color:#fff;font-size:12px;padding:4px 12px;cursor:pointer;
+  font-family:inherit;
+}
+#smu button.sec{background:linear-gradient(180deg,#4a4f56,#33373c);border-color:#14161a}
+#smu select{
+  background:#15171a;color:#e9eaec;border:1px solid #3d4147;border-radius:3px;
+  font-size:12px;padding:3px 6px;max-width:280px;
+}
+#smu .st{color:#9aa0a8;font-size:11px}
+#smu .st b{color:#ffd45e}
+
+/* navegação de canais DENTRO da tela ampliada: as nav keys ficam na mesa,
+   atrás do overlay, e sem isto o aluno não conseguia trocar de grupo */
+#navov{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;max-width:900px}
+#navov button{
+  background:linear-gradient(180deg,#4a4f56,#33373c);border:1px solid #14161a;
+  border-radius:3px;color:#e9eaec;font-size:11px;padding:3px 10px;cursor:pointer;
+  font-family:inherit;
+}
+#navov button.on{background:linear-gradient(180deg,#2f8fd8,#1a5f9e);border-color:#0d3f6d}
+
 #lupa,#fechar-lupa{
   background:#1f6fb8;border:1px solid #0d3f6d;border-radius:3px;color:#fff;
   font-size:11px;padding:3px 9px;cursor:pointer;font-family:inherit;
@@ -592,6 +623,7 @@ html.smu-fs body{align-items:center}
 </div>
 <div id="overlay">
   <div class="moldura" id="overlay-moldura"></div>
+  <div id="navov"></div>
   <div class="rot">Tela ampliada — recurso do simulador, a console real não faz isto.
     Aperte <b>ESC</b> ou o botão para voltar à mesa.</div>
   <button id="fechar-lupa" type="button">VOLTAR À MESA</button>
@@ -688,6 +720,19 @@ function novoCanal(id, tipo, nome){
   };
 }
 
+/* ÁUDIO MULTITRACK — o estado vive AQUI, junto de S, e não lá embaixo com as
+   funções de áudio.
+   ⚠️ TDZ: `montar()` roda no topo do script e monta a barra de transporte, que
+   lê AUD. Com o `const AUD` declarado depois, a barra estourava
+   "Cannot access 'AUD' before initialization" e o simulador inteiro morria em
+   silêncio — o portão acusou "1 não rodaram", não "botão morto". */
+const SB_MEDIA = "https://pshynylvvkhhohftouoe.supabase.co/storage/v1/object/public/media/";
+const AUD = {
+  ctx:null, base:null, bases:[], tocando:false, carregando:false,
+  stems:[],            /* {n,c,f,p, canal, buffer, src, nodes} */
+  t0:0, offset:0, dur:0,
+};
+
 const S = {
   canais:{},
   sel:"CH1",
@@ -770,7 +815,11 @@ S.udk = ["SCENE DEC","SCENE INC","SCENE RECALL","TALKBACK ON",
          "OSCILLATOR ON","CUE CLEAR","SENDS ON FADER","MONITOR DIMM",
          "MUTE GROUP 1","MUTE GROUP 2","TAP TEMPO","HELP"];
 
-/* 300 cenas -- a 000 é "Initial Data" e é read-only na mesa real */
+/* 300 cenas -- a 000 é "Initial Data" e é read-only na mesa real.
+   Ela PRECISA ter dados: é a cena que devolve a mesa ao estado de fábrica, e
+   é o primeiro RECALL que todo operador dá ao assumir uma mesa que não conhece.
+   Com dados:null o RECALL não fazia nada e o botão parecia morto.
+   Preenchida logo abaixo, depois que os canais existem. */
 S.cena.lista = [{n:0,nome:"Initial Data",bloq:true,dados:null}];
 
 /* ---------- qual grupo a Centralogic está controlando ---------- */
@@ -813,6 +862,10 @@ function pedirRender(){
   sujo = true;
   requestAnimationFrame(()=>{ sujo = false; desenhar(); });
 }
+
+/* Atualizadores da barra de transporte. Declarado ANTES de montar(), que é
+   quem cria a barra — ver a nota de TDZ em fazBarraTransporte(). */
+const BARRAS = [];
 
 /* ================= construção do DOM da mesa =================
    MEDIDAS DA PLANTA (p.17), caixa do painel = 1349 px de largura.
@@ -1258,6 +1311,89 @@ function montar(){
   const marca = el("div","marcafrontal","YAMAHA   M7CL-48   DIGITAL MIXING CONSOLE");
   rod.appendChild(marca);
   mesa.appendChild(rod);
+
+  mesa.appendChild(fazBarraTransporte());
+}
+
+/* ===== barra de transporte — o padrão da frota (.smu do CL5) =====
+   O play tem que estar SEMPRE à vista, fora da tela da mesa: foi o que o
+   dono sentiu falta ("não tem o sistema de play que os outros simuladores
+   têm"). Aqui ela também é usada dentro do overlay da tela ampliada. */
+function fazBarraTransporte(){
+  const b = el("div"); b.id = "smu";
+
+  const play = el("button", null, "► Tocar base");
+  play.type = "button";
+  play.addEventListener("click", async ()=>{
+    /* feedback SÍNCRONO antes de qualquer await: sem rede o fetch falha e o
+       botão parecia morto (o portão acusou "sem reação"). */
+    S.ajuda = AUD.base ? "…" : "Buscando as músicas do acervo…";
+    pedirRender();
+    if (!AUD.bases.length) await carregarCatalogo();
+    if (!AUD.bases.length){
+      S.ajuda = "Não consegui buscar as músicas — precisa de internet. "+
+                "O resto da mesa funciona normalmente.";
+      pedirRender(); return;
+    }
+    if (!AUD.base) await carregarBase(Number(sel.value)||0);
+    if (AUD.tocando) pausarAudio(); else tocarAudio();
+    play.textContent = AUD.tocando ? "❚❚ Pausar" : "► Tocar base";
+  });
+
+  const sel = el("select");
+  sel.addEventListener("change", async ()=>{
+    S.ajuda = "Trocando de música…";
+    pedirRender();
+    if (!AUD.bases.length){
+      S.ajuda = "Lista de músicas ainda não carregou — aperte tocar para tentar de novo.";
+      pedirRender(); return;
+    }
+    await carregarBase(Number(sel.value)||0);
+    play.textContent = "► Tocar base";
+  });
+
+  const volta = el("button","sec","◀◀"); volta.type="button";
+  volta.title = "Voltar ao começo";
+  volta.addEventListener("click", ()=>{ voltarAudio(); play.textContent = "► Tocar base"; });
+
+  const st = el("span","st","áudio: —");
+
+  b.appendChild(play); b.appendChild(sel); b.appendChild(volta); b.appendChild(st);
+
+  /* preenche o seletor quando o catálogo chega */
+  const encher = ()=>{
+    sel.innerHTML = "";
+    if (!AUD.bases.length){
+      const o = el("option",null,"(carregando músicas…)"); sel.appendChild(o); return;
+    }
+    AUD.bases.forEach((x,i)=>{
+      const o = el("option", null, x.label+"  ·  "+x.stems.length+" faixas");
+      o.value = String(i);
+      sel.appendChild(o);
+    });
+  };
+  encher();
+  carregarCatalogo().then(encher);
+
+  /* Atualiza por função própria, registrada em BARRAS, e NÃO por lig():
+     lig() pertence ao render da tela e só é declarado bem depois; usá-lo aqui
+     estourava TDZ ("Cannot access 'lig' before initialization") e matava o
+     simulador inteiro em silêncio. */
+  BARRAS.push(()=>{
+    /* o catálogo chega por rede, depois da barra existir: se as músicas já
+       vieram e o seletor ainda está com o texto de espera, enche agora */
+    if (AUD.bases.length && sel.options.length !== AUD.bases.length) encher();
+    st.innerHTML = AUD.carregando ? "carregando faixas…"
+      : AUD.base ? ("<b>"+AUD.stems.length+"</b> faixas nos canais · "+
+                    (AUD.tocando ? "tocando" : "parado"))
+      : "escolha uma música e aperte tocar";
+    if (!AUD.tocando && play.textContent.indexOf("❚❚") === 0) play.textContent = "► Tocar base";
+    if (AUD.base){
+      const i = AUD.bases.indexOf(AUD.base);
+      if (i >= 0 && sel.value !== String(i)) sel.value = String(i);
+    }
+  });
+  return b;
 }
 montar();
 
@@ -1349,6 +1485,7 @@ S.encFoco = "send0";
 
 function desenhar(){
   document.querySelectorAll(".strip").forEach(desenharStrip);
+  for (const f of BARRAS) f();          /* barra(s) de transporte */
   desenharBridge();
   desenharSelectedChannel();
   desenharNav();
@@ -1685,8 +1822,15 @@ function acaoNav(b, ev){
 function acaoUDK(i){
   const f = S.udk[i];
   switch(f){
-    case "SCENE INC": S.cena.n = clamp(S.cena.n+1,0,300); recallCena(); break;
-    case "SCENE DEC": S.cena.n = clamp(S.cena.n-1,0,300); recallCena(); break;
+    /* INC/DEC avisam quando batem no fim, senão parecem mortos */
+    case "SCENE INC": {
+      if (S.cena.n >= 300){ S.ajuda = "Já está na última cena (300)"; break; }
+      S.cena.n++; recallCena(); break;
+    }
+    case "SCENE DEC": {
+      if (S.cena.n <= 0){ S.ajuda = "Já está na cena <b>000 Initial Data</b> — não há anterior"; break; }
+      S.cena.n--; recallCena(); break;
+    }
     case "SCENE RECALL": recallCena(); break;
     case "TALKBACK ON": S.talkback.on = !S.talkback.on;
       S.ajuda = "TALKBACK "+(S.talkback.on?"ligado":"desligado"); break;
@@ -1698,9 +1842,16 @@ function acaoUDK(i){
       S.sof = S.sof ? null : {tipo:"mix", n:0};
       S.ajuda = S.sof ? "<b>SENDS ON FADER</b> — os faders viram sends do MIX 1" : "Saiu do SENDS ON FADER";
       break;
-    case "CUE CLEAR":
+    case "CUE CLEAR": {
+      const n = Object.values(S.canais).filter(c=>c.cue).length;
       Object.values(S.canais).forEach(c=>c.cue=false);
-      S.monitor.cueAtivo = false; S.ajuda = "CUE limpo em todos os canais"; break;
+      S.monitor.cueAtivo = false;
+      /* avisa mesmo quando não havia nada em cue -- sem isso o botão
+         parece morto para quem aperta */
+      S.ajuda = n ? ("CUE limpo em "+n+" canal(is)")
+                  : "CUE CLEAR — nenhum canal estava em cue";
+      break;
+    }
     case "MUTE GROUP 1":
     case "MUTE GROUP 2": {
       const n = +f.slice(-1);
@@ -1710,7 +1861,29 @@ function acaoUDK(i){
       break;
     }
     case "HELP": abrirPopup("HELP"); break;
-    case "TAP TEMPO": S.ajuda = "TAP TEMPO — bata no ritmo (usado no delay do rack)"; break;
+    /* TAP TEMPO de verdade: mede o intervalo entre as batidas e ESCREVE o
+       tempo nos racks de efeito. Antes só trocava a mensagem -- era o botão
+       mais morto do painel, e o portão não pegava porque a mensagem mudava. */
+    case "TAP TEMPO": {
+      const agora = performance.now();
+      S.tap = S.tap || { ultimo:0, batidas:[] };
+      if (S.tap.ultimo && agora - S.tap.ultimo < 3000){
+        S.tap.batidas.push(agora - S.tap.ultimo);
+        if (S.tap.batidas.length > 4) S.tap.batidas.shift();   /* média das 4 últimas */
+        const med = S.tap.batidas.reduce((a,b)=>a+b,0) / S.tap.batidas.length;
+        const ms = Math.round(clamp(med, 20, 3000));
+        let n = 0;
+        S.rack.forEach(r=>{ if (r.tipo === "EFFECT"){ r.param.tempo = ms; n++; } });
+        S.tapMs = ms;
+        S.ajuda = "TAP TEMPO: <b>"+ms+" ms</b> ("+Math.round(60000/ms)+" BPM) — "+
+                  "aplicado em "+n+" rack(s) de efeito";
+      } else {
+        S.tap.batidas = [];
+        S.ajuda = "TAP TEMPO — bata de novo, no ritmo da música";
+      }
+      S.tap.ultimo = agora;
+      break;
+    }
     default:
       S.ajuda = "USER DEFINED KEY "+(i+1)+": <b>"+(f||"sem atribuição")+"</b>";
   }
@@ -4127,9 +4300,41 @@ function encaixarLCDnaMesa(){
   escalarLCD(MED.lcd, Math.round(MED.lcd/1.315));
 }
 
+/* As NAVIGATION KEYS ficam na mesa, ATRÁS do overlay — com a tela ampliada
+   o aluno não conseguia trocar de grupo de canais e a tela parecia travada.
+   Aqui elas são repetidas dentro do overlay, junto com a barra de transporte. */
+function montarNavOverlay(){
+  const nv = document.getElementById("navov");
+  if (!nv) return;
+  nv.innerHTML = "";
+  NAVS.forEach(n=>{
+    const b = el("button", null, n.rot);
+    b.type = "button";
+    b.classList.toggle("on", S.nav === n.id);
+    b.addEventListener("click", ()=>{
+      S.navAnterior = (S.nav !== "DCA") ? S.nav : S.navAnterior;
+      S.nav = n.id;
+      S.ajuda = "Tela mostrando <b>"+n.rot+"</b>";
+      telaChave = null;
+      montarNavOverlay();
+      pedirRender();
+    });
+    nv.appendChild(b);
+  });
+  /* a barra de transporte vive no rodapé da mesa; com a tela ampliada ela
+     fica escondida, então trago uma cópia funcional para cá */
+  if (!nv.querySelector("#smu-ov")){
+    const barra = fazBarraTransporte();
+    barra.id = "smu-ov";
+    barra.style.cssText += ";width:100%;margin-top:6px;border-radius:4px;border-top:0";
+    nv.appendChild(barra);
+  }
+}
+
 function expandirTela(on){
   expandida = on;
   if (on){
+    montarNavOverlay();
     /* move o ESPAÇO inteiro (que já recorta e escala), não só a tela */
     molduraOv.appendChild(espacoEl);
     overlay.classList.add("on");
@@ -4174,12 +4379,9 @@ document.addEventListener("keydown", ev=>{
    AudioParam: uso setValueAtTime, que resolve e PARA. setTargetAtTime é
    exponencial e nunca termina -- o param vira a-rate e o biquad recalcula
    coeficiente a cada amostra (foi o que pesou 34,5% de CPU na CL5).      */
-const SB_MEDIA = "https://pshynylvvkhhohftouoe.supabase.co/storage/v1/object/public/media/";
-const AUD = {
-  ctx:null, base:null, bases:[], tocando:false, carregando:false,
-  stems:[],            /* {n,c,f,p, canal, buffer, src, nodes} */
-  t0:0, offset:0, dur:0,
-};
+/* SB_MEDIA é declarado LÁ EM CIMA, junto de AUD — ver a nota de TDZ lá. */
+/* AUD é declarado LÁ EM CIMA, junto do estado S — ver a nota de TDZ lá.
+   Aqui ficam só as funções que mexem nele. */
 
 async function carregarCatalogo(){
   try{
@@ -4187,7 +4389,13 @@ async function carregarCatalogo(){
     if (!r.ok) return;
     const j = await r.json();
     AUD.bases = Array.isArray(j) ? j : (j.bases || j.songs || []);
-  }catch(e){ /* offline: fica sem base, o simulador continua funcionando */ }
+  }catch(e){
+    /* Sem rede é caso esperado -- o simulador segue sem áudio. Mas erro de
+       PROGRAMAÇÃO não pode ficar mudo aqui: foi assim que um TDZ de SB_MEDIA
+       (declarado depois desta função ser chamada) deixou a lista de músicas
+       vazia sem uma linha no console. */
+    if (e instanceof ReferenceError || e instanceof TypeError) console.error("[m7cl] catálogo:", e);
+  }
 }
 
 /** Carrega os stems de uma base e amarra cada um a um canal da mesa. */
@@ -4605,6 +4813,13 @@ window.m7clTeste = m7clTeste;
 /* ---- primeiro render ---- */
 S.ajuda = "Aperte um <b>[SEL]</b> para escolher o canal · gire os knobs do <b>SELECTED CHANNEL</b> · "+
           "as <b>NAVIGATION KEYS</b> mandam 8 canais para a Centralogic";
+/* A cena 000 "Initial Data" guarda o estado DE FÁBRICA — a foto é tirada
+   agora, com a mesa ainda intocada. É a cena que devolve tudo ao começo e
+   costuma ser o primeiro RECALL de quem assume uma mesa desconhecida.
+   Tirar a foto só na 1ª chamada (como fiz antes) fotografava a mesa JÁ
+   mexida, e o RECALL não devolvia nada. */
+S.cena.lista[0].dados = fotoDaMesa();
+
 encaixarLCDnaMesa();      /* põe o LCD 640x480 dentro do espaço físico da mesa */
 desenhar();
 </script>
