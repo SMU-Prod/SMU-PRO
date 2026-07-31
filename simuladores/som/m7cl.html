@@ -502,6 +502,35 @@ html.smu-fs body{align-items:center}
   padding:1px 7px;border:1px solid #0d3f6d}
 .popup .corpo{flex:1 1 auto;overflow:auto;padding:6px}
 
+/* ===== cores dos knobs NA TELA, medidas na figura oficial (p.90) =====
+   Os 16 sends não são todos da mesma cor: vão em quatro grupos de quatro —
+   1-4 vermelho, 5-8 azul, 9-12 ciano, 13-16 roxo. O EQ é verde, o PAN é
+   vermelho e o HPF é verde. Eu tinha pintado tudo de bordô. */
+.kt{ width:var(--kt,26px);height:var(--kt,26px);border-radius:50%;position:relative;
+  cursor:ns-resize;border:1px solid #10131a;
+  box-shadow:0 1px 3px #0009, inset 0 1px 1px #ffffff33;
+  background:radial-gradient(circle at 36% 28%, var(--kc2), var(--kc1) 68%, var(--kc0));
+}
+.kt:after{content:"";position:absolute;left:50%;top:8%;width:2px;height:36%;
+  background:#fff;border-radius:1px;transform-origin:50% 100%;
+  transform:translateX(-50%) rotate(var(--ang,0deg));box-shadow:0 0 2px #000a}
+.k-send1{--kc2:#f2707a;--kc1:#cf2d3d;--kc0:#6d0f18}   /* MIX 1-4  vermelho */
+.k-send2{--kc2:#7aa8f0;--kc1:#2f5fd0;--kc0:#12285e}   /* MIX 5-8  azul     */
+.k-send3{--kc2:#7fdcf2;--kc1:#22a6c8;--kc0:#0b4657}   /* MIX 9-12 ciano    */
+.k-send4{--kc2:#c39cf0;--kc1:#7c4dc8;--kc0:#33165c}   /* MIX 13-16 roxo    */
+.k-eq   {--kc2:#a9dfa2;--kc1:#4f9f52;--kc0:#1d4520}   /* EQ verde          */
+.k-pan  {--kc2:#f2707a;--kc1:#cf2d3d;--kc0:#6d0f18}   /* PAN vermelho      */
+.k-hpf  {--kc2:#9fe0cf;--kc1:#33a68c;--kc0:#0f4437}   /* HPF verde-água    */
+.k-cinza{--kc2:#c6ccd4;--kc1:#7b838d;--kc0:#2a3038}   /* HA e dinâmica     */
+
+/* rodapé da tela: os 8 canais da Centralogic, com o selecionado em azul */
+.rodape-canais{display:flex;gap:1px;margin-top:auto;padding-top:3px}
+.rodape-canais div{
+  flex:1 1 0;min-width:0;font-size:7px;text-align:center;padding:1px 0;border-radius:1px;
+  background:#8d939b;color:#15181b;overflow:hidden;white-space:nowrap;cursor:pointer;
+}
+.rodape-canais div.sel{background:var(--tela-azul);color:#fff}
+
 /* botão genérico dentro da tela */
 .tbt{
   background:linear-gradient(180deg,#3c4046,#2a2d31);border:1px solid #14161a;border-radius:2px;
@@ -2136,8 +2165,9 @@ function knobTela(rot, ler, escrever, min, max, fmt, opc){
   const cel = el("div");
   cel.style.cssText = "display:flex;flex-direction:column;align-items:center;gap:1px;min-width:34px";
   if (rot) { const r = el("div",null,rot); r.style.cssText="font-size:7.5px;color:#aeb4bb"; cel.appendChild(r); }
-  const k = el("div","knob"+(opc.mini?" mini":""));
-  if (opc.cor === "send") k.classList.add("send");
+  /* opc.cor = classe k-* da paleta oficial (ver .kt no CSS) */
+  const k = el("div", opc.cor ? ("kt "+opc.cor) : ("knob"+(opc.mini?" mini":"")));
+  if (opc.cor && opc.mini) k.style.setProperty("--kt","19px");
   const v = el("div"); v.style.cssText="font-size:8px;color:var(--tela-texto)";
   cel.appendChild(k); cel.appendChild(v);
   k.style.touchAction = "none";
@@ -2214,8 +2244,10 @@ TELAS.SELCH = function(area){
   arr.forEach((s,n)=>{
     const cel = el("div");
     cel.style.cssText="display:flex;align-items:center;gap:2px";
+    /* cor por grupo de 4, como na figura oficial da p.90 */
+    const grupo = "k-send"+(Math.floor(n/4)+1);
     const kn = knobTela(null, ()=>dbParaPos(s.lvl), p=>{ s.lvl = posParaDb(p); S.encFoco="send"+n; },
-      0, 1, ()=> (s.lvl<=-138?"-∞":s.lvl.toFixed(0)), {mini:true, cor:"send"});
+      0, 1, ()=> (s.lvl<=-138?"-∞":s.lvl.toFixed(0)), {mini:true, cor:grupo});
     const on = btTela(String(n+1), ()=>s.on, ()=>{ s.on = !s.on;
       S.ajuda = "<b>"+c.nome+"</b> send "+(n+1)+" "+(s.on?"ON":"OFF"); });
     on.style.cssText="font-size:7px;padding:1px 3px";
@@ -2249,7 +2281,7 @@ TELAS.SELCH = function(area){
   const cxPan = caixaTela("TO ST PAN / BALANCE");
   const lp = linhaTela();
   lp.appendChild(knobTela("PAN", ()=>c.pan, v=>c.pan=v, -1, 1, v=>{
-    const n = Math.round(v*63); return n===0?"C":n<0?"L"+(-n):"R"+n; }));
+    const n = Math.round(v*63); return n===0?"C":n<0?"L"+(-n):"R"+n; }, {cor:"k-pan"}));
   lp.appendChild(btTela("ST", ()=>c.toSt, ()=>c.toSt=!c.toSt));
   lp.appendChild(btTela("MONO", ()=>c.toMono, ()=>c.toMono=!c.toMono));
   cxPan.appendChild(lp);
@@ -2260,7 +2292,7 @@ TELAS.SELCH = function(area){
     const lh = linhaTela();
     lh.appendChild(knobTela("FREQ", ()=>Math.log10(c.hpf.freq),
       v=>c.hpf.freq=Math.round(Math.pow(10,v)),
-      Math.log10(20), Math.log10(600), v=>Math.round(Math.pow(10,v))+" Hz"));
+      Math.log10(20), Math.log10(600), v=>Math.round(Math.pow(10,v))+" Hz", {cor:"k-hpf"}));
     lh.appendChild(btTela("ON", ()=>c.hpf.on, ()=>c.hpf.on=!c.hpf.on));
     const nota = el("div",null,"-12 dB/oct"); nota.style.cssText="font-size:7px;color:#9aa0a8";
     lh.appendChild(nota);
@@ -2285,6 +2317,27 @@ TELAS.SELCH = function(area){
     cx.appendChild(l);
     col3.appendChild(cx);
   });
+  /* EQ com os knobs VERDES da tela oficial: Q · FREQ · GAIN por banda */
+  const cxEQ = caixaTela("EQ");
+  const gq = el("div");
+  gq.style.cssText="display:grid;grid-template-columns:auto auto auto;gap:1px 3px;align-items:center";
+  [["high","HIGH"],["himid","HIGH MID"],["lomid","LOW MID"],["low","LOW"]].forEach(([id,rot])=>{
+    const banda = c.eq.bandas[id];
+    const r = el("div",null,rot);
+    r.style.cssText="grid-column:1/4;font-size:6.5px;color:#aeb4bb;text-align:center";
+    gq.appendChild(r);
+    gq.appendChild(knobTela(null, ()=>Math.log10(banda.q), v=>banda.q=Math.round(Math.pow(10,v)*100)/100,
+      Math.log10(0.1), Math.log10(10), v=>Math.pow(10,v).toFixed(2), {mini:true, cor:"k-eq"}));
+    gq.appendChild(knobTela(null, ()=>Math.log10(banda.f), v=>banda.f=Math.round(Math.pow(10,v)),
+      Math.log10(20), Math.log10(20000), v=>{const f=Math.pow(10,v);
+        return f>=1000?(f/1000).toFixed(1)+"k":f.toFixed(0);}, {mini:true, cor:"k-eq"}));
+    gq.appendChild(knobTela(null, ()=>banda.g, v=>banda.g=v, -18, 18,
+      v=>(v>0?"+":"")+v.toFixed(1), {mini:true, cor:"k-eq"}));
+  });
+  cxEQ.appendChild(gq);
+  cxEQ.appendChild(btTela("EQ ON", ()=>c.eq.on, ()=>c.eq.on=!c.eq.on));
+  col3.appendChild(cxEQ);
+
   const cxG = caixaTela("EQ / HPF");
   cxG.appendChild(curvaEQ(c, 160, 62));
   col3.appendChild(cxG);
@@ -2313,6 +2366,17 @@ TELAS.SELCH = function(area){
   g.appendChild(col4);
 
   area.appendChild(g);
+
+  /* rodapé com os 8 canais da Centralogic, o selecionado em azul (p.90) */
+  const rod = el("div","rodape-canais");
+  grupoTela().forEach(id=>{
+    const cc = S.canais[id];
+    const d = el("div", id===S.sel ? "sel" : null, cc ? cc.nome : "—");
+    if (cc) d.addEventListener("pointerdown",()=>{ S.sel=id;
+      S.ajuda="Canal <b>"+cc.nome+"</b> selecionado"; pedirRender(); });
+    rod.appendChild(d);
+  });
+  area.appendChild(rod);
 };
 
 /* ================= METER (p.167) ================= */
@@ -4027,15 +4091,26 @@ let expandida = false;
 
 function dimensionarTelaExpandida(){
   if (!expandida) return;
-  /* cabe na janela mantendo a razão MEDIDA (1,31). Altura calculada a partir
-     do espaço REAL disponível, nunca derivada só da largura. */
+  /* AMPLIAR = ZOOM, não relayout.
+     A 1ª versão aumentava a largura/altura da tela; o conteúdo se
+     redistribuía e sobrava um vazio enorme embaixo. A tela da M7CL é UMA
+     tela só -- ampliar tem que mostrar exatamente o mesmo desenho, maior.
+     Então mantenho o tamanho de design e aplico scale. */
   const lw = window.innerWidth  - 60;
-  const lh = window.innerHeight - 150;       /* desconta rótulo e botão */
-  const razao = 1.31;
-  let w = lw, h = w / razao;
-  if (h > lh){ h = lh; w = h * razao; }
-  telaEl.style.width  = Math.round(w)+"px";
-  telaEl.style.height = Math.round(h)+"px";
+  const lh = window.innerHeight - 150;        /* desconta rótulo e botão */
+  const w = MED.lcd, h = Math.round(MED.lcd/1.31);
+  const k = Math.max(1, Math.min(lw / w, lh / h));
+  telaEl.style.width  = w+"px";
+  telaEl.style.height = h+"px";
+  telaEl.style.transformOrigin = "center center";
+  telaEl.style.transform = "scale(" + k.toFixed(3) + ")";
+  /* a moldura precisa reservar o espaço do elemento JÁ escalado, senão ela
+     encolhe para o tamanho não escalado e a tela vaza por fora dela */
+  molduraOv.style.width  = Math.round(w*k)+"px";
+  molduraOv.style.height = Math.round(h*k)+"px";
+  molduraOv.style.display = "flex";
+  molduraOv.style.alignItems = "center";
+  molduraOv.style.justifyContent = "center";
 }
 
 function expandirTela(on){
@@ -4050,6 +4125,8 @@ function expandirTela(on){
     overlay.classList.remove("on");
     telaEl.style.width  = MED.lcd+"px";      /* volta à medida da planta */
     telaEl.style.height = Math.round(MED.lcd/1.31)+"px";
+    telaEl.style.transform = "";             /* tira o zoom */
+    molduraOv.style.width = molduraOv.style.height = "";
     S.ajuda = "";
   }
   btLupa.textContent = on ? "TELA AMPLIADA" : "AMPLIAR TELA";
