@@ -1,3 +1,21 @@
+# ── Commit de MERGE: o hook sai fora ─────────────────────────────────────
+# O lint-staged guarda o que está solto na árvore num stash antes de rodar, e
+# durante um merge isso quebra ("lint-staged failed due to a git error") — o
+# commit do merge fica impossível de fechar sem --no-verify, que a Regra 7
+# proíbe. Travou a janela das 00:00 de 31/07/2026.
+#
+# Pular é correto, não é atalho: commit de merge NÃO traz conteúdo novo. Todo
+# arquivo que entra nele já passou por este hook no commit de origem, em um dos
+# dois lados. O que o merge cria é a junção — e essa se confere com typecheck,
+# lint e teste rodados à mão, não com eslint --fix em arquivo staged.
+# `git rev-parse` em vez de testar .git/MERGE_HEAD: em worktree ligada o `.git` é
+# ARQUIVO, não pasta, e o teste de caminho daria falso — o bug voltaria justamente
+# para as sessões que trabalham em worktree.
+if git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; then
+  echo "[pre-commit] commit de merge: lint-staged pulado (conteudo ja verificado nos commits de origem)"
+  exit 0
+fi
+
 npx lint-staged
 
 # ── Tradutor interno (i18n) ──────────────────────────────────────────────
