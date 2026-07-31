@@ -91,6 +91,9 @@
     text-transform:uppercase;text-shadow:0 1px 0 #000a;pointer-events:none;white-space:nowrap;z-index:3;
     transform:translate(-50%,-50%);text-align:center}
   .lab.xs{font-size:6.4px;letter-spacing:.22px;color:var(--silk2)}
+  /* escala densa (a régua em dB do medidor): passo de 0,66 % não cabe 6,4 px.
+     Tipo miúdo e sem espaçamento entre letras, como a serigrafia real. */
+  .lab.esc{font-size:4.4px;letter-spacing:0}
   .lab.sm{font-size:7.0px;letter-spacing:.28px}
   .lab.md{font-size:9.0px;letter-spacing:.5px}
   .lab.big{font-size:15px;letter-spacing:1.4px;font-weight:800;color:#d8dde3}
@@ -1098,29 +1101,32 @@ function drawJog(id){ const c=jogCtx[id]; if(!c)return; const S=jogS[id],ct=S/2,
   /* aro branco do visor */
   c.beginPath(); c.arc(ct,ct,rd*1.09,0,7); c.strokeStyle="#eef2f6"; c.lineWidth=rd*0.20; c.stroke();
   /* miolo do visor */
-  c.beginPath(); c.arc(ct,ct,rd*0.99,0,7); c.fillStyle=id==="A"?"#111318":"#cfe9f3"; c.fill();
-  if(id==="A"){
-    /* artwork colorido da faixa (deck 1) */
-    for(let i=0;i<18;i++){ const a=i/18*Math.PI*2;
-      c.save(); c.translate(ct,ct); c.rotate(a+(d?d.pos/2e6:0));
-      c.beginPath(); c.moveTo(0,-rd*0.30); c.lineTo(rd*0.16,-rd*0.86); c.lineTo(-rd*0.16,-rd*0.86); c.closePath();
-      c.fillStyle=PADCOL[i%8]; c.fill(); c.restore(); }
-    c.beginPath(); c.arc(ct,ct,rd*0.30,0,7); c.fillStyle="#0e0f12"; c.fill();
-  } else {
-    /* marca de posição (deck 2) */
-    c.fillStyle="#14161a"; c.font="800 "+(rd*0.95)+"px Arial"; c.textAlign="center"; c.textBaseline="middle";
-    c.fillText("I",ct,ct); c.textAlign="left"; c.textBaseline="top";
-  }
+  /* ⛔ 30/07/2026 — O VISOR DO PRATO ESTAVA INVENTANDO.
+     Três coisas saíram daqui, todas apontadas pelo dono ("escritos e cores no jog
+     que não existe"):
+
+     1. UM DISCO DE ARCO-ÍRIS. Havia um laço de 18 cunhas pintadas com PADCOL[i%8]
+        — as cores dos PADS — comentado como "artwork colorido da faixa". Não é
+        artwork: é um moinho de vento colorido que o aparelho nunca mostra. Ainda
+        por cima só no deck A, então os dois pratos nem combinavam.
+     2. UMA LETRA "I" GIGANTE no deck B, ocupando quase todo o visor.
+     3. CINCO PALAVRAS desenhadas DENTRO do canvas do prato — MODE, BEAT SYNC,
+        SLIP, VINYL e MASTER — em raios de até rd*1.44, ou seja, projetadas para
+        FORA do visor, caindo em cima do painel. Serigrafia de painel não se
+        desenha no canvas do jog; era isso que deixava os escritos fora de lugar.
+
+     O que ficou é o que o aparelho de fato tem e o que dá para sustentar: o miolo
+     escuro do visor e o ponto de posição correndo no aro. Os dois decks passam a
+     ser IGUAIS, como no aparelho.
+     ⚠️ O conteúdo real do on-jog display (capa da faixa, BPM, tempo) depende de
+     dado que esta réplica não tem — e inventar de novo seria repetir o erro. */
+  c.beginPath(); c.arc(ct,ct,rd*0.99,0,7); c.fillStyle="#111318"; c.fill();
+  /* anel interno discreto, como o miolo do prato do CDJ-3000 */
+  c.beginPath(); c.arc(ct,ct,rd*0.34,0,7); c.strokeStyle="#22262c"; c.lineWidth=rd*0.05; c.stroke();
   /* ponto de posição correndo no aro do visor */
   const spin=d?(d.pos/beatLen(d))*Math.PI/2:0;
   c.save(); c.translate(ct,ct); c.rotate(spin-Math.PI/2);
   c.beginPath(); c.arc(rd*1.09,0,rd*0.13,0,7); c.fillStyle=lit?"#ff4a24":"#7a2a18"; c.fill(); c.restore();
-  /* legendas do visor */
-  c.fillStyle=id==="A"?"#9aa2ac":"#4a5560"; c.font="700 "+(rd*0.22)+"px 'Arial Narrow',Arial";
-  c.textAlign="center"; c.fillText("MODE",ct,ct-rd*1.44); c.fillText("BEAT SYNC",ct,ct+rd*1.30); c.textAlign="left";
-  c.fillStyle="#e04a6a"; c.font="700 "+(rd*0.20)+"px Arial"; c.fillText("SLIP",ct-rd*1.42,ct-rd*1.02);
-  c.fillStyle="#4aa0e8"; c.fillText("VINYL",ct+rd*0.92,ct-rd*1.02);
-  c.fillStyle="#d8a02a"; c.fillText("MASTER",ct+rd*0.84,ct+rd*0.98);
 }
 
 /* ====================== MEDIDORES ====================== */
@@ -1307,7 +1313,16 @@ function silk(){
     lab("&minus;26",x-1.75,49.90,"xs"); lab("+6",x+1.60,49.90,"xs");
     lab("&minus;26",x-1.75,56.00,"xs"); lab("+6",x+1.60,56.00,"xs");
     lab("&minus;26",x-1.75,62.10,"xs"); lab("+6",x+1.60,62.10,"xs");
-    lab("COLOR",x,63.60,"sm"); lab("LOW",x-2.05,70.10,"xs"); lab("HI",x+2.00,70.10,"xs");
+    /* ⛔ 30/07/2026 — o LOW e o HI do knob COLOR invadiam o canal VIZINHO.
+       Medido: o HI do canal N fica em x+2,00 e o LOW do canal N+1 em x+2,72 — sobra
+       0,72 % entre os dois (≈8 px), e em 6,4 px os rótulos são mais largos que isso.
+       Deu 51 a 55 % de cobertura, três vezes seguidas.
+       ⚠️ NÃO mexi na POSIÇÃO: os ±2,05/2,00 continuam iguais, porque eles marcam as
+       pontas do curso do knob e mudá-los seria inventar. O que mudou é o TAMANHO do
+       tipo, que passa a caber no vão que já existia — mesma correção da régua em dB.
+       ⚠️ Estes três pares só apareciam com limiar de 1 px na medição; com 2 px eles
+       escapavam e o painel parecia limpo. Cuidado ao reconferir. */
+    lab("COLOR",x,63.60,"sm"); lab("LOW",x-2.05,70.10,"xs esc"); lab("HI",x+2.00,70.10,"xs esc");
     lab(n,x,76.60,"big");
     for(let s=0;s<=10;s+=2) lab(String(10-s),x+1.85,79.60+s*1.06,"xs");
   });
@@ -1406,7 +1421,15 @@ function build(){
   setInterval(styleSeg,60);
   ["L","R"].forEach((t,i)=>lab(t,76.05,16.35+i*2.20,"xs"));
   lab("dB",76.05,17.45,"xs");
-  ["&minus;24","&minus;18","&minus;15","&minus;12","&minus;9","&minus;6","&minus;3","0","3","6","9"].forEach((t,i)=>lab(t,77.55+i*0.66,17.45,"xs"));
+  /* ⛔ 30/07/2026 — a escala do medidor MASTER se atropelava. O passo entre os
+     números é de 0,66 % (≈7,6 px na largura de trabalho) e a classe "xs" desenha
+     em 6,4 px, o que dá rótulos de ~11 px: cada um invadia o vizinho em 40 % da
+     área. Medido no navegador, era um dos "escritos ruins" apontados pelo dono.
+     ⚠️ NÃO mexi na POSIÇÃO — o passo de 0,66 % continua igual. O que mudou é o
+     TAMANHO DO TIPO, que passa a caber no passo que já existia. Numa serigrafia de
+     verdade essa escala é impressa miúda mesmo; era a fonte que estava grande, não
+     o espaçamento que estava apertado. Classe "esc" criada só para isto. */
+  ["&minus;24","&minus;18","&minus;15","&minus;12","&minus;9","&minus;6","&minus;3","0","3","6","9"].forEach((t,i)=>lab(t,77.55+i*0.66,17.45,"xs esc"));
   lab("CLIP",85.05,17.45,"xs");
 
   /* ---------- medidores de canal ---------- */
