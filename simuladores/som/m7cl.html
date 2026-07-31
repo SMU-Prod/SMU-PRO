@@ -881,6 +881,10 @@ function grupoTela(){
    (memória do projeto: repaint síncrono por pointermove travava o iPad) */
 let sujo = false;
 function pedirRender(){
+  /* O ÁUDIO é aplicado JÁ, não no próximo frame: o desenho pode esperar o
+     rAF, o som não. Com a aba sem foco o rAF congela, e o fader e o [ON]
+     deixariam de ter efeito sonoro sem ninguém entender por quê. */
+  if (typeof aplicarAudioAgora === "function") aplicarAudioAgora();
   if (sujo) return;
   sujo = true;
   requestAnimationFrame(()=>{ sujo = false; desenhar(); });
@@ -4547,7 +4551,11 @@ async function carregarBase(idx){
     c.ha.gain = -20;
     c.hpf.on  = !!s.h;          /* a base já marca quem pede corte de grave */
     c.fader = -138;             /* tudo fechado: o aluno abre */
-    c.on = true;
+    /* Canal entra DESLIGADO. Ordem do dono: "o ON do canal habilita ou não o
+       canal, o fader dá a proporção de volume". Assim o aluno vive os dois
+       controles como coisas separadas -- liga o canal, depois dosa o nível --
+       em vez de achar que o [ON] não faz nada porque tudo já vinha ligado. */
+    c.on = false;
   });
   /* canais sem faixa saem do caminho */
   for (let i=AUD.stems.length+1;i<=N_IN;i++){
@@ -4561,7 +4569,7 @@ async function carregarBase(idx){
             /* falha de download não pode ficar muda: era o que fazia um canal
                ficar sem som sem ninguém saber por quê */
             (perdidas ? " · ⚠️ "+perdidas+" faixa(s) não baixaram" : "")+
-            " · abra os faders e aperte PLAY";
+            " · <b>ligue o [ON]</b> de cada canal e suba o fader";
   telaChave = null;
   pedirRender();
 }
@@ -4619,10 +4627,21 @@ function aplicarCanalNoAudio(s){
   const P = (param, v) => {           /* resolve e PARA -- nada de rampa infinita */
     if (Number.isFinite(v) && Math.abs(param.value - v) > 1e-4) param.setValueAtTime(v, t);
   };
-  /* ganho: HA + fader + ON, tudo o que a mesa faz antes da saída */
+  /* O ganho usa RAMPA CURTA (20 ms, como no CL5): ligar/desligar o [ON] no
+     seco produz um clique audível. linearRampToValueAtTime TERMINA -- ao
+     contrário de setTargetAtTime, que é exponencial e nunca chega ao valor,
+     deixando o param em a-rate e o filtro recalculando por amostra. */
+  const R = (param, v) => {
+    if (!Number.isFinite(v) || Math.abs(param.value - v) <= 1e-4) return;
+    param.cancelScheduledValues(t);
+    param.setValueAtTime(param.value, t);
+    param.linearRampToValueAtTime(v, t + 0.02);
+  };
+  /* ganho: HA + fader + ON, tudo o que a mesa faz antes da saída.
+     [ON] desligado = 0: o canal não passa som, por mais que o fader suba. */
   const ha = Math.pow(10, (c.ha.gain + 20) / 20);
   const fd = c.fader <= -138 ? 0 : Math.pow(10, c.fader / 20);
-  P(n.gain.gain, (c.on ? 1 : 0) * ha * fd * (c.toSt ? 1 : 0));
+  R(n.gain.gain, (c.on ? 1 : 0) * ha * fd * (c.toSt ? 1 : 0));
   if (n.pan) P(n.pan.pan, clamp(c.pan, -1, 1));
   P(n.hpf.frequency, c.hpf.on ? c.hpf.freq : 20);
   const bs = [c.eq.bandas.low, c.eq.bandas.lomid, c.eq.bandas.himid, c.eq.bandas.high];
@@ -4662,8 +4681,15 @@ function pausarAudio(){ pararAudio(); S.ajuda="Pausado"; pedirRender(); }
 function voltarAudio(){ pararAudio(); AUD.offset=0; S.ajuda="Voltou ao começo"; pedirRender(); }
 
 /* espelha a mesa no áudio a cada frame -- é o que faz o fader "soar" */
+/* Chamada pelo pedirRender() a cada toque do operador -- o som responde na
+   hora, sem depender do rAF. `function` (não const) para poder ser usada
+   antes desta linha sem cair em TDZ. */
+function aplicarAudioAgora(){
+  if (!AUD.tocando) return;
+  for (const s of AUD.stems) aplicarCanalNoAudio(s);
+}
 function tickAudio(){
-  if (AUD.tocando) AUD.stems.forEach(aplicarCanalNoAudio);
+  aplicarAudioAgora();
   requestAnimationFrame(tickAudio);
 }
 requestAnimationFrame(tickAudio);
@@ -4707,8 +4733,9 @@ TELAS.MIX = function(area){
   area.appendChild(tr);
 
   const nota = el("div",null,
-    "As faixas entram nos canais 1 em diante, com o nome e o pan que a base traz, e "+
-    "com TODOS os faders fechados — a mixagem é sua. O som só começa quando você aperta PLAY.");
+    "As faixas entram nos canais 1 em diante, com o nome e o pan que a base traz, "+
+    "com o [ON] DESLIGADO e o fader fechado — a mixagem é sua. "+
+    "O [ON] habilita o canal; o fader dosa o volume. O som só começa no PLAY.");
   nota.style.cssText="font-size:9px;color:#9aa0a8;margin-top:4px;line-height:1.4";
   area.appendChild(nota);
 };
