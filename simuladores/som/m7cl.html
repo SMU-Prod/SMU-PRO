@@ -1844,6 +1844,18 @@ function construirFAC(fac){
     });
     return b;
   };
+  /* MIX (músicas) e MINHAS CENAS: o que o aluno mais usa nesta aula */
+  const linhaAluno = el("div"); linhaAluno.style.cssText="display:flex;gap:2px";
+  const bMix = el("div","bt","MIX"); bMix.style.flex="1";
+  bMix.title = "Escolher a música multitrack e o transporte";
+  bMix.classList.toggle("ativo", S.tela==="MIX");
+  bMix.addEventListener("pointerdown",()=>{ S.popup=null; S.tela="MIX"; pedirRender(); });
+  const bCen = el("div","bt","CENAS"); bCen.style.flex="1";
+  bCen.title = "Guardar/chamar cenas na sua conta";
+  bCen.addEventListener("pointerdown",()=>{ abrirPopup("NUVEM"); pedirRender(); });
+  linhaAluno.appendChild(bMix); linhaAluno.appendChild(bCen);
+  fac.appendChild(linhaAluno);
+
   fac.appendChild(botao("SENDS ON FADER","SOF","Os faders passam a controlar as mandadas para o bus escolhido"));
   fac.appendChild(botao("CH JOB","CHJOB","Copiar, mover e inicializar canal"));
   const linha = el("div"); linha.style.cssText="display:flex;gap:3px";
@@ -4056,6 +4068,319 @@ document.addEventListener("keydown", ev=>{
   if (ev.key === "ArrowRight") pularCanal(1);
   if (ev.key === "ArrowLeft")  pularCanal(-1);
 });
+
+/* ==================================================================
+   ÁUDIO MULTITRACK — as músicas cadastradas, cada track num canal
+   ==================================================================
+   As bases vêm do catálogo público do projeto (media/bases.json), o mesmo
+   que a frota de simuladores já usa. Cada stem (Bumbo, Caixa, Baixo, Voz...)
+   entra num canal da mesa: o aluno mixa de verdade, com o fader, o EQ e o
+   pan daquele canal.
+
+   ⚠️ O som só começa quando o aluno APERTA PLAY. Nada toca sozinho ao abrir.
+
+   Cadeia por canal, na ordem da mesa real:
+     buffer -> HPF -> EQ 4 bandas -> gain do fader -> pan -> master
+   AudioParam: uso setValueAtTime, que resolve e PARA. setTargetAtTime é
+   exponencial e nunca termina -- o param vira a-rate e o biquad recalcula
+   coeficiente a cada amostra (foi o que pesou 34,5% de CPU na CL5).      */
+const SB_MEDIA = "https://pshynylvvkhhohftouoe.supabase.co/storage/v1/object/public/media/";
+const AUD = {
+  ctx:null, base:null, bases:[], tocando:false, carregando:false,
+  stems:[],            /* {n,c,f,p, canal, buffer, src, nodes} */
+  t0:0, offset:0, dur:0,
+};
+
+async function carregarCatalogo(){
+  try{
+    const r = await fetch(SB_MEDIA+"bases.json?t="+(AUD.t0||1));
+    if (!r.ok) return;
+    const j = await r.json();
+    AUD.bases = Array.isArray(j) ? j : (j.bases || j.songs || []);
+  }catch(e){ /* offline: fica sem base, o simulador continua funcionando */ }
+}
+
+/** Carrega os stems de uma base e amarra cada um a um canal da mesa. */
+async function carregarBase(idx){
+  const b = AUD.bases[idx];
+  if (!b || AUD.carregando) return;
+  pararAudio();
+  AUD.carregando = true;
+  AUD.base = b;
+  S.ajuda = "Carregando <b>"+b.label+"</b> ("+b.stems.length+" faixas)…";
+  pedirRender();
+
+  AUD.ctx = AUD.ctx || new (window.AudioContext||window.webkitAudioContext)();
+  const ctx = AUD.ctx;
+  /* uma base pode ter mais faixas que 48; usa as primeiras e avisa */
+  const usar = b.stems.slice(0, N_IN);
+  const carregados = await Promise.all(usar.map(async (st,i)=>{
+    try{
+      const resp = await fetch(SB_MEDIA + b.folder + "/" + st.f);
+      if (!resp.ok) return null;
+      const buf = await ctx.decodeAudioData(await resp.arrayBuffer());
+      return { ...st, canal:"CH"+(i+1), buffer:buf };
+    }catch(e){ return null; }
+  }));
+
+  AUD.stems = carregados.filter(Boolean);
+  AUD.dur = AUD.stems.reduce((m,s)=>Math.max(m, s.buffer.duration), 0);
+
+  /* o canal recebe o nome e o pan da faixa, como numa passagem de som */
+  AUD.stems.forEach(s=>{
+    const c = S.canais[s.canal];
+    if (!c) return;
+    c.nome = String(s.n).slice(0,8);
+    c.pan  = clamp((s.p||0)/50, -1, 1);
+    c.ha.gain = -20;
+    c.hpf.on  = !!s.h;          /* a base já marca quem pede corte de grave */
+    c.fader = -138;             /* tudo fechado: o aluno abre */
+    c.on = true;
+  });
+  /* canais sem faixa saem do caminho */
+  for (let i=AUD.stems.length+1;i<=N_IN;i++){
+    const c = S.canais["CH"+i];
+    if (c){ c.nome = "ch "+i; c.on = false; }
+  }
+
+  AUD.carregando = false;
+  S.ajuda = "<b>"+b.label+"</b> — "+AUD.stems.length+" faixas nos canais 1-"+AUD.stems.length+
+            (b.stems.length>N_IN ? " (a base tem "+b.stems.length+", a mesa comporta "+N_IN+")" : "")+
+            " · abra os faders e aperte PLAY";
+  telaChave = null;
+  pedirRender();
+}
+
+/** Monta a cadeia de um stem e começa a tocar. */
+function tocarStem(s, quando, offset){
+  const ctx = AUD.ctx, c = S.canais[s.canal];
+  const src = ctx.createBufferSource();
+  src.buffer = s.buffer;
+
+  const hpf = ctx.createBiquadFilter(); hpf.type = "highpass";
+  const bandas = ["low","lomid","himid","high"].map(()=>{
+    const f = ctx.createBiquadFilter(); f.type = "peaking"; return f;
+  });
+  const gain = ctx.createGain();
+  const pan  = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+
+  let no = src.connect(hpf);
+  bandas.forEach(f=>{ no = no.connect(f); });
+  no = no.connect(gain);
+  if (pan) no = no.connect(pan);
+  no.connect(ctx.destination);
+
+  s.src = src; s.nodes = { hpf, bandas, gain, pan };
+  aplicarCanalNoAudio(s);
+  src.start(quando, offset % (s.buffer.duration||1));
+}
+
+/** Espelha o canal da mesa nos nós de áudio daquele stem. */
+function aplicarCanalNoAudio(s){
+  const c = S.canais[s.canal], n = s.nodes, ctx = AUD.ctx;
+  if (!c || !n || !ctx) return;
+  const t = ctx.currentTime;
+  const P = (param, v) => {           /* resolve e PARA -- nada de rampa infinita */
+    if (Number.isFinite(v) && Math.abs(param.value - v) > 1e-4) param.setValueAtTime(v, t);
+  };
+  /* ganho: HA + fader + ON, tudo o que a mesa faz antes da saída */
+  const ha = Math.pow(10, (c.ha.gain + 20) / 20);
+  const fd = c.fader <= -138 ? 0 : Math.pow(10, c.fader / 20);
+  P(n.gain.gain, (c.on ? 1 : 0) * ha * fd * (c.toSt ? 1 : 0));
+  if (n.pan) P(n.pan.pan, clamp(c.pan, -1, 1));
+  P(n.hpf.frequency, c.hpf.on ? c.hpf.freq : 20);
+  const bs = [c.eq.bandas.low, c.eq.bandas.lomid, c.eq.bandas.himid, c.eq.bandas.high];
+  n.bandas.forEach((f,i)=>{
+    const b = bs[i];
+    P(f.frequency, b.f);
+    P(f.Q, b.q);
+    P(f.gain, c.eq.on ? b.g : 0);
+  });
+}
+
+function tocarAudio(){
+  if (!AUD.ctx || !AUD.stems.length || AUD.tocando) return;
+  AUD.ctx.resume();
+  const quando = AUD.ctx.currentTime + 0.06;   /* todas as faixas juntas */
+  AUD.stems.forEach(s=>tocarStem(s, quando, AUD.offset));
+  AUD.t0 = quando - AUD.offset;
+  AUD.tocando = true;
+  S.ajuda = "Tocando <b>"+AUD.base.label+"</b> — mexa nos faders e ouça";
+  pedirRender();
+}
+function pararAudio(){
+  AUD.stems.forEach(s=>{ try{ s.src && s.src.stop(); }catch(e){} s.src=null; s.nodes=null; });
+  if (AUD.tocando && AUD.ctx) AUD.offset = Math.max(0, AUD.ctx.currentTime - AUD.t0);
+  AUD.tocando = false;
+}
+function pausarAudio(){ pararAudio(); S.ajuda="Pausado"; pedirRender(); }
+function voltarAudio(){ pararAudio(); AUD.offset=0; S.ajuda="Voltou ao começo"; pedirRender(); }
+
+/* espelha a mesa no áudio a cada frame -- é o que faz o fader "soar" */
+function tickAudio(){
+  if (AUD.tocando) AUD.stems.forEach(aplicarCanalNoAudio);
+  requestAnimationFrame(tickAudio);
+}
+requestAnimationFrame(tickAudio);
+
+/* ---- tela do MIX: escolher a música e o transporte ---- */
+TELAS.MIX = function(area){
+  tituloTela(area,"MIX — músicas multitrack","cada faixa num canal da mesa");
+  if (!AUD.bases.length){
+    const v = el("div",null,"Carregando o catálogo… se não vier, o simulador segue sem áudio.");
+    v.style.cssText="font-size:10px;color:#9aa0a8";
+    area.appendChild(v);
+    carregarCatalogo().then(()=>{ telaChave=null; pedirRender(); });
+    return;
+  }
+  const g = el("div");
+  g.style.cssText="display:grid;grid-template-columns:1fr 1fr;gap:3px;overflow:auto;align-content:start";
+  AUD.bases.forEach((b,i)=>{
+    const bt = el("button","tbt", b.label+"  ·  "+b.stems.length+" faixas");
+    bt.type="button";
+    bt.style.cssText="text-align:left;font-size:9px;padding:4px 5px";
+    if (AUD.base && AUD.base.folder===b.folder) bt.classList.add("on");
+    bt.addEventListener("pointerdown",()=>carregarBase(i));
+    g.appendChild(bt);
+  });
+  area.appendChild(g);
+
+  const tr = linhaTela();
+  tr.style.marginTop="4px";
+  const bp = el("button","tbt","▶ PLAY"); bp.type="button";
+  bp.addEventListener("pointerdown",()=>tocarAudio());
+  const bu = el("button","tbt","❚❚ PAUSE"); bu.type="button";
+  bu.addEventListener("pointerdown",()=>pausarAudio());
+  const bv = el("button","tbt","◀◀ INÍCIO"); bv.type="button";
+  bv.addEventListener("pointerdown",()=>voltarAudio());
+  tr.appendChild(bp); tr.appendChild(bu); tr.appendChild(bv);
+  const st = el("span"); st.style.cssText="font-size:9px;color:#9aa0a8";
+  lig(()=>{ st.textContent = AUD.base
+    ? (AUD.tocando?"tocando":"parado")+" · "+AUD.stems.length+" faixas"
+    : "nenhuma música carregada"; });
+  tr.appendChild(st);
+  area.appendChild(tr);
+
+  const nota = el("div",null,
+    "As faixas entram nos canais 1 em diante, com o nome e o pan que a base traz, e "+
+    "com TODOS os faders fechados — a mixagem é sua. O som só começa quando você aperta PLAY.");
+  nota.style.cssText="font-size:9px;color:#9aa0a8;margin-top:4px;line-height:1.4";
+  area.appendChild(nota);
+};
+
+/* ==================================================================
+   CENAS NO BANCO — presas ao cadastro do aluno
+   ==================================================================
+   Guarda em /api/sim/scenes, que resolve o aluno pela sessão Clerk. O aluno
+   monta o show, guarda, volta noutro dia e chama de volta -- como na mesa. */
+const API_CENAS = "/api/sim/scenes";
+S.cenasNuvem = [];
+S.nuvemMsg = "";
+
+function estadoParaSalvar(){
+  return {
+    canais: fotoDaMesa(),
+    patch: S.patch, bus: S.bus, rack: S.rack,
+    focus: S.focus, muteSafe: S.muteSafe, fade: S.fade,
+    meterPonto: S.meterPonto, udk: S.udk,
+    base: AUD.base ? AUD.base.folder : null,
+  };
+}
+function aplicarEstadoSalvo(d){
+  if (!d) return;
+  if (d.canais) aplicarCena(d.canais);
+  if (d.patch) S.patch = d.patch;
+  if (d.bus)   S.bus = d.bus;
+  if (d.rack)  S.rack = d.rack;
+  if (d.focus) S.focus = d.focus;
+  if (d.muteSafe) S.muteSafe = d.muteSafe;
+  if (d.fade)  S.fade = d.fade;
+  if (d.meterPonto) S.meterPonto = d.meterPonto;
+  if (d.udk)   S.udk = d.udk;
+}
+
+async function listarCenasNuvem(){
+  try{
+    const r = await fetch(API_CENAS+"?simulador=m7cl");
+    if (r.status === 401){ S.nuvemMsg = "Entre na plataforma para guardar suas cenas."; return; }
+    if (!r.ok){ S.nuvemMsg = "Não consegui falar com o servidor."; return; }
+    const j = await r.json();
+    S.cenasNuvem = j.cenas || [];
+    S.nuvemMsg = S.cenasNuvem.length ? "" : "Nenhuma cena guardada ainda.";
+  }catch(e){ S.nuvemMsg = "Sem conexão — as cenas locais continuam funcionando."; }
+  telaChave = null; pedirRender();
+}
+async function guardarCenaNuvem(numero, nome){
+  S.nuvemMsg = "Guardando…"; pedirRender();
+  try{
+    const r = await fetch(API_CENAS,{ method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ simulador:"m7cl", numero, nome, dados: estadoParaSalvar() }) });
+    if (r.status === 401){ S.nuvemMsg = "Entre na plataforma para guardar suas cenas."; pedirRender(); return; }
+    const j = await r.json();
+    if (!r.ok){ S.nuvemMsg = "Falhou: "+(j.error||r.status); pedirRender(); return; }
+    S.nuvemMsg = "Cena "+num3(numero)+" guardada na sua conta.";
+    listarCenasNuvem();
+  }catch(e){ S.nuvemMsg = "Sem conexão."; pedirRender(); }
+}
+async function chamarCenaNuvem(numero){
+  try{
+    const r = await fetch(API_CENAS+"?simulador=m7cl&numero="+numero);
+    const j = await r.json();
+    const c = (j.cenas||[])[0];
+    if (!c){ S.nuvemMsg = "Cena "+num3(numero)+" não encontrada."; pedirRender(); return; }
+    aplicarEstadoSalvo(c.dados);
+    S.nuvemMsg = "Cena "+num3(numero)+" ("+c.nome+") chamada.";
+    S.ajuda = "Cena <b>"+c.nome+"</b> chamada da sua conta";
+    telaChave = null; pedirRender();
+  }catch(e){ S.nuvemMsg = "Sem conexão."; pedirRender(); }
+}
+
+TELAS_POPUP.NUVEM = function(area){
+  const b = molde(area,"MINHAS CENAS","guardadas na sua conta da plataforma");
+  const l = linhaTela();
+  const num = el("input"); num.type="number"; num.min="1"; num.max="300"; num.value=String(S.cena.n||1);
+  num.style.cssText="width:56px;background:#15171a;color:var(--tela-texto);border:1px solid #3d4147;"+
+    "border-radius:2px;font-size:11px;padding:2px 4px";
+  const nom = el("input"); nom.type="text"; nom.value="Meu show"; nom.maxLength=60;
+  nom.style.cssText="flex:1 1 auto;min-width:0;background:#15171a;color:var(--tela-texto);"+
+    "border:1px solid #3d4147;border-radius:2px;font-size:11px;padding:2px 6px";
+  const bg = el("button","tbt on","GUARDAR"); bg.type="button";
+  bg.addEventListener("pointerdown",()=>guardarCenaNuvem(Number(num.value)||1, nom.value.trim()||"Meu show"));
+  l.appendChild(el("span",null,"nº")); l.appendChild(num); l.appendChild(nom); l.appendChild(bg);
+  b.appendChild(l);
+
+  const msg = el("div"); msg.style.cssText="font-size:10px;color:#ffd45e;margin:4px 0";
+  lig(()=>{ msg.textContent = S.nuvemMsg; });
+  b.appendChild(msg);
+
+  const lista = el("div");
+  lista.style.cssText="display:grid;grid-template-columns:repeat(2,1fr);gap:3px;overflow:auto";
+  S.cenasNuvem.forEach(c=>{
+    const cel = el("div");
+    cel.style.cssText="display:flex;align-items:center;gap:4px;background:#26292d;"+
+      "border:1px solid #3d4147;border-radius:2px;padding:2px 4px";
+    const t = el("span",null, num3(c.numero)+"  "+c.nome);
+    t.style.cssText="flex:1 1 auto;font-size:9px;overflow:hidden;white-space:nowrap";
+    const bc = el("button","tbt","CHAMAR"); bc.type="button";
+    bc.style.fontSize="8px";
+    bc.addEventListener("pointerdown",()=>chamarCenaNuvem(c.numero));
+    const bx = el("button","tbt","✕"); bx.type="button"; bx.style.fontSize="8px";
+    bx.addEventListener("pointerdown",async()=>{
+      await fetch(API_CENAS+"?simulador=m7cl&numero="+c.numero,{method:"DELETE"});
+      listarCenasNuvem();
+    });
+    cel.appendChild(t); cel.appendChild(bc); cel.appendChild(bx);
+    lista.appendChild(cel);
+  });
+  b.appendChild(lista);
+  const nota = el("div",null,
+    "Guardar aqui prende a cena ao SEU cadastro: você fecha a aula, volta amanhã e chama "+
+    "a mixagem de volta. O número 1-300 é o mesmo da mesa, e guardar no mesmo número sobrescreve.");
+  nota.style.cssText="font-size:9px;color:#9aa0a8;margin-top:5px;line-height:1.4";
+  b.appendChild(nota);
+  if (!S.cenasNuvem.length && !S.nuvemMsg) listarCenasNuvem();
+};
 
 /* ==================================================================
    AUTOTESTE — confere as funções contra o MANUAL, não contra o código

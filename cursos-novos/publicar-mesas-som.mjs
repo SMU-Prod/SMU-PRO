@@ -49,6 +49,11 @@ const MESAS = [
   { m: "M12/2", lesson: "27663106-8693-42d1-aa49-9fb779440e19", file: "soundcraft-ui24r-real.html",   nome: "Soundcraft Ui24R" },
   { m: "M12/3", lesson: "f9bf2d1b-a80c-44fe-a6df-7e28f29c2431", file: "soundcraft-signature-real.html", nome: "Soundcraft Signature 22 MTK" },
   { m: "M13/1", lesson: "473a7f1a-d2c1-436d-a8d6-407f285f7497", file: "presonus-studiolive-real.html", nome: "PreSonus StudioLive 32SC" },
+  /* A M7CL aparece DUAS vezes no módulo 8, e são coisas diferentes:
+     M8/2  = yamaha-m7cl-real.html  -> o M7CL Editor, o software de PC
+     M8/8  = m7cl.html              -> a CONSOLE física ("M7CL realista")
+     Não unifique nem "corrija" o nome sem sufixo -real: é ordem do dono. */
+  { m: "M8/8",  lesson: "5504c000-0000-4000-9000-000000000808", file: "m7cl.html",              nome: "M7CL realista (console)" },
 ];
 
 const publicar = process.argv.includes("--publicar");
