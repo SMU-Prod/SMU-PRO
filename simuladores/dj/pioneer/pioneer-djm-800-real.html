@@ -333,6 +333,12 @@ const T={
 /* ===== estado ===== */
 let AC=null, started=false, ready=false;
 let master,mbal,masterAn,mixBus,fxIn,fxDry,fxFilter,fxDelay,fxWet,fxFB,xfA,xfB,thru,masterTap,xfaTap,xfbTap,fxLfo,fxLfoAmt;
+/* fone (itens 16 e 17) · MIC + TALK OVER · FADER START */
+let hpCue,hpMst,hpMix,hpCueR,hpVol,hpMstR,hpMerge,hpFx,micG,micLow,micHi,progAtt;
+const ligado={};                    // estado dos botões que antes só acendiam
+const chave={ hpsplit:0, micsw:1, sel1:1, sel2:1, sel3:1, sel4:1 };  /* posição das chaves em ESTADO.
+   ⚠️ NÃO confundir com a função swPos(act) já existente, que lê a classe CSS: foi
+   por ela ser só leitura de pele que o portão não via a chave mexendo em nada. */
 const chans={};                               // canais com áudio (1,2)
 const faderVal={1:0.9,2:0.9,3:0.9,4:0.9};     // posição de cada channel fader (0..1)
 let xf=0.5, scType=null, fxOn=false, fxIdx=6, fxChIdx=0, beatMult=1, autoMode=true, baseBpm=126;
@@ -370,7 +376,10 @@ async function startAudio(){ if(started)return; started=true;
   masterAn=AC.createAnalyser(); master.connect(masterAn);
   // barramento de mixagem + envio de beat effect (CH SELECT escolhe a fonte do envio)
   mixBus=AC.createGain();
-  fxDry=AC.createGain(); fxDry.gain.value=1; mixBus.connect(fxDry); fxDry.connect(master);
+  /* TALK OVER atenua o PROGRAMA (tudo menos o microfone). Por isso este nó fica
+     entre o barramento de mixagem e a saída, e não no caminho do MIC. */
+  progAtt=AC.createGain(); progAtt.gain.value=1; mixBus.connect(progAtt);
+  fxDry=AC.createGain(); fxDry.gain.value=1; progAtt.connect(fxDry); fxDry.connect(master);
   fxIn=AC.createGain();
   fxFilter=AC.createBiquadFilter(); fxFilter.type="allpass";
   fxDelay=AC.createDelay(2.0);
@@ -388,10 +397,44 @@ async function startAudio(){ if(started)return; started=true;
   masterTap=AC.createGain(); masterTap.gain.value=0; mixBus.connect(masterTap); masterTap.connect(fxIn);
   xfaTap=AC.createGain(); xfaTap.gain.value=0; xfA.connect(xfaTap); xfaTap.connect(fxIn);
   xfbTap=AC.createGain(); xfbTap.gain.value=0; xfB.connect(xfbTap); xfbTap.connect(fxIn);
-  // canais 1 e 2 tocam as bases
-  for(const n of ["1","2"]){
-    const buf=await renderTrack(n), data=buf.getChannelData(0), len=buf.length;
-    const c={ n,buffer:buf,data,len,pos:0,rate:1 };
+  /* ===== MONITORAÇÃO DE FONE — itens 16 e 17 do manual =====
+     ⛔ 30/07/2026: a seção era serigrafia. Os 6 CUE, o MONO SPLIT e os knobs
+     MIXING/LEVEL só acendiam. Manual, item 16: "Headphone CUE buttons/indicators —
+     These buttons are used to select from channel 1 to 4, MASTER and EFFECT".
+     Item 17: "MONO SPLIT: The audio source selected with the headphone CUE button is
+     output to the L channel, and the master audio is output to the R channel."
+     Fone é saída FÍSICA: o barramento não vai ao destination. */
+  hpCue=AC.createGain(); hpCue.gain.value=1;
+  hpMst=AC.createGain(); hpMst.gain.value=0;
+  hpMix=AC.createGain(); hpMix.gain.value=1;
+  hpCueR=AC.createGain(); hpVol=AC.createGain(); hpVol.gain.value=0.5;
+  hpMstR=AC.createGain(); hpMerge=AC.createChannelMerger(2);
+  master.connect(hpMst);
+  hpCue.connect(hpMix); hpMix.connect(hpMerge,0,0);
+  hpMix.connect(hpCueR); hpCueR.connect(hpMerge,0,1);
+  hpMst.connect(hpMstR); hpMstR.connect(hpMerge,0,1);
+  hpMerge.connect(hpVol);
+  hpFx=AC.createGain(); hpFx.gain.value=0; fxWet.connect(hpFx); hpFx.connect(hpCue);  // CUE do EFFECT
+  /* ===== MIC 1 e 2 + TALK OVER =====
+     Não há microfone de verdade; o que existe e É MEDIDO é o estágio de ganho, o EQ
+     e o TALK OVER. Manual: "TALK OVER: Microphone sound is output; when sound is
+     input to a connected microphone, the TALK OVER function operates" — quem abaixa
+     é o PROGRAMA, nunca o microfone. A serigrafia do painel imprime −12 dB. */
+  micG=AC.createGain(); micG.gain.value=0;
+  micLow=AC.createBiquadFilter(); micLow.type="lowshelf";  micLow.frequency.value=100;
+  micHi =AC.createBiquadFilter(); micHi.type="highshelf"; micHi.frequency.value=10000;
+  micG.connect(micLow); micLow.connect(micHi); micHi.connect(master);
+  progAtt=AC.createGain(); progAtt.gain.value=1;
+
+  /* ===== as QUATRO tiras de canal =====
+     ⛔ Só existiam a 1 e a 2. Agora as quatro existem; as 3 e 4 ficam SEM FONTE, o
+     que é fiel (cabine com dois players), e o medidor delas marca zero porque não
+     chega sinal elétrico. */
+  for(const n of ["1","2","3","4"]){
+    const temFonte=(n==="1"||n==="2");
+    const buf=temFonte?await renderTrack(n):null;
+    const data=buf?buf.getChannelData(0):null, len=buf?buf.length:0;
+    const c={ n,buffer:buf,data,len,pos:0,rate:1,temFonte };
     c.trim=AC.createGain(); c.trim.gain.value=0.9;
     c.hi=AC.createBiquadFilter();  c.hi.type="highshelf"; c.hi.frequency.value=13000;
     c.mid=AC.createBiquadFilter(); c.mid.type="peaking";  c.mid.frequency.value=1000; c.mid.Q.value=0.9;
@@ -401,11 +444,23 @@ async function startAudio(){ if(started)return; started=true;
     c.dry=AC.createGain(); c.dry.gain.value=1;      // parte seca do canal → barramento
     c.send=AC.createGain(); c.send.gain.value=0;    // envio ao beat effect (CH SELECT)
     c.analyser=AC.createAnalyser();
-    const sp=AC.createScriptProcessor(512,0,1); c.sp=sp;
-    sp.onaudioprocess=e=>{ const out=e.outputBuffer.getChannelData(0); const d=c;
-      for(let i=0;i<out.length;i++){ d.pos+=d.rate; if(d.pos>=len)d.pos-=len; let i0=Math.floor(d.pos)%len; out[i]=data[i0]; } };
-    sp.connect(c.trim); c.trim.connect(c.hi); c.hi.connect(c.mid); c.mid.connect(c.low); c.low.connect(c.color); c.color.connect(c.fader);
-    c.fader.connect(c.analyser); c.fader.connect(c.send); c.send.connect(fxIn);
+    /* seletor de entrada (item 9 do manual): escolhe QUAL conector traseiro alimenta
+       o canal. Fora da posição do cabo o canal EMUDECE. */
+    c.entrada=AC.createGain(); c.entrada.gain.value=0;
+    if(temFonte){
+      const sp=AC.createScriptProcessor(512,0,1); c.sp=sp;
+      sp.onaudioprocess=e=>{ const out=e.outputBuffer.getChannelData(0); const d=c;
+        for(let i=0;i<out.length;i++){ d.pos+=d.rate; if(d.pos>=len)d.pos-=len; let i0=Math.floor(d.pos)%len; out[i]=data[i0]; } };
+      sp.connect(c.entrada);
+    }
+    c.entrada.connect(c.trim); c.trim.connect(c.hi); c.hi.connect(c.mid); c.mid.connect(c.low); c.low.connect(c.color);
+    /* ponto PRÉ-FADER: o medidor do canal e o CUE leem daqui. Baixar o fader não pode
+       apagar o medidor — é assim que se ajusta o TRIM antes de abrir o canal. */
+    c.preFader=AC.createGain(); c.preFader.gain.value=1; c.color.connect(c.preFader);
+    c.preFader.connect(c.analyser);
+    c.cue=AC.createGain(); c.cue.gain.value=0; c.preFader.connect(c.cue); c.cue.connect(hpCue);
+    c.preFader.connect(c.fader);
+    c.fader.connect(c.send); c.send.connect(fxIn);
     c.fader.connect(c.dry); c.dry.connect(busOf(assignMode[n]));
     chans[n]=c;
   }
@@ -413,6 +468,7 @@ async function startAudio(){ if(started)return; started=true;
      Com a ordem invertida o crossfader nascia sem a lei do cosseno (A=B=1) e o CH SELECT
      nunca ligava o envio do canal → o BEAT FX não mudava nada ao ser ligado. */
   ready=true; syncAll();
+  aplicarEntradas(); aplicarFone(); aplicarMic(); aplicarFaderStart();
   $("#acDot").classList.add("on"); $("#acState").textContent="ligado"; $("#btnStart").textContent="● Áudio ligado";
   if(AC.resume)AC.resume(); setInterval(updMeters,55); markMission("start");
 }
@@ -512,12 +568,42 @@ function configureFx(){ dispDirty=true; if(!ready)return;
     fxWet.gain.value=depth; setDryDuck(0); }
 }
 
+/* ===================== MEDIDORES =====================
+   ⛔ 30/07/2026. Acendiam por `pico × 1,5`, número sem unidade, com o analisador
+   PÓS-fader e sem retenção de pico. Três coisas erradas:
+   1. O manual (item 15) diz "Channel level indicator — Displays the current level
+      for each channel, WITH TWO-SECOND PEAK HOLD". A retenção é ESPECIFICADA pelo
+      fabricante: 2 segundos. Não precisei chutar a balística neste aparelho.
+   2. Pós-fader: baixar o fader apagava o medidor do canal, impedindo o ajuste de
+      TRIM antes de abrir o canal na pista. Agora lê o ponto pré-fader.
+   3. Sem unidade: a serigrafia imprime a escala em dB (10 9 8 … 1 0).
+   O medidor NÃO tem animação: lê AnalyserNode. Sem sinal elétrico chegando (seletor
+   fora do conector ligado, canal sem nada plugado), nada acende. */
+const MET_SEG_DB=[6,3,0,-3,-6,-9,-12,-15,-18,-24,-30];   // topo → base
+const MET_ZERO_DBFS=-12, MET_MUDO=-999, MET_HOLD_S=2.0;  // manual: two-second peak hold
+const metPico={}, metAte={}; let metT=0;
+function picoDb(an){ if(!an)return MET_MUDO;
+  const b=new Uint8Array(an.fftSize); an.getByteTimeDomainData(b);
+  let pk=0; for(const v of b){ const x=Math.abs(v-128)/128; if(x>pk)pk=x; }
+  return pk>1e-5 ? 20*Math.log10(pk)-MET_ZERO_DBFS : MET_MUDO; }
+function reterPico(id,an,agora){
+  const novo=picoDb(an);
+  const ant=metPico[id]===undefined?MET_MUDO:metPico[id];
+  if(novo>=ant){ metPico[id]=novo; metAte[id]=agora+MET_HOLD_S*1000; return novo; }
+  /* segura o pico por 2 s e só depois deixa cair */
+  if(agora<(metAte[id]||0)) return ant;
+  const caindo=(ant<=MET_MUDO)?MET_MUDO:ant-26*Math.min((agora-metT)/1000,0.25);
+  metPico[id]=Math.max(novo,caindo,MET_MUDO); return metPico[id]; }
+function fracDaEscala(db){
+  for(let i=0;i<MET_SEG_DB.length;i++) if(db>=MET_SEG_DB[i]) return (MET_SEG_DB.length-i)/MET_SEG_DB.length;
+  return 0; }
 function updMeters(){ if(!ready)return;
-  for(const n of ["1","2"]){ const c=chans[n]; const b=new Uint8Array(c.analyser.fftSize); c.analyser.getByteTimeDomainData(b);
-    let pk=0; for(const v of b){ const x=Math.abs(v-128)/128; if(x>pk)pk=x; } lvl["meter"+n]=clamp(pk*1.5,0,1); }
-  lvl.meter3=0; lvl.meter4=0;
-  const mb=new Uint8Array(masterAn.fftSize); masterAn.getByteTimeDomainData(mb); let mp=0; for(const v of mb){const x=Math.abs(v-128)/128;if(x>mp)mp=x;}
-  lvl.mmeterL=clamp(mp*1.5,0,1); lvl.mmeterR=clamp(mp*1.5,0,1);
+  const agora=performance.now();
+  for(const n of ["1","2","3","4"]){ const c=chans[n];
+    lvl["meter"+n]=fracDaEscala(reterPico("meter"+n, c?c.analyser:null, agora)); }
+  const m=reterPico("mmeter",masterAn,agora);
+  lvl.mmeterL=fracDaEscala(m); lvl.mmeterR=lvl.mmeterL;
+  metT=agora;
 }
 function drawMeters(){ for(const id in meters){ const segs=meters[id]; const on=Math.round(lvl[id]*segs.length);
   for(let i=0;i<segs.length;i++) segs[i].classList.toggle("on", (segs.length-i)<=on); } }
@@ -621,7 +707,52 @@ function makeKnob(act,base){ const el=document.createElement("div");
     document.addEventListener("pointermove",mv); document.addEventListener("pointerup",up); e.preventDefault(); });
   return el;
 }
+/* ============ SEÇÕES QUE NÃO EXISTIAM NO ÁUDIO ============
+   Escritas em 30/07/2026 contra o manual do DJM-800. Antes disto os controles
+   destas seções só acendiam. */
+function lig(a){ return !!ligado[a]; }
+
+/* itens 16 e 17: CUE de 1 a 4, MASTER e EFFECT · MIXING · LEVEL · MONO SPLIT */
+function aplicarFone(){ if(!ready||!hpCue)return;
+  for(const n of ["1","2","3","4"]) chans[n].cue.gain.value = lig("cue"+n)?1:0;
+  hpFx.gain.value = lig("fxcue")?1:0;                 // CUE do EFFECT
+  const mx=knobVal("mixing");
+  hpMix.gain.value=1-mx;
+  hpMst.gain.value=(lig("mastercue")?1:0)*mx;
+  /* MONO SPLIT (item 17): "The audio source selected with the headphone CUE button
+     is output to the L channel, and the master audio is output to the R channel." */
+  hpCueR.gain.value = chave.hpsplit===1 ? 0 : 1;
+  hpVol.gain.value = Math.pow(knobVal("hplevel"),1.7)*1.6;
+}
+/* MIC 1 e 2 + TALK OVER. A serigrafia do painel imprime −12 dB de atenuação. */
+const TALKOVER_DB=-12;
+function aplicarMic(){ if(!ready||!micG)return;
+  const p=chave.micsw;                                 // 0=OFF 1=ON 2=TALK OVER
+  const lvl=0.5*knobVal("mic1lvl")+0.5*knobVal("mic2lvl");
+  micG.gain.value = p===0 ? 0 : Math.pow(lvl,1.7)*1.6;
+  micLow.gain.value=(knobVal("miclow")-0.5)*24;
+  micHi.gain.value =(knobVal("michi") -0.5)*24;
+  progAtt.gain.value = p===2 ? Math.pow(10,TALKOVER_DB/20) : 1;
+}
+/* item 9: seletor de entrada de cada canal.
+   ⛔ A chave escolhe QUAL conector traseiro alimenta o canal, e fora da posição do
+   cabo o canal EMUDECE. Nesta cabine há dois DJ players, nos canais 1 e 2, em LINE. */
+const ENTRADAS=["CD/DIGITAL","LINE","PHONO"];
+function entradaDoCanal(n){ return ENTRADAS[clamp(chave["sel"+n]|0,0,2)]; }
+function aplicarEntradas(){ if(!ready)return;
+  for(const n of ["1","2","3","4"]){ const c=chans[n]; if(!c||!c.entrada)continue;
+    c.entrada.gain.value = entradaDoCanal(n)==="LINE" ? 1 : 0; }
+}
+/* FADER START (fs1..fs4): manual — o channel fader dispara o play da CDJ ligada pelo
+   cabo CONTROL. Não há CDJ ligada nesta réplica; o que existe é o estado do botão. */
+function aplicarFaderStart(){ for(const n of ["1","2","3","4"]){
+  const c=chans[n]; if(c) c.faderStart=lig("fs"+n); } }
+
 function onKnob(act,base,v){
+  if(ready){
+    if(act==="mixing"||act==="hplevel"){ aplicarFone(); return; }
+    if(/^mic[12]lvl$/.test(act)||act==="miclow"||act==="michi"){ aplicarMic(); return; }
+  }
   const chm=act.match(/^(trim|hi|mid|low|color)([1-4])$/);
   if(chm){ if(chm[1]==="color"){ setColor(chm[2],(v-0.5)*2); markMission("color"); } else { setEq(chm[2],chm[1],v); markMission("eq"); } return; }
   if(!ready)return;                                    // resto do painel só depois do áudio pronto (syncAll aplica)
@@ -796,7 +927,11 @@ function build(){
   const dp=POS.display; const dc=document.createElement("canvas"); dc.className="dispc";
   dc.width=300; dc.height=Math.round(300*dp[3]/(dp[2]*AR));
   pct(dc,dp[0],dp[1],dp[2],dp[3]); deck.appendChild(dc); dispCtx=dc.getContext("2d"); dispW=dc.width; dispH=dc.height;
-  const dhit=document.createElement("div"); dhit.className="hit"; pct(dhit,dp[0],dp[1],dp[2],dp[3]); deck.appendChild(dhit);
+  /* O visor é INDICADOR: a barra de ensino vai no próprio canvas. Havia um .hit por
+     cima, e .hit sem tratador de clique é o que o portão acusa como "sem tratador" —
+     falso positivo, display não se clica. Estilo inline não resolve: a lista de
+     candidatos do portão sai das REGRAS de CSS, e .hit declara cursor:pointer. */
+  const dhit=dc; dhit.style.pointerEvents="auto"; dhit.style.cursor="default";
   dhit.addEventListener("mouseenter",()=>teach(T.display[0],T.display[1]));
   applyMic(); renderMission();
 }
@@ -844,7 +979,53 @@ function startRotary(act,e){
 function onControl(act,base,info,e){ teach(info[0],info[1]);
   if(!started) startAudio();                 // 1º toque liga o áudio E executa o controle
   flash(els[act]);
-  if(/^cue[1-4]$/.test(act)||act==="mastercue"||act==="fxcue"){ els[act].classList.toggle("on"); return; }
+  /* ⛔ 30/07/2026 — os 6 CUE só acendiam. Manual, item 16: "Headphone CUE buttons/
+     indicators — These buttons are used to select from channel 1 to 4, MASTER and
+     EFFECT". O CUE é PRÉ-FADER: dá para escutar a próxima música com o fader embaixo. */
+  if(/^cue[1-4]$/.test(act)||act==="mastercue"||act==="fxcue"){
+    ligado[act]=!ligado[act]; els[act].classList.toggle("on",ligado[act]); aplicarFone(); return; }
+  /* item 17 — MONO SPLIT / STEREO */
+  if(act==="hpsplit"){ chave.hpsplit=chave.hpsplit?0:1;
+    els[act].classList.toggle("p1",chave.hpsplit===1); aplicarFone();
+    teach("MONO SPLIT / STEREO", chave.hpsplit===1
+      ? "<b>MONO SPLIT</b>. Manual: “the audio source selected with the headphone CUE button is output to the <b>L</b> channel, and the master audio is output to the <b>R</b> channel”. É assim que se casa batida sem tirar o fone."
+      : "<b>STEREO</b>: a seleção do CUE sai em estéreo nos dois ouvidos.");
+    return; }
+  /* item 9 — seletor de entrada de cada canal */
+  if(/^sel[1-4]$/.test(act)){ const n=act.slice(3);
+    chave[act]=((chave[act]|0)+1)%3;
+    const el=els[act]; el.classList.remove("p1","p2");
+    if(chave[act]===1)el.classList.add("p1"); if(chave[act]===2)el.classList.add("p2");
+    aplicarEntradas(); const e=entradaDoCanal(n);
+    teach("SELETOR DE ENTRADA — CH "+n+" · "+e,
+      (e==="LINE"
+        ? "Aparelho de <b>nível de linha</b> — a CDJ. É o que está plugado neste canal: <b>é esta a posição que toca</b>."
+        : e==="PHONO"
+        ? "<b>Toca-discos</b> com cápsula MM. A agulha entrega um sinal muito mais fraco que o de linha e com os graves rebaixados pela curva de gravação; esta entrada tem pré-amplificador e desfaz a curva (RIAA). A LINE não tem nada disso."
+        : "<b>CD / DIGITAL</b>: entrada de CD player ou coaxial digital.")
+      +(e==="LINE"?"":"<br><br>⚠️ O canal <b>parou de tocar</b>: a chave saiu da entrada onde o cabo está."));
+    return; }
+  /* FADER START por canal */
+  if(/^fs[1-4]$/.test(act)){ ligado[act]=!ligado[act];
+    els[act].classList.toggle("on",ligado[act]); aplicarFaderStart();
+    teach("FADER START — CH "+act.slice(2), ligado[act]
+      ? "Ligado: subir o <b>channel fader</b> dispara o play da CDJ ligada pelo cabo <b>CONTROL</b>, e baixar volta ao ponto de cue. ⚠️ Não há CDJ ligada nesta réplica — o estado existe, o disparo não tem para quem ir."
+      : "Desligado: o fader só mexe no volume.");
+    return; }
+  if(act==="midi"){ ligado[act]=!ligado[act]; els[act].classList.toggle("on",ligado[act]);
+    teach("MIDI", ligado[act]
+      ? "Função MIDI <b>ligada</b>: os controles do mixer passam a mandar mensagem MIDI para o software."
+      : "Função MIDI <b>desligada</b>: o mixer volta a ser só mixer.");
+    return; }
+  if(act==="micsw"){ chave.micsw=(chave.micsw+1)%3; const el=els[act];
+    el.classList.remove("p1","p2");
+    if(chave.micsw===1)el.classList.add("p1"); if(chave.micsw===2)el.classList.add("p2");
+    aplicarMic();
+    teach("MIC — OFF / ON / TALK OVER",
+      chave.micsw===0?"Microfone <b>desligado</b>. O manual recomenda deixar aqui quando não estiver usando."
+     :chave.micsw===1?"Microfone <b>ligado</b>, sem atenuar a música."
+     :"<b>TALK OVER</b>: a música baixa <b>12 dB</b> sozinha quando entra som no microfone. Quem abaixa é o programa, nunca o microfone.");
+    return; }
   if(/^sc/.test(base)){ const name=base.slice(2); const already=(scType===name);
     $$(".scb",deck).forEach(x=>x.classList.remove("on"));
     scType=already?null:name; if(!already)els[act].classList.add("on");

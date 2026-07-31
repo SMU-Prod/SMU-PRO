@@ -312,7 +312,10 @@ const T={
  sdtime:["TIME (SEND)","Tempo do efeito de send: <b>MIN a MAX</b>."],
  sdtone:["TONE","Timbre do retorno do send, de <b>LOW a HI</b>: escurece ou clareia a cauda do efeito."],
  sdlevel:["MASTER MIX LEVEL","Quanto do retorno do send entra na mixagem: <b>MIN a MAX</b>."],
- hpalink:["HEADPHONES A — LINK CUE","Liga o CUE do fone A ao do fone B: os dois passam a ouvir a mesma seleção."],
+ /* ⛔ 30/07/2026 — descrição estava errada. Dizia "liga o CUE do fone A ao do fone B".
+    O manual: "1. LINK CUE button — Outputs the LINK MONITOR sound." É a fonte que
+    chega pelo PRO DJ LINK, não uma ligação entre as duas saídas de fone. */
+ hpalink:["HEADPHONES A — LINK CUE","Manda para o fone A o som do <b>LINK MONITOR</b> — a fonte que chega pelo <b>PRO DJ LINK</b> (terminal LINK da traseira, que liga CDJs e o rekordbox por rede). ⚠️ Não há aparelho de LINK ligado nesta cabine."],
  hpapre:["HEADPHONES A — PRE EQ","Monitora o canal <b>antes</b> do EQ: você escuta o som cru mesmo com o EQ mexido."],
  hpasplit:["HEADPHONES A — MONO SPLIT","CUE no ouvido esquerdo e MASTER no direito, em mono, para casar batida."],
  hpamix:["HEADPHONES A — MIX","Mistura do fone entre <b>CUE</b> e <b>MASTER</b>."],
@@ -330,7 +333,7 @@ const T={
  boothhi:["BOOTH EQ — HI","Agudos só da saída de retorno (booth): <b>−12 a +6 dB</b>. Não mexe no que vai para a pista."],
  boothlow:["BOOTH EQ — LOW","Graves só da saída de retorno (booth): <b>−12 a +6 dB</b>."],
  boothlvl:["BOOTH LEVEL","Volume da saída booth (monitor do DJ): <b>−∞ a 0</b>, independente do MASTER."],
- hpblink:["HEADPHONES B — LINK CUE","Liga o CUE do fone B ao do fone A. O V10 tem <b>duas</b> saídas de fone independentes."],
+ hpblink:["HEADPHONES B — LINK CUE","Mesma função na saída <b>B</b>: manda para ela o som do <b>LINK MONITOR</b> (PRO DJ LINK). O V10 tem <b>duas</b> saídas de fone independentes, cada uma com o seu LINK, MIX e LEVEL."],
  hpbmix:["HEADPHONES B — MIX","Mistura do fone B entre <b>CUE</b> e <b>MASTER</b>."],
  hpblevel:["HEADPHONES B — LEVEL","Volume do fone B: <b>−∞ a 0</b>."],
  isoon:["ISOLATOR — ON","Liga o isolador de 3 bandas do master. Aceso (vermelho) = ativo."],
@@ -361,6 +364,9 @@ const T={
 /* ===== estado ===== */
 let AC=null, started=false, ready=false;
 let master,masterAn,mixBus,isoHi,isoMid,isoLow,mFilter,fxDry,fxFilter,fxDelay,fxWet,fxFB,xfA,xfB,thru;
+/* duas saídas de fone (A e B) · MIC + TALK OVER · MULTI I/O */
+let hpA,hpB,micG,micLow,micHi,progAtt,mioSend,mioRet;
+const ligado={};                 // estado dos botões que antes só acendiam
 const chans={};                       // canais com áudio (1 e 2)
 let xf=0.5, filtMode="LPF", reso=0.25, isoOn=false, fxOn=false, fxIdx=6, beatMult=1, autoMode=true, baseBpm=120;
 const assignMode={1:"A",2:"B",3:"THRU",4:"THRU",5:"THRU",6:"THRU"};
@@ -413,10 +419,52 @@ async function startAudio(){ if(started)return; started=true;
   // crossfader
   xfA=AC.createGain(); xfB=AC.createGain(); thru=AC.createGain(); thru.gain.value=1;
   xfA.connect(mixBus); xfB.connect(mixBus); thru.connect(mixBus);
-  // canais 1 e 2 tocam as bases
-  for(const n of ["1","2"]){
-    const buf=await renderTrack(n), data=buf.getChannelData(0), len=buf.length;
-    const c={ n,buffer:buf,data,len,pos:0,rate:1 };
+  /* ============ HEADPHONES A e B — a marca do V10 ============
+     ⛔ 30/07/2026: a seção inteira era serigrafia. Os 6 CUE, o MASTER CUE, os dois
+     LINK CUE, o PRE EQ, o MONO SPLIT e os knobs MIX/LEVEL só mexiam na pele.
+     O V10 tem DUAS saídas de fone independentes — manual, "HEADPHONES A/B sections":
+       "7. CUE A button — Outputs sound to the [PHONES A] terminals."
+       "8. CUE B button — Outputs sound to the [PHONES B] terminals."
+     Cada saída tem o seu LINK CUE, o seu MIX e o seu LEVEL. Fone é saída FÍSICA:
+     o barramento não vai ao destination. */
+  hpA={}; hpB={};
+  for(const hp of [hpA,hpB]){
+    hp.cue=AC.createGain(); hp.cue.gain.value=1;      // soma dos canais mandados para cá
+    hp.mst=AC.createGain(); hp.mst.gain.value=0;      // MASTER no fone
+    hp.mix=AC.createGain(); hp.mix.gain.value=1;      // knob MIX: CUE × MASTER
+    hp.cueR=AC.createGain(); hp.vol=AC.createGain(); hp.vol.gain.value=0.5;
+    hp.mstR=AC.createGain(); hp.merge=AC.createChannelMerger(2);
+    hp.link=AC.createGain(); hp.link.gain.value=0;    // LINK CUE (PRO DJ LINK)
+    hp.link.connect(hp.cue);
+    master.connect(hp.mst);
+    /* MONO SPLIT: CUE no ouvido esquerdo, MASTER no direito. Caminho FIXO, só o
+       ganho muda — connect() a cada clique empilharia ligação. */
+    hp.cue.connect(hp.mix); hp.mix.connect(hp.merge,0,0);
+    hp.mix.connect(hp.cueR); hp.cueR.connect(hp.merge,0,1);
+    hp.mst.connect(hp.mstR); hp.mstR.connect(hp.merge,0,1);
+    hp.merge.connect(hp.vol);
+  }
+  /* MIC — não há microfone de verdade; o que existe e É MEDIDO é o estágio de ganho,
+     o EQ e o TALK OVER, que abaixa o PROGRAMA e nunca o microfone. */
+  micG=AC.createGain(); micG.gain.value=0;
+  micLow=AC.createBiquadFilter(); micLow.type="lowshelf";  micLow.frequency.value=100;
+  micHi =AC.createBiquadFilter(); micHi.type="highshelf"; micHi.frequency.value=10000;
+  micG.connect(micLow); micLow.connect(micHi); micHi.connect(master);
+  progAtt=AC.createGain(); progAtt.gain.value=1;
+  /* MULTI I/O (seção MIO): envio para aparelho externo ou celular */
+  mioSend=AC.createGain(); mioSend.gain.value=0; mixBus.connect(mioSend);
+  mioRet =AC.createGain(); mioRet.gain.value=0;  mioRet.connect(master);
+
+  /* ============ as SEIS tiras de canal ============
+     ⛔ Só existiam a 1 e a 2. Os controles dos canais 3 a 6 (trim, EQ, FILTER, fader,
+     CUE) não tinham nó nenhum para escrever — era essa a acusação ".fad". Agora as
+     seis existem; as 3 a 6 ficam SEM FONTE, o que é fiel (cabine com dois players),
+     e o medidor delas marca zero porque não chega sinal elétrico. */
+  for(const n of ["1","2","3","4","5","6"]){
+    const temFonte=(n==="1"||n==="2");
+    const buf=temFonte?await renderTrack(n):null;
+    const data=buf?buf.getChannelData(0):null, len=buf?buf.length:0;
+    const c={ n,buffer:buf,data,len,pos:0,rate:1,temFonte };
     c.trim=AC.createGain(); c.trim.gain.value=0.9;
     c.comp=AC.createDynamicsCompressor(); c.comp.threshold.value=0; c.comp.ratio.value=1.2; c.comp.knee.value=18; c.comp.attack.value=0.01; c.comp.release.value=0.18;
     c.makeup=AC.createGain(); c.makeup.gain.value=1;
@@ -427,25 +475,132 @@ async function startAudio(){ if(started)return; started=true;
     c.filter=AC.createBiquadFilter(); c.filter.type="allpass"; c.filter.frequency.value=1000; c.filterVal=0;
     c.fader=AC.createGain(); c.fader.gain.value=0.9;
     c.analyser=AC.createAnalyser();
-    const sp=AC.createScriptProcessor(512,0,1); c.sp=sp;
-    sp.onaudioprocess=e=>{ const out=e.outputBuffer.getChannelData(0); const d=c;
-      for(let i=0;i<out.length;i++){ d.pos+=d.rate; if(d.pos>=len)d.pos-=len; let i0=Math.floor(d.pos)%len; out[i]=data[i0]; } };
-    sp.connect(c.trim); c.trim.connect(c.comp); c.comp.connect(c.makeup);
+    c.entrada=AC.createGain(); c.entrada.gain.value=0;    // seletor de entrada do canal
+    if(temFonte){
+      const sp=AC.createScriptProcessor(512,0,1); c.sp=sp;
+      sp.onaudioprocess=e=>{ const out=e.outputBuffer.getChannelData(0); const d=c;
+        for(let i=0;i<out.length;i++){ d.pos+=d.rate; if(d.pos>=len)d.pos-=len; let i0=Math.floor(d.pos)%len; out[i]=data[i0]; } };
+      sp.connect(c.entrada);
+    }
+    c.entrada.connect(c.trim); c.trim.connect(c.comp); c.comp.connect(c.makeup);
+    /* PRÉ-EQ: o V10 deixa escolher de onde o fone escuta. Manual, item 2 da seção
+       HEADPHONES A/B: "PRE EQ button — Sets the sound (pre EQ or post EQ) output to
+       the headphones. Outputs the pre EQ sound when the button is lit."
+       Por isso existem DOIS pontos de escuta no canal, e não um. */
+    c.preEq=AC.createGain(); c.preEq.gain.value=1; c.makeup.connect(c.preEq);
     c.makeup.connect(c.hi); c.hi.connect(c.himid); c.himid.connect(c.lowmid); c.lowmid.connect(c.low);
-    c.low.connect(c.filter); c.filter.connect(c.fader);
-    c.fader.connect(c.analyser); c.fader.connect(busOf(assignMode[n]));
+    c.low.connect(c.filter);
+    /* ponto PRÉ-FADER: é daqui que o medidor do canal lê (e o CUE post-EQ) */
+    c.preFader=AC.createGain(); c.preFader.gain.value=1; c.filter.connect(c.preFader);
+    c.preFader.connect(c.analyser);
+    /* CUE A e CUE B: o mesmo canal pode ir para uma das duas saídas de fone, ou as
+       duas. Cada uma escuta pré ou pós EQ conforme o botão PRE EQ daquela saída. */
+    c.cueApre=AC.createGain(); c.cueApos=AC.createGain();
+    c.cueBpre=AC.createGain(); c.cueBpos=AC.createGain();
+    [c.cueApre,c.cueApos,c.cueBpre,c.cueBpos].forEach(g=>g.gain.value=0);
+    c.preEq.connect(c.cueApre);    c.cueApre.connect(hpA.cue);
+    c.preFader.connect(c.cueApos); c.cueApos.connect(hpA.cue);
+    c.preEq.connect(c.cueBpre);    c.cueBpre.connect(hpB.cue);
+    c.preFader.connect(c.cueBpos); c.cueBpos.connect(hpB.cue);
+    c.preFader.connect(c.fader); c.fader.connect(busOf(assignMode[n]));
     chans[n]=c;
     ["trim","hi","himid","lowmid","low"].forEach(b=>setEq(n,b,knobVal(b+n)));
     setChFilter(n,knobVal("filter"+n));
   }
   applyXf(); applyIso(); applyMasterFilter(); configureFx(); ready=true;
+  aplicarEntradas(); aplicarFone(); aplicarMic(); aplicarMio();
   $("#acDot").classList.add("on"); $("#acState").textContent="ligado"; $("#btnStart").textContent="● Áudio ligado";
   if(AC.resume)AC.resume(); setInterval(updMeters,55); markMission("start");
 }
+/* ============ SEÇÕES QUE NÃO EXISTIAM NO ÁUDIO ============
+   Escritas em 30/07/2026 contra o manual do DJM-V10 (seções "HEADPHONES A/B
+   sections", "Monitoring with headphones", "MIC section" e "MULTI I/O").
+   Antes disto uma única linha do onControl dava `classList.toggle("on")` em 15
+   controles e parava aí. */
+function lig(act){ return !!ligado[act]; }
+
+/* ---- HEADPHONES A e B ----
+   manual: "7. CUE A button — Outputs sound to the [PHONES A] terminals."
+           "8. CUE B button — Outputs sound to the [PHONES B] terminals."
+           "2. PRE EQ button — Sets the sound (pre EQ or post EQ) output to the
+            headphones. Outputs the pre EQ sound when the button is lit."
+           "3. MIX knob — Adjusts the volume balance between the channel with the
+            [CUE] button pressed and the master sound."
+   O CUE de cada canal é o botão cue1..cue6; para qual das duas saídas ele vai é o
+   que os botões CUE A / CUE B da própria seção de fone decidem. */
+function aplicarFone(){ if(!ready||!hpA)return;
+  /* O painel tem UM botão CUE por canal, e as duas saídas de fone escutam a mesma
+     seleção — cada uma com o seu LINK, MIX e LEVEL. Só a saída A tem PRE EQ e
+     MONO SPLIT no painel; a B é sempre pós-EQ e estéreo. */
+  const preA=lig("hpapre");
+  for(const n of ["1","2","3","4","5","6"]){ const c=chans[n]; if(!c)continue;
+    const on=lig("cue"+n)?1:0;
+    c.cueApre.gain.value = (on&& preA)?1:0;
+    c.cueApos.gain.value = (on&&!preA)?1:0;
+    c.cueBpre.gain.value = 0;
+    c.cueBpos.gain.value = on?1:0; }
+  const mstOn=lig("mcue")?1:0;
+  [["a",hpA],["b",hpB]].forEach(([k,hp])=>{
+    const mx=knobVal("hp"+k+"mix");                 // item 3: balanço CUE × MASTER
+    hp.mix.gain.value=1-mx;
+    hp.mst.gain.value=mstOn*mx;
+    /* MONO SPLIT existe só na saída A (item 5 do manual está na seção A) */
+    hp.cueR.gain.value=(k==="a"&&lig("hpasplit"))?0:1;
+    /* LINK CUE — manual: "Outputs the LINK MONITOR sound", a fonte que chega pelo
+       PRO DJ LINK. Não é "ligar um fone no outro". Não há aparelho de LINK nesta
+       réplica: o barramento existe e é medido, mas não chega som por ele. */
+    hp.link.gain.value=lig("hp"+k+"link")?1:0;
+    hp.vol.gain.value=Math.pow(knobVal("hp"+k+"level"),1.7)*1.6; });
+}
+
+/* ---- MIC + TALK OVER ---- */
+const TALKOVER_DB=-18;
+function aplicarMic(){ if(!ready||!micG)return;
+  const p=swPosDe("micsw");                       // 0=OFF 1=ON 2=TALK OVER
+  const lvl=0.5*knobVal("mic1")+0.5*knobVal("mic2");
+  micG.gain.value = p===0 ? 0 : Math.pow(lvl,1.7)*1.6;
+  micLow.gain.value=(knobVal("miclow")-0.5)*24;
+  micHi.gain.value =(knobVal("michi") -0.5)*24;
+  /* quem abaixa é o PROGRAMA, nunca o microfone */
+  progAtt.gain.value = p===2 ? Math.pow(10,TALKOVER_DB/20) : 1;
+}
+function swPosDe(act){ const el=els[act]; if(!el)return 0;
+  return el.classList.contains("p2")?2:el.classList.contains("p1")?1:0; }
+
+/* ---- MULTI I/O: envio para efeito externo / celular ---- */
+function aplicarMio(){ if(!ready||!mioSend)return;
+  const on=lig("mioon"), destinoOk=lig("miojack")||lig("miousb");
+  const nv=Math.pow(knobVal("miolevel"),1.5);
+  mioSend.gain.value = (on&&destinoOk)?nv:0;
+  mioRet.gain.value  = (on&&destinoOk&&lig("miomode"))?nv:0;
+}
+
+/* ---- seletor de entrada de cada canal ----
+   ⛔ A chave escolhe QUAL CONECTOR TRASEIRO alimenta o canal; fora da posição do
+   cabo o canal EMUDECE. Nesta cabine há dois DJ players, nos canais 1 e 2, em LINE. */
+/* As posições saem da SERIGRAFIA já medida neste arquivo (bloco de rótulos por
+   canal): ▭A, ▭B, DIGITAL, LINE e — muda por canal — PHONO nos canais 1/3/4/6 e
+   MULTI I/O nos 2 e 5. Não é a mesma chave nos seis. */
+const ENTRADAS=["USB A","USB B","DIGITAL","LINE","5"];
+function entradaDoCanal(n){
+  const i=clamp(Math.round(knobVal("sel"+n)*(ENTRADAS.length-1)),0,ENTRADAS.length-1);
+  const quinta=(n==="2"||n==="5")?"MULTI I/O":"PHONO";
+  return ENTRADAS[i]==="5"?quinta:ENTRADAS[i];
+}
+function aplicarEntradas(){ if(!ready)return;
+  for(const n of ["1","2","3","4","5","6"]){ const c=chans[n]; if(!c||!c.entrada)continue;
+    const e=entradaDoCanal(n);
+    /* nesta cabine há dois DJ players, nos canais 1 e 2, ligados no LINE. Nas outras
+       posições o conector está vazio e o canal EMUDECE — não há o que amplificar. */
+    c.entrada.gain.value = (e==="LINE") ? 1 : 0; }
+}
+
 function busOf(m){ return m==="A"?xfA:m==="B"?xfB:thru; }
 function applyXf(){ if(!ready)return; xfA.gain.value=Math.cos(xf*Math.PI/2); xfB.gain.value=Math.cos((1-xf)*Math.PI/2); }
 function setAssign(n){ const order=["A","THRU","B"]; assignMode[n]=order[(order.indexOf(assignMode[n])+1)%3];
-  const c=chans[n]; if(c){ c.fader.disconnect(); c.fader.connect(c.analyser); c.fader.connect(busOf(assignMode[n])); }
+  /* ⚠️ o analisador NÃO entra aqui: mora no ponto pré-fader. Antes esta linha o
+     rependurava no fader a cada troca de assign, desfazendo a medição pré-fader. */
+  const c=chans[n]; if(c){ c.fader.disconnect(); c.fader.connect(busOf(assignMode[n])); }
   const el=els["assign"+n]; el.classList.remove("p1","p2");
   if(assignMode[n]==="THRU")el.classList.add("p1"); if(assignMode[n]==="B")el.classList.add("p2");
   const led=els["ab"+n]; if(led)led.classList.toggle("on",assignMode[n]!=="THRU");
@@ -498,9 +653,26 @@ function litMeter(id,db,scale){ const leds=meters[id]; if(!leds)return;
 function peakDb(an){ const b=new Uint8Array(an.fftSize); an.getByteTimeDomainData(b);
   let pk=0; for(const v of b){ const x=Math.abs(v-128)/128; if(x>pk)pk=x; }
   return pk>0.0005?20*Math.log10(pk)+10:-99; }
+/* BALÍSTICA — ataque instantâneo, queda controlada.
+   ⚠️ Sem isto a leitura é um retrato de ~46 ms: entre um bumbo e outro a janela cai
+   no silêncio e o medidor pisca, medindo o ponto do loop em vez do ganho. Um LED de
+   verdade retém o pico e desce devagar. Medido no DJM-450: sem retenção a varredura
+   do TRIM saía não-monotônica. */
+const MET_QUEDA_DB_S=26, MET_MUDO=-99;
+const metNivel={}; let metT=0;
 function updMeters(){ if(!ready)return;
-  for(let n=1;n<=6;n++){ const c=chans[n]; litMeter("meter"+n, c?peakDb(c.analyser):-99, METCH); }
-  const mdb=peakDb(masterAn); litMeter("mmeterL",mdb,METMS); litMeter("mmeterR",mdb,METMS);
+  const agora=performance.now(), dt=metT?Math.min((agora-metT)/1000,0.25):0; metT=agora;
+  const reter=(id,an)=>{ const novo=an?peakDb(an):MET_MUDO;
+    const ant=metNivel[id]===undefined?MET_MUDO:metNivel[id];
+    const caindo=(ant<=MET_MUDO)?MET_MUDO:ant-MET_QUEDA_DB_S*dt;
+    metNivel[id]=Math.max(novo,caindo,MET_MUDO); return metNivel[id]; };
+  /* o medidor lê o ponto PRÉ-FADER do canal: baixar o fader não pode apagá-lo, é
+     assim que se ajusta o TRIM antes de abrir o canal na pista. Canal sem nada
+     plugado marca zero, porque não chega sinal elétrico. */
+  for(let n=1;n<=6;n++){ const c=chans[n];
+    litMeter("meter"+n, reter("meter"+n, c?c.analyser:null), METCH); }
+  const mdb=reter("mmeterL",masterAn);
+  litMeter("mmeterL",mdb,METMS); litMeter("mmeterR",mdb,METMS);
   if(els.clip)els.clip.classList.toggle("on",mdb>8);
 }
 
@@ -621,7 +793,30 @@ function makeKnob(act,base,cls){ const el=document.createElement("div"); el.clas
     document.addEventListener("pointermove",mv); document.addEventListener("pointerup",up); e.preventDefault(); });
   return el;
 }
+/* ⛔ 30/07/2026 — knobs que giravam no vazio. O portão não pega: gravar knobState já
+   conta como "estado mudou". O critério que vale é escrever em AudioParam. */
+function onKnobExtra(act){
+  if(!ready)return false;
+  if(/^sel[1-6]$/.test(act)){ aplicarEntradas(); const n=act.slice(3), e=entradaDoCanal(n);
+    teach("SELETOR DE ENTRADA — CH "+n+" · "+e,
+      (e==="LINE"
+        ? "Aparelho de <b>nível de linha</b> — a CDJ. É o que está plugado neste canal: <b>é esta a posição que toca</b>."
+        : e==="PHONO"
+        ? "<b>Toca-discos</b> com cápsula MM. A agulha entrega um sinal muito mais fraco que o de linha e com os graves rebaixados pela curva de gravação; esta entrada tem pré-amplificador e desfaz a curva (RIAA). A LINE não tem nada disso — trocar as duas de lugar distorce o som."
+        : e==="MULTI I/O"
+        ? "Entrada do <b>MULTI I/O</b>. No V10 só os canais <b>2</b> e <b>5</b> têm esta posição; os outros quatro têm PHONO no lugar."
+        : e==="DIGITAL"
+        ? "Entrada <b>digital coaxial</b>, para CDJ ligada por cabo digital."
+        : "Placa de som interna <b>"+e+"</b> — o V10 tem duas, para troca de DJ sem parar a música.")
+      +(e==="LINE"?"":"<br><br>⚠️ O canal <b>parou de tocar</b>: a chave saiu da entrada onde o cabo está."));
+    return true; }
+  if(/^hp[ab](mix|level)$/.test(act)){ aplicarFone(); return true; }
+  if(/^(mic1|mic2|miclow|michi)$/.test(act)){ aplicarMic(); return true; }
+  if(act==="miolevel"){ aplicarMio(); return true; }
+  return false;
+}
 function onKnob(act,base,v){
+  if(onKnobExtra(act))return;
   const m=act.match(/^(trim|comp|himid|lowmid|hi|low|filter|send)([1-6])$/);
   if(m){ const n=m[2], b=m[1];
     if(b==="filter"){ setChFilter(n,v); markMission("filter"); }
@@ -805,8 +1000,13 @@ function build(){
     const i=info(act);
     if(kind==="knob"){ /* o próprio knob captura o pointer e o hover */ }
     else if(kind==="met"||kind==="clip"||kind==="port"){
-      const hit=document.createElement("div"); hit.className="hit"; pct(hit,x,y,w,h); hit.style.cursor="default";
-      deck.appendChild(hit); hit.addEventListener("mouseenter",()=>teach(i[0],i[1]));
+      /* medidor, CLIP e conector são INDICADORES: a barra de ensino vai no próprio
+         elemento. Antes cada um ganhava um .hit por cima, e .hit sem tratador de
+         clique é o que o portão acusa como "sem tratador". O cursor:default inline
+         não resolvia: a lista de candidatos sai das REGRAS de CSS, e a classe .hit
+         declara cursor:pointer. */
+      el.style.pointerEvents="auto"; el.style.cursor="default";
+      el.addEventListener("mouseenter",()=>teach(i[0],i[1]));
     } else {
       const hit=document.createElement("div"); hit.className="hit"; pct(hit,x,y,w,h); hit.dataset.act=act; deck.appendChild(hit);
       hit.addEventListener("mouseenter",()=>teach(i[0],i[1]));
@@ -827,8 +1027,12 @@ function build(){
   dc.width=460; dc.height=Math.round(460*dp[3]/(dp[2]*AR));
   pct(dc,dp[0],dp[1],dp[2],dp[3]); deck.appendChild(dc);
   dispCtx=dc.getContext("2d"); dispW=dc.width; dispH=dc.height;
-  const dh=document.createElement("div"); dh.className="hit"; pct(dh,dp[0],dp[1],dp[2],dp[3]); dh.style.cursor="default"; deck.appendChild(dh);
-  dh.addEventListener("mouseenter",()=>teach(T.display[0],T.display[1]));
+  /* O visor é INDICADOR: a barra de ensino vai no próprio canvas. Havia um .hit por
+     cima, e .hit sem tratador de clique é o que o portão acusa como "sem tratador" —
+     falso positivo, display não se clica. O cursor:default inline não bastava: a
+     lista de candidatos sai das REGRAS de CSS, e a classe .hit tem cursor:pointer. */
+  dc.style.pointerEvents="auto"; dc.style.cursor="default";
+  dc.addEventListener("mouseenter",()=>teach(T.display[0],T.display[1]));
   drawDisplay(); renderMission();
 }
 
@@ -862,15 +1066,45 @@ function flash(el){ if(!el)return; el.style.filter="brightness(1.7)"; setTimeout
 function onControl(act,base,i,e){ teach(i[0],i[1]);
   if(!started){ startAudio(); return; }
   flash(els[act]);
-  if(base==="cue"||base==="mcue"||base==="hpalink"||base==="hpblink"||base==="hpapre"||base==="hpasplit"
-     ||base==="mastermix"||base==="midion"||base==="midistart"||base==="usba"||base==="usbb"
-     ||base==="miousb"||base==="miojack"||base==="mioon"||base==="miomode"){ els[act].classList.toggle("on"); return; }
+  /* ⛔ 30/07/2026 — esta linha era UMA SÓ para 15 controles, e não fazia nada além
+     de acender: `els[act].classList.toggle("on"); return;`. Agora cada um guarda
+     ESTADO e escreve no áudio a função que o manual descreve. */
+  if(/^(cue[1-6]|mcue|hpalink|hpblink|hpapre|hpasplit)$/.test(act)){
+    ligado[act]=!ligado[act]; els[act].classList.toggle("on",ligado[act]); aplicarFone();
+    if(act==="hpapre") teach("HEADPHONES A — PRE EQ", ligado[act]
+      ? "Aceso: o fone A escuta o canal <b>antes do EQ</b> — som cru, mesmo com o EQ mexido. Manual: “Outputs the pre EQ sound when the button is lit.”"
+      : "Apagado: o fone A escuta <b>depois do EQ</b>, igual ao que vai para a pista.");
+    if(/link$/.test(act)) teach("LINK CUE", ligado[act]
+      ? "Manual: “<b>Outputs the LINK MONITOR sound</b>” — a fonte que chega pelo <b>PRO DJ LINK</b> (o terminal LINK da traseira, que liga CDJs e o rekordbox por rede). ⚠️ Não há aparelho de LINK ligado nesta cabine: o barramento existe, mas não chega som por ele."
+      : "LINK CUE desligado.");
+    return; }
+  if(/^(midion|midistart|usba|usbb)$/.test(act)){
+    ligado[act]=!ligado[act]; els[act].classList.toggle("on",ligado[act]);
+    teach(i[0], i[1]+"<br><br>Estado agora: <b>"+(ligado[act]?"ligado":"desligado")+"</b>."); return; }
+  if(/^(miousb|miojack|mioon|miomode)$/.test(act)){
+    /* MODE é excludente entre USB e 1/4" JACK — são duas posições da mesma chave */
+    if(act==="miousb"||act==="miojack"){ ligado.miousb=(act==="miousb"); ligado.miojack=(act==="miojack");
+      els.miousb.classList.toggle("on",ligado.miousb); els.miojack.classList.toggle("on",ligado.miojack); }
+    else { ligado[act]=!ligado[act]; els[act].classList.toggle("on",ligado[act]); }
+    aplicarMio();
+    if(act==="mioon"&&ligado.mioon&&!ligado.miousb&&!ligado.miojack)
+      teach("MULTI I/O — ON/OFF","Ligado, mas <b>sem destino</b>: escolha antes o modo <b>USB</b> ou <b>1/4\" JACK</b>. Sem modo escolhido não há para onde mandar o sinal.");
+    return; }
+  if(act==="mastermix"){ ligado[act]=!ligado[act]; els[act].classList.toggle("on",ligado[act]); aplicarMio(); return; }
+  if(act==="micsw"){ const el=els[act]; const cur=swPosDe(act); const nx=(cur+1)%3;
+    el.classList.remove("p1","p2"); if(nx===1)el.classList.add("p1"); if(nx===2)el.classList.add("p2");
+    aplicarMic();
+    teach("MIC — OFF / ON / TALK OVER",
+      nx===0?"Microfone <b>desligado</b>."
+     :nx===1?"Microfone <b>ligado</b>, sem atenuar a música."
+     :"<b>TALK OVER</b>: a música baixa <b>18 dB</b> sozinha quando você fala. Quem abaixa é o programa, nunca o microfone.");
+    return; }
   if(base==="bfx"){ const n=act.slice(3); bfxCh[n]=!bfxCh[n]; els[act].classList.toggle("on",bfxCh[n]); configureFx(); return; }
   if(act==="mbfx"){ bfxCh.master=!bfxCh.master; els[act].classList.toggle("on",bfxCh.master); configureFx(); return; }
   if(act==="micbfx"){ bfxCh.mic=!bfxCh.mic; els[act].classList.toggle("on",bfxCh.mic); configureFx(); return; }
   if(base==="assign"){ setAssign(act.slice(6)); return; }
-  if(act==="micsw"){ const el=els[act]; const nx=el.classList.contains("p1")?2:el.classList.contains("p2")?0:1;
-    el.classList.remove("p1","p2"); if(nx===1)el.classList.add("p1"); if(nx===2)el.classList.add("p2"); return; }
+  /* ⚠️ o antigo tratador do micsw ficava aqui e só andava a pele. Saiu: o novo, com
+     TALK OVER de verdade, está lá em cima e devolve antes de chegar nesta linha. */
   if(act==="lpf"||act==="hpf"){ filtMode=act.toUpperCase();
     els.lpf.classList.toggle("on",filtMode==="LPF"); els.hpf.classList.toggle("on",filtMode==="HPF");
     applyAllChFilter(); markMission("filter"); return; }

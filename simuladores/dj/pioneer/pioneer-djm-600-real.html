@@ -349,6 +349,8 @@ const V={ miclevel:.6, michi:.5,micmid:.5,miclow:.5, mixing:.5,hplevel:.7,
   fxsel:0, chsel:0, fxtime:.45, fxdepth:.5 };
 const SWST={selA:0,selB:1,selC:0,selD:0,monoster:1,monosplit:1,fsA:0,fsB:0,fsSmp:0,cfcurve:1};
 const CUEST={talkover:0,cueA:1,cueB:0,cueC:0,cueD:0,cueM:0,cueFX:0};
+/* barramento de fone — não existia neste arquivo até 30/07/2026 */
+let hpCue,hpMst,hpFx,hpMix,hpCueR,hpMstR,hpVol,hpMerge;
 let started=false, ready=false, AC=null, d=null, b=null, fxOn=false, beatIdx=2, powered=true, rngHi=1;
 const BEATS=["1/2","3/4","1/1","2/1","4/1"], BF={"1/2":.5,"3/4":.75,"1/1":1,"2/1":2,"4/1":4};
 
@@ -383,10 +385,23 @@ function makeChain(dk){
   dk.dryG=AC.createGain(); dk.dryG.gain.value=1;     // caminho seco do canal → master
   dk.sendG=AC.createGain(); dk.sendG.gain.value=0;   // envio ao bloco de efeito (quem manda é o CH. SELECT)
   dk.an=AC.createAnalyser(); dk.an.fftSize=256; dk.buf=new Uint8Array(dk.an.fftSize);
+  /* ⛔ 30/07/2026 — SELETOR DE ENTRADA. As chaves selA..selD andavam a pele e
+     paravam aí. Elas escolhem QUAL CONECTOR TRASEIRO alimenta o canal, e fora da
+     posição do cabo o canal EMUDECE. No DJM-600 cada canal tem um PAR diferente:
+       CH-1: CD1/LINE ou LINE · CH-2: CD2/LINE ou PHONO 1 · CH-3: LINE ou PHONO 2
+     Nesta cabine há CD players — as posições de PHONO estão vazias. */
+  dk.entrada=AC.createGain(); dk.entrada.gain.value=1;
+  dk.entrada.connect(dk.low);
   dk.low.connect(dk.mid); dk.mid.connect(dk.hi); dk.hi.connect(dk.trim);
   dk.trim.connect(dk.an); dk.trim.connect(dk.chFader); dk.chFader.connect(dk.xf);
   dk.xf.connect(dk.dryG); dk.dryG.connect(d.masterVol);
   dk.xf.connect(dk.sendG); dk.sendG.connect(fxin);
+  /* ⛔ CUE do canal — PRÉ-FADER, como em todo DJM: é o que deixa escutar a próxima
+     música no fone com o channel fader ainda embaixo. Antes não havia barramento de
+     fone NENHUM neste arquivo: os 7 botões CUE só acendiam e os knobs MIXING/LEVEL
+     giravam no vazio. O fone é OUTRA SAÍDA FÍSICA — não vai ao destination. */
+  dk.cue=AC.createGain(); dk.cue.gain.value=0;
+  dk.trim.connect(dk.cue); dk.cue.connect(hpCue);
 }
 
 /* ===== bloco BEAT EFFECTS — um ramo por efeito (manual DJM-600, pág. "Effects") ===== */
@@ -454,6 +469,24 @@ async function startAudio(){ if(started)return; started=true;
   d.masterVol.connect(d.fader);
   if(d.bal){ d.fader.connect(d.bal); d.bal.connect(AC.destination); } else d.fader.connect(AC.destination);
   d.masterAn=AC.createAnalyser(); d.masterAn.fftSize=256; d.masterBuf=new Uint8Array(d.masterAn.fftSize); d.fader.connect(d.masterAn);
+  /* ===== MONITORAÇÃO DE FONE =====
+     ⛔ 30/07/2026: não existia. Os 7 botões CUE (CH-1..4, MASTER, EFFECTS/SAMPLER)
+     só acendiam, e MIXING / LEVEL / MONO SPLIT giravam no vazio. Fone é OUTRA SAÍDA
+     FÍSICA (jack PHONES do painel frontal): o barramento não vai ao destination. */
+  hpCue=AC.createGain(); hpCue.gain.value=1;      // soma dos canais com CUE apertado
+  hpMst=AC.createGain(); hpMst.gain.value=0;      // CUE do MASTER
+  hpFx =AC.createGain(); hpFx.gain.value=0;       // CUE do EFFECTS/SAMPLER
+  hpMix=AC.createGain(); hpMix.gain.value=1;      // lado CUE, dosado pelo MIXING
+  hpCueR=AC.createGain(); hpMstR=AC.createGain();
+  hpVol=AC.createGain(); hpVol.gain.value=0.5;
+  hpMerge=AC.createChannelMerger(2);
+  d.fader.connect(hpMst); fxin.connect(hpFx); hpFx.connect(hpCue);
+  /* MONO SPLIT: CUE no ouvido esquerdo, MASTER no direito. Caminho FIXO, só o ganho
+     muda — connect() a cada clique empilharia ligação e o fone subiria sozinho. */
+  hpCue.connect(hpMix); hpMix.connect(hpMerge,0,0);
+  hpMix.connect(hpCueR); hpCueR.connect(hpMerge,0,1);
+  hpMst.connect(hpMstR); hpMstR.connect(hpMerge,0,1);
+  hpMerge.connect(hpVol);
   makeChain(d); makeChain(b);
   const spA=AC.createScriptProcessor(512,0,1); d.sp=spA;
   spA.onaudioprocess=e=>{ const out=e.outputBuffer.getChannelData(0);
@@ -472,6 +505,7 @@ async function startAudio(){ if(started)return; started=true;
       out[i]=b.data[i0]*(1-fr)+b.data[i1]*fr; } };
   spB.connect(b.low);
   ready=true; applyAll();
+  aplicarEntradas(); aplicarFone();
   $("#acDot").classList.add("on"); $("#acState").textContent="ligado"; $("#btnStart").textContent="● Áudio ligado";
   if(AC.resume)AC.resume();
   markMission("power");
@@ -497,6 +531,33 @@ function applyDeck(deck){ if(!ready||!deck||!deck.hi)return; const n=chOf(deck);
   deck.trim.gain.value=trimGain(V["trim"+n]); deck.chFader.gain.value=V["fdr"+n];
   const side=assignSideOf(n), g=xfGains();
   deck.xf.gain.value = side==="A"?g.gA : side==="B"?g.gB : 1; }
+/* ===== MONITORAÇÃO DE FONE — escrita em 30/07/2026 =====
+   Os 7 CUE do painel: CH-1..CH-4, MASTER e EFFECTS/SAMPLER. Neste aparelho só duas
+   cadeias de áudio existem (d = CH-1, b = CH-2); os CUE dos canais 3 e 4 apontam
+   para conectores sem nada plugado, e por isso não trazem som — o que é fiel. */
+function aplicarFone(){ if(!ready||!hpCue)return;
+  d.cue.gain.value = CUEST.cueA?1:0;
+  b.cue.gain.value = CUEST.cueB?1:0;
+  hpFx.gain.value  = CUEST.cueFX?1:0;
+  const mx=V.mixing===undefined?0.5:V.mixing;          // MIXING: CUE × MASTER
+  hpMix.gain.value = 1-mx;
+  hpMst.gain.value = (CUEST.cueM?1:0)*mx;
+  /* MONO SPLIT: o canal do CUE na esquerda e o master na direita.
+     SWST.monosplit vem 1 de fábrica = STEREO. */
+  hpCueR.gain.value = SWST.monosplit?1:0;
+  hpVol.gain.value  = Math.pow(V.hplevel===undefined?0.5:V.hplevel,1.7)*1.6;
+}
+/* ===== SELETOR DE ENTRADA =====
+   No DJM-600 cada canal tem um PAR diferente de fontes, e a chave tem 2 posições.
+   Nesta cabine há CD players ligados: as posições de PHONO estão vazias. */
+const SEL_PAR={ selA:["CD1/LINE","LINE"], selB:["CD2/LINE","PHONO 1"],
+                selC:["LINE","PHONO 2"], selD:["CD/LINE","PHONO 3"] };
+function fonteDoCanal(act){ return SEL_PAR[act][SWST[act]?1:0]; }
+function aplicarEntradas(){ if(!ready)return;
+  /* só CH-1 (d) e CH-2 (b) têm cadeia de áudio nesta réplica */
+  [["selA",d],["selB",b]].forEach(([act,dk])=>{ if(!dk||!dk.entrada)return;
+    dk.entrada.gain.value = /PHONO/.test(fonteDoCanal(act)) ? 0 : 1; });
+}
 function applyMaster(){ if(!ready)return;
   /* TALK OVER: atenua 14 dB tudo que não é o microfone (Specifications do manual) */
   d.masterVol.gain.value=V.fdrM*(powered?1:0)*(CUEST.talkover?0.1995:1);
@@ -832,14 +893,35 @@ function onKnob(act){
   else if(act==="cfassA"||act==="cfassB"){ applyDeck(d); applyDeck(b); applyEffect(); paintLeds(); }
   else if(act==="fxtime"||act==="fxdepth"||act==="fxsel"||act==="chsel"){ applyEffect(); }
   else if(act==="masterbal"){ applyMaster(); }
+  /* ⛔ 30/07/2026 — MIXING e LEVEL do fone giravam no vazio: o onKnob não tinha ramo
+     para eles. O portão não pega, porque gravar V[act] já conta como estado mudado;
+     o critério que vale é escrever em AudioParam. */
+  else if(act==="mixing"||act==="hplevel"){ aplicarFone(); }
   if(act==="fxsel"||act==="chsel"){ paintLeds(); markMission("effect"); } }
 function toggleSw(act){ ensure(); teach(infoFor(act));
   if(act==="cfcurve"){ SWST.cfcurve=(SWST.cfcurve+1)%3;
     els.cfcurve.classList.toggle("mid",SWST.cfcurve===1); els.cfcurve.classList.toggle("on",SWST.cfcurve===2);
     applyDeck(d); applyDeck(b); }
-  else { SWST[act]^=1; els[act].classList.toggle("on",!!SWST[act]); } }
+  else { SWST[act]^=1; els[act].classList.toggle("on",!!SWST[act]);
+    /* ⛔ 30/07/2026 — estas chaves andavam a pele e paravam aí. */
+    if(/^sel[A-D]$/.test(act)){ aplicarEntradas(); const f=fonteDoCanal(act);
+      const ch=act.slice(3).replace("A","1").replace("B","2").replace("C","3").replace("D","4");
+      teach2("INPUT SELECT CH-"+ch+" · "+f,
+        (/PHONO/.test(f)
+          ? "<b>"+f+"</b>: entrada de <b>toca-discos</b> com cápsula MM. A agulha entrega um sinal muito mais fraco que o de linha e com os graves rebaixados pela curva de gravação; esta entrada tem pré-amplificador e desfaz a curva (RIAA). A LINE não tem nada disso.<br><br>⚠️ O canal <b>parou de tocar</b>: não há toca-discos ligado neste conector."
+          : "<b>"+f+"</b>: entrada de <b>nível de linha</b> — é o CD player desta cabine. <b>É esta a posição que toca.</b>")); }
+    if(act==="monosplit"){ aplicarFone();
+      teach2("MONO SPLIT / STEREO", SWST.monosplit
+        ? "<b>STEREO</b>: a seleção do CUE sai em estéreo nos dois ouvidos."
+        : "<b>MONO SPLIT</b>: o canal do <b>CUE</b> sai no ouvido <b>esquerdo</b> e o <b>MASTER</b> no <b>direito</b> — é assim que se casa batida sem tirar o fone."); } } }
 function toggleCue(act){ ensure(); CUEST[act]^=1; els[act].classList.toggle("on",!!CUEST[act]); teach(infoFor(act));
-  if(act==="talkover"){ applyMaster(); markMission("talk"); } else markMission("cue"); }
+  /* ⛔ 30/07/2026 — os CUE só acendiam. Agora mandam o canal para o fone. */
+  if(act==="talkover"){ applyMaster(); markMission("talk"); }
+  else { aplicarFone(); markMission("cue");
+    if(/^cue[CD]$/.test(act)&&CUEST[act])
+      teach2("CUE — "+(act==="cueC"?"CH-3":"CH-4"),
+        "O botão está aceso e o canal foi mandado para o fone. ⚠️ Não há nada plugado nos conectores deste canal nesta cabine — sem sinal elétrico chegando, não há o que monitorar."); } }
+function teach2(k,dd){ const K=$("#tK"), D=$("#tD"); if(K)K.textContent=k; if(D)D.innerHTML=dd; }
 function togglePower(){ powered=!powered; els.power.style.opacity=powered?1:.55; if(ready)applyMaster(); teach(infoFor("power")); }
 /* botão laranja: ON/OFF do efeito — mas em AUTO BPM ele é o TAP (manual DJM-600) */
 function toggleFx(){ ensure(); teach(infoFor("tap"));

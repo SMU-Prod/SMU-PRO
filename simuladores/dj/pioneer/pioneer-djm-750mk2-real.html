@@ -397,13 +397,23 @@ const T={
 /* ===== estado ===== */
 let AC=null, started=false, ready=false;
 let master,masterAn,mixBus,fxIn,fxBand,fxDry,fxFilter,fxDelay,fxWet,fxFB,xfA,xfB,thru,masterTap,xfaTap,xfbTap;
+/* fone · MIC + TALK OVER */
+let hpCue,hpMst,hpMix,hpCueR,hpVol,hpMstR,hpMerge,micG,micLow,micHi;
+const ligado={};
 let scIn,scFilter,scDelay,scFB,scWet,noiseSrc,noiseBP,noiseGain,sendWet;
 const chans={};                                   // canais com áudio (1 e 2)
 let xf=0.5, scType=null, fxOn=false, fxIdx=0, fxChIdx=3, beatMult=1, autoMode=true, baseBpm=114;
 let isolator=false, chCurve=1, xfCurve=1, sendOn=false, insertMode=false;
 const fxFreq={LOW:true,MID:true,HI:true};
 const assignMode={1:"A",2:"B",3:"THRU",4:"THRU"};
-const selIdx={1:2,2:2,3:2,4:2};                   // seletor de entrada: PHONO (como na foto)
+/* ⚠️ 30/07/2026 — o seletor nascia em PHONO "como na foto". A foto é um retrato de
+   produto; ela mostra a posição em que o aparelho saiu da fábrica, não o que está
+   ligado NESTA cabine. Aqui há dois DJ players nas RCA de LINE, e a partir de hoje
+   a chave EMUDECE o canal fora da posição do cabo (ordem do dono) — com a chave em
+   PHONO o mixer abriria mudo, sem nada explicando por quê.
+   Nasce em LINE, que é onde o cabo está. Girar para PHONO cala o canal, e a barra
+   de ensino diz o motivo. */
+const selIdx={1:1,2:1,3:1,4:1};                   // 0=USB · 1=LINE · 2=PHONO · 3=RETURN AUX
 /* 11 BEAT FX na ordem do anel serigrafado, de DELAY (7h) a HELIX (5h) */
 const EFFECTS=["DELAY","ECHO","PING PONG","SPIRAL","REVERB","TRANS","FLANGER","PITCH","ROLL","VINYL BRAKE","HELIX"];
 /* CH SELECT na ordem do anel: CF.B · CF.A · MIC · 1 · 2 · 3 · 4 · MASTER */
@@ -478,10 +488,36 @@ async function startAudio(){ if(started)return; started=true;
   xfaTap=AC.createGain(); xfaTap.gain.value=0; xfA.connect(xfaTap); xfaTap.connect(fxIn);
   xfbTap=AC.createGain(); xfbTap.gain.value=0; xfB.connect(xfbTap); xfbTap.connect(fxIn);
 
-  // ---- canais 1 e 2 tocam as bases
-  for(const n of ["1","2"]){
-    const buf=await renderTrack(n), data=buf.getChannelData(0), len=buf.length;
-    const c={ n,buffer:buf,data,len,pos:0,rate:1 };
+  /* ===== MONITORAÇÃO DE FONE =====
+     ⛔ 30/07/2026: era serigrafia. Os 5 CUE, o MONO SPLIT e os knobs MIXING/LEVEL só
+     acendiam. Fone é saída FÍSICA: o barramento não vai ao destination. */
+  hpCue=AC.createGain(); hpCue.gain.value=1;
+  hpMst=AC.createGain(); hpMst.gain.value=0;
+  hpMix=AC.createGain(); hpMix.gain.value=1;
+  hpCueR=AC.createGain(); hpVol=AC.createGain(); hpVol.gain.value=0.5;
+  hpMstR=AC.createGain(); hpMerge=AC.createChannelMerger(2);
+  master.connect(hpMst);
+  hpCue.connect(hpMix); hpMix.connect(hpMerge,0,0);
+  hpMix.connect(hpCueR); hpCueR.connect(hpMerge,0,1);
+  hpMst.connect(hpMstR); hpMstR.connect(hpMerge,0,1);
+  hpMerge.connect(hpVol);
+  /* ===== MIC + TALK OVER =====
+     Não há microfone de verdade; o que existe e É MEDIDO é o estágio de ganho, o EQ
+     e o TALK OVER — que abaixa o PROGRAMA, nunca o microfone. */
+  micG=AC.createGain(); micG.gain.value=0;
+  micLow=AC.createBiquadFilter(); micLow.type="lowshelf";  micLow.frequency.value=100;
+  micHi =AC.createBiquadFilter(); micHi.type="highshelf"; micHi.frequency.value=10000;
+  micG.connect(micLow); micLow.connect(micHi); micHi.connect(master);
+
+  /* ===== as QUATRO tiras de canal =====
+     ⛔ Só existiam a 1 e a 2 — era essa a acusação ".fad": o fader dos canais 3 e 4
+     não tinha nó nenhum para escrever. As 3 e 4 ficam SEM FONTE, o que é fiel
+     (cabine com dois players), e o medidor delas marca zero. */
+  for(const n of ["1","2","3","4"]){
+    const temFonte=(n==="1"||n==="2");
+    const buf=temFonte?await renderTrack(n):null;
+    const data=buf?buf.getChannelData(0):null, len=buf?buf.length:0;
+    const c={ n,buffer:buf,data,len,pos:0,rate:1,temFonte };
     c.trim=AC.createGain(); c.trim.gain.value=0.9;
     c.hi=AC.createBiquadFilter();  c.hi.type="highshelf"; c.hi.frequency.value=13000;
     c.mid=AC.createBiquadFilter(); c.mid.type="peaking";  c.mid.frequency.value=1000; c.mid.Q.value=0.9;
@@ -492,16 +528,27 @@ async function startAudio(){ if(started)return; started=true;
     c.send=AC.createGain(); c.send.gain.value=0;    // envio ao BEAT FX (CH SELECT)
     c.sc=AC.createGain(); c.sc.gain.value=0;        // envio ao SOUND COLOR FX (DUB ECHO)
     c.analyser=AC.createAnalyser();
-    const sp=AC.createScriptProcessor(512,0,1); c.sp=sp;
-    sp.onaudioprocess=e=>{ const out=e.outputBuffer.getChannelData(0); const d=c;
-      for(let i=0;i<out.length;i++){ d.pos+=d.rate; if(d.pos>=len)d.pos-=len; let i0=Math.floor(d.pos)%len; out[i]=data[i0]; } };
-    sp.connect(c.trim); c.trim.connect(c.hi); c.hi.connect(c.mid); c.mid.connect(c.low); c.low.connect(c.color); c.color.connect(c.fader);
-    c.fader.connect(c.analyser); c.fader.connect(c.send); c.send.connect(fxIn);
+    c.entrada=AC.createGain(); c.entrada.gain.value=0;   // seletor de entrada do canal
+    if(temFonte){
+      const sp=AC.createScriptProcessor(512,0,1); c.sp=sp;
+      sp.onaudioprocess=e=>{ const out=e.outputBuffer.getChannelData(0); const d=c;
+        for(let i=0;i<out.length;i++){ d.pos+=d.rate; if(d.pos>=len)d.pos-=len; let i0=Math.floor(d.pos)%len; out[i]=data[i0]; } };
+      sp.connect(c.entrada);
+    }
+    c.entrada.connect(c.trim); c.trim.connect(c.hi); c.hi.connect(c.mid); c.mid.connect(c.low); c.low.connect(c.color);
+    /* ponto PRÉ-FADER: medidor e CUE leem daqui. Baixar o fader não pode apagar o
+       medidor do canal — é assim que se ajusta o TRIM antes de abrir na pista. */
+    c.preFader=AC.createGain(); c.preFader.gain.value=1; c.color.connect(c.preFader);
+    c.preFader.connect(c.analyser);
+    c.cue=AC.createGain(); c.cue.gain.value=0; c.preFader.connect(c.cue); c.cue.connect(hpCue);
+    c.preFader.connect(c.fader);
+    c.fader.connect(c.send); c.send.connect(fxIn);
     c.fader.connect(c.sc); c.sc.connect(scIn);
     c.fader.connect(c.dry); c.dry.connect(busOf(assignMode[n]));
     chans[n]=c;
   }
   applyXf(); routeFx(); applyFxFreq(); configureFx(); applyAllColor(); applySend(); ready=true;
+  aplicarEntradas(); aplicarFone(); aplicarMic();
   $("#acDot").classList.add("on"); $("#acState").textContent="ligado"; $("#btnStart").textContent="● Áudio ligado";
   if(AC.resume)AC.resume(); setInterval(updMeters,55); markMission("start");
 }
@@ -609,13 +656,59 @@ function configureFx(){ dispDirty=true; if(!ready)return;
   else { fxFilter.type="allpass"; fxDelay.delayTime.value=0; fxFB.gain.value=0; fxWet.gain.value=0; setRate(1); setDryDuck(0); }
 }
 
+/* ============ SEÇÕES QUE NÃO EXISTIAM NO ÁUDIO — 30/07/2026 ============ */
+function lig(a){ return !!ligado[a]; }
+function posSw(act){ const el=els[act]; if(!el)return 0;
+  return el.classList.contains("p2")?2:el.classList.contains("p1")?1:0; }
+function aplicarFone(){ if(!ready||!hpCue)return;
+  for(const n of ["1","2","3","4"]) chans[n].cue.gain.value = lig("cue"+n)?1:0;
+  const mx=knobVal("mixing");
+  hpMix.gain.value=1-mx;
+  hpMst.gain.value=(lig("mastercue")?1:0)*mx;
+  /* MONO SPLIT: CUE no ouvido esquerdo, MASTER no direito */
+  hpCueR.gain.value = posSw("hpsplit")===0 ? 0 : 1;
+  hpVol.gain.value = Math.pow(knobVal("hplevel"),1.7)*1.6;
+}
+const TALKOVER_DB=-18;
+function aplicarMic(){ if(!ready||!micG)return;
+  const p=posSw("micsw");                            // 0=OFF 1=ON 2=TALK OVER
+  micG.gain.value = p===0 ? 0 : Math.pow(knobVal("miclvl"),1.7)*1.6;
+  micLow.gain.value=(knobVal("miclow")-0.5)*24;
+  micHi.gain.value =(knobVal("michi") -0.5)*24;
+  /* o TALK OVER abaixa o PROGRAMA, nunca o microfone */
+  if(typeof fxDry!=="undefined"&&fxDry) fxDry.gain.value = p===2 ? Math.pow(10,TALKOVER_DB/20) : 1;
+}
+const SEL_MUDO=["USB","PHONO","RETURN AUX"];         // posições sem cabo nesta cabine
+function aplicarEntradas(){ if(!ready)return;
+  for(const n of ["1","2","3","4"]){ const c=chans[n]; if(!c||!c.entrada)continue;
+    c.entrada.gain.value = (typeof SEL_NAMES!=="undefined" ? SEL_NAMES[selIdx[n]] : "LINE")==="LINE" ? 1 : 0; }
+}
+/* ===================== MEDIDORES =====================
+   ⛔ 30/07/2026. Acendiam por `pico × 1,5`, número sem unidade, com o analisador
+   PÓS-fader e sem retenção de pico. Agora: analisador no ponto PRÉ-FADER (baixar o
+   fader não pode apagar o medidor do canal — é assim que se ajusta o TRIM antes de
+   abrir na pista), escala em dB e balística de PPM. Os canais 3 e 4 passaram a ter
+   tira de áudio de verdade e marcam zero por não ter nada plugado, em vez de um
+   `lvl=0` fixo no código.
+   O medidor NÃO tem animação: lê AnalyserNode. Sem sinal elétrico, nada acende. */
+const MET_ZERO_DBFS=-12, MET_MUDO=-999, MET_QUEDA_DB_S=26;
+const metNivel={}; let metT=0;
+function picoDb(an){ if(!an)return MET_MUDO;
+  const b=new Uint8Array(an.fftSize); an.getByteTimeDomainData(b);
+  let pk=0; for(const v of b){ const x=Math.abs(v-128)/128; if(x>pk)pk=x; }
+  return pk>1e-5 ? 20*Math.log10(pk)-MET_ZERO_DBFS : MET_MUDO; }
 function updMeters(){ if(!ready)return;
-  for(const n of ["1","2"]){ const c=chans[n]; const b=new Uint8Array(c.analyser.fftSize); c.analyser.getByteTimeDomainData(b);
-    let pk=0; for(const v of b){ const x=Math.abs(v-128)/128; if(x>pk)pk=x; } lvl["meter"+n]=clamp(pk*1.5,0,1); }
-  lvl.meter3=0; lvl.meter4=0;
-  const mb=new Uint8Array(masterAn.fftSize); masterAn.getByteTimeDomainData(mb); let mp=0; for(const v of mb){const x=Math.abs(v-128)/128;if(x>mp)mp=x;}
-  lvl.mmeterL=clamp(mp*1.5,0,1); lvl.mmeterR=clamp(mp*1.5,0,1);
-  const cl=$("#clipLed"); if(cl) cl.style.background = mp>0.92 ? "#ff4a3d" : "";
+  const agora=performance.now(), dt=metT?Math.min((agora-metT)/1000,0.25):0; metT=agora;
+  const reter=(id,an)=>{ const novo=picoDb(an);
+    const ant=metNivel[id]===undefined?MET_MUDO:metNivel[id];
+    const caindo=(ant<=MET_MUDO)?MET_MUDO:ant-MET_QUEDA_DB_S*dt;
+    metNivel[id]=Math.max(novo,caindo,MET_MUDO); return metNivel[id]; };
+  const frac=db=>db<=MET_MUDO?0:clamp((db+30)/42,0,1);   // −30 dB … +12 dB no curso
+  for(const n of ["1","2","3","4"]){ const c=chans[n];
+    lvl["meter"+n]=frac(reter("meter"+n,c?c.analyser:null)); }
+  const m=reter("mmeter",masterAn);
+  lvl.mmeterL=frac(m); lvl.mmeterR=lvl.mmeterL;
+  const cl=$("#clipLed"); if(cl) cl.style.background = m>=12 ? "#ff4a3d" : "";
 }
 function drawMeters(){ for(const id in meters){ const segs=meters[id]; const on=Math.round(lvl[id]*segs.length);
   for(let i=0;i<segs.length;i++) segs[i].classList.toggle("on", (segs.length-i)<=on); } }
@@ -896,8 +989,12 @@ function build(){
   const dp=POS.display; const dc=document.createElement("canvas"); dc.className="dispc";
   dc.width=320; dc.height=Math.round(320*dp[3]/(dp[2]*AR));
   pct(dc,dp[0],dp[1],dp[2],dp[3]); deck.appendChild(dc); dispCtx=dc.getContext("2d"); dispW=dc.width; dispH=dc.height;
-  const dhit=document.createElement("div"); dhit.className="hit"; pct(dhit,dp[0],dp[1],dp[2],dp[3]); deck.appendChild(dhit);
-  dhit.addEventListener("mouseenter",()=>teach(T.display[0],T.display[1]));
+  /* O visor é INDICADOR: a barra de ensino vai no próprio canvas. Havia um .hit por
+     cima, e .hit sem tratador de clique é o que o portão acusa como "sem tratador" —
+     falso positivo, display não se clica. Estilo inline não resolve: a lista de
+     candidatos do portão sai das REGRAS de CSS, e .hit declara cursor:pointer. */
+  dc.style.pointerEvents="auto"; dc.style.cursor="default";
+  dc.addEventListener("mouseenter",()=>teach(T.display[0],T.display[1]));
   renderMission();
 }
 
@@ -930,7 +1027,17 @@ function flash(el){ if(!el)return; el.style.filter="brightness(1.7)"; setTimeout
 function onControl(act,base,info,e){ teach(info[0],info[1]);
   if(!started){ startAudio(); return; }
   flash(els[act]);
-  if(/^cue[1-4]$/.test(act)||act==="mastercue"){ els[act].classList.toggle("on"); return; }
+  /* ⛔ 30/07/2026 — os 5 CUE só acendiam. O CUE é PRÉ-FADER: dá para escutar a
+     próxima música com o channel fader ainda embaixo. */
+  if(/^cue[1-4]$/.test(act)||act==="mastercue"){
+    ligado[act]=!ligado[act]; els[act].classList.toggle("on",ligado[act]); aplicarFone(); return; }
+  /* UTILITY — o manual põe o menu de ajustes atrás deste botão. Não há tela de
+     UTILITY montada nesta réplica: o que existe é o estado, e o aviso honesto. */
+  if(act==="utility"){ ligado[act]=!ligado[act]; els[act].classList.toggle("on",ligado[act]);
+    teach("UTILITY", ligado[act]
+      ? "Menu de ajustes do aparelho (curva de fader, nível do TALK OVER, MIDI, brilho do visor…). ⚠️ A tela de UTILITY não foi montada nesta réplica — o botão guarda o estado, mas não há menu para navegar."
+      : "UTILITY fechado.");
+    return; }
   if(/^sc/.test(base)){ const name=(base==="scDUBECHO")?"DUB ECHO":base.slice(2); const already=(scType===name);
     $$(".scb",deck).forEach(x=>x.classList.remove("on"));
     scType=already?null:name; if(!already)els[act].classList.add("on");
@@ -938,7 +1045,15 @@ function onControl(act,base,info,e){ teach(info[0],info[1]);
   if(/^fxf/.test(base)){ const b=base.slice(3); fxFreq[b]=!fxFreq[b]; els[act].classList.toggle("on",fxFreq[b]); applyFxFreq(); return; }
   if(/^sel[1-4]$/.test(act)){ const n=act.slice(3); selIdx[n]=(selIdx[n]+1)%4;
     els[act].style.rotate=SEL_ANG[selIdx[n]]+"deg";
-    teach(T.sel[0],"Canal "+n+" agora em <b>"+SEL_NAMES[selIdx[n]]+"</b>. "+T.sel[1]); return; }
+    aplicarEntradas();                       // ⛔ antes a chave girava e o áudio não mudava
+    const nome=SEL_NAMES[selIdx[n]];
+    teach(T.sel[0],"Canal "+n+" agora em <b>"+nome+"</b>. "+T.sel[1]
+      +(nome==="LINE" ? "<br><br>É esta a posição em que o cabo está nesta cabine — <b>o canal toca</b>."
+        : "<br><br>⚠️ O canal <b>parou de tocar</b>: a chave saiu da entrada onde o cabo está. "
+          +(nome==="PHONO"
+            ? "O <b>PHONO</b> é para toca-discos com cápsula MM: a agulha entrega um sinal muito mais fraco e com os graves rebaixados pela curva de gravação, e esta entrada tem pré-amplificador para levantar e desfazer essa curva (RIAA). Ligar aparelho de linha aqui distorce."
+            : "Não há nada plugado neste conector.")));
+    return; }
   if(/^assign[1-4]$/.test(act)){ setAssign(act.slice(6)); return; }
   if(act==="micsw"||act==="hpsplit"||act==="eqcurve"||act==="chfadercv"||act==="crossfadercv"||act==="sendsw"||act==="rettype"){
     const el=els[act];
@@ -950,10 +1065,25 @@ function onControl(act,base,info,e){ teach(info[0],info[1]);
     if(act==="chfadercv"){ chCurve=nx; refreshFaders(); }
     if(act==="crossfadercv"){ xfCurve=nx; applyXf(); }
     if(act==="rettype"){ insertMode=(nx===2); applySend(); }
+    /* ⛔ 30/07/2026 — micsw, hpsplit e sendsw andavam a pele e paravam aí. */
+    if(act==="micsw"){ aplicarMic();
+      teach("MIC — OFF / ON / TALK OVER",
+        nx===0?"Microfone <b>desligado</b>."
+       :nx===1?"Microfone <b>ligado</b>, sem atenuar a música."
+       :"<b>TALK OVER</b>: a música baixa <b>18 dB</b> sozinha quando você fala. Quem abaixa é o programa, nunca o microfone."); }
+    if(act==="hpsplit"){ aplicarFone();
+      teach("MONO SPLIT / STEREO", nx===0
+        ? "<b>MONO SPLIT</b>: o CUE sai no ouvido <b>esquerdo</b> e o MASTER no <b>direito</b> — é assim que se casa batida sem tirar o fone."
+        : "<b>STEREO</b>: a seleção do CUE sai em estéreo nos dois ouvidos."); }
+    if(act==="sendsw"){ applySend();
+      teach("SEND — BUILT-IN / EXTERNAL", nx===0
+        ? "<b>BUILT-IN</b>: o envio vai para o efeito interno do aparelho."
+        : "<b>EXTERNAL</b>: o envio sai pelos conectores <b>SEND</b> da traseira, para um processador externo, e volta pelo <b>RETURN</b>."); }
     return; }
   if(act==="beatL"||act==="beatR"){ let i=BEATS.indexOf(beatMult); i=clamp(i+(act==="beatR"?1:-1),0,BEATS.length-1); beatMult=BEATS[i]; configureFx(); applyScBus(); return; }
   if(act==="autotap"){ autoMode=!autoMode; els[act].classList.toggle("on",!autoMode); dispDirty=true; return; }
-  if(act==="utility"){ els[act].classList.toggle("on"); return; }
+  /* ⚠️ o antigo tratador do UTILITY ficava aqui e só acendia. Saiu: o novo, com
+     estado e o aviso do que não existe, está lá em cima e devolve antes daqui. */
   if(act==="tap"){ tapTempo(); return; }
   if(act==="fxsel"){ fxIdx=(fxIdx+1)%EFFECTS.length; els.fxsel.style.rotate=(((fxIdx+0.5)/EFFECTS.length-0.5)*300)+"deg";
     teach("BEAT FX — "+EFFECTS[fxIdx],T.fxsel[1]); configureFx(); return; }

@@ -47,10 +47,30 @@
      ⛔ a razao do ATRIBUTO do canvas e derivada deste mesmo AR (razao=(w/h)*AR):
         se as duas nao baterem, o visor sai borrado. Mudou aqui, mude o const AR. */
   .deck{position:relative;width:100%;aspect-ratio:9257/4997;font-family:"Arial Narrow",Arial,Helvetica,sans-serif}
+  /* ⛔ 30/07/2026 — a borda FRONTAL era feita de 8 RETAS.
+     O corpo do OPUS-QUAD é em leque: a frente dele é uma curva contínua. Aqui ela
+     estava aproximada por segmentos em porcentagens redondas (99.5→92→80→65→50…),
+     e a maior quina entre dois segmentos media 18,8° — a 1160 px de largura cada
+     reta tem ~175 px, então o facetamento aparecia a olho nu. Era isto que fazia o
+     aparelho não bater com a foto.
+     ⚠️ A SILHUETA NÃO FOI MUDADA: os 15 vértices originais continuam todos aqui,
+     nas mesmas coordenadas. O que entrou foi uma spline de Catmull-Rom PASSANDO por
+     eles (6 amostras por trecho, 55 pontos), que só tira as quinas. Mudar a forma
+     exigiria medir o render top-down oficial, que não temos — e chutar contorno é
+     exatamente o que a Regra 2 proíbe.
+     O topo e as laterais continuam retos porque no aparelho são retos.
+     Para refazer: ferramentas/ + o script de spline; entra a lista de vértices,
+     sai esta linha. */
   .body{position:absolute;inset:0;z-index:0;
-    clip-path:polygon(3.4% 14.6%, 30.9% 12.5%, 30.9% .6%, 69.1% .6%, 69.1% 12.5%, 96.6% 14.6%,
-                      99.5% 90.0%, 92% 94.6%, 80% 97.3%, 65% 98.9%, 50% 99.5%, 35% 98.9%,
-                      20% 97.3%, 8% 94.6%, .5% 90.0%);
+    clip-path:polygon(3.4% 14.6%, 30.9% 12.5%, 30.9% 0.6%, 69.1% 0.6%, 69.1% 12.5%, 96.6% 14.6%, 99.5% 90%,
+                      98.74% 90.52%, 97.72% 91.26%, 96.5% 92.13%, 95.11% 93.04%, 93.6% 93.89%, 92% 94.6%,
+                      90.3% 95.17%, 88.44% 95.68%, 86.47% 96.14%, 84.39% 96.55%, 82.23% 96.94%, 80% 97.3%,
+                      77.67% 97.64%, 75.22% 97.95%, 72.69% 98.23%, 70.11% 98.48%, 67.53% 98.7%, 65% 98.9%,
+                      62.5% 99.07%, 60% 99.22%, 57.5% 99.34%, 55% 99.43%, 52.5% 99.48%, 50% 99.5%,
+                      47.5% 99.48%, 45% 99.43%, 42.5% 99.34%, 40% 99.22%, 37.5% 99.07%, 35% 98.9%,
+                      32.47% 98.7%, 29.89% 98.48%, 27.31% 98.23%, 24.78% 97.95%, 22.33% 97.64%, 20% 97.3%,
+                      17.77% 96.94%, 15.61% 96.55%, 13.53% 96.14%, 11.56% 95.68%, 9.7% 95.17%, 8% 94.6%,
+                      6.4% 93.89%, 4.89% 93.04%, 3.5% 92.13%, 2.28% 91.26%, 1.26% 90.52%, 0.5% 90%);
     background:
       linear-gradient(101deg,#161719 0%,#1d1e21 14%,#232427 33%,#1e1f22 57%,#191a1c 80%,#141517 100%);
     filter:drop-shadow(0 22px 34px rgba(0,0,0,.75))}
@@ -678,7 +698,14 @@ function mkDeck(buf,n){
         if(d.loopOn&&d.rate<0&&d.pos<=d.loopStart)d.pos=d.loopEnd-(d.loopStart-d.pos);
         if(d.pos>=len)d.pos-=len; else if(d.pos<0)d.pos+=len; }
       let i0=Math.floor(d.pos); const fr=d.pos-i0; i0=((i0%len)+len)%len; const i1=(i0+1)%len;
-      out[i]=data[i0]*(1-fr)+data[i1]*fr; } };
+      /* ⛔ 30/07/2026 — PRATO PARADO TEM DE SAIR MUDO. Esta linha entregava a amostra
+         interpolada SEMPRE. Com o deck pausado a posição congela e o que saía era o
+         MESMO valor repetido: isso é tensão contínua, não silêncio — e o medidor do
+         mixer media essa tensão, ficando aceso com o aparelho parado. O limiar vale
+         para o prato SEGURADO também e não corta a freada: enquanto o rate cai ainda
+         há áudio de verdade, cada vez mais grave. Medido primeiro no Denon Prime 4. */
+      const parado=Math.abs(d.rate)<1e-3;
+      out[i]=parado?0:(data[i0]*(1-fr)+data[i1]*fr); } };
   d.brake=0.0022;
   /* cadeia: sp -> trim -> LOW -> MID -> HI -> COLOR -> (crush|limpo) -> chOut -> fader -> assign */
   sp.connect(d.trim); d.trim.connect(d.eqLow); d.eqLow.connect(d.eqMid); d.eqMid.connect(d.eqHi);
@@ -691,7 +718,13 @@ function mkDeck(buf,n){
   nsrc.buffer=nb; nsrc.loop=true; const nf=AC.createBiquadFilter(); nf.type="bandpass"; nf.frequency.value=1400; nf.Q.value=0.6;
   nsrc.connect(nf); nf.connect(d.nz); d.nz.connect(d.chOut); nsrc.start(); d.nzf=nf;
   d.chOut.connect(d.fader);
-  d.fader.connect(d.an);
+  /* ⛔ 30/07/2026 — o medidor do canal estava PÓS-fader (`d.fader.connect(d.an)`).
+     O manual do OPUS-QUAD é explícito: "Channel level indicator — Displays the
+     volume level BEFORE the sound passes through the channel fader."
+     Baixar o fader apagava o medidor, e é justamente com o fader fechado que se
+     acerta o TRIM antes de abrir o canal na pista. O CUE já saía do lugar certo
+     (d.chOut) — agora o medidor sai do mesmo ponto. */
+  d.chOut.connect(d.an);
   /* CROSSFADER ASSIGN A / THRU / B (manual, secao do canal) */
   d.aA=AC.createGain(); d.aB=AC.createGain(); d.aT=AC.createGain();
   d.fader.connect(d.aA); d.fader.connect(d.aB); d.fader.connect(d.aT);
@@ -1317,13 +1350,33 @@ function rms(an){ if(!an)return 0; const b=new Uint8Array(an.frequencyBinCount);
   let s=0; for(let i=0;i<b.length;i++){ const v=(b[i]-128)/128; s+=v*v; } return Math.sqrt(s/b.length); }
 function setMeter(el,v){ if(!el)return; const n=el.children.length, lit=Math.round(clamp(v,0,1)*n);
   for(let i=0;i<n;i++) el.children[i].classList.toggle("on",i<lit); }
+/* ⛔ 30/07/2026 — a escala era `rms × 3,1`: número sem unidade, e RMS em vez de
+   PICO. Um medidor de LED de mixer é de pico — é o pico que estoura, não a média.
+   Agora: pico convertido para dB, com o topo ancorado em 0 dBFS, e balística de
+   PPM (ataque instantâneo, queda controlada). Sem a retenção, a janela de leitura
+   cai entre um bumbo e outro e o que se mede é o ponto do loop, não o ganho.
+   O medidor NÃO tem animação: lê AnalyserNode. Sem sinal, nada acende. */
+const MET_ZERO_DBFS=-12, MET_MUDO=-999, MET_QUEDA_DB_S=26;
+const metNivel={}; let metT=0;
+function picoDb(an){ if(!an)return MET_MUDO;
+  const b=new Uint8Array(an.fftSize); an.getByteTimeDomainData(b);
+  let pk=0; for(let i=0;i<b.length;i++){ const x=Math.abs(b[i]-128)/128; if(x>pk)pk=x; }
+  return pk>1e-5 ? 20*Math.log10(pk)-MET_ZERO_DBFS : MET_MUDO; }
 function updateMeters(){
   /* o medidor de canal le ANTES do fader (manual: "volume level before the
-     sound passes through the channel fader") — por isso o analisador do deck. */
+     sound passes through the channel fader") — por isso o analisador do deck.
+     ⚠️ Este comentário já estava aqui e ESTAVA CERTO; quem estava errado era a
+     ligação, que pendurava o analisador no d.fader. Corrigido para d.chOut. */
+  const agora=performance.now(), dt=metT?Math.min((agora-metT)/1000,0.25):0; metT=agora;
+  const reter=(id,an)=>{ const novo=ready?picoDb(an):MET_MUDO;
+    const ant=metNivel[id]===undefined?MET_MUDO:metNivel[id];
+    const caindo=(ant<=MET_MUDO)?MET_MUDO:ant-MET_QUEDA_DB_S*dt;
+    metNivel[id]=Math.max(novo,caindo,MET_MUDO); return metNivel[id]; };
+  const frac=db=>db<=MET_MUDO?0:clamp((db+30)/42,0,1);      // −30 dB … +12 dB no curso
   for(let n=1;n<=4;n++){ const d=DK[String(n)];
-    setMeter(els["meter"+n], (ready&&d)?rms(d.an)*3.1:0); }
-  const vm=ready?rms(masterAn)*3.1:0;
-  setMeter(els.mmL,vm); setMeter(els.mmR,vm*0.96);
+    setMeter(els["meter"+n], frac(reter("meter"+n, d?d.an:null))); }
+  const vm=frac(reter("mm",masterAn));
+  setMeter(els.mmL,vm); setMeter(els.mmR,vm);
 }
 
 /* ===================== LOOP DE QUADRO ===================== */
