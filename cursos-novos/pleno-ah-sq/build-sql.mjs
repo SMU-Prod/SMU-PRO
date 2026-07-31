@@ -22,7 +22,10 @@ const QQ=n=>"5504c000-5011-4a00-9000-0000000000f"+n.toString(16);
 // pertence (nem deve pertencer) a faixa 5504c000.
 conferirFaixa(faixa("pleno-som"), [MODULE, LESSON, QUIZ, ...Array.from({length:8},(_,i)=>QQ(i+1))], [COURSE]);
 const conteudo=fs.readFileSync(path.join(__dirname,"aula-ah-sq.fragment.html"),"utf8").trim();
-const sim=fs.readFileSync(path.join(ROOT,"simuladores/som/allen-heath-sq.html"),"utf8");
+/* Caminho FIXO: renomear/apagar o simulador nao se corrige aqui sozinho. */
+const SIM=path.join(ROOT,"simuladores/som/allen-heath-sq.html");
+if(!fs.existsSync(SIM)){console.error(`ABORTADO: simulador nao encontrado: ${SIM}`);console.error(`Renomeado ou apagado? Corrija o caminho — a aula iria ao ar sem simulador.`);process.exit(1);}
+const sim=fs.readFileSync(SIM,"utf8");
 const questoes=[
   {t:'O que é o "SuperStrip" da Allen & Heath SQ?',e:"É uma seção de encoders físicos dedicados — um para cada bloco de processamento (trim, HPF, PEQ, gate, comp, pan) — que agem no canal selecionado, dando operação rápida e tátil.",
    o:[["Um tipo de microfone", false],["Uma seção de botões físicos, um para cada bloco de processamento do canal selecionado", true],["A tela de cenas", false],["Um efeito de reverb", false]]},

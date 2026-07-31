@@ -36,9 +36,29 @@ function deriveTipo(name) {
   if (/-lab$/i.test(name)) return "lab";
   return "sim";
 }
+/* A réplica fiel SUBSTITUI a versão genérica: existindo `X-real.html`, o `X.html` sai
+   do catálogo (senão o portal mostraria o mesmo aparelho duas vezes).
+   ⚠️ Isto é a ÚNICA forma de um simulador afetar outro neste projeto — a regra da casa é
+   que dá para apagar e incluir sem mexer em nada. Por isso a supressão agora é ANUNCIADA,
+   nome por nome: antes só saía um total ("200 de 207") e o arquivo sumia do portal calado.
+   O risco concreto: quem criar `m7cl-real.html` amanhã derruba o `m7cl.html` de hoje sem
+   perceber — e são 144 arquivos a um nome de distância disso. */
 function dedupe(entries) {
-  const realBases = new Set(entries.filter((e) => e.tipo === "real").map((e) => e.arquivo.replace(/-real\.html$/i, "")));
-  return entries.filter((e) => e.tipo === "real" ? true : !realBases.has(e.arquivo.replace(/\.html$/i, "")));
+  const semExt = (a) => a.replace(/-real\.html$/i, "").replace(/\.html$/i, "");
+  const porBase = new Map();
+  for (const e of entries) if (e.tipo === "real") porBase.set(semExt(e.arquivo), e.arquivo);
+  const suprimidos = [];
+  const mantidos = entries.filter((e) => {
+    if (e.tipo === "real") return true;
+    const dono = porBase.get(semExt(e.arquivo));
+    if (dono) { suprimidos.push({ saiu: e.arquivo, por: dono }); return false; }
+    return true;
+  });
+  if (suprimidos.length) {
+    console.log(`[catalog] ${suprimidos.length} suprimido(s) por existir a réplica -real (continuam servidos, mas FORA do portal):`);
+    for (const s of suprimidos) console.log(`[catalog]    ${s.saiu}  <-  substituído por ${s.por}`);
+  }
+  return mantidos;
 }
 
 function walk(dir) {

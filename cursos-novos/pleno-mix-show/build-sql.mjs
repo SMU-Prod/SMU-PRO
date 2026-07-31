@@ -27,7 +27,10 @@ const QQ = (n) => "5504c000-5011-4a00-9000-0000000000e" + n.toString(16); // e1.
 conferirFaixa(faixa("pleno-som"), [MODULE, LESSON, QUIZ, ...Array.from({ length: 8 }, (_, i) => QQ(i + 1))], [COURSE]);
 
 const conteudo = fs.readFileSync(path.join(__dirname, "aula-mix-show.fragment.html"), "utf8").trim();
-const simulador = fs.readFileSync(path.join(ROOT, "simuladores/som/mix-show.html"), "utf8");
+/* Caminho FIXO: renomear/apagar o simulador nao se corrige aqui sozinho. */
+const SIM = path.join(ROOT, "simuladores/som/mix-show.html");
+if (!fs.existsSync(SIM)) { console.error(`ABORTADO: simulador nao encontrado: ${SIM}`); console.error(`Renomeado ou apagado? Corrija o caminho — a aula iria ao ar sem simulador.`); process.exit(1); }
+const simulador = fs.readFileSync(SIM, "utf8");
 
 const questoes = [
   { t:"Numa mixagem de show, o que deve ficar mais em evidência para a plateia?",

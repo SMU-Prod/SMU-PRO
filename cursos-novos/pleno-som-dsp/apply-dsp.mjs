@@ -27,7 +27,10 @@ conferirFaixa(F, [MOD_ID, AULA_VENU]);
 console.log("faixa OK:", F.mod, "| módulo", MOD_ID, "| aula", AULA_VENU);
 
 const conteudo = fs.readFileSync(ROOT + "/cursos-novos/pleno-som-dsp/aula-venu360.conteudo.html", "utf8");
-const simHtml = fs.readFileSync(ROOT + "/simuladores/som/dbx-venu360-real.html", "utf8");
+/* Caminho FIXO: renomear/apagar o simulador nao se corrige aqui sozinho. */
+const SIM = ROOT + "/simuladores/som/dbx-venu360-real.html";
+if (!fs.existsSync(SIM)) { console.error(`ABORTADO: simulador nao encontrado: ${SIM}`); console.error(`Renomeado ou apagado? Corrija o caminho — a aula iria ao ar sem simulador.`); process.exit(1); }
+const simHtml = fs.readFileSync(SIM, "utf8");
 
 async function upsert(tabela, row) {
   const r = await fetch(`${BASE}/${tabela}`, {

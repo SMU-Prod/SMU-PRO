@@ -37,6 +37,13 @@ L.push("");
 let total = 0;
 for (const m of MAP) {
   const abs = path.join(ROOT, m.file);
+  /* MAP e' lista FIXA: simulador apagado/renomeado nao se corrige sozinho aqui. */
+  if (!fs.existsSync(abs)) {
+    console.error(`ABORTADO: ${m.curso} aponta para ${m.file}, que nao existe no disco.`);
+    console.error(`Ajuste o MAP deste script — publicar sem ele deixaria a aula ${m.lesson}`);
+    console.error(`com o simulador ANTIGO no banco, sem avisar ninguem.`);
+    process.exit(1);
+  }
   const html = fs.readFileSync(abs, "utf8");
   total += html.length;
   L.push(`-- ${m.curso}  <-  ${m.file}  (${(html.length / 1024).toFixed(1)} KB)`);

@@ -42,6 +42,14 @@ L.push("");
 let total = 0;
 for (const m of MAP) {
   const abs = path.join(ROOT, m.file);
+  /* O MAP e' lista FIXA: apagar ou renomear um simulador nao chega aqui sozinho. Sem esta
+     guarda o script morria num ENOENT cru, sem dizer qual mesa nem o que fazer. */
+  if (!fs.existsSync(abs)) {
+    console.error(`ABORTADO: ${m.mesa} aponta para ${m.file}, que nao existe no disco.`);
+    console.error(`Foi renomeado ou apagado? Ajuste o MAP deste script. Publicar sem ele`);
+    console.error(`deixaria a aula ${m.lesson} com o simulador ANTIGO no banco, calada.`);
+    process.exit(1);
+  }
   const html = fs.readFileSync(abs, "utf8");
   total += html.length;
   L.push(`-- ${m.mesa}  <-  ${m.file}  (${(html.length / 1024).toFixed(1)} KB)`);

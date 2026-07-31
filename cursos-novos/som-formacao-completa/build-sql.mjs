@@ -33,7 +33,10 @@ conferirFaixa(faixa("pleno-som"), [ID.module, ID.lesson, ID.quiz, ...Array.from(
 
 // ---- conteúdo ----
 const conteudo = fs.readFileSync(path.join(__dirname, "aula-01-yamaha-cl5.fragment.html"), "utf8").trim();
-const simulador = fs.readFileSync(path.join(ROOT, "simuladores/som/yamaha-cl5.html"), "utf8");
+/* Caminho FIXO: renomear/apagar o simulador nao se corrige aqui sozinho. */
+const SIM = path.join(ROOT, "simuladores/som/yamaha-cl5.html");
+if (!fs.existsSync(SIM)) { console.error(`ABORTADO: simulador nao encontrado: ${SIM}`); console.error(`Renomeado ou apagado? Corrija o caminho — a aula iria ao ar sem simulador.`); process.exit(1); }
+const simulador = fs.readFileSync(SIM, "utf8");
 
 // ---- quiz ----
 const quiz = {

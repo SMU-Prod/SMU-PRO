@@ -8,15 +8,23 @@ export const SIMULATORS: Simulator[] = [
     "segmento": "dj",
     "nivel": "avancado",
     "tipo": "real",
-    "arquivo": "/simuladores/dj/akai-mpc-real.html"
+    "arquivo": "/simuladores/dj/akai/akai-mpc-real.html"
   },
   {
-    "id": "dj-pioneer-djm-v10-real",
-    "titulo": "Cabine 6 canais — 2× CDJ-3000 + DJM-V10",
+    "id": "dj-alphatheta-opus-quad-real",
+    "titulo": "AlphaTheta OPUS-QUAD — réplica fiel",
     "segmento": "dj",
     "nivel": "avancado",
     "tipo": "real",
-    "arquivo": "/simuladores/dj/pioneer-djm-v10-real.html"
+    "arquivo": "/simuladores/dj/alphatheta/alphatheta-opus-quad-real.html"
+  },
+  {
+    "id": "dj-alphatheta-xdj-az-real",
+    "titulo": "AlphaTheta XDJ-AZ — réplica fiel",
+    "segmento": "dj",
+    "nivel": "avancado",
+    "tipo": "real",
+    "arquivo": "/simuladores/dj/alphatheta/alphatheta-xdj-az-real.html"
   },
   {
     "id": "dj-pioneer-cdj2000-djm900-real",
@@ -24,7 +32,7 @@ export const SIMULATORS: Simulator[] = [
     "segmento": "dj",
     "nivel": "avancado",
     "tipo": "real",
-    "arquivo": "/simuladores/dj/pioneer-cdj2000-djm900-real.html"
+    "arquivo": "/simuladores/dj/pioneer/pioneer-cdj2000-djm900-real.html"
   },
   {
     "id": "dj-pioneer-cdj-djm-real",
@@ -32,111 +40,231 @@ export const SIMULATORS: Simulator[] = [
     "segmento": "dj",
     "nivel": "avancado",
     "tipo": "real",
-    "arquivo": "/simuladores/dj/pioneer-cdj-djm-real.html"
-  },
-  {
-    "id": "dj-dj-setup-gain-real",
-    "titulo": "Configuração do Setup — ganho, níveis e som limpo",
-    "segmento": "dj",
-    "nivel": "avancado",
-    "tipo": "real",
-    "arquivo": "/simuladores/dj/dj-setup-gain-real.html"
-  },
-  {
-    "id": "dj-dj-marca-lab",
-    "titulo": "Construtor de Marca do DJ — decisões de carreira",
-    "segmento": "dj",
-    "nivel": "avancado",
-    "tipo": "lab",
-    "arquivo": "/simuladores/dj/dj-marca-lab.html"
+    "arquivo": "/simuladores/dj/pioneer/pioneer-cdj-djm-real.html"
   },
   {
     "id": "dj-denon-prime4-real",
-    "titulo": "Denon Prime 4+ — All-in-One 4 decks",
+    "titulo": "Denon DJ Prime 4 — réplica fiel",
     "segmento": "dj",
     "nivel": "avancado",
     "tipo": "real",
-    "arquivo": "/simuladores/dj/denon-prime4-real.html"
+    "arquivo": "/simuladores/dj/denon/denon-prime4-real.html"
   },
   {
-    "id": "dj-dj-etica-lab",
-    "titulo": "Ética na Cabine — decisões de quem é profissional",
-    "segmento": "dj",
-    "nivel": "avancado",
-    "tipo": "lab",
-    "arquivo": "/simuladores/dj/dj-etica-lab.html"
-  },
-  {
-    "id": "dj-dj-analise-lab",
-    "titulo": "Lab de Análise — escolha a próxima música certa",
-    "segmento": "dj",
-    "nivel": "avancado",
-    "tipo": "lab",
-    "arquivo": "/simuladores/dj/dj-analise-lab.html"
-  },
-  {
-    "id": "dj-dj-bpm-genero-lab",
-    "titulo": "Lab de BPM e Gêneros — treine o seu relógio interno",
-    "segmento": "dj",
-    "nivel": "avancado",
-    "tipo": "lab",
-    "arquivo": "/simuladores/dj/dj-bpm-genero-lab.html"
-  },
-  {
-    "id": "dj-dj-caixas-lab-real",
-    "titulo": "Laboratório de Caixas de Som — monte o P.A. do DJ",
+    "id": "dj-denon-x1850-real",
+    "titulo": "Denon DJ X1850 PRIME — réplica fiel",
     "segmento": "dj",
     "nivel": "avancado",
     "tipo": "real",
-    "arquivo": "/simuladores/dj/dj-caixas-lab-real.html"
+    "arquivo": "/simuladores/dj/denon/denon-x1850-real.html"
   },
   {
-    "id": "dj-dj-fones-lab-real",
-    "titulo": "Laboratório de Fones de DJ — escute a diferença",
+    "id": "dj-numark-ns7-real",
+    "titulo": "Numark NS7 — réplica fiel",
     "segmento": "dj",
     "nivel": "avancado",
     "tipo": "real",
-    "arquivo": "/simuladores/dj/dj-fones-lab-real.html"
+    "arquivo": "/simuladores/dj/numark/numark-ns7-real.html"
   },
   {
-    "id": "dj-dj-historia-lab",
-    "titulo": "Linha do Tempo do DJ — dos block parties ao streaming",
+    "id": "dj-pioneer-cdj-1000mk3-real",
+    "titulo": "Pioneer CDJ-1000MK3 — réplica fiel",
     "segmento": "dj",
     "nivel": "avancado",
-    "tipo": "lab",
-    "arquivo": "/simuladores/dj/dj-historia-lab.html"
+    "tipo": "real",
+    "arquivo": "/simuladores/dj/pioneer/pioneer-cdj-1000mk3-real.html"
   },
   {
-    "id": "dj-dj-estrutura-lab",
-    "titulo": "Mapa da Música — estrutura, frases e ponto de mix",
+    "id": "dj-pioneer-cdj-100s-real",
+    "titulo": "Pioneer CDJ-100S — réplica fiel",
     "segmento": "dj",
     "nivel": "avancado",
-    "tipo": "lab",
-    "arquivo": "/simuladores/dj/dj-estrutura-lab.html"
+    "tipo": "real",
+    "arquivo": "/simuladores/dj/pioneer/pioneer-cdj-100s-real.html"
+  },
+  {
+    "id": "dj-pioneer-cdj-200-real",
+    "titulo": "Pioneer CDJ-200 — réplica fiel",
+    "segmento": "dj",
+    "nivel": "avancado",
+    "tipo": "real",
+    "arquivo": "/simuladores/dj/pioneer/pioneer-cdj-200-real.html"
+  },
+  {
+    "id": "dj-pioneer-cdj-2000nxs2-real",
+    "titulo": "Pioneer CDJ-2000NXS2 — réplica fiel",
+    "segmento": "dj",
+    "nivel": "avancado",
+    "tipo": "real",
+    "arquivo": "/simuladores/dj/pioneer/pioneer-cdj-2000nxs2-real.html"
+  },
+  {
+    "id": "dj-pioneer-cdj-3000-real",
+    "titulo": "Pioneer CDJ-3000 — réplica fiel",
+    "segmento": "dj",
+    "nivel": "avancado",
+    "tipo": "real",
+    "arquivo": "/simuladores/dj/pioneer/pioneer-cdj-3000-real.html"
+  },
+  {
+    "id": "dj-pioneer-cdj-400-real",
+    "titulo": "Pioneer CDJ-400 — réplica fiel",
+    "segmento": "dj",
+    "nivel": "avancado",
+    "tipo": "real",
+    "arquivo": "/simuladores/dj/pioneer/pioneer-cdj-400-real.html"
+  },
+  {
+    "id": "dj-pioneer-cdj-800mk2-real",
+    "titulo": "Pioneer CDJ-800MK2 — réplica fiel",
+    "segmento": "dj",
+    "nivel": "avancado",
+    "tipo": "real",
+    "arquivo": "/simuladores/dj/pioneer/pioneer-cdj-800mk2-real.html"
+  },
+  {
+    "id": "dj-pioneer-cdj-850-real",
+    "titulo": "Pioneer CDJ-850 — réplica fiel",
+    "segmento": "dj",
+    "nivel": "avancado",
+    "tipo": "real",
+    "arquivo": "/simuladores/dj/pioneer/pioneer-cdj-850-real.html"
+  },
+  {
+    "id": "dj-pioneer-cdj-900nxs-real",
+    "titulo": "Pioneer CDJ-900NXS — réplica fiel",
+    "segmento": "dj",
+    "nivel": "avancado",
+    "tipo": "real",
+    "arquivo": "/simuladores/dj/pioneer/pioneer-cdj-900nxs-real.html"
   },
   {
     "id": "dj-pioneer-xdj-rx2-real",
-    "titulo": "Pioneer XDJ-RX2 — All-in-One",
+    "titulo": "Pioneer DJ XDJ-RX2 — réplica fiel",
     "segmento": "dj",
     "nivel": "avancado",
     "tipo": "real",
-    "arquivo": "/simuladores/dj/pioneer-xdj-rx2-real.html"
+    "arquivo": "/simuladores/dj/pioneer/pioneer-xdj-rx2-real.html"
   },
   {
-    "id": "dj-dj-contratante-lab",
-    "titulo": "Primeira Conversa com o Contratante — profissionalismo",
+    "id": "dj-pioneer-xdj-rx3-real",
+    "titulo": "Pioneer DJ XDJ-RX3 — réplica fiel",
     "segmento": "dj",
     "nivel": "avancado",
-    "tipo": "lab",
-    "arquivo": "/simuladores/dj/dj-contratante-lab.html"
+    "tipo": "real",
+    "arquivo": "/simuladores/dj/pioneer/pioneer-xdj-rx3-real.html"
   },
   {
-    "id": "dj-dj-tipos-lab",
-    "titulo": "Que DJ é esse? — os perfis da profissão",
+    "id": "dj-pioneer-djm-2000-real",
+    "titulo": "Pioneer DJM-2000 — réplica fiel",
     "segmento": "dj",
     "nivel": "avancado",
-    "tipo": "lab",
-    "arquivo": "/simuladores/dj/dj-tipos-lab.html"
+    "tipo": "real",
+    "arquivo": "/simuladores/dj/pioneer/pioneer-djm-2000-real.html"
+  },
+  {
+    "id": "dj-pioneer-djm-450-real",
+    "titulo": "Pioneer DJM-450 — mixer 2 canais fiel",
+    "segmento": "dj",
+    "nivel": "avancado",
+    "tipo": "real",
+    "arquivo": "/simuladores/dj/pioneer/pioneer-djm-450-real.html"
+  },
+  {
+    "id": "dj-pioneer-djm-600-real",
+    "titulo": "Pioneer DJM-600 — réplica fiel",
+    "segmento": "dj",
+    "nivel": "avancado",
+    "tipo": "real",
+    "arquivo": "/simuladores/dj/pioneer/pioneer-djm-600-real.html"
+  },
+  {
+    "id": "dj-pioneer-djm-750mk2-real",
+    "titulo": "Pioneer DJM-750MK2 — mixer fiel",
+    "segmento": "dj",
+    "nivel": "avancado",
+    "tipo": "real",
+    "arquivo": "/simuladores/dj/pioneer/pioneer-djm-750mk2-real.html"
+  },
+  {
+    "id": "dj-pioneer-djm-800-real",
+    "titulo": "Pioneer DJM-800 — mixer fiel",
+    "segmento": "dj",
+    "nivel": "avancado",
+    "tipo": "real",
+    "arquivo": "/simuladores/dj/pioneer/pioneer-djm-800-real.html"
+  },
+  {
+    "id": "dj-pioneer-djm-900nxs2-real",
+    "titulo": "Pioneer DJM-900NXS2 — réplica fiel",
+    "segmento": "dj",
+    "nivel": "avancado",
+    "tipo": "real",
+    "arquivo": "/simuladores/dj/pioneer/pioneer-djm-900nxs2-real.html"
+  },
+  {
+    "id": "dj-pioneer-djm-a9-real",
+    "titulo": "Pioneer DJM-A9 — réplica fiel",
+    "segmento": "dj",
+    "nivel": "avancado",
+    "tipo": "real",
+    "arquivo": "/simuladores/dj/pioneer/pioneer-djm-a9-real.html"
+  },
+  {
+    "id": "dj-pioneer-djm-v10-real",
+    "titulo": "Pioneer DJM-V10 — mixer 6 canais fiel",
+    "segmento": "dj",
+    "nivel": "avancado",
+    "tipo": "real",
+    "arquivo": "/simuladores/dj/pioneer/pioneer-djm-v10-real.html"
+  },
+  {
+    "id": "dj-pioneer-plx-1000-real",
+    "titulo": "Pioneer PLX-1000 — réplica fiel",
+    "segmento": "dj",
+    "nivel": "avancado",
+    "tipo": "real",
+    "arquivo": "/simuladores/dj/pioneer/pioneer-plx-1000-real.html"
+  },
+  {
+    "id": "dj-pioneer-xdj-1000mk2-real",
+    "titulo": "Pioneer XDJ-1000MK2 — réplica fiel",
+    "segmento": "dj",
+    "nivel": "avancado",
+    "tipo": "real",
+    "arquivo": "/simuladores/dj/pioneer/pioneer-xdj-1000mk2-real.html"
+  },
+  {
+    "id": "dj-pioneer-xdj-700-real",
+    "titulo": "Pioneer XDJ-700 — réplica fiel",
+    "segmento": "dj",
+    "nivel": "avancado",
+    "tipo": "real",
+    "arquivo": "/simuladores/dj/pioneer/pioneer-xdj-700-real.html"
+  },
+  {
+    "id": "dj-pioneer-xdj-aero-real",
+    "titulo": "Pioneer XDJ-AERO — réplica fiel",
+    "segmento": "dj",
+    "nivel": "avancado",
+    "tipo": "real",
+    "arquivo": "/simuladores/dj/pioneer/pioneer-xdj-aero-real.html"
+  },
+  {
+    "id": "dj-pioneer-xdj-rr-real",
+    "titulo": "Pioneer XDJ-RR — All-in-One — réplica fiel",
+    "segmento": "dj",
+    "nivel": "avancado",
+    "tipo": "real",
+    "arquivo": "/simuladores/dj/pioneer/pioneer-xdj-rr-real.html"
+  },
+  {
+    "id": "dj-pioneer-xdj-xz-real",
+    "titulo": "Pioneer XDJ-XZ — réplica fiel",
+    "segmento": "dj",
+    "nivel": "avancado",
+    "tipo": "real",
+    "arquivo": "/simuladores/dj/pioneer/pioneer-xdj-xz-real.html"
   },
   {
     "id": "dj-roland-sp404-real",
@@ -144,31 +272,23 @@ export const SIMULATORS: Simulator[] = [
     "segmento": "dj",
     "nivel": "avancado",
     "tipo": "real",
-    "arquivo": "/simuladores/dj/roland-sp404-real.html"
+    "arquivo": "/simuladores/dj/roland/roland-sp404-real.html"
   },
   {
-    "id": "dj-smu-dj-studio-real",
-    "titulo": "SMU DJ Studio — Pen Drive + Cabine (músicas reais)",
+    "id": "dj-technics-sl1200mk2-real",
+    "titulo": "Technics SL-1200MK2 — réplica fiel",
     "segmento": "dj",
     "nivel": "avancado",
     "tipo": "real",
-    "arquivo": "/simuladores/dj/smu-dj-studio-real.html"
+    "arquivo": "/simuladores/dj/technics/technics-sl1200mk2-real.html"
   },
   {
-    "id": "dj-dj-softwares-real",
-    "titulo": "Softwares de DJ — rekordbox · Serato · Traktor · Engine",
+    "id": "dj-technics-sl1200mk7-real",
+    "titulo": "Technics SL-1200MK7 — réplica fiel",
     "segmento": "dj",
     "nivel": "avancado",
     "tipo": "real",
-    "arquivo": "/simuladores/dj/dj-softwares-real.html"
-  },
-  {
-    "id": "dj-turntable-scratch-real",
-    "titulo": "Toca-discos + Scratch — 2× Technics SL-1200MK7",
-    "segmento": "dj",
-    "nivel": "avancado",
-    "tipo": "real",
-    "arquivo": "/simuladores/dj/turntable-scratch-real.html"
+    "arquivo": "/simuladores/dj/technics/technics-sl1200mk7-real.html"
   },
   {
     "id": "efeito-anatomia-artefato",
@@ -1099,6 +1219,14 @@ export const SIMULATORS: Simulator[] = [
     "arquivo": "/simuladores/som/yamaha-cl5-real.html"
   },
   {
+    "id": "som-som-basico-compressor-real",
+    "titulo": "Compressor e Gate — ouça o que cada botão faz",
+    "segmento": "som",
+    "nivel": "avancado",
+    "tipo": "real",
+    "arquivo": "/simuladores/som/som-basico-compressor-real.html"
+  },
+  {
     "id": "som-dbx-driverack260-real",
     "titulo": "dbx DriveRack 260",
     "segmento": "som",
@@ -1129,6 +1257,14 @@ export const SIMULATORS: Simulator[] = [
     "nivel": "avancado",
     "tipo": "real",
     "arquivo": "/simuladores/som/digico-sd-real.html"
+  },
+  {
+    "id": "som-pleno-som-dose-ruido-real",
+    "titulo": "Dose de ruído — NR-15 × NIOSH",
+    "segmento": "som",
+    "nivel": "avancado",
+    "tipo": "real",
+    "arquivo": "/simuladores/som/pleno-som-dose-ruido-real.html"
   },
   {
     "id": "som-yamaha-ls9-real",
@@ -1211,6 +1347,14 @@ export const SIMULATORS: Simulator[] = [
     "arquivo": "/simuladores/som/presonus-studiolive-real.html"
   },
   {
+    "id": "som-som-basico-reverb-delay-real",
+    "titulo": "Reverb e Delay — a lógica do ENVIO",
+    "segmento": "som",
+    "nivel": "avancado",
+    "tipo": "real",
+    "arquivo": "/simuladores/som/som-basico-reverb-delay-real.html"
+  },
+  {
     "id": "som-yamaha-rivage-pm10-real",
     "titulo": "RIVAGE PM Editor — Yamaha RIVAGE PM10 · CS-R10",
     "segmento": "som",
@@ -1265,6 +1409,14 @@ export const SIMULATORS: Simulator[] = [
     "nivel": "avancado",
     "tipo": "real",
     "arquivo": "/simuladores/som/yamaha-dm7-real.html"
+  },
+  {
+    "id": "som-m7cl",
+    "titulo": "Yamaha M7CL-48 — console real",
+    "segmento": "som",
+    "nivel": "avancado",
+    "tipo": "sim",
+    "arquivo": "/simuladores/som/m7cl.html"
   },
   {
     "id": "som-yamaha-tf5-real",

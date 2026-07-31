@@ -20,7 +20,11 @@ const QQ=n=>"5504c000-5011-4a00-9000-00000000d1"+n.toString(16).padStart(2,"0");
 // pertence (nem deve pertencer) a faixa 5504c000.
 conferirFaixa(faixa("pleno-som"), [MODULE, LESSON, QUIZ, ...Array.from({length:8},(_,i)=>QQ(i+1))], [COURSE]);
 const conteudo=fs.readFileSync(path.join(__dirname,"aula-digico.fragment.html"),"utf8").trim();
-const sim=fs.readFileSync(path.join(ROOT,"simuladores/som/digico-sd.html"),"utf8");
+/* Caminho FIXO: renomear/apagar o simulador nao se corrige aqui sozinho. Sem a guarda o
+   script morria num ENOENT cru, sem dizer qual arquivo faltou. */
+const SIM=path.join(ROOT,"simuladores/som/digico-sd.html");
+if(!fs.existsSync(SIM)){console.error(`ABORTADO: simulador nao encontrado: ${SIM}`);console.error(`Renomeado ou apagado? Corrija o caminho — a aula iria ao ar sem simulador.`);process.exit(1);}
+const sim=fs.readFileSync(SIM,"utf8");
 const questoes=[
   {t:"A DiGiCo (série SD/Quantum) é o padrão-ouro principalmente de:",e:"Grandes turnês, festivais e musicais de teatro — pela potência, tela e snapshots precisos.",
    o:[["Rádios de carro", false],["Grandes turnês, festivais e teatros", true],["Estúdios caseiros só", false],["Karaokê", false]]},

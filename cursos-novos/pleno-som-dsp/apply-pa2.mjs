@@ -22,7 +22,10 @@ conferirFaixa(F, [MOD_ID, AULA_PA2]);
 console.log("faixa OK | aula PA2:", AULA_PA2);
 
 const conteudo = fs.readFileSync(ROOT + "/cursos-novos/pleno-som-dsp/aula-pa2.conteudo.html", "utf8");
-const simHtml = fs.readFileSync(ROOT + "/simuladores/som/dbx-pa2-real.html", "utf8");
+/* Caminho FIXO: renomear/apagar o simulador nao se corrige aqui sozinho. */
+const SIM = ROOT + "/simuladores/som/dbx-pa2-real.html";
+if (!fs.existsSync(SIM)) { console.error(`ABORTADO: simulador nao encontrado: ${SIM}`); console.error(`Renomeado ou apagado? Corrija o caminho — a aula iria ao ar sem simulador.`); process.exit(1); }
+const simHtml = fs.readFileSync(SIM, "utf8");
 
 async function upsert(t, row) {
   const r = await fetch(`${BASE}/${t}`, { method: "POST", headers: { ...H, Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify(row) });
