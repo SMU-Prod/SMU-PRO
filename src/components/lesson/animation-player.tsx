@@ -7,6 +7,11 @@ import {
 } from "lucide-react";
 import { useT } from "@/lib/i18n/ui";
 import { YoutubeBridge } from "./youtube-bridge";
+// Toda a preparação do HTML do simulador (as três pontes e a regra de cada uma) mora em
+// `toque.ts`. Ficava aqui dentro, mas é política que vale para os dois lugares que montam
+// simulador — este player e o `SimulatorFrame` — e como função pura tem teste próprio
+// (`toque.test.ts`), o que uma função privada de componente cliente não teria.
+import { preparaSimulador } from "@/lib/simulators/toque";
 
 // ── Types ──────────────────────────────────────────────────
 
@@ -81,39 +86,6 @@ interface AnimationPlayerProps {
 
 // ── Component ──────────────────────────────────────────────
 
-// CONTRATO DE TELA CHEIA (player ⇄ simulador)
-// ─────────────────────────────────────────────
-// O player avisa; o simulador decide. Aqui mora o SINAL, um lugar só, valendo para todos os
-// cursos e para todo simulador futuro. A RESPOSTA é de cada simulador: só ele conhece o próprio
-// layout — mesa de zoom-fit não pode virar 2 colunas, cenário fluido pode.
-//
-// Como o simulador responde: escreva CSS contra `html.smu-fs`. Nada de JS. Ex.:
-//   @media (min-width:1250px){
-//     html.smu-fs .app{max-width:1900px;display:block;columns:2}   /* `columns` exige block */
-//   }
-// Quem não tiver esse CSS simplesmente não reage — é assim que som/DJ/vídeo ficam a salvo.
-//
-// O `resize` é disparado junto porque a classe muda o layout sem gerar evento nenhum, e os
-// simuladores redimensionam o canvas no `resize` — sem ele o arraste sai desalinhado.
-const PONTE_TELA_CHEIA =
-  `<script>/*SMU-FS*/addEventListener('message',function(e){var d=e&&e.data;` +
-  `if(d&&d.smu==='fullscreen'){document.documentElement.classList.toggle('smu-fs',!!d.on);` +
-  `dispatchEvent(new Event('resize'));}});<\/script>`;
-
-// Prepara o HTML do widget antes de virar srcDoc. PRECISA ser puro e não depender do estado de
-// tela cheia: qualquer mudança no srcDoc remonta o iframe e o aluno perde o que já fez.
-// Remove também o controle de zoom antigo (script marcado com SMU-ZOOM), que sobrepunha os
-// botões do simulador — o zoom agora é o GLOBAL (PageZoom).
-function preparaWidget(html: string): string {
-  const limpo = html.replace(/<script[^>]*>\s*\/\*SMU-ZOOM\*\/[\s\S]*?<\/script>/gi, "");
-  // Simulador antigo pode trazer a ponte embutida (era assim antes de o player assumir): não
-  // duplica. Se não houver </body>, anexa no fim — o navegador resolve.
-  if (limpo.includes("/*SMU-FS*/")) return limpo;
-  return limpo.includes("</body>")
-    ? limpo.replace("</body>", `${PONTE_TELA_CHEIA}\n</body>`)
-    : limpo + PONTE_TELA_CHEIA;
-}
-
 export function AnimationPlayer({ lessonId, conteudo }: AnimationPlayerProps) {
   const t = useT();
   const [data, setData] = useState<AnimationData | null>(null);
@@ -123,7 +95,14 @@ export function AnimationPlayer({ lessonId, conteudo }: AnimationPlayerProps) {
   const [currentScene, setCurrentScene] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
-  const [fullscreen, setFullscreen] = useState(false);
+  // DOIS estados de propósito — ver `alternaExpandido()`.
+  // `telaCheiaNativa`: a Fullscreen API do navegador aceitou (desktop, Android, iPad).
+  // `expandidoCSS`:    o recuo — sobreposição `fixed inset-0`, para onde a API não existe
+  //                    (Safari do iPhone não implementa requestFullscreen em <div>: lá o botão
+  //                    de expandir nunca fez NADA) ou onde ela foi recusada.
+  const [telaCheiaNativa, setTelaCheiaNativa] = useState(false);
+  const [expandidoCSS, setExpandidoCSS] = useState(false);
+  const fullscreen = telaCheiaNativa || expandidoCSS;
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const playingRef = useRef(false);
@@ -274,21 +253,32 @@ export function AnimationPlayer({ lessonId, conteudo }: AnimationPlayerProps) {
 
   useEffect(sinalizaTelaCheia, [sinalizaTelaCheia]);
 
-  function toggleFullscreen() {
-    if (!containerRef.current) return;
-    // requestFullscreen é assíncrono e pode ser recusado (iOS, gesto inválido, iframe sem allow),
-    // então o estado só muda pelo evento `fullscreenchange` — nunca aqui.
-    if (!fullscreen) {
-      containerRef.current.requestFullscreen?.().catch(() => {});
-    } else {
-      document.exitFullscreen?.().catch(() => {});
+  // Expandir NUNCA pode falhar em silêncio. Antes daqui o botão chamava `requestFullscreen?.()`
+  // e, no Safari do iPhone — onde o método simplesmente não existe —, o `?.` engolia a chamada:
+  // o aluno tocava e não acontecia nada, sem erro, sem aviso. Agora a API nativa é a PRIMEIRA
+  // tentativa, não a única; recusada ou ausente, entra a sobreposição em CSS, que funciona em
+  // qualquer navegador e nenhum gesto derruba.
+  function alternaExpandido() {
+    const el = containerRef.current;
+    if (!el) return;
+
+    if (fullscreen) {
+      if (document.fullscreenElement === el) document.exitFullscreen?.().catch(() => {});
+      setExpandidoCSS(false);
+      return;
     }
+
+    const nativo = el.requestFullscreen?.bind(el);
+    if (!nativo) { setExpandidoCSS(true); return; }
+    // É assíncrona: `telaCheiaNativa` só muda pelo evento `fullscreenchange`, nunca aqui.
+    // Recusa (gesto inválido, permissão, iOS) cai no CSS em vez de não fazer nada.
+    nativo().catch(() => setExpandidoCSS(true));
   }
 
   useEffect(() => {
     // Compara com o próprio container: qualquer outro elemento da página em tela cheia
     // também dispara este evento.
-    const handleFS = () => setFullscreen(document.fullscreenElement === containerRef.current);
+    const handleFS = () => setTelaCheiaNativa(document.fullscreenElement === containerRef.current);
     document.addEventListener("fullscreenchange", handleFS);
     return () => {
       document.removeEventListener("fullscreenchange", handleFS);
@@ -296,6 +286,26 @@ export function AnimationPlayer({ lessonId, conteudo }: AnimationPlayerProps) {
       if (audioRef.current) { audioRef.current.pause(); audioRef.current.onended = null; }
     };
   }, []);
+
+  // Enquanto a sobreposição está de pé, a PÁGINA atrás não pode rolar: no celular, um dedo que
+  // escapa do console arrastava a aula por baixo do simulador. `position:fixed` não segura isso
+  // sozinho — o corpo continua rolável. Sai exatamente como entrou (guarda o valor anterior em
+  // vez de assumir "" — a página pode já ter travado a rolagem por outro motivo, ex. um modal).
+  // O `Esc` fecha: em tela cheia nativa o navegador já faz isso, na sobreposição ninguém fazia.
+  useEffect(() => {
+    if (!expandidoCSS) return;
+    const antesBody = document.body.style.overflow;
+    const antesHtml = document.documentElement.style.overscrollBehavior;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overscrollBehavior = "none";
+    const aoTeclar = (e: KeyboardEvent) => { if (e.key === "Escape") setExpandidoCSS(false); };
+    document.addEventListener("keydown", aoTeclar);
+    return () => {
+      document.body.style.overflow = antesBody;
+      document.documentElement.style.overscrollBehavior = antesHtml;
+      document.removeEventListener("keydown", aoTeclar);
+    };
+  }, [expandidoCSS]);
 
   if (!hasContent) return null;
 
@@ -329,7 +339,17 @@ export function AnimationPlayer({ lessonId, conteudo }: AnimationPlayerProps) {
   return (
     <div
       ref={containerRef}
-      className={fullscreen ? "flex h-full flex-col bg-[#0b0e14]" : "space-y-3"}
+      className={
+        expandidoCSS
+          // Sobreposição: `fixed inset-0` em vez de `h-full` porque aqui NÃO existe elemento de
+          // tela cheia — sem ancorar na janela, o container herdaria a altura do fluxo da aula e
+          // o console sairia cortado. `100vh` está fora de propósito: no Safari do iPhone ele
+          // conta a barra de endereço que se recolhe, e a base do simulador ficava atrás dela.
+          ? "fixed inset-0 z-[9999] flex flex-col bg-[#0b0e14]"
+          : telaCheiaNativa
+          ? "flex h-full flex-col bg-[#0b0e14]"
+          : "space-y-3"
+      }
     >
       <audio ref={audioRef} preload="auto" />
 
@@ -348,7 +368,7 @@ export function AnimationPlayer({ lessonId, conteudo }: AnimationPlayerProps) {
             key={`widget-${currentScene}`}
             ref={frameRef}
             onLoad={sinalizaTelaCheia}
-            srcDoc={preparaWidget(currentUrl.html)}
+            srcDoc={preparaSimulador(currentUrl.html)}
             className="absolute inset-0 w-full h-full border-0"
             sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
             allow="autoplay"
@@ -380,11 +400,16 @@ export function AnimationPlayer({ lessonId, conteudo }: AnimationPlayerProps) {
         {/* Tela cheia — o ÚNICO controle que fica sobre o palco, no canto que os simuladores deixam
             livre. A faixa preta com o título da cena saiu daqui: o título agora está na ficha
             abaixo, e em 7 registros sem `modo` aquela faixa cobria o cabeçalho do próprio console. */}
+        {/* Alvo de 44px (`h-11 w-11`) e não os 26px de antes: no dedo, 26px é menor que a ponta do
+            polegar e o aluno erra o botão — que é o ÚNICO jeito de sair da sobreposição em CSS
+            sem teclado. O ícone continua pequeno; quem cresce é a área de toque. */}
         <button
-          onClick={toggleFullscreen}
-          className="absolute bottom-2 right-2 z-20 p-1.5 rounded-lg bg-black/50 text-white/70 hover:text-white hover:bg-black/70 transition-colors"
+          onClick={alternaExpandido}
+          aria-label={fullscreen ? t("Sair da tela cheia") : t("Expandir simulador")}
+          title={fullscreen ? t("Sair da tela cheia") : t("Expandir simulador")}
+          className="absolute bottom-1 right-1 z-20 flex h-11 w-11 items-center justify-center rounded-lg bg-black/50 text-white/70 transition-colors hover:bg-black/70 hover:text-white"
         >
-          {fullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+          {fullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
         </button>
       </div>
 
