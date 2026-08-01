@@ -17,6 +17,7 @@ import { AudioPlayer } from "./audio-player";
 import { AnimationPlayer } from "./animation-player";
 import { RichContentViewer } from "./rich-content-viewer";
 import { EquipmentManuals } from "./equipment-manuals";
+import NotaonLessonContent from "./notaon-lesson-content";
 import { manualsForCategory } from "@/lib/equipment-manuals";
 import { useLocale } from "@/lib/i18n/locale";
 import { LanguageSelector } from "@/components/i18n/language-selector";
@@ -570,6 +571,13 @@ export function LessonPlayer({
                     </ErrorBoundary>
                   )}
 
+                  {/* 3b) Conteúdo NOTA ON (JSX estático, pdf_path começa com "notaon:") */}
+                  {lesson.pdf_path?.startsWith("notaon:") && (
+                    <ErrorBoundary>
+                      <NotaonLessonContent pdfPath={lesson.pdf_path} />
+                    </ErrorBoundary>
+                  )}
+
                   {/* 4) Prática — Simulação Interativa (game) por último */}
                   {lesson.conteudo_rico && (
                     <div className="pt-2">
@@ -666,7 +674,8 @@ function MaterialsTab({ lesson, categoria }: { lesson: any; categoria?: string }
   const [showPdf, setShowPdf] = useState(false);
   const temManuais = manualsForCategory(categoria).length > 0;
 
-  if (!lesson.pdf_path && !temManuais) {
+  const isNotaon = lesson.pdf_path?.startsWith("notaon:");
+  if ((!lesson.pdf_path || isNotaon) && !temManuais) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <FileText size={40} className="text-muted-light mb-3" />
@@ -678,7 +687,7 @@ function MaterialsTab({ lesson, categoria }: { lesson: any; categoria?: string }
   return (
     <div className="space-y-3">
       {/* Card do material da aula */}
-      {lesson.pdf_path && (
+      {lesson.pdf_path && !isNotaon && (
       <>
       <div className="flex items-center gap-3 p-4 rounded-xl border border-border bg-surface-2">
         <div className="h-10 w-10 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center shrink-0">

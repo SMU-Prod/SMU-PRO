@@ -127,10 +127,31 @@ export const REGISTRO = {
   "som-basico-exp":   { curso: "som-basico",    mod: "9c100000", aula: "9c100000", dono: "cursos-novos/expansao-2607 (Avaliação Final)" },
   "luz-basico-exp":   { curso: "luz-basico",    mod: "9d100000", aula: "9d100000", dono: "cursos-novos/expansao-2607 (Avaliação Final)" },
   "efeito-basico-exp":{ curso: "efeito-basico", mod: "9e100000", aula: "9e100000", dono: "cursos-novos/expansao-2607 (Avaliação Final)" },
+
+  // ── NOTA ON PREPARATÓRIO (30/07/2026) ────────────────────────────────────
+  // Formato padrão (idModulo/idAula). Cada disciplina tem faixa exclusiva.
+  // course:  {prefix}00000-0000-4000-9000-000000000000
+  // module N: {prefix}00000-0000-4000-9000-{NN padded 12 digits}  (1..99)
+  // lesson capNum: {prefix}00000-0000-4000-9000-{100+capNum padded 12 digits}
+  // Os ids destes cursos NÃO usam idModulo()/idAula() do cartório — gerados pelo
+  // próprio script adapt-notaon.mjs com o mesmo esquema matematicamente compatível.
+  "notaon-biologia":   { curso: "preparatorio-biologia",   mod: "9f100000", aula: "9f100000", dono: "scripts/adapt-notaon.mjs" },
+  "notaon-espanhol":   { curso: "preparatorio-espanhol",   mod: "6a100000", aula: "6a100000", dono: "scripts/adapt-notaon.mjs" },
+  "notaon-filosofia":  { curso: "preparatorio-filosofia",  mod: "6b100000", aula: "6b100000", dono: "scripts/adapt-notaon.mjs" },
+  "notaon-fisica":     { curso: "preparatorio-fisica",     mod: "6c100000", aula: "6c100000", dono: "scripts/adapt-notaon.mjs" },
+  "notaon-geografia":  { curso: "preparatorio-geografia",  mod: "6d100000", aula: "6d100000", dono: "scripts/adapt-notaon.mjs" },
+  "notaon-historia":   { curso: "preparatorio-historia",   mod: "6e100000", aula: "6e100000", dono: "scripts/adapt-notaon.mjs" },
+  "notaon-ingles":     { curso: "preparatorio-ingles",     mod: "aa100000", aula: "aa100000", dono: "scripts/adapt-notaon.mjs" },
+  "notaon-matematica": { curso: "preparatorio-matematica", mod: "ab100000", aula: "ab100000", dono: "scripts/adapt-notaon.mjs" },
+  "notaon-portugues":  { curso: "preparatorio-portugues",  mod: "ac100000", aula: "ac100000", dono: "scripts/adapt-notaon.mjs" },
+  "notaon-quimica":    { curso: "preparatorio-quimica",    mod: "ad100000", aula: "ad100000", dono: "scripts/adapt-notaon.mjs" },
+  "notaon-redacao":    { curso: "preparatorio-redacao",    mod: "ae100000", aula: "ae100000", dono: "scripts/adapt-notaon.mjs" },
+  "notaon-sociologia": { curso: "preparatorio-sociologia", mod: "af100000", aula: "af100000", dono: "scripts/adapt-notaon.mjs" },
 };
 
 /** Prefixos LIVRES para o próximo curso. Risque daqui e registre acima ao usar. */
-export const LIVRES = ["9f1", "6a1", "6b1", "6c1", "6d1", "6e1"];
+export const LIVRES = ["ba1", "bb1", "bc1", "bd1", "be1", "bf1"];
+// Os prefixos 9f1, 6a1..6e1, aa1..af1 foram usados pelas 12 disciplinas NOTA ON acima.
 
 // ⚠️ ARMADILHA HISTÓRICA — `72100000` é COMPARTILHADO no banco:
 //    pleno-video  usa 72100000-…-000000000b01 / b02 / b03   (sufixo com 'b')
