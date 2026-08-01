@@ -750,11 +750,18 @@ html.smu-fs body{align-items:center}
 #overlay .rot{font-size:13px;color:#c9ced4;letter-spacing:.3px;text-align:center}
 #overlay .rot b{color:#ffd45e}
 /* tela + auxiliares: SELECTED CHANNEL à esquerda, Centralogic embaixo —
-   é a vizinhança que os controles têm na mesa física */
-#ov-linha{display:flex;align-items:stretch;gap:10px;min-height:0;max-width:96vw}
+   é a vizinhança que os controles têm na mesa física.
+   O PALCO (#ov-palco) tem layout natural em width:max-content e é escalado
+   como um bloco só — nunca calcular escala medindo pedaço de flexbox. */
+#overlay{overflow:hidden}
+#ov-palco{display:flex;flex-direction:column;align-items:center;gap:10px;
+  width:max-content;transform-origin:50% 50%}
+#ov-linha{display:flex;align-items:stretch;gap:10px}
 #aux-esq{display:flex;align-items:stretch}
-#aux-esq .selch{height:auto}
-#aux-baixo{display:flex;justify-content:center;max-width:96vw}
+/* a tela ampliada é 1,6x — a seção física ao lado acompanha, senão fica
+   um raminho desproporcional do lado de um telão (reclamação do dono) */
+#aux-esq .selch{height:auto;zoom:1.55}
+#aux-baixo{display:flex;justify-content:center}
 /* 232px = o que o strip da Centralogic PRECISA (medido por scrollHeight).
    Com 150px o flexbox não recorta os filhos e os faders vazavam por cima
    dos botões de navegação — parecia sobreposição de camadas, era estouro. */
@@ -774,16 +781,23 @@ html.smu-fs body{align-items:center}
 <div id="overlay">
   <!-- A tela ampliada leva junto os controles que a acompanham na mesa:
        à esquerda a seção SELECTED CHANNEL (os 33 knobs), embaixo os 8 strips
-       da Centralogic. Eles são MOVIDOS para cá, não copiados. -->
-  <div id="ov-linha">
-    <div id="aux-esq"></div>
-    <div class="moldura" id="overlay-moldura"></div>
+       da Centralogic. Eles são MOVIDOS para cá, não copiados.
+
+       TUDO vive dentro de UM PALCO de layout natural que é escalado como um
+       bloco só (transform: scale) — a mesma técnica do zoom-to-fit da mesa.
+       Calcular a escala medindo pedaços (largura da coluna, altura do bloco)
+       era o que cortava a tela: medida parcial em flexbox mente. -->
+  <div id="ov-palco">
+    <div id="ov-linha">
+      <div id="aux-esq"></div>
+      <div class="moldura" id="overlay-moldura"></div>
+    </div>
+    <div id="aux-baixo"></div>
+    <div id="navov"></div>
+    <div class="rot">Tela ampliada — recurso do simulador, a console real não faz isto.
+      Aperte <b>ESC</b> ou o botão para voltar à mesa.</div>
+    <button id="fechar-lupa" type="button">VOLTAR À MESA</button>
   </div>
-  <div id="aux-baixo"></div>
-  <div id="navov"></div>
-  <div class="rot">Tela ampliada — recurso do simulador, a console real não faz isto.
-    Aperte <b>ESC</b> ou o botão para voltar à mesa.</div>
-  <button id="fechar-lupa" type="button">VOLTAR À MESA</button>
 </div>
 
 <script>
@@ -2963,21 +2977,28 @@ function knobTela(rot, ler, escrever, min, max, fmt, opc){
   const v = el("div"); v.style.cssText="font-size:8px;color:var(--tela-texto)";
   cel.appendChild(k); cel.appendChild(v);
   k.style.touchAction = "none";
-  let base = null, y0 = 0;
+  let base = null, y0 = 0, andou = 0;
   k.addEventListener("pointerdown", ev=>{
     ev.stopPropagation(); ev.preventDefault();
-    base = ler(); y0 = ev.clientY;
+    base = ler(); y0 = ev.clientY; andou = 0;
     try{ k.setPointerCapture(ev.pointerId); }catch(e){}
   });
   k.addEventListener("pointermove", ev=>{
     if (base === null) return;
+    andou = Math.max(andou, Math.abs(ev.clientY - y0));
     const d = (y0 - ev.clientY)/140;
     escrever(clamp(base + d*(max-min), min, max));
     pedirRender();
   });
-  const solta = ()=>{ base = null; };
+  /* TOQUE (sem arraste) é o gesto da mesa: "aperte o knob para abrir a
+     janela" (p.95). Arrastou = girou; soltou parado = tocou. */
+  const solta = ()=>{
+    const tocou = base !== null && andou < 4;
+    base = null;
+    if (tocou && opc.aoTocar){ opc.aoTocar(); pedirRender(); }
+  };
   k.addEventListener("pointerup", solta);
-  k.addEventListener("pointercancel", solta);
+  k.addEventListener("pointercancel", ()=>{ base = null; });
   lig(()=>{
     const val = ler();
     k.style.setProperty("--ang", anguloDe(val,min,max)+"deg");
@@ -3084,7 +3105,9 @@ TELAS.SELCH = function(area){
   cxHA.style.gridArea = "ha";
   if (ehIn){
     const l = linhaTela();
-    l.appendChild(knobTela("GAIN", ()=>c.ha.gain, v=>c.ha.gain=v, -62, 10, v=>v.toFixed(0)+" dB"));
+    l.appendChild(knobTela("GAIN", ()=>c.ha.gain, v=>c.ha.gain=v, -62, 10, v=>v.toFixed(0)+" dB",
+      {aoTocar:()=>{ abrirPopup("HA");
+        S.ajuda="Toque no knob abriu a <b>HA/PATCH</b> — arraste para girar (p.61)"; }}));
     const bs = el("div"); bs.style.cssText="display:flex;flex-direction:column;gap:2px";
     bs.appendChild(btTela("+48V", ()=>c.ha.phantom, ()=>{ c.ha.phantom=!c.ha.phantom;
       S.ajuda="Phantom +48V "+(c.ha.phantom?"LIGADO":"desligado")+" — nunca ligue com o canal aberto"; }, {laranja:true}));
@@ -3111,7 +3134,9 @@ TELAS.SELCH = function(area){
   const cxPan = caixaTela(c.tipo==="stin" ? "TO ST BALANCE" : "TO ST PAN");
   cxPan.style.gridArea = "pan";
   const lp = linhaTela();
-  lp.appendChild(knobTela(null, ()=>c.pan, v=>c.pan=v, -1, 1, textoPan, {cor:"k-pan"}));
+  lp.appendChild(knobTela(null, ()=>c.pan, v=>c.pan=v, -1, 1, textoPan,
+    {cor:"k-pan", aoTocar:()=>{ abrirPopup("TOST");
+      S.ajuda="Toque no PAN abriu a <b>TO STEREO/MONO</b> (p.103)"; }}));
   const bp = el("div"); bp.style.cssText="display:flex;flex-direction:column;gap:2px";
   bp.appendChild(btTela("ST", ()=>c.toSt, ()=>{ c.toSt=!c.toSt;
     S.ajuda="<b>"+c.nome+"</b> "+(c.toSt?"vai":"NÃO vai")+" para o STEREO"; }));
@@ -3128,7 +3153,8 @@ TELAS.SELCH = function(area){
     const lh = linhaTela();
     lh.appendChild(knobTela(null, ()=>Math.log10(c.hpf.freq),
       v=>c.hpf.freq=Math.round(Math.pow(10,v)),
-      Math.log10(20), Math.log10(600), v=>Math.round(Math.pow(10,v))+" Hz", {cor:"k-hpf"}));
+      Math.log10(20), Math.log10(600), v=>Math.round(Math.pow(10,v))+" Hz",
+      {cor:"k-hpf", aoTocar:()=>abrirPopup("EQ")}));
     lh.appendChild(btTela("ON", ()=>c.hpf.on, ()=>c.hpf.on=!c.hpf.on));
     cxH.appendChild(lh);
     const nota = el("div",null,"-12 dB/oct"); nota.style.cssText="font-size:7px;color:#9aa0a8";
@@ -3156,7 +3182,8 @@ TELAS.SELCH = function(area){
     nome.title = "Abrir a janela de "+rot;
     nome.addEventListener("pointerdown",()=>{ abrirPopup(kk==="dyn1"?"DYN1":"DYN2"); pedirRender(); });
     l.appendChild(nome);
-    l.appendChild(knobTela("THR", ()=>d.thr, v=>d.thr=v, kk==="dyn1"?-72:-54, 0, v=>v.toFixed(0)));
+    l.appendChild(knobTela("THR", ()=>d.thr, v=>d.thr=v, kk==="dyn1"?-72:-54, 0, v=>v.toFixed(0),
+      {aoTocar:()=>abrirPopup(kk==="dyn1"?"DYN1":"DYN2")}));
     /* medidor de GR: é o que diz se a dinâmica está TRABALHANDO (p.101) */
     const gr = el("div");
     gr.style.cssText="flex:1 1 auto;min-width:18px;height:9px;background:#15171a;"+
@@ -3179,6 +3206,10 @@ TELAS.SELCH = function(area){
   const cxG = caixaTela("EQ / HPF");
   cxG.style.gridArea = "graf";
   cxG.style.minWidth = "0";
+  cxG.style.cursor = "pointer";
+  cxG.addEventListener("pointerdown",()=>{ abrirPopup("EQ");
+    S.ajuda="Tocar no gráfico abre a janela do <b>EQ</b> — é o gesto da mesa (p.95)";
+    pedirRender(); });
   cxG.appendChild(curvaEQ(c, 200, 44));
   g.appendChild(cxG);
 
@@ -3199,12 +3230,12 @@ TELAS.SELCH = function(area){
     r.style.cssText="grid-column:1/4;font-size:6.5px;color:#aeb4bb;text-align:center;line-height:1";
     gq.appendChild(r);
     gq.appendChild(knobTela(null, ()=>Math.log10(banda.q), v=>banda.q=Math.round(Math.pow(10,v)*100)/100,
-      Math.log10(0.1), Math.log10(10), v=>Math.pow(10,v).toFixed(2), {mini:true, cor:"k-eq"}));
+      Math.log10(0.1), Math.log10(10), v=>Math.pow(10,v).toFixed(2), {mini:true, cor:"k-eq", aoTocar:()=>abrirPopup("EQ")}));
     gq.appendChild(knobTela(null, ()=>Math.log10(banda.f), v=>banda.f=Math.round(Math.pow(10,v)),
       Math.log10(20), Math.log10(20000), v=>{const f=Math.pow(10,v);
-        return f>=1000?(f/1000).toFixed(1)+"k":f.toFixed(0);}, {mini:true, cor:"k-eq"}));
+        return f>=1000?(f/1000).toFixed(1)+"k":f.toFixed(0);}, {mini:true, cor:"k-eq", aoTocar:()=>abrirPopup("EQ")}));
     gq.appendChild(knobTela(null, ()=>banda.g, v=>banda.g=v, -18, 18,
-      v=>(v>0?"+":"")+v.toFixed(1), {mini:true, cor:"k-eq"}));
+      v=>(v>0?"+":"")+v.toFixed(1), {mini:true, cor:"k-eq", aoTocar:()=>abrirPopup("EQ")}));
   });
   cxEQ.appendChild(gq);
   const beq = btTela("EQ ON", ()=>c.eq.on, ()=>c.eq.on=!c.eq.on);
@@ -3220,18 +3251,31 @@ TELAS.SELCH = function(area){
   baixo.style.cssText += ";display:grid;grid-template-columns:1.7fr 1fr 1fr;gap:2px;min-height:0;overflow:hidden";
 
   const cA = el("div"); cA.style.cssText="display:flex;flex-direction:column;gap:2px;min-width:0";
+  /* p.95: cada campo tem o BOTÃO DE JANELA (▼) ao lado do ON — o ▼ abre a
+     janela de detalhe, o ON liga/desliga. Antes só havia o ON. */
+  const linhaPop = (rot, ler, alternar, abrir) => {
+    const w = el("div"); w.style.cssText="display:flex;gap:2px;min-width:0";
+    const pv = el("button","tbt","▼"); pv.type="button"; pv.style.cssText="flex:0 0 auto;font-size:7px";
+    pv.addEventListener("pointerdown",()=>{ abrir(); pedirRender(); });
+    const bt = btTela(rot, ler, alternar); bt.style.flex="1 1 auto";
+    w.appendChild(pv); w.appendChild(bt);
+    return w;
+  };
   /* p.95: INSERT existe em INPUT, MIX, MATRIX, STEREO e MONO — não em ST IN */
   if (c.tipo !== "stin"){
-    cA.appendChild(btTela("INSERT", ()=>c.insert, ()=>{ c.insert=!c.insert;
-      S.ajuda="INSERT "+(c.insert?"ligado":"desligado")+" em <b>"+c.nome+"</b>"; }));
+    cA.appendChild(linhaPop("INSERT", ()=>c.insert, ()=>{ c.insert=!c.insert;
+      S.ajuda="INSERT "+(c.insert?"ligado":"desligado")+" em <b>"+c.nome+"</b>"; },
+      ()=>abrirPopup("INSDO")));
   }
   /* p.95: DIRECT OUT é só de canal INPUT */
   if (c.tipo === "in"){
-    cA.appendChild(btTela("DIRECT OUT", ()=>c.dout, ()=>{ c.dout=!c.dout;
-      S.ajuda="DIRECT OUT "+(c.dout?"ligado":"desligado")+" em <b>"+c.nome+"</b>"; }));
+    cA.appendChild(linhaPop("DIRECT OUT", ()=>c.dout, ()=>{ c.dout=!c.dout;
+      S.ajuda="DIRECT OUT "+(c.dout?"ligado":"desligado")+" em <b>"+c.nome+"</b>"; },
+      ()=>abrirPopup("INSDO")));
   }
-  cA.appendChild(btTela("RECALL SAFE", ()=>c.recallSafe, ()=>{ c.recallSafe=!c.recallSafe;
-    S.ajuda = "RECALL SAFE "+(c.recallSafe?"LIGADO — este canal não muda no recall de cena":"desligado"); }));
+  cA.appendChild(linhaPop("RECALL SAFE", ()=>c.recallSafe, ()=>{ c.recallSafe=!c.recallSafe;
+    S.ajuda = "RECALL SAFE "+(c.recallSafe?"LIGADO — este canal não muda no recall de cena":"desligado"); },
+    ()=>{ S.cenaAba="safe"; abrirPopup("CENA_CFG"); }));
   const fl = el("div");
   fl.style.cssText="display:flex;align-items:center;gap:3px;margin-top:auto";
   const fv = el("div"); fv.style.cssText="font-size:12px;font-weight:700;min-width:36px";
@@ -3569,6 +3613,12 @@ const tiposDyn = (c, qual) =>
 function reducaoDyn(c, kk){
   const d = c[kk];
   if (!d || !d.on) return 0;
+  /* com música tocando, o GR é o APLICADO no áudio (processarDinamica) --
+     medidor e ouvido têm de contar a mesma história */
+  if (AUD.tocando){
+    const s = (AUD.stems||[]).find(x=>x.canal===c.id);
+    if (s && s.nodes) return clamp(s.nodes[kk==="dyn1"?"red1":"red2"]||0, 0, 1);
+  }
   const dB = c.nivel > 0 ? 20*Math.log10(clamp(c.nivel,1e-5,1)) : -100;
   const abre = d.tipo==="GATE" || d.tipo==="DUCKING";
   if (abre){
@@ -4229,6 +4279,62 @@ TELAS_POPUP.TOST = function(area){
     cx.appendChild(n);
   }
   b.appendChild(cx);
+};
+
+/* ---- INSERT / DIRECT OUT (1 ch), p.110-112 ----
+   Ponto de inserção e direct out COM porta escolhível. Os campos nascem
+   preguiçosos no canal (insIn/insOut/doutPorta/doutLvl) para não mexer no
+   formato da cena. ⚠️ faixa do DIRECT OUT LEVEL ESTIMADA em -60..+10 dB
+   (a folha de parâmetros não a lista); 1 linha para corrigir. */
+TELAS_POPUP.INSDO = function(area){
+  const c = S.canais[S.sel];
+  const b = molde(area,"INSERT / DIRECT OUT","ponto de inserção e saída direta · p.110",
+    { canais:true });
+  c.insIn = c.insIn || "—"; c.insOut = c.insOut || "—";
+  c.doutPorta = c.doutPorta || "—"; c.doutLvl = Number.isFinite(c.doutLvl) ? c.doutLvl : 0;
+  const l = el("div"); l.style.cssText="display:flex;gap:6px;flex-wrap:wrap";
+
+  if (c.tipo !== "stin"){
+    const cx = caixaTela("INSERT");
+    const sel1 = el("select"), sel2 = el("select");
+    [sel1, sel2].forEach(sl=>{
+      sl.style.cssText="background:#15171a;color:var(--tela-texto);border:1px solid #3d4147;"+
+        "border-radius:2px;font-size:9px;padding:1px";
+      ["—", ...Array.from({length:8},(_,i)=>"RACK "+(i+1))].forEach(pn=>{
+        const o=el("option",null,pn); o.value=pn; sl.appendChild(o); });
+    });
+    sel1.value=c.insOut; sel2.value=c.insIn;
+    sel1.addEventListener("change",()=>{ c.insOut=sel1.value; pedirRender(); });
+    sel2.addEventListener("change",()=>{ c.insIn=sel2.value; pedirRender(); });
+    const l1=linhaTela(); l1.appendChild(el("span",null,"OUT →")); l1.appendChild(sel1);
+    l1.appendChild(el("span",null,"IN ←")); l1.appendChild(sel2);
+    cx.appendChild(l1);
+    cx.appendChild(btTela("INSERT ON", ()=>c.insert, ()=>{ c.insert=!c.insert;
+      S.ajuda="INSERT "+(c.insert?"ligado":"desligado")+" — o sinal desvia por "+c.insOut; }));
+    const n1=el("div",null,"O insert desvia o sinal do canal por um rack (GEQ/efeito) e volta.");
+    n1.style.cssText="font-size:8.5px;color:#9aa0a8"; cx.appendChild(n1);
+    l.appendChild(cx);
+  }
+  if (c.tipo === "in"){
+    const cx = caixaTela("DIRECT OUT");
+    const sel = el("select");
+    sel.style.cssText="background:#15171a;color:var(--tela-texto);border:1px solid #3d4147;"+
+      "border-radius:2px;font-size:9px;padding:1px";
+    ["—", ...Array.from({length:16},(_,i)=>"OMNI "+(i+1)),
+     ...Array.from({length:16},(_,i)=>"SLOT1-"+(i+1))].forEach(pn=>{
+      const o=el("option",null,pn); o.value=pn; sel.appendChild(o); });
+    sel.value=c.doutPorta;
+    sel.addEventListener("change",()=>{ c.doutPorta=sel.value; pedirRender(); });
+    const l2=linhaTela(); l2.appendChild(el("span",null,"PORTA")); l2.appendChild(sel);
+    l2.appendChild(knobTela("LEVEL", ()=>c.doutLvl, v=>c.doutLvl=v, -60, 10,
+      v=>(v>0?"+":"")+v.toFixed(1)+" dB"));
+    l2.appendChild(btTela("D.OUT ON", ()=>c.dout, ()=>{ c.dout=!c.dout; }));
+    cx.appendChild(l2);
+    const n2=el("div",null,"Saída direta do canal (pré-mix) — é o que alimenta a gravação multitrack.");
+    n2.style.cssText="font-size:8.5px;color:#9aa0a8"; cx.appendChild(n2);
+    l.appendChild(cx);
+  }
+  b.appendChild(l);
 };
 
 TELAS_POPUP.PATCH = function(area){
@@ -5375,20 +5481,21 @@ function escalarLCD(lw, lh){
 
 function dimensionarTelaExpandida(){
   if (!expandida) return;
-  /* AMPLIAR = ZOOM. O LCD tem 640x480 sempre; só cresce a escala.
-     O espaço disponível desconta os vizinhos que vêm junto: a seção
-     SELECTED CHANNEL à esquerda e a Centralogic + navegação embaixo. */
-  const esq = document.getElementById("aux-esq");
-  const lw = window.innerWidth - 80 - (esq && esq.offsetWidth || 0);
-  /* desconta o que os companheiros MEDEM, não um chute: Centralogic (232px),
-     navegação, legenda e botão. Medir evita a tela crescer por cima deles. */
-  let ocupado = 100;                       /* gaps + margens do overlay */
-  for (const id of ["aux-baixo","navov"]){
-    const e2 = document.getElementById(id);
-    if (e2) ocupado += e2.offsetHeight;
-  }
-  const lh = window.innerHeight - ocupado - 60;
-  escalarLCD(Math.max(lw, 320), Math.max(lh, 240));
+  /* AMPLIAR = ZOOM em duas camadas, sem medir pedaço de flexbox:
+     1. o LCD fica numa escala FIXA e nítida dentro do palco (640x480 x1,6);
+     2. o PALCO inteiro (tela + SELECTED CHANNEL + Centralogic + navegação +
+        transporte) é medido SEM transform e escalado como UM bloco.
+     A versão anterior calculava a tela descontando a largura da coluna e a
+     altura dos blocos -- medida parcial em flexbox mente (a coluna encolhe,
+     a conta infla, a tela engole o resto) e foi o que cortou tudo. */
+  escalarLCD(1024, 768);
+  const palco = document.getElementById("ov-palco");
+  if (!palco) return;
+  palco.style.transform = "none";          /* mede no tamanho natural */
+  const w = palco.offsetWidth, h = palco.offsetHeight;
+  if (!w || !h) return;
+  const k = Math.min((window.innerWidth - 24) / w, (window.innerHeight - 24) / h);
+  palco.style.transform = "scale(" + k.toFixed(4) + ")";
 }
 /* na mesa, o LCD ocupa o espaço físico medido na planta */
 function encaixarLCDnaMesa(){
@@ -5457,10 +5564,11 @@ function moverAux(paraOverlay){
       if (o && o.pai) o.pai.insertBefore(nó, o.irmão);
     }
   }
-  /* a Centralogic tem largura FIXA em px (medida na planta). Ampliada ela
-     pode crescer; na mesa volta ao valor medido. */
+  /* a Centralogic tem largura FIXA em px (medida na planta). No palco do
+     overlay ela ganha um tamanho fixo confortável (o palco escala inteiro);
+     na mesa volta ao valor medido. */
   const cl = document.getElementById("bloco-centralogic");
-  if (cl) cl.style.width = paraOverlay ? "min(100%, 620px)" : MED.centralog+"px";
+  if (cl) cl.style.width = paraOverlay ? "620px" : MED.centralog+"px";
   const sc = document.querySelector(".selch");
   if (sc) sc.style.width = paraOverlay ? "" : MED.selch+"px";
 }
@@ -5857,20 +5965,23 @@ function tocarStem(s, quando, offset){
   const envSt   = ctx.createGain(); envSt.gain.value = 0;
   const envMono = ctx.createGain(); envMono.gain.value = 0;
 
-  /* DINÂMICA NO CAMINHO DO SOM (a ordem da mesa: HPF -> EQ -> DYN -> fader).
-     gate = ganho controlado por envelope no tickAudio (Web Audio não tem nó
-     de gate); comp = DynamicsCompressorNode, TRANSPARENTE quando desligado
-     (thr 0 dB / ratio 1) para não reconectar o grafo a cada toque no [ON]. */
-  const gate = ctx.createGain();
-  const comp = ctx.createDynamicsCompressor();
-  comp.threshold.value = 0; comp.ratio.value = 1;
-  comp.knee.value = 6; comp.attack.value = 0.006; comp.release.value = 0.25;
+  /* DINÂMICA NO CAMINHO DO SOM (a ordem da mesa: HPF -> EQ -> DYN1 -> DYN2
+     -> fader). Os DOIS estágios são ganhos guiados por envelope no tickAudio
+     (processarDinamica), com a LEI da mesa calculada em JS.
+
+     ⛔ POR QUE NÃO o DynamicsCompressorNode: ele tem MAKEUP GAIN automático
+     que devolve o volume conforme o threshold desce -- o aluno comprimia e
+     não ouvia diferença ("GATE E COMPRESSOR NAO", 31/07). Com o ganho
+     explícito a redução é a da fórmula, o OUT GAIN é respeitado e o medidor
+     de GR mostra exatamente o que o ouvido recebe. */
+  const dyn1G = ctx.createGain();
+  const dyn2G = ctx.createGain();
 
   let no = src.connect(hpf);
   bandas.forEach(f=>{ no = no.connect(f); });
   no.connect(anaPre);                    /* derivação: não corta a cadeia */
-  no = no.connect(gate);
-  no = no.connect(comp);
+  no = no.connect(dyn1G);
+  no = no.connect(dyn2G);
   no = no.connect(gain);                 /* gain = HA + fader + [ON], só isso */
 
   /* sends de efeito: pós-fader (o uso de send/return da p.181), um gain por
@@ -5891,9 +6002,9 @@ function tocarStem(s, quando, offset){
   st.connect(AUD.busSt);                 /* → STEREO (L/R), pelo master */
 
   s.src = src;
-  s.nodes = { hpf, bandas, gate, comp, gain, pan, envSt, envMono, sendsFx,
+  s.nodes = { hpf, bandas, dyn1G, dyn2G, gain, pan, envSt, envMono, sendsFx,
               anaPre, anaPos, buf:new Uint8Array(anaPos.frequencyBinCount),
-              gateAtual:1 };
+              env1:1, env2:1, red1:0, red2:0 };
   /* registra para poder ser parado mesmo se a música trocar depois */
   AUD.vivos.push({ src, gain, stem:s });
   aplicarCanalNoAudio(s);
@@ -5951,24 +6062,8 @@ function aplicarCanalNoAudio(s){
   /* o panorâmico é do STEREO; o MONO tapa antes dele e não o sente (p.63) */
   if (n.pan) P(n.pan.pan, clamp(c.pan, -1, 1));
 
-  /* COMPRESSOR de verdade no áudio (dyn2 dos inputs; dyn1 quando for comp).
-     Desligado = transparente (thr 0 / ratio 1), sem reconectar o grafo.
-     ⚠️ knee da M7CL é 1-5+hard; o nó pede dB -- mapeio hard=0, 1..5 -> 3..30.
-     COMPANDER/DE-ESSER passam pelo mesmo nó (aproximação declarada);
-     EXPANDER não tem nó nativo e fica só no GR indicativo. */
-  if (n.comp){
-    const d = (c.dyn2 && c.dyn2.on && /COMP/.test(c.dyn2.tipo)) ? c.dyn2
-            : (c.dyn1 && c.dyn1.on && /COMP/.test(c.dyn1.tipo)) ? c.dyn1 : null;
-    if (d){
-      P(n.comp.threshold, clamp(d.thr, -54, 0));
-      P(n.comp.ratio, d.ratio===Infinity ? 20 : clamp(d.ratio, 1, 20));
-      P(n.comp.attack, clamp((d.attack||6)/1000, 0.001, 0.12));
-      P(n.comp.release, clamp(d.release ?? 0.25, 0.03, 2));
-      P(n.comp.knee, d.knee==null ? 6 : clamp(d.knee*6, 0, 30));
-    } else {
-      P(n.comp.threshold, 0); P(n.comp.ratio, 1);
-    }
-  }
+  /* a dinâmica (gate/comp/expander) vive em processarDinamica(), guiada por
+     envelope frame a frame -- não há mais nó nativo aqui (ver tocarStem) */
 
   /* sends de efeito: o nível que o canal manda ao MIX patcheado na entrada
      do rack (pós-fader; o retorno é dosado pelo ST IN da saída) */
@@ -6082,43 +6177,114 @@ function aplicarAudioAgora(){
   /* o master é UM par de ganhos, fora dos stems -- se não for aplicado aqui,
      o [ON] e o fader do STEREO/MONO voltam a não fazer nada (defeito de 31/07) */
   aplicarMasterNoAudio();
-  processarGates();
+  processarDinamica();
 }
 
-/* GATE por envelope: Web Audio não tem nó de gate, então o ganho é guiado
-   frame a frame -- lê o nível pós-EQ, compara com o threshold e caminha para
-   aberto (1) ou fechado (RANGE em dB) na velocidade de ATTACK/DECAY.
+/* ==================================================================
+   DINÂMICA POR ENVELOPE — DYN1 e DYN2 no caminho do som
+   ==================================================================
+   Web Audio não tem nó de gate, e o nó de compressor nativo aplica MAKEUP
+   automático que esconde a compressão do ouvido. Então os dois estágios são
+   GANHOS guiados frame a frame: lê-se o nível pós-EQ, aplica-se a LEI do
+   tipo (tabelas do manual) e caminha-se para o alvo na velocidade de
+   ATTACK/RELEASE/DECAY. Resolução do envelope ~16 ms (um frame) -- attack de
+   0 ms vira 4 ms; declarado, não escondido.
    linearRamp CURTO de propósito: setTargetAtTime nunca termina e deixaria o
    param em a-rate ([[smu-audioparam-automacao-nunca-termina]]). */
-function processarGates(){
+
+/* A LEI de cada tipo, com TODOS os campos da tabela do manual (p.249-251):
+   THRESHOLD, RATIO, ATTACK, RELEASE/DECAY, HOLD, KNEE, WIDTH, RANGE, OUT.
+   Devolve {alvo, red}: alvo = ganho 0..1 JÁ com o OUT GAIN; red = a redução
+   0..1 SEM o out gain -- é o que o medidor de GR mostra (GR mede a mordida,
+   não o make-up; somar os dois no medidor mentiria). */
+function leiDyn(d, dB){
+  if (!d || !d.on) return { alvo:1, red:0 };
+  const t = d.tipo;
+  const out = Number.isFinite(d.out) ? d.out : 0;
+  const r = d.ratio===Infinity ? 1 : (1 - 1/(d.ratio||1));
+  let redDb = 0;
+
+  if (t==="EXPANDER"){
+    /* abaixo do threshold, o deficit é reduzido pela razão. A tabela dá
+       OUT GAIN ao expander também (OUTp) -- versão anterior o ignorava. */
+    if (dB < d.thr) redDb = (d.thr - dB) * r;
+  }
+  else if (t==="COMPANDER-H" || t==="COMPANDER-S"){
+    /* ⚠️ aproximação declarada: comprime ACIMA do thr e expande ABAIXO de
+       thr - WIDTH; entre os dois, unidade. O WIDTH agora trabalha. */
+    if (dB > d.thr) redDb = (dB - d.thr) * r;
+    else {
+      const piso = d.thr - (d.width ?? 6);
+      if (dB < piso) redDb = (piso - dB) * r;
+    }
+  }
+  else { /* COMPRESSOR / DE-ESSER (de-esser = comp de banda cheia, declarado) */
+    /* KNEE da tabela: HARD (0) ou soft 1..5. No soft a mordida começa antes
+       do threshold e cresce em curva -- ⚠️ largura do joelho ESTIMADA em
+       knee*4 dB (4..20); a Yamaha não publica a curva. 1 linha para corrigir. */
+    const W = (d.knee >= 1) ? d.knee * 4 : 0;
+    const x = dB - d.thr;
+    if (W > 0){
+      if (x >= W/2)       redDb = r * x;
+      else if (x > -W/2)  redDb = r * Math.pow(x + W/2, 2) / (2*W);
+    } else if (x > 0)     redDb = r * x;
+  }
+  return { alvo: Math.pow(10, (out - redDb)/20),
+           red:  1 - Math.pow(10, -redDb/20) };
+}
+
+function estagioDyn(n, id, d, dB, t, dt){
+  const g = n["dyn"+id+"G"]; if (!g) return;
+  let alvo, red;
+  if (d && d.on && (d.tipo==="GATE" || d.tipo==="DUCKING")){
+    /* GATE/DUCKING têm HOLD (tabela): depois que o sinal some, a porta
+       segura o estado por HOLD segundos antes de começar a fechar/abrir.
+       Sem isso o gate picotava a cauda do bumbo -- e o HOLD existe na mesa
+       exatamente para isso. */
+    const fechado = Math.pow(10, -Math.abs(d.range ?? 70)/20);
+    const presente = dB >= d.thr;
+    if (presente) n["tSinal"+id] = t;
+    const dentroHold = (t - (n["tSinal"+id] ?? -9e9)) < (d.hold || 0);
+    const ativo = presente || dentroHold;
+    alvo = (d.tipo==="GATE") ? (ativo ? 1 : fechado) : (ativo ? fechado : 1);
+    red = 1 - Math.min(alvo, 1);
+  } else {
+    const L = leiDyn(d, dB);
+    alvo = L.alvo; red = L.red;
+  }
+  n["red"+id] = red;                          /* p/ o medidor de GR */
+  const atual = n["env"+id] ?? 1;
+  if (Math.abs(atual - alvo) < 1e-3) return;
+  /* constantes de tempo com o SENTIDO certo por tipo:
+       gate/ducking -> ATTACK abre (ganho subindo), DECAY fecha
+       comp/expander -> ATTACK morde (ganho descendo), RELEASE devolve */
+  const atk = Math.max(((d && d.attack) || 0)/1000, 0.004);
+  const ehPorta = d && (d.tipo==="GATE" || d.tipo==="DUCKING");
+  const tau = ehPorta
+    ? (alvo > atual ? atk : Math.max((d && d.decay)   || 0.3,  0.02))
+    : (alvo < atual ? atk : Math.max((d && d.release) || 0.25, 0.02));
+  const k = 1 - Math.exp(-dt / tau);
+  const novo = atual + (alvo - atual) * k;
+  n["env"+id] = novo;
+  g.gain.cancelScheduledValues(t);
+  g.gain.setValueAtTime(g.gain.value, t);
+  g.gain.linearRampToValueAtTime(novo, t + dt);
+}
+
+function processarDinamica(){
   const ctx = AUD.ctx; if (!ctx) return;
   const t = ctx.currentTime, dt = 1/60;
   for (const s of AUD.stems){
     const c = S.canais[s.canal], n = s.nodes;
-    if (!c || !n || !n.gate) continue;
-    const d = (c.dyn1 && (c.dyn1.tipo==="GATE"||c.dyn1.tipo==="DUCKING")) ? c.dyn1 : null;
-    let alvo = 1;
-    if (d && d.on){
-      n.anaPre.getByteTimeDomainData(n.buf);
-      let pico = 0;
-      for (let i=0;i<n.buf.length;i++){ const v=Math.abs(n.buf[i]-128)/128; if (v>pico) pico=v; }
-      const dB = pico>0 ? 20*Math.log10(pico) : -100;
-      const fechado = Math.pow(10, -Math.abs(d.range ?? 70)/20);
-      const abaixo = dB < d.thr;
-      const fecha = d.tipo==="GATE" ? abaixo : !abaixo;   /* DUCKING abaixa ACIMA do thr */
-      alvo = fecha ? fechado : 1;
-    }
-    const atual = n.gateAtual ?? 1;
-    if (Math.abs(atual - alvo) < 1e-3) continue;
-    /* attack abre, decay fecha (constantes de tempo da mesa, em s/ms) */
-    const tau = (alvo > atual) ? Math.max((d&&d.attack||0)/1000, 0.004)
-                               : Math.max((d&&d.decay)||0.05, 0.02);
-    const k = 1 - Math.exp(-dt / tau);
-    const novo = atual + (alvo - atual) * k;
-    n.gateAtual = novo;
-    n.gate.gain.cancelScheduledValues(t);
-    n.gate.gain.setValueAtTime(n.gate.gain.value, t);
-    n.gate.gain.linearRampToValueAtTime(novo, t + dt);
+    if (!c || !n || !n.dyn1G) continue;
+    /* detector: nível pós-EQ, ANTES da dinâmica (senão o gate mediria a
+       própria mordida e oscilaria) */
+    n.anaPre.getByteTimeDomainData(n.buf);
+    let pico = 0;
+    for (let i=0;i<n.buf.length;i++){ const v=Math.abs(n.buf[i]-128)/128; if (v>pico) pico=v; }
+    const dB = pico>0 ? 20*Math.log10(pico) : -100;
+    estagioDyn(n, "1", c.dyn1, dB, t, dt);
+    estagioDyn(n, "2", c.dyn2, dB, t, dt);
   }
 }
 function tickAudio(){
@@ -6740,6 +6906,51 @@ function m7clTeste(){
   /* cap.10 — dinâmica NO CAMINHO do áudio */
   T(10,"a lei do gate fecha no RANGE: -70 dB = ganho 0.000316", ()=>{
     return Math.abs(Math.pow(10,-70/20) - 0.000316) < 1e-6;
+  });
+  /* a MÁQUINA do compressor, campo a campo da tabela (p.249-251) */
+  T(10,"COMPRESSOR: -30 de thr, ratio 4, sinal 0 dB -> reduz 22.5 dB", ()=>{
+    const L = leiDyn({on:true,tipo:"COMPRESSOR",thr:-30,ratio:4,knee:0,out:0}, 0);
+    const dB = 20*Math.log10(L.alvo);
+    return Math.abs(dB - (-22.5)) < 0.01;      /* 30*(1-1/4) */
+  });
+  T(10,"OUT GAIN do compressor CHEGA ao som: +6 dB sobe o alvo em 6 dB", ()=>{
+    const a = leiDyn({on:true,tipo:"COMPRESSOR",thr:-30,ratio:4,knee:0,out:0}, 0).alvo;
+    const b = leiDyn({on:true,tipo:"COMPRESSOR",thr:-30,ratio:4,knee:0,out:6}, 0).alvo;
+    return Math.abs(20*Math.log10(b/a) - 6) < 0.01;
+  });
+  T(10,"GR mede a MORDIDA, sem o out gain (senão o medidor mentiria)", ()=>{
+    const a = leiDyn({on:true,tipo:"COMPRESSOR",thr:-30,ratio:4,knee:0,out:0}, 0).red;
+    const b = leiDyn({on:true,tipo:"COMPRESSOR",thr:-30,ratio:4,knee:0,out:18}, 0).red;
+    return Math.abs(a-b) < 1e-9 && a > 0;
+  });
+  T(10,"KNEE soft: morde ANTES do threshold e emenda na reta na borda do joelho", ()=>{
+    const F=(k,dB)=>leiDyn({on:true,tipo:"COMPRESSOR",thr:-20,ratio:4,knee:k,out:0},dB).red;
+    /* 1 dB abaixo do thr: hard não morde, soft já morde (transição suave);
+       na borda do joelho (thr + W/2 = -10 com knee 5) as duas se igualam --
+       é a continuidade que define o soft knee */
+    return F(0,-21)===0 && F(5,-21)>0 && Math.abs(F(5,-10)-F(0,-10))<1e-9;
+  });
+  T(10,"EXPANDER respeita o OUT GAIN (tabela dá OUTp a ele também)", ()=>{
+    const a = leiDyn({on:true,tipo:"EXPANDER",thr:-20,ratio:2,out:0}, -40).alvo;
+    const b = leiDyn({on:true,tipo:"EXPANDER",thr:-20,ratio:2,out:6}, -40).alvo;
+    return Math.abs(20*Math.log10(b/a) - 6) < 0.01 && a < 1;
+  });
+  T(10,"COMPANDER: o WIDTH trabalha — dentro da janela não mexe, abaixo expande", ()=>{
+    const dentro = leiDyn({on:true,tipo:"COMPANDER-H",thr:-10,ratio:4,width:20,out:0}, -25).red;
+    const abaixo = leiDyn({on:true,tipo:"COMPANDER-H",thr:-10,ratio:4,width:20,out:0}, -40).red;
+    const acima  = leiDyn({on:true,tipo:"COMPANDER-H",thr:-10,ratio:4,width:20,out:0}, 0).red;
+    return dentro===0 && abaixo>0 && acima>0;
+  });
+  T(10,"GATE segura o HOLD antes de fechar (p.249)", ()=>{
+    const n = { dyn1G:{gain:{value:1,cancelScheduledValues(){},setValueAtTime(){},linearRampToValueAtTime(){}}}, env1:1 };
+    const d = {on:true,tipo:"GATE",thr:-20,range:-70,attack:0,hold:0.5,decay:0.05};
+    estagioDyn(n,"1",d,-10, 100.0, 1/60);      /* sinal presente em t=100 */
+    const arm = n.tSinal1===100.0;
+    estagioDyn(n,"1",d,-90, 100.3, 1/60);      /* sumiu, mas dentro do hold */
+    const segurou = n.red1===0;
+    estagioDyn(n,"1",d,-90, 100.9, 1/60);      /* hold vencido -> fecha */
+    const fechou = n.red1>0.9;
+    return arm && segurou && fechou;
   });
   T(10,"GR do compressor cresce com o excesso acima do threshold", ()=>{
     const c=C("CH1"); const g={t:c.dyn2.tipo,o:c.dyn2.on,thr:c.dyn2.thr,r:c.dyn2.ratio,n:c.nivel};
