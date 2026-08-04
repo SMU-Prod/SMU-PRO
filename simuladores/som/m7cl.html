@@ -1739,6 +1739,7 @@ function valorEncoderCL(c){
   return dbParaPos(c.fader);
 }
 S.encFoco = "send0";
+S.sendJan = null;   /* {tipo:'mix'|'mtx', n} -- alvo da janela MIX/MATRIX SEND */
 
 function desenhar(){
   /* SENDS ON FADER muda o que o fader e o [ON] fazem: avisa na mesa inteira */
@@ -2136,6 +2137,14 @@ function acaoNav(b, ev){
   const id = b.dataset.nav;
   S.navAnterior = (S.nav !== "DCA") ? S.nav : S.navAnterior;
   S.nav = id;
+  /* p.53: "ao apertar uma navigation key, o OVERVIEW aparece" -- e' o passo 1
+     de todo fluxo da Centralogic. Excecao do HINT da p.33: com HELP, METER ou
+     SCENE na tela, a nav key NAO troca a tela. Antes nada aqui escrevia
+     S.tela: da SELCH a tela ficava parada e o fluxo do manual morria. */
+  const excecao = S.tela==="METER" || S.popup==="HELP" || S.popup==="SCENE";
+  if (!excecao && (S.tela!=="OVERVIEW" || S.popup)){
+    S.tela = "OVERVIEW"; S.popup = null; telaChave = null;
+  }
   S.ajuda = "Centralogic / tela: <b>"+navPorId(id).rot+"</b> — segure 2 s para FIXAR a Centralogic";
   clearTimeout(timerNav);
   timerNav = setTimeout(()=>{
@@ -2200,7 +2209,7 @@ function acaoUDK(i){
         const med = S.tap.batidas.reduce((a,b)=>a+b,0) / S.tap.batidas.length;
         const ms = Math.round(clamp(med, 20, 3000));
         let n = 0;
-        S.rack.forEach(r=>{ if (r.tipo === "EFFECT"){ r.param.tempo = ms; n++; } });
+        S.rack.forEach((r,i)=>{ if (r.tipo === "EFFECT"){ r.param.tempo = ms; ajustarFxVivo(i); n++; } });
         S.tapMs = ms;
         S.ajuda = "TAP TEMPO: <b>"+ms+" ms</b> ("+Math.round(60000/ms)+" BPM) — "+
                   "aplicado em "+n+" rack(s) de efeito";
@@ -2323,7 +2332,9 @@ function aplicarCena(f){
       eq:{on:v.eq.on,tipo:v.eq.tipo,att:v.eq.att,bandas:JSON.parse(JSON.stringify(v.eq.bandas))},
       dyn1:{...v.dyn1}, dyn2:{...v.dyn2},
       mix:v.mix.map(s=>({...s})), mtx:v.mtx.map(s=>({...s})),
-      dca:[...v.dca], mute:[...v.mute], insert:v.insert, dout:v.dout, nome:v.nome
+      dca:[...v.dca], mute:[...v.mute], insert:v.insert, dout:v.dout,
+      insOut:v.insOut, insIn:v.insIn, doutPorta:v.doutPorta, doutLvl:v.doutLvl,
+      nome:v.nome
     });
     Object.assign(c, guardado);            /* devolve o que o FOCUS proibiu */
   }
@@ -2714,11 +2725,15 @@ TELAS.OVERVIEW = function(area){
     if (!c){ cel.style.opacity=".3"; g.appendChild(cel); return; }
     if (id === S.sel) cel.style.outline = "1px solid var(--tela-azul-claro)";
 
-    /* A — nome no topo */
+    /* A — nome no topo. p.100: tocar o campo abre a PATCH/NAME (nome, ícone
+       e patch). Antes só selecionava — a janela ficava inalcançável daqui. */
     const topo = el("div", null, rotuloCurto(c)+"  "+c.nome);
     topo.style.cssText = "font-size:8px;background:"+(id===S.sel?"var(--tela-azul)":"#26292d")+
       ";border-radius:1px;padding:0 2px;white-space:nowrap;overflow:hidden;cursor:pointer";
-    topo.addEventListener("pointerdown",()=>{ S.sel=id; S.ajuda="Canal <b>"+c.nome+"</b> selecionado"; pedirRender(); });
+    topo.addEventListener("pointerdown",()=>{ S.sel=id; S.pnAba="NAME";
+      abrirPopup("PATCH_NAME");
+      S.ajuda="Campo do nome abre a <b>PATCH/NAME</b> — nome, ícone e patch (p.100)";
+      pedirRender(); });
     cel.appendChild(topo);
 
     /* B — HA / PHASE (só entrada) */
@@ -2754,26 +2769,38 @@ TELAS.OVERVIEW = function(area){
       });
       cel.appendChild(ha);
     } else {
-      /* C — OUTPUT PORT (só saída) */
-      const op = el("div",null, c.tipo==="mix" ? "OMNI"+c.id.slice(3) : "—");
-      op.style.cssText="font-size:7.5px;background:#1f2225;border-radius:1px;text-align:center";
+      /* C — OUTPUT PORT (só saída). Mostra o patch REAL (não um nome
+         derivado do id — mudar o patch não mudava o campo) e tocar abre a
+         PATCH/NAME, como a p.101 manda. */
+      const op = el("div");
+      op.style.cssText="font-size:7.5px;background:#1f2225;border-radius:1px;text-align:center;cursor:pointer";
+      op.title = "Abrir PATCH/NAME (p.101)";
+      lig(()=>{ op.textContent = (S.patch.saida && S.patch.saida[c.id]) || "—"; });
+      op.addEventListener("pointerdown",()=>{ S.sel=id; S.pnAba="PATCH";
+        abrirPopup("PATCH_NAME");
+        S.ajuda="Campo da porta abre a <b>PATCH/NAME</b> (p.101)"; pedirRender(); });
       cel.appendChild(op);
     }
 
-    /* D — INSERT / DIRECT OUT */
-    const dl = el("div"); dl.style.cssText="display:flex;gap:1px";
-    const bIns = el("button","tbt laranja","INS"); bIns.type="button"; bIns.style.cssText="flex:1;font-size:7px";
-    bIns.addEventListener("pointerdown",()=>{c.insert=!c.insert;
-      S.ajuda="INSERT de <b>"+c.nome+"</b> "+(c.insert?"ligado":"desligado");pedirRender();});
+    /* D — INSERT / DIRECT OUT. p.101: os quadrados INS/D.OUT são
+       INDICADORES ("this indicates the on/off status") e tocar o CAMPO abre
+       a janela INSERT/DIRECT OUT. Antes eram toggles — gesto que a mesa não
+       tem ali, e a janela ficava inalcançável do OVERVIEW. */
+    const dl = el("div");
+    dl.style.cssText="display:flex;gap:1px;cursor:pointer";
+    dl.title = "Abrir INSERT / DIRECT OUT (p.110)";
+    const bIns = el("span","tbt laranja"); bIns.textContent="INS"; bIns.style.cssText="flex:1;font-size:7px;text-align:center";
     dl.appendChild(bIns);
+    let bD = null;
     if (c.tipo==="in"){
-      const bD = el("button","tbt","D.OUT"); bD.type="button"; bD.style.cssText="flex:1;font-size:7px";
-      bD.addEventListener("pointerdown",()=>{c.dout=!c.dout;
-        S.ajuda="DIRECT OUT de <b>"+c.nome+"</b> "+(c.dout?"ligado":"desligado");pedirRender();});
+      bD = el("span","tbt"); bD.textContent="D.OUT"; bD.style.cssText="flex:1;font-size:7px;text-align:center";
       dl.appendChild(bD);
       lig(()=>bD.classList.toggle("on",c.dout));
     }
     lig(()=>bIns.classList.toggle("on",c.insert));
+    dl.addEventListener("pointerdown",()=>{ S.sel=id; abrirPopup("INSDO");
+      S.ajuda="Campo INSERT/D.OUT abre a janela <b>INSERT/DIRECT OUT</b> (p.101) — o liga/desliga fica nela";
+      pedirRender(); });
     cel.appendChild(dl);
 
     /* E — gráfico de EQ (SVG, não canvas: o portão precisa enxergar) */
@@ -2816,9 +2843,16 @@ TELAS.OVERVIEW = function(area){
       const t = el("span"); t.style.cssText="font-size:6px;color:#c9ced4";
       cel2.appendChild(k); cel2.appendChild(t);
       cel2.addEventListener("pointerdown",()=>{
+        /* p.69 passo 5: com o knob JA selecionado, o 2o toque abre a janela
+           MIX/MATRIX SEND -- mesmo gesto do GAIN (HA) e do PAN (TOST) */
+        if (S.encFoco === "send"+n){
+          S.sendJan = {tipo: S.sendDest==="mtx"?"mtx":"mix", n};
+          abrirPopup("SEND"); pedirRender(); return;
+        }
         S.encFoco = "send"+n;
         S.ajuda = "Knob <b>"+(S.sendDest==="mix"?"MIX ":"MATRIX ")+(n+1)+
-          "</b> selecionado — gire os encoders 1-8 da Centralogic para mexer nos 8 canais de uma vez";
+          "</b> selecionado — gire os encoders, ou toque de novo para abrir a janela "+
+          (S.sendDest==="mix"?"MIX":"MATRIX")+" SEND";
         pedirRender();
       });
       lig(()=>{
@@ -3089,7 +3123,10 @@ TELAS.SELCH = function(area){
     cel.style.cssText="display:flex;align-items:center;gap:2px;min-width:0";
     const grupo = "k-send"+(Math.floor(n/4)+1);
     const kn = knobTela(null, ()=>dbParaPos(s.lvl), p=>{ s.lvl = posParaDb(p); S.encFoco="send"+n; },
-      0, 1, ()=> (s.lvl<=-138?"-∞":s.lvl.toFixed(0)), {mini:true, cor:grupo});
+      0, 1, ()=> (s.lvl<=-138?"-∞":s.lvl.toFixed(0)), {mini:true, cor:grupo,
+      /* p.92 item 2: apertar o knob abre a janela MIX/MATRIX SEND */
+      aoTocar:()=>{ S.sendJan={tipo: ehSaida(c)?"mtx":"mix", n};
+        abrirPopup("SEND"); }});
     kn.style.minWidth = "0";
     const on = btTela(String(n+1), ()=>s.on, ()=>{ s.on = !s.on;
       S.ajuda = "<b>"+c.nome+"</b> send "+(n+1)+" "+(s.on?"ON":"OFF"); });
@@ -3545,6 +3582,71 @@ TELAS_POPUP.EQ = function(area){
     colar: (ch,d)=>{ ch.eq = JSON.parse(JSON.stringify(d.eq));
                      ch.hpf = JSON.parse(JSON.stringify(d.hpf)); },
   });
+
+  /* ---- ficha 8ch (p.116): os 8 canais da Centralogic lado a lado, cada um
+     com o grafico, ATT no encoder da coluna e EQ ON. Antes a ficha era
+     COSMETICA: clicava, destacava, e o corpo continuava no 1ch. ---- */
+  if (S.popAba === "8ch"){
+    limparEncoders(); S.encRotulo = "ATT";
+    const g8 = el("div");
+    g8.style.cssText="display:grid;grid-template-columns:repeat(8,1fr);gap:2px;margin-top:2px";
+    grupoTela().forEach((id,i)=>{
+      const cc = S.canais[id];
+      const cel = el("div");
+      cel.style.cssText="background:#26292d;border:1px solid #3d4147;border-radius:2px;"+
+        "padding:2px;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0";
+      if (!cc){ cel.style.opacity=".3"; g8.appendChild(cel); return; }
+      const nm = el("button","tbt",cc.nome); nm.type="button";
+      nm.style.cssText="font-size:7px;max-width:100%;overflow:hidden;white-space:nowrap";
+      nm.addEventListener("pointerdown",()=>{ S.sel=id;
+        S.ajuda="Canal <b>"+cc.nome+"</b> selecionado"; pedirRender(); });
+      lig(()=>nm.classList.toggle("on", id===S.sel));
+      cel.appendChild(nm);
+      const svg = curvaEQ(cc, 70, 30);
+      svg.style.cursor="pointer";
+      svg.addEventListener("pointerdown",()=>{ S.sel=id; S.popAba="1ch";
+        telaChave=null; S.ajuda="Grafico de <b>"+cc.nome+"</b> — visao 1 ch"; pedirRender(); });
+      cel.appendChild(svg);
+      cel.appendChild(knobTela("ATT", ()=>cc.eq.att, v=>cc.eq.att=v, -96, 24,
+        v=>v.toFixed(0), {mini:true}));
+      cel.appendChild(btTela("EQ ON", ()=>cc.eq.on, ()=>{ cc.eq.on=!cc.eq.on;
+        S.ajuda="EQ de <b>"+cc.nome+"</b> "+(cc.eq.on?"ligado":"desligado"); }));
+      registrarEncoder(i, {rot:cc.nome+" ATT", min:-96, max:24,
+        ler:()=>cc.eq.att, escrever:v=>{ cc.eq.att=v; }});
+      g8.appendChild(cel);
+    });
+    b.appendChild(g8);
+    const n8 = el("div",null,
+      "Visao 8 ch (p.116): o encoder de cada coluna da o ATT do canal; toque no grafico abre o 1 ch.");
+    n8.style.cssText="font-size:8.5px;color:#9aa0a8;margin-top:4px";
+    b.appendChild(n8);
+    return;
+  }
+
+  /* ---- ficha ALL (p.117): todos os canais de entrada, grafico a grafico ---- */
+  if (S.popAba === "ALL"){
+    const ga = el("div");
+    ga.style.cssText="display:grid;grid-template-columns:repeat(8,1fr);gap:2px;margin-top:2px;"+
+      "overflow:auto;max-height:100%";
+    [...Array.from({length:N_IN},(_,i)=>"CH"+(i+1)),
+     ...Array.from({length:N_STIN},(_,i)=>"ST"+(i+1))].forEach(id=>{
+      const cc = S.canais[id];
+      const cel = el("div");
+      cel.style.cssText="background:#26292d;border:1px solid #3d4147;border-radius:2px;"+
+        "padding:1px;display:flex;flex-direction:column;align-items:center;gap:1px;cursor:pointer";
+      const nm = el("div",null,cc.nome);
+      nm.style.cssText="font-size:6.5px;max-width:100%;overflow:hidden;white-space:nowrap"+
+        (id===S.sel?";color:var(--tela-azul-claro)":"");
+      cel.appendChild(nm);
+      cel.appendChild(curvaEQ(cc, 56, 22));
+      cel.addEventListener("pointerdown",()=>{ S.sel=id; S.popAba="1ch"; telaChave=null;
+        S.ajuda="<b>"+cc.nome+"</b> — visao 1 ch"; pedirRender(); });
+      ga.appendChild(cel);
+    });
+    b.appendChild(ga);
+    return;
+  }
+
   const topo = linhaTela();
   topo.appendChild(btTela("TYPE I", ()=>c.eq.tipo==="I", ()=>{ c.eq.tipo="I";
     S.ajuda="EQ Type I — o clássico das digitais Yamaha, mais 'redondo'"; }));
@@ -3672,7 +3774,83 @@ function popupDyn(area, qual){
   const c = S.canais[S.sel];
   const d = c[qual];
   const tipos = tiposDyn(c, qual);
-  const b = molde(area, qual==="dyn1"?"DYNAMICS 1":"DYNAMICS 2", c.nome);
+  /* p.35: a janela de dinamica TEM as teclas de ferramentas (LIBRARY/DEFAULT/
+     COPY/PASTE/COMPARE) e as fichas 1ch/8ch/ALL (p.118). Antes vinha crua. */
+  const b = molde(area, qual==="dyn1"?"DYNAMICS 1":"DYNAMICS 2", c.nome, {
+    ferramentas:true, abas:true, canais:true, lib:"DYN_LIB",
+    padrao: ch=>{ Object.assign(ch[qual], novoCanal("TMP", ch.tipo, "t")[qual]); },
+    copiar: ch=>JSON.parse(JSON.stringify(ch[qual])),
+    colar: (ch,dd)=>{ Object.assign(ch[qual], JSON.parse(JSON.stringify(dd))); },
+  });
+
+  /* ---- ficha 8ch (p.118): THR de cada canal no encoder da coluna ---- */
+  if (S.popAba === "8ch"){
+    limparEncoders(); S.encRotulo = "THRESHOLD";
+    const g8 = el("div");
+    g8.style.cssText="display:grid;grid-template-columns:repeat(8,1fr);gap:2px;margin-top:2px";
+    grupoTela().forEach((id,i)=>{
+      const cc = S.canais[id];
+      const cel = el("div");
+      cel.style.cssText="background:#26292d;border:1px solid #3d4147;border-radius:2px;"+
+        "padding:2px;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0";
+      const dd = cc && cc[qual];
+      if (!cc || !dd || (qual==="dyn2" && ehSaida(cc))){ cel.style.opacity=".3"; g8.appendChild(cel); return; }
+      const nm = el("button","tbt",cc.nome); nm.type="button";
+      nm.style.cssText="font-size:7px;max-width:100%;overflow:hidden;white-space:nowrap";
+      nm.addEventListener("pointerdown",()=>{ S.sel=id; pedirRender(); });
+      lig(()=>nm.classList.toggle("on", id===S.sel));
+      cel.appendChild(nm);
+      const tp = el("div",null,dd.tipo); tp.style.cssText="font-size:6px;color:#9aa0a8";
+      lig(()=>tp.textContent=dd.tipo);
+      cel.appendChild(tp);
+      cel.appendChild(knobTela("THR", ()=>dd.thr, v=>dd.thr=v,
+        (qual==="dyn1"&&dd.tipo==="GATE")?-72:-54, 0, v=>v.toFixed(0), {mini:true}));
+      const gr = el("div");
+      gr.style.cssText="width:90%;height:5px;background:#15171a;border-radius:1px;position:relative;overflow:hidden";
+      const grb = el("i"); grb.style.cssText="position:absolute;right:0;top:0;bottom:0;background:#e8a020";
+      gr.appendChild(grb);
+      lig(()=>{ grb.style.width = Math.round(clamp(reducaoDyn(cc,qual),0,1)*100)+"%"; });
+      cel.appendChild(gr);
+      cel.appendChild(btTela("ON", ()=>dd.on, ()=>{ dd.on=!dd.on;
+        S.ajuda=(qual==="dyn1"?"DYN1":"DYN2")+" de <b>"+cc.nome+"</b> "+(dd.on?"ligado":"desligado"); }));
+      registrarEncoder(i, {rot:cc.nome+" THR",
+        min:(qual==="dyn1"&&dd.tipo==="GATE")?-72:-54, max:0,
+        ler:()=>dd.thr, escrever:v=>{ dd.thr=v; }});
+      g8.appendChild(cel);
+    });
+    b.appendChild(g8);
+    const n8 = el("div",null,
+      "Visao 8 ch (p.118): o encoder de cada coluna da o THRESHOLD; a barra laranja e' o GAIN REDUCTION.");
+    n8.style.cssText="font-size:8.5px;color:#9aa0a8;margin-top:4px";
+    b.appendChild(n8);
+    return;
+  }
+
+  /* ---- ficha ALL: todos os canais compativeis, compacto ---- */
+  if (S.popAba === "ALL"){
+    const ga = el("div");
+    ga.style.cssText="display:grid;grid-template-columns:repeat(8,1fr);gap:2px;margin-top:2px;"+
+      "overflow:auto;max-height:100%";
+    [...Array.from({length:N_IN},(_,i)=>"CH"+(i+1)),
+     ...Array.from({length:N_STIN},(_,i)=>"ST"+(i+1))].forEach(id=>{
+      const cc = S.canais[id]; const dd = cc && cc[qual];
+      if (!dd) return;
+      const cel = el("div");
+      cel.style.cssText="background:#26292d;border:1px solid #3d4147;border-radius:2px;"+
+        "padding:1px 2px;display:flex;align-items:center;gap:2px;cursor:pointer";
+      const nm = el("span",null,cc.nome);
+      nm.style.cssText="font-size:6.5px;flex:1 1 auto;overflow:hidden;white-space:nowrap"+
+        (id===S.sel?";color:var(--tela-azul-claro)":"");
+      const th = el("span"); th.style.cssText="font-size:6.5px";
+      lig(()=>{ th.textContent=dd.thr.toFixed(0); th.style.color = dd.on ? "#7fd47f" : "#7d838a"; });
+      cel.appendChild(nm); cel.appendChild(th);
+      cel.addEventListener("pointerdown",()=>{ S.sel=id; S.popAba="1ch"; telaChave=null;
+        S.ajuda="<b>"+cc.nome+"</b> — visao 1 ch"; pedirRender(); });
+      ga.appendChild(cel);
+    });
+    b.appendChild(ga);
+    return;
+  }
 
   /* canal de saída não tem DYNAMICS 2 (p.249) */
   if (qual==="dyn2" && ehSaida(c)){
@@ -4311,7 +4489,9 @@ TELAS_POPUP.INSDO = function(area){
     cx.appendChild(l1);
     cx.appendChild(btTela("INSERT ON", ()=>c.insert, ()=>{ c.insert=!c.insert;
       S.ajuda="INSERT "+(c.insert?"ligado":"desligado")+" — o sinal desvia por "+c.insOut; }));
-    const n1=el("div",null,"O insert desvia o sinal do canal por um rack (GEQ/efeito) e volta.");
+    const n1=el("div",null,"O insert desvia o sinal do canal por um rack (GEQ/efeito) e volta. "+
+      "⚠️ Neste simulador o desvio de INSERT de canal ainda nao processa o audio — "+
+      "use o GEQ inserido no STEREO (tela RACK) e os efeitos por send/return, que processam.");
     n1.style.cssText="font-size:8.5px;color:#9aa0a8"; cx.appendChild(n1);
     l.appendChild(cx);
   }
@@ -4335,6 +4515,78 @@ TELAS_POPUP.INSDO = function(area){
     l.appendChild(cx);
   }
   b.appendChild(l);
+};
+
+/* ==================================================================
+   MIX SEND / MATRIX SEND (p.69-70, p.87, p.92)
+   ==================================================================
+   A janela que NAO existia: SEND TO com setas, PRE por canal (que agora
+   VALE no som dos sends de efeito), ON por mandada, nivel nos encoders,
+   ALL PRE / ALL POST. Abre pelo 2o toque no knob de send do OVERVIEW e
+   pelo toque no knob de send da SELECTED CHANNEL VIEW. */
+TELAS_POPUP.SEND = function(area){
+  const j = S.sendJan || (S.sendJan = {tipo: S.sendDest==="mtx"?"mtx":"mix", n:0});
+  const ehMix = j.tipo==="mix";
+  const NB = ehMix ? N_MIX : N_MTX;
+  const b = molde(area,(ehMix?"MIX":"MATRIX")+" SEND","PRE/POST por canal · p.69");
+
+  const cab = linhaTela();
+  const seta=(rot,d)=>{ const bt=el("button","tbt",rot); bt.type="button";
+    bt.addEventListener("pointerdown",()=>{ j.n=clamp(j.n+d,0,NB-1);
+      telaChave=null; pedirRender(); });
+    return bt; };
+  cab.appendChild(el("span",null,"SEND TO:"));
+  cab.appendChild(seta("◀",-1));
+  const rotb=el("b",null,(ehMix?"MIX ":"MATRIX ")+(j.n+1)); rotb.style.minWidth="70px";
+  cab.appendChild(rotb);
+  cab.appendChild(seta("▶",+1));
+  [["ALL PRE",true],["ALL POST",false]].forEach(([rot,v])=>{
+    const bt=el("button","tbt",rot); bt.type="button";
+    bt.addEventListener("pointerdown",()=>{
+      let nn=0;
+      Object.values(S.canais).forEach(cc=>{ if(cc.tipo==="in"||cc.tipo==="stin"){
+        const arr=ehMix?cc.mix:cc.mtx; if(arr[j.n]){ arr[j.n].pre=v; nn++; } }});
+      S.ajuda="Bus "+(j.n+1)+": as mandadas dos "+nn+" canais em <b>"+(v?"PRE":"POST")+" FADER</b>";
+      pedirRender(); });
+    cab.appendChild(bt);
+  });
+  b.appendChild(cab);
+
+  const g=el("div");
+  g.style.cssText="display:grid;grid-template-columns:repeat(8,1fr);gap:2px;margin-top:4px";
+  limparEncoders(); S.encRotulo=(ehMix?"MIX ":"MTX ")+(j.n+1)+" SEND";
+  grupoTela().forEach((id,i)=>{
+    const c=S.canais[id]; const cel=el("div");
+    cel.style.cssText="background:#26292d;border:1px solid #3d4147;border-radius:2px;"+
+      "padding:2px;display:flex;flex-direction:column;align-items:center;gap:2px";
+    if(!c||!(c.tipo==="in"||c.tipo==="stin")){ cel.style.opacity=".3"; g.appendChild(cel); return; }
+    const arr=ehMix?c.mix:c.mtx; const sd=arr[j.n];
+    if(!sd){ cel.style.opacity=".3"; g.appendChild(cel); return; }
+    const nm=el("button","tbt",c.nome); nm.type="button";
+    nm.style.cssText="font-size:7.5px;max-width:100%;overflow:hidden;white-space:nowrap";
+    nm.addEventListener("pointerdown",()=>{ S.sel=id;
+      S.ajuda="Canal <b>"+c.nome+"</b> selecionado (o [SEL] acendeu)"; pedirRender(); });
+    lig(()=>nm.classList.toggle("on", id===S.sel));
+    cel.appendChild(nm);
+    cel.appendChild(btTela("PRE", ()=>sd.pre, ()=>{ sd.pre=!sd.pre;
+      S.ajuda="<b>"+c.nome+"</b> → "+(ehMix?"MIX":"MATRIX")+" "+(j.n+1)+
+        ": <b>"+(sd.pre?"PRE":"POST")+" FADER</b>"+
+        (sd.pre?" — não segue o fader (monitor)":" — segue o fader (efeito)"); },
+      {laranja:true}));
+    cel.appendChild(knobTela(null, ()=>dbParaPos(sd.lvl), pv=>{ sd.lvl=posParaDb(pv); }, 0, 1,
+      ()=>sd.lvl<=-138?"-∞":sd.lvl.toFixed(0), {mini:true}));
+    cel.appendChild(btTela("ON", ()=>sd.on, ()=>{ sd.on=!sd.on;
+      S.ajuda="Mandada de <b>"+c.nome+"</b> "+(sd.on?"LIGADA":"desligada"); }));
+    registrarEncoder(i, {rot:c.nome, min:0, max:1,
+      ler:()=>dbParaPos(sd.lvl), escrever:v=>{ sd.lvl=posParaDb(v); }});
+    g.appendChild(cel);
+  });
+  b.appendChild(g);
+  const nota=el("div",null,
+    "PRE = a mandada não segue o fader (monitor de palco) · POST = segue (mandada de efeito). "+
+    "Nos sends de efeito (MIX 13-16) o PRE já muda o SOM. Os encoders 1-8 dão o nível dos 8 canais.");
+  nota.style.cssText="font-size:8.5px;color:#9aa0a8;margin-top:4px;line-height:1.35";
+  b.appendChild(nota);
 };
 
 TELAS_POPUP.PATCH = function(area){
@@ -4637,7 +4889,14 @@ S.rack = Array.from({length:8},(_,i)=>({
   geq: new Array(31).fill(0),
   efeito: ["REV-X HALL","STEREO DELAY","CHORUS","REV-X PLATE"][i-4] || "REV-X HALL",
   entrada: i>=4 ? "MIX"+(9+i) : null,       /* rack5=MIX13 … rack8=MIX16 */
-  saida:   i>=4 ? "ST"+(i-3)  : null,       /* rack5=ST IN1 … rack8=ST IN4 */
+  /* DOIS patches DISTINTOS, de proposito:
+     saidaFx = retorno do EFEITO (ST IN 1-4, p.46) - so racks 5-8
+     saida   = insercao do GEQ (STEREO). A exclusividade do STEREO so mexe
+     AQUI. Quando os dois moravam no mesmo campo, inserir um GEQ no STEREO
+     apagava o retorno ST1-ST4 e calava o efeito PARA SEMPRE (achado da
+     auditoria de 31/07). */
+  saidaFx: i>=4 ? "ST"+(i-3) : null,
+  saida:   i===0 ? "STEREO" : null,
   param:{ tempo:500, mix:35 }
 }));
 const FREQ_GEQ = [20,25,31.5,40,50,63,80,100,125,160,200,250,315,400,500,630,800,1000,
@@ -4667,6 +4926,9 @@ TELAS_POPUP.RACK = function(area){
   const abas = linhaTela();
   S.rack.forEach((r,i)=>{
     abas.appendChild(btTela(String(r.n)+" "+r.tipo, ()=>S.rackSel===i, ()=>{ S.rackSel=i;
+      /* a chave da tela NÃO inclui o rack escolhido: sem zerar aqui o corpo
+         fica congelado no rack anterior — era o "8 EFFECT mostrando GEQ" */
+      telaChave=null;
       S.ajuda="Rack "+r.n+" — "+r.tipo; }));
   });
   b.appendChild(abas);
@@ -4677,8 +4939,15 @@ TELAS_POPUP.RACK = function(area){
 
   if (r.n>4){
     const lt = linhaTela();
-    lt.appendChild(btTela("GEQ", ()=>r.tipo==="GEQ", ()=>{ r.tipo="GEQ"; }));
-    lt.appendChild(btTela("EFFECT", ()=>r.tipo==="EFFECT", ()=>{ r.tipo="EFFECT"; }));
+    lt.appendChild(btTela("GEQ", ()=>r.tipo==="GEQ", ()=>{ r.tipo="GEQ";
+      remontarFx(S.rackSel);                       /* desmonta o efeito */
+      if (AUD.ctx) montarGeqMaster(AUD.ctx);       /* e refaz a insercao GEQ */
+      telaChave=null; }));
+    lt.appendChild(btTela("EFFECT", ()=>r.tipo==="EFFECT", ()=>{ r.tipo="EFFECT";
+      r.saida = null;                              /* GEQ sai do caminho */
+      if (AUD.ctx) montarGeqMaster(AUD.ctx);       /* remove biquads orfaos */
+      remontarFx(S.rackSel);
+      telaChave=null; }));
     cx.appendChild(lt);
   }
 
@@ -4703,6 +4972,7 @@ TELAS_POPUP.RACK = function(area){
       trilho.addEventListener("pointermove",ev=>{
         if (base===null) return;
         r.geq[i] = clamp(base + (y0-ev.clientY)/74*30, -15, 15);   /* ±15 dB, MEDIDO */
+        aplicarGeqVivo();
         S.ajuda = "GEQ rack "+r.n+" · "+(f>=1000?(f/1000)+"k":f)+" Hz: "+
                   (r.geq[i]>0?"+":"")+r.geq[i].toFixed(1)+" dB";
         pedirRender();
@@ -4716,9 +4986,23 @@ TELAS_POPUP.RACK = function(area){
       g.appendChild(col);
     });
     cx.appendChild(g);
+    /* PATCH de saída do GEQ (p.172): sem inserção, o GEQ não toca no som */
+    const lpat = linhaTela();
+    lpat.appendChild(el("span",null,"SAÍDA:"));
+    [["—",null],["STEREO (insere no master)","STEREO"]].forEach(([rot,val])=>{
+      lpat.appendChild(btTela(rot, ()=>r.saida===val, ()=>{
+        S.rack.forEach(x=>{ if (x.tipo==="GEQ" && x!==r && val==="STEREO") x.saida = null; });
+        r.saida = val;
+        if (AUD.ctx) montarGeqMaster(AUD.ctx);
+        S.ajuda = val ? "GEQ do rack "+r.n+" INSERIDO no STEREO — os sliders passam a valer no som"
+                      : "GEQ do rack "+r.n+" fora do caminho do som";
+        telaChave=null; }));
+    });
+    cx.appendChild(lpat);
     const l2 = linhaTela();
     const flat = el("button","tbt","FLAT"); flat.type="button";
-    flat.addEventListener("pointerdown",()=>{ r.geq.fill(0); S.ajuda="GEQ zerado"; pedirRender(); });
+    flat.addEventListener("pointerdown",()=>{ r.geq.fill(0); aplicarGeqVivo();
+      S.ajuda="GEQ zerado"; pedirRender(); });
     l2.appendChild(flat);
     const nota = el("div",null,"31 bandas · ±15 dB · na mesa real os 8 faders da Centralogic pegam 8 bandas por vez");
     nota.style.cssText="font-size:9px;color:#9aa0a8";
@@ -4731,24 +5015,28 @@ TELAS_POPUP.RACK = function(area){
     const fams = ["REVERB","DELAY","MODULAÇÃO","ESPECIAL","DINÂMICA / EQ"];
     const lf = linhaTela(); lf.style.marginTop="5px";
     fams.forEach(f=>{
-      lf.appendChild(btTela(f, ()=>(r.fam||famAtual)===f, ()=>{ r.fam=f; }));
+      lf.appendChild(btTela(f, ()=>(r.fam||famAtual)===f, ()=>{ r.fam=f; telaChave=null; }));
     });
     cx.appendChild(lf);
     const lt = el("div"); lt.style.cssText="display:flex;gap:3px;flex-wrap:wrap;margin-top:4px";
     EFEITOS.filter(e=>FAMILIA_EFEITO(e)===(r.fam||famAtual)).forEach(e=>{
       lt.appendChild(btTela(e, ()=>r.efeito===e, ()=>{ r.efeito=e;
+        remontarFx(S.rackSel);      /* o efeito NOVO passa a processar o som */
         S.ajuda="Rack "+r.n+" — efeito <b>"+e+"</b>"; }));
     });
     cx.appendChild(lt);
     const lp = linhaTela(); lp.style.marginTop="6px";
-    lp.appendChild(knobTela("TIME/TEMPO", ()=>r.param.tempo, v=>r.param.tempo=v, 20, 3000, v=>v.toFixed(0)+" ms"));
-    lp.appendChild(knobTela("MIX", ()=>r.param.mix, v=>r.param.mix=v, 0, 100, v=>v.toFixed(0)+" %"));
+    lp.appendChild(knobTela("TIME/TEMPO", ()=>r.param.tempo,
+      v=>{ r.param.tempo=v; ajustarFxVivo(S.rackSel); }, 20, 3000, v=>v.toFixed(0)+" ms"));
+    lp.appendChild(knobTela("MIX", ()=>r.param.mix,
+      v=>{ r.param.mix=v; ajustarFxVivo(S.rackSel); }, 0, 100, v=>v.toFixed(0)+" %"));
     const tap = el("button","tbt","TAP TEMPO"); tap.type="button";
     let ultimo = 0;
     tap.addEventListener("pointerdown",()=>{
       const agora = performance.now();
       if (ultimo && agora-ultimo < 3000){
         r.param.tempo = Math.round(agora-ultimo);
+        ajustarFxVivo(S.rackSel);
         S.ajuda = "TAP TEMPO: "+r.param.tempo+" ms ("+Math.round(60000/r.param.tempo)+" BPM)";
       } else S.ajuda = "TAP TEMPO — bata de novo no ritmo";
       ultimo = agora; pedirRender();
@@ -5662,6 +5950,7 @@ async function carregarBase(idx){
   AUD.ctx = AUD.ctx || new (window.AudioContext||window.webkitAudioContext)();
   const ctx = AUD.ctx;
   montarMaster(ctx);
+  montarFx(ctx);        /* sem isto o rack de efeitos e' MUDO em producao */
   /* uma base pode ter mais faixas que 48; usa as primeiras e avisa */
   const usar = b.stems.slice(0, N_IN);
   let prontas = 0;
@@ -5759,7 +6048,45 @@ function montarMaster(ctx){
   AUD.busMono = ctx.createGain();
   AUD.busSt.connect(ctx.destination);
   AUD.busMono.connect(ctx.destination);
+  montarGeqMaster(ctx);
   aplicarMasterNoAudio();
+}
+
+/* ==================================================================
+   GEQ NO SINAL — o rack GEQ com saída no STEREO insere 31 biquads
+   entre o barramento e a saída (p.172: GEQ é INSERÇÃO em saída).
+   Antes os 31 sliders escreviam em r.geq e NADA lia — era exatamente
+   a "pasta de equalizador não está operando" do dono. */
+function montarGeqMaster(ctx){
+  const rack = S.rack.find(r=>r.tipo==="GEQ" && r.saida==="STEREO");
+  /* desfaz a cadeia velha, se houver */
+  if (AUD.geqIns){
+    try{ AUD.busSt.disconnect(); AUD.geqIns.filtros.forEach(f=>f.disconnect()); }catch(e){}
+    AUD.busSt.connect(ctx.destination);
+    AUD.geqIns = null;
+  }
+  if (!rack) return;
+  const filtros = FREQ_GEQ.map(fq=>{
+    const f = ctx.createBiquadFilter();
+    f.type = "peaking"; f.frequency.value = fq;
+    f.Q.value = 4.3;                     /* 1/3 de oitava */
+    return f;
+  });
+  try{ AUD.busSt.disconnect(); }catch(e){}
+  let no = AUD.busSt;
+  filtros.forEach(f=>{ no.connect(f); no = f; });
+  no.connect(ctx.destination);
+  AUD.geqIns = { filtros, rack };
+  aplicarGeqVivo();
+}
+/* sliders -> filtros, ao vivo (chamado pelo arraste e pelo FLAT) */
+function aplicarGeqVivo(){
+  if (!AUD.geqIns) return;
+  const t = AUD.ctx ? AUD.ctx.currentTime : 0;
+  AUD.geqIns.filtros.forEach((f,i)=>{
+    const g = clamp(AUD.geqIns.rack.geq[i]||0, -15, 15);
+    if (Math.abs(f.gain.value - g) > 1e-3) f.gain.setValueAtTime(g, t);
+  });
 }
 
 /* ==================================================================
@@ -5868,9 +6195,14 @@ function ajustarFxVivo(i){
        do knob travaria o arraste; no máximo uma remontagem a cada 300 ms.
        O carimbo vive FORA do fx: a remontagem cria um objeto novo e um
        carimbo dentro dele zeraria o throttle a cada volta. */
-    AUD._tIR = AUD._tIR || {};
+    AUD._tIR = AUD._tIR || {}; AUD._tIRpend = AUD._tIRpend || {};
     const agora = performance.now();
     if (!AUD._tIR[i] || agora - AUD._tIR[i] > 300){ AUD._tIR[i] = agora; remontarFx(i); }
+    else {
+      /* trailing: sem isto a POSICAO FINAL do knob se perdia no throttle */
+      clearTimeout(AUD._tIRpend[i]);
+      AUD._tIRpend[i] = setTimeout(()=>{ AUD._tIR[i] = performance.now(); remontarFx(i); }, 320);
+    }
   }
 }
 
@@ -5889,11 +6221,18 @@ function remontarFx(i){
   const ret = AUD.ctx.createGain(); ret.gain.value = 0;
   fx.saida.connect(ret); ret.connect(AUD.busSt);
   AUD.fx[i] = { ...fx, ret, rack:r, efeitoMontado:r.efeito };
-  /* religa os sends dos stems no rack novo */
+  /* religa os sends dos stems no rack novo - e CRIA o send que nao existia
+     (rack montado DEPOIS do play ficava mudo ate parar e tocar de novo) */
   for (const s of (AUD.stems||[])){
-    if (s.nodes && s.nodes.sendsFx && s.nodes.sendsFx[i]){
+    if (!s.nodes) continue;
+    s.nodes.sendsFx = s.nodes.sendsFx || {};
+    if (s.nodes.sendsFx[i]){
       try{ s.nodes.sendsFx[i].disconnect(); }catch(e){}
       s.nodes.sendsFx[i].connect(AUD.fx[i].entrada);
+    } else {
+      const sg = AUD.ctx.createGain(); sg.gain.value = 0;
+      (s.nodes.dyn2G || s.nodes.gain).connect(sg); sg.connect(AUD.fx[i].entrada);
+      s.nodes.sendsFx[i] = sg;
     }
   }
 }
@@ -5922,7 +6261,7 @@ function aplicarMasterNoAudio(){
   /* retornos de efeito: o rack volta pelo CANAL ST IN patcheado na saída
      dele (p.46/181) -- fader e [ON] do ST IN dosam o efeito, como na mesa. */
   if (AUD.fx) for (const fx of Object.values(AUD.fx)){
-    const st = S.canais[fx.rack.saida];
+    const st = S.canais[fx.rack.saidaFx];
     const g = st ? (st.on?1:0) * (st.fader<=-138?0:Math.pow(10,st.fader/20)) *
                    (st.lcr ? (st.lcrOn?1:0) : (st.toSt?1:0)) : 0;
     R(fx.ret.gain, g);
@@ -5935,6 +6274,7 @@ function tocarStem(s, quando, offset){
   /* rede de segurança: sem os barramentos o connect abaixo lança e a faixa
      entra MUDA, em silêncio. Montar é idempotente. */
   montarMaster(ctx);
+  montarFx(ctx);
   const src = ctx.createBufferSource();
   src.buffer = s.buffer;
   /* LOOP: a música repete sozinha, como nos outros simuladores da frota.
@@ -5984,12 +6324,14 @@ function tocarStem(s, quando, offset){
   no = no.connect(dyn2G);
   no = no.connect(gain);                 /* gain = HA + fader + [ON], só isso */
 
-  /* sends de efeito: pós-fader (o uso de send/return da p.181), um gain por
-     rack de EFFECT, dosado pelo send do MIX patcheado na entrada do rack */
+  /* sends de efeito: o TAP e' PRE-fader (dyn2G, pos-EQ/dinamica) e o modo
+     POST e' emulado escalando pelo HA+fader+[ON] em aplicarCanalNoAudio.
+     Assim o botao PRE da janela SEND (p.70) muda o SOM de verdade: em PRE a
+     mandada nao segue o fader -- e' o monitor de palco. */
   const sendsFx = {};
   if (AUD.fx) for (const [i,fx] of Object.entries(AUD.fx)){
     const sg = ctx.createGain(); sg.gain.value = 0;
-    gain.connect(sg); sg.connect(fx.entrada);
+    dyn2G.connect(sg); sg.connect(fx.entrada);
     sendsFx[i] = sg;
   }
 
@@ -6071,7 +6413,10 @@ function aplicarCanalNoAudio(s){
     const fx = AUD.fx[i]; if (!fx) continue;
     const idx = +fx.rack.entrada.replace(/\D/g,"") - 1;   /* MIX13 -> 12 */
     const sd = c.mix && c.mix[idx];
-    R(sg.gain, (sd && sd.on && sd.lvl>-138) ? Math.pow(10, sd.lvl/20) : 0);
+    const base = (sd && sd.on && sd.lvl>-138) ? Math.pow(10, sd.lvl/20) : 0;
+    /* tap PRE-fader: POST = escala por HA+fader+[ON]; PRE = so' o HA (p.70:
+       a mandada PRE nao segue o fader -- monitor de palco) */
+    R(sg.gain, base * ha * (sd && sd.pre ? 1 : (c.on?1:0) * fd));
   }
   P(n.hpf.frequency, c.hpf.on ? c.hpf.freq : 20);
   const bs = [c.eq.bandas.low, c.eq.bandas.lomid, c.eq.bandas.himid, c.eq.bandas.high];
@@ -6402,7 +6747,9 @@ function fotoDeUmCanal(c){
     eq:{on:c.eq.on,tipo:c.eq.tipo,att:c.eq.att,bandas:JSON.parse(JSON.stringify(c.eq.bandas))},
     dyn1:{...c.dyn1}, dyn2:{...c.dyn2},
     mix:c.mix.map(s=>({...s})), mtx:c.mtx.map(s=>({...s})),
-    dca:[...c.dca], mute:[...c.mute], insert:c.insert, dout:c.dout, nome:c.nome };
+    dca:[...c.dca], mute:[...c.mute], insert:c.insert, dout:c.dout,
+    insOut:c.insOut, insIn:c.insIn, doutPorta:c.doutPorta, doutLvl:c.doutLvl,
+    nome:c.nome };
 }
 
 function estadoParaSalvar(){
@@ -6431,7 +6778,17 @@ function aplicarEstadoSalvo(d){
     S.rack = cl(d.rack);
     /* o rack restaurado tem de REMONTAR o áudio — senão o aluno chama a
        cena, a tela mostra DELAY e o ouvido recebe o reverb velho */
-    if (AUD.ctx) S.rack.forEach((r,i)=>{ if (r.tipo==="EFFECT") remontarFx(i); });
+    /* cenas gravadas antes do campo saidaFx: recupera o retorno de fabrica */
+    S.rack.forEach((r,i)=>{
+      if (i>=4 && !r.saidaFx) r.saidaFx = /^ST\d/.test(r.saida||"") ? r.saida : "ST"+(i-3);
+      if (i>=4 && /^ST\d/.test(r.saida||"")) r.saida = null;
+    });
+    if (AUD.ctx){
+      /* remontar TODOS os racks 5-8, inclusive os restaurados como GEQ -
+         senao o efeito VELHO continua conectado soando (fantasma) */
+      S.rack.forEach((r,i)=>{ if (i>=4 || r.tipo==="EFFECT") remontarFx(i); });
+      montarGeqMaster(AUD.ctx);
+    }
   }
   if (d.focus) S.focus = cl(d.focus);
   if (d.muteSafe) S.muteSafe = cl(d.muteSafe);
@@ -6871,9 +7228,11 @@ function m7clTeste(){
 
   /* cap.16 — RACK DE EFEITOS no áudio (p.46/172/181) */
   T(16,"racks 5-8 nascem com o patch da mesa: MIX 13-16 -> efeito -> ST IN 1-4", ()=>{
+    /* o retorno do efeito vive em saidaFx (separado da inserção do GEQ, que
+       vive em saida — auditoria de 31/07) */
     const r5=S.rack[4], r8=S.rack[7];
-    return r5.entrada==="MIX13" && r5.saida==="ST1" &&
-           r8.entrada==="MIX16" && r8.saida==="ST4" &&
+    return r5.entrada==="MIX13" && r5.saidaFx==="ST1" &&
+           r8.entrada==="MIX16" && r8.saidaFx==="ST4" &&
            S.rack[0].tipo==="GEQ" && S.rack[0].entrada===null;
   });
   T(16,"os 4 racks de efeito MONTAM nós de áudio de verdade", ()=>{
@@ -7000,10 +7359,120 @@ function m7clTeste(){
     return ok;
   });
 
+  /* cap.16 — os FIOS da auditoria de 31/07: cada um destes já esteve solto,
+     com a tela prometendo e o áudio ignorando. Testam a LIGAÇÃO, não o nó. */
+  T(16,"montarFx está no fluxo REAL (carregarBase e tocarStem), não só no teste",
+    ()=>String(carregarBase).includes("montarFx") && String(tocarStem).includes("montarFx"));
+  T(16,"a tela RACK chama ajustarFxVivo (TIME/MIX/TAP) e remontarFx (trocar efeito)",
+    ()=>{ const src=String(TELAS_POPUP.RACK);
+      return src.includes("ajustarFxVivo") && src.includes("remontarFx"); });
+  T(16,"TIME muda o delayTime do nó AO VIVO", ()=>{
+    if (!AUD.ctx) AUD.ctx=new (window.AudioContext||window.webkitAudioContext)();
+    montarMaster(AUD.ctx); montarFx(AUD.ctx);
+    const g=S.rack[5].efeito; S.rack[5].efeito="STEREO DELAY"; remontarFx(5);
+    S.rack[5].param.tempo=777; ajustarFxVivo(5);
+    const ok=Math.abs(AUD.fx[5].cauda.delay.delayTime.value-0.777)<1e-3;
+    S.rack[5].efeito=g; S.rack[5].param.tempo=500; remontarFx(5);
+    return ok;
+  });
+  T(16,"exclusividade do GEQ no STEREO NÃO apaga o retorno saidaFx do efeito", ()=>{
+    const antes=S.rack[5].saidaFx;
+    S.rack[1].saida="STEREO";
+    S.rack.forEach(x=>{ if (x.tipo==="GEQ" && x!==S.rack[1]) x.saida=null; });
+    const ok = S.rack[5].saidaFx===antes && antes==="ST2";
+    S.rack[1].saida=null; S.rack[0].saida="STEREO";
+    return ok;
+  });
+  T(16,"rack montado com música TOCANDO ganha send (remontarFx cria o que falta)", ()=>{
+    const gFake=AUD.ctx.createGain();
+    const guardado=AUD.stems;
+    AUD.stems=[{canal:"CH1", nodes:{gain:gFake, sendsFx:{}}}];
+    remontarFx(5);
+    const ok=!!AUD.stems[0].nodes.sendsFx[5];
+    AUD.stems=guardado;
+    return ok;
+  });
+  T(12,"a cena guarda a ROTA do insert e do direct out, não só o ON", ()=>{
+    const c=C("CH1"); c.insOut="RACK 3"; c.doutPorta="OMNI 5";
+    const f=fotoDeUmCanal(c);
+    c.insOut=undefined; c.doutPorta=undefined;
+    return f.insOut==="RACK 3" && f.doutPorta==="OMNI 5";
+  });
+  T(16,"GEQ inserido no STEREO: 31 biquads na cadeia e slider chega ao filtro", ()=>{
+    montarGeqMaster(AUD.ctx);
+    if (!AUD.geqIns) return false;
+    S.rack[0].geq[10]=7; aplicarGeqVivo();
+    /* o alvo agendado é o que importa; .value imediato é corrida conhecida */
+    const ok=AUD.geqIns.filtros.length===31 && AUD.geqIns.rack.n===1;
+    S.rack[0].geq[10]=0; aplicarGeqVivo();
+    return ok;
+  });
+
+  /* cap.4/5 — conformidade da auditoria de telas (31/07, 2ª rodada) */
+  T(5,"nav key ABRE o OVERVIEW (p.53) — e respeita a exceção do METER (p.33)", ()=>{
+    const t0=S.tela, p0=S.popup;
+    S.tela="SELCH"; S.popup=null;
+    acaoNav(document.querySelector('[data-nav="IN1-8"]'), {detail:1});
+    const abriu = S.tela==="OVERVIEW";
+    S.tela="METER"; S.popup=null;
+    acaoNav(document.querySelector('[data-nav="IN9-16"]'), {detail:1});
+    const ficou = S.tela==="METER";
+    S.tela=t0; S.popup=p0; S.nav="IN1-8";
+    return abriu && ficou;
+  });
+  T(5,"a janela MIX/MATRIX SEND existe, com PRE, ON, SEND TO e ALL PRE/POST (p.69-70)", ()=>{
+    const area=document.getElementById("area");
+    S.sendJan={tipo:"mix",n:0}; S.popup="SEND"; S.tela="OVERVIEW"; telaChave=null; construirTela();
+    const txt=area.textContent;
+    const ok=/SEND TO/.test(txt) && /ALL PRE/.test(txt) && /ALL POST/.test(txt) &&
+             area.querySelectorAll(".knob").length>=6;
+    S.popup=null; telaChave=null; construirTela();
+    return ok;
+  });
+  T(5,"PRE por canal muda o SOM do send: em PRE o fader não escala a mandada", ()=>{
+    /* a conta de aplicarCanalNoAudio: base*ha*(pre ? 1 : on*fd) */
+    const c=C("CH1"); const g={f:c.fader,o:c.on,p:c.mix[12].pre,l:c.mix[12].lvl,on2:c.mix[12].on};
+    c.on=true; c.fader=-138; c.mix[12]={lvl:0,on:true,pre:false};
+    const ha=Math.pow(10,(c.ha.gain+20)/20);
+    const fd=c.fader<=-138?0:Math.pow(10,c.fader/20);
+    const post=1*ha*((c.on?1:0)*fd);          /* fader fechado: POST cala */
+    c.mix[12].pre=true;
+    const pre=1*ha*1;                          /* PRE ignora o fader */
+    Object.assign(c,{fader:g.f,on:g.o}); c.mix[12]={lvl:g.l,on:g.on2,pre:g.p};
+    return post===0 && pre>0;
+  });
+  T(5,"campo `pre` deixou de ser estado morto: a UI escreve e o áudio lê", ()=>{
+    const src=String(TELAS_POPUP.SEND), src2=String(aplicarCanalNoAudio);
+    return src.includes("sd.pre") && src2.includes(".pre");
+  });
+
+  T(10,"fichas do EQ têm CORPO próprio: 1ch=1 gráfico, 8ch=8, ALL=52 (p.116-117)", ()=>{
+    const area=document.getElementById("area");
+    const conta={};
+    for (const aba of ["1ch","8ch","ALL"]){
+      S.sel="CH1"; S.popup="EQ"; S.popAba=aba; telaChave=null; construirTela();
+      conta[aba]=area.querySelectorAll("svg").length;
+    }
+    S.popup=null; S.popAba="1ch"; telaChave=null; construirTela();
+    return conta["1ch"]===1 && conta["8ch"]===8 && conta.ALL===N_IN+N_STIN;
+  });
+  T(10,"DYNAMICS tem fichas e teclas de ferramentas (p.35/118)", ()=>{
+    const area=document.getElementById("area");
+    S.sel="CH1"; S.popup="DYN1"; S.popAba="8ch"; telaChave=null; construirTela();
+    const ok=/LIBRARY/.test(area.textContent) && /COMPARE/.test(area.textContent) &&
+             area.querySelectorAll(".knob").length>=8;
+    S.popup=null; S.popAba="1ch"; telaChave=null; construirTela();
+    return ok;
+  });
+
   /* telas */
   T(0,"todas as telas abrem com conteúdo", ()=>{
     const area = document.getElementById("area");
     let vazias = 0;
+    /* com canal de ENTRADA selecionado: DYN2 é "input channels only" e pela
+       UI não se chega a ela com canal de saída — abrir assim seria testar um
+       caminho que não existe */
+    S.sel = "CH1";
     for (const p of Object.keys(TELAS_POPUP)){
       S.tela="OVERVIEW"; S.popup=p; telaChave=null; construirTela();
       if (area.querySelectorAll("*").length < 10) vazias++;
