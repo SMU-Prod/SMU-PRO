@@ -200,9 +200,14 @@ html.smu-fs body{align-items:center}
 .telasel .knob{--kd:19px}
 .telasel .knob.mini,.telasel .kt{--kd:14px;--kt:14px}
 .telasel .tbt{font-size:7.5px;padding:1px 3px;line-height:1.15}
+/* na tela da mesa o botao LIGADO e' BRANCO de texto VERMELHO (figura p.90 e
+   foto do dono) -- o azul era o meu padrao, nao o da Yamaha */
+.telasel .tbt.on{background:#eef2fa;color:#c22131;border-color:#f5f7fb}
 /* a célula do knob (rótulo + knob + valor) é o que mais custa altura: são 12
    delas só no EQ. Colar as três linhas devolve os 25 px que faltavam. */
 .telasel .kcel{min-width:0 !important;gap:0 !important}
+.telasel .kdyn .knob{--kd:12px}
+.telasel .kdyn .kcel > div{font-size:5px}
 .telasel .kcel > div{line-height:1;font-size:7px}
 
 /* fita BRANCA de escrever o nome do canal (na foto é fita clara, não faixa preta) */
@@ -3077,31 +3082,21 @@ const linhaTela = () => { const l = el("div");
 TELAS.SELCH = function(area){
   const c = S.canais[S.sel];
   const ehIn = (c.tipo==="in" || c.tipo==="stin");
-  area.style.background = "#1b2a44";      /* fundo azul, como na foto/p.90 */
+  /* A tela real é AZUL: caixas azuis de borda clara sobre fundo azul (foto
+     do dono, 04/08 — a versão cinza "não estava reproduzindo a mesa"). */
+  area.style.background = "#16294f";
   tituloTela(area, "SELECTED CHANNEL VIEW", c.nome);
+  const caixa = t => { const cx = caixaTela(t);
+    cx.style.background = "#223a68"; cx.style.borderColor = "#5f7bb1";
+    if (cx.firstChild) cx.firstChild.style.color = "#b9c8e8";
+    return cx; };
 
-  /* ------------------------------------------------------------------
-     LAYOUT MEDIDO na figura oficial (p.90), recortada e ampliada 9x.
-     A tela NÃO é de 4 colunas soltas: são 3 colunas com as LINHAS
-     CASADAS -- HA fica ao lado de DYNAMICS 1, PAN ao lado de DYNAMICS 2,
-     HPF ao lado do gráfico, e o EQ desce alto na coluna do meio.
-     Larguras medidas (x em px do recorte, conteúdo de 55 a 1520):
-       TO MIX      55.. 540 = 485  -> 33 %
-       coluna meio 550.. 975 = 425 -> 29 %
-       coluna dir. 980..1520 = 540 -> 37 %
-     A versão anterior usava `150px 1fr 1fr 88px` com overflow:auto: por
-     isso aparecia BARRA DE ROLAGEM e "COMPRESSOR" saía cortado em
-     "COMPRESS". Console de verdade não rola a tela -- se rolou, o layout
-     está errado, não a tela pequena demais.                            */
+  /* layout MEDIDO na figura da p.90 (3 colunas 33/29/37, linhas casadas) */
   const g = el("div", "telasel");
-  /* Alturas em FRAÇÃO, não `auto`: com auto as três primeiras linhas comiam
-     332 dos 425 px e sobravam 76 px para o EQ, que precisa de 218 -- daí a
-     barra de rolagem. As proporções saem da figura da p.90, onde o EQ ocupa
-     cerca de metade da coluna do meio. */
   g.style.cssText =
     "flex:1 1 auto;min-height:0;display:grid;gap:3px;overflow:hidden;"+
     "grid-template-columns:33fr 29fr 37fr;"+
-    "grid-template-rows:1fr 1fr 1fr 2.7fr;"+
+    "grid-template-rows:1fr 1fr 0.92fr 2.95fr;"+
     "grid-template-areas:"+
       "'sends ha   dy1'"+
       "'sends pan  dy2'"+
@@ -3109,36 +3104,63 @@ TELAS.SELCH = function(area){
       "'sends eq   baixo'";
 
   /* ---------- 1 · TO MIX / TO MATRIX (p.90 item 1) ----------
-     16 sends em 2 sub-colunas, cada um com o seu [ON] -- na figura o ON
-     fica do lado de FORA do par, e as cores vão em grupos de 4. */
-  const cx1 = caixaTela(ehSaida(c) ? "TO MATRIX" : "TO MIX");
+     Como na foto real: pares de knobs com o [ON] na borda EXTERNA e a
+     etiqueta PRE/POST em cima dele; os números ficam ENTRE os knobs.
+     LIBRARY do canal no alto do campo, como na tela da mesa. */
+  const cx1 = caixa(ehSaida(c) ? "TO MATRIX" : "TO MIX");
   cx1.style.gridArea = "sends";
   cx1.style.minHeight = "0";
   cx1.style.overflow = "hidden";
-  const gg = el("div");
-  gg.style.cssText="display:grid;grid-template-columns:1fr 1fr;gap:1px 4px;align-content:start";
+  const blib = el("button","tbt","LIB"); blib.type="button";
+  blib.style.cssText="position:absolute;top:2px;right:3px;font-size:6.5px;padding:0 3px";
+  blib.title = "Biblioteca de canal";
+  blib.addEventListener("pointerdown",()=>{ abrirPopup("LIB"); pedirRender(); });
+  cx1.style.position = "relative";
+  cx1.appendChild(blib);
+
   const arr = ehSaida(c) ? c.mtx : c.mix;
-  arr.forEach((s,n)=>{
-    const cel = el("div");
-    cel.style.cssText="display:flex;align-items:center;gap:2px;min-width:0";
-    const grupo = "k-send"+(Math.floor(n/4)+1);
-    const kn = knobTela(null, ()=>dbParaPos(s.lvl), p=>{ s.lvl = posParaDb(p); S.encFoco="send"+n; },
-      0, 1, ()=> (s.lvl<=-138?"-∞":s.lvl.toFixed(0)), {mini:true, cor:grupo,
-      /* p.92 item 2: apertar o knob abre a janela MIX/MATRIX SEND */
-      aoTocar:()=>{ S.sendJan={tipo: ehSaida(c)?"mtx":"mix", n};
-        abrirPopup("SEND"); }});
-    kn.style.minWidth = "0";
-    const on = btTela(String(n+1), ()=>s.on, ()=>{ s.on = !s.on;
-      S.ajuda = "<b>"+c.nome+"</b> send "+(n+1)+" "+(s.on?"ON":"OFF"); });
-    on.style.cssText="font-size:7px;padding:1px 2px;flex:0 0 auto";
-    cel.appendChild(kn); cel.appendChild(on);
-    gg.appendChild(cel);
-  });
+  const gg = el("div");
+  gg.style.cssText="display:flex;flex-direction:column;gap:1px";
+  const fazLado = (s2, n, externa) => {           /* [PRE+ON] de um send */
+    const w = el("div");
+    w.style.cssText="display:flex;flex-direction:column;align-items:center;gap:0;flex:0 0 auto";
+    const pre = el("span",null,"PRE");
+    pre.style.cssText="font-size:5px;line-height:1;cursor:pointer;color:#8fa3cc";
+    pre.title = "PRE/POST fader desta mandada";
+    pre.addEventListener("pointerdown",e=>{ e.stopPropagation(); s2.pre=!s2.pre;
+      S.ajuda="<b>"+c.nome+"</b> mandada "+(n+1)+": <b>"+(s2.pre?"PRE":"POST")+" FADER</b>"; pedirRender(); });
+    const on = btTela("ON", ()=>s2.on, ()=>{ s2.on=!s2.on;
+      S.ajuda="<b>"+c.nome+"</b> mandada "+(n+1)+" "+(s2.on?"ON":"OFF"); });
+    on.style.cssText="font-size:7px;padding:1px 4px;line-height:1.3;font-weight:700";
+    lig(()=>{ pre.style.color = s2.pre ? "#ffd45e" : "#8fa3cc";
+              pre.textContent = s2.pre ? "PRE" : "POST"; });
+    w.appendChild(pre); w.appendChild(on);
+    return w;
+  };
+  const fazKnob = (s2, n) =>
+    knobTela(null, ()=>dbParaPos(s2.lvl), p=>{ s2.lvl = posParaDb(p); S.encFoco="send"+n; },
+      0, 1, ()=> (s2.lvl<=-138?"-∞":s2.lvl.toFixed(0)),
+      {mini:true, cor:"k-send"+(Math.floor(n/4)+1),
+       aoTocar:()=>{ S.sendJan={tipo: ehSaida(c)?"mtx":"mix", n};
+         abrirPopup("SEND"); }});
+  for (let r=0; r<arr.length/2; r++){
+    const nL = r*2, nR = r*2+1;
+    const row = el("div");
+    row.style.cssText="display:flex;align-items:center;gap:1px;justify-content:center;min-width:0";
+    row.appendChild(fazLado(arr[nL], nL, true));
+    row.appendChild(fazKnob(arr[nL], nL));
+    const num = el("span",null,(nL+1)+"  "+(nR+1));
+    num.style.cssText="font-size:6px;color:#cdd9f2;min-width:13px;text-align:center";
+    row.appendChild(num);
+    row.appendChild(fazKnob(arr[nR], nR));
+    row.appendChild(fazLado(arr[nR], nR, false));
+    gg.appendChild(row);
+  }
   cx1.appendChild(gg);
   g.appendChild(cx1);
 
-  /* ---------- 2 · HA (só entrada) / PATCH (só saída) ---------- */
-  const cxHA = caixaTela(ehIn ? "HA" : "PATCH");
+  /* ---------- 2 · HA (entrada) / PATCH (saída) ---------- */
+  const cxHA = caixa(ehIn ? "HA" : "PATCH");
   cxHA.style.gridArea = "ha";
   if (ehIn){
     const l = linhaTela();
@@ -3151,7 +3173,6 @@ TELAS.SELCH = function(area){
     bs.appendChild(btTela("Ø", ()=>c.ha.phase, ()=>{ c.ha.phase=!c.ha.phase;
       S.ajuda="Polaridade "+(c.ha.phase?"INVERTIDA":"normal")+" (Ø inverte 180°, não é atraso)"; }));
     l.appendChild(bs);
-    /* OVER do item 2 da p.90: "mostra o OVER do nível de entrada" */
     const ov = el("div"); ov.style.cssText="width:7px;height:7px;border-radius:50%;background:#3d4147";
     lig(()=>ov.style.background = c.nivel > 0.97 ? "#ff3b30" : "#3d4147");
     l.appendChild(ov);
@@ -3160,15 +3181,16 @@ TELAS.SELCH = function(area){
     lig(()=>av.textContent = c.ha.gain >= -13 ? "PAD interno LIGADO" : "");
     cxHA.appendChild(av);
   } else {
-    /* p.90 item 3: em canal de SAÍDA esta área vira o PATCH */
-    const pt = el("div"); pt.style.cssText="font-size:10px";
-    lig(()=>pt.textContent = S.patch.saida[c.id] || "—");
+    const pt = el("div"); pt.style.cssText="font-size:10px;cursor:pointer;color:#e8eefc";
+    pt.title = "Abrir PATCH/NAME (p.90 item 3)";
+    lig(()=>pt.textContent = (S.patch.saida && S.patch.saida[c.id]) || "—");
+    pt.addEventListener("pointerdown",()=>{ S.pnAba="PATCH"; abrirPopup("PATCH_NAME"); pedirRender(); });
     cxHA.appendChild(pt);
   }
   g.appendChild(cxHA);
 
   /* ---------- 4 · TO ST PAN / BALANCE ---------- */
-  const cxPan = caixaTela(c.tipo==="stin" ? "TO ST BALANCE" : "TO ST PAN");
+  const cxPan = caixa(c.tipo==="stin" ? "TO ST BALANCE" : "TO ST PAN");
   cxPan.style.gridArea = "pan";
   const lp = linhaTela();
   lp.appendChild(knobTela(null, ()=>c.pan, v=>c.pan=v, -1, 1, textoPan,
@@ -3183,8 +3205,8 @@ TELAS.SELCH = function(area){
   cxPan.appendChild(lp);
   g.appendChild(cxPan);
 
-  /* ---------- 7 · HPF (só entrada) ---------- */
-  const cxH = caixaTela("HPF");
+  /* ---------- 7 · HPF ---------- */
+  const cxH = caixa("HPF");
   cxH.style.gridArea = "hpf";
   if (ehIn){
     const lh = linhaTela();
@@ -3194,19 +3216,16 @@ TELAS.SELCH = function(area){
       {cor:"k-hpf", aoTocar:()=>abrirPopup("EQ")}));
     lh.appendChild(btTela("ON", ()=>c.hpf.on, ()=>c.hpf.on=!c.hpf.on));
     cxH.appendChild(lh);
-    const nota = el("div",null,"-12 dB/oct"); nota.style.cssText="font-size:7px;color:#9aa0a8";
+    const nota = el("div",null,"-12 dB/oct"); nota.style.cssText="font-size:7px;color:#8fa3cc";
     cxH.appendChild(nota);
   } else {
-    cxH.style.visibility = "hidden";      /* saída não tem HPF (p.90 item 7) */
+    cxH.style.visibility = "hidden";
   }
   g.appendChild(cxH);
 
-  /* ---------- 5/6 · DYNAMICS 1 e 2 — painéis LARGOS, como na figura ----------
-     Na p.90 eles ocupam a coluna inteira da direita, com o THRESHOLD à
-     esquerda e os demais parâmetros em linha. Espremê-los numa coluna
-     estreita era o que cortava "COMPRESSOR" em "COMPRESS". */
+  /* ---------- 5/6 · DYNAMICS 1 e 2, com a LINHA DE VALORES da tela real ---------- */
   [["dyn1","DYNAMICS 1","dy1"],["dyn2","DYNAMICS 2","dy2"]].forEach(([kk,rot,ga])=>{
-    const cx = caixaTela(rot);
+    const cx = caixa(rot);
     cx.style.gridArea = ga;
     cx.style.minWidth = "0";
     if (kk==="dyn2" && !ehIn){ cx.style.visibility="hidden"; g.appendChild(cx); return; }
@@ -3218,17 +3237,19 @@ TELAS.SELCH = function(area){
     nome.style.cssText="font-size:8px;padding:1px 4px;flex:0 0 auto;white-space:nowrap";
     nome.title = "Abrir a janela de "+rot;
     nome.addEventListener("pointerdown",()=>{ abrirPopup(kk==="dyn1"?"DYN1":"DYN2"); pedirRender(); });
+    lig(()=>nome.textContent = d.tipo);
     l.appendChild(nome);
-    l.appendChild(knobTela("THR", ()=>d.thr, v=>d.thr=v, kk==="dyn1"?-72:-54, 0, v=>v.toFixed(0),
-      {aoTocar:()=>abrirPopup(kk==="dyn1"?"DYN1":"DYN2")}));
-    /* medidor de GR: é o que diz se a dinâmica está TRABALHANDO (p.101) */
+    /* como na figura: o valor fica EMBAIXO do knob; sem rotulo em cima */
+    l.appendChild(knobTela(null, ()=>d.thr, v=>d.thr=v, kk==="dyn1"?-72:-54, 0,
+      v=>v.toFixed(0)+" THR",
+      {mini:true, aoTocar:()=>abrirPopup(kk==="dyn1"?"DYN1":"DYN2")}));
     const gr = el("div");
-    gr.style.cssText="flex:1 1 auto;min-width:18px;height:9px;background:#15171a;"+
+    gr.style.cssText="flex:1 1 auto;min-width:18px;height:9px;background:#101c38;"+
       "border-radius:1px;position:relative;overflow:hidden";
     const grb = el("div");
     grb.style.cssText="position:absolute;right:0;top:0;bottom:0;background:#e8a020";
     gr.appendChild(grb);
-    const grt = el("div",null,"GR"); grt.style.cssText="font-size:6.5px;color:#9aa0a8";
+    const grt = el("div",null,"GR"); grt.style.cssText="font-size:6.5px;color:#8fa3cc";
     lig(()=>{ grb.style.width = Math.round(clamp(reducaoDyn(c,kk),0,1)*100)+"%"; });
     const wgr = el("div"); wgr.style.cssText="display:flex;flex-direction:column;flex:1 1 auto;min-width:0";
     wgr.appendChild(grt); wgr.appendChild(gr);
@@ -3236,11 +3257,37 @@ TELAS.SELCH = function(area){
     l.appendChild(btTela("ON", ()=>d.on, ()=>{ d.on=!d.on;
       S.ajuda = rot+" "+(d.on?"ligado":"desligado")+" em <b>"+c.nome+"</b>"; }));
     cx.appendChild(l);
+    /* a figura mostra os demais parametros como KNOBS pequenos com o valor
+       embaixo (RANGE/ATTACK/HOLD/DECAY; RATIO/RELEASE/KNEE/OUT). Knobs de
+       verdade, editaveis -- nao linha de texto. */
+    const krow = el("div","kdyn");
+    krow.style.cssText="display:flex;gap:2px;justify-content:space-around;min-width:0;overflow:hidden";
+    const extras = paramsDyn(d.tipo).filter(p2=>p2.campo!=="thr").slice(0,4);
+    extras.forEach(p2=>{
+      if (p2.lista){
+        krow.appendChild(knobTela(p2.rot.slice(0,3),
+          ()=>Math.max(0,p2.lista.indexOf(d[p2.campo])),
+          v=>{ d[p2.campo]=p2.lista[Math.round(clamp(v,0,p2.lista.length-1))]; },
+          0, p2.lista.length-1, ()=>p2.fmt(d[p2.campo]), {mini:true,
+            aoTocar:()=>abrirPopup(kk==="dyn1"?"DYN1":"DYN2")}));
+      } else if (p2.log){
+        krow.appendChild(knobTela(p2.rot.slice(0,3),
+          ()=>Math.log10(d[p2.campo]), v=>{ d[p2.campo]=Math.pow(10,v); },
+          Math.log10(p2.min), Math.log10(p2.max), ()=>p2.fmt(d[p2.campo]), {mini:true,
+            aoTocar:()=>abrirPopup(kk==="dyn1"?"DYN1":"DYN2")}));
+      } else {
+        krow.appendChild(knobTela(p2.rot.slice(0,3),
+          ()=>d[p2.campo], v=>{ d[p2.campo]=v; },
+          p2.min, p2.max, ()=>p2.fmt(d[p2.campo]), {mini:true,
+            aoTocar:()=>abrirPopup(kk==="dyn1"?"DYN1":"DYN2")}));
+      }
+    });
+    cx.appendChild(krow);
     g.appendChild(cx);
   });
 
   /* ---------- 9 · gráfico de EQ/HPF ---------- */
-  const cxG = caixaTela("EQ / HPF");
+  const cxG = caixa("EQ / HPF");
   cxG.style.gridArea = "graf";
   cxG.style.minWidth = "0";
   cxG.style.cursor = "pointer";
@@ -3250,21 +3297,29 @@ TELAS.SELCH = function(area){
   cxG.appendChild(curvaEQ(c, 200, 44));
   g.appendChild(cxG);
 
-  /* ---------- 8 · EQ de 4 bandas (Q · FREQ · GAIN) ---------- */
-  const cxEQ = caixaTela("EQ");
+  /* ---------- 8 · EQ (Q·FREQ·GAIN por banda) + ATT e marcas de SHELF ---------- */
+  const cxEQ = caixa("EQ");
   cxEQ.style.gridArea = "eq";
   cxEQ.style.minHeight = "0";
   cxEQ.style.overflow = "hidden";
+  const topoEQ = el("div");
+  topoEQ.style.cssText="display:flex;align-items:center;gap:3px";
+  topoEQ.appendChild(knobTela("ATT", ()=>c.eq.att, v=>c.eq.att=v, -96, 24,
+    v=>v.toFixed(0), {mini:true, aoTocar:()=>abrirPopup("EQ")}));
   const cab = el("div");
-  cab.style.cssText="display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px;font-size:6.5px;color:#9aa0a8;text-align:center";
+  cab.style.cssText="flex:1 1 auto;display:grid;grid-template-columns:1fr 1fr 1fr;"+
+    "font-size:6.5px;color:#8fa3cc;text-align:center";
   ["Q","FREQ","GAIN"].forEach(t=>cab.appendChild(el("div",null,t)));
-  cxEQ.appendChild(cab);
+  topoEQ.appendChild(cab);
+  cxEQ.appendChild(topoEQ);
   const gq = el("div");
   gq.style.cssText="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 2px;align-items:center";
-  [["high","HIGH"],["himid","HIGH MID"],["lomid","LOW MID"],["low","LOW"]].forEach(([id,rot])=>{
+  /* ordem da tela real (foto): HIGH em cima, LOW embaixo; H.SHELF e L.SHELF
+     marcados nos extremos como na mesa */
+  [["high","— HIGH —  H.SHELF"],["himid","— HIGH MID —"],["lomid","— LOW MID —"],["low","— LOW —  L.SHELF"]].forEach(([id,rot])=>{
     const banda = c.eq.bandas[id];
     const r = el("div",null,rot);
-    r.style.cssText="grid-column:1/4;font-size:6.5px;color:#aeb4bb;text-align:center;line-height:1";
+    r.style.cssText="grid-column:1/4;font-size:6.5px;color:#b9c8e8;text-align:center;line-height:1";
     gq.appendChild(r);
     gq.appendChild(knobTela(null, ()=>Math.log10(banda.q), v=>banda.q=Math.round(Math.pow(10,v)*100)/100,
       Math.log10(0.1), Math.log10(10), v=>Math.pow(10,v).toFixed(2), {mini:true, cor:"k-eq", aoTocar:()=>abrirPopup("EQ")}));
@@ -3280,16 +3335,12 @@ TELAS.SELCH = function(area){
   cxEQ.appendChild(beq);
   g.appendChild(cxEQ);
 
-  /* ---------- 10/11/12/13/14/15 · faixa de baixo ----------
-     INSERT · DIRECT OUT · RECALL SAFE numa coluna, e DCA / MUTE em duas
-     colunas de botões, exatamente como a figura da p.90 mostra. */
+  /* ---------- faixa de baixo: INSERT · D.OUT · RECALL SAFE · FADER · DCA · MUTE ---------- */
   const baixo = el("div");
   baixo.style.gridArea = "baixo";
   baixo.style.cssText += ";display:grid;grid-template-columns:1.7fr 1fr 1fr;gap:2px;min-height:0;overflow:hidden";
 
   const cA = el("div"); cA.style.cssText="display:flex;flex-direction:column;gap:2px;min-width:0";
-  /* p.95: cada campo tem o BOTÃO DE JANELA (▼) ao lado do ON — o ▼ abre a
-     janela de detalhe, o ON liga/desliga. Antes só havia o ON. */
   const linhaPop = (rot, ler, alternar, abrir) => {
     const w = el("div"); w.style.cssText="display:flex;gap:2px;min-width:0";
     const pv = el("button","tbt","▼"); pv.type="button"; pv.style.cssText="flex:0 0 auto;font-size:7px";
@@ -3298,13 +3349,11 @@ TELAS.SELCH = function(area){
     w.appendChild(pv); w.appendChild(bt);
     return w;
   };
-  /* p.95: INSERT existe em INPUT, MIX, MATRIX, STEREO e MONO — não em ST IN */
   if (c.tipo !== "stin"){
     cA.appendChild(linhaPop("INSERT", ()=>c.insert, ()=>{ c.insert=!c.insert;
       S.ajuda="INSERT "+(c.insert?"ligado":"desligado")+" em <b>"+c.nome+"</b>"; },
       ()=>abrirPopup("INSDO")));
   }
-  /* p.95: DIRECT OUT é só de canal INPUT */
   if (c.tipo === "in"){
     cA.appendChild(linhaPop("DIRECT OUT", ()=>c.dout, ()=>{ c.dout=!c.dout;
       S.ajuda="DIRECT OUT "+(c.dout?"ligado":"desligado")+" em <b>"+c.nome+"</b>"; },
@@ -3313,38 +3362,55 @@ TELAS.SELCH = function(area){
   cA.appendChild(linhaPop("RECALL SAFE", ()=>c.recallSafe, ()=>{ c.recallSafe=!c.recallSafe;
     S.ajuda = "RECALL SAFE "+(c.recallSafe?"LIGADO — este canal não muda no recall de cena":"desligado"); },
     ()=>{ S.cenaAba="safe"; abrirPopup("CENA_CFG"); }));
+  /* campo FADER com o fader DESENHADO, como na tela real (foto) */
+  const cxF = caixa("FADER");
+  cxF.style.cssText += ";margin-top:auto";
   const fl = el("div");
-  fl.style.cssText="display:flex;align-items:center;gap:3px;margin-top:auto";
-  const fv = el("div"); fv.style.cssText="font-size:12px;font-weight:700;min-width:36px";
-  lig(()=>fv.textContent = fmtDb(c.fader));
-  fl.appendChild(fv);
+  fl.style.cssText="display:flex;align-items:center;gap:4px";
+  const tr = el("div");
+  tr.style.cssText="width:9px;height:34px;background:#101c38;border-radius:1px;position:relative;flex:0 0 auto";
+  const cur = el("div");
+  cur.style.cssText="position:absolute;left:-2px;right:-2px;height:5px;background:#e8eefc;border-radius:1px";
+  tr.appendChild(cur);
+  const fv = el("div"); fv.style.cssText="font-size:10px;font-weight:700;min-width:26px;color:#e8eefc";
+  lig(()=>{ fv.textContent = fmtDb(c.fader);
+            cur.style.top = ((1-dbParaPos(c.fader))*(34-5)).toFixed(0)+"px"; });
+  fl.appendChild(tr); fl.appendChild(fv);
   fl.appendChild(btTela("ON", ()=>c.on, ()=>{ c.on=!c.on;
     S.ajuda="<b>"+c.nome+"</b> "+(c.on?"LIGADO":"desligado"); }));
-  cA.appendChild(fl);
+  cxF.appendChild(fl);
+  cA.appendChild(cxF);
   baixo.appendChild(cA);
 
-  /* DCA e MUTE: 8 botões cada, atribuição direta (p.124) */
+  /* DCA e MUTE: 8 botões + SAFE (mute safe é o da p.126) */
   [["dca","DCA","#f2c200"],["mute","MUTE","#ff6b6b"]].forEach(([campo,rot,cor])=>{
     const cxx = el("div");
-    cxx.style.cssText="background:#26292d;border:1px solid #3d4147;border-radius:3px;"+
+    cxx.style.cssText="background:#223a68;border:1px solid #5f7bb1;border-radius:3px;"+
       "padding:1px 2px;display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden";
     const t = el("div",null,rot); t.style.cssText="font-size:7px;color:"+cor+";text-align:center";
     cxx.appendChild(t);
-    /* DCA só existe em canal de entrada (p.99 item K) */
     if (campo==="dca" && !ehIn){ baixo.appendChild(cxx); return; }
     const gb = el("div");
-    gb.style.cssText="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:1px;flex:1 1 auto;min-height:0";
+    gb.style.cssText="display:grid;grid-template-columns:1fr;gap:1px;flex:1 1 auto;min-height:0";
     for (let n=1;n<=8;n++){
-      const b = btTela(String(n), ()=>c[campo].includes(n), ()=>{
+      const b2 = btTela(String(n), ()=>c[campo].includes(n), ()=>{
         const i = c[campo].indexOf(n);
         if (i>=0) c[campo].splice(i,1); else c[campo].push(n);
-        c[campo].sort((a,b2)=>a-b2);
+        c[campo].sort((a,b3)=>a-b3);
         S.ajuda = "<b>"+c.nome+"</b> "+(i>=0?"saiu do":"entrou no")+" "+rot+" "+n;
       });
-      b.style.cssText="font-size:7px;padding:0;min-width:0";
-      gb.appendChild(b);
+      b2.style.cssText="font-size:7px;padding:0;min-width:0";
+      gb.appendChild(b2);
     }
     cxx.appendChild(gb);
+    if (campo==="mute"){
+      const sf = btTela("SAFE", ()=>!!S.muteSafe[c.id], ()=>{
+        S.muteSafe[c.id] = !S.muteSafe[c.id];
+        S.ajuda = "MUTE SAFE de <b>"+c.nome+"</b> "+(S.muteSafe[c.id]?"LIGADO — o canal não obedece ao mute group":"desligado");
+      });
+      sf.style.cssText="font-size:6px;padding:0";
+      cxx.appendChild(sf);
+    }
     baixo.appendChild(cxx);
   });
   g.appendChild(baixo);
