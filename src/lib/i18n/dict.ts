@@ -648,6 +648,9 @@ export const DICT: Record<string, { en: string; es: string }> = {
   "Não pode ser uma senha comum ou exposta em vazamentos de dados": { en: "Cannot be a common password or one exposed in data breaches", es: "No puede ser una contraseña común o expuesta en filtraciones de datos" },
   // "Mesa de som digital" segue em uso na home (page.tsx)
   "Mesa de som digital": { en: "Digital mixing console", es: "Consola de sonido digital" },
+  // ---- Aba Materiais: links oficiais por aula ----
+  "Manuais e materiais oficiais do fabricante.": { en: "Official manufacturer manuals and materials.", es: "Manuales y materiales oficiales del fabricante." },
+  "Manual online": { en: "Online manual", es: "Manual en línea" },
   // ---- Simulador (interface) ----
   "interativo": { en: "interactive", es: "interactivo" },
   "imagem": { en: "image", es: "imagen" },

@@ -29,7 +29,7 @@ import {
   PlayCircle, FileText, HelpCircle, StickyNote,
   Lock, CheckCheck, BookOpen, Clock, Star, ChevronLeft, List,
   Minimize2, Maximize2, Download, Eye, EyeOff, Menu,
-  PanelRightOpen, PanelRightClose,
+  PanelRightOpen, PanelRightClose, ExternalLink,
 } from "lucide-react";
 import { useSidebar } from "@/components/layout/sidebar-context";
 
@@ -667,6 +667,8 @@ export function LessonPlayer({
   );
 }
 
+type MaterialLink = { titulo: string; url: string; idioma?: string; formato?: "pdf" | "pagina" };
+
 function MaterialsTab({ lesson }: { lesson: any }) {
   const t = useT();
   const [showPdf, setShowPdf] = useState(false);
@@ -674,7 +676,13 @@ function MaterialsTab({ lesson }: { lesson: any }) {
   /* NOTA ON usa pdf_path como marcador "notaon:" — não é PDF de material.
      (o fallback temManuais saiu junto com os manuais genéricos por categoria) */
   const isNotaon = lesson.pdf_path?.startsWith("notaon:");
-  if (!lesson.pdf_path || isNotaon) {
+  const temPdf = !!lesson.pdf_path && !isNotaon;
+  /* Links oficiais do fabricante, POR AULA (lessons.material_links).
+     Decisão do dono (04/08/2026): link em vez de PDF hospedado — não pesa
+     no GitHub/Storage e o aluno recebe sempre a versão atual do fabricante. */
+  const links: MaterialLink[] = Array.isArray(lesson.material_links) ? lesson.material_links : [];
+
+  if (!temPdf && links.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <FileText size={40} className="text-muted-light mb-3" />
@@ -686,7 +694,7 @@ function MaterialsTab({ lesson }: { lesson: any }) {
   return (
     <div className="space-y-3">
       {/* Card do material da aula */}
-      {lesson.pdf_path && !isNotaon && (
+      {temPdf && (
       <>
       <div className="flex items-center gap-3 p-4 rounded-xl border border-border bg-surface-2">
         <div className="h-10 w-10 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center shrink-0">
@@ -726,6 +734,36 @@ function MaterialsTab({ lesson }: { lesson: any }) {
         </div>
       )}
       </>
+      )}
+
+      {/* Links oficiais do fabricante (manuais e materiais da aula) */}
+      {links.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs text-muted-light">{t("Manuais e materiais oficiais do fabricante.")}</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {links.map((m) => (
+              <a
+                key={m.url}
+                href={m.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center gap-3 rounded-xl border border-border bg-surface-2 p-3 transition-colors hover:border-amber-500/40"
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-500/10">
+                  <FileText size={18} className="text-amber-500" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-foreground">{m.titulo}</p>
+                  <p className="truncate text-xs text-muted-light">
+                    {m.formato === "pagina" ? t("Manual online") : "PDF"}
+                    {m.idioma ? ` · ${m.idioma.toUpperCase()}` : ""}
+                  </p>
+                </div>
+                <ExternalLink size={15} className="shrink-0 text-muted-light transition-colors group-hover:text-amber-500" />
+              </a>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
