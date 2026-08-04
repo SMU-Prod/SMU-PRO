@@ -16,9 +16,7 @@ import { NotesTab } from "./notes-tab";
 import { AudioPlayer } from "./audio-player";
 import { AnimationPlayer } from "./animation-player";
 import { RichContentViewer } from "./rich-content-viewer";
-import { EquipmentManuals } from "./equipment-manuals";
 import NotaonLessonContent from "./notaon-lesson-content";
-import { manualsForCategory } from "@/lib/equipment-manuals";
 import { useLocale } from "@/lib/i18n/locale";
 import { LanguageSelector } from "@/components/i18n/language-selector";
 import { courseMeta } from "@/lib/i18n/courses-meta";
@@ -601,7 +599,7 @@ export function LessonPlayer({
                   )}
                 </div>
               )}
-              {activeTab === "materials" && <MaterialsTab lesson={lesson} categoria={course.categoria} />}
+              {activeTab === "materials" && <MaterialsTab lesson={lesson} />}
               {activeTab === "quiz" && (
                 <QuizTab lesson={lesson} quizAttempts={quizAttempts} quizData={quizData} userId={userId} onQuizPassed={() => setQuizJustPassed(true)} quizTr={quizTr} locale={locale} lessonTitulo={dispTitulo} />
               )}
@@ -669,13 +667,14 @@ export function LessonPlayer({
   );
 }
 
-function MaterialsTab({ lesson, categoria }: { lesson: any; categoria?: string }) {
+function MaterialsTab({ lesson }: { lesson: any }) {
   const t = useT();
   const [showPdf, setShowPdf] = useState(false);
-  const temManuais = manualsForCategory(categoria).length > 0;
 
+  /* NOTA ON usa pdf_path como marcador "notaon:" — não é PDF de material.
+     (o fallback temManuais saiu junto com os manuais genéricos por categoria) */
   const isNotaon = lesson.pdf_path?.startsWith("notaon:");
-  if ((!lesson.pdf_path || isNotaon) && !temManuais) {
+  if (!lesson.pdf_path || isNotaon) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <FileText size={40} className="text-muted-light mb-3" />
@@ -728,9 +727,6 @@ function MaterialsTab({ lesson, categoria }: { lesson: any; categoria?: string }
       )}
       </>
       )}
-
-      {/* Manuais oficiais dos equipamentos da categoria */}
-      <EquipmentManuals categoria={categoria} />
     </div>
   );
 }

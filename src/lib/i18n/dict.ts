@@ -646,17 +646,8 @@ export const DICT: Record<string, { en: string; es: string }> = {
   "Máximo de 72 caracteres": { en: "Maximum of 72 characters", es: "Máximo de 72 caracteres" },
   "Deve conter letras e números": { en: "Must contain letters and numbers", es: "Debe contener letras y números" },
   "Não pode ser uma senha comum ou exposta em vazamentos de dados": { en: "Cannot be a common password or one exposed in data breaches", es: "No puede ser una contraseña común o expuesta en filtraciones de datos" },
-  // ---- Manuais dos equipamentos ----
-  "Manuais dos equipamentos": { en: "Equipment manuals", es: "Manuales de los equipos" },
-  "Manuais oficiais do fabricante para consulta técnica.": { en: "Official manufacturer manuals for technical reference.", es: "Manuales oficiales del fabricante para consulta técnica." },
-  "Manual online": { en: "Online manual", es: "Manual en línea" },
-  "Microfone dinâmico vocal": { en: "Vocal dynamic microphone", es: "Micrófono dinámico vocal" },
-  "Microfone dinâmico instrumento": { en: "Instrument dynamic microphone", es: "Micrófono dinámico de instrumento" },
-  "Microfone dinâmico supercardioide": { en: "Supercardioid dynamic microphone", es: "Micrófono dinámico supercardioide" },
+  // "Mesa de som digital" segue em uso na home (page.tsx)
   "Mesa de som digital": { en: "Digital mixing console", es: "Consola de sonido digital" },
-  "Microfone dinâmico de estúdio": { en: "Studio dynamic microphone", es: "Micrófono dinámico de estudio" },
-  "Moving head (wash)": { en: "Moving head (wash)", es: "Cabeza móvil (wash)" },
-  "Máquina de fumaça (fog)": { en: "Fog machine", es: "Máquina de humo (fog)" },
   // ---- Simulador (interface) ----
   "interativo": { en: "interactive", es: "interactivo" },
   "imagem": { en: "image", es: "imagen" },
