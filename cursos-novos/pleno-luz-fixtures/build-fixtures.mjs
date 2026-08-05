@@ -55,28 +55,28 @@ function gobosFromSets(sets){ const seen=new Set(); const out=[];
 // ── MODELOS (curadoria: tipo, missão didática, e KEY de controle por canal MA) ──
 // key: o que o controle do sim escreve naquele canal. Demais canais aparecem no mapa com 0.
 const CURATED = [
-  { slug:"robe-megapointe", brand:"Robe", model:"MegaPointe", type:"hybrid", data:"megapointe",
+  { slug:"robe-megapointe", brand:"Robe", model:"MegaPointe", type:"hybrid", data:"megapointe", zoom:[3,42], // spot 3-42 (beam 1.8-21)
     tagline:"Híbrido beam·spot·wash de 470W — o cavalo de batalha das turnês mundiais",
     color:"wheel", keys:{ PAN:"pan", TILT:"tilt", DIM:"dim", SHUTTER:"strobe", COLOR1:"colorwheel", GOBO1:"gobo", GOBO2:"gobo2", GOBO2_POS:"goboRot", EFFECTWHEEL:"prism", EFFECTINDEXROTATE:"prismRot", ZOOM:"zoom", FOCUS:"focus", FROST:"frost" } },
   { slug:"claypaky-sharpy", brand:"Clay Paky", model:"Sharpy", type:"beam", data:"sharpy",
     tagline:"O beam que mudou a iluminação — 189W com facho de 0°, denso e cortante",
     color:"wheel", keys:{ COLOR1:"colorwheel", SHUTTER:"strobe", DIM:"dim", GOBO1:"gobo", EFFECTWHEEL:"prism", EFFECTINDEXROTATE:"prismRot", FROST:"frost", FOCUS:"focus", PAN:"pan", TILT:"tilt" } },
-  { slug:"martin-mac-aura", brand:"Martin", model:"MAC Aura XB", type:"wash", data:"macaura",
+  { slug:"martin-mac-aura", brand:"Martin", model:"MAC Aura XB", type:"wash", data:"macaura", zoom:[10,60],
     tagline:"Wash de LED com o efeito Aura — o backlight queridinho dos riders",
     color:"rgb", keys:{ SHUTTER:"strobe", DIM:"dim", ZOOM:"zoom", PAN:"pan", TILT:"tilt", COLORRGB1:"r", COLORRGB2:"g", COLORRGB3:"b", COLORTEMPERATURE:"cto" } },
   { slug:"chauvet-rogue-r2-spot", brand:"Chauvet", model:"Rogue R2 Spot", type:"spot", data:"rogue",
     tagline:"Spot LED 240W com 2 rodas de cor, gobos rotativos, prisma e íris",
     color:"wheel", keys:{ PAN:"pan", TILT:"tilt", DIM:"dim", SHUTTER:"strobe", COLOR1:"colorwheel", GOBO1:"gobo", GOBO1_POS:"goboRot", GOBO2:"gobo2", FOCUS:"focus", EFFECTWHEEL:"prism", EFFECTINDEXROTATE:"prismRot", IRIS:"iris", FROST:"frost" } },
-  { slug:"robe-spiider", brand:"Robe", model:"Spiider", type:"wash", data:"spiider",
+  { slug:"robe-spiider", brand:"Robe", model:"Spiider", type:"wash", data:"spiider", zoom:[4,50],
     tagline:"Wash/beam de LED com o 'olho' central — flower effect que virou padrão de rider",
     color:"rgb", white:true, keys:{ PAN:"pan", TILT:"tilt", COLORRGB1:"r", COLORRGB2:"g", COLORRGB3:"b", WHITEMASTER:"w", SHUTTER:"strobe", DIM:"dim", ZOOM:"zoom" } },
-  { slug:"martin-mac-viper", brand:"Martin", model:"MAC Viper Profile", type:"spot", data:"viper",
+  { slug:"martin-mac-viper", brand:"Martin", model:"MAC Viper Profile", type:"spot", data:"viper", zoom:[10,44],
     tagline:"O spot 1000W padrão de teatro e TV — CMY real, 2 rodas de gobo e íris",
     color:"cmy", keys:{ SHUTTER:"strobe", DIM:"dim", COLORRGB1:"c", COLORRGB2:"m", COLORRGB3:"y", CTO:"cto", COLOR1:"colorwheel", GOBO1:"gobo", GOBO1_POS:"goboRot", FROST:"frost", EFFECTWHEEL:"prism", EFFECTINDEXROTATE:"prismRot", IRIS:"iris", ZOOM:"zoom", FOCUS:"focus", PAN:"pan", TILT:"tilt" } },
-  { slug:"glp-impression-x4", brand:"GLP", model:"impression X4", type:"wash", data:"x4",
+  { slug:"glp-impression-x4", brand:"GLP", model:"impression X4", type:"wash", data:"x4", zoom:[7,50],
     tagline:"O wash compacto sem base que conquistou os festivais — RGBW com zoom 7–50°",
     color:"rgb", white:true, keys:{ PAN:"pan", TILT:"tilt", COLORRGB1:"r", COLORRGB2:"g", COLORRGB3:"b", COLORRGB5:"w", SHUTTER:"strobe", DIM:"dim", COLORTEMPERATURE:"cto", ZOOM:"zoom" } },
-  { slug:"claypaky-mythos2", brand:"Clay Paky", model:"Mythos 2", type:"hybrid", data:"mythos2",
+  { slug:"claypaky-mythos2", brand:"Clay Paky", model:"Mythos 2", type:"hybrid", data:"mythos2", zoom:[4,50], // spot 4-50 (beam fixo 2.5)
     tagline:"Híbrido 470W: beam cortante e spot com CMY, gobos e roda de animação",
     color:"cmy", keys:{ COLORRGB1:"c", COLORRGB2:"m", COLORRGB3:"y", COLOR1:"colorwheel", SHUTTER:"strobe", DIM:"dim", GOBO1:"gobo", GOBO2:"gobo2", GOBO2_POS:"goboRot", EFFECTWHEEL:"prism", EFFECTINDEXROTATE:"prismRot", FROST:"frost", ZOOM:"zoom", FOCUS:"focus", PAN:"pan", TILT:"tilt" } },
 ];
@@ -101,6 +101,8 @@ export const MODELS = CURATED.map((c) => {
   const gobos = Object.values(chKey).includes("gobo") ? (gobosFromSets(goboSets) || ["Aberto","Gobo 1","Gobo 2","Gobo 3","Gobo 4","Gobo 5"]) : null;
   const has = (k) => Object.values(chKey).includes(k);
   return { slug:c.slug, brand:c.brand, model:c.model, type:c.type, tagline:c.tagline,
+    // faixa de zoom OFICIAL do fabricante (graus); null = modelo sem zoom
+    zoomRange:c.zoom||null,
     mode:`${p.mode} — ${p.total} canais (perfil oficial)`, total:p.total, channels, colorWheel, gobos,
     features:{ color:c.color, white:!!c.white, gobo:has("gobo"), gobo2:has("gobo2"), goboRot:has("goboRot"),
       prism:has("prism"), zoom:has("zoom"), focus:has("focus"), iris:has("iris"), frost:has("frost"),
@@ -168,7 +170,7 @@ details.dmx summary::-webkit-details-marker{display:none}
   <div class="mission" id="mission"></div>
 </div>
 <script>
-const MODEL=${JSON.stringify({slug:M.slug,brand:M.brand,model:M.model,type:M.type,channels:M.channels,colorWheel:M.colorWheel,gobos:M.gobos,features:M.features})};
+const MODEL=${JSON.stringify({slug:M.slug,brand:M.brand,model:M.model,type:M.type,zoomRange:M.zoomRange,channels:M.channels,colorWheel:M.colorWheel,gobos:M.gobos,features:M.features})};
 const F=MODEL.features;
 // Abre ACESO. Com dim:0 o simulador nascia com a tela toda preta e o aluno lia isso como
 // "não funciona" — não dá para aprender com um aparelho apagado. Ele abre com o facho no ar,
@@ -205,7 +207,8 @@ function buildControls(){controlsEl.innerHTML='';
  if(F.goboRot)slider('goboRot','Rotação do gobo',0,255,v=>v<128?('← '+Math.round((128-v)/1.28)+'%'):('→ '+Math.round((v-128)/1.27)+'%'));
  if(F.prism)toggle('prism','Prisma');
  if(F.prism)slider('prismRot','Rotação do prisma',0,255);
- if(F.zoom)slider('zoom','Zoom',0,255,v=>Math.round(6+v/255*44)+'°');
+ // graus REAIS do fabricante (MODEL.zoomRange), não uma faixa genérica — spec é spec
+ if(F.zoom){const zr=MODEL.zoomRange||[6,50];slider('zoom','Zoom',0,255,v=>Math.round(zr[0]+v/255*(zr[1]-zr[0]))+'°');}
  if(F.focus)slider('focus','Foco',0,255);
  if(F.iris)slider('iris','Íris',0,255,v=>Math.round(v/2.55)+'%');
  if(F.frost)slider('frost','Frost',0,255);
