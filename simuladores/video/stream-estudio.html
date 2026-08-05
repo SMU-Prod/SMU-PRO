@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMU PRO · Estúdio de Transmissão (cenas e fontes)</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0b0d10;--ink:#e9edf2;--dim:#8a93a0;--line:#3a4048;--ok:#2ec26b;--err:#e23b3b;--amber:#f0a92b;}
+  html,body{background:var(--bg);color:var(--ink);font-family:'Segoe UI',system-ui,Arial,sans-serif;}
+  body{padding:10px;}
+  .app{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:10px;}
+  h1{font-size:15px;} h1 small{color:var(--dim);font-weight:400;font-size:11.5px;display:block;margin-top:2px;}
+  .studio{display:grid;grid-template-columns:210px 1fr 230px;gap:10px;}
+  @media(max-width:860px){ .studio{grid-template-columns:1fr;} }
+  .col{background:#12161c;border:1px solid var(--line);border-radius:9px;padding:9px;}
+  .col h3{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--amber);margin-bottom:7px;}
+  .scene{border:1px solid var(--line);border-radius:7px;padding:8px 10px;margin-bottom:6px;cursor:pointer;font-size:12.5px;font-weight:700;background:linear-gradient(#232830,#181c22);}
+  .scene small{display:block;color:var(--dim);font-weight:400;font-size:10.5px;}
+  .scene.live{border-color:var(--err);background:#2a1414;} .scene.live::after{content:' · NO AR';color:var(--err);font-size:10px;}
+  .prev{position:relative;aspect-ratio:16/9;border:2px solid #333;border-radius:6px;background:#000;overflow:hidden;margin-bottom:8px;}
+  .prev .tag{position:absolute;left:5px;top:4px;font-size:9px;font-weight:800;background:#0009;padding:1px 6px;border-radius:3px;z-index:9;}
+  .layer{position:absolute;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;text-shadow:0 1px 3px #000;font-size:12px;}
+  .srcrow{display:flex;align-items:center;gap:7px;font-size:11.5px;border-bottom:1px solid #1c222a;padding:5px 0;}
+  .srcrow .nm{flex:1;} .srcrow .nm small{color:var(--dim);display:block;font-size:10px;}
+  .eye{width:26px;height:20px;border:1px solid var(--line);border-radius:4px;background:#0c0f13;color:var(--dim);cursor:pointer;font-size:11px;}
+  .eye.on{background:#1e3a5f;color:#93c5fd;border-color:#3b82f6;}
+  .fader{display:flex;align-items:center;gap:7px;font-size:11px;margin:7px 0;}
+  .fader input{flex:1;}
+  .meter{height:8px;border-radius:4px;background:#0c0f13;overflow:hidden;border:1px solid #1c222a;}
+  .meter i{display:block;height:100%;background:linear-gradient(90deg,#2ec26b 60%,#f0c05a 80%,#e23b3b);width:0;transition:width .12s;}
+  .btn{border:1px solid var(--line);border-radius:7px;background:linear-gradient(#2c323b,#1c2127);color:var(--ink);padding:9px 14px;font-size:12.5px;font-weight:800;cursor:pointer;width:100%;margin-top:6px;}
+  .btn.go{background:linear-gradient(#e23b3b,#a81f1f);border-color:#7a1414;}
+  .btn.go.on{animation:blink 1s steps(2) infinite;}
+  @keyframes blink{50%{filter:brightness(.6)}}
+  .stats{font-size:11px;color:var(--dim);line-height:1.6;margin-top:7px;border-top:1px solid #1c222a;padding-top:7px;}
+  .stats b{color:var(--ink);}
+  .warn{color:var(--err);font-weight:700;}
+  .mission{background:#15181d;border:1px solid var(--line);border-radius:9px;padding:10px;}
+  .mission h3{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--amber);margin-bottom:7px;}
+  .mlist{list-style:none;display:flex;flex-direction:column;gap:5px;} .mlist li{font-size:11.5px;color:var(--dim);display:flex;gap:7px;}
+  .mlist li .bx{width:15px;height:15px;border-radius:4px;border:1px solid var(--line);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;}
+  .mlist li.done{color:var(--ink);} .mlist li.done .bx{background:var(--ok);border-color:var(--ok);color:#04220f;}
+  .toast{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);background:#0c0f13;border:1px solid var(--amber);color:var(--ink);border-radius:8px;padding:9px 15px;font-size:12.5px;opacity:0;pointer-events:none;transition:.2s;z-index:60;max-width:92vw;text-align:center;} .toast.show{opacity:1;}
+  .note{font-size:10.5px;color:#5f6b7a;text-align:center;padding:4px;}
+  html,body{height:auto;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  @media (min-width:1250px){ html.smu-fs .app{max-width:1520px;} }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>Estúdio de transmissão — cenas, fontes e o mixer da live<small>O fluxo do OBS/vMix sem marca: monte CENAS com FONTES, controle o áudio e abra a transmissão. O que está na cena AO VIVO é o que o público vê.</small></h1>
+  <div class="studio">
+    <div class="col">
+      <h3>Cenas (clique = vai ao ar)</h3>
+      <div id="scenes"></div>
+      <div class="stats">A cena é um "slide" da live: um arranjo de fontes. Trocar de cena é o corte do streaming.</div>
+    </div>
+    <div class="col">
+      <h3>Programa (o que o público vê)</h3>
+      <div class="prev" id="prog"><span class="tag" id="progTag">AO VIVO</span></div>
+      <h3>Fontes da cena selecionada</h3>
+      <div id="sources"></div>
+    </div>
+    <div class="col">
+      <h3>Mixer de áudio</h3>
+      <div class="fader">MIC <input type="range" id="vMic" min="0" max="100" value="70"></div>
+      <div class="meter"><i id="mMic"></i></div>
+      <div class="fader">VT/PLAYBACK <input type="range" id="vVt" min="0" max="100" value="80"></div>
+      <div class="meter"><i id="mVt"></i></div>
+      <div class="stats" id="audioHint">Regra de ouro: o VT toca, o MIC fecha — e vice-versa. Dois abertos juntos = "sopa".</div>
+      <h3 style="margin-top:9px">Transmissão</h3>
+      <button class="btn go" id="golive">INICIAR TRANSMISSÃO</button>
+      <div class="stats" id="stats">Status: <b>offline</b></div>
+    </div>
+  </div>
+  <div class="mission"><h3>Missão</h3><ul class="mlist" id="missions"></ul></div>
+  <div class="note">Simulador didático SMU Produções — software de transmissão genérico (fluxo OBS/vMix, sem marca).</div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+(function(){
+"use strict";
+var $=function(s){return document.querySelector(s);};
+var SCENES=[
+  {id:'abre', lb:'ABERTURA', sub:'vinheta + relógio', srcs:[
+    {id:'vin', lb:'Vinheta (VT)', kind:'vt', on:true,  bg:'linear-gradient(150deg,#4a1414,#7a2a2a)', full:true},
+    {id:'clk', lb:'Contagem regressiva', kind:'gfx', on:true, bg:'', pos:[60,62,36,30], txt:'10:00'}]},
+  {id:'palco', lb:'PALCO', sub:'câmera + nome', srcs:[
+    {id:'cam1', lb:'Câmera do palco', kind:'cam', on:true, bg:'linear-gradient(150deg,#0b1e3a,#1a4a86)', full:true},
+    {id:'gc', lb:'Nome do palestrante (GC)', kind:'gfx', on:true, pos:[4,74,52,18], txt:'MARIA SOUZA · CEO'}]},
+  {id:'slides', lb:'SLIDES + CÂMERA', sub:'conteúdo com PiP', srcs:[
+    {id:'slides', lb:'Slides (notebook)', kind:'cam', on:true, bg:'linear-gradient(150deg,#0b3a33,#12665a)', full:true},
+    {id:'pip', lb:'Câmera do palestrante (PiP)', kind:'cam', on:true, pos:[66,62,30,32], txt:'CÂMERA'}]},
+  {id:'vt', lb:'VT / VÍDEO', sub:'vídeo institucional', srcs:[
+    {id:'vt1', lb:'VT institucional', kind:'vt', on:true, bg:'linear-gradient(150deg,#2a0b3a,#5f1f7a)', full:true}]},
+  {id:'fim', lb:'ENCERRAMENTO', sub:'agradecimento', srcs:[
+    {id:'end', lb:'Arte de encerramento', kind:'gfx', on:true, bg:'linear-gradient(150deg,#232323,#3c3c3c)', full:true, txt:'OBRIGADO!'}]},
+];
+var S={live:'abre', sel:'abre', streaming:false, t0:null, drops:0};
+var done={cena:false, fonte:false, pip:false, audio:false, live:false, gc:false};
+
+var scEl=$('#scenes');
+SCENES.forEach(function(sc){
+  var d=document.createElement('div'); d.className='scene'; d.id='sc-'+sc.id;
+  d.innerHTML=sc.lb+'<small>'+sc.sub+'</small>';
+  d.onclick=function(){ S.live=sc.id; S.sel=sc.id; if(sc.id!=='abre')done.cena=true; render();
+    /* dica de áudio contextual */
+    if(sc.id==='vt'&&+$('#vMic').value>15) toast('Entrou VT: feche o MIC no mixer (senão vaza o palco por cima do vídeo).');
+    if(sc.id==='palco'&&+$('#vVt').value>15) toast('Voltou ao palco: feche o VT/PLAYBACK e abra o MIC.');
+  };
+  scEl.appendChild(d);
+});
+function scene(id){ return SCENES.find(function(s){return s.id===id;}); }
+
+function renderSources(){
+  var host=$('#sources'); host.innerHTML='';
+  scene(S.sel).srcs.forEach(function(src){
+    var r=document.createElement('div'); r.className='srcrow';
+    var eye=document.createElement('button'); eye.className='eye'+(src.on?' on':''); eye.textContent=src.on?'👁':'—';
+    eye.onclick=function(){ src.on=!src.on; done.fonte=true; if(src.id==='pip'&&src.on)done.pip=true; if(src.id==='gc'&&src.on)done.gc=true; render(); };
+    var nm=document.createElement('div'); nm.className='nm'; nm.innerHTML=src.lb+'<small>'+(src.kind==='cam'?'fonte de vídeo':src.kind==='vt'?'arquivo de vídeo':'gráfico/overlay')+'</small>';
+    r.appendChild(eye); r.appendChild(nm); host.appendChild(r);
+  });
+}
+function renderProg(){
+  var p=$('#prog'); p.querySelectorAll('.layer').forEach(function(n){n.remove();});
+  var sc=scene(S.live);
+  sc.srcs.forEach(function(src){
+    if(!src.on) return;
+    var l=document.createElement('div'); l.className='layer';
+    if(src.full){ l.style.inset='0'; l.style.background=src.bg||'#123'; l.textContent=src.txt||src.lb; }
+    else { var q=src.pos; l.style.left=q[0]+'%'; l.style.top=q[1]+'%'; l.style.width=q[2]+'%'; l.style.height=q[3]+'%';
+      l.style.background=src.bg||'#000c'; l.style.border='2px solid #fff'; l.style.borderRadius='3px'; l.style.fontSize='10px'; l.textContent=src.txt||src.lb; }
+    p.appendChild(l);
+  });
+}
+$('#golive').onclick=function(){
+  S.streaming=!S.streaming;
+  if(S.streaming){ S.t0=Date.now(); done.live=true; $('#golive').textContent='ENCERRAR TRANSMISSÃO'; $('#golive').classList.add('on'); toast('AO VIVO! Bitrate estável, plataforma recebendo.'); }
+  else { $('#golive').textContent='INICIAR TRANSMISSÃO'; $('#golive').classList.remove('on'); toast('Transmissão encerrada.'); }
+  render();
+};
+function audioTick(){
+  var mic=+$('#vMic').value, vt=+$('#vVt').value;
+  var sc=S.live;
+  var micAct = (sc!=='vt'&&sc!=='abre') ? mic : mic*0.2;
+  var vtAct = (sc==='vt'||sc==='abre') ? vt : vt*0.15;
+  $('#mMic').style.width=(micAct*(0.75+Math.random()*0.25))+'%';
+  $('#mVt').style.width=(vtAct*(0.75+Math.random()*0.25))+'%';
+  var h=$('#audioHint');
+  if(sc==='vt'&&mic>15){ h.innerHTML='<span class="warn">MIC aberto durante o VT</span> — o palco está vazando por cima do vídeo. Feche o MIC.'; }
+  else if((sc==='palco'||sc==='slides')&&vt>15){ h.innerHTML='<span class="warn">VT aberto com o palco no ar</span> — se alguém der play, entra por cima da fala. Feche o VT.'; }
+  else { h.textContent='Áudio certo para esta cena. Regra: abre o que está na cena, fecha o resto.'; if(S.streaming)done.audio=true; }
+}
+$('#vMic').oninput=audioTick; $('#vVt').oninput=audioTick;
+function renderStats(){
+  var st=$('#stats');
+  if(S.streaming){ var s=Math.floor((Date.now()-S.t0)/1000); st.innerHTML='Status: <b style="color:#e23b3b">AO VIVO</b> · '+Math.floor(s/60)+'m'+String(s%60).padStart(2,'0')+'s · bitrate <b>6.0 Mbps</b> · 0 quadros perdidos'; }
+  else st.innerHTML='Status: <b>offline</b>';
+}
+function render(){
+  SCENES.forEach(function(sc){ $('#sc-'+sc.id).classList.toggle('live',S.live===sc.id); });
+  renderSources(); renderProg();
+  var ul=$('#missions'); ul.innerHTML='';
+  MISS.forEach(function(m){ var d=!!done[m.id]; var li=document.createElement('li'); li.className=d?'done':''; li.innerHTML='<span class="bx">'+(d?'✓':'')+'</span><span>'+m.t+'</span>'; ul.appendChild(li); });
+}
+var MISS=[
+  {id:'cena',t:'Trocar de cena ao vivo (o corte do streaming)'},
+  {id:'fonte',t:'Ligar/desligar uma fonte dentro de uma cena'},
+  {id:'gc',t:'Deixar o GC (nome do palestrante) visível na cena PALCO'},
+  {id:'pip',t:'Ativar o PiP da câmera na cena SLIDES'},
+  {id:'live',t:'Iniciar a transmissão'},
+  {id:'audio',t:'Manter o áudio certo ao vivo (MIC × VT por cena)'},
+];
+var _t; function toast(m){ var t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(_t); _t=setTimeout(function(){t.classList.remove('show');},3000); }
+setInterval(function(){ audioTick(); renderStats(); },350);
+render();
+window.__sim={S:S,done:done};
+})();
+</script>
+</body>
+</html>

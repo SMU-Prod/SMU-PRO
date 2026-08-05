@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMU PRO · O Dia do Técnico de Vídeo</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0b0d10;--ink:#e9edf2;--dim:#8a93a0;--line:#3a4048;--ok:#2ec26b;--err:#e23b3b;--amber:#f0a92b;}
+  html,body{background:var(--bg);color:var(--ink);font-family:'Segoe UI',system-ui,Arial,sans-serif;}
+  body{padding:10px;}
+  .app{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:10px;}
+  h1{font-size:15px;} h1 small{color:var(--dim);font-weight:400;font-size:11.5px;display:block;margin-top:2px;}
+  .hud{display:flex;gap:12px;flex-wrap:wrap;background:#12161c;border:1px solid var(--line);border-radius:9px;padding:9px 12px;font-size:12px;align-items:center;}
+  .hud b{color:var(--amber);}
+  .clock{font-family:Consolas,monospace;font-size:16px;color:#7CFC9E;}
+  .card{background:#12161c;border:1px solid var(--line);border-radius:9px;padding:13px;}
+  .card .fase{font-size:10px;color:var(--amber);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px;}
+  .card .sit{font-size:13px;line-height:1.55;margin-bottom:11px;}
+  .opt{display:block;width:100%;text-align:left;border:1px solid var(--line);border-radius:8px;background:linear-gradient(#232830,#181c22);color:var(--ink);padding:10px 12px;font-size:12.5px;margin-bottom:7px;cursor:pointer;line-height:1.4;}
+  .opt:hover{border-color:var(--amber);}
+  .opt.pick-ok{border-color:var(--ok);background:#10241a;} .opt.pick-bad{border-color:var(--err);background:#2a1212;}
+  .fb{border-radius:8px;padding:10px 12px;font-size:12.5px;line-height:1.55;border:1px solid var(--line);margin-top:6px;display:none;}
+  .fb.on{display:block;} .fb.ok{border-color:var(--ok);background:#10241a;} .fb.bad{border-color:var(--err);background:#2a1212;}
+  .btn{border:1px solid var(--line);border-radius:7px;background:linear-gradient(#2c323b,#1c2127);color:var(--ink);padding:9px 16px;font-size:12.5px;font-weight:800;cursor:pointer;margin-top:9px;}
+  .mission{background:#15181d;border:1px solid var(--line);border-radius:9px;padding:10px;}
+  .mission h3{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--amber);margin-bottom:7px;}
+  .mlist{list-style:none;display:flex;flex-direction:column;gap:5px;} .mlist li{font-size:11.5px;color:var(--dim);display:flex;gap:7px;}
+  .mlist li .bx{width:15px;height:15px;border-radius:4px;border:1px solid var(--line);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;}
+  .mlist li.done{color:var(--ink);} .mlist li.done .bx{background:var(--ok);border-color:var(--ok);color:#04220f;}
+  .note{font-size:10.5px;color:#5f6b7a;text-align:center;padding:4px;}
+  html,body{height:auto;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  @media (min-width:1250px){ html.smu-fs .app{max-width:1300px;} }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>O dia do técnico de vídeo — da van ao load-out<small>Um dia inteiro de evento corporativo, decisão por decisão. Cada fase tem o seu jeito certo — é o "roteiro mental" da profissão.</small></h1>
+  <div class="hud"><span class="clock" id="clock">06:40</span><span id="fase">Chegada</span><span style="flex:1"></span><span>Dia: <b id="score">impecável</b></span></div>
+  <div class="card" id="card"></div>
+  <div class="mission"><h3>Missão</h3><ul class="mlist" id="missions"></ul></div>
+  <div class="note">Simulador didático SMU Produções — rotina genérica de evento.</div>
+</div>
+<script>
+(function(){
+"use strict";
+var $=function(s){return document.querySelector(s);};
+var STEPS=[
+ {h:'06:40', fase:'Chegada / van', sit:'A van chegou na doca. A equipe quer descarregar tudo de uma vez "para adiantar". O que você faz primeiro?',
+  opts:[
+   {t:'Descarregar tudo — tempo é ouro.', ok:false, fb:'Descarregou sem conferir = case perdido descoberto às 18h. A conferência na CHEGADA é o seguro do dia.'},
+   {t:'Conferir a lista de material contra o que desceu da van, case por case.', ok:true, fb:'Checklist na descida: o que faltou ainda dá tempo de buscar. É a primeira rotina profissional do dia.'},
+   {t:'Ir direto ver onde fica o catering.', ok:false, fb:'O café pode esperar 15 minutos; o case que ficou no galpão, não.'}]},
+ {h:'08:30', fase:'Montagem', sit:'O telão vai subir na treliça. O rigger pergunta: "quanto pesa essa parede?" Você:',
+  opts:[
+   {t:'"Uns 300 quilos, chuta aí."', ok:false, fb:'NUNCA se chuta peso para rigging. Peso por cabinet × quantidade + estrutura = conta exata, e é ela que dimensiona os pontos.'},
+   {t:'Responde com a conta: nº de cabinets × peso unitário (da ficha técnica) + hanging bars.', ok:true, fb:'72 cabinets × 8 kg + barras ≈ 600 kg — número, não achismo. Segurança é a única parte do dia sem margem de improviso.'},
+   {t:'"Isso é problema do rigger."', ok:false, fb:'O peso do SEU equipamento é informação SUA. O rigger dimensiona com o número que você fornece.'}]},
+ {h:'11:00', fase:'Configuração', sit:'Parede no ar. Qual é a ordem certa de trabalho até a imagem aparecer?',
+  opts:[
+   {t:'Ligar tudo junto e ir resolvendo o que aparecer.', ok:false, fb:'Ligar sem ordem = EDID perdido, mapeamento no escuro. Existe sequência.'},
+   {t:'Energia → processador e telão → mapear/conferir com padrão de teste → fontes por último.', ok:true, fb:'A sequência que você treinou o curso inteiro: displays acordam antes das fontes; padrão de teste ANTES do conteúdo.'},
+   {t:'Começar pelo notebook, que é mais rápido.', ok:false, fb:'Fonte primeiro = handshake com o nada. O display precisa existir antes.'}]},
+ {h:'14:00', fase:'Passagem', sit:'A passagem (ensaio) começou e o VT do cliente trava no telão. Faltam 4 horas para abrir a casa. Você:',
+  opts:[
+   {t:'Torce para no show não travar — na passagem sempre dá algum problema.', ok:false, fb:'O que trava na passagem trava no show. Passagem existe para o problema morrer NELA.'},
+   {t:'Reencoda o VT agora para o codec certo do playback e testa de novo até rodar liso.', ok:true, fb:'4 horas é MUITO tempo para um reencode — e zero tempo se você deixar para as 19h50. Resolve na causa, testa, confere.'},
+   {t:'Troca o notebook de playback por outro.', ok:false, fb:'O problema é o ARQUIVO (codec pesado), não a máquina. Trocar o PC leva o defeito junto.'}]},
+ {h:'19:58', fase:'Show', sit:'Dois minutos para abrir. O produtor chega correndo: "coloca esse pendrive com o novo vídeo de abertura!" Você:',
+  opts:[
+   {t:'Coloca direto no playback — é o produtor mandando.', ok:false, fb:'Arquivo não testado a 2 min do show = roleta russa com público sentado. Codec errado e a abertura trava na frente de todos.'},
+   {t:'Explica o risco, testa o arquivo AGORA na máquina reserva e só sobe se rodar liso.', ok:true, fb:'Profissional: não é "não" — é "testado primeiro". A máquina reserva existe para isso; 90 segundos de teste salvam a abertura.'},
+   {t:'Recusa: "agora não dá mais".', ok:false, fb:'Recusar sem alternativa cria guerra com a produção. Sempre ofereça o caminho seguro.'}]},
+ {h:'23:30', fase:'Load-out', sit:'Show encerrado, todo mundo exausto. A desmontagem:',
+  opts:[
+   {t:'Cada um joga o que alcançar nos cases — quanto mais rápido, melhor.', ok:false, fb:'Case errado = próxima montagem começa com caça ao tesouro. E cabo enrolado de qualquer jeito morre cedo.'},
+   {t:'Desmontar na ordem inversa da montagem, cada item no SEU case, conferindo a lista na porta da van.', ok:true, fb:'Fonte desligada por último → cabos enrolados direito → checklist na saída. O load-out de hoje é o load-in tranquilo de amanhã.'},
+   {t:'Deixar os cabos para a equipe do local recolher.', ok:false, fb:'Equipamento seu, responsabilidade sua. "A casa recolhe" é como se perde metade do cabeamento.'}]},
+];
+var S={i:0,errs:0,answered:false};
+var done={s1:false,s2:false,s3:false,s4:false,s5:false,s6:false,fim:false};
+function render(){
+  var c=STEPS[S.i]; if(!c)return fim();
+  $('#clock').textContent=c.h; $('#fase').textContent=c.fase;
+  var host=$('#card'); host.innerHTML='<div class="fase">'+c.h+' — '+c.fase+'</div><div class="sit">'+c.sit+'</div>';
+  var fb=document.createElement('div'); fb.className='fb';
+  c.opts.forEach(function(o){
+    var b=document.createElement('button'); b.className='opt'; b.textContent=o.t;
+    b.onclick=function(){ if(S.answered)return; S.answered=true;
+      b.classList.add(o.ok?'pick-ok':'pick-bad');
+      fb.className='fb on '+(o.ok?'ok':'bad'); fb.innerHTML=(o.ok?'<b>É assim que se faz.</b> ':'<b>O dia cobrou.</b> ')+o.fb;
+      if(o.ok) done['s'+(S.i+1)]=true; else { S.errs++; $('#score').textContent=S.errs===1?'com sustos':'difícil'; }
+      var nx=document.createElement('button'); nx.className='btn'; nx.textContent=S.i+1<STEPS.length?'Seguir o dia →':'Fechar o dia';
+      nx.onclick=function(){ S.i++; S.answered=false; render(); };
+      host.appendChild(nx); paint();
+    };
+    host.appendChild(b);
+  });
+  host.appendChild(fb);
+}
+function fim(){
+  done.fim=true; paint();
+  $('#clock').textContent='00:40'; $('#fase').textContent='Van fechada';
+  var host=$('#card');
+  var msg=S.errs===0?'Dia impecável — é este técnico que a produtora chama de novo.':S.errs<=2?'Dia entregue, com lições anotadas.':'O evento aconteceu… apesar do dia. Reveja as fases e jogue de novo.';
+  host.innerHTML='<div class="fase">Resumo</div><div class="sit"><b>'+msg+'</b><br><br>O roteiro mental que este dia amarrou: <b>conferir na chegada</b> · <b>peso é conta, não chute</b> · <b>energia→displays→teste→fontes</b> · <b>problema morre na passagem</b> · <b>nada sobe sem teste</b> (mesmo sob pressão, com alternativa) · <b>load-out com checklist</b>. Isso é ser profissional de vídeo.</div><button class="btn" onclick="location.reload()">Viver o dia de novo</button>';
+}
+var MISS=[
+  {id:'s1',t:'Chegada: conferência do material'},
+  {id:'s2',t:'Montagem: o peso para o rigger (com conta)'},
+  {id:'s3',t:'Configuração: a ordem certa até a imagem'},
+  {id:'s4',t:'Passagem: matar o problema nela'},
+  {id:'s5',t:'Show: pressão sem pular o teste'},
+  {id:'s6',t:'Load-out: desmontagem com checklist'},
+  {id:'fim',t:'Fechar o dia'},
+];
+function paint(){ var ul=$('#missions'); ul.innerHTML=''; MISS.forEach(function(m){ var d=!!done[m.id]; var li=document.createElement('li'); li.className=d?'done':''; li.innerHTML='<span class="bx">'+(d?'✓':'')+'</span><span>'+m.t+'</span>'; ul.appendChild(li); }); }
+render(); paint();
+window.__sim={S:S,done:done};
+})();
+</script>
+</body>
+</html>

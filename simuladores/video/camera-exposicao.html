@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMU PRO · Câmera — Exposição sem mistério</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0b0d10;--ink:#e9edf2;--dim:#8a93a0;--line:#3a4048;--ok:#2ec26b;--err:#e23b3b;--amber:#f0a92b;}
+  html,body{background:var(--bg);color:var(--ink);font-family:'Segoe UI',system-ui,Arial,sans-serif;}
+  body{padding:10px;}
+  .app{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:10px;}
+  h1{font-size:15px;} h1 small{color:var(--dim);font-weight:400;font-size:11.5px;display:block;margin-top:2px;}
+  .rig{display:grid;grid-template-columns:1.25fr 1fr;gap:10px;}
+  @media(max-width:820px){ .rig{grid-template-columns:1fr;} }
+  .col{background:#12161c;border:1px solid var(--line);border-radius:9px;padding:11px;}
+  .col h3{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--amber);margin-bottom:8px;}
+  .vf{position:relative;aspect-ratio:16/9;border:2px solid #333;border-radius:6px;overflow:hidden;background:#000;}
+  .scene{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+  .palco{width:70%;height:64%;background:linear-gradient(160deg,#2a1a4a,#4a2a7a 60%,#1a0f2e);border-radius:6px;position:relative;display:flex;align-items:flex-end;justify-content:center;}
+  .artista{width:16%;height:64%;background:#0c0f13;border-radius:40% 40% 0 0;position:relative;}
+  .artista::before{content:'';position:absolute;left:50%;top:-24%;transform:translateX(-50%);width:64%;aspect-ratio:1;border-radius:50%;background:#0c0f13;}
+  .grain{position:absolute;inset:0;z-index:5;opacity:0;pointer-events:none;background:repeating-conic-gradient(#fff2 0 25%,#0000 0 50%) 0 0/3px 3px;mix-blend-mode:screen;}
+  .flick{position:absolute;inset:0;z-index:6;pointer-events:none;background:repeating-linear-gradient(#0000 0 8px,#0006 8px 12px);opacity:0;}
+  .blur{position:absolute;inset:0;z-index:4;pointer-events:none;backdrop-filter:none;}
+  .vf .zebra{position:absolute;inset:0;z-index:7;pointer-events:none;opacity:0;background:repeating-linear-gradient(45deg,#fff5 0 4px,#0000 4px 9px);}
+  .vf .hud{position:absolute;left:6px;bottom:5px;z-index:9;font-family:Consolas,monospace;font-size:10.5px;color:#7CFC9E;text-shadow:0 1px 3px #000;}
+  .frow{display:flex;align-items:center;gap:9px;margin-bottom:10px;font-size:12px;flex-wrap:wrap;}
+  .frow label{width:118px;color:var(--dim);}
+  .frow input{flex:1;} .frow b{min-width:64px;text-align:right;font-family:Consolas,monospace;}
+  .seg{display:flex;gap:5px;flex:1;flex-wrap:wrap;}
+  .seg button{flex:1;min-width:52px;border:1px solid var(--line);border-radius:6px;background:#0c0f13;color:var(--dim);padding:6px 4px;font-size:11px;font-weight:700;cursor:pointer;}
+  .seg button.on{background:#1e3a5f;border-color:#3b82f6;color:#93c5fd;}
+  .verdict{border-radius:8px;padding:9px 12px;font-size:12px;line-height:1.5;border:1px solid var(--line);margin-top:4px;}
+  .verdict.ok{border-color:var(--ok);background:#10241a;} .verdict.warn{border-color:var(--amber);background:#241d0c;} .verdict.bad{border-color:var(--err);background:#2a1212;}
+  .mission{background:#15181d;border:1px solid var(--line);border-radius:9px;padding:10px;}
+  .mission h3{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--amber);margin-bottom:7px;}
+  .mlist{list-style:none;display:flex;flex-direction:column;gap:5px;} .mlist li{font-size:11.5px;color:var(--dim);display:flex;gap:7px;}
+  .mlist li .bx{width:15px;height:15px;border-radius:4px;border:1px solid var(--line);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;}
+  .mlist li.done{color:var(--ink);} .mlist li.done .bx{background:var(--ok);border-color:var(--ok);color:#04220f;}
+  .note{font-size:10.5px;color:#5f6b7a;text-align:center;padding:4px;}
+  html,body{height:auto;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  @media (min-width:1250px){ html.smu-fs .app{max-width:1520px;} }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>A câmera em eventos — íris, shutter e ganho sem mistério<small>Os três controles da exposição, com as consequências reais de cada um: profundidade, borrão, ruído e o flicker do telão de LED.</small></h1>
+  <div class="rig">
+    <div class="col">
+      <h3>Viewfinder (o que a câmera entrega)</h3>
+      <div class="vf" id="vf">
+        <div class="scene" id="scene"><div class="palco" id="palco"><div class="artista"></div></div></div>
+        <div class="grain" id="grain"></div>
+        <div class="flick" id="flick"></div>
+        <div class="zebra" id="zebra"></div>
+        <div class="hud" id="hud"></div>
+      </div>
+      <div class="verdict" id="verdict"></div>
+    </div>
+    <div class="col">
+      <h3>Exposição — os 3 controles</h3>
+      <div class="frow"><label>Íris (f-stop)</label><input type="range" id="iris" min="0" max="6" step="1" value="3"><b id="irisLb"></b></div>
+      <div class="frow"><label>Shutter</label>
+        <div class="seg" id="shut">
+          <button data-v="50">1/50</button><button data-v="60" class="on">1/60</button><button data-v="120">1/120</button><button data-v="250">1/250</button><button data-v="500">1/500</button>
+        </div></div>
+      <div class="frow"><label>Ganho</label>
+        <div class="seg" id="gain">
+          <button data-v="0" class="on">0 dB</button><button data-v="6">+6 dB</button><button data-v="12">+12 dB</button><button data-v="18">+18 dB</button>
+        </div></div>
+      <div class="frow"><label>Cena / luz</label>
+        <div class="seg" id="cena">
+          <button data-v="show" class="on">Show (escuro)</button><button data-v="corp">Corporativo (claro)</button>
+        </div></div>
+      <div class="frow"><label>Telão de LED no fundo</label>
+        <div class="seg" id="led"><button data-v="on" class="on">Sim (60 Hz)</button><button data-v="off">Não</button></div></div>
+      <div class="verdict" id="tips">A ordem profissional de compensar pouca luz: <b>abrir íris → baixar shutter até o limite do movimento → ganho por último</b> (ganho = ruído).</div>
+    </div>
+  </div>
+  <div class="mission"><h3>Missão</h3><ul class="mlist" id="missions"></ul></div>
+  <div class="note">Simulador didático SMU Produções — exposição de câmera genérica.</div>
+</div>
+<script>
+(function(){
+"use strict";
+var $=function(s){return document.querySelector(s);};
+var FSTOP=[1.8,2.8,4,5.6,8,11,16];
+var S={iris:3,shut:60,gain:0,cena:'show',led:true};
+var done={iris:false,shut:false,gain:false,ruido:false,flicker:false,showok:false,corpok:false};
+function seg(id,key,cast){ var host=$('#'+id); host.querySelectorAll('button').forEach(function(b){
+  b.onclick=function(){ host.querySelectorAll('button').forEach(function(x){x.classList.remove('on');}); b.classList.add('on');
+    S[key]=cast? cast(b.dataset.v): b.dataset.v; if(key==='shut')done.shut=true; if(key==='gain')done.gain=true; render(); }; }); }
+seg('shut','shut',Number); seg('gain','gain',Number);
+seg('cena','cena'); seg('led','led',function(v){return v==='on';});
+$('#iris').oninput=function(){ S.iris=+this.value; done.iris=true; render(); };
+
+function render(){
+  var f=FSTOP[S.iris];
+  $('#irisLb').textContent='f/'+f;
+  /* exposição: luz da cena + abertura + shutter + ganho (escala didática em stops) */
+  var luzCena = S.cena==='show'? -2 : 1;
+  var stopsIris = 3-S.iris;               /* f4 = 0; abrir soma */
+  var stopsShut = Math.log2(60/S.shut);   /* 1/60 = 0; 1/500 tira ~3 */
+  var stopsGain = S.gain/6*0.9;
+  var expo = luzCena + stopsIris + stopsShut + stopsGain; /* 0 = correto */
+  var bright = Math.pow(2, expo*0.5);
+  $('#scene').style.filter='brightness('+Math.max(0.06,Math.min(3.4,bright))+')';
+  $('#grain').style.opacity = S.gain>=18?0.5 : S.gain>=12?0.28 : S.gain>=6?0.1:0;
+  var flick = S.led && (S.shut===250 || S.shut===500);
+  $('#flick').style.opacity = flick?0.7:0;
+  $('#zebra').style.opacity = expo>1.6?0.55:0;
+  $('#hud').textContent='f/'+f+' · 1/'+S.shut+' · +'+S.gain+'dB · '+(S.cena==='show'?'SHOW':'CORP')+(S.led?' · LED':'');
+  if(S.gain>=12) done.ruido=true;
+  if(flick) done.flicker=true;
+  var v=$('#verdict'), msgs=[];
+  if(expo<-1.2) msgs.push('<b>Subexposta:</b> imagem afundada — abra a íris ou baixe o shutter antes de pensar em ganho.');
+  else if(expo>1.6) msgs.push('<b>Estourada (zebra!):</b> feche a íris ou suba o shutter — highlight queimado não volta.');
+  else msgs.push('<b>Exposição correta.</b>'+(S.cena==='show'?' Show escuro dominado.':' Corporativo limpo.'));
+  if(flick) msgs.push('<b class="e">FLICKER do telão:</b> shutter 1/'+S.shut+' não casa com os 60&nbsp;Hz do LED — use 1/60 (ou 1/120).');
+  if(S.gain>=12 && expo<=1.6) msgs.push('<b>Ruído visível:</b> +'+S.gain+'dB chuvisca a imagem. Ganho é o ÚLTIMO recurso.');
+  if(f<=2.8) msgs.push('Íris aberta = <b>pouca profundidade de campo</b>: foco crítico (lindo no palco, arriscado no zoom).');
+  if(S.shut<=50) msgs.push('Shutter lento = <b>borrão de movimento</b> — aceitável em fala, ruim em show agitado.');
+  var okExpo = expo>=-1.2 && expo<=1.6 && !flick && S.gain<12;
+  if(okExpo && S.cena==='show') done.showok=true;
+  if(okExpo && S.cena==='corp') done.corpok=true;
+  v.className='verdict '+(okExpo?'ok':(expo>1.6||flick?'bad':'warn'));
+  v.innerHTML=msgs.join('<br>');
+  paint();
+}
+var MISS=[
+  {id:'iris',t:'Mexer na íris e ver o efeito'},
+  {id:'shut',t:'Trocar o shutter'},
+  {id:'gain',t:'Trocar o ganho'},
+  {id:'ruido',t:'Ver o ruído do ganho alto (+12 dB ou mais)'},
+  {id:'flicker',t:'Provocar o flicker do telão (shutter alto com LED) e entender'},
+  {id:'showok',t:'Expor corretamente o SHOW escuro (sem flicker, ganho < 12 dB)'},
+  {id:'corpok',t:'Expor corretamente o CORPORATIVO claro'},
+];
+function paint(){ var ul=$('#missions'); ul.innerHTML=''; MISS.forEach(function(m){ var d=!!done[m.id]; var li=document.createElement('li'); li.className=d?'done':''; li.innerHTML='<span class="bx">'+(d?'✓':'')+'</span><span>'+m.t+'</span>'; ul.appendChild(li); }); }
+render();
+window.__sim={S:S,done:done};
+})();
+</script>
+</body>
+</html>

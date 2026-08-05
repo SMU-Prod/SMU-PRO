@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMU PRO · Direção de Corte — Intercom e Comandos</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0b0d10;--ink:#e9edf2;--dim:#8a93a0;--line:#3a4048;--ok:#2ec26b;--err:#e23b3b;--amber:#f0a92b;}
+  html,body{background:var(--bg);color:var(--ink);font-family:'Segoe UI',system-ui,Arial,sans-serif;}
+  body{padding:10px;}
+  .app{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:10px;}
+  h1{font-size:15px;} h1 small{color:var(--dim);font-weight:400;font-size:11.5px;display:block;margin-top:2px;}
+  .wrap{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  @media(max-width:820px){ .wrap{grid-template-columns:1fr;} }
+  .col{background:#12161c;border:1px solid var(--line);border-radius:9px;padding:11px;}
+  .col h3{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--amber);margin-bottom:8px;}
+  .mv{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;}
+  .cam{position:relative;aspect-ratio:16/9;border:2px solid #2c333c;border-radius:6px;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;text-shadow:0 1px 3px #000;text-align:center;padding:4px;}
+  .cam b{position:absolute;left:4px;top:3px;font-size:8.5px;background:#0009;padding:1px 5px;border-radius:3px;}
+  .cam.ready{border-color:var(--ok);} .cam.pgm{border-color:var(--err);box-shadow:0 0 10px #e23b3b66;}
+  .radio{background:#0c0f13;border:1px solid #1c222a;border-radius:8px;padding:9px;min-height:150px;max-height:220px;overflow-y:auto;font-family:Consolas,monospace;font-size:11.5px;line-height:1.7;}
+  .radio .voce{color:#7CFC9E;} .radio .cine{color:#93c5fd;} .radio .err{color:#ff8080;}
+  .cmds{display:flex;flex-direction:column;gap:6px;}
+  .cmd{border:1px solid var(--line);border-radius:8px;background:linear-gradient(#232830,#181c22);color:var(--ink);padding:10px 12px;font-size:12.5px;font-weight:700;cursor:pointer;text-align:left;}
+  .cmd small{display:block;font-weight:400;color:var(--dim);font-size:10.5px;}
+  .cmd:hover{border-color:var(--amber);}
+  .cmd:disabled{opacity:.4;cursor:not-allowed;}
+  .cuebox{background:#0c0f13;border:1px solid var(--amber);border-radius:8px;padding:10px 12px;font-size:12.5px;line-height:1.5;margin-bottom:8px;}
+  .cuebox b{color:var(--amber);}
+  .score{font-size:12px;color:var(--dim);margin-top:6px;} .score b{color:var(--ink);}
+  .mission{background:#15181d;border:1px solid var(--line);border-radius:9px;padding:10px;}
+  .mission h3{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--amber);margin-bottom:7px;}
+  .mlist{list-style:none;display:flex;flex-direction:column;gap:5px;} .mlist li{font-size:11.5px;color:var(--dim);display:flex;gap:7px;}
+  .mlist li .bx{width:15px;height:15px;border-radius:4px;border:1px solid var(--line);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;}
+  .mlist li.done{color:var(--ink);} .mlist li.done .bx{background:var(--ok);border-color:var(--ok);color:#04220f;}
+  .note{font-size:10.5px;color:#5f6b7a;text-align:center;padding:4px;}
+  html,body{height:auto;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  @media (min-width:1250px){ html.smu-fs .app{max-width:1520px;} }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>Direção de corte ao vivo — intercom, comandos e ritmo<small>Você é o diretor. A regra sagrada do intercom: <b>PREPARA (ready) antes de CORTA (take)</b> — o cinegrafista precisa saber que vai entrar no ar.</small></h1>
+  <div class="wrap">
+    <div class="col">
+      <h3>Multiview</h3>
+      <div class="mv" id="mv"></div>
+      <div class="cuebox" id="cue"></div>
+      <div class="score">Cortes limpos: <b id="pts">0</b> · Cortes "secos" sem aviso: <b id="dirty">0</b></div>
+    </div>
+    <div class="col">
+      <h3>Seu intercom (aperte para falar)</h3>
+      <div class="cmds" id="cmds"></div>
+      <h3 style="margin-top:9px">Canal de comunicação</h3>
+      <div class="radio" id="radio"></div>
+    </div>
+  </div>
+  <div class="mission"><h3>Missão</h3><ul class="mlist" id="missions"></ul></div>
+  <div class="note">Simulador didático SMU Produções — protocolo de intercom genérico (ready/take).</div>
+</div>
+<script>
+(function(){
+"use strict";
+var $=function(s){return document.querySelector(s);};
+var CAMS=[
+  {id:1, lb:'CAM 1 · FRONTAL', bg:'linear-gradient(150deg,#0b1e3a,#1a4a86)', shot:'plano médio do palestrante'},
+  {id:2, lb:'CAM 2 · LATERAL', bg:'linear-gradient(150deg,#3a240b,#7a5216)', shot:'perfil / gestos'},
+  {id:3, lb:'CAM 3 · PLATEIA', bg:'linear-gradient(150deg,#0b3a33,#12665a)', shot:'reações da plateia'},
+  {id:4, lb:'CAM 4 · WIDE', bg:'linear-gradient(150deg,#2a0b3a,#5f1f7a)', shot:'plano geral'},
+];
+var CUES=[
+  {t:'O palestrante vai contar uma história pessoal — prepare o plano fechado.', cam:1},
+  {t:'Ele fez uma piada e a plateia caiu na risada — mostre!', cam:3},
+  {t:'Agora ele anda até o telão apontando o gráfico — plano que mostre o conjunto.', cam:4},
+  {t:'Gesticulando muito com as mãos — o perfil valoriza.', cam:2},
+  {t:'Fechamento emocionante, olho no olho.', cam:1},
+];
+var S={pgm:1, ready:null, i:0, pts:0, dirty:0};
+var done={ready:false, take:false, limpo:false, plateia:false, seco:false, fim:false};
+var mv=$('#mv');
+CAMS.forEach(function(c){
+  var d=document.createElement('div'); d.className='cam'; d.id='cam-'+c.id; d.style.background=c.bg;
+  d.innerHTML='<b>'+c.lb+'</b>'+c.shot;
+  mv.appendChild(d);
+});
+function say(who,txt,cls){ var r=$('#radio'); var p=document.createElement('div'); p.className=cls||''; p.innerHTML='<span class="'+(who==='você'?'voce':'cine')+'">['+who+']</span> '+txt; r.appendChild(p); r.scrollTop=r.scrollHeight; }
+function renderCams(){ CAMS.forEach(function(c){ var e=$('#cam-'+c.id); e.classList.toggle('pgm',S.pgm===c.id); e.classList.toggle('ready',S.ready===c.id&&S.pgm!==c.id); }); }
+function renderCue(){ var q=CUES[S.i];
+  $('#cue').innerHTML = q? '<b>MOMENTO '+(S.i+1)+'/'+CUES.length+':</b> '+q.t : '<b>Fim do bloco!</b> '+S.pts+' cortes limpos, '+S.dirty+' sem aviso. Diretor bom é previsível para a equipe: ready → resposta → take.';
+  if(!q){ done.fim=true; paint(); } }
+var cmds=$('#cmds');
+function addCmd(txt,sub,fn){ var b=document.createElement('button'); b.className='cmd'; b.innerHTML=txt+'<small>'+sub+'</small>'; b.onclick=fn; cmds.appendChild(b); return b; }
+CAMS.forEach(function(c){
+  addCmd('“Prepara, câmera '+c.id+'”','ready — avisa que ela é a próxima',function(){
+    S.ready=c.id; done.ready=true;
+    say('você','Prepara, câmera '+c.id+'.');
+    setTimeout(function(){ say('cine '+c.id,'Pronta! ('+c.shot+')'); },420);
+    renderCams(); paint();
+  });
+});
+addCmd('“CORTA!” (take)','executa o corte para a câmera preparada',function(){
+  var q=CUES[S.i];
+  if(S.ready==null){ S.dirty++; done.seco=true; $('#dirty').textContent=S.dirty;
+    say('você','CORTA!'); say('cine ?','Corta pra QUEM?? Ninguém foi preparado…','err');
+    paint(); return; }
+  S.pgm=S.ready; S.ready=null; done.take=true;
+  say('você','Corta!');
+  if(q && S.pgm===q.cam){ S.pts++; $('#pts').textContent=S.pts; done.limpo=true; if(q.cam===3)done.plateia=true;
+    say('cine '+S.pgm,'No ar. ✓'); S.i++; setTimeout(renderCue,600); }
+  else if(q){ say('cine '+S.pgm,'No ar… mas era isso mesmo? A deixa pedia outra imagem.','err'); }
+  renderCams(); paint();
+});
+var MISS=[
+  {id:'ready',t:'Dar um "prepara" (ready) para uma câmera'},
+  {id:'take',t:'Executar um corte (take)'},
+  {id:'limpo',t:'Fazer um corte limpo: ready → resposta → take na deixa certa'},
+  {id:'plateia',t:'Mostrar a reação da plateia na hora certa'},
+  {id:'seco',t:'Ver o que acontece num "CORTA!" sem preparar ninguém'},
+  {id:'fim',t:'Fechar o bloco inteiro'},
+];
+function paint(){ var ul=$('#missions'); ul.innerHTML=''; MISS.forEach(function(m){ var d=!!done[m.id]; var li=document.createElement('li'); li.className=d?'done':''; li.innerHTML='<span class="bx">'+(d?'✓':'')+'</span><span>'+m.t+'</span>'; ul.appendChild(li); }); }
+say('cine 1','Bom show, diretor! Estamos na escuta.');
+renderCams(); renderCue(); paint();
+window.__sim={S:S,done:done};
+})();
+</script>
+</body>
+</html>

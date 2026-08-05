@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMU PRO · Estudo de Caso — A Live Híbrida</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0b0d10;--ink:#e9edf2;--dim:#8a93a0;--line:#3a4048;--ok:#2ec26b;--err:#e23b3b;--amber:#f0a92b;}
+  html,body{background:var(--bg);color:var(--ink);font-family:'Segoe UI',system-ui,Arial,sans-serif;}
+  body{padding:10px;}
+  .app{max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:10px;}
+  h1{font-size:15px;} h1 small{color:var(--dim);font-weight:400;font-size:11.5px;display:block;margin-top:2px;}
+  .hud{display:flex;gap:10px;flex-wrap:wrap;background:#12161c;border:1px solid var(--line);border-radius:9px;padding:9px 12px;font-size:12px;}
+  .hud b{color:var(--amber);}
+  .card{background:#12161c;border:1px solid var(--line);border-radius:9px;padding:14px;}
+  .card .num{font-size:10px;color:var(--amber);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px;}
+  .card .sit{font-size:13px;line-height:1.55;margin-bottom:12px;}
+  .opt{display:block;width:100%;text-align:left;border:1px solid var(--line);border-radius:8px;background:linear-gradient(#232830,#181c22);color:var(--ink);padding:10px 12px;font-size:12.5px;margin-bottom:7px;cursor:pointer;line-height:1.4;}
+  .opt:hover{border-color:var(--amber);}
+  .opt.pick-ok{border-color:var(--ok);background:#10241a;} .opt.pick-bad{border-color:var(--err);background:#2a1212;}
+  .fb{border-radius:8px;padding:10px 12px;font-size:12.5px;line-height:1.55;border:1px solid var(--line);margin-top:6px;display:none;}
+  .fb.on{display:block;} .fb.ok{border-color:var(--ok);background:#10241a;} .fb.bad{border-color:var(--err);background:#2a1212;}
+  .btn{border:1px solid var(--line);border-radius:7px;background:linear-gradient(#2c323b,#1c2127);color:var(--ink);padding:9px 16px;font-size:12.5px;font-weight:800;cursor:pointer;margin-top:9px;}
+  .final{font-size:13px;line-height:1.6;}
+  .mission{background:#15181d;border:1px solid var(--line);border-radius:9px;padding:10px;}
+  .mission h3{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--amber);margin-bottom:7px;}
+  .mlist{list-style:none;display:flex;flex-direction:column;gap:5px;} .mlist li{font-size:11.5px;color:var(--dim);display:flex;gap:7px;}
+  .mlist li .bx{width:15px;height:15px;border-radius:4px;border:1px solid var(--line);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;}
+  .mlist li.done{color:var(--ink);} .mlist li.done .bx{background:var(--ok);border-color:var(--ok);color:#04220f;}
+  .note{font-size:10.5px;color:#5f6b7a;text-align:center;padding:4px;}
+  html,body{height:auto;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  @media (min-width:1250px){ html.smu-fs .app{max-width:1300px;} }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>Estudo de caso — a live híbrida do evento corporativo<small>Você é o engenheiro de transmissão. Convenção com 800 pessoas na plateia + 3.000 online + 1 palestrante remoto. Decida cada situação como no dia real.</small></h1>
+  <div class="hud"><span>Reputação: <b id="score">100%</b></span><span id="stage">Pré-produção</span></div>
+  <div class="card" id="card"></div>
+  <div class="mission"><h3>Missão</h3><ul class="mlist" id="missions"></ul></div>
+  <div class="note">Simulador didático SMU Produções — estudo de caso genérico.</div>
+</div>
+<script>
+(function(){
+"use strict";
+var $=function(s){return document.querySelector(s);};
+var CASES=[
+ {fase:'Pré-produção (D-7)', sit:'A produtora diz que "a internet do hotel é boa, o gerente garantiu". O que você faz?',
+  opts:[
+   {t:'Confio: hotel de convenção sempre tem boa internet.', ok:false, fb:'"O gerente garantiu" derruba mais lives que qualquer equipamento. Wi-Fi de hotel compartilha o link com hóspedes — cai exatamente quando o salão enche.'},
+   {t:'Peço um teste de UPLOAD no salão, no horário do evento, e um link CABEADO dedicado para a transmissão.', ok:true, fb:'Exato. Medir o upload real, no ponto real, e exigir cabo dedicado (ou contratar link/4G-bonding de backup) é a fundação da live.'},
+   {t:'Levo meu roteador 4G e resolvo na hora.', ok:false, fb:'4G é BACKUP, não plano A: em evento cheio a célula congestiona junto com o público.'}]},
+ {fase:'Montagem (D-0, manhã)', sit:'O upload medido no salão deu 12 Mbps estáveis. A live é 1080p30. Que bitrate você configura?',
+  opts:[
+   {t:'10 Mbps — quanto mais, melhor a imagem.', ok:false, fb:'10 de 12 = 83% do link. Na primeira oscilação a live cai. E acima da faixa recomendada (3–6 Mbps para 1080p30) nem melhora a imagem.'},
+   {t:'5 Mbps — dentro da faixa recomendada e abaixo da metade do link.', ok:true, fb:'Certo: faixa oficial de 1080p30 (3–6 Mbps) E respeitando o teto de ~50% do upload (6 Mbps). Estável e bonito.'},
+   {t:'2 Mbps — segurança total.', ok:false, fb:'Estável, mas abaixo da faixa: imagem pixelada nos movimentos. Segurança em excesso também é erro de engenharia.'}]},
+ {fase:'Passagem (D-0, tarde)', sit:'O palestrante remoto entra no ensaio e reclama: "estou ouvindo minha própria voz atrasada". O que está errado?',
+  opts:[
+   {t:'O notebook dele está com defeito; peço para trocar de fone.', ok:false, fb:'Não é o fone: a voz dele está indo ao palco, entrando no mix e VOLTANDO no retorno dele. Isso é sistema, não equipamento.'},
+   {t:'O retorno dele está SEM mix-minus — peço à mesa um bus que leve o palco MENOS a voz dele.', ok:true, fb:'Diagnóstico exato. Mix-minus no retorno do remoto = ele ouve tudo, menos a si mesmo. Eco eliminado na causa.'},
+   {t:'Abaixo o volume do retorno até o eco "sumir".', ok:false, fb:'Gambiarra: o eco diminui mas a conversa fica impossível. A causa (a própria voz no retorno) continua lá.'}]},
+ {fase:'Show (bloco 2)', sit:'No meio da palestra, o painel do encoder mostra quadros perdidos subindo e bitrate oscilando. O público online começa a reclamar de travadas. Ação imediata?',
+  opts:[
+   {t:'Reinicio o encoder — resolve quase tudo.', ok:false, fb:'Reiniciar derruba a live INTEIRA por minutos. É a última opção, nunca a primeira.'},
+   {t:'Reduzo o bitrate ao vivo (ex.: 5 → 3 Mbps) e aviso a régie; a resolução segura o golpe.', ok:true, fb:'Ação de profissional: degradar com elegância. 1080p a 3 Mbps travando zero vale mais que 5 Mbps caindo. Depois investiga-se a rede.'},
+   {t:'Ignoro: o problema é dos espectadores.', ok:false, fb:'Quadros perdidos no SEU painel são problema SEU — a rede local está saturando.'}]},
+ {fase:'Show (bloco final)', sit:'A produção pede para o telão do palco mostrar os comentários do chat da live. O que você confere ANTES de jogar o chat no telão?',
+  opts:[
+   {t:'Nada — é só capturar a tela do chat.', ok:false, fb:'Chat aberto sem moderação no telão de 800 pessoas = piada pronta esperando acontecer.'},
+   {t:'Se existe moderação ativa e um delay/curadoria do que sobe ao telão.', ok:true, fb:'Sempre: moderação + curadoria (alguém escolhe o que aparece). O telão é vitrine, não feed cru.'},
+   {t:'Aumento o delay da live para 60s.', ok:false, fb:'Delay não modera nada — só atrasa a piada.'}]},
+];
+var S={i:0,score:100,answered:false};
+var done={c1:false,c2:false,c3:false,c4:false,c5:false,fim:false};
+function render(){
+  var c=CASES[S.i]; if(!c){ return final(); }
+  $('#stage').textContent=c.fase;
+  var host=$('#card'); host.innerHTML='<div class="num">Situação '+(S.i+1)+' de '+CASES.length+' — '+c.fase+'</div><div class="sit">'+c.sit+'</div>';
+  var fb=document.createElement('div'); fb.className='fb';
+  c.opts.forEach(function(o){
+    var b=document.createElement('button'); b.className='opt'; b.textContent=o.t;
+    b.onclick=function(){ if(S.answered)return; S.answered=true;
+      b.classList.add(o.ok?'pick-ok':'pick-bad');
+      fb.className='fb on '+(o.ok?'ok':'bad'); fb.innerHTML=(o.ok?'<b>Decisão certa.</b> ':'<b>Custou caro.</b> ')+o.fb;
+      if(!o.ok){ S.score-=15; $('#score').textContent=Math.max(0,S.score)+'%'; }
+      else done['c'+(S.i+1)]=true;
+      var nx=document.createElement('button'); nx.className='btn'; nx.textContent= S.i+1<CASES.length?'Próxima situação →':'Ver o fechamento';
+      nx.onclick=function(){ S.i++; S.answered=false; render(); };
+      host.appendChild(nx);
+      paint();
+    };
+    host.appendChild(b);
+  });
+  host.appendChild(fb);
+}
+function final(){
+  done.fim=true; paint();
+  var host=$('#card');
+  var nota=S.score>=85?'A produtora já pediu seu contato para o próximo evento.':S.score>=55?'A live foi ao ar — com sustos que a experiência vai eliminar.':'A live sofreu. Reveja as aulas do módulo e tente de novo.';
+  host.innerHTML='<div class="num">Fechamento</div><div class="final"><b>Reputação final: '+Math.max(0,S.score)+'%.</b><br>'+nota+'<br><br>O que este caso amarrou: <b>medir o upload real</b> e exigir link dedicado; <b>bitrate pela faixa recomendada E pelo teto de 50%</b>; <b>mix-minus</b> no retorno do remoto; <b>degradar com elegância</b> quando a rede aperta; e <b>moderação</b> antes de chat em telão. É o checklist mental do engenheiro de transmissão.</div><button class="btn" onclick="location.reload()">Jogar de novo</button>';
+}
+var MISS=[
+  {id:'c1',t:'Fundação: resolver a internet na pré-produção'},
+  {id:'c2',t:'Configurar o bitrate com as duas regras'},
+  {id:'c3',t:'Diagnosticar o eco do remoto (mix-minus)'},
+  {id:'c4',t:'Reagir à rede saturada sem derrubar a live'},
+  {id:'c5',t:'Chat no telão com moderação'},
+  {id:'fim',t:'Fechar o caso'},
+];
+function paint(){ var ul=$('#missions'); ul.innerHTML=''; MISS.forEach(function(m){ var d=!!done[m.id]; var li=document.createElement('li'); li.className=d?'done':''; li.innerHTML='<span class="bx">'+(d?'✓':'')+'</span><span>'+m.t+'</span>'; ul.appendChild(li); }); }
+render(); paint();
+window.__sim={S:S,done:done};
+})();
+</script>
+</body>
+</html>

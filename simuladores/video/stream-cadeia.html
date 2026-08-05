@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMU PRO · A Cadeia do Streaming</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0b0d10;--ink:#e9edf2;--dim:#8a93a0;--line:#3a4048;--ok:#2ec26b;--err:#e23b3b;--amber:#f0a92b;}
+  html,body{background:var(--bg);color:var(--ink);font-family:'Segoe UI',system-ui,Arial,sans-serif;}
+  body{padding:10px;}
+  .app{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:10px;}
+  h1{font-size:15px;} h1 small{color:var(--dim);font-weight:400;font-size:11.5px;display:block;margin-top:2px;}
+  .board{display:grid;grid-template-columns:220px 1fr;gap:10px;}
+  @media(max-width:760px){ .board{grid-template-columns:1fr;} }
+  .tray{background:#12161c;border:1px solid var(--line);border-radius:9px;padding:9px;}
+  .tray h3{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--amber);margin-bottom:7px;}
+  .piece{border:1px solid var(--line);border-radius:7px;background:linear-gradient(#232830,#181c22);padding:8px 9px;margin-bottom:7px;cursor:pointer;font-size:12px;font-weight:700;}
+  .piece small{display:block;font-weight:400;color:var(--dim);font-size:10.5px;margin-top:2px;line-height:1.35;}
+  .piece.used{opacity:.32;pointer-events:none;}
+  .piece:hover{border-color:var(--amber);}
+  .chain{background:#12161c;border:1px solid var(--line);border-radius:9px;padding:12px;display:flex;flex-direction:column;gap:6px;}
+  .slotrow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+  .slot{flex:1;min-width:120px;min-height:64px;border:2px dashed #2c333c;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:6px;font-size:11px;color:var(--dim);cursor:pointer;}
+  .slot b{font-size:12px;color:var(--ink);}
+  .slot.next{border-color:var(--amber);color:var(--amber);}
+  .slot.ok{border-style:solid;border-color:var(--ok);color:var(--ink);background:#10241a;}
+  .slot.bad{border-style:solid;border-color:var(--err);background:#2a1212;animation:sh .3s;}
+  @keyframes sh{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+  .arrow{color:#5b6570;font-size:18px;font-weight:900;}
+  .status{display:flex;gap:10px;align-items:center;background:#0c0f13;border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:12px;}
+  .live{width:10px;height:10px;border-radius:50%;background:#333;} .live.on{background:var(--err);box-shadow:0 0 8px var(--err);animation:blink 1s steps(2) infinite;}
+  @keyframes blink{50%{opacity:.4}}
+  .btn{border:1px solid var(--line);border-radius:7px;background:linear-gradient(#2c323b,#1c2127);color:var(--ink);padding:9px 16px;font-size:12.5px;font-weight:800;cursor:pointer;}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+  .btn.go{background:linear-gradient(#e23b3b,#a81f1f);border-color:#7a1414;}
+  .mission{background:#15181d;border:1px solid var(--line);border-radius:9px;padding:10px;}
+  .mission h3{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--amber);margin-bottom:7px;}
+  .mlist{list-style:none;display:flex;flex-direction:column;gap:5px;} .mlist li{font-size:11.5px;color:var(--dim);display:flex;gap:7px;}
+  .mlist li .bx{width:15px;height:15px;border-radius:4px;border:1px solid var(--line);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;}
+  .mlist li.done{color:var(--ink);} .mlist li.done .bx{background:var(--ok);border-color:var(--ok);color:#04220f;}
+  .toast{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);background:#0c0f13;border:1px solid var(--amber);color:var(--ink);border-radius:8px;padding:9px 15px;font-size:12.5px;opacity:0;pointer-events:none;transition:.2s;z-index:60;max-width:92vw;text-align:center;} .toast.show{opacity:1;}
+  .note{font-size:10.5px;color:#5f6b7a;text-align:center;padding:4px;}
+  html,body{height:auto;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  @media (min-width:1250px){ html.smu-fs .app{max-width:1520px;} }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>A cadeia do streaming — monte do palco à plataforma<small>Clique numa PEÇA e depois no LUGAR dela na cadeia. A ordem importa: é o caminho real do sinal numa transmissão ao vivo.</small></h1>
+  <div class="board">
+    <div class="tray">
+      <h3>Peças (equipamentos)</h3>
+      <div id="tray"></div>
+    </div>
+    <div>
+      <div class="chain">
+        <div class="slotrow" id="row"></div>
+        <div class="status">
+          <span class="live" id="live"></span><span id="statustx">Monte a cadeia na ordem certa para liberar o GO LIVE.</span>
+          <span style="flex:1"></span>
+          <button class="btn go" id="golive" disabled>GO LIVE</button>
+          <button class="btn" id="reset">Recomeçar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="mission"><h3>Missão</h3><ul class="mlist" id="missions"></ul></div>
+  <div class="note">Simulador didático SMU Produções — cadeia genérica de transmissão (sem marca).</div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+(function(){
+"use strict";
+var $=function(s){return document.querySelector(s);};
+/* a cadeia correta, com o "porquê" de cada elo */
+var CHAIN=[
+  {id:'cams',  lb:'Câmeras + fontes', why:'Tudo começa na captação: câmeras, notebook de slides, playback.'},
+  {id:'sw',    lb:'Switcher',         why:'Escolhe o que vai ao ar (PGM) entre as fontes.'},
+  {id:'audio', lb:'Áudio da mesa (mix da live)', why:'O som entra ANTES do encoder — embutido no programa.'},
+  {id:'enc',   lb:'Encoder (OBS/vMix/hardware)', why:'Comprime o programa em H.264/HEVC e empacota (RTMP/SRT).'},
+  {id:'net',   lb:'Internet dedicada', why:'O upload estável que carrega a live — cabo, nunca o Wi-Fi do público.'},
+  {id:'plat',  lb:'Plataforma (YouTube/Twitch...)', why:'Recebe o stream, transcodifica e distribui ao público.'},
+];
+var DECOYS=[
+  {id:'proj', lb:'Projetor', why:'Projetor é exibição local — não faz parte da cadeia da LIVE.'},
+  {id:'led',  lb:'Processador de LED', why:'Alimenta o telão do palco, não a transmissão.'},
+];
+var pieces=CHAIN.concat(DECOYS).sort(function(){return 0.5-Math.random();});
+var S={next:0,sel:null,fails:0};
+var done={monta:false,ordem:false,decoy:false,live:false};
+
+var tray=$('#tray');
+pieces.forEach(function(p){
+  var d=document.createElement('div'); d.className='piece'; d.id='pc-'+p.id;
+  d.innerHTML=p.lb+'<small>'+p.why+'</small>';
+  d.onclick=function(){ S.sel=p; document.querySelectorAll('.piece').forEach(function(x){x.style.borderColor='';}); d.style.borderColor='#f0a92b'; };
+  tray.appendChild(d);
+});
+var row=$('#row');
+CHAIN.forEach(function(c,i){
+  if(i>0){ var a=document.createElement('span'); a.className='arrow'; a.textContent='→'; row.appendChild(a); }
+  var s=document.createElement('div'); s.className='slot'; s.id='slot-'+i; s.innerHTML='<b>?</b>Elo '+(i+1);
+  s.onclick=function(){ drop(i,s); };
+  row.appendChild(s);
+});
+function paintNext(){ CHAIN.forEach(function(c,i){ var s=$('#slot-'+i); s.classList.toggle('next', i===S.next && !s.classList.contains('ok')); }); }
+paintNext();
+
+function drop(i,s){
+  if(!S.sel){ toast('Escolha uma peça primeiro (coluna da esquerda).'); return; }
+  if(s.classList.contains('ok')) return;
+  if(i!==S.next){ toast('A cadeia se monta NA ORDEM do sinal — o próximo elo é o '+(S.next+1)+'.'); return; }
+  var esperado=CHAIN[i];
+  if(S.sel.id===esperado.id){
+    s.classList.remove('bad'); s.classList.add('ok'); s.innerHTML='<b>'+esperado.lb+'</b>'+esperado.why;
+    $('#pc-'+S.sel.id).classList.add('used'); S.sel=null; S.next++;
+    done.monta=true;
+    if(S.next>=CHAIN.length){ done.ordem=true; if(S.fails===0)done.decoy=true;
+      $('#golive').disabled=false; $('#statustx').textContent='Cadeia completa! Agora abra a transmissão.'; }
+    paintNext();
+  } else {
+    S.fails++;
+    s.classList.add('bad'); setTimeout(function(){s.classList.remove('bad');},400);
+    var d=DECOYS.find(function(x){return x.id===S.sel.id;});
+    toast(d? d.why : 'Não é este o elo '+(i+1)+' — pense no caminho do sinal: '+esperado.why);
+  }
+}
+$('#golive').onclick=function(){ if($('#golive').disabled)return; done.live=true; $('#live').classList.add('on');
+  $('#statustx').textContent='AO VIVO — o sinal percorre: câmeras → switcher → áudio → encoder → internet → plataforma → público.';
+  toast('GO LIVE! Cadeia no ar.'); paint(); };
+$('#reset').onclick=function(){ location.reload(); };
+
+var MISS=[
+  {id:'monta',t:'Colocar o primeiro elo certo na cadeia'},
+  {id:'ordem',t:'Completar a cadeia inteira na ordem do sinal'},
+  {id:'decoy',t:'Completar sem cair nas peças-armadilha (projetor/LED)'},
+  {id:'live',t:'Abrir a transmissão (GO LIVE)'},
+];
+function paint(){ var ul=$('#missions'); ul.innerHTML=''; MISS.forEach(function(m){ var d=!!done[m.id]; var li=document.createElement('li'); li.className=d?'done':''; li.innerHTML='<span class="bx">'+(d?'✓':'')+'</span><span>'+m.t+'</span>'; ul.appendChild(li); }); }
+var _t; function toast(m){ var t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(_t); _t=setTimeout(function(){t.classList.remove('show');},2800); }
+var _p=drop; // manter referencia
+setInterval(paint,600); paint();
+window.__sim={S:S,done:done};
+})();
+</script>
+</body>
+</html>

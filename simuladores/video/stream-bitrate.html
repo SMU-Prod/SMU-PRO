@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMU PRO · Laboratório de Bitrate</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0b0d10;--ink:#e9edf2;--dim:#8a93a0;--line:#3a4048;--ok:#2ec26b;--err:#e23b3b;--amber:#f0a92b;}
+  html,body{background:var(--bg);color:var(--ink);font-family:'Segoe UI',system-ui,Arial,sans-serif;}
+  body{padding:10px;}
+  .app{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:10px;}
+  h1{font-size:15px;} h1 small{color:var(--dim);font-weight:400;font-size:11.5px;display:block;margin-top:2px;}
+  .lab{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  @media(max-width:820px){ .lab{grid-template-columns:1fr;} }
+  .col{background:#12161c;border:1px solid var(--line);border-radius:9px;padding:11px;}
+  .col h3{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--amber);margin-bottom:8px;}
+  .frow{display:flex;align-items:center;gap:9px;margin-bottom:9px;font-size:12px;flex-wrap:wrap;}
+  .frow label{width:150px;color:var(--dim);}
+  select,input[type=range]{background:#0c0f13;color:var(--ink);border:1px solid var(--line);border-radius:5px;padding:5px 7px;font-size:12px;}
+  input[type=range]{flex:1;padding:0;}
+  .big{font-size:22px;font-weight:900;}
+  .pipe{position:relative;height:46px;background:#0c0f13;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin:8px 0;}
+  .pipe .need{position:absolute;left:0;top:0;bottom:0;background:#3b82f6aa;display:flex;align-items:center;padding-left:8px;font-size:11px;font-weight:800;transition:width .2s;}
+  .pipe .cap{position:absolute;top:0;bottom:0;width:3px;background:var(--amber);}
+  .pipe .caplb{position:absolute;top:-2px;font-size:9px;color:var(--amber);transform:translateX(-50%);}
+  .verdict{border-radius:8px;padding:10px 12px;font-size:12.5px;line-height:1.5;border:1px solid var(--line);}
+  .verdict.ok{border-color:var(--ok);background:#10241a;}
+  .verdict.warn{border-color:var(--amber);background:#241d0c;}
+  .verdict.bad{border-color:var(--err);background:#2a1212;}
+  .tvrow{display:flex;gap:8px;}
+  .tv{position:relative;flex:1;aspect-ratio:16/9;border:2px solid #333;border-radius:6px;overflow:hidden;background:linear-gradient(150deg,#0b1e3a,#1a4a86);}
+  .tv .lb{position:absolute;left:4px;top:3px;font-size:9px;font-weight:800;background:#0009;padding:1px 5px;border-radius:3px;z-index:5;}
+  .tv .px{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff;text-shadow:0 1px 4px #000;font-size:13px;}
+  .tv.blocky .px{filter:blur(2px) contrast(1.4);} .tv.blocky::after{content:'';position:absolute;inset:0;background:repeating-conic-gradient(#0002 0 25%,#0000 0 50%) 0 0/14px 14px;z-index:3;}
+  .tv.frozen::before{content:'⏳ BUFFERING…';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#000a;color:#fff;font-weight:800;font-size:12px;z-index:6;}
+  .mission{background:#15181d;border:1px solid var(--line);border-radius:9px;padding:10px;}
+  .mission h3{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--amber);margin-bottom:7px;}
+  .mlist{list-style:none;display:flex;flex-direction:column;gap:5px;} .mlist li{font-size:11.5px;color:var(--dim);display:flex;gap:7px;}
+  .mlist li .bx{width:15px;height:15px;border-radius:4px;border:1px solid var(--line);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;}
+  .mlist li.done{color:var(--ink);} .mlist li.done .bx{background:var(--ok);border-color:var(--ok);color:#04220f;}
+  .note{font-size:10.5px;color:#5f6b7a;text-align:center;padding:4px;}
+  html,body{height:auto;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  @media (min-width:1250px){ html.smu-fs .app{max-width:1520px;} }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>Bitrate × internet do local — a conta que segura a live<small>Escolha resolução/fps/bitrate e veja se o upload do local aguenta. A regra de campo: o bitrate usa NO MÁXIMO metade do upload real medido.</small></h1>
+  <div class="lab">
+    <div class="col">
+      <h3>Configuração do encoder</h3>
+      <div class="frow"><label>Resolução</label>
+        <select id="res"><option value="720">1280×720 (720p)</option><option value="1080" selected>1920×1080 (1080p)</option><option value="2160">3840×2160 (4K)</option></select></div>
+      <div class="frow"><label>Frame rate</label>
+        <select id="fps"><option value="30" selected>30 fps</option><option value="60">60 fps</option></select></div>
+      <div class="frow"><label>Bitrate de vídeo</label><input type="range" id="br" min="1" max="40" step="0.5" value="6"><b id="brLb" class="big" style="font-size:15px">6.0</b> Mbps</div>
+      <div class="frow"><label>Upload do local (medido)</label>
+        <select id="up"><option value="5">5 Mbps (ADSL de fundo de loja)</option><option value="12" selected>12 Mbps (banda larga comum)</option><option value="50">50 Mbps (fibra dedicada)</option></select></div>
+      <h3 style="margin-top:8px">Ocupação do link</h3>
+      <div class="pipe"><div class="need" id="need">6.0 Mbps</div><div class="cap" id="cap"></div><div class="caplb" id="caplb">50%</div></div>
+      <div class="verdict" id="verdict"></div>
+    </div>
+    <div class="col">
+      <h3>Como o público vê</h3>
+      <div class="tvrow">
+        <div class="tv" id="tv"><span class="lb" id="tvLb">1080p30 · 6 Mbps</span><div class="px" id="tvTx">IMAGEM DO PÚBLICO</div></div>
+      </div>
+      <div class="verdict" id="quality" style="margin-top:8px"></div>
+      <h3 style="margin-top:10px">Referências oficiais (YouTube)</h3>
+      <div style="font-size:11.5px;color:var(--dim);line-height:1.7">
+        720p30: <b style="color:var(--ink)">1,5–4 Mbps</b> · 1080p30: <b style="color:var(--ink)">3–6 Mbps</b> · 1080p60: <b style="color:var(--ink)">4,5–9 Mbps</b> · 4K30: <b style="color:var(--ink)">13–34 Mbps</b><br>
+        (faixas recomendadas pela plataforma — o link da aba Materiais leva à página oficial)
+      </div>
+    </div>
+  </div>
+  <div class="mission"><h3>Missão</h3><ul class="mlist" id="missions"></ul></div>
+  <div class="note">Simulador didático SMU Produções — laboratório genérico de bitrate.</div>
+</div>
+<script>
+(function(){
+"use strict";
+var $=function(s){return document.querySelector(s);};
+var done={mexeu:false, estourou:false, salvou5:false, k4:false, ideal:false};
+/* faixa recomendada (YouTube, resoluções/bitrates oficiais) */
+function faixa(res,fps){
+  if(res==='720') return fps==='60'?[2.25,6]:[1.5,4];
+  if(res==='1080') return fps==='60'?[4.5,9]:[3,6];
+  return fps==='60'?[20,51]:[13,34]; /* 4K */
+}
+function render(){
+  var res=$('#res').value, fps=$('#fps').value, br=+$('#br').value, up=+$('#up').value;
+  $('#brLb').textContent=br.toFixed(1);
+  var pct=Math.min(100, br/up*100);
+  var need=$('#need'); need.style.width=pct+'%'; need.textContent=br.toFixed(1)+' Mbps ('+Math.round(pct)+'% do link)';
+  $('#cap').style.left='50%'; $('#caplb').style.left='50%'; $('#caplb').textContent='teto seguro: 50% = '+(up/2).toFixed(1)+' Mbps';
+  var f=faixa(res,fps), v=$('#verdict'), tv=$('#tv'), q=$('#quality');
+  tv.classList.remove('blocky','frozen');
+  $('#tvLb').textContent=res+'p'+fps+' · '+br.toFixed(1)+' Mbps';
+  var estourou = br > up*0.5;
+  var caiu = br > up*0.85;
+  if(caiu){ v.className='verdict bad'; v.innerHTML='<b>A live VAI CAIR.</b> O bitrate ('+br.toFixed(1)+') está comendo quase todo o upload ('+up+'). Qualquer oscilação = quadros perdidos e desconexão.'; tv.classList.add('frozen'); done.estourou=true; }
+  else if(estourou){ v.className='verdict warn'; v.innerHTML='<b>Zona de risco.</b> Passou do teto de 50% do upload ('+(up/2).toFixed(1)+' Mbps). Funciona no teste e cai no meio do show, quando a rede oscila.'; done.estourou=true; }
+  else { v.className='verdict ok'; v.innerHTML='<b>Link seguro.</b> '+br.toFixed(1)+' Mbps em um upload de '+up+' Mbps — folga para a rede respirar.'; }
+  if(br<f[0]){ q.className='verdict warn'; q.innerHTML='<b>Bitrate BAIXO para '+res+'p'+fps+'</b> (recomendado '+f[0]+'–'+f[1]+' Mbps): imagem pixelada nos movimentos.'; tv.classList.add('blocky'); }
+  else if(br>f[1]){ q.className='verdict warn'; q.innerHTML='<b>Bitrate acima do recomendado</b> ('+f[0]+'–'+f[1]+' Mbps): não melhora a imagem — só gasta link e arrisca a estabilidade.'; }
+  else { q.className='verdict ok'; q.innerHTML='<b>Qualidade correta</b> para '+res+'p'+fps+' (faixa '+f[0]+'–'+f[1]+' Mbps).';
+    if(!estourou){ done.ideal=true;
+      if(up===5) done.salvou5=true;
+      if(res==='2160') done.k4=true; } }
+  paint();
+}
+['res','fps','up'].forEach(function(id){ $('#'+id).onchange=function(){ done.mexeu=true; render(); }; });
+$('#br').oninput=function(){ done.mexeu=true; render(); };
+var MISS=[
+  {id:'mexeu',t:'Mexer na configuração e ler o veredito'},
+  {id:'estourou',t:'Ver o que acontece quando o bitrate passa do teto de 50%'},
+  {id:'ideal',t:'Achar uma configuração segura E na faixa recomendada'},
+  {id:'salvou5',t:'Salvar a live no local de 5 Mbps (ache a config que cabe)'},
+  {id:'k4',t:'Montar um 4K viável (só na fibra de 50 Mbps)'},
+];
+function paint(){ var ul=$('#missions'); ul.innerHTML=''; MISS.forEach(function(m){ var d=!!done[m.id]; var li=document.createElement('li'); li.className=d?'done':''; li.innerHTML='<span class="bx">'+(d?'✓':'')+'</span><span>'+m.t+'</span>'; ul.appendChild(li); }); }
+render();
+window.__sim={done:done};
+})();
+</script>
+</body>
+</html>

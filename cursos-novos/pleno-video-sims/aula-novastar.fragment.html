@@ -1,30 +1,65 @@
-<p><strong>Chegou o momento de sentar na frente do processador e colocar uma parede de LED no ar.</strong> No básico você viu o que é módulo, cabinet e pixel pitch. Aqui você vai <strong>operar</strong> o processador de verdade: dizer a ele qual sinal está entrando, montar a tela, distribuir os cabinets pelas portas de rede, ajustar brilho e enviar padrões de teste — exatamente a rotina que o simulador desta aula reproduz.</p>
+<p><strong>Chegou o momento de sentar na frente do processador e colocar uma parede de LED no ar.</strong> No básico você viu o que é módulo, cabinet e pixel pitch. Aqui você vai <strong>operar</strong> o processador de verdade: dizer a ele qual sinal está entrando, montar a tela, distribuir os cabinets pelas portas de rede, ajustar brilho e enviar padrões de teste — exatamente a rotina que o simulador desta aula reproduz. E, mais importante: vai aprender a <strong>fazer as contas</strong> que dizem se a parede vai subir certa ou vai piscar na frente do público.</p>
 
 {{IMG:rack-processadores-led}}
 
 <h3>O processador é o cérebro da parede</h3>
 <p>Um processador de LED (também chamado de <strong>sending card</strong> ou controlador — como o <strong>NovaStar VX600, VX1000, MX40 Pro</strong> ou equivalentes Colorlight) faz três coisas: <strong>recebe</strong> o vídeo (HDMI, DVI, SDI ou DisplayPort), <strong>recorta e mapeia</strong> a imagem para o formato exato da parede, e <strong>distribui</strong> os pixels para os gabinetes através de várias <strong>portas Gigabit Ethernet (RJ45)</strong>. Dentro de cada cabinet, uma <strong>receiving card</strong> recebe sua fatia do sinal e acende os módulos.</p>
+<p>Existem duas arquiteturas no mercado, e você vai encontrar as duas na locação:</p>
+<ul>
+  <li><strong>Sending card "pura"</strong> (ex.: NovaStar MSD300, MCTRL séries): só empacota o vídeo para a rede do LED. Não tem scaler — o sinal precisa chegar já na resolução e frame rate certos. Por isso ela costuma viver num rack acompanhada de um scaler/switcher.</li>
+  <li><strong>All-in-one / processador com scaler</strong> (ex.: <strong>VX600</strong>, VX1000): entrada multi-formato, scaler interno, seleção de fonte no painel frontal, preview no visor. É a caixa que domina o evento ao vivo justamente porque resolve entrada, escala e distribuição num aparelho só. O simulador desta aula é modelado nessa categoria.</li>
+</ul>
 
 <h3>Passo 1 — Entrada: diga ao processador o que está chegando</h3>
-<p>Antes de tudo, o processador precisa <strong>reconhecer o sinal</strong>. Você seleciona a <strong>fonte física</strong> (a que o cabo está plugado — HDMI, DVI, SDI ou DP) e confirma a <strong>resolução</strong> e o <strong>frame rate</strong> (tipicamente 1920×1080 @ 60&nbsp;Hz vindo do switcher ou do media server). Se a fonte não bate, o painel mostra <strong>"Sem sinal"</strong> e a parede fica preta. Regra de ouro: a resolução de entrada deve ser <strong>igual ou maior</strong> que a resolução total da parede — senão faltam pixels e a imagem aparece esticada ou cortada.</p>
+<p>Antes de tudo, o processador precisa <strong>reconhecer o sinal</strong>. Você seleciona a <strong>fonte física</strong> (a que o cabo está plugado — HDMI, DVI, SDI ou DP) e confirma a <strong>resolução</strong> e o <strong>frame rate</strong> (tipicamente 1920×1080 @ 60&nbsp;Hz vindo do switcher ou do media server). Se a fonte não bate, o painel mostra <strong>"Sem sinal"</strong> e a parede fica preta. Regra de ouro: a resolução de entrada deve ser <strong>igual ou maior</strong> que a resolução total da parede — senão faltam pixels e a imagem aparece esticada ou borrada pelo scaler.</p>
 
-<h3>Passo 2 — Configuração de tela (Screen Config)</h3>
-<p>Agora você monta a parede em software. Informa o <strong>pixel pitch</strong> e o <strong>tamanho físico do cabinet</strong> (ex.: 500×500&nbsp;mm), e o processador calcula a <strong>resolução de cada gabinete</strong> (um cabinet 500&nbsp;mm em P2.9 tem ~172×172&nbsp;px). Em seguida você define <strong>quantas colunas × quantas linhas</strong> de cabinets existem. A resolução total sai da conta: <em>px do cabinet × número de cabinets</em>. Uma parede 6×3 de cabinets 172&nbsp;px dá ~1032×516&nbsp;px.</p>
+<h3>Passo 2 — Configuração de tela (Screen Config): a conta do cabinet</h3>
+<p>Agora você monta a parede em software. A resolução de cada cabinet sai de uma divisão simples: <em>lado do cabinet ÷ pitch</em>. Cabinet de <strong>500&nbsp;mm</strong>:</p>
+<table>
+  <tr><th>Pitch</th><th>Conta</th><th>Resolução do cabinet</th><th>Pixels por cabinet</th></tr>
+  <tr><td>P2,6</td><td>500 ÷ 2,6</td><td>192×192&nbsp;px</td><td>36.864</td></tr>
+  <tr><td>P2,9</td><td>500 ÷ 2,9</td><td>172×172&nbsp;px</td><td>29.584</td></tr>
+  <tr><td>P3,9</td><td>500 ÷ 3,9</td><td>128×128&nbsp;px</td><td>16.384</td></tr>
+  <tr><td>P4,8</td><td>500 ÷ 4,8</td><td>104×104&nbsp;px</td><td>10.816</td></tr>
+</table>
+<p>Depois você define <strong>quantas colunas × quantas linhas</strong> de cabinets existem, e a resolução total sai da multiplicação. Uma parede <strong>6×3</strong> de cabinets P2,9 (172&nbsp;px) dá <strong>1032×516&nbsp;px</strong> — 532.512 pixels. A mesma parede em P2,6 dá 1152×576 = 663.552 pixels. Anote esses dois números: eles decidem o passo seguinte.</p>
 
 <h3>Passo 3 — Capacidade das portas: a conta que salva o show</h3>
-<p>Cada porta Gigabit carrega aproximadamente <strong>650.000 pixels a 60&nbsp;Hz</strong> (a 30&nbsp;Hz, o dobro). Some os pixels de todos os cabinets e divida por 650.000: esse é o <strong>número mínimo de portas</strong>. Se a parede tem 1.100.000 pixels, você precisa de pelo menos <strong>2 portas</strong>. Estourar a capacidade de uma porta faz aquele trecho da parede <strong>piscar, atrasar ou apagar</strong>. Um VX600 tem 6 portas — se a conta pedir mais que isso, você precisa de outro processador ou baixar a taxa de atualização. O simulador avisa em vermelho quando você passa do limite: é exatamente esse alarme que você aprende a ler.</p>
+<p>De onde vem o famoso número de <strong>~650.000 pixels por porta Gigabit a 60&nbsp;Hz</strong>? Da própria física do cabo. Uma porta Gigabit transporta 1.000&nbsp;Mbps; cada pixel em 8&nbsp;bits RGB carrega 3&nbsp;bytes (24&nbsp;bits). A conta, já descontando o overhead do protocolo:</p>
+<p><em>650.000&nbsp;px × 60&nbsp;quadros/s × 24&nbsp;bits ≈ 936&nbsp;Mbps</em> — praticamente o teto do Gigabit.</p>
+<p>Três consequências práticas que separam o operador do curioso:</p>
+<ul>
+  <li><strong>A 30&nbsp;Hz cabe o dobro</strong> (~1,3 milhão de px por porta); a 120&nbsp;Hz, a metade.</li>
+  <li><strong>Bit depth cobra pedágio:</strong> processadores que mandam 10&nbsp;bits para o painel (HDR) reduzem a capacidade da porta em ~20–25% — a conta usa 30&nbsp;bits por pixel em vez de 24.</li>
+  <li><strong>Nunca planeje porta a 100%:</strong> a praxe de campo é carregar até ~80% e deixar folga. Porta estourada faz aquele trecho da parede <strong>piscar, atrasar ou apagar</strong> — e sempre no flash branco do bumbo, que é quando o tráfego é máximo.</li>
+</ul>
+<p>Na nossa parede 6×3 P2,6 (663.552&nbsp;px): 663.552 ÷ 650.000 = 1,02 → <strong>2 portas no mínimo</strong>, 3 com folga confortável. Um VX600 tem 6 portas; se a conta pedir mais que isso, ou você sobe de modelo, ou soma um segundo processador, ou baixa o frame rate. O simulador avisa em vermelho quando você passa do limite: é exatamente esse alarme que você aprende a ler.</p>
 
 <h3>Passo 4 — Mapeamento / cabeamento (Screen Connection)</h3>
 <p>Aqui está a parte que mais confunde iniciante: dizer <strong>por qual porta</strong> cada cabinet recebe sinal e em que <strong>ordem</strong> o cabo de rede passa por eles. Os cabinets são ligados em <strong>daisy chain</strong> (um puxa o outro), normalmente em <strong>serpentina</strong>: a porta 1 sai do controlador, entra no primeiro cabinet de cima, percorre a fileira, desce e volta pela fileira de baixo. Você desenha esse caminho clicando nos cabinets na sequência. Um cabinet <strong>não mapeado fica preto</strong> na parede — um erro clássico de montagem que o técnico precisa identificar na hora.</p>
+<p>Duas regras de campo que os manuais dos fabricantes reforçam:</p>
+<ul>
+  <li><strong>A ordem física e a ordem lógica têm que ser a MESMA.</strong> Se o montador passou o cabo numa sequência e você desenhou outra, a imagem aparece <em>embaralhada em blocos</em> — cada cabinet mostra a fatia errada. Não é defeito: é mapa errado.</li>
+  <li><strong>Redundância (backup loop):</strong> em show grande liga-se um segundo cabo do FIM da cadeia de volta a uma porta de backup. Se um cabo da cadeia falhar, o sinal chega pelos dois lados e a parede não apaga. É barato e já salvou muito show — peça o cabo extra no rider.</li>
+</ul>
 
 <h3>Passo 5 — Brilho, gamma e cor</h3>
-<p>Com a imagem no ar, você calibra: <strong>brilho</strong> (0–100%, medido em <strong>nits</strong> — telões indoor giram em torno de 800–1500 nits, outdoor passa de 5000), <strong>gamma</strong> (curva de resposta, tipicamente 2.2 a 2.8), <strong>temperatura de cor</strong> (3200K quente, 5600K, 6500K neutro) e ganhos de RGB. Para eventos com câmera, o brilho e o gamma precisam casar com a exposição da câmera para o telão não "estourar" nem ficar apagado na transmissão.</p>
+<p>Com a imagem no ar, você calibra: <strong>brilho</strong> (0–100%, medido em <strong>nits</strong> — telões indoor giram em torno de 800–1500 nits, outdoor passa de 5000), <strong>gamma</strong> (curva de resposta, tipicamente 2.2 a 2.8), <strong>temperatura de cor</strong> (3200K quente, 5600K, 6500K neutro) e ganhos de RGB. Para eventos com câmera, o brilho e o gamma precisam casar com a exposição da câmera para o telão não "estourar" nem ficar apagado na transmissão. E lembre: brilho é consumo — rodar a 100% sem necessidade só aquece o painel e estressa o gerador.</p>
 
 <h3>Passo 6 — Padrões de teste</h3>
-<p>Antes de abrir a casa, envie <strong>padrões de teste</strong>: vermelho, verde, azul e branco puros revelam <strong>módulo queimado</strong> ou canal de cor com defeito; a <strong>grade</strong> mostra cabinet torto ou desalinhado; a escala de cinza revela problemas de uniformidade. É o "soundcheck" do vídeo — melhor achar o defeito no teste do que no meio do show.</p>
+<p>Antes de abrir a casa, envie <strong>padrões de teste</strong>: vermelho, verde, azul e branco puros revelam <strong>módulo queimado</strong> ou canal de cor com defeito; a <strong>grade</strong> mostra cabinet torto ou desalinhado; a escala de cinza revela problemas de uniformidade e banding. É o "soundcheck" do vídeo — melhor achar o defeito no teste do que no meio do show.</p>
+
+<h3>No palco / erros que acontecem</h3>
+<ul>
+  <li><strong>"Um pedaço da parede pisca quando o conteúdo é claro."</strong> Porta de rede no limite. Refaça a conta de pixels por porta; redistribua os cabinets ou acrescente porta/processador.</li>
+  <li><strong>"A imagem está trocada em blocos."</strong> Mapeamento lógico diferente do cabeamento físico. Refaça o Screen Connection seguindo o cabo real, cabinet por cabinet.</li>
+  <li><strong>"Um cabinet no meio ficou preto."</strong> Ou ficou fora do mapa, ou o cabo de rede daquele trecho falhou. Se houver backup loop, a parede nem sente; sem ele, é subir na estrutura no intervalo.</li>
+  <li><strong>"A parede está no ar mas 'lavada', sem contraste."</strong> Gamma baixo demais ou entrada em faixa de cor errada (Full vs Limited). Confira o gamma (2.2–2.8) e o range da fonte.</li>
+  <li><strong>"No visor diz Sem Sinal."</strong> Fonte física errada ou resolução/frame rate fora do que o processador espera. Confirme o cabo, a entrada selecionada e o formato de saída do switcher.</li>
+</ul>
 
 <h3>Pratique no simulador</h3>
-<p>O simulador desta aula é um <strong>NovaStar VX600 funcional</strong>: detecte o sinal, monte a tela, respeite a capacidade das portas, mapeie todos os cabinets, ajuste o brilho e mande um padrão de teste. Complete as seis missões e você terá feito, do começo ao fim, o que um técnico de LED faz em cada montagem.</p>
+<p>O simulador desta aula é a <strong>réplica do NovaLCT</strong> (o software real da NovaStar): detecte o sinal, monte a tela, respeite a capacidade das portas, mapeie os cabinets em serpentina, ajuste o brilho e mande um padrão de teste. Complete as missões e você terá feito, do começo ao fim, o que um técnico de LED faz em cada montagem — e no Módulo 9 você aprofunda o procedimento oficial botão a botão.</p>
 
 <h3>Resumo prático</h3>
-<p>O processador de LED recebe o vídeo, mapeia para a parede e distribui pelos cabinets via portas Gigabit (~650.000&nbsp;px cada). O fluxo é sempre: <strong>entrada → configuração de tela → capacidade de portas → mapeamento do cabeamento → brilho/gamma/cor → padrões de teste</strong>. Cabinet não mapeado apaga; porta estourada pisca. Dominar essa sequência é o que faz o telão subir certo.</p>
+<p>O processador de LED recebe o vídeo, mapeia para a parede e distribui pelos cabinets via portas Gigabit (~650.000&nbsp;px cada a 60&nbsp;Hz/8&nbsp;bits — e menos que isso em 10&nbsp;bits ou 120&nbsp;Hz). O fluxo é sempre: <strong>entrada → configuração de tela → capacidade de portas → mapeamento do cabeamento → brilho/gamma/cor → padrões de teste</strong>. Resolução de cabinet = lado ÷ pitch; resolução da parede = cabinet × colunas × linhas; portas = pixels totais ÷ 650.000, com 20% de folga. Cabinet não mapeado apaga; porta estourada pisca; mapa diferente do cabo embaralha. Dominar essa sequência — e as três contas — é o que faz o telão subir certo.</p>
